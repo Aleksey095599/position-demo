@@ -247,6 +247,61 @@ CREATE TABLE IF NOT EXISTS pricing_rules
         CHECK (margin_percent >= 0 AND margin_percent < 100)
 );
 
+CREATE TABLE IF NOT EXISTS fx_trade_exposure
+(
+    trade_id             INTEGER PRIMARY KEY,
+    entry_timestamp      TEXT    NOT NULL,
+    trade_type           TEXT    NOT NULL,
+    trade_date           TEXT    NOT NULL,
+    ccy_pair_code        TEXT    NOT NULL,
+    side                 TEXT    NOT NULL,
+    base_ccy_amount      NUMERIC NOT NULL,
+    quote_ccy_amount     NUMERIC NOT NULL,
+    trade_rate           NUMERIC NOT NULL,
+    tenor                TEXT    NOT NULL,
+    base_ccy_value_date  TEXT    NOT NULL,
+    quote_ccy_value_date TEXT    NOT NULL,
+
+    CONSTRAINT fk_fx_trade_exposure_ccy_pair
+        FOREIGN KEY (ccy_pair_code)
+            REFERENCES ccy_pair_options (ccy_pair_code)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT chk_fx_trade_exposure_entry_timestamp
+        CHECK (
+            length(entry_timestamp) = 24
+            AND entry_timestamp GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
+        ),
+    CONSTRAINT chk_fx_trade_exposure_trade_type
+        CHECK (trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')),
+    CONSTRAINT chk_fx_trade_exposure_trade_date
+        CHECK (
+            trade_date GLOB '????-??-??'
+            AND strftime('%Y-%m-%d', trade_date) = trade_date
+        ),
+    CONSTRAINT chk_fx_trade_exposure_side
+        CHECK (side IN ('BUY', 'SELL')),
+    CONSTRAINT chk_fx_trade_exposure_amounts_and_rate
+        CHECK (
+            typeof(base_ccy_amount) IN ('integer', 'real')
+            AND base_ccy_amount > 0
+            AND typeof(quote_ccy_amount) IN ('integer', 'real')
+            AND quote_ccy_amount > 0
+            AND typeof(trade_rate) IN ('integer', 'real')
+            AND trade_rate > 0
+        ),
+    CONSTRAINT chk_fx_trade_exposure_tenor
+        CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
+    CONSTRAINT chk_fx_trade_exposure_value_dates
+        CHECK (
+            base_ccy_value_date GLOB '????-??-??'
+            AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
+            AND quote_ccy_value_date GLOB '????-??-??'
+            AND strftime('%Y-%m-%d', quote_ccy_value_date) = quote_ccy_value_date
+        )
+);
+
 CREATE TABLE IF NOT EXISTS client_fx_deals
 (
     client_deal_id       INTEGER PRIMARY KEY,
@@ -334,6 +389,18 @@ CREATE INDEX IF NOT EXISTS idx_pricing_rules_execution_context
 
 CREATE INDEX IF NOT EXISTS idx_pricing_rules_ccy_pair
     ON pricing_rules (ccy_pair_code);
+
+CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_entry_timestamp
+    ON fx_trade_exposure (entry_timestamp);
+
+CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_trade_type
+    ON fx_trade_exposure (trade_type);
+
+CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_trade_date
+    ON fx_trade_exposure (trade_date);
+
+CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_ccy_pair
+    ON fx_trade_exposure (ccy_pair_code);
 
 CREATE INDEX IF NOT EXISTS idx_client_fx_deals_party
     ON client_fx_deals (party_id);

@@ -172,6 +172,7 @@ function verifyFreshSchemaAndSeed() {
   let accountingSystemTextLimitsEnforced = false;
   let executionSystemConstraintsEnforced = true;
   let tradingPartyConstraintsEnforced = true;
+  let fxTradeExposureConstraintsEnforced = true;
   let clientFxDealConstraintsEnforced = true;
   let clientFxDealPartyTypeEnforced = true;
 
@@ -277,6 +278,71 @@ function verifyFreshSchemaAndSeed() {
   });
 
   [
+    ["2026-07-15 09:30:00", "CLIENT_DEAL", "2026-07-15", "EUR_USD", "BUY", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
+    ["2026-07-15T09:30:00.000Z", "CLIENT", "2026-07-15", "EUR_USD", "BUY", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
+    ["2026-07-15T09:30:00.000Z", "TECHNICAL_DEAL", "2026-07-15", "EUR_USD", "BUY", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
+    ["2026-07-15T09:30:00.000Z", "CLIENT_DEAL", "15.07.2026", "EUR_USD", "BUY", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
+    ["2026-07-15T09:30:00.000Z", "CLIENT_DEAL", "2026-07-15", "UNKNOWN_PAIR", "BUY", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
+    ["2026-07-15T09:30:00.000Z", "CLIENT_DEAL", "2026-07-15", "EUR_USD", "HOLD", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
+    ["2026-07-15T09:30:00.000Z", "CLIENT_DEAL", "2026-07-15", "EUR_USD", "BUY", 0, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
+    ["2026-07-15T09:30:00.000Z", "CLIENT_DEAL", "2026-07-15", "EUR_USD", "BUY", 100, 112.31, 1.1231, "spot value", "2026-07-15", "2026-07-15"],
+    ["2026-07-15T09:30:00.000Z", "CLIENT_DEAL", "2026-07-15", "EUR_USD", "BUY", 100, 112.31, 1.1231, "TOD", "15.07.2026", "2026-07-15"]
+  ].forEach(values => {
+    try {
+      database.prepare(`
+        INSERT INTO fx_trade_exposure
+          (
+            entry_timestamp, trade_type, trade_date, ccy_pair_code, side,
+            base_ccy_amount, quote_ccy_amount, trade_rate, tenor,
+            base_ccy_value_date, quote_ccy_value_date
+          )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(...values);
+      fxTradeExposureConstraintsEnforced = false;
+    } catch {}
+  });
+
+  database.prepare(`
+    INSERT INTO fx_trade_exposure
+      (
+        entry_timestamp, trade_type, trade_date, ccy_pair_code, side,
+        base_ccy_amount, quote_ccy_amount, trade_rate, tenor,
+        base_ccy_value_date, quote_ccy_value_date
+      )
+    VALUES ('2026-07-15T09:30:00.000Z', 'CLIENT_DEAL', '2026-07-15', 'EUR_USD', 'BUY', 30000000, 33693000, 1.1231, 'TOD', '2026-07-15', '2026-07-15')
+  `).run();
+
+  database.prepare(`
+    INSERT INTO fx_trade_exposure
+      (
+        entry_timestamp, trade_type, trade_date, ccy_pair_code, side,
+        base_ccy_amount, quote_ccy_amount, trade_rate, tenor,
+        base_ccy_value_date, quote_ccy_value_date
+      )
+    VALUES ('2026-07-15T09:31:00.000Z', 'HEDGE_DEAL', '2026-07-15', 'EUR_USD', 'SELL', 30000000, 33690000, 1.123, 'TOD', '2026-07-15', '2026-07-15')
+  `).run();
+
+  database.prepare(`
+    INSERT INTO fx_trade_exposure
+      (
+        entry_timestamp, trade_type, trade_date, ccy_pair_code, side,
+        base_ccy_amount, quote_ccy_amount, trade_rate, tenor,
+        base_ccy_value_date, quote_ccy_value_date
+      )
+    VALUES ('2026-07-15T09:32:00.000Z', 'CLIENT_DEAL', '2026-07-15', 'EUR_USD', 'BUY', 1000000, 1123100, 1.1231, 'TOM', '2026-07-16', '2026-07-16')
+  `).run();
+
+  database.prepare(`
+    INSERT INTO fx_trade_exposure
+      (
+        entry_timestamp, trade_type, trade_date, ccy_pair_code, side,
+        base_ccy_amount, quote_ccy_amount, trade_rate, tenor,
+        base_ccy_value_date, quote_ccy_value_date
+      )
+    VALUES ('2026-07-15T09:33:00.000Z', 'HEDGE_DEAL', '2026-07-15', 'EUR_USD', 'SELL', 1000000, 1123000, 1.123, 'SPOT', '2026-07-17', '2026-07-17')
+  `).run();
+
+  [
     ["2026-07-15 09:30:00", "2026-07-15", "BUY", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
     ["2026-07-15T09:30:00.000Z", "15.07.2026", "BUY", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
     ["2026-07-15T09:30:00.000Z", "2026-07-15", "HOLD", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
@@ -336,6 +402,9 @@ function verifyFreshSchemaAndSeed() {
       .find(column => column.name === "execution_context_id")?.type,
     tradingParties: database.prepare("SELECT COUNT(*) AS count FROM trading_parties").get().count,
     pricingRules: database.prepare("SELECT COUNT(*) AS count FROM pricing_rules").get().count,
+    fxTradeExposures: database.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count,
+    fxTradeExposureColumns: database.prepare("PRAGMA table_info(fx_trade_exposure)").all().map(column => column.name),
+    fxTradeExposureForeignKeys: database.prepare("PRAGMA foreign_key_list(fx_trade_exposure)").all(),
     clientFxDeals: database.prepare("SELECT COUNT(*) AS count FROM client_fx_deals").get().count,
     clientFxDealColumns: database.prepare("PRAGMA table_info(client_fx_deals)").all().map(column => column.name),
     clientFxDealForeignKeys: database.prepare("PRAGMA foreign_key_list(client_fx_deals)").all(),
@@ -347,6 +416,7 @@ function verifyFreshSchemaAndSeed() {
     accountingSystemTextLimitsEnforced,
     executionSystemConstraintsEnforced,
     tradingPartyConstraintsEnforced,
+    fxTradeExposureConstraintsEnforced,
     clientFxDealConstraintsEnforced,
     clientFxDealPartyTypeEnforced,
     legacyAssignmentTablePresent: Boolean(database.prepare(`
@@ -1250,6 +1320,7 @@ async function main() {
       "client_fx_deals",
       "execution_contexts",
       "execution_systems",
+      "fx_trade_exposure",
       "market_quote_simulation_settings",
       "pricing_rules",
       "servicing_locations",
@@ -1266,6 +1337,9 @@ async function main() {
       || freshSchema.executionContextIdType !== "INTEGER"
       || freshSchema.tradingParties !== 3
       || freshSchema.pricingRules !== 5
+      || freshSchema.fxTradeExposures !== 4
+      || freshSchema.fxTradeExposureColumns.join(",") !== "trade_id,entry_timestamp,trade_type,trade_date,ccy_pair_code,side,base_ccy_amount,quote_ccy_amount,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
+      || freshSchema.fxTradeExposureForeignKeys.length !== 1
       || freshSchema.clientFxDeals !== 1
       || freshSchema.clientFxDealColumns.join(",") !== "client_deal_id,entry_timestamp,party_id,trade_date,ccy_pair_code,side,base_ccy_amount,quote_ccy_amount,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
       || freshSchema.clientFxDealForeignKeys.length !== 2
@@ -1276,6 +1350,7 @@ async function main() {
       || !freshSchema.accountingSystemTextLimitsEnforced
       || !freshSchema.executionSystemConstraintsEnforced
       || !freshSchema.tradingPartyConstraintsEnforced
+      || !freshSchema.fxTradeExposureConstraintsEnforced
       || !freshSchema.clientFxDealConstraintsEnforced
       || !freshSchema.clientFxDealPartyTypeEnforced
       || freshSchema.legacyAssignmentTablePresent
