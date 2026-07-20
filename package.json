@@ -1,0 +1,10 @@
+{
+  "name": "position-demo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Demo FX Position application",
+  "dependencies": {
+    "bootstrap": "5.3.8",
+    "tabulator-tables": "6.5.0"
+  }
+}

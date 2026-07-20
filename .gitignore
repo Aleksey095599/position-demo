@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Runtime databases
+data/*.sqlite
+!data/demo.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
+data/*.sqlite-journal
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+*.iml
+
+# Frontend build and tests
+.angular/
+dist/
+coverage/
+
+# Backend build
+target/
+build/
+.gradle/
+
+# OS files
+.DS_Store
+Thumbs.db
