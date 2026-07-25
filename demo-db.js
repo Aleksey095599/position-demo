@@ -1,19 +1,6 @@
 window.__DEMO_DB_STARTUP_DATA__ = {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "selectedCurrencyPair": "EUR/USD",
-  "batchSettings": {
-    "lossTolerancePercent": 0.03,
-    "overpricingTolerancePercent": 0.1,
-    "maxDealAmount": 50000000
-  },
-  "clientDealGenerationSettings": {
-    "amountMin": 500000,
-    "amountMax": 1500000,
-    "amountStep": 100000,
-    "marketBidMin": 1.122,
-    "marketBidMax": 1.1222,
-    "marketSpread": 0.0002
-  },
   "marketPairs": [
     {
       "bidMin": 1.122,
@@ -204,91 +191,23 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "pricingContextId": 5,
       "marginPercent": 0.2
     }
-  ],
-  "clientFxDeals": [
-    {
-      "id": "1",
-      "positionId": "FXP-CLIENT_DEAL-1",
-      "branchCode": "002",
-      "inn": "7701234567",
-      "clientCodeType": "INN",
-      "settlementSystemId": "",
-      "tradeCaptureChannelId": "",
-      "executionVenueType": "",
-      "executionVenue": "",
-      "type": "client_deal",
-      "clientName": "Romashka Company",
-      "entryDate": "15.07.2026",
-      "tradeDate": "15.07.2026",
-      "settlementMethod": "PVP",
-      "tenor": "TOD",
-      "baseCurrency": "EUR",
-      "quoteCurrency": "USD",
-      "currencyPair": "EUR/USD",
-      "amountSell": 0,
-      "amountBuy": 30000000,
-      "clientRate": 1.1231,
-      "pricingRuleId": 3,
-      "pricingRuleMargin": 0.08,
-      "pricingRuleControlStatus": "",
-      "pricingContextId": 3,
-      "tone": "blue"
-    }
-  ],
-  "hedgeFxDeals": [],
-  "technicalFxDeals": [],
-  "fxPositions": [
-    {
-      "id": "FXP-CLIENT_DEAL-1",
-      "sourceDealId": "1",
-      "sourceDealType": "CLIENT_DEAL",
-      "positionType": "CLIENT_DEAL",
-      "positionLabel": "CLIENT_DEAL : Romashka Company",
-      "tradeDate": "15.07.2026",
-      "currencyPair": "EUR/USD",
-      "baseCurrency": "EUR",
-      "quoteCurrency": "USD",
-      "baseCcyPosition": -30000000,
-      "quoteCcyPosition": 33693000,
-      "tenor": "TOD",
-      "baseCcyValueDate": "15.07.2026",
-      "quoteCcyValueDate": "15.07.2026",
-      "marketPulseBid": 1.122,
-      "marketPulseOffer": 1.1222,
-      "isBatched": false,
-      "batchId": "",
-      "transferRate": 1.1222,
-      "analyticalPnl": 27000
-    }
   ]
 };
 
 (function initializeDemoDatabase(global) {
   "use strict";
 
-  const DATABASE_STORAGE_KEY = "batching-demo.database.v3";
+  const DATABASE_STORAGE_KEY = "batching-demo.database.v4";
   const PREVIOUS_DATABASE_STORAGE_KEYS = [
+    "batching-demo.database.v3",
     "batching-demo.database.v2",
     "batching-demo.database.v1"
   ];
-  const SCHEMA_VERSION = 3;
+  const SCHEMA_VERSION = 4;
 
   const BUILT_IN_DEFAULT_DATABASE = {
     schemaVersion: SCHEMA_VERSION,
     selectedCurrencyPair: "",
-    batchSettings: {
-      lossTolerancePercent: 0.03,
-      overpricingTolerancePercent: 0.10,
-      maxDealAmount: 50000000
-    },
-    clientDealGenerationSettings: {
-      amountMin: 500000,
-      amountMax: 1500000,
-      amountStep: 100000,
-      marketBidMin: 1.1220,
-      marketBidMax: 1.1222,
-      marketSpread: 0.0002
-    },
     marketPairs: [
       { currencyPair: "EUR/USD", defaultQuoteDecimals: 4, bidMin: 1.1220, spread: 0.0002, bidMax: 1.1222 },
       { currencyPair: "GBP/USD", defaultQuoteDecimals: 4, bidMin: 1.2680, spread: 0.0003, bidMax: 1.2710 },
@@ -354,11 +273,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       { pricingRuleId: 3, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 3, marginPercent: 0.08 },
       { pricingRuleId: 4, inn: "7812345678", currencyPair: "EUR/USD", pricingContextId: 4, marginPercent: 0.05 },
       { pricingRuleId: 5, inn: "5409876543", currencyPair: "EUR/USD", pricingContextId: 5, marginPercent: 0.20 }
-    ],
-    clientFxDeals: [],
-    hedgeFxDeals: [],
-    technicalFxDeals: [],
-    fxPositions: []
+    ]
   };
 
   const embeddedStartupDatabase = global.__DEMO_DB_STARTUP_DATA__;
@@ -379,8 +294,6 @@ window.__DEMO_DB_STARTUP_DATA__ = {
   }
 
   const LEGACY_JSON_KEYS = {
-    batchSettings: "batching-demo.batch-settings.v1",
-    clientDealGenerationSettings: "batching-demo.client-deal-generation-settings.v1",
     marketPairs: "batching-demo.market-settings.v1",
     marketSimulationSettings: "batching-demo.market-simulation-settings.v1",
     clientProfiles: "batching-demo.client-profiles.v1",
@@ -391,8 +304,10 @@ window.__DEMO_DB_STARTUP_DATA__ = {
     clientPricingRules: "batching-demo.client-pricing-rules.v1"
   };
   const LEGACY_SELECTED_CURRENCY_PAIR_KEY = "batching-demo.batching-currency-pair.v1";
-  const PREVIOUS_FX_DEAL_STORAGE_KEY = "batching-demo.fx-position-blotter.v2";
   const OBSOLETE_FX_STORAGE_KEYS = [
+    "batching-demo.batch-settings.v1",
+    "batching-demo.client-deal-generation-settings.v1",
+    "batching-demo.fx-position-blotter.v2",
     "batching-demo.fx-position-blotter.v1",
     "batching-demo.position_ledger.v2"
   ];
@@ -425,9 +340,6 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       return normalized;
     }
 
-    const hasDedicatedDealTables = ["clientFxDeals", "hedgeFxDeals", "technicalFxDeals"]
-      .some(key => Object.prototype.hasOwnProperty.call(value, key));
-
     Object.keys(DEFAULT_DATABASE).forEach(key => {
       if (key !== "schemaVersion" && Object.prototype.hasOwnProperty.call(value, key)) {
         normalized[key] = clone(value[key]);
@@ -456,40 +368,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       });
     }
 
-    if (!hasDedicatedDealTables && Array.isArray(value.fxPositions)) {
-      const splitDeals = splitLegacyFxDeals(value.fxPositions);
-      normalized.clientFxDeals = splitDeals.clientFxDeals;
-      normalized.hedgeFxDeals = splitDeals.hedgeFxDeals;
-      normalized.technicalFxDeals = splitDeals.technicalFxDeals;
-      normalized.fxPositions = [];
-    }
-
     normalized.schemaVersion = SCHEMA_VERSION;
     return normalized;
-  }
-
-  function legacyDealTableName(deal) {
-    const type = String(deal?.type || "client_deal").trim().toUpperCase();
-
-    if (["HEDGE_FX_DEAL", "MARKET_HEDGE", "HEDGE_DEAL"].includes(type)) {
-      return "hedgeFxDeals";
-    }
-
-    return type === "CLIENT_DEAL" ? "clientFxDeals" : "technicalFxDeals";
-  }
-
-  function splitLegacyFxDeals(deals) {
-    return deals.reduce((tables, deal) => {
-      if (deal && typeof deal === "object" && deal.synthetic !== true) {
-        tables[legacyDealTableName(deal)].push(clone(deal));
-      }
-
-      return tables;
-    }, {
-      clientFxDeals: [],
-      hedgeFxDeals: [],
-      technicalFxDeals: []
-    });
   }
 
   function migrateLegacyDatabase(storage) {
@@ -509,15 +389,6 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       migrated.selectedCurrencyPair = "";
     }
 
-    const previousFxDeals = readJson(storage, PREVIOUS_FX_DEAL_STORAGE_KEY);
-
-    if (Array.isArray(previousFxDeals)) {
-      const splitDeals = splitLegacyFxDeals(previousFxDeals);
-      migrated.clientFxDeals = splitDeals.clientFxDeals;
-      migrated.hedgeFxDeals = splitDeals.hedgeFxDeals;
-      migrated.technicalFxDeals = splitDeals.technicalFxDeals;
-    }
-
     return normalizedDatabase(migrated);
   }
 
@@ -526,7 +397,6 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       ...Object.values(LEGACY_JSON_KEYS),
       ...PREVIOUS_DATABASE_STORAGE_KEYS,
       LEGACY_SELECTED_CURRENCY_PAIR_KEY,
-      PREVIOUS_FX_DEAL_STORAGE_KEY,
       ...OBSOLETE_FX_STORAGE_KEYS
     ];
 

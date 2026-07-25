@@ -11,7 +11,15 @@ const verificationDatabasePath = path.join(root, "data", `verify-demo-${process.
 
 function removeVerificationDatabase() {
   [verificationDatabasePath, `${verificationDatabasePath}-wal`, `${verificationDatabasePath}-shm`]
-    .forEach(filePath => fs.rmSync(filePath, { force: true }));
+    .forEach(filePath => {
+      try {
+        fs.rmSync(filePath, { force: true });
+      } catch (error) {
+        if (error.code !== "EPERM") {
+          throw error;
+        }
+      }
+    });
 }
 
 function createLegacyDatabase() {
@@ -94,10 +102,44 @@ function createLegacyDatabase() {
       margin_percent       REAL NOT NULL
     );
 
+    CREATE TABLE client_fx_deals
+    (
+      client_deal_id       INTEGER PRIMARY KEY,
+      entry_timestamp      TEXT    NOT NULL,
+      party_id             INTEGER NOT NULL REFERENCES trading_parties (party_id) ON UPDATE RESTRICT ON DELETE RESTRICT,
+      trade_date           TEXT    NOT NULL,
+      ccy_pair_code        TEXT    NOT NULL REFERENCES ccy_pair_options (ccy_pair_code) ON UPDATE RESTRICT ON DELETE RESTRICT,
+      side                 TEXT    NOT NULL,
+      base_ccy_amount      NUMERIC NOT NULL,
+      quote_ccy_amount     NUMERIC NOT NULL,
+      trade_rate           NUMERIC NOT NULL,
+      tenor                TEXT    NOT NULL,
+      base_ccy_value_date  TEXT    NOT NULL,
+      quote_ccy_value_date TEXT    NOT NULL
+    );
+
     CREATE TABLE trading_party_execution_contexts
     (
       party_id INTEGER NOT NULL,
       execution_context_id TEXT NOT NULL
+    );
+
+    CREATE TABLE fx_trade_audit
+    (
+      trade_id               INTEGER PRIMARY KEY,
+      trade_type             TEXT    NOT NULL,
+      market_pulse_bid       NUMERIC NOT NULL,
+      market_pulse_offer     NUMERIC NOT NULL,
+      market_pulse_timestamp TEXT    NOT NULL
+    );
+
+    CREATE TABLE fx_trade_market_snapshot
+    (
+      trade_id               INTEGER PRIMARY KEY,
+      trade_type             TEXT    NOT NULL,
+      market_pulse_bid       NUMERIC NOT NULL,
+      market_pulse_offer     NUMERIC NOT NULL,
+      market_pulse_timestamp TEXT    NOT NULL
     );
 
     INSERT INTO ccy_options (ccy_code, name, country, fraction_digits)
@@ -147,7 +189,9 @@ function createLegacyDatabase() {
     VALUES
       (1, 'CLIENT', '7701234567', 'INN', 'Romashka Company', 1),
       (2, 'CLIENT', '7812345678', 'INN', 'Vasilek Company', 1),
-      (3, 'CLIENT', '5409876543', 'INN', 'Gladiolus Company', 1);
+      (3, 'CLIENT', '5409876543', 'INN', 'Gladiolus Company', 1),
+      (4, 'EXTERNAL_COUNTERPARTY', 'LEGACY_EXTERNAL', 'OTHER', 'Legacy External Counterparty', 1),
+      (5, 'INTERNAL_DESK', 'LEGACY_INTERNAL', 'OTHER', 'Legacy Internal Desk', 1);
 
     INSERT INTO pricing_rules
       (pricing_rule_id, party_id, execution_context_id, ccy_pair_code, margin_percent)
@@ -157,6 +201,18 @@ function createLegacyDatabase() {
       (3, 1, '002:CTF3:MANUAL_CLIENT_DEAL_ENTRY', 'EUR_USD', 0.08),
       (4, 2, '1234:AFINA:RFQ', 'EUR_USD', 0.05),
       (5, 3, '001:CTF3:CLICK_TRADE_EFX', 'EUR_USD', 0.20);
+
+    INSERT INTO client_fx_deals
+      (
+        client_deal_id, entry_timestamp, party_id, trade_date, ccy_pair_code, side,
+        base_ccy_amount, quote_ccy_amount, trade_rate, tenor,
+        base_ccy_value_date, quote_ccy_value_date
+      )
+    VALUES
+      (
+        41, '2026-07-15T11:45:00.000Z', 1, '2026-07-15', 'EUR_USD', 'SELL',
+        1500000, 1684500, 1.123, 'TOM', '2026-07-16', '2026-07-16'
+      );
   `);
   database.close();
 }
@@ -172,9 +228,19 @@ function verifyFreshSchemaAndSeed() {
   let accountingSystemTextLimitsEnforced = false;
   let executionSystemConstraintsEnforced = true;
   let tradingPartyConstraintsEnforced = true;
+  let frontSystemFolderIdCodeTypeSupported = false;
+  let clientDealGenerationSettingsConstraintsEnforced = true;
+  let clientDealGenerationSettingsPartyTypeEnforced = true;
+  let clientDealGenerationSettingsPricingModeEnforced = true;
+  let clientDealGenerationSettingsCascadeDeleteEnforced = true;
   let fxTradeExposureConstraintsEnforced = true;
   let clientFxDealConstraintsEnforced = true;
+  let clientFxDealParentRestrictionEnforced = true;
+  let clientFxDealAttributionReferencesRestricted = true;
   let clientFxDealPartyTypeEnforced = true;
+  let hedgeFxDealConstraintsEnforced = true;
+  let hedgeFxDealParentRestrictionEnforced = true;
+  let hedgeFxDealPartyTypeEnforced = true;
 
   [
     ["AA1", "Valid Name", "Valid Country", 2],
@@ -263,6 +329,10 @@ function verifyFreshSchemaAndSeed() {
   });
 
   [
+    ["EXTERNAL_COUNTERPARTY", "VERIFY_EXTERNAL", "OTHER", "Valid party name", 1],
+    ["INTERNAL_DESK", "VERIFY_INTERNAL", "OTHER", "Valid party name", 1],
+    ["UNKNOWN", "VERIFY_UNKNOWN", "OTHER", "Valid party name", 1],
+    ["CLIENT", "VERIFY_LEI", "LEI", "Valid party name", 1],
     ["CLIENT", "X".repeat(21), "OTHER", "Valid party name", 1],
     ["CLIENT", "VERIFY_NAME", "OTHER", "X".repeat(201), 1],
     ["CLIENT", "VERIFY_ACTIVE", "OTHER", "Valid party name", 2]
@@ -276,6 +346,202 @@ function verifyFreshSchemaAndSeed() {
       tradingPartyConstraintsEnforced = false;
     } catch {}
   });
+
+  try {
+    const frontSystemPartyId = database.prepare(`
+      INSERT INTO trading_parties
+        (party_type, party_code, party_code_type, party_name, is_active)
+      VALUES ('CLIENT', 'FRONT_FOLDER_1', 'FRONT_SYSTEM_FOLDER_ID', 'Front System Client', 1)
+    `).run().lastInsertRowid;
+    frontSystemFolderIdCodeTypeSupported = true;
+    database.prepare("DELETE FROM trading_parties WHERE party_id = ?").run(frontSystemPartyId);
+  } catch {}
+
+  const clientGenerationPricingRuleId = Number(database.prepare(`
+    SELECT r.pricing_rule_id
+    FROM pricing_rules r
+    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
+    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    WHERE p.party_type = 'CLIENT'
+      AND e.pricing_mode = 'AUTO_PRICED'
+    ORDER BY r.pricing_rule_id
+    LIMIT 1
+  `).get().pricing_rule_id);
+  const nonAutoClientGenerationPricingRuleId = Number(database.prepare(`
+    SELECT r.pricing_rule_id
+    FROM pricing_rules r
+    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
+    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    WHERE p.party_type = 'CLIENT'
+      AND e.pricing_mode <> 'AUTO_PRICED'
+    ORDER BY r.pricing_rule_id
+    LIMIT 1
+  `).get().pricing_rule_id);
+  const hedgeGenerationPricingRuleId = Number(database.prepare(`
+    SELECT r.pricing_rule_id
+    FROM pricing_rules r
+    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    WHERE p.party_type = 'HEDGE_COUNTERPARTY'
+    ORDER BY r.pricing_rule_id
+    LIMIT 1
+  `).get().pricing_rule_id);
+
+  [
+    [0, 1500000, 100000, 50, 1],
+    [500000, 400000, 100000, 50, 1],
+    [500000, 1500000, 0, 50, 1],
+    [500000, 1500000, 100000, -1, 1],
+    [500000, 1500000, 100000, 101, 1],
+    [500000, 1500000, 100000, 50.5, 1],
+    [500000, 1500000, 100000, 50, 2]
+  ].forEach(values => {
+    try {
+      database.prepare(`
+        UPDATE client_deal_generation_settings
+        SET
+          min_base_ccy_amount = ?,
+          max_base_ccy_amount = ?,
+          base_ccy_amount_step = ?,
+          buy_probability_percent = ?,
+          is_active = ?
+        WHERE pricing_rule_id = ?
+      `).run(...values, clientGenerationPricingRuleId);
+      clientDealGenerationSettingsConstraintsEnforced = false;
+    } catch {}
+  });
+
+  try {
+    database.prepare(`
+      INSERT INTO client_deal_generation_settings
+        (
+          pricing_rule_id,
+          min_base_ccy_amount,
+          max_base_ccy_amount,
+          base_ccy_amount_step,
+          buy_probability_percent,
+          is_active
+        )
+      VALUES (?, 500000, 1500000, 100000, 50, 1)
+    `).run(hedgeGenerationPricingRuleId);
+    clientDealGenerationSettingsPartyTypeEnforced = false;
+  } catch {}
+
+  try {
+    database.prepare(`
+      INSERT INTO client_deal_generation_settings
+        (
+          pricing_rule_id,
+          min_base_ccy_amount,
+          max_base_ccy_amount,
+          base_ccy_amount_step,
+          buy_probability_percent,
+          is_active
+        )
+      VALUES (?, 500000, 1500000, 100000, 50, 1)
+    `).run(nonAutoClientGenerationPricingRuleId);
+    clientDealGenerationSettingsPricingModeEnforced = false;
+  } catch {}
+
+  try {
+    database.prepare(`
+      UPDATE execution_systems
+      SET pricing_mode = 'DEALER_PRICED'
+      WHERE execution_system_id = 'CLICK_TRADE_EFX'
+    `).run();
+    clientDealGenerationSettingsPricingModeEnforced = false;
+  } catch {}
+
+  try {
+    database.prepare(`
+      UPDATE execution_contexts
+      SET execution_system_id = 'RFQ'
+      WHERE execution_context_id =
+      (
+        SELECT r.execution_context_id
+        FROM pricing_rules r
+        INNER JOIN client_deal_generation_settings s
+          ON s.pricing_rule_id = r.pricing_rule_id
+        ORDER BY r.pricing_rule_id
+        LIMIT 1
+      )
+    `).run();
+    clientDealGenerationSettingsPricingModeEnforced = false;
+  } catch {}
+
+  const clientGenerationPartyId = Number(database.prepare(`
+    SELECT party_id
+    FROM trading_parties
+    WHERE party_code = '5409876543'
+  `).get().party_id);
+  const clientGenerationPartyRuleId = Number(database.prepare(`
+    SELECT pricing_rule_id
+    FROM pricing_rules
+    WHERE party_id = ?
+    ORDER BY pricing_rule_id
+    LIMIT 1
+  `).get(clientGenerationPartyId).pricing_rule_id);
+  const hedgeGenerationPartyId = Number(database.prepare(`
+    SELECT party_id
+    FROM trading_parties
+    WHERE party_type = 'HEDGE_COUNTERPARTY'
+    ORDER BY party_id
+    LIMIT 1
+  `).get().party_id);
+
+  try {
+    database.prepare(`
+      UPDATE pricing_rules
+      SET party_id = ?
+      WHERE pricing_rule_id = ?
+    `).run(hedgeGenerationPartyId, clientGenerationPartyRuleId);
+    clientDealGenerationSettingsPartyTypeEnforced = false;
+  } catch {}
+
+  try {
+    database.prepare(`
+      UPDATE trading_parties
+      SET party_type = 'HEDGE_COUNTERPARTY'
+      WHERE party_id = ?
+    `).run(clientGenerationPartyId);
+    clientDealGenerationSettingsPartyTypeEnforced = false;
+  } catch {}
+
+  const cascadePricingRuleId = Number(database.prepare(`
+    INSERT INTO pricing_rules
+      (party_id, execution_context_id, ccy_pair_code, margin_percent)
+    SELECT ?, c.execution_context_id, 'EUR_USD', 0.01
+    FROM execution_contexts c
+    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    WHERE c.execution_context_id NOT IN
+      (SELECT execution_context_id FROM pricing_rules WHERE party_id = ? AND ccy_pair_code = 'EUR_USD')
+      AND e.pricing_mode = 'AUTO_PRICED'
+    ORDER BY c.execution_context_id
+    LIMIT 1
+  `).run(clientGenerationPartyId, clientGenerationPartyId).lastInsertRowid);
+
+  database.prepare(`
+    INSERT INTO client_deal_generation_settings
+      (
+        pricing_rule_id,
+        min_base_ccy_amount,
+        max_base_ccy_amount,
+        base_ccy_amount_step,
+        buy_probability_percent,
+        is_active
+      )
+    VALUES (?, 500000, 1500000, 100000, 50, 1)
+  `).run(cascadePricingRuleId);
+  database.prepare("DELETE FROM pricing_rules WHERE pricing_rule_id = ?").run(cascadePricingRuleId);
+
+  if (database.prepare(`
+    SELECT 1 AS present
+    FROM client_deal_generation_settings
+    WHERE pricing_rule_id = ?
+  `).get(cascadePricingRuleId)) {
+    clientDealGenerationSettingsCascadeDeleteEnforced = false;
+  }
 
   [
     ["2026-07-15 09:30:00", "CLIENT_DEAL", "2026-07-15", "EUR_USD", "BUY", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
@@ -342,50 +608,211 @@ function verifyFreshSchemaAndSeed() {
     VALUES ('2026-07-15T09:33:00.000Z', 'HEDGE_DEAL', '2026-07-15', 'EUR_USD', 'SELL', 1000000, 1123000, 1.123, 'SPOT', '2026-07-17', '2026-07-17')
   `).run();
 
+  const seededClientTradeId = Number(database.prepare(`
+    SELECT trade_id
+    FROM client_fx_deals
+    LIMIT 1
+  `).get().trade_id);
+  const hedgeTradeId = Number(database.prepare(`
+    SELECT trade_id
+    FROM fx_trade_exposure
+    WHERE entry_timestamp = '2026-07-15T09:31:00.000Z'
+  `).get().trade_id);
+  const unlinkedClientTradeId = Number(database.prepare(`
+    SELECT trade_id
+    FROM fx_trade_exposure
+    WHERE entry_timestamp = '2026-07-15T09:32:00.000Z'
+  `).get().trade_id);
+  const seededHedgeTradeId = Number(database.prepare(`
+    SELECT trade_id
+    FROM fx_hedge_deals
+    LIMIT 1
+  `).get().trade_id);
+  const unlinkedHedgeTradeId = Number(database.prepare(`
+    SELECT trade_id
+    FROM fx_trade_exposure
+    WHERE entry_timestamp = '2026-07-15T09:33:00.000Z'
+  `).get().trade_id);
+
   [
-    ["2026-07-15 09:30:00", "2026-07-15", "BUY", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
-    ["2026-07-15T09:30:00.000Z", "15.07.2026", "BUY", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
-    ["2026-07-15T09:30:00.000Z", "2026-07-15", "HOLD", 100, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
-    ["2026-07-15T09:30:00.000Z", "2026-07-15", "BUY", 0, 112.31, 1.1231, "TOD", "2026-07-15", "2026-07-15"],
-    ["2026-07-15T09:30:00.000Z", "2026-07-15", "BUY", 100, 112.31, 1.1231, "spot value", "2026-07-15", "2026-07-15"],
-    ["2026-07-15T09:30:00.000Z", "2026-07-15", "BUY", 100, 112.31, 1.1231, "TOD", "15.07.2026", "2026-07-15"]
+    [999999, "CLIENT_DEAL", 1],
+    [hedgeTradeId, "CLIENT_DEAL", 1],
+    [hedgeTradeId, "HEDGE_DEAL", 1],
+    [seededClientTradeId, "CLIENT_DEAL", 1]
   ].forEach(values => {
     try {
       database.prepare(`
-        INSERT INTO client_fx_deals
-          (
-            entry_timestamp, party_id, trade_date, ccy_pair_code, side,
-            base_ccy_amount, quote_ccy_amount, trade_rate, tenor,
-            base_ccy_value_date, quote_ccy_value_date
-          )
-        VALUES (?, 1, ?, 'EUR_USD', ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO client_fx_deals (trade_id, trade_type, party_id)
+        VALUES (?, ?, ?)
       `).run(...values);
       clientFxDealConstraintsEnforced = false;
     } catch {}
   });
 
+  [
+    [999999, "HEDGE_DEAL", 4],
+    [unlinkedClientTradeId, "HEDGE_DEAL", 4],
+    [unlinkedHedgeTradeId, "CLIENT_DEAL", 4],
+    [seededHedgeTradeId, "HEDGE_DEAL", 4]
+  ].forEach(values => {
+    try {
+      database.prepare(`
+        INSERT INTO fx_hedge_deals (trade_id, trade_type, party_id)
+        VALUES (?, ?, ?)
+      `).run(...values);
+      hedgeFxDealConstraintsEnforced = false;
+    } catch {}
+  });
+
+  const hedgePricingRuleReference = database.prepare(`
+    SELECT pricing_rule_id, party_id, execution_context_id
+    FROM fx_hedge_deals
+    WHERE trade_id = ?
+  `).get(seededHedgeTradeId);
+
+  [
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, null, 0, 0],
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, null, 1.12, "INVALID"],
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, hedgePricingRuleReference.pricing_rule_id, 1.12, 0],
+    [unlinkedHedgeTradeId, 1, hedgePricingRuleReference.execution_context_id, hedgePricingRuleReference.pricing_rule_id, 1.12, 0]
+  ].forEach(values => {
+    try {
+      database.prepare(`
+        INSERT INTO fx_hedge_deals
+          (
+            trade_id,
+            trade_type,
+            party_id,
+            execution_context_id,
+            pricing_rule_id,
+            transfer_rate,
+            analytical_pnl
+          )
+        VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?)
+      `).run(...values);
+      hedgeFxDealConstraintsEnforced = false;
+    } catch {}
+  });
+
+  const pricingRuleReference = database.prepare(`
+    SELECT pricing_rule_id, execution_context_id
+    FROM pricing_rules
+    WHERE party_id = 1
+    ORDER BY pricing_rule_id
+    LIMIT 1
+  `).get();
+  const mismatchedExecutionContextId = Number(database.prepare(`
+    SELECT execution_context_id
+    FROM execution_contexts
+    WHERE execution_context_id <> ?
+    ORDER BY execution_context_id
+    LIMIT 1
+  `).get(pricingRuleReference.execution_context_id).execution_context_id);
+
+  [
+    [unlinkedClientTradeId, 1, null, null, 0, 0],
+    [unlinkedClientTradeId, 1, null, null, 1.12, "INVALID"],
+    [unlinkedClientTradeId, 1, null, pricingRuleReference.pricing_rule_id, 1.12, 0],
+    [unlinkedClientTradeId, 1, mismatchedExecutionContextId, pricingRuleReference.pricing_rule_id, 1.12, 0]
+  ].forEach(values => {
+    try {
+      database.prepare(`
+        INSERT INTO client_fx_deals
+          (
+            trade_id,
+            trade_type,
+            party_id,
+            execution_context_id,
+            pricing_rule_id,
+            transfer_rate,
+            analytical_pnl
+          )
+        VALUES (?, 'CLIENT_DEAL', ?, ?, ?, ?, ?)
+      `).run(...values);
+      clientFxDealConstraintsEnforced = false;
+    } catch {}
+  });
+
+  ["X".repeat(501), "First line\nSecond line"].forEach(comment => {
+    try {
+      database.prepare(`
+        UPDATE client_fx_deals
+        SET comment = ?
+        WHERE trade_id = ?
+      `).run(comment, seededClientTradeId);
+      clientFxDealConstraintsEnforced = false;
+    } catch {}
+  });
+
+  try {
+    database.prepare("DELETE FROM fx_trade_exposure WHERE trade_id = ?").run(seededClientTradeId);
+    clientFxDealParentRestrictionEnforced = false;
+  } catch {}
+
+  try {
+    database.prepare("DELETE FROM fx_trade_exposure WHERE trade_id = ?").run(seededHedgeTradeId);
+    hedgeFxDealParentRestrictionEnforced = false;
+  } catch {}
+
+  try {
+    database.prepare(`
+      UPDATE fx_trade_exposure
+      SET trade_type = 'CLIENT_DEAL'
+      WHERE trade_id = ?
+    `).run(seededHedgeTradeId);
+    hedgeFxDealParentRestrictionEnforced = false;
+  } catch {}
+
+  try {
+    database.prepare(`
+      UPDATE fx_trade_exposure
+      SET trade_type = 'HEDGE_DEAL'
+      WHERE trade_id = ?
+    `).run(seededClientTradeId);
+    clientFxDealParentRestrictionEnforced = false;
+  } catch {}
+
+  const seededPricingRuleId = Number(database.prepare(`
+    SELECT pricing_rule_id
+    FROM client_fx_deals
+    WHERE trade_id = ?
+  `).get(seededClientTradeId).pricing_rule_id);
+
+  try {
+    database.prepare("DELETE FROM pricing_rules WHERE pricing_rule_id = ?").run(seededPricingRuleId);
+    clientFxDealAttributionReferencesRestricted = false;
+  } catch {}
+
   const nonClientPartyId = Number(database.prepare(`
     INSERT INTO trading_parties
       (party_type, party_code, party_code_type, party_name, is_active)
-    VALUES ('EXTERNAL_COUNTERPARTY', 'VERIFY_DEAL_CP', 'OTHER', 'Verification Deal Counterparty', 1)
+    VALUES ('HEDGE_COUNTERPARTY', 'VERIFY_DEAL_CP', 'OTHER', 'Verification Deal Counterparty', 1)
   `).run().lastInsertRowid);
 
   try {
     database.prepare(`
-      INSERT INTO client_fx_deals
-        (
-          entry_timestamp, party_id, trade_date, ccy_pair_code, side,
-          base_ccy_amount, quote_ccy_amount, trade_rate, tenor,
-          base_ccy_value_date, quote_ccy_value_date
-        )
-      VALUES ('2026-07-15T09:30:00.000Z', ?, '2026-07-15', 'EUR_USD', 'BUY', 100, 112.31, 1.1231, 'TOD', '2026-07-15', '2026-07-15')
-    `).run(nonClientPartyId);
+      INSERT INTO client_fx_deals (trade_id, trade_type, party_id)
+      VALUES (?, 'CLIENT_DEAL', ?)
+    `).run(unlinkedClientTradeId, nonClientPartyId);
     clientFxDealPartyTypeEnforced = false;
   } catch {}
 
   try {
-    database.prepare("UPDATE trading_parties SET party_type = 'EXTERNAL_COUNTERPARTY' WHERE party_id = 1").run();
+    database.prepare("UPDATE trading_parties SET party_type = 'HEDGE_COUNTERPARTY' WHERE party_id = 1").run();
     clientFxDealPartyTypeEnforced = false;
+  } catch {}
+
+  try {
+    database.prepare(`
+      INSERT INTO fx_hedge_deals (trade_id, trade_type, party_id)
+      VALUES (?, 'HEDGE_DEAL', 1)
+    `).run(unlinkedHedgeTradeId);
+    hedgeFxDealPartyTypeEnforced = false;
+  } catch {}
+
+  try {
+    database.prepare("UPDATE trading_parties SET party_type = 'CLIENT' WHERE party_id = 4").run();
+    hedgeFxDealPartyTypeEnforced = false;
   } catch {}
 
   database.prepare("DELETE FROM trading_parties WHERE party_id = ?").run(nonClientPartyId);
@@ -401,13 +828,62 @@ function verifyFreshSchemaAndSeed() {
     executionContextIdType: database.prepare("PRAGMA table_info(execution_contexts)").all()
       .find(column => column.name === "execution_context_id")?.type,
     tradingParties: database.prepare("SELECT COUNT(*) AS count FROM trading_parties").get().count,
+    tradingPartyTypes: database.prepare(`
+      SELECT DISTINCT party_type
+      FROM trading_parties
+      ORDER BY party_type
+    `).all().map(row => row.party_type),
     pricingRules: database.prepare("SELECT COUNT(*) AS count FROM pricing_rules").get().count,
+    clientDealGenerationSettings: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM client_deal_generation_settings
+    `).get().count,
+    clientDealGenerationSettingsColumns: database.prepare(`
+      PRAGMA table_info(client_deal_generation_settings)
+    `).all().map(column => column.name),
+    clientDealGenerationSettingsForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(client_deal_generation_settings)
+    `).all(),
+    clientDealGenerationSettingsRows: database.prepare(`
+      SELECT
+        s.*,
+        p.party_type,
+        e.pricing_mode
+      FROM client_deal_generation_settings s
+      INNER JOIN pricing_rules r ON r.pricing_rule_id = s.pricing_rule_id
+      INNER JOIN trading_parties p ON p.party_id = r.party_id
+      INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
+      INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+      ORDER BY s.pricing_rule_id
+    `).all(),
     fxTradeExposures: database.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count,
     fxTradeExposureColumns: database.prepare("PRAGMA table_info(fx_trade_exposure)").all().map(column => column.name),
     fxTradeExposureForeignKeys: database.prepare("PRAGMA foreign_key_list(fx_trade_exposure)").all(),
+    fxTradeExposureIdentityIndex: database.prepare("PRAGMA index_list(fx_trade_exposure)").all()
+      .some(index => index.name === "uq_fx_trade_exposure_identity" && index.unique === 1),
+    fxTradeExposureIdentityIndexColumns: database.prepare("PRAGMA index_info(uq_fx_trade_exposure_identity)").all()
+      .map(column => column.name),
+    fxTradeMarketSnapshots: database.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count,
+    fxTradeMarketSnapshotColumns: database.prepare("PRAGMA table_info(fx_trade_market_snapshot)").all()
+      .map(column => column.name),
+    fxTradeMarketSnapshotForeignKeys: database.prepare("PRAGMA foreign_key_list(fx_trade_market_snapshot)").all(),
+    fxTradeMarketSnapshotSeedRows: database.prepare(`
+      SELECT *
+      FROM fx_trade_market_snapshot
+      ORDER BY trade_id
+    `).all(),
     clientFxDeals: database.prepare("SELECT COUNT(*) AS count FROM client_fx_deals").get().count,
     clientFxDealColumns: database.prepare("PRAGMA table_info(client_fx_deals)").all().map(column => column.name),
     clientFxDealForeignKeys: database.prepare("PRAGMA foreign_key_list(client_fx_deals)").all(),
+    clientFxDealSeedRow: database.prepare("SELECT * FROM client_fx_deals LIMIT 1").get(),
+    hedgeFxDeals: database.prepare("SELECT COUNT(*) AS count FROM fx_hedge_deals").get().count,
+    hedgeFxDealColumns: database.prepare("PRAGMA table_info(fx_hedge_deals)").all().map(column => column.name),
+    hedgeFxDealForeignKeys: database.prepare("PRAGMA foreign_key_list(fx_hedge_deals)").all(),
+    hedgeFxDealSeedRow: database.prepare("SELECT * FROM fx_hedge_deals LIMIT 1").get(),
+    pricingRuleReferenceIndex: database.prepare("PRAGMA index_list(pricing_rules)").all()
+      .some(index => index.name === "uq_pricing_rules_client_deal_reference" && index.unique === 1),
+    pricingRuleReferenceIndexColumns: database.prepare("PRAGMA index_info(uq_pricing_rules_client_deal_reference)").all()
+      .map(column => column.name),
     pricingRuleExecutionContextIdType: database.prepare("PRAGMA table_info(pricing_rules)").all()
       .find(column => column.name === "execution_context_id")?.type,
     ccyOptionsConstraintsEnforced,
@@ -416,9 +892,19 @@ function verifyFreshSchemaAndSeed() {
     accountingSystemTextLimitsEnforced,
     executionSystemConstraintsEnforced,
     tradingPartyConstraintsEnforced,
+    frontSystemFolderIdCodeTypeSupported,
+    clientDealGenerationSettingsConstraintsEnforced,
+    clientDealGenerationSettingsPartyTypeEnforced,
+    clientDealGenerationSettingsPricingModeEnforced,
+    clientDealGenerationSettingsCascadeDeleteEnforced,
     fxTradeExposureConstraintsEnforced,
     clientFxDealConstraintsEnforced,
+    clientFxDealParentRestrictionEnforced,
+    clientFxDealAttributionReferencesRestricted,
     clientFxDealPartyTypeEnforced,
+    hedgeFxDealConstraintsEnforced,
+    hedgeFxDealParentRestrictionEnforced,
+    hedgeFxDealPartyTypeEnforced,
     legacyAssignmentTablePresent: Boolean(database.prepare(`
       SELECT 1 AS present
       FROM sqlite_master
@@ -433,6 +919,7 @@ function verifyFreshSchemaAndSeed() {
 function verifyFrontendStructure() {
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
   const serverSource = fs.readFileSync(path.join(root, "server.js"), "utf8");
+  const demoDatabaseSource = fs.readFileSync(path.join(root, "demo-db.js"), "utf8");
   const startScript = fs.readFileSync(path.join(root, "start-demo.bat"), "utf8");
   const scripts = [...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/g)];
   const inlineScript = scripts.at(-1)?.[1] || "";
@@ -443,6 +930,28 @@ function verifyFrontendStructure() {
     .filter(id => !id.includes("${"));
   const duplicateIds = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
   const domReferences = [...inlineScript.matchAll(/getElementById\("([^"]+)"\)/g)].map(match => match[1]);
+  const addClientDealDialogMarkup = html.match(/<dialog class="client-deal-create-dialog"[\s\S]*?<\/dialog>/)?.[0] || "";
+  const addHedgeDealDialogMarkup = html.match(
+    /<dialog class="client-deal-create-dialog hedge-deal-create-dialog"[\s\S]*?<\/dialog>/
+  )?.[0] || "";
+  const editClientDealDialogMarkup = html.match(
+    /<dialog class="client-deal-create-dialog" id="editDealDialog"[\s\S]*?<\/dialog>/
+  )?.[0] || "";
+  const clientDealDuplicateCheckMarkup = html.match(/<dialog class="client-deal-create-dialog client-deal-duplicate-dialog"[\s\S]*?<\/dialog>/)?.[0] || "";
+  const fxPositionPageMarkup = html.match(
+    /<main class="shell fx-position-bootstrap workbench-page" id="mainPage"[\s\S]*?<\/main>/
+  )?.[0] || "";
+  const generationSettingsDialogMarkup = html.match(
+    /<dialog class="deal-dialog generation-dialog" id="clientDealGenerationDialog"[\s\S]*?<\/dialog>/
+  )?.[0] || "";
+  const batchToolbarMarkup = html.match(/<section class="batch-toolbar\b[^"]*"[\s\S]*?<\/section>/)?.[0] || "";
+  const marketPulseIconStyles = html.match(/\.market-pulse-icon \{[\s\S]*?\n    \}/)?.[0] || "";
+  const deleteClientDealFunction = inlineScript.match(
+    /async function deleteSelectedClientDeal\(\) \{[\s\S]*?\n    \}\n\n    function closeEditDialog/
+  )?.[0] || "";
+  const saveEditedDealFunction = inlineScript.match(
+    /async function saveEditedDeal\(event\) \{[\s\S]*?\n    \}\n\n    function renderDealRow/
+  )?.[0] || "";
 
   return {
     inlineJavaScript: "OK",
@@ -457,8 +966,376 @@ function verifyFrontendStructure() {
     usesTradingPartiesEndpoint: inlineScript.includes("/api/v1/trading-parties"),
     usesPricingRulesEndpoint: inlineScript.includes("/api/v1/pricing-rules"),
     usesPricingRulesBootstrap: inlineScript.includes("DEMO_API_BOOTSTRAP.pricingRules"),
+    displaysPricingRulePartyType: serverSource.includes("p.party_type AS partyType")
+      && html.includes('<span class="reference-column-title">Party Type</span>')
+      && html.includes('data-pricing-rule-header-filter="partyType"')
+      && inlineScript.includes("partyType: normalizedPartyType(")
+      && inlineScript.includes("data-pricing-rule-party-type")
+      && inlineScript.includes("partyTypeForInn(rule.inn)"),
+    usesDealerPricedClientDealRules: serverSource.includes('function clientDealPricingRules()')
+      && serverSource.includes('pricingRules("DEALER_PRICED")')
+      && serverSource.includes('pathname === "/api/v1/client-deal-pricing-rules"')
+      && inlineScript.includes("DEMO_API_BOOTSTRAP.clientDealPricingRules")
+      && inlineScript.includes("clientDealEligiblePricingRules"),
     usesClientFxDealsEndpoint: serverSource.includes('pathname === "/api/v1/client-fx-deals"')
+      && serverSource.includes('r.margin_percent AS pricingRuleMargin')
+      && serverSource.includes('LEFT JOIN pricing_rules r ON r.pricing_rule_id = d.pricing_rule_id')
+      && serverSource.includes('calculateClientFxDealEconomics')
+      && serverSource.includes('clientFxDealWithCalculatedEconomics(payload)')
       && inlineScript.includes("DEMO_API_BOOTSTRAP.clientFxDeals"),
+    usesHedgeFxDealsEndpoint: serverSource.includes('pathname === "/api/v1/hedge-fx-deals"')
+      && serverSource.includes("function hedgeFxDeals()")
+      && serverSource.includes("FROM fx_hedge_deals d")
+      && serverSource.includes("function deleteHedgeFxDeal(tradeId)")
+      && serverSource.includes('method === "DELETE"')
+      && inlineScript.includes("DEMO_API_BOOTSTRAP.hedgeFxDeals"),
+    usesDedicatedAddHedgeDealFlow: addHedgeDealDialogMarkup.includes('id="addHedgeDealDialog"')
+      && addHedgeDealDialogMarkup.includes('id="addHedgeDealForm"')
+      && addHedgeDealDialogMarkup.includes('name="pricingRuleId"')
+      && addHedgeDealDialogMarkup.includes('name="side"')
+      && addHedgeDealDialogMarkup.includes('name="baseCcyAmount"')
+      && addHedgeDealDialogMarkup.includes('name="tradeRate"')
+      && addHedgeDealDialogMarkup.includes('name="tenor"')
+      && addHedgeDealDialogMarkup.includes('id="addHedgeDealMarketPulse"')
+      && !addHedgeDealDialogMarkup.includes('name="analyticalPnl"')
+      && !addHedgeDealDialogMarkup.includes("Net Difference")
+      && inlineScript.includes('openAddHedgeDealDialog("SELL")')
+      && inlineScript.includes('openAddHedgeDealDialog("BUY")')
+      && inlineScript.includes('demoApiRequest("/api/v1/hedge-fx-deals"')
+      && inlineScript.includes("async function reloadHedgeFxDealsFromApi()"),
+    usesHedgeCounterpartyPricingRules: serverSource.includes("function hedgeDealPricingRules()")
+      && serverSource.includes('party?.partyType === "HEDGE_COUNTERPARTY"')
+      && serverSource.includes('pricingRules("DEALER_PRICED")')
+      && serverSource.includes('pathname === "/api/v1/hedge-deal-pricing-rules"')
+      && serverSource.includes("createHedgeFxDealTerms")
+      && serverSource.includes("hedgeFxDealWithCalculatedTerms(payload)")
+      && inlineScript.includes("DEMO_API_BOOTSTRAP.hedgeDealPricingRules")
+      && inlineScript.includes("addHedgeDealPricingRuleContentMarkup")
+      && addHedgeDealDialogMarkup.includes('id="addHedgeDealCounterpartyPicker"')
+      && addHedgeDealDialogMarkup.includes(">Hedge Counterparty</span>")
+      && inlineScript.includes("selectedAddHedgeDealCounterparty")
+      && inlineScript.includes("Select a Hedge Counterparty to see available Pricing Rules."),
+    usesDatabaseBackedFxPositions: inlineScript.includes("function loadFxPositionsFromDatabase()")
+      && inlineScript.includes("clientFxDeals.map(fxPositionFromClientFxDeal)")
+      && inlineScript.includes("hedgeFxDeals.map(fxPositionFromHedgeFxDeal)")
+      && !inlineScript.includes('DemoDb.get("fxPositions")')
+      && !inlineScript.includes('DemoDb.get("technicalFxDeals")')
+      && !inlineScript.includes("function applyStoredFxPosition(")
+      && !["clientFxDeals", "hedgeFxDeals", "technicalFxDeals", "fxPositions"]
+        .some(tableName => demoDatabaseSource.includes(`${tableName}:`)
+          || demoDatabaseSource.includes(`"${tableName}"`))
+      && serverSource.includes("LEFT JOIN fx_trade_market_snapshot a")
+      && serverSource.includes("a.market_pulse_stream_status AS marketPulseStreamStatus")
+      && serverSource.includes("a.market_pulse_bid AS marketPulseBid")
+      && serverSource.includes("a.market_pulse_offer AS marketPulseOffer"),
+    usesDatabaseBackedFxPositionDelete: inlineScript.includes("deal.databaseBackedClientFxDeal === true")
+      && inlineScript.includes("deleteDealButton.disabled = !DEMO_API_ENABLED")
+      && inlineScript.includes("async function reloadClientFxDealsFromApi()")
+      && deleteClientDealFunction.includes('if (!DEMO_API_ENABLED)')
+      && deleteClientDealFunction.includes('{ method: "DELETE" }')
+      && deleteClientDealFunction.includes("await reloadClientFxDealsFromApi();")
+      && !deleteClientDealFunction.includes("fxPositions.splice")
+      && !deleteClientDealFunction.includes("DemoDb")
+      && !deleteClientDealFunction.includes("localStorage")
+      && serverSource.includes("function deleteClientFxDeal(tradeId)")
+      && serverSource.includes("DELETE FROM fx_trade_market_snapshot")
+      && serverSource.includes("DELETE FROM client_fx_deals")
+      && serverSource.includes("DELETE FROM fx_trade_exposure"),
+    usesDatabaseBackedClientDealGeneration: serverSource.includes(
+      'pathname === "/api/v1/client-deal-generation/one"'
+    )
+      && serverSource.includes(
+        'pathname === "/api/v1/client-deal-generation/settings"'
+      )
+      && serverSource.includes(
+        'pathname === "/api/v1/client-deal-generation/process/start"'
+      )
+      && serverSource.includes("new ClientDealGenerationProcess")
+      && inlineScript.includes('"/api/v1/client-deal-generation/one"')
+      && inlineScript.includes('"/api/v1/client-deal-generation/settings"')
+      && inlineScript.includes('"/api/v1/client-deal-generation/process/start"')
+      && inlineScript.includes("runClientDealGenerationButton"),
+    removesBrowserClientDealGeneration: !inlineScript.includes("generatedClientDealDraft")
+      && !inlineScript.includes("clientDealGenerationSettings.marketBidMin")
+      && !inlineScript.includes('DemoDb.get("clientDealGenerationSettings")')
+      && !demoDatabaseSource.includes('"clientDealGenerationSettings"')
+      && !demoDatabaseSource.includes("clientDealGenerationSettings:"),
+    usesStaticDisabledBatchToolbar: (batchToolbarMarkup.match(/\bdisabled\b/g) || []).length === 4
+      && !batchToolbarMarkup.includes('id="generateOpButton"')
+      && !batchToolbarMarkup.includes('id="returnBackButton"')
+      && !inlineScript.includes("generateOpenPositionByAutoBatch")
+      && !inlineScript.includes("openBatchSettingsPage")
+      && !inlineScript.includes('DemoDb.get("batchSettings")')
+      && !demoDatabaseSource.includes('"batchSettings"')
+      && !demoDatabaseSource.includes("batchSettings:"),
+    usesBootstrapFxPositionWorkspace: fxPositionPageMarkup.includes(
+      'class="table table-sm align-middle batching-table fx-position-grid"'
+    )
+      && fxPositionPageMarkup.includes('class="deal-toolbar btn-toolbar"')
+      && fxPositionPageMarkup.includes('class="batch-toolbar btn-toolbar"')
+      && fxPositionPageMarkup.includes('class="form-check-input select-all-checkbox"')
+      && fxPositionPageMarkup.includes('aria-label="Ccy pair selector"')
+      && (fxPositionPageMarkup.match(/>play_arrow<\/span>/g) || []).length === 2
+      && (fxPositionPageMarkup.match(/>settings<\/span>/g) || []).length === 2
+      && !fxPositionPageMarkup.includes("&#9654;")
+      && !fxPositionPageMarkup.includes("&#9881;")
+      && !fxPositionPageMarkup.includes('type="search"')
+      && !fxPositionPageMarkup.includes("header-filter")
+      && html.includes("#mainPage.fx-position-bootstrap.workbench-page .fx-position-grid")
+      && html.includes("grid-template-columns: 136px minmax(0, 1fr)")
+      && html.includes("grid-template-rows: minmax(0, 1fr) auto auto")
+      && html.includes("#mainPage.fx-position-bootstrap.workbench-page .fx-position-grid thead")
+      && html.includes("#mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tfoot")
+      && html.includes(".sell-check-zone .select-all-checkbox:is(:checked, :indeterminate)")
+      && html.includes(".buy-check-zone .select-all-checkbox:is(:checked, :indeterminate)")
+      && fxPositionPageMarkup.includes('title="Select all SELL deals · Shortcut: S"')
+      && fxPositionPageMarkup.includes('title="Select all BUY deals · Shortcut: B"')
+      && html.includes(".deal-toolbar .action-button.primary:hover:not(:disabled)")
+      && html.includes(".deal-toolbar #editDealButton:is(:hover, :focus-visible):not(:disabled)")
+      && html.includes(".deal-toolbar #deleteDealButton:is(:hover, :focus-visible):not(:disabled)"),
+    usesBootstrapDealGenerationSettings: generationSettingsDialogMarkup.includes(
+      'class="generation-dialog-title-block"'
+    )
+      && generationSettingsDialogMarkup.includes(
+        'class="table table-sm table-hover align-middle generation-settings-table"'
+      )
+      && generationSettingsDialogMarkup.includes('class="dialog-close btn-close"')
+      && html.includes('class="btn btn-sm btn-outline-primary generation-settings-save"')
+      && html.includes(".generation-dialog .modal-header")
+      && html.includes("font-family: var(--bs-body-font-family);")
+      && html.includes(".generation-settings-table tbody tr:nth-child(even)"),
+    showsAutoPricedClientDealGenerationMode:
+      generationSettingsDialogMarkup.includes(">Pricing Mode</th>")
+      && generationSettingsDialogMarkup.includes(
+        "Generation settings for each AUTO_PRICED CLIENT Pricing Rule"
+      )
+      && !generationSettingsDialogMarkup.includes(">Margin %</th>")
+      && !inlineScript.includes("editNumber(settings.marginPercent, 4)")
+      && inlineScript.includes("settings.pricingMode"),
+    usesNeutralMarketPulseNavigationIcon: marketPulseIconStyles.includes("color: inherit;")
+      && html.includes('<span class="button-icon workspace-nav-icon market-pulse-icon" aria-hidden="true">monitoring</span>')
+      && html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">handshake</span>')
+      && html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">shield</span>')
+      && !html.includes("client-deals-icon")
+      && !html.includes("hedge-deals-icon")
+      && !html.includes("market-pulse-icon-exchange")
+      && html.includes(".market-reference-brand .market-reference-icon {")
+      && html.includes(".client-deal-market-pulse-brand .button-icon {"),
+    usesGroupedPricingNavigation: html.includes('id="workspacePricingToggle"')
+      && html.includes('aria-controls="workspacePricingMenu"')
+      && html.includes('data-workspace-nav-menu-toggle="workspacePricingMenu"')
+      && html.includes('data-workspace-routes="reference pricing pricing-rules"')
+      && html.includes('>price_change</span>')
+      && html.includes('id="workspacePricingMenu" role="menu" aria-label="Pricing" data-workspace-nav-menu hidden')
+      && html.includes('class="workspace-nav-menu-link" href="#reference-data"')
+      && html.includes('class="workspace-nav-menu-link" href="#execution-context"')
+      && html.includes('class="workspace-nav-menu-link" href="#pricing-rules"')
+      && inlineScript.includes("function setWorkspaceNavMenuOpen")
+      && inlineScript.includes("workspaceNavMenuEntries.forEach(entry =>"),
+    usesGroupedTradesNavigation: html.includes('id="workspaceTradesToggle"')
+      && html.includes('aria-controls="workspaceTradesMenu"')
+      && html.includes('data-workspace-nav-menu-toggle="workspaceTradesMenu"')
+      && html.includes('data-workspace-routes="client-fx-deals hedge-fx-deals"')
+      && html.includes('>currency_exchange</span>')
+      && html.includes('id="workspaceTradesMenu" role="menu" aria-label="Trades" data-workspace-nav-menu hidden')
+      && html.includes('class="workspace-nav-menu-link" href="#client-fx-deals"')
+      && html.includes('class="workspace-nav-menu-link" href="#hedge-fx-deals"'),
+    usesGroupedPricingWorkspace: html.includes(
+      '<section class="home-navigation-group" aria-labelledby="homePricingTitle">'
+    )
+      && html.includes(
+        '<h2 class="home-navigation-group-title" id="homePricingTitle">Pricing</h2>'
+      )
+      && html.includes('<nav class="home-links" aria-label="Pricing navigation">')
+      && html.includes("#homePage.workbench-home .home-navigation-group {")
+      && html.includes("grid-template-columns: repeat(3, minmax(220px, 1fr));"),
+    usesGroupedTradesWorkspace: html.includes(
+      '<section class="home-navigation-group" aria-labelledby="homeTradesTitle">'
+    )
+      && html.includes(
+        '<h2 class="home-navigation-group-title" id="homeTradesTitle">Trades</h2>'
+      )
+      && html.includes('<nav class="home-links" aria-label="Trades navigation">')
+      && html.includes('<span class="home-link-title">Client FX Deals</span>')
+      && html.includes('<span class="home-link-title">Hedge FX Deals</span>'),
+    usesImmutableClientFxDealEdit: editClientDealDialogMarkup.includes(">Edit Client Deal</h2>")
+      && editClientDealDialogMarkup.includes('class="modal-content"')
+      && editClientDealDialogMarkup.includes(">Trade Context</div>")
+      && editClientDealDialogMarkup.includes(">Trade Economics</div>")
+      && editClientDealDialogMarkup.includes('id="editClientDealClientPickerValue"')
+      && editClientDealDialogMarkup.includes('class="form-control client-deal-client-picker-value"')
+      && editClientDealDialogMarkup.includes('id="editClientDealPricingRulePicker"')
+      && editClientDealDialogMarkup.includes('class="client-deal-main-economics-row"')
+      && editClientDealDialogMarkup.includes('class="client-deal-pricing-row"')
+      && editClientDealDialogMarkup.includes('class="client-deal-market-pulse-card"')
+      && editClientDealDialogMarkup.includes('class="client-deal-create-section client-deal-additional-section"')
+      && editClientDealDialogMarkup.includes('class="client-deal-value-dates-grid"')
+      && editClientDealDialogMarkup.includes("Trade Date <span data-edit-client-deal-trade-date-summary>")
+      && editClientDealDialogMarkup.includes("Base Ccy Value Date <span data-edit-client-deal-base-value-date-summary>")
+      && editClientDealDialogMarkup.includes("Quote Ccy Value Date <span data-edit-client-deal-quote-value-date-summary>")
+      && addClientDealDialogMarkup.includes('class="client-deal-additional-comment"')
+      && editClientDealDialogMarkup.includes('class="client-deal-additional-comment"')
+      && editClientDealDialogMarkup.includes('name="comment" maxlength="500"')
+      && !editClientDealDialogMarkup.includes('<section class="client-deal-create-section" aria-label="Comment">')
+      && editClientDealDialogMarkup.includes(">Save Comment</button>")
+      && inlineScript.includes("function renderLockedEditClientDealContext(deal)")
+      && inlineScript.includes('return fxPositions.find(deal => String(deal.id ?? "") === normalizedDealId) || null;')
+      && !inlineScript.includes("batchingRowsWithReplacement")
+      && inlineScript.includes("addClientDealProfileIdentityMarkup(profile)")
+      && inlineScript.includes("addClientDealPricingRuleContentMarkup(rule, context)")
+      && inlineScript.includes('control.name === "comment"')
+      && inlineScript.includes('deal.databaseBackedClientFxDeal !== true')
+      && saveEditedDealFunction.includes('method: "PATCH"')
+      && saveEditedDealFunction.includes("await reloadClientFxDealsFromApi();")
+      && !saveEditedDealFunction.includes("persistClientFxDealRecord")
+      && !saveEditedDealFunction.includes("targetDeal.")
+      && serverSource.includes("function updateClientFxDealComment(tradeId, comment)")
+      && serverSource.includes("SET comment = ?")
+      && serverSource.includes('"CLIENT_FX_DEAL_IMMUTABLE"')
+      && !serverSource.includes("function replaceClientFxDeal("),
+    usesHedgeFxDealsTabulator: html.includes('id="hedgeFxDealsGrid"')
+      && html.includes('id="hedgeFxDealsColumnMenu"')
+      && inlineScript.includes("hedgeFxDealsGrid = new Tabulator")
+      && inlineScript.includes('title: "Trading Party Details"')
+      && inlineScript.includes('title: "Trade Economics"')
+      && inlineScript.includes('title: "Value Date Details"')
+      && inlineScript.includes('title: "Pricing Details"')
+      && !html.includes('id="hedgeFxDealsTable"'),
+    persistsClientFxDealAttribution: inlineScript.includes("executionContextId:")
+      && inlineScript.includes("pricingRuleId:")
+      && inlineScript.includes("transferRate,")
+      && inlineScript.includes("analyticalPnl,"),
+    usesDedicatedAddClientDealFlow: addClientDealDialogMarkup.includes('id="addClientDealDialog"')
+      && addClientDealDialogMarkup.includes('id="addClientDealForm"')
+      && addClientDealDialogMarkup.includes('name="partyId"')
+      && addClientDealDialogMarkup.includes('name="executionContextId"')
+      && addClientDealDialogMarkup.includes('name="pricingRuleId"')
+      && addClientDealDialogMarkup.includes('id="addClientDealPricingRulePicker"')
+      && addClientDealDialogMarkup.includes('id="addClientDealMarketPulse"')
+      && addClientDealDialogMarkup.includes('name="transferRate" readonly required')
+      && addClientDealDialogMarkup.includes('name="analyticalPnl" readonly required')
+      && !addClientDealDialogMarkup.includes('name="dealId"')
+      && !addClientDealDialogMarkup.includes('name="entryDate"')
+      && !addClientDealDialogMarkup.includes('name="clientCode"')
+      && !addClientDealDialogMarkup.includes('name="clientName"')
+      && inlineScript.includes('createDealButton.addEventListener("click", openAddClientDealDialog)')
+      && inlineScript.includes("async function createClientDeal(event)")
+      && !inlineScript.includes("dealFormMode")
+      && !inlineScript.includes("openCreateDealDialog"),
+    usesContextRichPricingRulePicker: !addClientDealDialogMarkup.includes('for="addClientDealPricingRuleId"')
+      && !addClientDealDialogMarkup.includes('id="addClientDealExecutionContext"')
+      && inlineScript.includes("function addClientDealPricingRuleOptions()")
+      && inlineScript.includes("function renderAddClientDealPricingRules()")
+      && inlineScript.includes("Select Pricing Rule")
+      && inlineScript.includes("client-deal-pricing-rule-margin")
+      && inlineScript.includes("pricingContextFacetsMarkup(context)")
+      && inlineScript.includes('addClientDealPricingRulePicker.addEventListener("click", handleAddClientDealPricingRulePicker)'),
+    usesPricingRuleDropdown: inlineScript.includes("client-deal-pricing-rule-select-toggle")
+      && inlineScript.includes("client-deal-pricing-rule-select-value")
+      && inlineScript.includes('class="btn btn-outline-secondary client-deal-pricing-rule-select-toggle"')
+      && inlineScript.includes('role="listbox"')
+      && inlineScript.includes('role="option"')
+      && inlineScript.includes("event.stopPropagation()")
+      && addClientDealDialogMarkup.includes("client-deal-create-context-section")
+      && html.includes("overflow: visible;")
+      && html.includes(".client-deal-context-picker-viewport")
+      && html.includes("position: absolute;"),
+    autoSelectsSinglePricingRule: inlineScript.includes("options.length === 1 ? options[0] : null")
+      && inlineScript.includes("effectiveSelectedRuleId"),
+    keepsPricingRuleMarginVisible: html.includes(".client-deal-create-dialog .client-pricing-context-candidate-path")
+      && html.includes("overflow-x: auto;")
+      && html.includes(".client-deal-create-dialog .client-pricing-context-candidate-facet")
+      && html.includes("flex: 0 0 auto;")
+      && html.includes("min-width: max-content;"),
+    usesCompactCurrencyPairBeforeClient: addClientDealDialogMarkup.indexOf('id="addClientDealCurrencyPair"')
+        < addClientDealDialogMarkup.indexOf('id="addClientDealPartyId"')
+      && addClientDealDialogMarkup.includes('class="client-deal-currency-pair-field"')
+      && html.includes("grid-template-columns: max-content minmax(0, 1fr);")
+      && html.includes(".client-deal-create-dialog .client-deal-currency-pair-field .form-select")
+      && html.includes("width: calc(7ch + 4rem);"),
+    usesWrappingClientPicker: addClientDealDialogMarkup.includes('id="addClientDealClientPicker"')
+      && addClientDealDialogMarkup.includes('id="addClientDealClientPickerValue"')
+      && addClientDealDialogMarkup.includes('id="addClientDealClientPickerToggle"')
+      && addClientDealDialogMarkup.includes('class="btn btn-outline-secondary client-deal-client-picker-toggle"')
+      && addClientDealDialogMarkup.includes('id="addClientDealClientOptions"')
+      && inlineScript.includes("function addClientDealProfileIdentityMarkup(profile)")
+      && inlineScript.includes("function handleAddClientDealClientPicker(event)")
+      && html.includes("overflow-wrap: anywhere;"),
+    usesBootstrapClientDealDialog: addClientDealDialogMarkup.includes('class="modal-content"')
+      && addClientDealDialogMarkup.includes('class="modal-header"')
+      && addClientDealDialogMarkup.includes('class="modal-body"')
+      && addClientDealDialogMarkup.includes('class="modal-footer"')
+      && addClientDealDialogMarkup.includes('class="form-select"')
+      && addClientDealDialogMarkup.includes('class="form-control')
+      && addClientDealDialogMarkup.includes('class="btn btn-primary btn-sm"')
+      && inlineScript.includes("clientFxDealsGrid = new Tabulator"),
+    usesStructuredTradeEconomicsLayout: addClientDealDialogMarkup.includes('class="client-deal-main-economics-row"')
+      && (addClientDealDialogMarkup.match(/client-deal-economics-field/g) || []).length === 4
+      && addClientDealDialogMarkup.includes('class="client-deal-pricing-row"')
+      && addClientDealDialogMarkup.includes('class="client-deal-market-pulse-card"')
+      && html.includes("background: var(--bs-body-bg);")
+      && html.includes(".client-deal-market-pulse-brand .button-icon")
+      && html.includes("color: var(--bs-primary);")
+      && html.includes(".client-deal-market-pulse-card.is-live .form-control.market-quote-bid[readonly]")
+      && html.includes(".client-deal-market-pulse-card.is-live .form-control.market-quote-offer[readonly]")
+      && inlineScript.includes("syncDealMarketQuotes();\n      syncAddClientDealMarketQuote();")
+      && addClientDealDialogMarkup.indexOf('id="addClientDealRate"')
+        < addClientDealDialogMarkup.indexOf('id="addClientDealTransferRate"')
+      && html.includes("minmax(390px, 2.75fr)"),
+    usesNegativeClientDealPnlConfirmation: addClientDealDialogMarkup.includes('class="button-icon">payments</span>')
+      && html.includes('.client-deal-pnl-input-group .client-deal-rate-icon')
+      && html.includes('color: var(--bs-primary);')
+      && (addClientDealDialogMarkup.match(/data-add-client-deal-loss-field/g) || []).length === 3
+      && addClientDealDialogMarkup.includes('id="addClientDealLossConfirmation"')
+      && addClientDealDialogMarkup.includes("Hold Ctrl and click Create Deal")
+      && html.includes(".client-deal-loss-sensitive-field.is-negative-pnl")
+      && inlineScript.includes("function syncAddClientDealLossState(analyticalPnl)")
+      && inlineScript.includes('analyticalPnl < 0 && !controlConfirmed')
+      && inlineScript.includes("function handleAddClientDealControlEnter(event)")
+      && inlineScript.includes('addClientDealSubmitButton.addEventListener("click", captureAddClientDealControlConfirmation)'),
+    usesBaseCurrencyClientDealSideLabels: inlineScript.includes('<option value="BUY">BUY ${escapeHtml(currencies.base)}</option>')
+      && inlineScript.includes('<option value="SELL">SELL ${escapeHtml(currencies.base)}</option>')
+      && inlineScript.includes('sideControl.value = selectedSide;'),
+    usesInlineFixedAmountCurrencySelection: addClientDealDialogMarkup.includes('name="amountFixingCurrency" value="base"')
+      && (addClientDealDialogMarkup.match(/data-add-client-deal-fixing-currency=/g) || []).length === 2
+      && !addClientDealDialogMarkup.includes('>Fixed Amount Ccy</label>')
+      && inlineScript.includes("function selectAddClientDealAmountFixingCurrency(event)")
+      && inlineScript.includes('control.classList.toggle("is-active", isFixed)')
+      && inlineScript.includes('amountInput.focus();'),
+    usesCollapsibleAdditionalAttributes: addClientDealDialogMarkup.includes('id="addClientDealAdditionalDetails"')
+      && addClientDealDialogMarkup.includes('>Additional Attributes</span>')
+      && addClientDealDialogMarkup.includes('Trade Date <span data-add-client-deal-trade-date-summary>')
+      && addClientDealDialogMarkup.includes('Base Ccy Value Date <span data-add-client-deal-base-value-date-summary>')
+      && addClientDealDialogMarkup.includes('Quote Ccy Value Date <span data-add-client-deal-quote-value-date-summary>')
+      && !addClientDealDialogMarkup.includes("Base and Quote Value Dates are calculated from Trade Date and Tenor.")
+      && addClientDealDialogMarkup.includes('data-add-client-deal-trade-date-summary')
+      && addClientDealDialogMarkup.includes('name="baseCcyValueDate" readonly')
+      && addClientDealDialogMarkup.includes('name="quoteCcyValueDate" readonly')
+      && addClientDealDialogMarkup.includes('data-add-client-deal-base-value-date-summary')
+      && addClientDealDialogMarkup.includes('data-add-client-deal-quote-value-date-summary')
+      && addClientDealDialogMarkup.includes('aria-label="Custom Trade Date"')
+      && inlineScript.includes('addClientDealAdditionalDetails.open = false;')
+      && inlineScript.includes('function syncAddClientDealValueDates()')
+      && inlineScript.includes('addClientDealForm.elements.baseCcyValueDate.value')
+      && inlineScript.includes('addClientDealForm.elements.quoteCcyValueDate.value')
+      && inlineScript.includes('quoteCurrencySettlementDay: quoteValueDateLabel'),
+    usesClientDealDuplicateCheck: clientDealDuplicateCheckMarkup.includes('id="clientDealDuplicateCheckDialog"')
+      && clientDealDuplicateCheckMarkup.includes('id="clientDealDuplicateCheckGrid"')
+      && clientDealDuplicateCheckMarkup.includes('>Check Existing Client Deals</h2>')
+      && clientDealDuplicateCheckMarkup.includes('>Create Deal</span>')
+      && clientDealDuplicateCheckMarkup.includes('>Cancel</button>')
+      && html.includes('.client-deal-duplicate-dialog .tabulator')
+      && inlineScript.includes('async function currentClientDealsForDuplicateCheck()')
+      && inlineScript.includes('async function clientDealDuplicateCandidates(targetDeal)')
+      && inlineScript.includes('return reloadClientFxDealsFromApi();')
+      && inlineScript.includes('const currentDeals = await currentClientDealsForDuplicateCheck();')
+      && !inlineScript.includes('function clientDealTradeEconomicsMatch(existingDeal, draftDeal)')
+      && !inlineScript.includes('exactEconomicsMatch')
+      && !clientDealDuplicateCheckMarkup.includes('Value Date Details')
+      && !clientDealDuplicateCheckMarkup.includes('Exact match')
+      && inlineScript.includes('clientDealDuplicateCheckGrid = new Tabulator')
+      && inlineScript.includes('openClientDealDuplicateCheck(targetDeal, duplicateCandidates)')
+      && inlineScript.includes('clientDealDuplicateCheckConfirmButton.addEventListener("click", confirmClientDealDuplicateCheck)'),
     usesTradingPartiesLanguage: html.includes(">Trading Parties<")
       && html.includes(">Party Type<")
       && html.includes('name="partyType"'),
@@ -488,8 +1365,9 @@ function verifyFrontendStructure() {
       && inlineScript.includes('navigateToClientProfileRoute("new")')
       && inlineScript.includes("navigateToClientProfileIndex(actionIndex)"),
     usesConstrainedTradingPartyWidth: html.includes("--trading-party-name-column-width: 420px")
-      && html.includes("--trading-party-content-width: 1104px")
-      && html.includes("--trading-party-frame-width: 1106px")
+      && html.includes("--trading-party-code-type-column-width: 184px")
+      && html.includes("--trading-party-content-width: 1184px")
+      && html.includes("--trading-party-frame-width: 1186px")
       && html.includes("width: min(var(--trading-party-frame-width), 100%)")
       && html.includes('class="form-field party-name-field"'),
     usesBootstrapPricingRuleDialog: html.includes('class="deal-dialog client-pricing-rule-dialog pricing-rule-bootstrap-dialog"')
@@ -553,12 +1431,27 @@ function verifyFrontendStructure() {
       && /data-reference-route="tradeCaptureChannel">\s*<span class="button-icon" aria-hidden="true">terminal<\/span>/.test(html)
       && /client-pricing-context-facet-icon" aria-hidden="true">location_on<\/span>/.test(html)
       && /client-pricing-context-facet-icon" aria-hidden="true">terminal<\/span>/.test(html),
-    supportsRequiredPartyTypes: inlineScript.includes('["CLIENT", "EXTERNAL_COUNTERPARTY", "INTERNAL_DESK"]'),
-    supportsRequiredPartyCodeTypes: inlineScript.includes('["INN", "OTHER"]'),
+    supportsRequiredPartyTypes: inlineScript.includes('["CLIENT", "HEDGE_COUNTERPARTY"]')
+      && !inlineScript.includes('"EXTERNAL_COUNTERPARTY"')
+      && !inlineScript.includes('"INTERNAL_DESK"'),
+    supportsRequiredPartyCodeTypes: inlineScript.includes('["INN", "OTHER", "FRONT_SYSTEM_FOLDER_ID"]')
+      && serverSource.includes('["INN", "OTHER", "FRONT_SYSTEM_FOLDER_ID"]')
+      && serverSource.includes("'FRONT_SYSTEM_FOLDER_ID'")
+      && html.includes('<option value="FRONT_SYSTEM_FOLDER_ID">FRONT_SYSTEM_FOLDER_ID</option>'),
     usesExplicitTooltipLayer: html.includes('id="appTooltip"')
       && inlineScript.includes("initializeTooltips();")
       && inlineScript.includes("suppressNativeTooltips();"),
     explicitTooltipCount: (html.match(/\bdata-tooltip=/g) || []).length,
+    usesExplicitTradeIdCopy: html.includes('data-copy-trade-id="${safeTradeId}"')
+      && inlineScript.includes("function fxPositionTradeId(deal)")
+      && inlineScript.includes("showTradeIdCopyFeedback(copyButton, copied)")
+      && html.includes('data-tooltip="Copy Trade ID"')
+      && !html.includes("data-copy-position-id")
+      && !html.includes("trade-id-copy-value"),
+    usesLocalTradeIdCopyFeedback: html.includes(".trade-id-copy.is-copied")
+      && html.includes(".trade-id-copy.is-copy-error")
+      && inlineScript.includes("function showTradeIdCopyFeedback(button, copied)")
+      && !html.includes('id="tradeCopyErrorToast"'),
     usesServicingLocationConstraints: html.includes('data-reference-field="servicingBranchCode" value="${escapeHtml(item.servicingBranchCode)}" maxlength="10"')
       && html.includes('data-reference-field="servicingBranchName" value="${escapeHtml(item.servicingBranchName)}" maxlength="50"')
       && html.includes('data-reference-field="region" value="${escapeHtml(item.region)}" maxlength="50"')
@@ -622,7 +1515,7 @@ function verifyFrontendStructure() {
       && html.includes('<table class="profile-table pricing-rules-table unified-data-table" data-fixed-column-widths>')
       && html.includes('id="pricingRuleIdSort"')
       && html.includes('id="pricingRuleIdHeader" aria-sort="ascending"')
-      && (html.match(/data-pricing-rule-header-filter=/g) || []).length === 5
+      && (html.match(/data-pricing-rule-header-filter=/g) || []).length === 6
       && inlineScript.includes('pricingRuleIdSortDirection = "asc"')
       && inlineScript.includes('function updatePricingRuleIdSortControl()')
       && !html.includes('<input type="text" name="pricingContextId" placeholder="Assigned on save" readonly>')
@@ -631,9 +1524,11 @@ function verifyFrontendStructure() {
       && !html.includes("<th>Pricing Rule ID</th>"),
     usesHumanReadablePricingRuleContexts: inlineScript.includes("function pricingContextDisplayPath(contextOrId)")
       && inlineScript.includes("pricingContextDisplayPath(rule.pricingContextId)")
+      && inlineScript.includes('class="client-pricing-context-candidate-path pricing-rules-context-path"')
+      && inlineScript.includes("pricingContextFacetsMarkup(rule.pricingContextId)")
       && html.includes('<th class="pricing-rule-context-column">')
       && html.includes('<span class="reference-column-title">Execution Context</span>')
-      && html.includes('--pricing-rule-context-width: 64ch'),
+      && html.includes('--pricing-rule-context-width: 82ch'),
     usesLocalBootstrapAndTabulator: html.includes('./vendor/bootstrap/bootstrap.min.css')
       && html.includes('./vendor/tabulator/tabulator_bootstrap5.min.css')
       && html.includes('./vendor/tabulator/tabulator.min.js')
@@ -734,29 +1629,119 @@ function verifyFrontendStructure() {
       && inlineScript.includes('clientFxDealsGrid = new Tabulator')
       && inlineScript.includes('renderVertical: "virtual"')
       && inlineScript.includes('layout: "fitData"')
+      && inlineScript.includes('title: "Trade Details"')
+      && inlineScript.includes('title: "Trade ID"')
+      && inlineScript.includes('title: "Client Details"')
       && inlineScript.includes('title: "Entry Timestamp"')
-      && inlineScript.includes('title: "Trade Terms"')
-      && inlineScript.includes('title: "Settlement"')
+      && inlineScript.includes('title: "Trade Economics"')
+      && inlineScript.includes('title: "Client Side"')
+      && inlineScript.includes('title: "Value Date Details"')
       && inlineScript.includes('field: "baseCcyValueDate"')
       && inlineScript.includes('field: "quoteCcyValueDate"')
-      && !inlineScript.includes('client-deals-group-pricing')
-      && !inlineScript.includes('client-deals-group-position')
+      && inlineScript.includes('title: "Pricing Details"')
+      && inlineScript.includes('title: "Execution Context"')
+      && inlineScript.includes('title: "Margin %", field: "pricingRuleMargin"')
+      && inlineScript.includes('pricingRuleMargin: fxDealPricingRuleMargin(deal)')
+      && !inlineScript.includes('field: "pricingRuleLabel"')
+      && inlineScript.includes('transferRate: { width: 136, minWidth: 128 }')
+      && inlineScript.includes('tabulatorSizedColumn("transferRate", { title: "Transfer Rate"')
+      && inlineScript.includes('deal?.inn || deal?.clientCode || ""')
+      && inlineScript.includes('title: "FX Position Processing"')
+      && inlineScript.includes('title: "Transfer Rate"')
+      && inlineScript.includes('title: "Analytical PnL"')
+      && inlineScript.includes('title: "Client Code Type", field: "clientCodeType", headerSort: false')
+      && inlineScript.includes('title: "Client Code", field: "clientCode", headerSort: false')
+      && inlineScript.includes('title: "Client Side", field: "side", headerSort: false')
+      && inlineScript.includes('title: "Tenor", field: "tenor", headerSort: false')
+      && inlineScript.includes('title: "Execution Context", field: "executionContextLabel", headerSort: false')
+      && inlineScript.includes('initialSort: [{ column: "tradeId", dir: "asc" }]')
       && !html.includes('id="clientFxDealsPinMode"')
       && !inlineScript.includes('applyClientFxDealsPinMode'),
     usesClientFxDealsDataTools: !html.includes('id="clientFxDealsSearchInput"')
       && !inlineScript.includes('function applyClientFxDealsSearch()')
-      && html.includes('id="clientFxDealsClearFiltersButton"')
+      && !html.includes('id="clientFxDealsClearFiltersButton"')
+      && !inlineScript.includes('clientFxDealsGrid.clearFilter(true)')
+      && !inlineScript.includes('updateClientFxDealsClearAvailability')
       && html.includes('id="clientFxDealsColumnPicker"')
       && html.includes('id="clientFxDealsColumnMenu"')
       && inlineScript.includes('function renderClientFxDealsColumnMenu(definitions)')
-      && inlineScript.includes('clientFxDealsGrid.clearFilter(true)')
       && html.includes('justify-content: flex-end;')
       && html.includes('margin-top: 10px;'),
-    usesClientFxDealsVerticalGridlines: html.includes('#clientFxDealsPage .tabulator .tabulator-cell')
+    usesClientFxDealsVerticalGridlines: html.includes('.client-deals-bootstrap .tabulator .tabulator-cell')
       && html.includes('border-right: 1px solid var(--bs-border-color);')
       && html.includes('text-align: center;'),
     usesClientFxDealsFixedHeaders: html.includes('height: max(360px, calc(100vh - 178px));')
       && inlineScript.includes('renderVertical: "virtual"'),
+    removesLegacyFxPositionBlotter: !html.includes('FX Position Blotter')
+      && !html.includes('#fx-position-blotter')
+      && !inlineScript.includes('fxPositionBlotter')
+      && html.includes('aria-hidden="true">table_chart</span>\n        <span>FX Position</span>'),
+    usesFxPositionExposureDates: html.includes('<th class="base-value-date common-head">Base Ccy Value Date</th>')
+      && html.includes('<th class="section-name common-title" colspan="3">SHARED TRADE ATTRIBUTES</th>')
+      && !html.includes('<th class="tenor common-head">Tenor</th>')
+      && inlineScript.includes('${escapeHtml(positionTradeDate(deal))}')
+      && inlineScript.includes("function baseCurrencyValueDateLabel(deal)")
+      && inlineScript.includes('.join(" · ")')
+      && inlineScript.includes('${escapeHtml(baseCurrencyValueDateLabel(deal))}')
+      && serverSource.includes('e.trade_date AS tradeDate')
+      && serverSource.includes('e.tenor')
+      && serverSource.includes('e.base_ccy_value_date AS baseCcyValueDate'),
+    usesFxPositionTradeAttributes: html.includes('<th class="section-name sell-title" colspan="3">SELL SIDE</th>')
+      && html.includes('<th class="section-name buy-title" colspan="3">BUY SIDE</th>')
+      && (html.match(/>Base Ccy Amount<\/th>/g) || []).length === 2
+      && (html.match(/data-sort-key="tradeRate" title="Trade Rate">Trade<\/button>/g) || []).length === 2
+      && (html.match(/data-sort-key="transferRate" title="Transfer Rate">Transfer<\/button>/g) || []).length === 2
+      && inlineScript.includes("function fxPositionTradeRate(deal)")
+      && inlineScript.includes("return deal?.clientRate ?? null;")
+      && inlineScript.includes("return deal?.autoBatchRate ?? null;")
+      && inlineScript.includes("const baseCcyAmount = fxPositionBaseAmount(deal);")
+      && inlineScript.includes("tradeRate: sideWeightedAverage(source, side, fxPositionTradeRate)")
+      && inlineScript.includes("transferRate: sideWeightedAverage(source, side, fxPositionTransferRate)")
+      && inlineScript.includes('{ label: "Trade", type: "rate" }')
+      && inlineScript.includes("column.label === label && column.type === type")
+      && serverSource.includes('e.base_ccy_amount AS baseCcyAmount')
+      && serverSource.includes('e.trade_rate AS tradeRate')
+      && serverSource.includes('d.transfer_rate AS transferRate'),
+    usesFxPositionTradeTypeIndicators:
+      (html.match(/class="[^"]*amount-with-trade-type[^"]*"[^>]*>Base Ccy Amount<\/th>/g) || []).length === 2
+      && html.includes(".fx-position-grid .amount-with-trade-type {")
+      && html.includes(".fx-position-grid .amount-with-trade-type::before {")
+      && html.includes(".fx-position-grid .trade-type-indicator {")
+      && html.includes("left: 24px;")
+      && html.includes("right: 24px;")
+      && inlineScript.includes("function fxPositionTradeTypeIndicator(deal)")
+      && inlineScript.includes('CLIENT_DEAL: { icon: "handshake", label: "Client Deal" }')
+      && inlineScript.includes('HEDGE_DEAL: { icon: "shield", label: "Hedge Deal" }')
+      && inlineScript.includes("const tradeTypeIndicator = fxPositionTradeTypeIndicator(deal);")
+      && inlineScript.includes("sell-trade-type-amount ${sellActive ?")
+      && inlineScript.includes("buy-trade-type-amount ${buyActive ?"),
+    supportsLargeFxPositionAmounts:
+      (html.match(/data-smart-min-text="100 000 000 000\.00" data-smart-extra-width="48"/g) || []).length === 2
+      && inlineScript.includes("function smartRequestedMinimumWidth(headerCell)")
+      && inlineScript.includes("const minimumText = headerCell.dataset.smartMinText;")
+      && inlineScript.includes("const extraWidth = smartCssPixels(headerCell.dataset.smartExtraWidth);")
+      && inlineScript.includes("requestedMinimumWidth"),
+    usesFxPositionMarketPulseBrand: html.includes('<span class="button-icon market-reference-icon market-pulse-icon" role="img" aria-label="Market Pulse" tabindex="0" data-tooltip="Market Pulse">monitoring</span>')
+      && (html.match(/class="[^"]*market-pulse-icon[^"]*"[^>]*>monitoring<\/span>/g) || []).length >= 6
+      && html.includes('.market-pulse-icon {')
+      && !html.includes('market-pulse-icon-chart')
+      && !html.includes('market-pulse-icon-exchange')
+      && !html.includes('class="market-reference-label"')
+      && html.includes('<span class="market-reference-heading">')
+      && html.includes('.market-reference-brand {')
+      && !html.includes('market-reference-info')
+      && !html.includes('Market Pulse rates captured when the trade was entered.')
+      && html.includes('return { min: 70, max: 76, pad: 14, ellipsize: false };'),
+    usesFxPositionHedgeDealTerminology: (html.match(/>Add Hedge Deal<\/button>/g) || []).length === 2
+      && html.includes('<span class="hedge-deals-center-label">Hedge Deals</span>')
+      && html.includes('id="addHedgeSellDealButton"')
+      && html.includes('id="addHedgeBuyDealButton"')
+      && html.includes('id="deleteHedgeDealDemoButton" disabled>Delete (Demo)</button>')
+      && inlineScript.includes("function selectedDeletableHedgeDeals()")
+      && inlineScript.includes("async function deleteSelectedHedgeDealsForDemo()")
+      && inlineScript.includes('`/api/v1/hedge-fx-deals/${encodeURIComponent(deal.hedgeFxDealId)}`')
+      && !html.includes("Add Market Deal")
+      && !html.includes("Market Deals"),
     usesCentralTabulatorColumnSizing: inlineScript.includes('const TABULATOR_COLUMN_SIZES = Object.freeze({')
       && inlineScript.includes('function tabulatorSizedColumn(size, definition)')
       && inlineScript.includes('clientFxDealsFilterableColumn("date"')
@@ -795,7 +1780,7 @@ function verifyFrontendStructure() {
     usesUnifiedDataGridLineSystem: html.includes('--data-grid-line-width: 1px;')
       && html.includes('--data-grid-line-color: var(--bs-border-color, #dee2e6);')
       && html.includes('#marketPage.market-bootstrap .market-tabulator,')
-      && html.includes('#clientFxDealsPage.client-deals-bootstrap .tabulator,')
+      && html.includes('.client-deals-bootstrap .tabulator,')
       && html.includes('#referenceDataPage.unified-bootstrap-workspace .reference-table thead tr th,'),
     usesOwnedRoundedTableFrames: html.includes('Keep a single, clipping owner for every rounded data-grid outline.')
       && html.includes(':is(#pricingPage, #pricingRulesPage, #databasePage).unified-bootstrap-workspace.workbench-page .profile-table-wrap')
@@ -811,7 +1796,7 @@ function verifyFrontendStructure() {
       && html.includes('.workbench-grid-toolbar,')
       && html.includes('border: var(--data-grid-line-width) solid var(--data-grid-line-color);'),
     usesSingleMarketOuterEdge: /#marketPage\.market-bootstrap\.workbench-page \.market-tabulator \.tabulator-header \.tabulator-col\.market-grid-actions-cell,\s*#marketPage\.market-bootstrap\.workbench-page \.market-tabulator \.tabulator-row \.tabulator-cell\.market-grid-actions-cell \{\s*border-right: 0;\s*\}/.test(html),
-    usesSingleClientDealsOuterEdge: html.includes('.tabulator-header .client-deals-group-settlement .tabulator-col-group-cols > .tabulator-col:not([style*="display: none"]):not(:has(~ .tabulator-col:not([style*="display: none"])))')
+    usesSingleClientDealsOuterEdge: html.includes('.tabulator-header .client-deals-group-position-processing .tabulator-col-group-cols > .tabulator-col:not([style*="display: none"]):not(:has(~ .tabulator-col:not([style*="display: none"])))')
       && html.includes('.tabulator-row .tabulator-cell:not([style*="display: none"]):not(:has(~ .tabulator-cell:not([style*="display: none"]))) {'),
     avoidsMarketScrollbarGutter: /#marketPage\.market-bootstrap\.workbench-page \.market-grid-frame \{\s*overflow: hidden;\s*\}/.test(html)
       && /#marketPage\.market-bootstrap\.workbench-page \.market-tabulator \.tabulator-tableholder \{\s*height: auto !important;\s*max-height: 446px;\s*overflow-x: hidden;\s*overflow-y: auto;\s*\}/.test(html),
@@ -927,7 +1912,14 @@ async function verifyApiAndMigration() {
     const executionContextsTable = await request("GET", "/api/database/tables/execution_contexts");
     const tradingPartiesTable = await request("GET", "/api/database/tables/trading_parties");
     const pricingRulesTable = await request("GET", "/api/database/tables/pricing_rules");
+    const clientDealGenerationSettingsTable = await request(
+      "GET",
+      "/api/database/tables/client_deal_generation_settings"
+    );
+    const fxTradeExposureTable = await request("GET", "/api/database/tables/fx_trade_exposure");
+    const fxTradeMarketSnapshotTable = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
     const clientFxDealsTable = await request("GET", "/api/database/tables/client_fx_deals");
+    const hedgeFxDealsTable = await request("GET", "/api/database/tables/fx_hedge_deals");
     const legacyAssignmentTable = await request("GET", "/api/database/tables/trading_party_execution_contexts");
     const servicingLocations = await request("GET", "/api/v1/servicing-locations");
     const accountingSystems = await request("GET", "/api/v1/accounting-systems");
@@ -935,10 +1927,36 @@ async function verifyApiAndMigration() {
     const executionContexts = await request("GET", "/api/v1/execution-contexts");
     const tradingParties = await request("GET", "/api/v1/trading-parties");
     const pricingRules = await request("GET", "/api/v1/pricing-rules");
+    const clientDealPricingRules = await request("GET", "/api/v1/client-deal-pricing-rules");
     const clientFxDeals = await request("GET", "/api/v1/client-fx-deals");
+    const hedgeFxDeals = await request("GET", "/api/v1/hedge-fx-deals");
+    const clientDealExecutionContextId = executionContexts.body?.find(context =>
+      context.servicingLocationId === "002"
+      && context.accountingSystemId === "CTF3"
+      && context.executionSystemId === "MANUAL_CLIENT_DEAL_ENTRY"
+    )?.executionContextId;
+    const clientDealPricingRuleId = pricingRules.body?.find(rule =>
+      rule.partyId === 1
+      && rule.executionContextId === clientDealExecutionContextId
+      && rule.ccyPairCode === "EUR_USD"
+    )?.pricingRuleId;
+    const nonDealerPricedExecutionContextId = executionContexts.body?.find(context =>
+      context.servicingLocationId === "002"
+      && context.accountingSystemId === "AFINA"
+      && context.executionSystemId === "CLICK_TRADE_EFX"
+    )?.executionContextId;
+    const nonDealerPricedPricingRuleId = pricingRules.body?.find(rule =>
+      rule.partyId === 1
+      && rule.executionContextId === nonDealerPricedExecutionContextId
+      && rule.ccyPairCode === "EUR_USD"
+    )?.pricingRuleId;
     const clientFxDealPayload = {
       entryTimestamp: "2026-07-16T10:15:30.000Z",
       partyId: 1,
+      executionContextId: clientDealExecutionContextId,
+      pricingRuleId: clientDealPricingRuleId,
+      transferRate: 1.124,
+      analyticalPnl: -1800,
       tradeDate: "2026-07-16",
       ccyPairCode: "EUR_USD",
       side: "SELL",
@@ -947,15 +1965,71 @@ async function verifyApiAndMigration() {
       tradeRate: 1.1231,
       tenor: "TOD",
       baseCcyValueDate: "2026-07-16",
-      quoteCcyValueDate: "2026-07-16"
+      quoteCcyValueDate: "2026-07-16",
+      marketPulseStreamStatus: "RUNNING",
+      marketPulseBid: 1.1228,
+      marketPulseOffer: 1.1230,
+      marketPulseTimestamp: "2026-07-16T10:15:29.000Z",
+      comment: "Initial verification comment"
     };
+
+    const rollbackProbe = new DatabaseSync(verificationDatabasePath);
+    rollbackProbe.exec("PRAGMA busy_timeout = 5000");
+    const rollbackCountsBefore = {
+      exposures: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count),
+      clientDeals: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM client_fx_deals").get().count),
+      marketSnapshots: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count)
+    };
+    let rollbackClientFxDeal;
+    let rollbackCountsAfter;
+
+    try {
+      rollbackProbe.exec(`
+        CREATE TRIGGER verify_client_fx_deal_transaction_rollback
+        BEFORE INSERT ON client_fx_deals
+        BEGIN
+          SELECT RAISE(ABORT, 'verification forced client insert failure');
+        END;
+      `);
+      rollbackClientFxDeal = await request("POST", "/api/v1/client-fx-deals", clientFxDealPayload);
+      rollbackCountsAfter = {
+        exposures: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count),
+        clientDeals: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM client_fx_deals").get().count),
+        marketSnapshots: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count)
+      };
+    } finally {
+      rollbackProbe.exec("DROP TRIGGER IF EXISTS verify_client_fx_deal_transaction_rollback");
+      rollbackProbe.close();
+    }
+
     const createClientFxDeal = await request("POST", "/api/v1/client-fx-deals", clientFxDealPayload);
     const clientFxDealId = encodeURIComponent(createClientFxDeal.body?.clientDealId ?? "");
-    const updateClientFxDeal = await request("PUT", `/api/v1/client-fx-deals/${clientFxDealId}`, {
+    const fxTradeExposureAfterCreate = await request("GET", "/api/database/tables/fx_trade_exposure");
+    const fxTradeMarketSnapshotAfterCreate = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
+    const clientFxDealsAfterCreate = await request("GET", "/api/database/tables/client_fx_deals");
+    const immutableClientFxDealUpdate = await request("PUT", `/api/v1/client-fx-deals/${clientFxDealId}`, {
       ...clientFxDealPayload,
       baseCcyAmount: 2500000,
-      quoteCcyAmount: 2807750
+      quoteCcyAmount: 2807750,
+      analyticalPnl: -2250,
+      marketPulseStreamStatus: "STOPPED",
+      marketPulseBid: 1.1200,
+      marketPulseOffer: 1.1202,
+      marketPulseTimestamp: "2026-07-16T10:20:00.000Z"
     });
+    const updateClientFxDealComment = await request(
+      "PATCH",
+      `/api/v1/client-fx-deals/${clientFxDealId}`,
+      { comment: "Reviewed verification comment" }
+    );
+    const invalidClientFxDealComment = await request(
+      "PATCH",
+      `/api/v1/client-fx-deals/${clientFxDealId}`,
+      { comment: "X".repeat(501) }
+    );
+    const fxTradeExposureAfterCommentUpdate = await request("GET", "/api/database/tables/fx_trade_exposure");
+    const fxTradeMarketSnapshotAfterCommentUpdate = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
+    const clientFxDealsAfterCommentUpdate = await request("GET", "/api/database/tables/client_fx_deals");
     const invalidClientFxDealSide = await request("POST", "/api/v1/client-fx-deals", {
       ...clientFxDealPayload,
       side: "HOLD"
@@ -964,8 +2038,28 @@ async function verifyApiAndMigration() {
       ...clientFxDealPayload,
       partyId: 999999
     });
+    const invalidClientFxDealTransferRate = await request("POST", "/api/v1/client-fx-deals", {
+      ...clientFxDealPayload,
+      transferRate: 0
+    });
+    const invalidClientFxDealPricingScope = await request("POST", "/api/v1/client-fx-deals", {
+      ...clientFxDealPayload,
+      partyId: 2
+    });
+    const invalidClientFxDealPricingMode = await request("POST", "/api/v1/client-fx-deals", {
+      ...clientFxDealPayload,
+      executionContextId: nonDealerPricedExecutionContextId,
+      pricingRuleId: nonDealerPricedPricingRuleId
+    });
     const deleteClientFxDeal = await request("DELETE", `/api/v1/client-fx-deals/${clientFxDealId}`);
     const clientFxDealsAfterDelete = await request("GET", "/api/v1/client-fx-deals");
+    const fxTradeExposureAfterDelete = await request("GET", "/api/database/tables/fx_trade_exposure");
+    const fxTradeMarketSnapshotAfterDelete = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
+    const clientFxDealsTableAfterDelete = await request("GET", "/api/database/tables/client_fx_deals");
+    const integrityProbe = new DatabaseSync(verificationDatabasePath);
+    integrityProbe.exec("PRAGMA foreign_keys = ON");
+    const foreignKeyViolations = integrityProbe.prepare("PRAGMA foreign_key_check").all().length;
+    integrityProbe.close();
     const contextIdByComponents = (servicingLocationId, accountingSystemId, executionSystemId) =>
       executionContexts.body?.find(context =>
         context.servicingLocationId === servicingLocationId
@@ -979,6 +2073,119 @@ async function verifyApiAndMigration() {
     const startSimulation = await request("POST", "/api/v1/market-pulse-simulation/start");
     const eventStream = await openEventStream("/api/v1/market-pulse-simulation/stream");
     const stopSimulation = await request("POST", "/api/v1/market-pulse-simulation/stop");
+    const generationSettingsBefore = await request(
+      "GET",
+      "/api/v1/client-deal-generation/settings"
+    );
+    const generationRule = generationSettingsBefore.body
+      ?.find(settings => settings.pricingMode === "AUTO_PRICED")
+      || generationSettingsBefore.body?.[0];
+
+    for (const settings of generationSettingsBefore.body || []) {
+      await request(
+        "PUT",
+        `/api/v1/client-deal-generation/settings/${settings.pricingRuleId}`,
+        {
+          minBaseCcyAmount: settings.pricingRuleId === generationRule?.pricingRuleId
+            ? 700000
+            : settings.minBaseCcyAmount,
+          maxBaseCcyAmount: settings.pricingRuleId === generationRule?.pricingRuleId
+            ? 700000
+            : settings.maxBaseCcyAmount,
+          baseCcyAmountStep: settings.baseCcyAmountStep,
+          buyProbabilityPercent: settings.pricingRuleId === generationRule?.pricingRuleId
+            ? 100
+            : settings.buyProbabilityPercent,
+          active: settings.pricingRuleId === generationRule?.pricingRuleId
+        }
+      );
+    }
+
+    const generationSettingsConfigured = await request(
+      "GET",
+      "/api/v1/client-deal-generation/settings"
+    );
+    const invalidGenerationSettings = await request(
+      "PUT",
+      `/api/v1/client-deal-generation/settings/${generationRule?.pricingRuleId}`,
+      {
+        minBaseCcyAmount: 0,
+        maxBaseCcyAmount: 700000,
+        baseCcyAmountStep: 100000,
+        buyProbabilityPercent: 100,
+        active: true
+      }
+    );
+    const generatedClientFxDeal = await request(
+      "POST",
+      "/api/v1/client-deal-generation/one"
+    );
+    const generatedClientFxDealId = Number(generatedClientFxDeal.body?.tradeId);
+    const deleteGeneratedClientFxDeal = await request(
+      "DELETE",
+      `/api/v1/client-fx-deals/${generatedClientFxDealId}`
+    );
+    const startClientDealGenerationProcess = await request(
+      "POST",
+      "/api/v1/client-deal-generation/process/start"
+    );
+    const clientDealGenerationProcessStatus = await request(
+      "GET",
+      "/api/v1/client-deal-generation/process"
+    );
+    const stopClientDealGenerationProcess = await request(
+      "POST",
+      "/api/v1/client-deal-generation/process/stop"
+    );
+    const processGeneratedTradeId = Number(
+      startClientDealGenerationProcess.body?.lastGeneratedTradeId
+    );
+    const deleteProcessGeneratedClientFxDeal = await request(
+      "DELETE",
+      `/api/v1/client-fx-deals/${processGeneratedTradeId}`
+    );
+
+    for (const settings of generationSettingsBefore.body || []) {
+      await request(
+        "PUT",
+        `/api/v1/client-deal-generation/settings/${settings.pricingRuleId}`,
+        {
+          minBaseCcyAmount: settings.minBaseCcyAmount,
+          maxBaseCcyAmount: settings.maxBaseCcyAmount,
+          baseCcyAmountStep: settings.baseCcyAmountStep,
+          buyProbabilityPercent: settings.buyProbabilityPercent,
+          active: false
+        }
+      );
+    }
+
+    const rejectedClientDealGenerationProcessStart = await request(
+      "POST",
+      "/api/v1/client-deal-generation/process/start"
+    );
+    const stoppedClientDealGenerationProcessStatus = await request(
+      "GET",
+      "/api/v1/client-deal-generation/process"
+    );
+
+    for (const settings of generationSettingsBefore.body || []) {
+      await request(
+        "PUT",
+        `/api/v1/client-deal-generation/settings/${settings.pricingRuleId}`,
+        {
+          minBaseCcyAmount: settings.minBaseCcyAmount,
+          maxBaseCcyAmount: settings.maxBaseCcyAmount,
+          baseCcyAmountStep: settings.baseCcyAmountStep,
+          buyProbabilityPercent: settings.buyProbabilityPercent,
+          active: settings.active
+        }
+      );
+    }
+
+    const generationSettingsRestored = await request(
+      "GET",
+      "/api/v1/client-deal-generation/settings"
+    );
 
     const createCurrency = await request("POST", "/api/v1/ccy-options", {
       code: "QAA",
@@ -1071,17 +2278,17 @@ async function verifyApiAndMigration() {
     const servicingLocationsAfterContextDelete = await request("GET", "/api/v1/servicing-locations");
     const deleteServicingLocation = await request("DELETE", "/api/v1/servicing-locations/SITE-998");
     const createTradingParty = await request("POST", "/api/v1/trading-parties", {
-      partyType: "INTERNAL_DESK",
-      partyCode: "FX_DESK_1",
-      partyCodeType: "OTHER",
+      partyType: "HEDGE_COUNTERPARTY",
+      partyCode: "FRONT_FOLDER_1",
+      partyCodeType: "FRONT_SYSTEM_FOLDER_ID",
       partyName: "Verification FX Desk",
       active: true
     });
     const tradingPartyId = encodeURIComponent(createTradingParty.body?.partyId ?? "");
     const updateTradingParty = await request("PUT", `/api/v1/trading-parties/${tradingPartyId}`, {
-      partyType: "EXTERNAL_COUNTERPARTY",
-      partyCode: "VERIFY_CP",
-      partyCodeType: "OTHER",
+      partyType: "HEDGE_COUNTERPARTY",
+      partyCode: "VERIFY_FOLDER",
+      partyCodeType: "FRONT_SYSTEM_FOLDER_ID",
       partyName: "Verification Counterparty",
       active: false
     });
@@ -1090,6 +2297,20 @@ async function verifyApiAndMigration() {
       partyCode: "7701234567",
       partyCodeType: "INN",
       partyName: "Duplicate Client",
+      active: true
+    });
+    const invalidLegacyExternalPartyType = await request("POST", "/api/v1/trading-parties", {
+      partyType: "EXTERNAL_COUNTERPARTY",
+      partyCode: "VERIFY_EXTERNAL",
+      partyCodeType: "OTHER",
+      partyName: "Invalid Legacy External Counterparty",
+      active: true
+    });
+    const invalidLegacyInternalPartyType = await request("POST", "/api/v1/trading-parties", {
+      partyType: "INTERNAL_DESK",
+      partyCode: "VERIFY_INTERNAL",
+      partyCodeType: "OTHER",
+      partyName: "Invalid Legacy Internal Desk",
       active: true
     });
     const invalidTradingPartyCodeType = await request("POST", "/api/v1/trading-parties", {
@@ -1148,6 +2369,76 @@ async function verifyApiAndMigration() {
     const deletePricingRule = await request("DELETE", `/api/v1/pricing-rules/${pricingRuleId}`);
     const deleteTradingParty = await request("DELETE", `/api/v1/trading-parties/${tradingPartyId}`);
     const tradingPartiesAfterDelete = await request("GET", "/api/v1/trading-parties");
+    const createHedgeCounterparty = await request("POST", "/api/v1/trading-parties", {
+      partyType: "HEDGE_COUNTERPARTY",
+      partyCode: "VERIFY_HEDGE",
+      partyCodeType: "OTHER",
+      partyName: "Verification Hedge Counterparty",
+      active: true
+    });
+    const createHedgePricingRule = await request("POST", "/api/v1/pricing-rules", {
+      partyId: createHedgeCounterparty.body?.partyId,
+      executionContextId: clientDealExecutionContextId,
+      ccyPairCode: "EUR_USD",
+      marginPercent: 0.15
+    });
+    const hedgeDealPricingRules = await request("GET", "/api/v1/hedge-deal-pricing-rules");
+    const createHedgeFxDeal = await request("POST", "/api/v1/hedge-fx-deals", {
+      pricingRuleId: createHedgePricingRule.body?.pricingRuleId,
+      ccyPairCode: "EUR_USD",
+      side: "BUY",
+      baseCcyAmount: 2500000,
+      tradeRate: 1.1234,
+      tenor: "TOD"
+    });
+    const invalidHedgeFxDealClientRule = await request("POST", "/api/v1/hedge-fx-deals", {
+      pricingRuleId: clientDealPricingRuleId,
+      ccyPairCode: "EUR_USD",
+      side: "BUY",
+      baseCcyAmount: 2500000,
+      tradeRate: 1.1234,
+      tenor: "TOD"
+    });
+    const hedgeFxDealsAfterCreate = await request("GET", "/api/v1/hedge-fx-deals");
+    const fxTradeExposureAfterHedgeCreate = await request("GET", "/api/database/tables/fx_trade_exposure");
+    const fxHedgeDealsAfterCreate = await request("GET", "/api/database/tables/fx_hedge_deals");
+    const fxTradeMarketSnapshotAfterHedgeCreate = await request(
+      "GET",
+      "/api/database/tables/fx_trade_market_snapshot"
+    );
+    const createdTradeId = Number(createClientFxDeal.body?.tradeId);
+    const createdHedgeTradeId = Number(createHedgeFxDeal.body?.tradeId);
+    const migratedExposureRow = fxTradeExposureTable.body?.rows?.find(row => row.trade_id === 41) || null;
+    const migratedClientRow = clientFxDealsTable.body?.rows?.find(row => row.trade_id === 41) || null;
+    const createdExposureRow = fxTradeExposureAfterCreate.body?.rows
+      ?.find(row => row.trade_id === createdTradeId) || null;
+    const createdClientRow = clientFxDealsAfterCreate.body?.rows
+      ?.find(row => row.trade_id === createdTradeId) || null;
+    const updatedExposureRow = fxTradeExposureAfterCommentUpdate.body?.rows
+      ?.find(row => row.trade_id === createdTradeId) || null;
+    const updatedClientRow = clientFxDealsAfterCommentUpdate.body?.rows
+      ?.find(row => row.trade_id === createdTradeId) || null;
+    const createdMarketSnapshotRow = fxTradeMarketSnapshotAfterCreate.body?.rows
+      ?.find(row => row.trade_id === createdTradeId) || null;
+    const updatedMarketSnapshotRow = fxTradeMarketSnapshotAfterCommentUpdate.body?.rows
+      ?.find(row => row.trade_id === createdTradeId) || null;
+    const createdHedgeExposureRow = fxTradeExposureAfterHedgeCreate.body?.rows
+      ?.find(row => row.trade_id === createdHedgeTradeId) || null;
+    const createdHedgeDealRow = fxHedgeDealsAfterCreate.body?.rows
+      ?.find(row => row.trade_id === createdHedgeTradeId) || null;
+    const createdHedgeMarketSnapshotRow = fxTradeMarketSnapshotAfterHedgeCreate.body?.rows
+      ?.find(row => row.trade_id === createdHedgeTradeId) || null;
+    const deleteHedgeFxDeal = await request(
+      "DELETE",
+      `/api/v1/hedge-fx-deals/${createdHedgeTradeId}`
+    );
+    const hedgeFxDealsAfterDelete = await request("GET", "/api/v1/hedge-fx-deals");
+    const fxTradeExposureAfterHedgeDelete = await request("GET", "/api/database/tables/fx_trade_exposure");
+    const fxHedgeDealsAfterDelete = await request("GET", "/api/database/tables/fx_hedge_deals");
+    const fxTradeMarketSnapshotAfterHedgeDelete = await request(
+      "GET",
+      "/api/database/tables/fx_trade_market_snapshot"
+    );
 
     return {
       migratedPair: migratedPair.body?.[0] || null,
@@ -1164,7 +2455,11 @@ async function verifyApiAndMigration() {
       executionSystemConstraintMigrated: executionSystemsTable.body?.createSql?.includes("length('DEALER_APPROVED')"),
       tradingPartyConstraintsMigrated: tradingPartiesTable.body?.createSql?.includes("length(party_code) <= 20")
         && tradingPartiesTable.body?.createSql?.includes("length(party_name) BETWEEN 1 AND 200")
-        && tradingPartiesTable.body?.createSql?.includes("is_active IN (0, 1)"),
+        && tradingPartiesTable.body?.createSql?.includes("is_active IN (0, 1)")
+        && tradingPartiesTable.body?.createSql?.includes("'HEDGE_COUNTERPARTY'")
+        && tradingPartiesTable.body?.createSql?.includes("'FRONT_SYSTEM_FOLDER_ID'")
+        && !tradingPartiesTable.body?.createSql?.includes("'EXTERNAL_COUNTERPARTY'")
+        && !tradingPartiesTable.body?.createSql?.includes("'INTERNAL_DESK'"),
       pairColumns: pairTable.body?.columns?.map(column => column.name) || [],
       pairForeignKeys: pairTable.body?.foreignKeys?.length ?? -1,
       settingsForeignKeys: settingsTable.body?.foreignKeys || [],
@@ -1204,29 +2499,176 @@ async function verifyApiAndMigration() {
       pricingRuleExecutionContextIdType: pricingRulesTable.body?.columns
         ?.find(column => column.name === "execution_context_id")?.type,
       pricingRuleForeignKeys: pricingRulesTable.body?.foreignKeys || [],
+      clientDealGenerationSettingsColumns: clientDealGenerationSettingsTable.body?.columns
+        ?.map(column => column.name) || [],
+      clientDealGenerationSettingsForeignKeys: clientDealGenerationSettingsTable.body?.foreignKeys || [],
+      clientDealGenerationSettings: {
+        count: clientDealGenerationSettingsTable.body?.rowCount ?? -1,
+        allClientRules: clientDealGenerationSettingsTable.body?.rows?.every(row =>
+          tradingParties.body?.find(party =>
+            party.partyId === pricingRules.body?.find(rule =>
+              rule.pricingRuleId === row.pricing_rule_id
+            )?.partyId
+          )?.partyType === "CLIENT"
+        ) === true,
+        allAutoPricedRules: clientDealGenerationSettingsTable.body?.rows?.every(row =>
+          pricingRules.body?.find(rule =>
+            rule.pricingRuleId === row.pricing_rule_id
+          )?.pricingMode === "AUTO_PRICED"
+        ) === true
+      },
+      fxTradeExposureColumns: fxTradeExposureTable.body?.columns?.map(column => column.name) || [],
+      fxTradeExposureForeignKeys: fxTradeExposureTable.body?.foreignKeys || [],
+      fxTradeExposures: {
+        count: fxTradeExposureTable.body?.rowCount ?? -1,
+        migratedRow: migratedExposureRow
+      },
+      fxTradeMarketSnapshotColumns: fxTradeMarketSnapshotTable.body?.columns?.map(column => column.name) || [],
+      fxTradeMarketSnapshotForeignKeys: fxTradeMarketSnapshotTable.body?.foreignKeys || [],
+      fxTradeMarketSnapshots: {
+        count: fxTradeMarketSnapshotTable.body?.rowCount ?? -1
+      },
       clientFxDealColumns: clientFxDealsTable.body?.columns?.map(column => column.name) || [],
       clientFxDealForeignKeys: clientFxDealsTable.body?.foreignKeys || [],
+      hedgeFxDealColumns: hedgeFxDealsTable.body?.columns?.map(column => column.name) || [],
+      hedgeFxDealForeignKeys: hedgeFxDealsTable.body?.foreignKeys || [],
+      hedgeFxDeals: {
+        status: hedgeFxDeals.statusCode,
+        count: hedgeFxDeals.body?.length ?? -1,
+        eligiblePricingRulesStatus: hedgeDealPricingRules.statusCode,
+        eligiblePricingRulesCount: hedgeDealPricingRules.body?.length ?? -1,
+        allHedgeCounterpartyRules: hedgeDealPricingRules.body?.every(rule =>
+          rule.partyType === "HEDGE_COUNTERPARTY"
+          && rule.pricingMode === "DEALER_PRICED"
+        ) === true,
+        createdStatus: createHedgeFxDeal.statusCode,
+        createdTradeId: createHedgeFxDeal.body?.tradeId,
+        createdSide: createHedgeFxDeal.body?.side,
+        createdPartyId: createHedgeFxDeal.body?.partyId,
+        expectedPartyId: createHedgeCounterparty.body?.partyId,
+        createdPricingRuleId: createHedgeFxDeal.body?.pricingRuleId,
+        expectedPricingRuleId: createHedgePricingRule.body?.pricingRuleId,
+        createdTransferRate: createHedgeFxDeal.body?.transferRate,
+        createdAnalyticalPnl: createHedgeFxDeal.body?.analyticalPnl,
+        createdMarketPulseStreamStatus: createHedgeFxDeal.body?.marketPulseStreamStatus,
+        invalidClientRuleStatus: invalidHedgeFxDealClientRule.statusCode,
+        countAfterCreate: hedgeFxDealsAfterCreate.body?.length ?? -1,
+        deleteStatus: deleteHedgeFxDeal.statusCode,
+        countAfterDelete: hedgeFxDealsAfterDelete.body?.length ?? -1,
+        deletedFromAllTables:
+          !fxTradeExposureAfterHedgeDelete.body?.rows?.some(row =>
+            row.trade_id === createdHedgeTradeId && row.trade_type === "HEDGE_DEAL"
+          )
+          && !fxHedgeDealsAfterDelete.body?.rows?.some(row =>
+            row.trade_id === createdHedgeTradeId && row.trade_type === "HEDGE_DEAL"
+          )
+          && !fxTradeMarketSnapshotAfterHedgeDelete.body?.rows?.some(row =>
+            row.trade_id === createdHedgeTradeId && row.trade_type === "HEDGE_DEAL"
+          ),
+        createdRowsShareId: createdHedgeExposureRow?.trade_id === createdHedgeTradeId
+          && createdHedgeExposureRow?.trade_type === "HEDGE_DEAL"
+          && createdHedgeExposureRow?.ccy_pair_code === "EUR_USD"
+          && createdHedgeExposureRow?.side === "BUY"
+          && createdHedgeExposureRow?.base_ccy_amount === 2500000
+          && createdHedgeExposureRow?.quote_ccy_amount === 2808500
+          && createdHedgeDealRow?.trade_id === createdHedgeTradeId
+          && createdHedgeDealRow?.trade_type === "HEDGE_DEAL"
+          && createdHedgeDealRow?.party_id === createHedgeCounterparty.body?.partyId
+          && createdHedgeDealRow?.pricing_rule_id === createHedgePricingRule.body?.pricingRuleId
+          && createdHedgeDealRow?.transfer_rate === createHedgeFxDeal.body?.transferRate
+          && createdHedgeMarketSnapshotRow?.trade_id === createdHedgeTradeId
+          && createdHedgeMarketSnapshotRow?.trade_type === "HEDGE_DEAL"
+      },
+      clientDealPricingRules: {
+        status: clientDealPricingRules.statusCode,
+        count: clientDealPricingRules.body?.length ?? -1,
+        allDealerPriced: clientDealPricingRules.body?.every(rule => rule.pricingMode === "DEALER_PRICED") === true
+      },
       clientFxDeals: {
         count: clientFxDeals.body?.length ?? -1,
         first: clientFxDeals.body?.[0] || null,
         createdId: createClientFxDeal.body?.clientDealId,
+        createdTradeId: createClientFxDeal.body?.tradeId,
         createdSide: createClientFxDeal.body?.side,
-        updatedBaseAmount: updateClientFxDeal.body?.baseCcyAmount,
+        createdExecutionContextId: createClientFxDeal.body?.executionContextId,
+        createdPricingRuleId: createClientFxDeal.body?.pricingRuleId,
+        expectedExecutionContextId: clientDealExecutionContextId,
+        expectedPricingRuleId: clientDealPricingRuleId,
+        createdTransferRate: createClientFxDeal.body?.transferRate,
+        createdAnalyticalPnl: createClientFxDeal.body?.analyticalPnl,
+        createdMarketPulseStreamStatus: createClientFxDeal.body?.marketPulseStreamStatus,
+        createdMarketPulseBid: createClientFxDeal.body?.marketPulseBid,
+        createdMarketPulseOffer: createClientFxDeal.body?.marketPulseOffer,
+        createdMarketPulseTimestamp: createClientFxDeal.body?.marketPulseTimestamp,
+        createdComment: createClientFxDeal.body?.comment,
+        immutableUpdateStatus: immutableClientFxDealUpdate.statusCode,
+        immutableUpdateCode: immutableClientFxDealUpdate.body?.code,
+        updatedComment: updateClientFxDealComment.body?.comment,
+        invalidCommentStatus: invalidClientFxDealComment.statusCode,
         countAfterDelete: clientFxDealsAfterDelete.body?.length ?? -1,
+        migratedRow: migratedClientRow,
+        rollbackStatus: rollbackClientFxDeal?.statusCode,
+        rollbackPreservedCounts: rollbackCountsBefore.exposures === rollbackCountsAfter.exposures
+          && rollbackCountsBefore.clientDeals === rollbackCountsAfter.clientDeals
+          && rollbackCountsBefore.marketSnapshots === rollbackCountsAfter.marketSnapshots,
+        createdRowsShareId: createdExposureRow?.trade_id === createdTradeId
+          && createdClientRow?.trade_id === createdTradeId
+          && createdClientRow?.trade_type === "CLIENT_DEAL"
+          && createdClientRow?.execution_context_id === clientDealExecutionContextId
+          && createdClientRow?.pricing_rule_id === clientDealPricingRuleId
+          && createdClientRow?.transfer_rate === 1.124
+          && createdClientRow?.analytical_pnl === 1800
+          && createdClientRow?.comment === "Initial verification comment"
+          && createdMarketSnapshotRow?.trade_id === createdTradeId
+          && createdMarketSnapshotRow?.trade_type === "CLIENT_DEAL"
+          && createdMarketSnapshotRow?.market_pulse_stream_status === "RUNNING"
+          && createdMarketSnapshotRow?.market_pulse_bid === 1.1228
+          && createdMarketSnapshotRow?.market_pulse_offer === 1.123
+          && createdMarketSnapshotRow?.market_pulse_timestamp === "2026-07-16T10:15:29.000Z",
+        commentUpdatePreservesTrade: updatedExposureRow?.base_ccy_amount === 2000000
+          && updatedExposureRow?.quote_ccy_amount === 2246200
+          && updatedExposureRow?.trade_rate === 1.1231
+          && updatedClientRow?.trade_id === createdTradeId
+          && updatedClientRow?.party_id === 1
+          && updatedClientRow?.execution_context_id === clientDealExecutionContextId
+          && updatedClientRow?.pricing_rule_id === clientDealPricingRuleId
+          && updatedClientRow?.transfer_rate === 1.124
+          && updatedClientRow?.analytical_pnl === 1800
+          && updatedClientRow?.comment === "Reviewed verification comment"
+          && updatedMarketSnapshotRow?.market_pulse_stream_status === "RUNNING"
+          && updatedMarketSnapshotRow?.market_pulse_bid === 1.1228
+          && updatedMarketSnapshotRow?.market_pulse_offer === 1.123
+          && updatedMarketSnapshotRow?.market_pulse_timestamp === "2026-07-16T10:15:29.000Z",
+        deletedFromBothTables: !fxTradeExposureAfterDelete.body?.rows
+          ?.some(row => row.trade_id === createdTradeId)
+          && !clientFxDealsTableAfterDelete.body?.rows
+            ?.some(row => row.trade_id === createdTradeId)
+          && !fxTradeMarketSnapshotAfterDelete.body?.rows
+            ?.some(row => row.trade_id === createdTradeId),
+        foreignKeyViolations,
+        nonDealerPricingRuleStatus: invalidClientFxDealPricingMode.statusCode,
+        nonDealerPricingRuleMessage: invalidClientFxDealPricingMode.body?.message,
         lifecycle: [
           createClientFxDeal.statusCode,
-          updateClientFxDeal.statusCode,
+          immutableClientFxDealUpdate.statusCode,
+          updateClientFxDealComment.statusCode,
+          invalidClientFxDealComment.statusCode,
           invalidClientFxDealSide.statusCode,
           invalidClientFxDealParty.statusCode,
+          invalidClientFxDealTransferRate.statusCode,
+          invalidClientFxDealPricingScope.statusCode,
+          invalidClientFxDealPricingMode.statusCode,
           deleteClientFxDeal.statusCode
         ]
       },
       pricingRules: {
         count: pricingRules.body?.length ?? -1,
+        migratedPartyTypes: [...new Set((pricingRules.body || []).map(rule => rule.partyType))].sort(),
         migratedIdsPreserved: pricingRules.body?.map(rule => rule.pricingRuleId).sort((left, right) => left - right).join(",") === "1,2,3,4,5",
         migratedContextIdsAreIntegers: pricingRules.body?.every(rule => Number.isInteger(rule.executionContextId)),
         createdId: createPricingRule.body?.pricingRuleId,
         createdPartyId: createPricingRule.body?.partyId,
+        createdPartyType: createPricingRule.body?.partyType,
         createdPairCode: createPricingRule.body?.ccyPairCode,
         createdCurrencyPair: createPricingRule.body?.currencyPair,
         updatedId: updatePricingRule.body?.pricingRuleId,
@@ -1245,6 +2687,11 @@ async function verifyApiAndMigration() {
       },
       tradingParties: {
         count: tradingParties.body?.length ?? -1,
+        migratedTypes: [...new Set((tradingParties.body || []).map(party => party.partyType))].sort(),
+        legacyExternalType: tradingParties.body
+          ?.find(party => party.partyCode === "LEGACY_EXTERNAL")?.partyType,
+        legacyInternalType: tradingParties.body
+          ?.find(party => party.partyCode === "LEGACY_INTERNAL")?.partyType,
         createdId: createTradingParty.body?.partyId,
         createdType: createTradingParty.body?.partyType,
         createdCodeType: createTradingParty.body?.partyCodeType,
@@ -1256,11 +2703,60 @@ async function verifyApiAndMigration() {
           createTradingParty.statusCode,
           updateTradingParty.statusCode,
           duplicateTradingParty.statusCode,
+          invalidLegacyExternalPartyType.statusCode,
+          invalidLegacyInternalPartyType.statusCode,
           invalidTradingPartyCodeType.statusCode,
           invalidTradingPartyCodeLength.statusCode,
           invalidTradingPartyNameLength.statusCode,
           deleteTradingParty.statusCode
         ]
+      },
+      clientDealGeneration: {
+        settingsStatus: generationSettingsBefore.statusCode,
+        settingsCount: generationSettingsBefore.body?.length ?? -1,
+        allClientRules: generationSettingsBefore.body
+          ?.every(settings => settings.partyType === "CLIENT") === true,
+        allAutoPricedRules: generationSettingsBefore.body
+          ?.every(settings => settings.pricingMode === "AUTO_PRICED") === true,
+        configuredActiveCount: generationSettingsConfigured.body
+          ?.filter(settings => settings.active).length ?? -1,
+        invalidSettingsStatus: invalidGenerationSettings.statusCode,
+        generatedStatus: generatedClientFxDeal.statusCode,
+        generatedTradeId: generatedClientFxDeal.body?.tradeId,
+        generatedPricingRuleId: generatedClientFxDeal.body?.pricingRuleId,
+        expectedPricingRuleId: generationRule?.pricingRuleId,
+        generatedSide: generatedClientFxDeal.body?.side,
+        generatedBaseCcyAmount: generatedClientFxDeal.body?.baseCcyAmount,
+        generatedTenor: generatedClientFxDeal.body?.tenor,
+        generatedMarketPulseStatus: generatedClientFxDeal.body?.marketPulseStreamStatus,
+        generatedMarketPulseBid: generatedClientFxDeal.body?.marketPulseBid,
+        generatedMarketPulseOffer: generatedClientFxDeal.body?.marketPulseOffer,
+        deletedGeneratedStatus: deleteGeneratedClientFxDeal.statusCode,
+        processStartStatus: startClientDealGenerationProcess.statusCode,
+        processStartedRunning: startClientDealGenerationProcess.body?.running,
+        processIntervalMs: startClientDealGenerationProcess.body?.intervalMs,
+        processGeneratedCount: startClientDealGenerationProcess.body?.generatedDealCount,
+        processStatus: clientDealGenerationProcessStatus.statusCode,
+        processStatusRunning: clientDealGenerationProcessStatus.body?.running,
+        processStopStatus: stopClientDealGenerationProcess.statusCode,
+        processStoppedRunning: stopClientDealGenerationProcess.body?.running,
+        deletedProcessGeneratedStatus: deleteProcessGeneratedClientFxDeal.statusCode,
+        rejectedProcessStartStatus: rejectedClientDealGenerationProcessStart.statusCode,
+        rejectedProcessStartCode: rejectedClientDealGenerationProcessStart.body?.code,
+        remainsStoppedWithoutEligibleRules:
+          stoppedClientDealGenerationProcessStatus.body?.running === false,
+        settingsRestored: generationSettingsRestored.body?.every(restored => {
+          const original = generationSettingsBefore.body?.find(settings =>
+            settings.pricingRuleId === restored.pricingRuleId
+          );
+
+          return Boolean(original)
+            && restored.minBaseCcyAmount === original.minBaseCcyAmount
+            && restored.maxBaseCcyAmount === original.maxBaseCcyAmount
+            && restored.baseCcyAmountStep === original.baseCcyAmountStep
+            && restored.buyProbabilityPercent === original.buyProbabilityPercent
+            && restored.active === original.active;
+        }) === true
       },
       simulationControl: {
         status: simulationStatus.statusCode,
@@ -1317,10 +2813,13 @@ async function main() {
       "accounting_systems",
       "ccy_options",
       "ccy_pair_options",
+      "client_deal_generation_settings",
       "client_fx_deals",
       "execution_contexts",
       "execution_systems",
+      "fx_hedge_deals",
       "fx_trade_exposure",
+      "fx_trade_market_snapshot",
       "market_quote_simulation_settings",
       "pricing_rules",
       "servicing_locations",
@@ -1335,14 +2834,69 @@ async function main() {
       || freshSchema.executionSystems !== 3
       || freshSchema.executionContexts !== 5
       || freshSchema.executionContextIdType !== "INTEGER"
-      || freshSchema.tradingParties !== 3
-      || freshSchema.pricingRules !== 5
-      || freshSchema.fxTradeExposures !== 4
+      || freshSchema.tradingParties !== 4
+      || freshSchema.tradingPartyTypes.join(",") !== "CLIENT,HEDGE_COUNTERPARTY"
+      || freshSchema.pricingRules !== 6
+      || freshSchema.clientDealGenerationSettings !== 2
+      || freshSchema.clientDealGenerationSettingsColumns.join(",") !== "pricing_rule_id,min_base_ccy_amount,max_base_ccy_amount,base_ccy_amount_step,buy_probability_percent,is_active"
+      || freshSchema.clientDealGenerationSettingsForeignKeys.length !== 1
+      || freshSchema.clientDealGenerationSettingsForeignKeys[0]?.table !== "pricing_rules"
+      || freshSchema.clientDealGenerationSettingsForeignKeys[0]?.on_update !== "RESTRICT"
+      || freshSchema.clientDealGenerationSettingsForeignKeys[0]?.on_delete !== "CASCADE"
+      || !freshSchema.clientDealGenerationSettingsRows.every(row =>
+        row.party_type === "CLIENT"
+        && row.pricing_mode === "AUTO_PRICED"
+        && row.min_base_ccy_amount === 500000
+        && row.max_base_ccy_amount === 1500000
+        && row.base_ccy_amount_step === 100000
+        && row.buy_probability_percent === 50
+        && row.is_active === 1
+      )
+      || freshSchema.fxTradeExposures !== 6
       || freshSchema.fxTradeExposureColumns.join(",") !== "trade_id,entry_timestamp,trade_type,trade_date,ccy_pair_code,side,base_ccy_amount,quote_ccy_amount,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
       || freshSchema.fxTradeExposureForeignKeys.length !== 1
+      || !freshSchema.fxTradeExposureIdentityIndex
+      || freshSchema.fxTradeExposureIdentityIndexColumns.join(",") !== "trade_id,trade_type"
+      || freshSchema.fxTradeMarketSnapshots !== 2
+      || freshSchema.fxTradeMarketSnapshotColumns.join(",") !== "trade_id,trade_type,market_pulse_stream_status,market_pulse_bid,market_pulse_offer,market_pulse_timestamp"
+      || freshSchema.fxTradeMarketSnapshotForeignKeys.length !== 2
+      || !freshSchema.fxTradeMarketSnapshotForeignKeys.every(foreignKey =>
+        foreignKey.on_update === "RESTRICT" && foreignKey.on_delete === "RESTRICT"
+      )
+      || !freshSchema.fxTradeMarketSnapshotForeignKeys.every(foreignKey =>
+        foreignKey.table === "fx_trade_exposure"
+      )
+      || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_bid !== 1.122
+      || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_offer !== 1.1222
+      || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_stream_status !== "RUNNING"
+      || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_timestamp !== "2026-07-15T09:30:00.000Z"
       || freshSchema.clientFxDeals !== 1
-      || freshSchema.clientFxDealColumns.join(",") !== "client_deal_id,entry_timestamp,party_id,trade_date,ccy_pair_code,side,base_ccy_amount,quote_ccy_amount,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
-      || freshSchema.clientFxDealForeignKeys.length !== 2
+      || freshSchema.clientFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl,comment"
+      || freshSchema.clientFxDealForeignKeys.length !== 7
+      || !freshSchema.clientFxDealForeignKeys.every(foreignKey =>
+        foreignKey.on_update === "RESTRICT" && foreignKey.on_delete === "RESTRICT"
+      )
+      || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
+        freshSchema.clientFxDealForeignKeys.some(foreignKey => foreignKey.table === referencedTable)
+      )
+      || freshSchema.clientFxDealSeedRow?.execution_context_id !== 3
+      || freshSchema.clientFxDealSeedRow?.pricing_rule_id !== 3
+      || freshSchema.clientFxDealSeedRow?.transfer_rate !== 1.1222
+      || freshSchema.clientFxDealSeedRow?.analytical_pnl !== 27000
+      || freshSchema.hedgeFxDeals !== 1
+      || freshSchema.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl"
+      || freshSchema.hedgeFxDealForeignKeys.length !== 7
+      || !freshSchema.hedgeFxDealForeignKeys.every(foreignKey =>
+        foreignKey.on_update === "RESTRICT" && foreignKey.on_delete === "RESTRICT"
+      )
+      || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
+        freshSchema.hedgeFxDealForeignKeys.some(foreignKey => foreignKey.table === referencedTable)
+      )
+      || freshSchema.hedgeFxDealSeedRow?.trade_type !== "HEDGE_DEAL"
+      || freshSchema.hedgeFxDealSeedRow?.transfer_rate !== 1.1222
+      || freshSchema.hedgeFxDealSeedRow?.analytical_pnl !== 0
+      || !freshSchema.pricingRuleReferenceIndex
+      || freshSchema.pricingRuleReferenceIndexColumns.join(",") !== "pricing_rule_id,party_id,execution_context_id"
       || freshSchema.pricingRuleExecutionContextIdType !== "INTEGER"
       || !freshSchema.ccyOptionsConstraintsEnforced
       || !freshSchema.ccyPairOptionsConstraintsEnforced
@@ -1350,9 +2904,19 @@ async function main() {
       || !freshSchema.accountingSystemTextLimitsEnforced
       || !freshSchema.executionSystemConstraintsEnforced
       || !freshSchema.tradingPartyConstraintsEnforced
+      || !freshSchema.frontSystemFolderIdCodeTypeSupported
+      || !freshSchema.clientDealGenerationSettingsConstraintsEnforced
+      || !freshSchema.clientDealGenerationSettingsPartyTypeEnforced
+      || !freshSchema.clientDealGenerationSettingsPricingModeEnforced
+      || !freshSchema.clientDealGenerationSettingsCascadeDeleteEnforced
       || !freshSchema.fxTradeExposureConstraintsEnforced
       || !freshSchema.clientFxDealConstraintsEnforced
+      || !freshSchema.clientFxDealParentRestrictionEnforced
+      || !freshSchema.clientFxDealAttributionReferencesRestricted
       || !freshSchema.clientFxDealPartyTypeEnforced
+      || !freshSchema.hedgeFxDealConstraintsEnforced
+      || !freshSchema.hedgeFxDealParentRestrictionEnforced
+      || !freshSchema.hedgeFxDealPartyTypeEnforced
       || freshSchema.legacyAssignmentTablePresent
       || freshSchema.foreignKeyViolations !== 0
       || frontend.duplicateIds.length > 0
@@ -1360,13 +2924,48 @@ async function main() {
       || !frontend.usesSimulationSettingsEndpoint
       || !frontend.usesBackendSimulationStream
       || !frontend.usesServicingLocationsEndpoint
+      || !frontend.usesHedgeFxDealsEndpoint
+      || !frontend.usesDedicatedAddHedgeDealFlow
+      || !frontend.usesHedgeCounterpartyPricingRules
+      || !frontend.usesDatabaseBackedFxPositions
+      || !frontend.usesDatabaseBackedFxPositionDelete
+      || !frontend.usesDatabaseBackedClientDealGeneration
+      || !frontend.removesBrowserClientDealGeneration
+      || !frontend.usesStaticDisabledBatchToolbar
+      || !frontend.usesBootstrapFxPositionWorkspace
+      || !frontend.usesBootstrapDealGenerationSettings
+      || !frontend.showsAutoPricedClientDealGenerationMode
+      || !frontend.usesNeutralMarketPulseNavigationIcon
+      || !frontend.usesGroupedPricingNavigation
+      || !frontend.usesGroupedTradesNavigation
+      || !frontend.usesGroupedPricingWorkspace
+      || !frontend.usesGroupedTradesWorkspace
+      || !frontend.usesImmutableClientFxDealEdit
+      || !frontend.usesHedgeFxDealsTabulator
       || !frontend.usesAccountingSystemsEndpoint
       || !frontend.usesExecutionSystemsEndpoint
       || !frontend.usesExecutionContextsEndpoint
       || !frontend.usesTradingPartiesEndpoint
       || !frontend.usesPricingRulesEndpoint
       || !frontend.usesPricingRulesBootstrap
+      || !frontend.displaysPricingRulePartyType
+      || !frontend.usesDealerPricedClientDealRules
       || !frontend.usesClientFxDealsEndpoint
+      || !frontend.persistsClientFxDealAttribution
+      || !frontend.usesDedicatedAddClientDealFlow
+      || !frontend.usesContextRichPricingRulePicker
+      || !frontend.usesPricingRuleDropdown
+      || !frontend.autoSelectsSinglePricingRule
+      || !frontend.keepsPricingRuleMarginVisible
+      || !frontend.usesCompactCurrencyPairBeforeClient
+      || !frontend.usesWrappingClientPicker
+      || !frontend.usesBootstrapClientDealDialog
+      || !frontend.usesStructuredTradeEconomicsLayout
+      || !frontend.usesNegativeClientDealPnlConfirmation
+      || !frontend.usesBaseCurrencyClientDealSideLabels
+      || !frontend.usesInlineFixedAmountCurrencySelection
+      || !frontend.usesCollapsibleAdditionalAttributes
+      || !frontend.usesClientDealDuplicateCheck
       || !frontend.usesTradingPartiesLanguage
       || !frontend.usesTradingPartyBadgeIcon
       || !frontend.usesTradingPartyColumnFilters
@@ -1389,7 +2988,9 @@ async function main() {
       || !frontend.supportsRequiredPartyTypes
       || !frontend.supportsRequiredPartyCodeTypes
       || !frontend.usesExplicitTooltipLayer
-      || frontend.explicitTooltipCount !== 2
+      || frontend.explicitTooltipCount < 1
+      || !frontend.usesExplicitTradeIdCopy
+      || !frontend.usesLocalTradeIdCopyFeedback
       || !frontend.usesServicingLocationConstraints
       || !frontend.usesServicingLocationIdSort
       || !frontend.usesAccountingSystemTextLimits
@@ -1425,6 +3026,13 @@ async function main() {
       || !frontend.usesClientFxDealsDataTools
       || !frontend.usesClientFxDealsVerticalGridlines
       || !frontend.usesClientFxDealsFixedHeaders
+      || !frontend.removesLegacyFxPositionBlotter
+      || !frontend.usesFxPositionExposureDates
+      || !frontend.usesFxPositionTradeAttributes
+      || !frontend.usesFxPositionTradeTypeIndicators
+      || !frontend.supportsLargeFxPositionAmounts
+      || !frontend.usesFxPositionMarketPulseBrand
+      || !frontend.usesFxPositionHedgeDealTerminology
       || !frontend.usesCentralTabulatorColumnSizing
       || !frontend.usesUnifiedBootstrapWorkspaceStyle
       || !frontend.usesMarketVerticalGridlines
@@ -1490,42 +3098,164 @@ async function main() {
       || !["trading_parties", "execution_contexts", "ccy_pair_options"].every(referencedTable =>
         apiAndMigration.pricingRuleForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
-      || apiAndMigration.clientFxDealColumns.join(",") !== "client_deal_id,entry_timestamp,party_id,trade_date,ccy_pair_code,side,base_ccy_amount,quote_ccy_amount,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
-      || apiAndMigration.clientFxDealForeignKeys.length !== 2
+      || apiAndMigration.clientDealGenerationSettingsColumns.join(",") !== "pricing_rule_id,min_base_ccy_amount,max_base_ccy_amount,base_ccy_amount_step,buy_probability_percent,is_active"
+      || apiAndMigration.clientDealGenerationSettingsForeignKeys.length !== 1
+      || apiAndMigration.clientDealGenerationSettingsForeignKeys[0]?.referencedTable !== "pricing_rules"
+      || apiAndMigration.clientDealGenerationSettingsForeignKeys[0]?.onUpdate !== "RESTRICT"
+      || apiAndMigration.clientDealGenerationSettingsForeignKeys[0]?.onDelete !== "CASCADE"
+      || apiAndMigration.clientDealGenerationSettings.count !== 2
+      || !apiAndMigration.clientDealGenerationSettings.allClientRules
+      || !apiAndMigration.clientDealGenerationSettings.allAutoPricedRules
+      || apiAndMigration.clientDealGeneration.settingsStatus !== 200
+      || apiAndMigration.clientDealGeneration.settingsCount !== 2
+      || !apiAndMigration.clientDealGeneration.allClientRules
+      || !apiAndMigration.clientDealGeneration.allAutoPricedRules
+      || apiAndMigration.clientDealGeneration.configuredActiveCount !== 1
+      || apiAndMigration.clientDealGeneration.invalidSettingsStatus !== 400
+      || apiAndMigration.clientDealGeneration.generatedStatus !== 201
+      || !Number.isInteger(apiAndMigration.clientDealGeneration.generatedTradeId)
+      || apiAndMigration.clientDealGeneration.generatedPricingRuleId
+        !== apiAndMigration.clientDealGeneration.expectedPricingRuleId
+      || apiAndMigration.clientDealGeneration.generatedSide !== "BUY"
+      || apiAndMigration.clientDealGeneration.generatedBaseCcyAmount !== 700000
+      || apiAndMigration.clientDealGeneration.generatedTenor !== "TOD"
+      || apiAndMigration.clientDealGeneration.generatedMarketPulseStatus !== "STOPPED"
+      || !Number.isFinite(apiAndMigration.clientDealGeneration.generatedMarketPulseBid)
+      || !Number.isFinite(apiAndMigration.clientDealGeneration.generatedMarketPulseOffer)
+      || apiAndMigration.clientDealGeneration.deletedGeneratedStatus !== 204
+      || apiAndMigration.clientDealGeneration.processStartStatus !== 200
+      || !apiAndMigration.clientDealGeneration.processStartedRunning
+      || apiAndMigration.clientDealGeneration.processIntervalMs !== 1000
+      || apiAndMigration.clientDealGeneration.processGeneratedCount !== 1
+      || apiAndMigration.clientDealGeneration.processStatus !== 200
+      || !apiAndMigration.clientDealGeneration.processStatusRunning
+      || apiAndMigration.clientDealGeneration.processStopStatus !== 200
+      || apiAndMigration.clientDealGeneration.processStoppedRunning
+      || apiAndMigration.clientDealGeneration.deletedProcessGeneratedStatus !== 204
+      || apiAndMigration.clientDealGeneration.rejectedProcessStartStatus !== 409
+      || apiAndMigration.clientDealGeneration.rejectedProcessStartCode
+        !== "CLIENT_DEAL_GENERATION_NOT_CONFIGURED"
+      || !apiAndMigration.clientDealGeneration.remainsStoppedWithoutEligibleRules
+      || !apiAndMigration.clientDealGeneration.settingsRestored
+      || apiAndMigration.fxTradeExposureColumns.join(",") !== "trade_id,entry_timestamp,trade_type,trade_date,ccy_pair_code,side,base_ccy_amount,quote_ccy_amount,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
+      || apiAndMigration.fxTradeExposureForeignKeys.length !== 1
+      || apiAndMigration.fxTradeExposures.count !== 1
+      || apiAndMigration.fxTradeExposures.migratedRow?.trade_id !== 41
+      || apiAndMigration.fxTradeExposures.migratedRow?.trade_type !== "CLIENT_DEAL"
+      || apiAndMigration.fxTradeExposures.migratedRow?.base_ccy_amount !== 1500000
+      || apiAndMigration.fxTradeExposures.migratedRow?.tenor !== "TOM"
+      || apiAndMigration.fxTradeMarketSnapshotColumns.join(",") !== "trade_id,trade_type,market_pulse_stream_status,market_pulse_bid,market_pulse_offer,market_pulse_timestamp"
+      || apiAndMigration.fxTradeMarketSnapshotForeignKeys.length !== 2
+      || !apiAndMigration.fxTradeMarketSnapshotForeignKeys.every(foreignKey =>
+        foreignKey.onUpdate === "RESTRICT"
+        && foreignKey.onDelete === "RESTRICT"
+        && foreignKey.referencedTable === "fx_trade_exposure"
+      )
+      || apiAndMigration.fxTradeMarketSnapshots.count !== 0
+      || apiAndMigration.clientFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl,comment"
+      || apiAndMigration.clientFxDealForeignKeys.length !== 7
       || !apiAndMigration.clientFxDealForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
-      || !["trading_parties", "ccy_pair_options"].every(referencedTable =>
+      || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
         apiAndMigration.clientFxDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
+      || apiAndMigration.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl"
+      || apiAndMigration.hedgeFxDealForeignKeys.length !== 7
+      || !apiAndMigration.hedgeFxDealForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
+      || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
+        apiAndMigration.hedgeFxDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
+      )
+      || apiAndMigration.hedgeFxDeals.status !== 200
+      || apiAndMigration.hedgeFxDeals.count !== 0
+      || apiAndMigration.hedgeFxDeals.eligiblePricingRulesStatus !== 200
+      || apiAndMigration.hedgeFxDeals.eligiblePricingRulesCount !== 1
+      || !apiAndMigration.hedgeFxDeals.allHedgeCounterpartyRules
+      || apiAndMigration.hedgeFxDeals.createdStatus !== 201
+      || !Number.isInteger(apiAndMigration.hedgeFxDeals.createdTradeId)
+      || apiAndMigration.hedgeFxDeals.createdSide !== "BUY"
+      || apiAndMigration.hedgeFxDeals.createdPartyId
+        !== apiAndMigration.hedgeFxDeals.expectedPartyId
+      || apiAndMigration.hedgeFxDeals.createdPricingRuleId
+        !== apiAndMigration.hedgeFxDeals.expectedPricingRuleId
+      || !Number.isFinite(apiAndMigration.hedgeFxDeals.createdTransferRate)
+      || !Number.isFinite(apiAndMigration.hedgeFxDeals.createdAnalyticalPnl)
+      || !["RUNNING", "STOPPED"].includes(
+        apiAndMigration.hedgeFxDeals.createdMarketPulseStreamStatus
+      )
+      || apiAndMigration.hedgeFxDeals.invalidClientRuleStatus !== 400
+      || apiAndMigration.hedgeFxDeals.countAfterCreate !== 1
+      || apiAndMigration.hedgeFxDeals.deleteStatus !== 204
+      || apiAndMigration.hedgeFxDeals.countAfterDelete !== 0
+      || !apiAndMigration.hedgeFxDeals.deletedFromAllTables
+      || !apiAndMigration.hedgeFxDeals.createdRowsShareId
+      || apiAndMigration.clientDealPricingRules.status !== 200
+      || apiAndMigration.clientDealPricingRules.count !== 1
+      || !apiAndMigration.clientDealPricingRules.allDealerPriced
       || apiAndMigration.clientFxDeals.count !== 1
+      || apiAndMigration.clientFxDeals.first?.tradeId !== 41
+      || apiAndMigration.clientFxDeals.first?.clientDealId !== 41
       || apiAndMigration.clientFxDeals.first?.clientCode !== "7701234567"
       || apiAndMigration.clientFxDeals.first?.clientName !== "Romashka Company"
       || apiAndMigration.clientFxDeals.first?.currencyPair !== "EUR/USD"
-      || apiAndMigration.clientFxDeals.first?.entryTimestamp !== "2026-07-15T09:30:00.000Z"
+      || apiAndMigration.clientFxDeals.first?.entryTimestamp !== "2026-07-15T11:45:00.000Z"
+      || apiAndMigration.clientFxDeals.migratedRow?.trade_id !== 41
+      || apiAndMigration.clientFxDeals.migratedRow?.trade_type !== "CLIENT_DEAL"
+      || apiAndMigration.clientFxDeals.migratedRow?.party_id !== 1
+      || apiAndMigration.clientFxDeals.migratedRow?.execution_context_id !== null
+      || apiAndMigration.clientFxDeals.migratedRow?.pricing_rule_id !== null
+      || apiAndMigration.clientFxDeals.migratedRow?.transfer_rate !== null
+      || apiAndMigration.clientFxDeals.migratedRow?.analytical_pnl !== null
+      || apiAndMigration.clientFxDeals.migratedRow?.comment !== null
       || !Number.isInteger(apiAndMigration.clientFxDeals.createdId)
+      || apiAndMigration.clientFxDeals.createdTradeId !== apiAndMigration.clientFxDeals.createdId
       || apiAndMigration.clientFxDeals.createdSide !== "SELL"
-      || apiAndMigration.clientFxDeals.updatedBaseAmount !== 2500000
+      || apiAndMigration.clientFxDeals.createdExecutionContextId !== apiAndMigration.clientFxDeals.expectedExecutionContextId
+      || apiAndMigration.clientFxDeals.createdPricingRuleId !== apiAndMigration.clientFxDeals.expectedPricingRuleId
+      || apiAndMigration.clientFxDeals.createdTransferRate !== 1.124
+      || apiAndMigration.clientFxDeals.createdAnalyticalPnl !== 1800
+      || apiAndMigration.clientFxDeals.createdMarketPulseStreamStatus !== "RUNNING"
+      || apiAndMigration.clientFxDeals.createdMarketPulseBid !== 1.1228
+      || apiAndMigration.clientFxDeals.createdMarketPulseOffer !== 1.123
+      || apiAndMigration.clientFxDeals.createdMarketPulseTimestamp !== "2026-07-16T10:15:29.000Z"
+      || apiAndMigration.clientFxDeals.createdComment !== "Initial verification comment"
+      || apiAndMigration.clientFxDeals.immutableUpdateStatus !== 405
+      || apiAndMigration.clientFxDeals.immutableUpdateCode !== "CLIENT_FX_DEAL_IMMUTABLE"
+      || apiAndMigration.clientFxDeals.updatedComment !== "Reviewed verification comment"
+      || apiAndMigration.clientFxDeals.invalidCommentStatus !== 400
       || apiAndMigration.clientFxDeals.countAfterDelete !== 1
-      || apiAndMigration.clientFxDeals.lifecycle.join(",") !== "201,200,400,400,204"
+      || apiAndMigration.clientFxDeals.rollbackStatus !== 500
+      || !apiAndMigration.clientFxDeals.rollbackPreservedCounts
+      || !apiAndMigration.clientFxDeals.createdRowsShareId
+      || !apiAndMigration.clientFxDeals.commentUpdatePreservesTrade
+      || !apiAndMigration.clientFxDeals.deletedFromBothTables
+      || apiAndMigration.clientFxDeals.foreignKeyViolations !== 0
+      || apiAndMigration.clientFxDeals.nonDealerPricingRuleStatus !== 400
+      || !apiAndMigration.clientFxDeals.nonDealerPricingRuleMessage?.includes("DEALER_PRICED")
+      || apiAndMigration.clientFxDeals.lifecycle.join(",") !== "201,405,200,400,400,400,400,400,400,204"
       || apiAndMigration.pricingRules.count !== 5
+      || apiAndMigration.pricingRules.migratedPartyTypes.join(",") !== "CLIENT"
       || !apiAndMigration.pricingRules.migratedIdsPreserved
       || !apiAndMigration.pricingRules.migratedContextIdsAreIntegers
       || !Number.isInteger(apiAndMigration.pricingRules.createdId)
       || apiAndMigration.pricingRules.createdId <= 0
       || apiAndMigration.pricingRules.createdPartyId !== apiAndMigration.tradingParties.createdId
+      || apiAndMigration.pricingRules.createdPartyType !== "HEDGE_COUNTERPARTY"
       || apiAndMigration.pricingRules.createdPairCode !== "EUR_USD"
       || apiAndMigration.pricingRules.createdCurrencyPair !== "EUR/USD"
       || apiAndMigration.pricingRules.updatedId !== apiAndMigration.pricingRules.createdId
       || apiAndMigration.pricingRules.updatedContextId !== apiAndMigration.pricingRules.expectedUpdatedContextId
       || apiAndMigration.pricingRules.updatedMargin !== 0.3
       || apiAndMigration.pricingRules.lifecycle.join(",") !== "201,200,409,400,400,409,204"
-      || apiAndMigration.tradingParties.count !== 3
-      || apiAndMigration.tradingParties.createdType !== "INTERNAL_DESK"
-      || apiAndMigration.tradingParties.createdCodeType !== "OTHER"
-      || apiAndMigration.tradingParties.updatedType !== "EXTERNAL_COUNTERPARTY"
-      || apiAndMigration.tradingParties.updatedCode !== "VERIFY_CP"
+      || apiAndMigration.tradingParties.count !== 5
+      || apiAndMigration.tradingParties.migratedTypes.join(",") !== "CLIENT,HEDGE_COUNTERPARTY"
+      || apiAndMigration.tradingParties.legacyExternalType !== "HEDGE_COUNTERPARTY"
+      || apiAndMigration.tradingParties.legacyInternalType !== "HEDGE_COUNTERPARTY"
+      || apiAndMigration.tradingParties.createdType !== "HEDGE_COUNTERPARTY"
+      || apiAndMigration.tradingParties.createdCodeType !== "FRONT_SYSTEM_FOLDER_ID"
+      || apiAndMigration.tradingParties.updatedType !== "HEDGE_COUNTERPARTY"
+      || apiAndMigration.tradingParties.updatedCode !== "VERIFY_FOLDER"
       || apiAndMigration.tradingParties.updatedActive !== false
-      || apiAndMigration.tradingParties.countAfterDelete !== 3
-      || apiAndMigration.tradingParties.lifecycle.join(",") !== "201,200,409,400,400,400,204"
+      || apiAndMigration.tradingParties.countAfterDelete !== 5
+      || apiAndMigration.tradingParties.lifecycle.join(",") !== "201,200,409,400,400,400,400,400,204"
       || simulationForeignKey?.referencedTable !== "ccy_pair_options"
       || simulationForeignKey?.referencedColumn !== "ccy_pair_code"
       || simulationForeignKey?.onDelete !== "CASCADE"
