@@ -36,7 +36,8 @@ test("Hedge Deal terms derive quote amount, dates and zero-margin economics", ()
     quoteCcyAmount: 1_123_400,
     tradeRate: 1.1234,
     transferRate: 1.1234,
-    analyticalPnl: 0,
+    analyticalPnlQuoteMinor: 0n,
+    analyticalPnlQuoteFractionDigits: 2,
     tenor: "SPOT",
     baseCcyValueDate: "2026-07-28",
     quoteCcyValueDate: "2026-07-28"
@@ -60,5 +61,22 @@ test("Hedge Deal terms use decimal minor-unit rounding for amounts", () => {
   assert.equal(terms.quoteCcyAmount, 1123.06);
   assert.equal(terms.tradeRate, 1.12235);
   assert.equal(terms.transferRate, 1.12235);
-  assert.equal(terms.analyticalPnl, 0);
+  assert.equal(terms.analyticalPnlQuoteMinor, 0n);
+  assert.equal(terms.analyticalPnlQuoteFractionDigits, 2);
+});
+
+test("Hedge Deal terms reject precision below the Base currency minor unit", () => {
+  assert.throws(
+    () => createHedgeFxDealTerms({
+      hedgeSide: "BUY",
+      baseCcyAmount: "1000.001",
+      tradeRate: "1.12235",
+      tenor: "TOD",
+      marginPercent: "0",
+      rateFractionDigits: 5,
+      baseFractionDigits: 2,
+      quoteFractionDigits: 2
+    }),
+    /more than 2 fractional digits/
+  );
 });

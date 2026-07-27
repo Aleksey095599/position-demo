@@ -1,13 +1,13 @@
 "use strict";
 
 const {
-  calculateAnalyticalPnl,
+  calculateAnalyticalPnlMinor,
   calculateTransferRate,
   roundToFractionDigits
 } = require("../client-fx-deal/client-fx-deal-economics");
 const {
   calculateQuoteMinor,
-  majorToMinor,
+  majorToMinorExact,
   minorToMajor
 } = require("../money/money");
 
@@ -86,17 +86,19 @@ function calculateHedgeTransferRate({
 
 function calculateHedgeAnalyticalPnl({
   hedgeSide,
-  baseCcyAmount,
+  baseCcyAmountMinor,
+  baseCcyFractionDigits,
   tradeRate,
   transferRate,
-  pnlFractionDigits = 2
+  quoteCcyFractionDigits = 2
 }) {
-  return calculateAnalyticalPnl({
+  return calculateAnalyticalPnlMinor({
     clientSide: normalizedHedgeSide(hedgeSide),
-    baseCcyAmount,
+    baseCcyAmountMinor,
+    baseCcyFractionDigits,
     tradeRate,
     transferRate,
-    pnlFractionDigits
+    quoteCcyFractionDigits
   });
 }
 
@@ -116,7 +118,7 @@ function createHedgeFxDealTerms({
   const rateDigits = fractionDigits(rateFractionDigits, "Rate Fraction Digits");
   const baseDigits = fractionDigits(baseFractionDigits, "Base Fraction Digits");
   const quoteDigits = fractionDigits(quoteFractionDigits, "Quote Fraction Digits");
-  const baseAmountMinor = majorToMinor(String(baseCcyAmount), baseDigits);
+  const baseAmountMinor = majorToMinorExact(String(baseCcyAmount), baseDigits);
 
   if (baseAmountMinor <= 0n) {
     throw new RangeError("Base Ccy Amount must be positive.");
@@ -135,12 +137,13 @@ function createHedgeFxDealTerms({
     marginPercent,
     rateFractionDigits: rateDigits
   });
-  const analyticalPnl = calculateHedgeAnalyticalPnl({
+  const analyticalPnlQuoteMinor = calculateHedgeAnalyticalPnl({
     hedgeSide: side,
-    baseCcyAmount: normalizedBaseAmount,
+    baseCcyAmountMinor: baseAmountMinor,
+    baseCcyFractionDigits: baseDigits,
     tradeRate,
     transferRate,
-    pnlFractionDigits: quoteDigits
+    quoteCcyFractionDigits: quoteDigits
   });
   const timestamp = now();
 
@@ -161,7 +164,8 @@ function createHedgeFxDealTerms({
     quoteCcyAmount: Number(minorToMajor(quoteAmountMinor, quoteDigits)),
     tradeRate: roundToFractionDigits(String(tradeRate), rateDigits),
     transferRate,
-    analyticalPnl,
+    analyticalPnlQuoteMinor,
+    analyticalPnlQuoteFractionDigits: quoteDigits,
     tenor: normalizedTenor,
     baseCcyValueDate: valueDate,
     quoteCcyValueDate: valueDate

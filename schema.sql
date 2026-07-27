@@ -276,12 +276,13 @@ CREATE TABLE IF NOT EXISTS pricing_rules
 
 CREATE TABLE IF NOT EXISTS client_deal_generation_settings
 (
-    pricing_rule_id         INTEGER PRIMARY KEY,
-    min_base_ccy_amount     NUMERIC NOT NULL,
-    max_base_ccy_amount     NUMERIC NOT NULL,
-    base_ccy_amount_step    NUMERIC NOT NULL,
-    buy_probability_percent INTEGER NOT NULL DEFAULT 50,
-    is_active               INTEGER NOT NULL DEFAULT 1,
+    pricing_rule_id                   INTEGER PRIMARY KEY,
+    min_base_ccy_amount_minor         INTEGER NOT NULL,
+    max_base_ccy_amount_minor         INTEGER NOT NULL,
+    base_ccy_amount_step_minor        INTEGER NOT NULL,
+    base_ccy_fraction_digits          INTEGER NOT NULL,
+    buy_probability_percent           INTEGER NOT NULL DEFAULT 50,
+    is_active                         INTEGER NOT NULL DEFAULT 1,
 
     CONSTRAINT fk_client_deal_generation_settings_pricing_rule
         FOREIGN KEY (pricing_rule_id)
@@ -290,12 +291,17 @@ CREATE TABLE IF NOT EXISTS client_deal_generation_settings
             ON DELETE CASCADE,
     CONSTRAINT chk_client_deal_generation_settings_amounts
         CHECK (
-            typeof(min_base_ccy_amount) IN ('integer', 'real')
-            AND min_base_ccy_amount > 0
-            AND typeof(max_base_ccy_amount) IN ('integer', 'real')
-            AND max_base_ccy_amount >= min_base_ccy_amount
-            AND typeof(base_ccy_amount_step) IN ('integer', 'real')
-            AND base_ccy_amount_step > 0
+            typeof(min_base_ccy_amount_minor) = 'integer'
+            AND min_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+            AND typeof(max_base_ccy_amount_minor) = 'integer'
+            AND max_base_ccy_amount_minor BETWEEN min_base_ccy_amount_minor AND 9007199254740991
+            AND typeof(base_ccy_amount_step_minor) = 'integer'
+            AND base_ccy_amount_step_minor BETWEEN 1 AND 9007199254740991
+        ),
+    CONSTRAINT chk_client_deal_generation_settings_fraction_digits
+        CHECK (
+            typeof(base_ccy_fraction_digits) = 'integer'
+            AND base_ccy_fraction_digits BETWEEN 0 AND 10
         ),
     CONSTRAINT chk_client_deal_generation_settings_buy_probability
         CHECK (
@@ -319,7 +325,7 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
     base_ccy_fraction_digits   INTEGER NOT NULL,
     quote_ccy_amount_minor     INTEGER NOT NULL,
     quote_ccy_fraction_digits  INTEGER NOT NULL,
-    trade_rate                 NUMERIC NOT NULL,
+    trade_rate                 NUMERIC,
     tenor                      TEXT    NOT NULL,
     base_ccy_value_date         TEXT    NOT NULL,
     quote_ccy_value_date        TEXT    NOT NULL,
@@ -346,7 +352,7 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
             (
                 'CLIENT_DEAL',
                 'HEDGE_DEAL',
-                'BATCH_BALANCING_TRADE',
+                'BATCH_BALANCE_TRADE',
                 'BATCH_POSITION_OUT'
             )
         ),
@@ -355,8 +361,6 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
             trade_date GLOB '????-??-??'
             AND strftime('%Y-%m-%d', trade_date) = trade_date
         ),
-    CONSTRAINT chk_fx_trade_exposure_base_ccy_side
-        CHECK (base_ccy_side IN ('BUY', 'SELL')),
     CONSTRAINT chk_fx_trade_exposure_dealt_ccy_code
         CHECK (
             length(dealt_ccy_code) = 3
@@ -365,10 +369,24 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
         ),
     CONSTRAINT chk_fx_trade_exposure_amounts
         CHECK (
-            typeof(base_ccy_amount_minor) = 'integer'
-            AND base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
-            AND typeof(quote_ccy_amount_minor) = 'integer'
-            AND quote_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+            (
+                trade_type = 'BATCH_POSITION_OUT'
+                AND base_ccy_side = 'FLAT'
+                AND typeof(base_ccy_amount_minor) = 'integer'
+                AND base_ccy_amount_minor = 0
+                AND typeof(quote_ccy_amount_minor) = 'integer'
+                AND quote_ccy_amount_minor = 0
+                AND trade_rate IS NULL
+            )
+            OR (
+                base_ccy_side IN ('BUY', 'SELL')
+                AND typeof(base_ccy_amount_minor) = 'integer'
+                AND base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                AND typeof(quote_ccy_amount_minor) = 'integer'
+                AND quote_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                AND typeof(trade_rate) IN ('integer', 'real')
+                AND trade_rate > 0
+            )
         ),
     CONSTRAINT chk_fx_trade_exposure_fraction_digits
         CHECK (
@@ -376,11 +394,6 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
             AND base_ccy_fraction_digits BETWEEN 0 AND 10
             AND typeof(quote_ccy_fraction_digits) = 'integer'
             AND quote_ccy_fraction_digits BETWEEN 0 AND 10
-        ),
-    CONSTRAINT chk_fx_trade_exposure_rate
-        CHECK (
-            typeof(trade_rate) IN ('integer', 'real')
-            AND trade_rate > 0
         ),
     CONSTRAINT chk_fx_trade_exposure_tenor
         CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
@@ -445,7 +458,8 @@ CREATE TABLE IF NOT EXISTS client_fx_deals
     execution_context_id        INTEGER,
     pricing_rule_id             INTEGER,
     transfer_rate               NUMERIC,
-    analytical_pnl              NUMERIC,
+    analytical_pnl_quote_minor  INTEGER,
+    analytical_pnl_quote_fraction_digits INTEGER,
     comment                     TEXT,
 
     CONSTRAINT fk_client_fx_deals_trade
@@ -480,10 +494,19 @@ CREATE TABLE IF NOT EXISTS client_fx_deals
                 AND transfer_rate > 0
             )
         ),
-    CONSTRAINT chk_client_fx_deals_analytical_pnl
+    CONSTRAINT chk_client_fx_deals_analytical_pnl_quote
         CHECK (
-            analytical_pnl IS NULL
-            OR typeof(analytical_pnl) IN ('integer', 'real')
+            (
+                analytical_pnl_quote_minor IS NULL
+                AND analytical_pnl_quote_fraction_digits IS NULL
+            )
+            OR (
+                typeof(analytical_pnl_quote_minor) = 'integer'
+                AND analytical_pnl_quote_minor
+                    BETWEEN -9007199254740991 AND 9007199254740991
+                AND typeof(analytical_pnl_quote_fraction_digits) = 'integer'
+                AND analytical_pnl_quote_fraction_digits BETWEEN 0 AND 10
+            )
         ),
     CONSTRAINT chk_client_fx_deals_comment
         CHECK (
@@ -504,7 +527,8 @@ CREATE TABLE IF NOT EXISTS fx_hedge_deals
     execution_context_id        INTEGER,
     pricing_rule_id             INTEGER,
     transfer_rate               NUMERIC,
-    analytical_pnl              NUMERIC,
+    analytical_pnl_quote_minor  INTEGER,
+    analytical_pnl_quote_fraction_digits INTEGER,
 
     CONSTRAINT fk_fx_hedge_deals_trade
         FOREIGN KEY (trade_id, trade_type)
@@ -538,47 +562,116 @@ CREATE TABLE IF NOT EXISTS fx_hedge_deals
                 AND transfer_rate > 0
             )
         ),
-    CONSTRAINT chk_fx_hedge_deals_analytical_pnl
+    CONSTRAINT chk_fx_hedge_deals_analytical_pnl_quote
         CHECK (
-            analytical_pnl IS NULL
-            OR typeof(analytical_pnl) IN ('integer', 'real')
-    )
+            (
+                analytical_pnl_quote_minor IS NULL
+                AND analytical_pnl_quote_fraction_digits IS NULL
+            )
+            OR (
+                typeof(analytical_pnl_quote_minor) = 'integer'
+                AND analytical_pnl_quote_minor
+                    BETWEEN -9007199254740991 AND 9007199254740991
+                AND typeof(analytical_pnl_quote_fraction_digits) = 'integer'
+                AND analytical_pnl_quote_fraction_digits BETWEEN 0 AND 10
+            )
+        )
 );
 
-CREATE TABLE IF NOT EXISTS batch_balancing_trades
+CREATE TABLE IF NOT EXISTS fx_batches
 (
-    batch_trade_id INTEGER PRIMARY KEY,
-    batch_pair_id  INTEGER NOT NULL,
-    batch_id       INTEGER NOT NULL,
-    trade_type     TEXT    NOT NULL,
-    trade_id       INTEGER NOT NULL,
-    created_at     TEXT    NOT NULL
+    batch_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    idempotency_key TEXT    NOT NULL,
+    ccy_pair_code   TEXT    NOT NULL,
+    batch_status    TEXT    NOT NULL DEFAULT 'BUILDING',
+    created_at      TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-    CONSTRAINT fk_batch_balancing_trades_trade
-        FOREIGN KEY (trade_id, trade_type)
-            REFERENCES fx_trade_exposure (trade_id, trade_type)
+    CONSTRAINT fk_fx_batches_ccy_pair
+        FOREIGN KEY (ccy_pair_code)
+            REFERENCES ccy_pair_options (ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT uq_batch_balancing_trades_trade
-        UNIQUE (trade_id),
-    CONSTRAINT uq_batch_balancing_trades_pair_role
-        UNIQUE (batch_id, batch_pair_id, trade_type),
-    CONSTRAINT chk_batch_balancing_trades_ids
-        CHECK (batch_id > 0 AND batch_pair_id > 0),
-    CONSTRAINT chk_batch_balancing_trades_trade_type
+    CONSTRAINT uq_fx_batches_idempotency_key
+        UNIQUE (idempotency_key),
+    CONSTRAINT chk_fx_batches_id
+        CHECK (batch_id > 0),
+    CONSTRAINT chk_fx_batches_idempotency_key
         CHECK (
-            trade_type IN
-            (
-                'BATCH_BALANCING_TRADE',
-                'BATCH_POSITION_OUT'
-            )
+            length(idempotency_key) BETWEEN 1 AND 100
+            AND idempotency_key = trim(idempotency_key)
         ),
-    CONSTRAINT chk_batch_balancing_trades_created_at
+    CONSTRAINT chk_fx_batches_status
+        CHECK (batch_status IN ('BUILDING', 'FORMED')),
+    CONSTRAINT chk_fx_batches_created_at
         CHECK (
             length(created_at) = 24
             AND created_at GLOB '????-??-??T??:??:??.???Z'
             AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
+        )
+);
+
+CREATE TABLE IF NOT EXISTS fx_batch_members
+(
+    batch_id    INTEGER NOT NULL,
+    trade_id    INTEGER NOT NULL,
+    trade_type  TEXT    NOT NULL,
+    member_role TEXT    NOT NULL,
+
+    CONSTRAINT pk_fx_batch_members
+        PRIMARY KEY (batch_id, trade_id),
+    CONSTRAINT fk_fx_batch_members_batch
+        FOREIGN KEY (batch_id)
+            REFERENCES fx_batches (batch_id)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT fk_fx_batch_members_trade
+        FOREIGN KEY (trade_id, trade_type)
+            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT uq_fx_batch_members_trade
+        UNIQUE (trade_id),
+    CONSTRAINT chk_fx_batch_members_role
+        CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'BALANCE_QUOTE_CASH')),
+    CONSTRAINT chk_fx_batch_members_role_trade_type
+        CHECK (
+            (member_role = 'TRADE'
+                AND trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL'))
+            OR (member_role = 'BALANCE_TRADE'
+                AND trade_type = 'BATCH_BALANCE_TRADE')
+            OR (member_role = 'BALANCE_QUOTE_CASH'
+                AND trade_type = 'BATCH_BALANCE_QUOTE_CASH')
+        )
+);
+
+CREATE TABLE IF NOT EXISTS fx_batch_outputs
+(
+    batch_id    INTEGER NOT NULL,
+    trade_id    INTEGER NOT NULL,
+    trade_type  TEXT    NOT NULL,
+    output_role TEXT    NOT NULL,
+
+    CONSTRAINT pk_fx_batch_outputs
+        PRIMARY KEY (batch_id, trade_id),
+    CONSTRAINT fk_fx_batch_outputs_batch
+        FOREIGN KEY (batch_id)
+            REFERENCES fx_batches (batch_id)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT fk_fx_batch_outputs_trade
+        FOREIGN KEY (trade_id, trade_type)
+            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT uq_fx_batch_outputs_trade
+        UNIQUE (trade_id),
+    CONSTRAINT uq_fx_batch_outputs_role
+        UNIQUE (batch_id, output_role),
+    CONSTRAINT chk_fx_batch_outputs_role
+        CHECK (
+            output_role = 'POSITION_OUT'
+            AND trade_type = 'BATCH_POSITION_OUT'
         )
 );
 
@@ -674,11 +767,433 @@ CREATE INDEX IF NOT EXISTS idx_client_fx_deals_party
 CREATE INDEX IF NOT EXISTS idx_fx_hedge_deals_party
     ON fx_hedge_deals (party_id);
 
-CREATE INDEX IF NOT EXISTS idx_batch_balancing_trades_batch
-    ON batch_balancing_trades (batch_id);
+CREATE INDEX IF NOT EXISTS idx_fx_batches_status_pair
+    ON fx_batches (batch_status, ccy_pair_code);
 
-CREATE INDEX IF NOT EXISTS idx_batch_balancing_trades_pair
-    ON batch_balancing_trades (batch_id, batch_pair_id);
+CREATE INDEX IF NOT EXISTS idx_fx_batch_members_trade
+    ON fx_batch_members (trade_id, batch_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_batch_members_single_balancer
+    ON fx_batch_members (batch_id, member_role)
+    WHERE member_role IN ('BALANCE_TRADE', 'BALANCE_QUOTE_CASH');
+
+CREATE INDEX IF NOT EXISTS idx_fx_batch_outputs_batch
+    ON fx_batch_outputs (batch_id, output_role);
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_validate_insert
+BEFORE INSERT ON fx_batch_members
+FOR EACH ROW
+WHEN
+    NOT EXISTS
+    (
+        SELECT 1
+        FROM fx_batches b
+        INNER JOIN fx_trade_exposure e ON e.trade_id = NEW.trade_id
+        WHERE b.batch_id = NEW.batch_id
+          AND b.batch_status = 'BUILDING'
+          AND e.trade_type = NEW.trade_type
+          AND e.ccy_pair_code = b.ccy_pair_code
+    )
+    OR (
+        NEW.member_role = 'TRADE'
+        AND NOT EXISTS
+        (
+            SELECT 1
+            FROM client_fx_deals d
+            WHERE d.trade_id = NEW.trade_id
+              AND d.trade_type = NEW.trade_type
+              AND d.transfer_rate IS NOT NULL
+            UNION ALL
+            SELECT 1
+            FROM fx_hedge_deals d
+            WHERE d.trade_id = NEW.trade_id
+              AND d.trade_type = NEW.trade_type
+              AND d.transfer_rate IS NOT NULL
+        )
+    )
+BEGIN
+    SELECT RAISE(
+        ABORT,
+        'batch member must match a BUILDING batch and ordinary trades require transfer_rate'
+    );
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_outputs_validate_insert
+BEFORE INSERT ON fx_batch_outputs
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM fx_batches b
+    INNER JOIN fx_trade_exposure e ON e.trade_id = NEW.trade_id
+    WHERE b.batch_id = NEW.batch_id
+      AND b.batch_status = 'BUILDING'
+      AND e.trade_type = NEW.trade_type
+      AND e.ccy_pair_code = b.ccy_pair_code
+)
+BEGIN
+    SELECT RAISE(ABORT, 'batch output must match a BUILDING batch');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batches_form
+BEFORE UPDATE OF batch_status ON fx_batches
+FOR EACH ROW
+WHEN OLD.batch_status = 'BUILDING' AND NEW.batch_status = 'FORMED'
+BEGIN
+    SELECT CASE
+        WHEN EXISTS
+        (
+            SELECT 1
+            FROM fx_batch_members m
+            INNER JOIN fx_trade_exposure e ON e.trade_id = m.trade_id
+            WHERE m.batch_id = OLD.batch_id
+              AND e.ccy_pair_code <> OLD.ccy_pair_code
+        )
+        OR EXISTS
+        (
+            SELECT 1
+            FROM fx_batch_outputs o
+            INNER JOIN fx_trade_exposure e ON e.trade_id = o.trade_id
+            WHERE o.batch_id = OLD.batch_id
+              AND e.ccy_pair_code <> OLD.ccy_pair_code
+        )
+        THEN RAISE(ABORT, 'formed batch trades must use the batch currency pair')
+    END;
+    SELECT CASE
+        WHEN EXISTS
+        (
+            SELECT COUNT(*)
+            FROM
+            (
+                SELECT
+                    e.trade_date,
+                    e.tenor,
+                    e.base_ccy_value_date,
+                    e.quote_ccy_value_date
+                FROM fx_batch_members m
+                INNER JOIN fx_trade_exposure e ON e.trade_id = m.trade_id
+                WHERE m.batch_id = OLD.batch_id
+
+                UNION ALL
+
+                SELECT
+                    e.trade_date,
+                    e.tenor,
+                    e.base_ccy_value_date,
+                    e.quote_ccy_value_date
+                FROM fx_batch_outputs o
+                INNER JOIN fx_trade_exposure e ON e.trade_id = o.trade_id
+                WHERE o.batch_id = OLD.batch_id
+            )
+            HAVING COUNT(DISTINCT trade_date) <> 1
+                OR COUNT(DISTINCT tenor) <> 1
+                OR COUNT(DISTINCT base_ccy_value_date) <> 1
+                OR COUNT(DISTINCT quote_ccy_value_date) <> 1
+        )
+        THEN RAISE(ABORT, 'formed batch trades must use one settlement bucket')
+    END;
+    SELECT CASE
+        WHEN EXISTS
+        (
+            SELECT COUNT(*)
+            FROM
+            (
+                SELECT
+                    e.base_ccy_fraction_digits,
+                    e.quote_ccy_fraction_digits
+                FROM fx_batch_members m
+                INNER JOIN fx_trade_exposure e ON e.trade_id = m.trade_id
+                WHERE m.batch_id = OLD.batch_id
+
+                UNION ALL
+
+                SELECT
+                    e.base_ccy_fraction_digits,
+                    e.quote_ccy_fraction_digits
+                FROM fx_batch_outputs o
+                INNER JOIN fx_trade_exposure e ON e.trade_id = o.trade_id
+                WHERE o.batch_id = OLD.batch_id
+            )
+            HAVING COUNT(DISTINCT base_ccy_fraction_digits) <> 1
+                OR COUNT(DISTINCT quote_ccy_fraction_digits) <> 1
+        )
+        THEN RAISE(ABORT, 'formed batch trades must use one currency precision')
+    END;
+    SELECT CASE
+        WHEN NOT EXISTS
+        (
+            SELECT 1
+            FROM fx_batch_members
+            WHERE batch_id = OLD.batch_id
+              AND member_role = 'TRADE'
+        )
+        THEN RAISE(ABORT, 'formed batch must contain at least one ordinary trade')
+    END;
+    SELECT CASE
+        WHEN
+        (
+            SELECT COALESCE(SUM(
+                CASE e.base_ccy_side
+                    WHEN 'BUY' THEN e.base_ccy_amount_minor
+                    ELSE -e.base_ccy_amount_minor
+                END
+            ), 0)
+            FROM fx_batch_members m
+            INNER JOIN fx_trade_exposure e ON e.trade_id = m.trade_id
+            WHERE m.batch_id = OLD.batch_id
+              AND m.member_role = 'TRADE'
+        ) <> 0
+        AND NOT EXISTS
+        (
+            SELECT 1
+            FROM fx_batch_members
+            WHERE batch_id = OLD.batch_id
+              AND member_role = 'BALANCE_TRADE'
+        )
+        THEN RAISE(ABORT, 'non-flat batch must contain a balance trade')
+    END;
+    SELECT CASE
+        WHEN
+        (
+            SELECT COALESCE(SUM(
+                CASE e.base_ccy_side
+                    WHEN 'BUY' THEN e.base_ccy_amount_minor
+                    ELSE -e.base_ccy_amount_minor
+                END
+            ), 0)
+            FROM fx_batch_members m
+            INNER JOIN fx_trade_exposure e ON e.trade_id = m.trade_id
+            WHERE m.batch_id = OLD.batch_id
+              AND m.member_role = 'TRADE'
+        ) = 0
+        AND EXISTS
+        (
+            SELECT 1
+            FROM fx_batch_members
+            WHERE batch_id = OLD.batch_id
+              AND member_role = 'BALANCE_TRADE'
+        )
+        THEN RAISE(ABORT, 'flat batch must not contain a balance trade')
+    END;
+    SELECT CASE
+        WHEN NOT EXISTS
+        (
+            SELECT 1
+            FROM fx_batch_outputs
+            WHERE batch_id = OLD.batch_id
+              AND output_role = 'POSITION_OUT'
+        )
+        THEN RAISE(ABORT, 'formed batch must contain a position output')
+    END;
+    SELECT CASE
+        WHEN
+        (
+            SELECT COALESCE(SUM(
+                CASE e.base_ccy_side
+                    WHEN 'BUY' THEN e.base_ccy_amount_minor
+                    ELSE -e.base_ccy_amount_minor
+                END
+            ), 0)
+            FROM fx_batch_members m
+            INNER JOIN fx_trade_exposure e ON e.trade_id = m.trade_id
+            WHERE m.batch_id = OLD.batch_id
+        ) <> 0
+        THEN RAISE(ABORT, 'formed batch must have zero base currency position')
+    END;
+    SELECT CASE
+        WHEN
+        (
+            SELECT COALESCE(SUM(
+                CASE e.base_ccy_side
+                    WHEN 'BUY' THEN e.base_ccy_amount_minor
+                    ELSE -e.base_ccy_amount_minor
+                END
+            ), 0)
+            FROM fx_batch_members m
+            INNER JOIN fx_trade_exposure e ON e.trade_id = m.trade_id
+            WHERE m.batch_id = OLD.batch_id
+              AND m.member_role = 'TRADE'
+        ) <>
+        (
+            SELECT COALESCE(SUM(
+                CASE e.base_ccy_side
+                    WHEN 'BUY' THEN e.base_ccy_amount_minor
+                    WHEN 'SELL' THEN -e.base_ccy_amount_minor
+                    ELSE 0
+                END
+            ), 0)
+            FROM fx_batch_outputs o
+            INNER JOIN fx_trade_exposure e ON e.trade_id = o.trade_id
+            WHERE o.batch_id = OLD.batch_id
+              AND o.output_role = 'POSITION_OUT'
+        )
+        THEN RAISE(ABORT, 'position output must equal the source Base Ccy position')
+    END;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batches_reject_invalid_status_update
+BEFORE UPDATE OF batch_status ON fx_batches
+FOR EACH ROW
+WHEN NOT (OLD.batch_status = 'BUILDING' AND NEW.batch_status = 'FORMED')
+BEGIN
+    SELECT RAISE(ABORT, 'batch status transition is not allowed');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batches_immutable_update
+BEFORE UPDATE ON fx_batches
+FOR EACH ROW
+WHEN OLD.batch_status = 'FORMED'
+BEGIN
+    SELECT RAISE(ABORT, 'formed batch is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batches_immutable_delete
+BEFORE DELETE ON fx_batches
+FOR EACH ROW
+WHEN OLD.batch_status = 'FORMED'
+BEGIN
+    SELECT RAISE(ABORT, 'formed batch is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_immutable_update
+BEFORE UPDATE ON fx_batch_members
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1 FROM fx_batches
+    WHERE batch_id = OLD.batch_id AND batch_status = 'FORMED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'formed batch members are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_immutable_delete
+BEFORE DELETE ON fx_batch_members
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1 FROM fx_batches
+    WHERE batch_id = OLD.batch_id AND batch_status = 'FORMED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'formed batch members are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_outputs_immutable_update
+BEFORE UPDATE ON fx_batch_outputs
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1 FROM fx_batches
+    WHERE batch_id = OLD.batch_id AND batch_status = 'FORMED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'formed batch outputs are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_outputs_immutable_delete
+BEFORE DELETE ON fx_batch_outputs
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1 FROM fx_batches
+    WHERE batch_id = OLD.batch_id AND batch_status = 'FORMED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'formed batch outputs are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_formed_batch_trade_immutable_update
+BEFORE UPDATE ON fx_trade_exposure
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM fx_batches b
+    LEFT JOIN fx_batch_members m
+        ON m.batch_id = b.batch_id AND m.trade_id = OLD.trade_id
+    LEFT JOIN fx_batch_outputs o
+        ON o.batch_id = b.batch_id AND o.trade_id = OLD.trade_id
+    WHERE b.batch_status = 'FORMED'
+      AND (m.trade_id IS NOT NULL OR o.trade_id IS NOT NULL)
+)
+BEGIN
+    SELECT RAISE(ABORT, 'trade linked to a formed batch is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_formed_batch_trade_immutable_delete
+BEFORE DELETE ON fx_trade_exposure
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM fx_batches b
+    LEFT JOIN fx_batch_members m
+        ON m.batch_id = b.batch_id AND m.trade_id = OLD.trade_id
+    LEFT JOIN fx_batch_outputs o
+        ON o.batch_id = b.batch_id AND o.trade_id = OLD.trade_id
+    WHERE b.batch_status = 'FORMED'
+      AND (m.trade_id IS NOT NULL OR o.trade_id IS NOT NULL)
+)
+BEGIN
+    SELECT RAISE(ABORT, 'trade linked to a formed batch is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_formed_batch_client_trade_immutable_update
+BEFORE UPDATE ON client_fx_deals
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM fx_batch_members m
+    INNER JOIN fx_batches b ON b.batch_id = m.batch_id
+    WHERE m.trade_id = OLD.trade_id AND b.batch_status = 'FORMED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'client trade linked to a formed batch is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_formed_batch_client_trade_immutable_delete
+BEFORE DELETE ON client_fx_deals
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM fx_batch_members m
+    INNER JOIN fx_batches b ON b.batch_id = m.batch_id
+    WHERE m.trade_id = OLD.trade_id AND b.batch_status = 'FORMED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'client trade linked to a formed batch is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_formed_batch_hedge_trade_immutable_update
+BEFORE UPDATE ON fx_hedge_deals
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM fx_batch_members m
+    INNER JOIN fx_batches b ON b.batch_id = m.batch_id
+    WHERE m.trade_id = OLD.trade_id AND b.batch_status = 'FORMED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'hedge trade linked to a formed batch is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_formed_batch_hedge_trade_immutable_delete
+BEFORE DELETE ON fx_hedge_deals
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM fx_batch_members m
+    INNER JOIN fx_batches b ON b.batch_id = m.batch_id
+    WHERE m.trade_id = OLD.trade_id AND b.batch_status = 'FORMED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'hedge trade linked to a formed batch is immutable');
+END;
 
 CREATE INDEX IF NOT EXISTS idx_ccy_pair_options_base
     ON ccy_pair_options (base_ccy_code);

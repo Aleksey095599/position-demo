@@ -7,7 +7,7 @@ const { URL } = require("node:url");
 const { DatabaseSync } = require("node:sqlite");
 const { MarketPulseSimulator } = require("./backend/market-pulse-simulation/market-pulse-simulator");
 const {
-  calculateAnalyticalPnl,
+  calculateAnalyticalPnlMinor,
   calculateClientFxDealEconomics,
   roundToFractionDigits
 } = require("./backend/client-fx-deal/client-fx-deal-economics");
@@ -21,12 +21,13 @@ const {
   createHedgeFxDealTerms
 } = require("./backend/hedge-fx-deal/hedge-fx-deal-terms");
 const {
-  calculateBatchBalancingTradePair
-} = require("./backend/batch-balancing/batch-balancing-trade-pair");
+  FormFxBatchUseCase
+} = require("./backend/fx-batching/application/form-fx-batch-use-case");
 const {
   calculateFxAmountsFromDealt,
   calculateQuoteMinor,
   majorToMinor,
+  majorToMinorExact,
   minorToMajor,
   minorToSafeInteger
 } = require("./backend/money/money");
@@ -68,7 +69,7 @@ const USER_ROLES = ["DEALER", "SUPERVISOR", "ADMIN"];
 const FX_TRADE_TYPES = [
   "CLIENT_DEAL",
   "HEDGE_DEAL",
-  "BATCH_BALANCING_TRADE",
+  "BATCH_BALANCE_TRADE",
   "BATCH_POSITION_OUT"
 ];
 const CLIENT_DEAL_GENERATION_INTERVAL_MS = 1000;
@@ -135,7 +136,10 @@ const hedgeFxDealsAlreadyInitialized = Boolean(database.prepare(`
   FROM sqlite_master
   WHERE type = 'table' AND name = 'fx_hedge_deals'
 `).get());
+migrateUnprefixedBatchTables(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
+migrateLegacyBatchTables(database);
+dropBatchIntegrityTriggers(database);
 if (!hedgeFxDealsAlreadyInitialized) {
   database.exec("DROP TABLE fx_hedge_deals");
 }
@@ -156,10 +160,13 @@ migrateAccountingSystemsShape(database);
 migrateExecutionSystemsShape(database);
 migrateTradingPartiesConstraints(database);
 ensurePricingRuleClientDealReferenceIndex(database);
+migrateClientDealGenerationSettingsToMinorUnits(database);
 synchronizeClientDealGenerationSettings(database);
 migrateClientFxDealsToTradeExposure(database);
 migrateFxTradeExposureAmountsToMinorUnits(database);
 migrateFxTradeExposureTradeSemantics(database);
+migrateFxBatchTradeSemantics(database);
+migrateFxDealAnalyticalPnlToMinorUnits(database);
 ensureFxTradeExposureDealtCurrencyTriggers(database);
 migrateFxTradeMarketSnapshot(database);
 ensureClientFxDealIndexes(database);
@@ -259,6 +266,27 @@ function migrateFxTradeExposureTypes(sqlite) {
   ];
   const columns = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all()
     .map(column => column.name);
+  const modernColumns = [
+    "trade_id",
+    "entry_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "base_ccy_side",
+    "dealt_ccy_code",
+    "base_ccy_amount_minor",
+    "base_ccy_fraction_digits",
+    "quote_ccy_amount_minor",
+    "quote_ccy_fraction_digits",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
+
+  if (columns.join(",") === modernColumns.join(",")) {
+    return;
+  }
 
   if (columns.join(",") !== expectedColumns.join(",")) {
     throw new Error("Unsupported FX Trade Exposure schema.");
@@ -317,7 +345,7 @@ function migrateFxTradeExposureTypes(sqlite) {
                   (
                       'CLIENT_DEAL',
                       'HEDGE_DEAL',
-                      'BATCH_BALANCING_TRADE',
+                      'BATCH_BALANCE_TRADE',
                       'BATCH_POSITION_OUT'
                   )
               ),
@@ -560,7 +588,7 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
                   (
                       'CLIENT_DEAL',
                       'HEDGE_DEAL',
-                      'BATCH_BALANCING_TRADE',
+                      'BATCH_BALANCE_TRADE',
                       'BATCH_POSITION_OUT'
                   )
               ),
@@ -739,7 +767,10 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
       && tableInfo[5]?.notnull === 1
       && tableInfo[6]?.type === "TEXT"
       && tableInfo[6]?.notnull === 1
-      && tableDefinition.includes("chk_fx_trade_exposure_base_ccy_side")
+      && (
+        tableDefinition.includes("chk_fx_trade_exposure_base_ccy_side")
+        || tableDefinition.includes("base_ccy_side = 'FLAT'")
+      )
       && tableDefinition.includes("chk_fx_trade_exposure_dealt_ccy_code");
 
     if (!definitionsAreValid) {
@@ -812,7 +843,7 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
                   (
                       'CLIENT_DEAL',
                       'HEDGE_DEAL',
-                      'BATCH_BALANCING_TRADE',
+                      'BATCH_BALANCE_TRADE',
                       'BATCH_POSITION_OUT'
                   )
               ),
@@ -929,6 +960,336 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
 
     if (foreignKeyViolations.length > 0) {
       throw new Error("FX Trade Exposure trade-semantics migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function migrateFxBatchTradeSemantics(sqlite) {
+  const exposureSql = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'fx_trade_exposure'
+  `).get()?.sql || "";
+  const membersSql = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'fx_batch_members'
+  `).get()?.sql || "";
+  const alreadyMigrated = exposureSql.includes("'BATCH_BALANCE_TRADE'")
+    && exposureSql.includes("base_ccy_side = 'FLAT'")
+    && membersSql.includes("'BATCH_BALANCE_TRADE'");
+
+  if (alreadyMigrated) {
+    return;
+  }
+
+  const exposureCount = Number(
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+  );
+  const batchCount = Number(
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count
+  );
+  const memberCount = Number(
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count
+  );
+  const outputCount = Number(
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_outputs").get().count
+  );
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      CREATE TABLE fx_trade_exposure_batch_semantics
+      (
+          trade_id                    INTEGER PRIMARY KEY,
+          entry_timestamp             TEXT    NOT NULL,
+          trade_type                  TEXT    NOT NULL,
+          trade_date                  TEXT    NOT NULL,
+          ccy_pair_code               TEXT    NOT NULL,
+          base_ccy_side               TEXT    NOT NULL,
+          dealt_ccy_code              TEXT    NOT NULL,
+          base_ccy_amount_minor       INTEGER NOT NULL,
+          base_ccy_fraction_digits    INTEGER NOT NULL,
+          quote_ccy_amount_minor      INTEGER NOT NULL,
+          quote_ccy_fraction_digits   INTEGER NOT NULL,
+          trade_rate                  NUMERIC,
+          tenor                       TEXT    NOT NULL,
+          base_ccy_value_date         TEXT    NOT NULL,
+          quote_ccy_value_date        TEXT    NOT NULL,
+
+          CONSTRAINT fk_fx_trade_exposure_ccy_pair
+              FOREIGN KEY (ccy_pair_code)
+                  REFERENCES ccy_pair_options (ccy_pair_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_trade_exposure_dealt_ccy
+              FOREIGN KEY (dealt_ccy_code)
+                  REFERENCES ccy_options (ccy_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT uq_fx_trade_exposure_identity
+              UNIQUE (trade_id, trade_type),
+          CONSTRAINT chk_fx_trade_exposure_entry_timestamp
+              CHECK (
+                  length(entry_timestamp) = 24
+                  AND entry_timestamp GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
+              ),
+          CONSTRAINT chk_fx_trade_exposure_trade_type
+              CHECK (
+                  trade_type IN
+                  (
+                      'CLIENT_DEAL',
+                      'HEDGE_DEAL',
+                      'BATCH_BALANCE_TRADE',
+                      'BATCH_POSITION_OUT'
+                  )
+              ),
+          CONSTRAINT chk_fx_trade_exposure_trade_date
+              CHECK (
+                  trade_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', trade_date) = trade_date
+              ),
+          CONSTRAINT chk_fx_trade_exposure_dealt_ccy_code
+              CHECK (
+                  length(dealt_ccy_code) = 3
+                  AND dealt_ccy_code = upper(dealt_ccy_code)
+                  AND dealt_ccy_code NOT GLOB '*[^A-Z]*'
+              ),
+          CONSTRAINT chk_fx_trade_exposure_amounts
+              CHECK (
+                  (
+                      trade_type = 'BATCH_POSITION_OUT'
+                      AND base_ccy_side = 'FLAT'
+                      AND typeof(base_ccy_amount_minor) = 'integer'
+                      AND base_ccy_amount_minor = 0
+                      AND typeof(quote_ccy_amount_minor) = 'integer'
+                      AND quote_ccy_amount_minor = 0
+                      AND trade_rate IS NULL
+                  )
+                  OR (
+                      base_ccy_side IN ('BUY', 'SELL')
+                      AND typeof(base_ccy_amount_minor) = 'integer'
+                      AND base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                      AND typeof(quote_ccy_amount_minor) = 'integer'
+                      AND quote_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                      AND typeof(trade_rate) IN ('integer', 'real')
+                      AND trade_rate > 0
+                  )
+              ),
+          CONSTRAINT chk_fx_trade_exposure_fraction_digits
+              CHECK (
+                  typeof(base_ccy_fraction_digits) = 'integer'
+                  AND base_ccy_fraction_digits BETWEEN 0 AND 10
+                  AND typeof(quote_ccy_fraction_digits) = 'integer'
+                  AND quote_ccy_fraction_digits BETWEEN 0 AND 10
+              ),
+          CONSTRAINT chk_fx_trade_exposure_tenor
+              CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
+          CONSTRAINT chk_fx_trade_exposure_value_dates
+              CHECK (
+                  base_ccy_value_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
+                  AND quote_ccy_value_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', quote_ccy_value_date) = quote_ccy_value_date
+              )
+      );
+
+      INSERT INTO fx_trade_exposure_batch_semantics
+      SELECT
+          trade_id,
+          entry_timestamp,
+          CASE trade_type
+              WHEN 'BATCH_BALANCING_TRADE' THEN 'BATCH_BALANCE_TRADE'
+              ELSE trade_type
+          END,
+          trade_date,
+          ccy_pair_code,
+          base_ccy_side,
+          dealt_ccy_code,
+          base_ccy_amount_minor,
+          base_ccy_fraction_digits,
+          quote_ccy_amount_minor,
+          quote_ccy_fraction_digits,
+          trade_rate,
+          tenor,
+          base_ccy_value_date,
+          quote_ccy_value_date
+      FROM fx_trade_exposure
+      ORDER BY trade_id;
+
+      CREATE TABLE fx_batches_batch_semantics
+      (
+          batch_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+          idempotency_key TEXT    NOT NULL,
+          ccy_pair_code   TEXT    NOT NULL,
+          batch_status    TEXT    NOT NULL DEFAULT 'BUILDING',
+          created_at      TEXT    NOT NULL
+              DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+          CONSTRAINT fk_fx_batches_ccy_pair
+              FOREIGN KEY (ccy_pair_code)
+                  REFERENCES ccy_pair_options (ccy_pair_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT uq_fx_batches_idempotency_key
+              UNIQUE (idempotency_key),
+          CONSTRAINT chk_fx_batches_id
+              CHECK (batch_id > 0),
+          CONSTRAINT chk_fx_batches_idempotency_key
+              CHECK (
+                  length(idempotency_key) BETWEEN 1 AND 100
+                  AND idempotency_key = trim(idempotency_key)
+              ),
+          CONSTRAINT chk_fx_batches_status
+              CHECK (batch_status IN ('BUILDING', 'FORMED')),
+          CONSTRAINT chk_fx_batches_created_at
+              CHECK (
+                  length(created_at) = 24
+                  AND created_at GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
+              )
+      );
+
+      INSERT INTO fx_batches_batch_semantics
+      SELECT batch_id, idempotency_key, ccy_pair_code, batch_status, created_at
+      FROM fx_batches
+      ORDER BY batch_id;
+
+      CREATE TABLE fx_batch_members_batch_semantics
+      (
+          batch_id    INTEGER NOT NULL,
+          trade_id    INTEGER NOT NULL,
+          trade_type  TEXT    NOT NULL,
+          member_role TEXT    NOT NULL,
+
+          CONSTRAINT pk_fx_batch_members
+              PRIMARY KEY (batch_id, trade_id),
+          CONSTRAINT fk_fx_batch_members_batch
+              FOREIGN KEY (batch_id)
+                  REFERENCES fx_batches_batch_semantics (batch_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_batch_members_trade
+              FOREIGN KEY (trade_id, trade_type)
+                  REFERENCES fx_trade_exposure_batch_semantics (trade_id, trade_type)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT uq_fx_batch_members_trade
+              UNIQUE (trade_id),
+          CONSTRAINT chk_fx_batch_members_role
+              CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'BALANCE_QUOTE_CASH')),
+          CONSTRAINT chk_fx_batch_members_role_trade_type
+              CHECK (
+                  (member_role = 'TRADE'
+                      AND trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL'))
+                  OR (member_role = 'BALANCE_TRADE'
+                      AND trade_type = 'BATCH_BALANCE_TRADE')
+                  OR (member_role = 'BALANCE_QUOTE_CASH'
+                      AND trade_type = 'BATCH_BALANCE_QUOTE_CASH')
+              )
+      );
+
+      INSERT INTO fx_batch_members_batch_semantics
+      SELECT
+          batch_id,
+          trade_id,
+          CASE trade_type
+              WHEN 'BATCH_BALANCING_TRADE' THEN 'BATCH_BALANCE_TRADE'
+              ELSE trade_type
+          END,
+          member_role
+      FROM fx_batch_members
+      ORDER BY batch_id, trade_id;
+
+      CREATE TABLE fx_batch_outputs_batch_semantics
+      (
+          batch_id    INTEGER NOT NULL,
+          trade_id    INTEGER NOT NULL,
+          trade_type  TEXT    NOT NULL,
+          output_role TEXT    NOT NULL,
+
+          CONSTRAINT pk_fx_batch_outputs
+              PRIMARY KEY (batch_id, trade_id),
+          CONSTRAINT fk_fx_batch_outputs_batch
+              FOREIGN KEY (batch_id)
+                  REFERENCES fx_batches_batch_semantics (batch_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_batch_outputs_trade
+              FOREIGN KEY (trade_id, trade_type)
+                  REFERENCES fx_trade_exposure_batch_semantics (trade_id, trade_type)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT uq_fx_batch_outputs_trade
+              UNIQUE (trade_id),
+          CONSTRAINT uq_fx_batch_outputs_role
+              UNIQUE (batch_id, output_role),
+          CONSTRAINT chk_fx_batch_outputs_role
+              CHECK (
+                  output_role = 'POSITION_OUT'
+                  AND trade_type = 'BATCH_POSITION_OUT'
+              )
+      );
+
+      INSERT INTO fx_batch_outputs_batch_semantics
+      SELECT batch_id, trade_id, trade_type, output_role
+      FROM fx_batch_outputs
+      ORDER BY batch_id, trade_id;
+
+      DROP TABLE fx_batch_outputs;
+      DROP TABLE fx_batch_members;
+      DROP TABLE fx_batches;
+      DROP TABLE fx_trade_exposure;
+
+      ALTER TABLE fx_trade_exposure_batch_semantics
+          RENAME TO fx_trade_exposure;
+      ALTER TABLE fx_batches_batch_semantics
+          RENAME TO fx_batches;
+      ALTER TABLE fx_batch_members_batch_semantics
+          RENAME TO fx_batch_members;
+      ALTER TABLE fx_batch_outputs_batch_semantics
+          RENAME TO fx_batch_outputs;
+    `);
+
+    const migratedCounts = {
+      exposure: Number(
+        sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+      ),
+      batches: Number(
+        sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count
+      ),
+      members: Number(
+        sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count
+      ),
+      outputs: Number(
+        sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_outputs").get().count
+      )
+    };
+
+    if (migratedCounts.exposure !== exposureCount
+      || migratedCounts.batches !== batchCount
+      || migratedCounts.members !== memberCount
+      || migratedCounts.outputs !== outputCount) {
+      throw new Error("FX Batch trade-semantics migration did not preserve every row.");
+    }
+
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error("FX Batch trade-semantics migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -1100,6 +1461,313 @@ function dropClientDealGenerationSettingsTriggers(sqlite) {
   `);
 }
 
+function migrateLegacyBatchTables(sqlite) {
+  const legacyTables = ["batch_balancing_trades", "fx_trade_batches"];
+  const existingLegacyTables = legacyTables.filter(tableName => Boolean(sqlite.prepare(`
+    SELECT 1
+    FROM sqlite_master
+    WHERE type = 'table' AND name = ?
+  `).get(tableName)));
+
+  if (existingLegacyTables.length === 0) {
+    return;
+  }
+
+  for (const tableName of existingLegacyTables) {
+    const rowCount = Number(
+      sqlite.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count
+    );
+
+    if (rowCount !== 0) {
+      throw new Error(
+        `Legacy Batch table ${tableName} contains data and cannot be migrated automatically.`
+      );
+    }
+  }
+
+  sqlite.exec("BEGIN IMMEDIATE");
+
+  try {
+    if (existingLegacyTables.includes("batch_balancing_trades")) {
+      sqlite.exec("DROP TABLE batch_balancing_trades");
+    }
+
+    if (existingLegacyTables.includes("fx_trade_batches")) {
+      sqlite.exec("DROP TABLE fx_trade_batches");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  }
+}
+
+function migrateUnprefixedBatchTables(sqlite) {
+  const tableRenames = [
+    ["batches", "fx_batches"],
+    ["batch_members", "fx_batch_members"],
+    ["batch_outputs", "fx_batch_outputs"]
+  ];
+  const existingTables = new Set(sqlite.prepare(`
+    SELECT name
+    FROM sqlite_master
+    WHERE type = 'table'
+  `).all().map(row => row.name));
+  const presentSources = tableRenames.filter(([source]) => existingTables.has(source));
+
+  if (presentSources.length === 0) {
+    return;
+  }
+
+  if (presentSources.length !== tableRenames.length) {
+    throw new Error("Incomplete unprefixed Batch schema cannot be renamed automatically.");
+  }
+
+  for (const [, target] of tableRenames) {
+    if (existingTables.has(target)) {
+      throw new Error(`Batch table rename target ${target} already exists.`);
+    }
+  }
+
+  sqlite.exec("BEGIN IMMEDIATE");
+
+  try {
+    for (const [source, target] of tableRenames) {
+      sqlite.exec(`ALTER TABLE ${source} RENAME TO ${target}`);
+    }
+
+    sqlite.exec(`
+      DROP INDEX IF EXISTS idx_batches_status_pair;
+      DROP INDEX IF EXISTS idx_batch_members_trade;
+      DROP INDEX IF EXISTS uq_batch_members_single_balancer;
+      DROP INDEX IF EXISTS idx_batch_outputs_batch;
+    `);
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  }
+}
+
+function dropBatchIntegrityTriggers(sqlite) {
+  const triggerNames = sqlite.prepare(`
+    SELECT name
+    FROM sqlite_master
+    WHERE type = 'trigger'
+      AND (
+        name LIKE 'trg_batch%'
+        OR name LIKE 'trg_fx_batch%'
+        OR name LIKE 'trg_formed_batch%'
+      )
+  `).all().map(row => row.name);
+
+  for (const triggerName of triggerNames) {
+    if (!/^[a-z0-9_]+$/i.test(triggerName)) {
+      throw new Error(`Unsupported Batch trigger name ${triggerName}.`);
+    }
+
+    sqlite.exec(`DROP TRIGGER ${triggerName}`);
+  }
+}
+
+function migrateClientDealGenerationSettingsToMinorUnits(sqlite) {
+  const targetColumns = [
+    "pricing_rule_id",
+    "min_base_ccy_amount_minor",
+    "max_base_ccy_amount_minor",
+    "base_ccy_amount_step_minor",
+    "base_ccy_fraction_digits",
+    "buy_probability_percent",
+    "is_active"
+  ];
+  const legacyColumns = [
+    "pricing_rule_id",
+    "min_base_ccy_amount",
+    "max_base_ccy_amount",
+    "base_ccy_amount_step",
+    "buy_probability_percent",
+    "is_active"
+  ];
+  const columns = [...tableColumnNames(sqlite, "client_deal_generation_settings")];
+
+  if (columns.join(",") === targetColumns.join(",")) {
+    return;
+  }
+
+  if (columns.join(",") !== legacyColumns.join(",")) {
+    throw new Error("Unsupported Client Deal Generation Settings amount schema.");
+  }
+
+  const sourceRows = sqlite.prepare(`
+    SELECT
+      s.*,
+      base_ccy.fraction_digits AS base_ccy_fraction_digits
+    FROM client_deal_generation_settings s
+    INNER JOIN pricing_rules r ON r.pricing_rule_id = s.pricing_rule_id
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
+    INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
+    ORDER BY s.pricing_rule_id
+  `).all();
+  const originalRowCount = Number(sqlite.prepare(`
+    SELECT COUNT(*) AS count
+    FROM client_deal_generation_settings
+  `).get().count);
+
+  if (sourceRows.length !== originalRowCount) {
+    throw new Error(
+      "Every Client Deal Generation Settings row must resolve its Base Ccy Fraction Digits."
+    );
+  }
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      CREATE TABLE client_deal_generation_settings_minor
+      (
+          pricing_rule_id                   INTEGER PRIMARY KEY,
+          min_base_ccy_amount_minor         INTEGER NOT NULL,
+          max_base_ccy_amount_minor         INTEGER NOT NULL,
+          base_ccy_amount_step_minor        INTEGER NOT NULL,
+          base_ccy_fraction_digits          INTEGER NOT NULL,
+          buy_probability_percent           INTEGER NOT NULL DEFAULT 50,
+          is_active                         INTEGER NOT NULL DEFAULT 1,
+
+          CONSTRAINT fk_client_deal_generation_settings_pricing_rule
+              FOREIGN KEY (pricing_rule_id)
+                  REFERENCES pricing_rules (pricing_rule_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE CASCADE,
+          CONSTRAINT chk_client_deal_generation_settings_amounts
+              CHECK (
+                  typeof(min_base_ccy_amount_minor) = 'integer'
+                  AND min_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                  AND typeof(max_base_ccy_amount_minor) = 'integer'
+                  AND max_base_ccy_amount_minor
+                      BETWEEN min_base_ccy_amount_minor AND 9007199254740991
+                  AND typeof(base_ccy_amount_step_minor) = 'integer'
+                  AND base_ccy_amount_step_minor BETWEEN 1 AND 9007199254740991
+              ),
+          CONSTRAINT chk_client_deal_generation_settings_fraction_digits
+              CHECK (
+                  typeof(base_ccy_fraction_digits) = 'integer'
+                  AND base_ccy_fraction_digits BETWEEN 0 AND 10
+              ),
+          CONSTRAINT chk_client_deal_generation_settings_buy_probability
+              CHECK (
+                  typeof(buy_probability_percent) = 'integer'
+                  AND buy_probability_percent BETWEEN 0 AND 100
+              ),
+          CONSTRAINT chk_client_deal_generation_settings_active
+              CHECK (is_active IN (0, 1))
+      );
+    `);
+
+    const insert = sqlite.prepare(`
+      INSERT INTO client_deal_generation_settings_minor
+        (
+          pricing_rule_id,
+          min_base_ccy_amount_minor,
+          max_base_ccy_amount_minor,
+          base_ccy_amount_step_minor,
+          base_ccy_fraction_digits,
+          buy_probability_percent,
+          is_active
+        )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const row of sourceRows) {
+      insert.run(
+        row.pricing_rule_id,
+        minorToSafeInteger(
+          majorToMinor(
+            String(row.min_base_ccy_amount),
+            row.base_ccy_fraction_digits
+          ),
+          "Min Base Ccy Amount Minor"
+        ),
+        minorToSafeInteger(
+          majorToMinor(
+            String(row.max_base_ccy_amount),
+            row.base_ccy_fraction_digits
+          ),
+          "Max Base Ccy Amount Minor"
+        ),
+        minorToSafeInteger(
+          majorToMinor(
+            String(row.base_ccy_amount_step),
+            row.base_ccy_fraction_digits
+          ),
+          "Base Ccy Amount Step Minor"
+        ),
+        row.base_ccy_fraction_digits,
+        row.buy_probability_percent,
+        row.is_active
+      );
+    }
+
+    sqlite.exec(`
+      DROP TABLE client_deal_generation_settings;
+      ALTER TABLE client_deal_generation_settings_minor
+        RENAME TO client_deal_generation_settings;
+    `);
+
+    const migratedRowCount = Number(sqlite.prepare(`
+      SELECT COUNT(*) AS count
+      FROM client_deal_generation_settings
+    `).get().count);
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (migratedRowCount !== originalRowCount) {
+      throw new Error(
+        "Client Deal Generation Settings minor-unit migration did not preserve every row."
+      );
+    }
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error(
+        "Client Deal Generation Settings minor-unit migration produced foreign key violations."
+      );
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function defaultClientDealGenerationAmounts(fractionDigits) {
+  return {
+    minBaseCcyAmountMinor: minorToSafeInteger(
+      majorToMinor("500000", fractionDigits),
+      "Default Min Base Ccy Amount Minor"
+    ),
+    maxBaseCcyAmountMinor: minorToSafeInteger(
+      majorToMinor("1500000", fractionDigits),
+      "Default Max Base Ccy Amount Minor"
+    ),
+    baseCcyAmountStepMinor: minorToSafeInteger(
+      majorToMinor("100000", fractionDigits),
+      "Default Base Ccy Amount Step Minor"
+    )
+  };
+}
+
 function synchronizeClientDealGenerationSettings(sqlite) {
   sqlite.exec(`
     DELETE FROM client_deal_generation_settings
@@ -1114,30 +1782,45 @@ function synchronizeClientDealGenerationSettings(sqlite) {
         AND p.party_type = 'CLIENT'
         AND e.pricing_mode = 'AUTO_PRICED'
     );
+  `);
 
-    INSERT OR IGNORE INTO client_deal_generation_settings
-      (
-        pricing_rule_id,
-        min_base_ccy_amount,
-        max_base_ccy_amount,
-        base_ccy_amount_step,
-        buy_probability_percent,
-        is_active
-      )
+  const eligibleRules = sqlite.prepare(`
     SELECT
       r.pricing_rule_id,
-      500000,
-      1500000,
-      100000,
-      50,
-      1
+      base_ccy.fraction_digits AS base_ccy_fraction_digits
     FROM pricing_rules r
     INNER JOIN trading_parties p ON p.party_id = r.party_id
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
+    INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     WHERE p.party_type = 'CLIENT'
-      AND e.pricing_mode = 'AUTO_PRICED';
+      AND e.pricing_mode = 'AUTO_PRICED'
+  `).all();
+  const insert = sqlite.prepare(`
+    INSERT OR IGNORE INTO client_deal_generation_settings
+      (
+        pricing_rule_id,
+        min_base_ccy_amount_minor,
+        max_base_ccy_amount_minor,
+        base_ccy_amount_step_minor,
+        base_ccy_fraction_digits,
+        buy_probability_percent,
+        is_active
+      )
+    VALUES (?, ?, ?, ?, ?, 50, 1)
   `);
+
+  for (const rule of eligibleRules) {
+    const defaults = defaultClientDealGenerationAmounts(rule.base_ccy_fraction_digits);
+    insert.run(
+      rule.pricing_rule_id,
+      defaults.minBaseCcyAmountMinor,
+      defaults.maxBaseCcyAmountMinor,
+      defaults.baseCcyAmountStepMinor,
+      rule.base_ccy_fraction_digits
+    );
+  }
 }
 
 function clientDealGenerationReferenceEligible(partyId, executionContextId) {
@@ -1257,6 +1940,17 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     "execution_context_id",
     "pricing_rule_id",
     "transfer_rate",
+    "analytical_pnl_quote_minor",
+    "analytical_pnl_quote_fraction_digits",
+    "comment"
+  ];
+  const majorPnlTargetColumns = [
+    "trade_id",
+    "trade_type",
+    "party_id",
+    "execution_context_id",
+    "pricing_rule_id",
+    "transfer_rate",
     "analytical_pnl",
     "comment"
   ];
@@ -1361,9 +2055,33 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     && tableDefinition.includes("chk_client_fx_deals_pricing_context")
     && tableDefinition.includes("chk_client_fx_deals_transfer_rate")
     && tableDefinition.includes("chk_client_fx_deals_analytical_pnl");
-  const hasTargetColumnDefinitions = hasPreCommentTargetColumnDefinitions
+  const hasMajorPnlTargetColumnDefinitions = hasPreCommentTargetColumnDefinitions
     && tableInfo[7]?.type === "TEXT"
     && tableInfo[7]?.notnull === 0
+    && tableDefinition.includes("chk_client_fx_deals_comment");
+  const hasTargetColumnDefinitions = tableInfo[0]?.type === "INTEGER"
+    && tableInfo[0]?.pk === 1
+    && tableInfo[1]?.type === "TEXT"
+    && tableInfo[1]?.notnull === 1
+    && tableInfo[1]?.dflt_value === "'CLIENT_DEAL'"
+    && tableInfo[2]?.type === "INTEGER"
+    && tableInfo[2]?.notnull === 1
+    && tableInfo[3]?.type === "INTEGER"
+    && tableInfo[3]?.notnull === 0
+    && tableInfo[4]?.type === "INTEGER"
+    && tableInfo[4]?.notnull === 0
+    && tableInfo[5]?.type === "NUMERIC"
+    && tableInfo[5]?.notnull === 0
+    && tableInfo[6]?.type === "INTEGER"
+    && tableInfo[6]?.notnull === 0
+    && tableInfo[7]?.type === "INTEGER"
+    && tableInfo[7]?.notnull === 0
+    && tableInfo[8]?.type === "TEXT"
+    && tableInfo[8]?.notnull === 0
+    && hasSharedIdentityColumnDefinitions
+    && tableDefinition.includes("chk_client_fx_deals_pricing_context")
+    && tableDefinition.includes("chk_client_fx_deals_transfer_rate")
+    && tableDefinition.includes("chk_client_fx_deals_analytical_pnl_quote")
     && tableDefinition.includes("chk_client_fx_deals_comment");
   const identityIndex = sqlite.prepare("PRAGMA index_list(fx_trade_exposure)").all()
     .find(index => index.name === "uq_fx_trade_exposure_identity"
@@ -1397,10 +2115,20 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     return;
   }
 
+  const hasMajorPnlTargetSchema = hasColumns(majorPnlTargetColumns);
   const hasPreviousTargetSchema = hasColumns(previousTargetColumns);
   const hasPreCommentTargetSchema = hasColumns(preCommentTargetColumns);
   const hasSharedIdentitySchema = hasColumns(sharedIdentityColumns);
   const hasLegacySchema = hasColumns(legacyColumns);
+
+  if (hasMajorPnlTargetSchema
+    && (!hasMajorPnlTargetColumnDefinitions || !hasTargetForeignKeys)) {
+    throw new Error("Unsupported major-PnL Client FX Deal target schema.");
+  }
+
+  if (hasMajorPnlTargetSchema) {
+    return;
+  }
 
   if (hasPreviousTargetSchema
     && (!hasPreCommentTargetColumnDefinitions || !hasTargetForeignKeys)) {
@@ -1418,6 +2146,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   }
 
   if (!hasPreviousTargetSchema
+    && !hasMajorPnlTargetSchema
     && !hasPreCommentTargetSchema
     && !hasSharedIdentitySchema
     && !hasLegacySchema) {
@@ -1736,6 +2465,357 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   }
 }
 
+function migrateFxDealAnalyticalPnlTable(sqlite, {
+  tableName,
+  migratedTableName,
+  tradeType,
+  targetColumns,
+  sourceColumns,
+  analyticalPnlConstraint,
+  createTableSql,
+  includesComment
+}) {
+  const tableExists = Boolean(sqlite.prepare(`
+    SELECT 1 AS present
+    FROM sqlite_master
+    WHERE type = 'table' AND name = ?
+  `).get(tableName));
+
+  if (!tableExists) {
+    return;
+  }
+
+  const tableInfo = sqlite.prepare(`PRAGMA table_info(${tableName})`).all();
+  const columns = tableInfo.map(column => column.name);
+  const tableDefinition = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = ?
+  `).get(tableName)?.sql || "";
+  const columnNames = columns.join(",");
+
+  if (columnNames === targetColumns.join(",")) {
+    const analyticalPnlMinorIndex = targetColumns.indexOf("analytical_pnl_quote_minor");
+    const analyticalPnlFractionDigitsIndex = targetColumns
+      .indexOf("analytical_pnl_quote_fraction_digits");
+    const targetDefinitionIsValid = tableInfo[analyticalPnlMinorIndex]?.type === "INTEGER"
+      && tableInfo[analyticalPnlMinorIndex]?.notnull === 0
+      && tableInfo[analyticalPnlFractionDigitsIndex]?.type === "INTEGER"
+      && tableInfo[analyticalPnlFractionDigitsIndex]?.notnull === 0
+      && tableDefinition.includes(analyticalPnlConstraint);
+
+    if (!targetDefinitionIsValid) {
+      throw new Error(`Unsupported ${tableName} Analytical PnL minor-unit schema.`);
+    }
+
+    return;
+  }
+
+  if (columnNames !== sourceColumns.join(",")) {
+    throw new Error(`Unsupported ${tableName} Analytical PnL schema.`);
+  }
+
+  const sourceRows = sqlite.prepare(`
+    SELECT
+      d.*,
+      quote_ccy.fraction_digits AS quote_ccy_fraction_digits
+    FROM ${tableName} d
+    INNER JOIN fx_trade_exposure e
+      ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
+    INNER JOIN ccy_pair_options pair
+      ON pair.ccy_pair_code = e.ccy_pair_code
+    INNER JOIN ccy_options quote_ccy
+      ON quote_ccy.ccy_code = pair.quote_ccy_code
+    WHERE d.trade_type = ?
+    ORDER BY d.trade_id
+  `).all(tradeType);
+  const originalRowCount = Number(
+    sqlite.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count
+  );
+
+  if (sourceRows.length !== originalRowCount) {
+    throw new Error(
+      `Every ${tableName} row must resolve its quote currency Fraction Digits.`
+    );
+  }
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(createTableSql);
+
+    const insertColumns = [
+      "trade_id",
+      "trade_type",
+      "party_id",
+      "execution_context_id",
+      "pricing_rule_id",
+      "transfer_rate",
+      "analytical_pnl_quote_minor",
+      "analytical_pnl_quote_fraction_digits"
+    ];
+
+    if (includesComment) {
+      insertColumns.push("comment");
+    }
+
+    const placeholders = insertColumns.map(() => "?").join(", ");
+    const insertRow = sqlite.prepare(`
+      INSERT INTO ${migratedTableName}
+        (${insertColumns.join(", ")})
+      VALUES (${placeholders})
+    `);
+
+    for (const row of sourceRows) {
+      const analyticalPnlQuoteFractionDigits = row.analytical_pnl === null
+        ? null
+        : row.quote_ccy_fraction_digits;
+      const analyticalPnlQuoteMinor = row.analytical_pnl === null
+        ? null
+        : minorToSafeInteger(
+          majorToMinor(
+            String(row.analytical_pnl),
+            analyticalPnlQuoteFractionDigits
+          ),
+          "Analytical PnL Quote Minor"
+        );
+      const values = [
+        row.trade_id,
+        row.trade_type,
+        row.party_id,
+        row.execution_context_id,
+        row.pricing_rule_id,
+        row.transfer_rate,
+        analyticalPnlQuoteMinor,
+        analyticalPnlQuoteFractionDigits
+      ];
+
+      if (includesComment) {
+        values.push(row.comment);
+      }
+
+      insertRow.run(...values);
+    }
+
+    sqlite.exec(`
+      DROP TABLE ${tableName};
+      ALTER TABLE ${migratedTableName} RENAME TO ${tableName};
+    `);
+
+    const migratedRowCount = Number(
+      sqlite.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count
+    );
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (migratedRowCount !== originalRowCount) {
+      throw new Error(`${tableName} Analytical PnL migration did not preserve every row.`);
+    }
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error(`${tableName} Analytical PnL migration produced foreign key violations.`);
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
+  migrateFxDealAnalyticalPnlTable(sqlite, {
+    tableName: "client_fx_deals",
+    migratedTableName: "client_fx_deals_migrated",
+    tradeType: "CLIENT_DEAL",
+    targetColumns: [
+      "trade_id",
+      "trade_type",
+      "party_id",
+      "execution_context_id",
+      "pricing_rule_id",
+      "transfer_rate",
+      "analytical_pnl_quote_minor",
+      "analytical_pnl_quote_fraction_digits",
+      "comment"
+    ],
+    sourceColumns: [
+      "trade_id",
+      "trade_type",
+      "party_id",
+      "execution_context_id",
+      "pricing_rule_id",
+      "transfer_rate",
+      "analytical_pnl",
+      "comment"
+    ],
+    analyticalPnlConstraint: "chk_client_fx_deals_analytical_pnl_quote",
+    includesComment: true,
+    createTableSql: `
+      CREATE TABLE client_fx_deals_migrated
+      (
+          trade_id                    INTEGER PRIMARY KEY,
+          trade_type                  TEXT    NOT NULL DEFAULT 'CLIENT_DEAL',
+          party_id                    INTEGER NOT NULL,
+          execution_context_id        INTEGER,
+          pricing_rule_id             INTEGER,
+          transfer_rate               NUMERIC,
+          analytical_pnl_quote_minor  INTEGER,
+          analytical_pnl_quote_fraction_digits INTEGER,
+          comment                     TEXT,
+
+          CONSTRAINT fk_client_fx_deals_trade
+              FOREIGN KEY (trade_id, trade_type)
+                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_client_fx_deals_party
+              FOREIGN KEY (party_id)
+                  REFERENCES trading_parties (party_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_client_fx_deals_execution_context
+              FOREIGN KEY (execution_context_id)
+                  REFERENCES execution_contexts (execution_context_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_client_fx_deals_pricing_rule_scope
+              FOREIGN KEY (pricing_rule_id, party_id, execution_context_id)
+                  REFERENCES pricing_rules (pricing_rule_id, party_id, execution_context_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT chk_client_fx_deals_trade_type
+              CHECK (trade_type = 'CLIENT_DEAL'),
+          CONSTRAINT chk_client_fx_deals_pricing_context
+              CHECK (pricing_rule_id IS NULL OR execution_context_id IS NOT NULL),
+          CONSTRAINT chk_client_fx_deals_transfer_rate
+              CHECK (
+                  transfer_rate IS NULL
+                  OR (
+                      typeof(transfer_rate) IN ('integer', 'real')
+                      AND transfer_rate > 0
+                  )
+              ),
+          CONSTRAINT chk_client_fx_deals_analytical_pnl_quote
+              CHECK (
+                  (
+                      analytical_pnl_quote_minor IS NULL
+                      AND analytical_pnl_quote_fraction_digits IS NULL
+                  )
+                  OR (
+                      typeof(analytical_pnl_quote_minor) = 'integer'
+                      AND analytical_pnl_quote_minor
+                          BETWEEN -9007199254740991 AND 9007199254740991
+                      AND typeof(analytical_pnl_quote_fraction_digits) = 'integer'
+                      AND analytical_pnl_quote_fraction_digits BETWEEN 0 AND 10
+                  )
+              ),
+          CONSTRAINT chk_client_fx_deals_comment
+              CHECK (
+                  comment IS NULL
+                  OR (
+                      length(comment) <= 500
+                      AND instr(comment, char(10)) = 0
+                      AND instr(comment, char(13)) = 0
+                  )
+              )
+      );
+    `
+  });
+
+  migrateFxDealAnalyticalPnlTable(sqlite, {
+    tableName: "fx_hedge_deals",
+    migratedTableName: "fx_hedge_deals_migrated",
+    tradeType: "HEDGE_DEAL",
+    targetColumns: [
+      "trade_id",
+      "trade_type",
+      "party_id",
+      "execution_context_id",
+      "pricing_rule_id",
+      "transfer_rate",
+      "analytical_pnl_quote_minor",
+      "analytical_pnl_quote_fraction_digits"
+    ],
+    sourceColumns: [
+      "trade_id",
+      "trade_type",
+      "party_id",
+      "execution_context_id",
+      "pricing_rule_id",
+      "transfer_rate",
+      "analytical_pnl"
+    ],
+    analyticalPnlConstraint: "chk_fx_hedge_deals_analytical_pnl_quote",
+    includesComment: false,
+    createTableSql: `
+      CREATE TABLE fx_hedge_deals_migrated
+      (
+          trade_id                    INTEGER PRIMARY KEY,
+          trade_type                  TEXT    NOT NULL DEFAULT 'HEDGE_DEAL',
+          party_id                    INTEGER NOT NULL,
+          execution_context_id        INTEGER,
+          pricing_rule_id             INTEGER,
+          transfer_rate               NUMERIC,
+          analytical_pnl_quote_minor  INTEGER,
+          analytical_pnl_quote_fraction_digits INTEGER,
+
+          CONSTRAINT fk_fx_hedge_deals_trade
+              FOREIGN KEY (trade_id, trade_type)
+                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_hedge_deals_party
+              FOREIGN KEY (party_id)
+                  REFERENCES trading_parties (party_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_hedge_deals_execution_context
+              FOREIGN KEY (execution_context_id)
+                  REFERENCES execution_contexts (execution_context_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_hedge_deals_pricing_rule_scope
+              FOREIGN KEY (pricing_rule_id, party_id, execution_context_id)
+                  REFERENCES pricing_rules (pricing_rule_id, party_id, execution_context_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT chk_fx_hedge_deals_trade_type
+              CHECK (trade_type = 'HEDGE_DEAL'),
+          CONSTRAINT chk_fx_hedge_deals_pricing_context
+              CHECK (pricing_rule_id IS NULL OR execution_context_id IS NOT NULL),
+          CONSTRAINT chk_fx_hedge_deals_transfer_rate
+              CHECK (
+                  transfer_rate IS NULL
+                  OR (
+                      typeof(transfer_rate) IN ('integer', 'real')
+                      AND transfer_rate > 0
+                  )
+              ),
+          CONSTRAINT chk_fx_hedge_deals_analytical_pnl_quote
+              CHECK (
+                  (
+                      analytical_pnl_quote_minor IS NULL
+                      AND analytical_pnl_quote_fraction_digits IS NULL
+                  )
+                  OR (
+                      typeof(analytical_pnl_quote_minor) = 'integer'
+                      AND analytical_pnl_quote_minor
+                          BETWEEN -9007199254740991 AND 9007199254740991
+                      AND typeof(analytical_pnl_quote_fraction_digits) = 'integer'
+                      AND analytical_pnl_quote_fraction_digits BETWEEN 0 AND 10
+                  )
+              )
+      );
+    `
+  });
+}
+
 function ensureClientFxDealIndexes(sqlite) {
   sqlite.exec(`
     CREATE INDEX IF NOT EXISTS idx_client_fx_deals_party
@@ -1763,15 +2843,19 @@ function backfillInitialClientFxDealAttribution(sqlite) {
       e.base_ccy_amount_minor,
       e.base_ccy_fraction_digits,
       e.base_ccy_side AS side,
-      e.ccy_pair_code
+      e.ccy_pair_code,
+      quote_ccy.fraction_digits AS quote_ccy_fraction_digits
     FROM client_fx_deals d
     INNER JOIN fx_trade_exposure e
       ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
     INNER JOIN trading_parties p ON p.party_id = d.party_id
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
+    INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = pair.quote_ccy_code
     WHERE d.execution_context_id IS NULL
       AND d.pricing_rule_id IS NULL
       AND d.transfer_rate IS NULL
-      AND d.analytical_pnl IS NULL
+      AND d.analytical_pnl_quote_minor IS NULL
+      AND d.analytical_pnl_quote_fraction_digits IS NULL
       AND p.party_code_type = 'INN'
       AND p.party_code = '7701234567'
       AND e.entry_timestamp = '2026-07-15T09:30:00.000Z'
@@ -1805,14 +2889,13 @@ function backfillInitialClientFxDealAttribution(sqlite) {
   }
 
   const transferRate = 1.1222;
-  const analyticalPnl = calculateAnalyticalPnl({
+  const analyticalPnlQuoteMinor = calculateAnalyticalPnlMinor({
     clientSide: deal.side,
-    baseCcyAmount: Number(minorToMajor(
-      deal.base_ccy_amount_minor,
-      deal.base_ccy_fraction_digits
-    )),
+    baseCcyAmountMinor: deal.base_ccy_amount_minor,
+    baseCcyFractionDigits: deal.base_ccy_fraction_digits,
     tradeRate: deal.trade_rate,
-    transferRate
+    transferRate,
+    quoteCcyFractionDigits: deal.quote_ccy_fraction_digits
   });
 
   sqlite.prepare(`
@@ -1821,17 +2904,20 @@ function backfillInitialClientFxDealAttribution(sqlite) {
       execution_context_id = ?,
       pricing_rule_id = ?,
       transfer_rate = ?,
-      analytical_pnl = ?
+      analytical_pnl_quote_minor = ?,
+      analytical_pnl_quote_fraction_digits = ?
     WHERE trade_id = ?
       AND execution_context_id IS NULL
       AND pricing_rule_id IS NULL
       AND transfer_rate IS NULL
-      AND analytical_pnl IS NULL
+      AND analytical_pnl_quote_minor IS NULL
+      AND analytical_pnl_quote_fraction_digits IS NULL
   `).run(
     pricingRule.execution_context_id,
     pricingRule.pricing_rule_id,
     transferRate,
-    analyticalPnl,
+    minorToSafeInteger(analyticalPnlQuoteMinor, "Analytical PnL Quote Minor"),
+    deal.quote_ccy_fraction_digits,
     deal.trade_id
   );
 }
@@ -2781,30 +3867,7 @@ function seedInitialPricingRules(sqlite) {
 }
 
 function seedInitialClientDealGenerationSettings(sqlite) {
-  sqlite.exec(`
-    INSERT OR IGNORE INTO client_deal_generation_settings
-      (
-        pricing_rule_id,
-        min_base_ccy_amount,
-        max_base_ccy_amount,
-        base_ccy_amount_step,
-        buy_probability_percent,
-        is_active
-      )
-    SELECT
-      r.pricing_rule_id,
-      500000,
-      1500000,
-      100000,
-      50,
-      1
-    FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
-    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
-    WHERE p.party_type = 'CLIENT'
-      AND e.pricing_mode = 'AUTO_PRICED';
-  `);
+  synchronizeClientDealGenerationSettings(sqlite);
 }
 
 function seedInitialClientFxDeals(sqlite) {
@@ -2873,9 +3936,10 @@ function seedInitialClientFxDeals(sqlite) {
           execution_context_id,
           pricing_rule_id,
           transfer_rate,
-          analytical_pnl
+          analytical_pnl_quote_minor,
+          analytical_pnl_quote_fraction_digits
         )
-      VALUES (?, 'CLIENT_DEAL', ?, ?, ?, 1.1222, 27000)
+      VALUES (?, 'CLIENT_DEAL', ?, ?, ?, 1.1222, 2700000, 2)
     `).run(
       tradeId,
       pricingRule.party_id,
@@ -3005,8 +4069,14 @@ function fxTradeExposureAmounts(payload, generatedAmounts = null) {
     calculatedBaseMinor = calculated.baseAmountMinor;
     calculatedQuoteMinor = calculated.quoteAmountMinor;
   } else {
-    calculatedBaseMinor = majorToMinor(String(payload.baseCcyAmount), baseFractionDigits);
-    calculatedQuoteMinor = majorToMinor(String(payload.quoteCcyAmount), quoteFractionDigits);
+    calculatedBaseMinor = majorToMinorExact(
+      String(payload.baseCcyAmount),
+      baseFractionDigits
+    );
+    calculatedQuoteMinor = majorToMinorExact(
+      String(payload.quoteCcyAmount),
+      quoteFractionDigits
+    );
   }
 
   const baseMinor = generatedAmounts?.baseCcyAmountMinor ?? calculatedBaseMinor;
@@ -3035,7 +4105,7 @@ function fxTradeExposureAmounts(payload, generatedAmounts = null) {
 }
 
 function fxTradeRowWithMajorAmounts(row) {
-  return {
+  const normalized = {
     ...row,
     baseCcyAmount: Number(minorToMajor(
       row.baseCcyAmountMinor,
@@ -3046,6 +4116,17 @@ function fxTradeRowWithMajorAmounts(row) {
       row.quoteCcyFractionDigits
     ))
   };
+
+  if (row.analyticalPnlQuoteMinor !== undefined) {
+    normalized.analyticalPnl = row.analyticalPnlQuoteMinor === null
+      ? null
+      : Number(minorToMajor(
+        row.analyticalPnlQuoteMinor,
+        row.analyticalPnlQuoteFractionDigits
+      ));
+  }
+
+  return normalized;
 }
 
 function marketQuoteSimulationSettings(pairCode) {
@@ -3279,9 +4360,10 @@ function clientDealGenerationSettings() {
       execution.name AS executionSystemName,
       execution.pricing_mode AS pricingMode,
       execution.is_active AS executionSystemActive,
-      s.min_base_ccy_amount AS minBaseCcyAmount,
-      s.max_base_ccy_amount AS maxBaseCcyAmount,
-      s.base_ccy_amount_step AS baseCcyAmountStep,
+      s.min_base_ccy_amount_minor AS minBaseCcyAmountMinor,
+      s.max_base_ccy_amount_minor AS maxBaseCcyAmountMinor,
+      s.base_ccy_amount_step_minor AS baseCcyAmountStepMinor,
+      s.base_ccy_fraction_digits AS baseCcyFractionDigits,
       s.buy_probability_percent AS buyProbabilityPercent,
       100 - s.buy_probability_percent AS sellProbabilityPercent,
       s.is_active AS active
@@ -3303,6 +4385,18 @@ function clientDealGenerationSettings() {
     ORDER BY p.party_name, pair.ccy_pair_code, s.pricing_rule_id
   `).all().map(settings => ({
     ...settings,
+    minBaseCcyAmount: Number(minorToMajor(
+      settings.minBaseCcyAmountMinor,
+      settings.baseCcyFractionDigits
+    )),
+    maxBaseCcyAmount: Number(minorToMajor(
+      settings.maxBaseCcyAmountMinor,
+      settings.baseCcyFractionDigits
+    )),
+    baseCcyAmountStep: Number(minorToMajor(
+      settings.baseCcyAmountStepMinor,
+      settings.baseCcyFractionDigits
+    )),
     active: settings.active === 1,
     partyActive: settings.partyActive === 1,
     executionSystemActive: settings.executionSystemActive === 1
@@ -3328,16 +4422,16 @@ function updateClientDealGenerationSettings(pricingRuleId, payload) {
   const result = database.prepare(`
     UPDATE client_deal_generation_settings
     SET
-      min_base_ccy_amount = ?,
-      max_base_ccy_amount = ?,
-      base_ccy_amount_step = ?,
+      min_base_ccy_amount_minor = ?,
+      max_base_ccy_amount_minor = ?,
+      base_ccy_amount_step_minor = ?,
       buy_probability_percent = ?,
       is_active = ?
     WHERE pricing_rule_id = ?
   `).run(
-    payload.minBaseCcyAmount,
-    payload.maxBaseCcyAmount,
-    payload.baseCcyAmountStep,
+    payload.minBaseCcyAmountMinor,
+    payload.maxBaseCcyAmountMinor,
+    payload.baseCcyAmountStepMinor,
     payload.buyProbabilityPercent,
     payload.active ? 1 : 0,
     pricingRuleId
@@ -3347,31 +4441,45 @@ function updateClientDealGenerationSettings(pricingRuleId, payload) {
 }
 
 function ensureClientDealGenerationSettingsForPricingRule(pricingRuleId) {
-  database.prepare(`
-    INSERT OR IGNORE INTO client_deal_generation_settings
-      (
-        pricing_rule_id,
-        min_base_ccy_amount,
-        max_base_ccy_amount,
-        base_ccy_amount_step,
-        buy_probability_percent,
-        is_active
-      )
+  const rule = database.prepare(`
     SELECT
       r.pricing_rule_id,
-      500000,
-      1500000,
-      100000,
-      50,
-      1
+      base_ccy.fraction_digits AS base_ccy_fraction_digits
     FROM pricing_rules r
     INNER JOIN trading_parties p ON p.party_id = r.party_id
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
+    INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     WHERE r.pricing_rule_id = ?
       AND p.party_type = 'CLIENT'
       AND e.pricing_mode = 'AUTO_PRICED'
-  `).run(pricingRuleId);
+  `).get(pricingRuleId);
+
+  if (!rule) {
+    return;
+  }
+
+  const defaults = defaultClientDealGenerationAmounts(rule.base_ccy_fraction_digits);
+  database.prepare(`
+    INSERT OR IGNORE INTO client_deal_generation_settings
+      (
+        pricing_rule_id,
+        min_base_ccy_amount_minor,
+        max_base_ccy_amount_minor,
+        base_ccy_amount_step_minor,
+        base_ccy_fraction_digits,
+        buy_probability_percent,
+        is_active
+      )
+    VALUES (?, ?, ?, ?, ?, 50, 1)
+  `).run(
+    rule.pricing_rule_id,
+    defaults.minBaseCcyAmountMinor,
+    defaults.maxBaseCcyAmountMinor,
+    defaults.baseCcyAmountStepMinor,
+    rule.base_ccy_fraction_digits
+  );
 }
 
 function clientFxDeals() {
@@ -3385,7 +4493,8 @@ function clientFxDeals() {
       d.pricing_rule_id AS pricingRuleId,
       r.margin_percent AS pricingRuleMargin,
       d.transfer_rate AS transferRate,
-      d.analytical_pnl AS analyticalPnl,
+      d.analytical_pnl_quote_minor AS analyticalPnlQuoteMinor,
+      d.analytical_pnl_quote_fraction_digits AS analyticalPnlQuoteFractionDigits,
       d.comment,
       a.market_pulse_stream_status AS marketPulseStreamStatus,
       a.market_pulse_bid AS marketPulseBid,
@@ -3434,7 +4543,8 @@ function hedgeFxDeals() {
       d.pricing_rule_id AS pricingRuleId,
       r.margin_percent AS pricingRuleMargin,
       d.transfer_rate AS transferRate,
-      d.analytical_pnl AS analyticalPnl,
+      d.analytical_pnl_quote_minor AS analyticalPnlQuoteMinor,
+      d.analytical_pnl_quote_fraction_digits AS analyticalPnlQuoteFractionDigits,
       a.market_pulse_stream_status AS marketPulseStreamStatus,
       a.market_pulse_bid AS marketPulseBid,
       a.market_pulse_offer AS marketPulseOffer,
@@ -3471,14 +4581,110 @@ function hedgeFxDeal(hedgeDealId) {
   return hedgeFxDeals().find(deal => deal.hedgeDealId === Number(hedgeDealId)) || null;
 }
 
-function batchBalancingTrades() {
+function fxPositions() {
   return database.prepare(`
     SELECT
-      b.batch_trade_id AS batchTradeId,
-      b.batch_pair_id AS batchPairId,
-      b.batch_id AS batchId,
-      b.trade_type AS tradeType,
-      b.trade_id AS tradeId,
+      e.trade_id AS tradeId,
+      e.trade_type AS tradeType,
+      e.entry_timestamp AS entryTimestamp,
+      e.trade_date AS tradeDate,
+      e.ccy_pair_code AS ccyPairCode,
+      pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
+      e.base_ccy_side AS side,
+      e.dealt_ccy_code AS dealtCcyCode,
+      e.base_ccy_amount_minor AS baseCcyAmountMinor,
+      e.base_ccy_fraction_digits AS baseCcyFractionDigits,
+      e.quote_ccy_amount_minor AS quoteCcyAmountMinor,
+      e.quote_ccy_fraction_digits AS quoteCcyFractionDigits,
+      e.trade_rate AS tradeRate,
+      e.tenor,
+      e.base_ccy_value_date AS baseCcyValueDate,
+      e.quote_ccy_value_date AS quoteCcyValueDate,
+      COALESCE(c.party_id, h.party_id) AS partyId,
+      COALESCE(c.execution_context_id, h.execution_context_id) AS executionContextId,
+      COALESCE(c.pricing_rule_id, h.pricing_rule_id) AS pricingRuleId,
+      r.margin_percent AS pricingRuleMargin,
+      COALESCE(c.transfer_rate, h.transfer_rate) AS transferRate,
+      COALESCE(
+        c.analytical_pnl_quote_minor,
+        h.analytical_pnl_quote_minor
+      ) AS analyticalPnlQuoteMinor,
+      COALESCE(
+        c.analytical_pnl_quote_fraction_digits,
+        h.analytical_pnl_quote_fraction_digits
+      ) AS analyticalPnlQuoteFractionDigits,
+      c.comment,
+      p.party_code AS partyCode,
+      p.party_code_type AS partyCodeType,
+      p.party_name AS partyName,
+      a.market_pulse_stream_status AS marketPulseStreamStatus,
+      a.market_pulse_bid AS marketPulseBid,
+      a.market_pulse_offer AS marketPulseOffer,
+      a.market_pulse_timestamp AS marketPulseTimestamp,
+      output.batch_id AS batchId,
+      output.output_role AS outputRole
+    FROM fx_trade_exposure e
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
+    LEFT JOIN client_fx_deals c
+      ON c.trade_id = e.trade_id AND c.trade_type = e.trade_type
+    LEFT JOIN fx_hedge_deals h
+      ON h.trade_id = e.trade_id AND h.trade_type = e.trade_type
+    LEFT JOIN trading_parties p
+      ON p.party_id = COALESCE(c.party_id, h.party_id)
+    LEFT JOIN pricing_rules r
+      ON r.pricing_rule_id = COALESCE(c.pricing_rule_id, h.pricing_rule_id)
+    LEFT JOIN fx_trade_market_snapshot a
+      ON a.trade_id = e.trade_id AND a.trade_type = e.trade_type
+    LEFT JOIN fx_batch_outputs output
+      ON output.trade_id = e.trade_id AND output.trade_type = e.trade_type
+    WHERE e.trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL', 'BATCH_POSITION_OUT')
+      AND NOT EXISTS
+      (
+        SELECT 1
+        FROM fx_batch_members member
+        INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+        WHERE member.trade_id = e.trade_id
+          AND batch.batch_status = 'FORMED'
+      )
+    ORDER BY e.trade_id
+  `).all().map(row => ({
+    ...fxTradeRowWithMajorAmounts(row),
+    clientDealId: row.tradeType === "CLIENT_DEAL" ? row.tradeId : undefined,
+    hedgeDealId: row.tradeType === "HEDGE_DEAL" ? row.tradeId : undefined,
+    clientCode: row.tradeType === "CLIENT_DEAL" ? row.partyCode : undefined,
+    clientCodeType: row.tradeType === "CLIENT_DEAL" ? row.partyCodeType : undefined,
+    clientName: row.tradeType === "CLIENT_DEAL" ? row.partyName : undefined
+  }));
+}
+
+function fxBatchTrades() {
+  return database.prepare(`
+    WITH batch_trades AS
+    (
+      SELECT
+        m.batch_id,
+        m.trade_id,
+        m.trade_type,
+        m.member_role AS batch_role
+      FROM fx_batch_members m
+      WHERE m.member_role = 'BALANCE_TRADE'
+
+      UNION ALL
+
+      SELECT
+        o.batch_id,
+        o.trade_id,
+        o.trade_type,
+        o.output_role AS batch_role
+      FROM fx_batch_outputs o
+    )
+    SELECT
+      t.trade_id AS batchTradeId,
+      t.batch_id AS batchPairId,
+      t.batch_id AS batchId,
+      t.batch_role AS batchRole,
+      t.trade_type AS tradeType,
+      t.trade_id AS tradeId,
       b.created_at AS createdAt,
       e.entry_timestamp AS entryTimestamp,
       e.trade_date AS tradeDate,
@@ -3494,11 +4700,13 @@ function batchBalancingTrades() {
       e.tenor,
       e.base_ccy_value_date AS baseCcyValueDate,
       e.quote_ccy_value_date AS quoteCcyValueDate
-    FROM batch_balancing_trades b
+    FROM batch_trades t
+    INNER JOIN fx_batches b ON b.batch_id = t.batch_id
     INNER JOIN fx_trade_exposure e
-      ON e.trade_id = b.trade_id AND e.trade_type = b.trade_type
+      ON e.trade_id = t.trade_id AND e.trade_type = t.trade_type
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
-    ORDER BY b.batch_id, b.batch_pair_id, b.batch_trade_id
+    WHERE b.batch_status = 'FORMED'
+    ORDER BY t.batch_id, t.trade_id
   `).all().map(fxTradeRowWithMajorAmounts);
 }
 
@@ -3509,6 +4717,8 @@ function batchBalancingTradeSources(tradeIds) {
       e.trade_id AS tradeId,
       e.trade_type AS tradeType,
       e.ccy_pair_code AS ccyPairCode,
+      pair.base_ccy_code AS baseCcyCode,
+      pair.quote_ccy_code AS quoteCcyCode,
       e.trade_date AS tradeDate,
       e.base_ccy_side AS side,
       e.dealt_ccy_code AS dealtCcyCode,
@@ -3516,23 +4726,29 @@ function batchBalancingTradeSources(tradeIds) {
       e.base_ccy_fraction_digits AS baseCcyFractionDigits,
       e.quote_ccy_amount_minor AS quoteCcyAmountMinor,
       e.quote_ccy_fraction_digits AS quoteCcyFractionDigits,
-      COALESCE(c.transfer_rate, h.transfer_rate, e.trade_rate) AS transferRate,
+      COALESCE(c.transfer_rate, h.transfer_rate) AS transferRate,
       e.tenor,
       e.base_ccy_value_date AS baseCcyValueDate,
       e.quote_ccy_value_date AS quoteCcyValueDate,
-      pair.default_quote_decimals AS rateFractionDigits,
-      quote_ccy.fraction_digits AS quoteFractionDigits
+      pair.default_quote_decimals AS rateFractionDigits
     FROM fx_trade_exposure e
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
-    INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = pair.quote_ccy_code
     LEFT JOIN client_fx_deals c
       ON c.trade_id = e.trade_id AND c.trade_type = e.trade_type
     LEFT JOIN fx_hedge_deals h
       ON h.trade_id = e.trade_id AND h.trade_type = e.trade_type
     WHERE e.trade_id IN (${placeholders})
       AND e.trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')
+      AND NOT EXISTS
+      (
+        SELECT 1
+        FROM fx_batch_members m
+        INNER JOIN fx_batches b ON b.batch_id = m.batch_id
+        WHERE m.trade_id = e.trade_id
+          AND b.batch_status = 'FORMED'
+      )
     ORDER BY e.trade_id
-  `).all(...tradeIds).map(fxTradeRowWithMajorAmounts);
+  `).all(...tradeIds);
   const foundTradeIds = new Set(sourceTrades.map(trade => trade.tradeId));
   const missingTradeIds = tradeIds.filter(tradeId => !foundTradeIds.has(tradeId));
 
@@ -3544,25 +4760,40 @@ function batchBalancingTradeSources(tradeIds) {
     throw error;
   }
 
+  const missingTransferRate = sourceTrades.find(trade => trade.transferRate === null);
+
+  if (missingTransferRate) {
+    const error = new Error(
+      `Trade ${missingTransferRate.tradeId} requires transfer_rate before batching.`
+    );
+    error.code = "BATCH_TRANSFER_RATE_REQUIRED";
+    throw error;
+  }
+
   return sourceTrades;
 }
 
-function createBatchBalancingTradePair(sourceTradeIds) {
-  return runInImmediateTransaction(database, () => {
-    const sourceTrades = batchBalancingTradeSources(sourceTradeIds);
-    const calculation = calculateBatchBalancingTradePair({
-      trades: sourceTrades,
-      rateFractionDigits: sourceTrades[0].rateFractionDigits,
-      quoteFractionDigits: sourceTrades[0].quoteFractionDigits
-    });
-    const batchId = Number(database.prepare(`
-      SELECT COALESCE(MAX(batch_id), 0) + 1 AS nextId
-      FROM batch_balancing_trades
-    `).get().nextId);
-    const batchPairId = Number(database.prepare(`
-      SELECT COALESCE(MAX(batch_pair_id), 0) + 1 AS nextId
-      FROM batch_balancing_trades
-    `).get().nextId);
+function saveFormedFxBatch({ idempotencyKey, sourceTrades, formation }) {
+    const pair = ccyPairOption(formation.positionOut.ccyPairCode);
+
+    if (!pair
+      || formation.positionOut.dealtCcyCode !== pair.baseCcy
+      || formation.positionOut.baseCcyFractionDigits
+        !== pair.baseCurrencyFractionDigits
+      || formation.positionOut.quoteCcyFractionDigits
+        !== pair.quoteCurrencyFractionDigits) {
+      const error = new RangeError(
+        "Selected trades use currency precision that differs from current Reference Data."
+      );
+      error.code = "INCOMPATIBLE_BATCH_SELECTION";
+      throw error;
+    }
+
+    const batchResult = database.prepare(`
+      INSERT INTO fx_batches (idempotency_key, ccy_pair_code)
+      VALUES (?, ?)
+    `).run(idempotencyKey, formation.positionOut.ccyPairCode);
+    const batchId = Number(batchResult.lastInsertRowid);
     const insertExposure = database.prepare(`
       INSERT INTO fx_trade_exposure
         (
@@ -3583,27 +4814,32 @@ function createBatchBalancingTradePair(sourceTradeIds) {
         )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const insertBatchTrade = database.prepare(`
-      INSERT INTO batch_balancing_trades
-        (batch_pair_id, batch_id, trade_type, trade_id)
+    const insertMember = database.prepare(`
+      INSERT INTO fx_batch_members (batch_id, trade_id, trade_type, member_role)
       VALUES (?, ?, ?, ?)
     `);
-    const createdTradeIds = [
-      calculation.balancingTrade,
-      calculation.positionOutTrade
-    ].map(trade => {
-      const exposureAmounts = fxTradeExposureAmounts(trade);
+    const insertOutput = database.prepare(`
+      INSERT INTO fx_batch_outputs (batch_id, trade_id, trade_type, output_role)
+      VALUES (?, ?, ?, ?)
+    `);
+    for (const sourceTrade of sourceTrades) {
+      insertMember.run(batchId, sourceTrade.tradeId, sourceTrade.tradeType, "TRADE");
+    }
+
+    const createdTradeIds = [formation.balanceTrade, formation.positionOut]
+      .filter(Boolean)
+      .map(trade => {
       const exposureResult = insertExposure.run(
         trade.entryTimestamp,
         trade.tradeType,
         trade.tradeDate,
         trade.ccyPairCode,
         trade.side,
-        exposureAmounts.dealtCcyCode,
-        exposureAmounts.baseCcyAmountMinor,
-        exposureAmounts.baseCcyFractionDigits,
-        exposureAmounts.quoteCcyAmountMinor,
-        exposureAmounts.quoteCcyFractionDigits,
+        trade.dealtCcyCode,
+        minorToSafeInteger(trade.baseCcyAmountMinor, "Batch Base Ccy Amount Minor"),
+        trade.baseCcyFractionDigits,
+        minorToSafeInteger(trade.quoteCcyAmountMinor, "Batch Quote Ccy Amount Minor"),
+        trade.quoteCcyFractionDigits,
         trade.tradeRate,
         trade.tenor,
         trade.baseCcyValueDate,
@@ -3611,89 +4847,128 @@ function createBatchBalancingTradePair(sourceTradeIds) {
       );
       const tradeId = Number(exposureResult.lastInsertRowid);
 
-      insertBatchTrade.run(batchPairId, batchId, trade.tradeType, tradeId);
+      if (trade.tradeType === "BATCH_BALANCE_TRADE") {
+        insertMember.run(batchId, tradeId, trade.tradeType, "BALANCE_TRADE");
+      } else {
+        insertOutput.run(batchId, tradeId, trade.tradeType, "POSITION_OUT");
+      }
       return tradeId;
     });
-    const createdTradeIdSet = new Set(createdTradeIds);
+
+    database.prepare(`
+      UPDATE fx_batches
+      SET batch_status = 'FORMED'
+      WHERE batch_id = ? AND batch_status = 'BUILDING'
+    `).run(batchId);
 
     return {
-      batchId,
-      batchPairId,
-      sourceTradeIds: calculation.sourceTradeIds,
-      sourceNetSide: calculation.sourceNetSide,
-      sourceNetBaseCcyAmount: calculation.sourceNetBaseCcyAmount,
-      sourceNetTransferQuoteAmount: calculation.sourceNetTransferQuoteAmount,
-      balancingRate: calculation.balancingTrade.tradeRate,
-      roundingResidualQuoteAmount: calculation.roundingResidualQuoteAmount,
-      trades: batchBalancingTrades().filter(trade => createdTradeIdSet.has(trade.tradeId))
+      ...formedBatchResult(batchId),
+      batchPairId: batchId,
+      sourceTradeIds: formation.sourceTradeIds,
+      sourceNetSide: formation.sourceNetSide,
+      sourceNetBaseCcyAmountMinor: minorToSafeInteger(
+        formation.sourceNetBaseCcyAmountMinor,
+        "Source Net Base Ccy Amount Minor"
+      ),
+      sourceNetBaseCcyFractionDigits: formation.sourceNetBaseCcyFractionDigits,
+      sourceNetBaseCcyAmount: Number(minorToMajor(
+        formation.sourceNetBaseCcyAmountMinor,
+        formation.sourceNetBaseCcyFractionDigits
+      )),
+      sourceNetTransferQuoteAmountMinor: minorToSafeInteger(
+        formation.sourceNetTransferQuoteAmountMinor,
+        "Source Net Transfer Quote Amount Minor"
+      ),
+      sourceNetTransferQuoteFractionDigits:
+        formation.sourceNetTransferQuoteFractionDigits,
+      sourceNetTransferQuoteAmount: Number(minorToMajor(
+        formation.sourceNetTransferQuoteAmountMinor,
+        formation.sourceNetTransferQuoteFractionDigits
+      )),
+      balancingRate: formation.balanceTrade?.tradeRate ?? null,
+      roundingResidualQuoteAmountMinor: minorToSafeInteger(
+        formation.roundingResidualQuoteAmountMinor,
+        "Batch Rounding Residual Quote Amount Minor"
+      ),
+      roundingResidualQuoteFractionDigits:
+        formation.roundingResidualQuoteFractionDigits,
+      roundingResidualQuoteAmount: Number(minorToMajor(
+        formation.roundingResidualQuoteAmountMinor,
+        formation.roundingResidualQuoteFractionDigits
+      )),
+      createdTradeIds
     };
-  });
 }
 
-function deleteBatchBalancingTrades(tradeIds) {
-  return runInImmediateTransaction(database, () => {
-    const placeholders = tradeIds.map(() => "?").join(", ");
-    const storedTrades = database.prepare(`
-      SELECT trade_id AS tradeId, trade_type AS tradeType
-      FROM batch_balancing_trades
-      WHERE trade_id IN (${placeholders})
-        AND trade_type IN ('BATCH_BALANCING_TRADE', 'BATCH_POSITION_OUT')
+function formedBatchResult(batchId) {
+  const batch = database.prepare(`
+    SELECT
+      batch_id AS batchId,
+      idempotency_key AS idempotencyKey,
+      ccy_pair_code AS ccyPairCode,
+      batch_status AS batchStatus,
+      created_at AS createdAt
+    FROM fx_batches
+    WHERE batch_id = ? AND batch_status = 'FORMED'
+  `).get(batchId);
+
+  if (!batch) {
+    throw new Error(`Formed Batch ${batchId} was not found.`);
+  }
+
+  return {
+    ...batch,
+    sourceTradeIds: database.prepare(`
+      SELECT trade_id AS tradeId
+      FROM fx_batch_members
+      WHERE batch_id = ? AND member_role = 'TRADE'
       ORDER BY trade_id
-    `).all(...tradeIds);
-    const storedTradeIds = new Set(storedTrades.map(trade => trade.tradeId));
-    const missingTradeIds = tradeIds.filter(tradeId => !storedTradeIds.has(tradeId));
-
-    if (missingTradeIds.length > 0) {
-      const error = new Error(
-        `Trade ${missingTradeIds.join(", ")} was not found or is not a generated Batch Trade.`
-      );
-      error.code = "BATCH_GENERATED_TRADE_NOT_FOUND";
-      throw error;
-    }
-
-    const subtypeResult = database.prepare(`
-      DELETE FROM batch_balancing_trades
-      WHERE trade_id IN (${placeholders})
-        AND trade_type IN ('BATCH_BALANCING_TRADE', 'BATCH_POSITION_OUT')
-    `).run(...tradeIds);
-
-    if (subtypeResult.changes !== tradeIds.length) {
-      throw new Error("Not every selected generated Batch Trade was deleted.");
-    }
-
-    const exposureResult = database.prepare(`
-      DELETE FROM fx_trade_exposure
-      WHERE trade_id IN (${placeholders})
-        AND trade_type IN ('BATCH_BALANCING_TRADE', 'BATCH_POSITION_OUT')
-    `).run(...tradeIds);
-
-    if (exposureResult.changes !== tradeIds.length) {
-      throw new Error("Not every generated FX Trade Exposure was deleted.");
-    }
-
-    return {
-      deletedTradeIds: [...tradeIds].sort((left, right) => left - right)
-    };
-  });
+    `).all(batchId).map(row => row.tradeId),
+    trades: fxBatchTrades().filter(trade => trade.batchId === Number(batchId))
+  };
 }
+
+function formedBatchByIdempotencyKey(idempotencyKey) {
+  const batch = database.prepare(`
+    SELECT batch_id AS batchId
+    FROM fx_batches
+    WHERE idempotency_key = ?
+      AND batch_status = 'FORMED'
+  `).get(idempotencyKey);
+
+  return batch ? formedBatchResult(batch.batchId) : null;
+}
+
+const formFxBatchUseCase = new FormFxBatchUseCase({
+  transactionRunner: {
+    run: operation => runInImmediateTransaction(database, operation)
+  },
+  fxBatchRepository: {
+    findFormedByIdempotencyKey: formedBatchByIdempotencyKey,
+    saveFormed: saveFormedFxBatch
+  },
+  fxTradeExposureRepository: {
+    findBatchSources: batchBalancingTradeSources
+  }
+});
 
 function clientFxDealWithCalculatedEconomics(payload, exposureAmounts) {
   const pair = ccyPairOption(payload.ccyPairCode);
-  const quoteCurrency = ccyOptions().find(currency => currency.code === pair.quoteCcy);
-  const pnlFractionDigits = quoteCurrency?.fractionDigits ?? 2;
   const baseCcyAmount = exposureAmounts.baseCcyAmount;
+  const analyticalPnlQuoteFractionDigits = pair.quoteCurrencyFractionDigits;
 
   if (payload.pricingRuleId === null) {
     const transferRate = roundToFractionDigits(
       payload.transferRate,
       pair.defaultQuoteDecimals
     );
-    const analyticalPnl = calculateAnalyticalPnl({
+    const analyticalPnlQuoteMinor = calculateAnalyticalPnlMinor({
       clientSide: payload.side,
-      baseCcyAmount,
+      baseCcyAmountMinor: exposureAmounts.baseCcyAmountMinor,
+      baseCcyFractionDigits: exposureAmounts.baseCcyFractionDigits,
       tradeRate: payload.tradeRate,
       transferRate,
-      pnlFractionDigits
+      quoteCcyFractionDigits: analyticalPnlQuoteFractionDigits
     });
 
     return {
@@ -3701,25 +4976,34 @@ function clientFxDealWithCalculatedEconomics(payload, exposureAmounts) {
       baseCcyAmount,
       quoteCcyAmount: exposureAmounts.quoteCcyAmount,
       transferRate,
-      analyticalPnl
+      analyticalPnlQuoteMinor: minorToSafeInteger(
+        analyticalPnlQuoteMinor,
+        "Analytical PnL Quote Minor"
+      ),
+      analyticalPnlQuoteFractionDigits
     };
   }
 
   const rule = pricingRule(payload.pricingRuleId);
   const economics = calculateClientFxDealEconomics({
     clientSide: payload.side,
-    baseCcyAmount,
+    baseCcyAmountMinor: exposureAmounts.baseCcyAmountMinor,
+    baseCcyFractionDigits: exposureAmounts.baseCcyFractionDigits,
     tradeRate: payload.tradeRate,
     marginPercent: rule.marginPercent,
     rateFractionDigits: pair.defaultQuoteDecimals,
-    pnlFractionDigits
+    quoteCcyFractionDigits: analyticalPnlQuoteFractionDigits
   });
 
   return {
     ...payload,
     baseCcyAmount,
     quoteCcyAmount: exposureAmounts.quoteCcyAmount,
-    ...economics
+    ...economics,
+    analyticalPnlQuoteMinor: minorToSafeInteger(
+      economics.analyticalPnlQuoteMinor,
+      "Analytical PnL Quote Minor"
+    )
   };
 }
 
@@ -3771,17 +5055,19 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
           execution_context_id,
           pricing_rule_id,
           transfer_rate,
-          analytical_pnl,
+          analytical_pnl_quote_minor,
+          analytical_pnl_quote_fraction_digits,
           comment
         )
-      VALUES (?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?)
+      VALUES (?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?)
     `).run(
       tradeId,
       payload.partyId,
       payload.executionContextId,
       payload.pricingRuleId,
       payload.transferRate,
-      payload.analyticalPnl,
+      payload.analyticalPnlQuoteMinor,
+      payload.analyticalPnlQuoteFractionDigits,
       payload.comment
     );
 
@@ -3827,6 +5113,10 @@ function hedgeFxDealWithCalculatedTerms(payload, exposureAmounts) {
 
   return {
     ...terms,
+    analyticalPnlQuoteMinor: minorToSafeInteger(
+      terms.analyticalPnlQuoteMinor,
+      "Analytical PnL Quote Minor"
+    ),
     partyId: rule.partyId,
     executionContextId: rule.executionContextId,
     pricingRuleId: rule.pricingRuleId,
@@ -3891,16 +5181,18 @@ function createHedgeFxDeal(payload, suppliedExposureAmounts = null) {
           execution_context_id,
           pricing_rule_id,
           transfer_rate,
-          analytical_pnl
+          analytical_pnl_quote_minor,
+          analytical_pnl_quote_fraction_digits
         )
-      VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?)
+      VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?, ?)
     `).run(
       tradeId,
       payload.partyId,
       payload.executionContextId,
       payload.pricingRuleId,
       payload.transferRate,
-      payload.analyticalPnl
+      payload.analyticalPnlQuoteMinor,
+      payload.analyticalPnlQuoteFractionDigits
     );
 
     database.prepare(`
@@ -4485,19 +5777,48 @@ function isIsoUtcTimestamp(value) {
   return !Number.isNaN(timestamp.getTime()) && timestamp.toISOString() === value;
 }
 
-function validateClientDealGenerationSettingsPayload(body) {
-  const minBaseCcyAmount = Number(body.minBaseCcyAmount);
-  const maxBaseCcyAmount = Number(body.maxBaseCcyAmount);
-  const baseCcyAmountStep = Number(body.baseCcyAmountStep);
+function validateClientDealGenerationSettingsPayload(body, baseCcyFractionDigits) {
+  const minBaseCcyAmount = normalizedPositiveDecimalText(body.minBaseCcyAmount);
+  const maxBaseCcyAmount = normalizedPositiveDecimalText(body.maxBaseCcyAmount);
+  const baseCcyAmountStep = normalizedPositiveDecimalText(body.baseCcyAmountStep);
   const buyProbabilityPercent = Number(body.buyProbabilityPercent);
   const active = typeof body.active === "boolean" ? body.active : null;
 
-  if (![minBaseCcyAmount, maxBaseCcyAmount, baseCcyAmountStep]
-    .every(value => Number.isFinite(value) && value > 0)) {
+  if ([minBaseCcyAmount, maxBaseCcyAmount, baseCcyAmountStep]
+    .some(value => value === null)) {
     return { error: "Min Amount, Max Amount and Amount Step must be positive numbers." };
   }
 
-  if (maxBaseCcyAmount < minBaseCcyAmount) {
+  let minBaseCcyAmountMinor;
+  let maxBaseCcyAmountMinor;
+  let baseCcyAmountStepMinor;
+
+  try {
+    minBaseCcyAmountMinor = minorToSafeInteger(
+      majorToMinorExact(minBaseCcyAmount, baseCcyFractionDigits),
+      "Min Base Ccy Amount Minor"
+    );
+    maxBaseCcyAmountMinor = minorToSafeInteger(
+      majorToMinorExact(maxBaseCcyAmount, baseCcyFractionDigits),
+      "Max Base Ccy Amount Minor"
+    );
+    baseCcyAmountStepMinor = minorToSafeInteger(
+      majorToMinorExact(baseCcyAmountStep, baseCcyFractionDigits),
+      "Base Ccy Amount Step Minor"
+    );
+  } catch {
+    return {
+      error: `Generation amounts must fit Base Ccy precision (${baseCcyFractionDigits} Fraction Digits) and the supported integer range.`
+    };
+  }
+
+  if (minBaseCcyAmountMinor <= 0
+    || maxBaseCcyAmountMinor <= 0
+    || baseCcyAmountStepMinor <= 0) {
+    return { error: "Min Amount, Max Amount and Amount Step must be positive numbers." };
+  }
+
+  if (maxBaseCcyAmountMinor < minBaseCcyAmountMinor) {
     return { error: "Max Base Ccy Amount must not be below Min Base Ccy Amount." };
   }
 
@@ -4512,9 +5833,9 @@ function validateClientDealGenerationSettingsPayload(body) {
   }
 
   return {
-    minBaseCcyAmount,
-    maxBaseCcyAmount,
-    baseCcyAmountStep,
+    minBaseCcyAmountMinor,
+    maxBaseCcyAmountMinor,
+    baseCcyAmountStepMinor,
     buyProbabilityPercent,
     active
   };
@@ -4722,54 +6043,6 @@ function validateHedgeFxDealPayload(body) {
     tradeRate,
     tenor
   };
-}
-
-function validateBatchBalancingTradeSelection(body) {
-  if (!Array.isArray(body?.tradeIds) || body.tradeIds.length === 0) {
-    return { error: "Select at least one Client or Hedge FX Deal." };
-  }
-
-  if (body.tradeIds.length > 200) {
-    return { error: "No more than 200 trades can be processed at once." };
-  }
-
-  const tradeIds = body.tradeIds.map(tradeId =>
-    integerInRange(tradeId, 1, Number.MAX_SAFE_INTEGER)
-  );
-
-  if (tradeIds.some(tradeId => tradeId === null)) {
-    return { error: "Every Trade ID must be a positive integer." };
-  }
-
-  if (new Set(tradeIds).size !== tradeIds.length) {
-    return { error: "Every Trade ID may be selected only once." };
-  }
-
-  return { tradeIds };
-}
-
-function validateGeneratedBatchTradeSelection(body) {
-  if (!Array.isArray(body?.tradeIds) || body.tradeIds.length === 0) {
-    return { error: "Select at least one generated Batch Trade." };
-  }
-
-  if (body.tradeIds.length > 200) {
-    return { error: "No more than 200 generated Batch Trades can be deleted at once." };
-  }
-
-  const tradeIds = body.tradeIds.map(tradeId =>
-    integerInRange(tradeId, 1, Number.MAX_SAFE_INTEGER)
-  );
-
-  if (tradeIds.some(tradeId => tradeId === null)) {
-    return { error: "Every Trade ID must be a positive integer." };
-  }
-
-  if (new Set(tradeIds).size !== tradeIds.length) {
-    return { error: "Every Trade ID may be selected only once." };
-  }
-
-  return { tradeIds };
 }
 
 function validateClientFxDealCommentPayload(body) {
@@ -5056,7 +6329,7 @@ async function handleApi(request, response, url) {
       hedgeDealPricingRules: hedgeDealPricingRules(),
       clientFxDeals: clientFxDeals(),
       hedgeFxDeals: hedgeFxDeals(),
-      batchBalancingTrades: batchBalancingTrades()
+      fxPositions: fxPositions(),
     }).replace(/</g, "\\u003c");
     sendText(
       response,
@@ -5077,8 +6350,9 @@ async function handleApi(request, response, url) {
 
   if (clientDealGenerationSettingsMatch && method === "PUT") {
     const pricingRuleId = Number(clientDealGenerationSettingsMatch[1]);
+    const currentSettings = clientDealGenerationSetting(pricingRuleId);
 
-    if (!clientDealGenerationSetting(pricingRuleId)) {
+    if (!currentSettings) {
       apiError(
         response,
         404,
@@ -5089,7 +6363,10 @@ async function handleApi(request, response, url) {
     }
 
     const body = await readJsonBody(request);
-    const payload = validateClientDealGenerationSettingsPayload(body);
+    const payload = validateClientDealGenerationSettingsPayload(
+      body,
+      currentSettings.baseCcyFractionDigits
+    );
 
     if (payload.error) {
       apiError(response, 400, "INVALID_CLIENT_DEAL_GENERATION_SETTINGS", payload.error);
@@ -5151,29 +6428,29 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/batch-balancing-trades" && method === "GET") {
-    sendJson(response, 200, batchBalancingTrades());
+  if (pathname === "/api/v1/fx-positions" && method === "GET") {
+    sendJson(response, 200, fxPositions());
     return true;
   }
 
-  if (pathname === "/api/v1/batch-balancing-trades" && method === "POST") {
+  if (pathname === "/api/v1/fx-batches" && method === "POST") {
     const body = await readJsonBody(request);
-    const payload = validateBatchBalancingTradeSelection(body);
-
-    if (payload.error) {
-      apiError(response, 400, "INVALID_BATCH_SELECTION", payload.error);
-      return true;
-    }
 
     try {
-      sendJson(response, 201, createBatchBalancingTradePair(payload.tradeIds));
+      const result = formFxBatchUseCase.execute({
+        idempotencyKey: request.headers?.["idempotency-key"] ?? body.idempotencyKey,
+        tradeIds: body.tradeIds
+      });
+      sendJson(response, result.replayed ? 200 : 201, result);
     } catch (error) {
-      if (error?.code === "BATCH_SOURCE_TRADE_NOT_FOUND") {
+      if (error?.code === "INVALID_BATCH_COMMAND") {
+        apiError(response, 400, error.code, error.message);
+      } else if (error?.code === "BATCH_SOURCE_TRADE_NOT_FOUND") {
         apiError(response, 404, error.code, error.message);
-      } else if (String(error?.code || "").startsWith("BATCH_")
-        || error?.code === "INCOMPATIBLE_BATCH_SELECTION"
-        || error?.code === "INVALID_BATCH_BALANCING_RATE") {
+      } else if (error?.code === "BATCH_IDEMPOTENCY_CONFLICT") {
         apiError(response, 409, error.code, error.message);
+      } else if (String(error?.code || "").includes("BATCH")) {
+        apiError(response, 422, error.code, error.message);
       } else {
         handleDatabaseError(response, error);
       }
@@ -5182,24 +6459,20 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/batch-balancing-trades" && method === "DELETE") {
-    const body = await readJsonBody(request);
-    const payload = validateGeneratedBatchTradeSelection(body);
+  const fxBatchMatch = /^\/api\/v1\/fx-batches\/(\d+)$/.exec(pathname);
 
-    if (payload.error) {
-      apiError(response, 400, "INVALID_GENERATED_BATCH_SELECTION", payload.error);
-      return true;
-    }
+  if (fxBatchMatch && method === "GET") {
+    const batchId = Number(fxBatchMatch[1]);
+    const batch = database.prepare(`
+      SELECT 1 AS present
+      FROM fx_batches
+      WHERE batch_id = ? AND batch_status = 'FORMED'
+    `).get(batchId);
 
-    try {
-      // Temporary test-only deletion until generated trades move into the complete Batch workflow.
-      sendJson(response, 200, deleteBatchBalancingTrades(payload.tradeIds));
-    } catch (error) {
-      if (error?.code === "BATCH_GENERATED_TRADE_NOT_FOUND") {
-        apiError(response, 404, error.code, error.message);
-      } else {
-        handleDatabaseError(response, error);
-      }
+    if (!batch) {
+      apiError(response, 404, "FX_BATCH_NOT_FOUND", `FX Batch ${batchId} was not found.`);
+    } else {
+      sendJson(response, 200, formedBatchResult(batchId));
     }
 
     return true;

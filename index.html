@@ -3731,13 +3731,48 @@
     }
 
     .position-label-text {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 6px;
       overflow: hidden;
-      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .position-label-text:only-child {
       grid-column: 1 / -1;
+    }
+
+    .position-trade-type-chip {
+      display: inline-flex;
+      width: 26px;
+      height: 24px;
+      flex: 0 0 26px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--bs-border-color, #dee2e6);
+      border-radius: var(--workbench-radius, 4px);
+      background: var(--bs-body-bg, #ffffff);
+      color: var(--bs-secondary-color, #6c757d);
+    }
+
+    .position-trade-type-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+    }
+
+    .position-trade-type-chip:focus-visible {
+      outline: 2px solid var(--bs-primary, #0d6efd);
+      outline-offset: 1px;
+    }
+
+    .position-trade-context {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .date {
@@ -10970,6 +11005,16 @@
       border-radius: 0 var(--workbench-radius) var(--workbench-radius) 0;
     }
 
+    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar #oneBatchButton:is(
+      :hover,
+      :focus-visible,
+      :active
+    ):not(:disabled) {
+      border-color: var(--bs-primary);
+      background: var(--bs-primary-bg-subtle);
+      color: var(--bs-primary-text-emphasis);
+    }
+
     #mainPage.fx-position-bootstrap.workbench-page .deal-toolbar .action-button.primary {
       border-color: var(--bs-primary);
       background: var(--bs-body-bg);
@@ -11543,7 +11588,7 @@
           <span class="batch-toolbar-title">Batch Toolbar</span>
           <div class="batch-control input-group input-group-sm" aria-label="Auto Batching actions">
             <span class="batch-label input-group-text">Auto Batching</span>
-            <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-main" aria-label="One Batch" disabled>One Batch</button>
+            <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-main" id="oneBatchButton" aria-label="One Batch" disabled>One Batch</button>
             <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-process" aria-label="Run Auto Batching process" disabled>
               <span class="button-icon" aria-hidden="true">play_arrow</span>
             </button>
@@ -11551,16 +11596,6 @@
               <span class="button-icon" aria-hidden="true">settings</span>
             </button>
           </div>
-          <button type="button" class="action-button btn btn-sm btn-outline-primary" id="createBatchBalancingPairButton" disabled>
-            <span class="button-icon" aria-hidden="true">balance</span>
-            <span>Balance Selection</span>
-          </button>
-          <!-- Temporary test-only action until generated trades move into the complete Batch workflow. -->
-          <button type="button" class="action-button btn btn-sm btn-outline-danger" id="deleteGeneratedBatchTradesButton" data-tooltip="Temporary test action" disabled>
-            <span class="button-icon" aria-hidden="true">delete</span>
-            <span>Delete Generated</span>
-          </button>
-          <button type="button" class="action-button btn btn-sm btn-outline-secondary" aria-label="Return back" disabled>Return back</button>
         </section>
       </div>
     </section>
@@ -13062,7 +13097,9 @@
     let hedgeDealEligiblePricingRules = loadHedgeDealEligiblePricingRules();
     let clientFxDeals = loadClientFxDeals();
     let hedgeFxDeals = loadHedgeFxDeals();
-    let batchBalancingTrades = loadBatchBalancingTrades();
+    let fxPositionRecords = Array.isArray(DEMO_API_BOOTSTRAP.fxPositions)
+      ? DEMO_API_BOOTSTRAP.fxPositions
+      : [];
     let clientDealGenerationSettings = [];
     let clientDealGenerationSettingsEditPricingRuleId = null;
     let clientDealGenerationProcessState = {
@@ -13075,6 +13112,7 @@
       lastError: null
     };
     let clientDealGenerationRefreshTimer = null;
+    let pendingOneBatchRequest = null;
     const fxPositions = [];
 
     loadFxPositionsFromDatabase();
@@ -13142,7 +13180,9 @@
       const priorityText = cell.querySelector?.(".position-label-text");
 
       if (priorityText) {
-        return priorityText.textContent.trim();
+        const clone = priorityText.cloneNode(true);
+        clone.querySelectorAll(".button-icon").forEach(element => element.remove());
+        return clone.textContent.replace(/\s+/g, " ").trim();
       }
 
       const control = cell.querySelector?.("input, select, textarea");
@@ -13626,8 +13666,7 @@
     const runClientDealGenerationButton = document.getElementById("runClientDealGenerationButton");
     const runClientDealGenerationIcon = document.getElementById("runClientDealGenerationIcon");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
-    const createBatchBalancingPairButton = document.getElementById("createBatchBalancingPairButton");
-    const deleteGeneratedBatchTradesButton = document.getElementById("deleteGeneratedBatchTradesButton");
+    const oneBatchButton = document.getElementById("oneBatchButton");
     const clientProfileForm = document.getElementById("clientProfileForm");
     const clientProfileFormTitle = document.getElementById("clientProfileFormTitle");
     const clientProfileSubmitButton = document.getElementById("clientProfileSubmitButton");
@@ -14102,10 +14141,24 @@
       return new Big(10).pow(fractionDigits);
     }
 
-    function majorToMinorDecimal(amountText, fractionDigits) {
-      return new Big(amountText)
-        .times(decimalPowerOfTen(fractionDigits))
-        .round(0, Big.roundHalfUp);
+    function majorToMinorExactDecimal(amountText, fractionDigits) {
+      const scaledAmount = new Big(amountText)
+        .times(decimalPowerOfTen(fractionDigits));
+      const roundedAmount = scaledAmount.round(0, Big.roundHalfUp);
+
+      return scaledAmount.eq(roundedAmount) ? roundedAmount : null;
+    }
+
+    function validateMinorPrecision(input, ccyCode, fractionDigits) {
+      const amountText = positiveDecimalInputText(input.value);
+      const hasValidPrecision = amountText === null
+        || majorToMinorExactDecimal(amountText, fractionDigits) !== null;
+
+      input.setCustomValidity(hasValidPrecision
+        ? ""
+        : `${ccyCode} amount supports no more than ${fractionDigits} fractional digits.`);
+
+      return hasValidPrecision;
     }
 
     function minorToMajorDecimal(minorAmount, fractionDigits) {
@@ -14116,6 +14169,18 @@
 
     function formattedMinorAmount(minorAmount, fractionDigits) {
       return groupedDecimalText(minorToMajorDecimal(minorAmount, fractionDigits));
+    }
+
+    function minorAmountCell(minorAmount, fractionDigits) {
+      let minor;
+
+      try {
+        minor = BigInt(minorAmount);
+      } catch {
+        return "";
+      }
+
+      return minor === 0n ? "" : formattedMinorAmount(minor.toString(), fractionDigits);
     }
 
     function exactFxAmountsFromDealt({
@@ -14137,7 +14202,12 @@
       const rate = new Big(rateText);
 
       if (dealtCcyCode === baseCcyCode) {
-        const baseAmountMinor = majorToMinorDecimal(dealtText, baseFractionDigits);
+        const baseAmountMinor = majorToMinorExactDecimal(dealtText, baseFractionDigits);
+
+        if (baseAmountMinor === null) {
+          return null;
+        }
+
         const quoteAmountMinor = baseAmountMinor
           .div(decimalPowerOfTen(baseFractionDigits))
           .times(rate)
@@ -14148,7 +14218,12 @@
       }
 
       if (dealtCcyCode === quoteCcyCode) {
-        const quoteAmountMinor = majorToMinorDecimal(dealtText, quoteFractionDigits);
+        const quoteAmountMinor = majorToMinorExactDecimal(dealtText, quoteFractionDigits);
+
+        if (quoteAmountMinor === null) {
+          return null;
+        }
+
         const baseAmountMinor = quoteAmountMinor
           .div(decimalPowerOfTen(quoteFractionDigits))
           .div(rate)
@@ -15424,8 +15499,41 @@
         .toUpperCase();
       const tradeRate = Number(source.tradeRate ?? source.clientRate);
       const legacyBaseAmount = Math.max(Number(source.amountBuy) || 0, Number(source.amountSell) || 0);
-      const baseCcyAmount = Number(source.baseCcyAmount ?? source.baseAmount ?? legacyBaseAmount);
-      const quoteCcyAmount = Number(source.quoteCcyAmount ?? source.quoteAmount ?? (baseCcyAmount * tradeRate));
+      let baseCcyAmount = Number(source.baseCcyAmount ?? source.baseAmount ?? legacyBaseAmount);
+      let quoteCcyAmount = Number(source.quoteCcyAmount ?? source.quoteAmount);
+      const baseCcyFractionDigits = Number(
+        source.baseCcyFractionDigits ?? source.base_ccy_fraction_digits
+      );
+      const quoteCcyFractionDigits = Number(
+        source.quoteCcyFractionDigits ?? source.quote_ccy_fraction_digits
+      );
+      const baseCcyAmountMinorSource =
+        source.baseCcyAmountMinor ?? source.base_ccy_amount_minor;
+      const quoteCcyAmountMinorSource =
+        source.quoteCcyAmountMinor ?? source.quote_ccy_amount_minor;
+      const baseCcyAmountMinor = Number(baseCcyAmountMinorSource);
+      const quoteCcyAmountMinor = Number(quoteCcyAmountMinorSource);
+      const hasMinorAmounts = Number.isSafeInteger(baseCcyAmountMinor)
+        && baseCcyAmountMinor > 0
+        && Number.isSafeInteger(quoteCcyAmountMinor)
+        && quoteCcyAmountMinor > 0
+        && Number.isInteger(baseCcyFractionDigits)
+        && baseCcyFractionDigits >= 0
+        && baseCcyFractionDigits <= 10
+        && Number.isInteger(quoteCcyFractionDigits)
+        && quoteCcyFractionDigits >= 0
+        && quoteCcyFractionDigits <= 10;
+
+      if (hasMinorAmounts) {
+        baseCcyAmount = Number(minorToMajorDecimal(
+          baseCcyAmountMinor,
+          baseCcyFractionDigits
+        ));
+        quoteCcyAmount = Number(minorToMajorDecimal(
+          quoteCcyAmountMinor,
+          quoteCcyFractionDigits
+        ));
+      }
       const entryDate = isoDateFromClientFxDealValue(source.entryDate);
       const entryTimestamp = String(source.entryTimestamp || "").trim()
         || (entryDate ? `${entryDate}T00:00:00.000Z` : "");
@@ -15450,11 +15558,34 @@
         ? null
         : Number(pricingRuleMarginSource);
       const transferRateSource = source.transferRate ?? source.transfer_rate ?? source.autoBatchRate;
-      const analyticalPnlSource = source.analyticalPnl
-        ?? source.analytical_pnl
-        ?? source.analyticalPnlQuoteAmount
-        ?? source.analytical_pnl_quote_amount
-        ?? source.pnlCash;
+      const analyticalPnlQuoteMinorSource = source.analyticalPnlQuoteMinor
+        ?? source.analytical_pnl_quote_minor;
+      const analyticalPnlQuoteFractionDigitsSource = source.analyticalPnlQuoteFractionDigits
+        ?? source.analytical_pnl_quote_fraction_digits;
+      const analyticalPnlQuoteMinor = Number(analyticalPnlQuoteMinorSource);
+      const analyticalPnlQuoteFractionDigits = Number(
+        analyticalPnlQuoteFractionDigitsSource
+      );
+      const hasMinorAnalyticalPnl = analyticalPnlQuoteMinorSource !== null
+        && analyticalPnlQuoteMinorSource !== undefined
+        && analyticalPnlQuoteMinorSource !== ""
+        && analyticalPnlQuoteFractionDigitsSource !== null
+        && analyticalPnlQuoteFractionDigitsSource !== undefined
+        && analyticalPnlQuoteFractionDigitsSource !== ""
+        && Number.isSafeInteger(analyticalPnlQuoteMinor)
+        && Number.isInteger(analyticalPnlQuoteFractionDigits)
+        && analyticalPnlQuoteFractionDigits >= 0
+        && analyticalPnlQuoteFractionDigits <= 10;
+      const analyticalPnlSource = hasMinorAnalyticalPnl
+        ? minorToMajorDecimal(
+          analyticalPnlQuoteMinor,
+          analyticalPnlQuoteFractionDigits
+        )
+        : source.analyticalPnl
+          ?? source.analytical_pnl
+          ?? source.analyticalPnlQuoteAmount
+          ?? source.analytical_pnl_quote_amount
+          ?? source.pnlCash;
       const transferRate = transferRateSource === null || transferRateSource === undefined || transferRateSource === ""
         ? null
         : Number(transferRateSource);
@@ -15498,6 +15629,12 @@
         analyticalPnl: Number.isFinite(analyticalPnl)
           ? analyticalPnl
           : null,
+        analyticalPnlQuoteMinor: hasMinorAnalyticalPnl
+          ? analyticalPnlQuoteMinor
+          : null,
+        analyticalPnlQuoteFractionDigits: hasMinorAnalyticalPnl
+          ? analyticalPnlQuoteFractionDigits
+          : null,
         comment: String(source.comment ?? "").trim(),
         marketPulseBid: Number.isFinite(marketPulseBid) ? marketPulseBid : null,
         marketPulseOffer: Number.isFinite(marketPulseOffer) ? marketPulseOffer : null,
@@ -15513,6 +15650,10 @@
         currencyPair,
         side,
         dealtCcyCode,
+        baseCcyAmountMinor: hasMinorAmounts ? baseCcyAmountMinor : null,
+        baseCcyFractionDigits: hasMinorAmounts ? baseCcyFractionDigits : null,
+        quoteCcyAmountMinor: hasMinorAmounts ? quoteCcyAmountMinor : null,
+        quoteCcyFractionDigits: hasMinorAmounts ? quoteCcyFractionDigits : null,
         baseCcyAmount,
         quoteCcyAmount,
         tradeRate,
@@ -15537,7 +15678,7 @@
         .map(normalizedClientFxDeal)
         .filter(deal => Number.isInteger(deal.clientDealId) && deal.clientDealId > 0)
         .sort((left, right) => left.clientDealId - right.clientDealId);
-      loadFxPositionsFromDatabase();
+      await reloadFxPositionsFromApi();
       return clientFxDeals;
     }
 
@@ -15576,7 +15717,7 @@
         .map(normalizedHedgeFxDeal)
         .filter(deal => Number.isInteger(deal.hedgeDealId) && deal.hedgeDealId > 0)
         .sort((left, right) => left.hedgeDealId - right.hedgeDealId);
-      loadFxPositionsFromDatabase();
+      await reloadFxPositionsFromApi();
       return hedgeFxDeals;
     }
 
@@ -15597,40 +15738,24 @@
         currencyPair: String(source.currencyPair || "").trim().toUpperCase(),
         side: String(source.side || "").trim().toUpperCase(),
         dealtCcyCode: String(source.dealtCcyCode || "").trim().toUpperCase(),
+        baseCcyAmountMinor: Number(source.baseCcyAmountMinor),
+        baseCcyFractionDigits: Number(source.baseCcyFractionDigits),
+        quoteCcyAmountMinor: Number(source.quoteCcyAmountMinor),
+        quoteCcyFractionDigits: Number(source.quoteCcyFractionDigits),
         baseCcyAmount: Number(source.baseCcyAmount),
         quoteCcyAmount: Number(source.quoteCcyAmount),
-        tradeRate: Number(source.tradeRate),
+        tradeRate: source.tradeRate === null ? null : Number(source.tradeRate),
         tenor: String(source.tenor || "").trim().toUpperCase(),
         baseCcyValueDate: String(source.baseCcyValueDate || "").trim(),
         quoteCcyValueDate: String(source.quoteCcyValueDate || "").trim()
       };
     }
 
-    function loadBatchBalancingTrades() {
-      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.batchBalancingTrades : [];
-
-      return (Array.isArray(source) ? source : [])
-        .map(normalizedBatchBalancingTrade)
-        .filter(trade =>
-          Number.isInteger(trade.tradeId)
-          && trade.tradeId > 0
-          && ["BATCH_BALANCING_TRADE", "BATCH_POSITION_OUT"].includes(trade.tradeType)
-        )
-        .sort((left, right) => left.tradeId - right.tradeId);
-    }
-
-    async function reloadBatchBalancingTradesFromApi() {
-      const records = await demoApiRequest("/api/v1/batch-balancing-trades");
-      batchBalancingTrades = (Array.isArray(records) ? records : [])
-        .map(normalizedBatchBalancingTrade)
-        .filter(trade =>
-          Number.isInteger(trade.tradeId)
-          && trade.tradeId > 0
-          && ["BATCH_BALANCING_TRADE", "BATCH_POSITION_OUT"].includes(trade.tradeType)
-        )
-        .sort((left, right) => left.tradeId - right.tradeId);
+    async function reloadFxPositionsFromApi() {
+      const records = await demoApiRequest("/api/v1/fx-positions");
+      fxPositionRecords = Array.isArray(records) ? records : [];
       loadFxPositionsFromDatabase();
-      return batchBalancingTrades;
+      return fxPositionRecords;
     }
 
     function fxPositionFromClientFxDeal(record) {
@@ -15665,11 +15790,17 @@
         quoteCurrency: quoteCcy,
         currencyPair: record.currencyPair,
         dealtCcyCode: record.dealtCcyCode,
+        baseCcyAmountMinor: record.baseCcyAmountMinor,
+        baseCcyFractionDigits: record.baseCcyFractionDigits,
+        quoteCcyAmountMinor: record.quoteCcyAmountMinor,
+        quoteCcyFractionDigits: record.quoteCcyFractionDigits,
         amountSell: side === "SELL" ? record.baseCcyAmount : 0,
         amountBuy: side === "BUY" ? record.baseCcyAmount : 0,
         clientRate: record.tradeRate,
         autoBatchRate: record.transferRate,
         pnlCash: record.analyticalPnl,
+        analyticalPnlQuoteMinor: record.analyticalPnlQuoteMinor,
+        analyticalPnlQuoteFractionDigits: record.analyticalPnlQuoteFractionDigits,
         pricingRuleId: record.pricingRuleId === null ? "" : String(record.pricingRuleId),
         pricingRuleMargin: null,
         pricingRuleControlStatus: record.pricingRuleId === null
@@ -15723,11 +15854,17 @@
         quoteCurrency: quoteCcy,
         currencyPair: record.currencyPair,
         dealtCcyCode: record.dealtCcyCode,
+        baseCcyAmountMinor: record.baseCcyAmountMinor,
+        baseCcyFractionDigits: record.baseCcyFractionDigits,
+        quoteCcyAmountMinor: record.quoteCcyAmountMinor,
+        quoteCcyFractionDigits: record.quoteCcyFractionDigits,
         amountSell: side === "SELL" ? record.baseCcyAmount : 0,
         amountBuy: side === "BUY" ? record.baseCcyAmount : 0,
         clientRate: record.tradeRate,
         autoBatchRate: record.transferRate,
         pnlCash: record.analyticalPnl,
+        analyticalPnlQuoteMinor: record.analyticalPnlQuoteMinor,
+        analyticalPnlQuoteFractionDigits: record.analyticalPnlQuoteFractionDigits,
         pricingRuleId: record.pricingRuleId === null ? "" : String(record.pricingRuleId),
         pricingRuleMargin: record.pricingRuleMargin,
         pricingRuleControlStatus: "",
@@ -15775,11 +15912,17 @@
         quoteCurrency: quoteCcy,
         currencyPair: record.currencyPair,
         dealtCcyCode: record.dealtCcyCode,
+        baseCcyAmountMinor: record.baseCcyAmountMinor,
+        baseCcyFractionDigits: record.baseCcyFractionDigits,
+        quoteCcyAmountMinor: record.quoteCcyAmountMinor,
+        quoteCcyFractionDigits: record.quoteCcyFractionDigits,
         amountSell: side === "SELL" ? record.baseCcyAmount : 0,
         amountBuy: side === "BUY" ? record.baseCcyAmount : 0,
         clientRate: record.tradeRate,
         autoBatchRate: record.tradeRate,
         pnlCash: 0,
+        analyticalPnlQuoteMinor: null,
+        analyticalPnlQuoteFractionDigits: null,
         pricingRuleId: "",
         pricingRuleMargin: null,
         pricingRuleControlStatus: "",
@@ -15790,7 +15933,7 @@
         entryMarketStreamStatus: "",
         tone: "blue",
         batchId: String(record.batchId),
-        isBatched: record.tradeType === "BATCH_BALANCING_TRADE"
+        isBatched: record.tradeType === "BATCH_BALANCE_TRADE"
       };
     }
 
@@ -22538,11 +22681,21 @@
 
     function loadFxPositionsFromDatabase() {
       const restoredFxPositions = DEMO_API_ENABLED
-        ? [
-            ...clientFxDeals.map(fxPositionFromClientFxDeal),
-            ...hedgeFxDeals.map(fxPositionFromHedgeFxDeal),
-            ...batchBalancingTrades.map(fxPositionFromBatchBalancingTrade)
-          ]
+        ? fxPositionRecords.map(record => {
+            const tradeType = String(record?.tradeType || "").trim().toUpperCase();
+
+            if (tradeType === "CLIENT_DEAL") {
+              return fxPositionFromClientFxDeal(normalizedClientFxDeal(record));
+            }
+
+            if (tradeType === "HEDGE_DEAL") {
+              return fxPositionFromHedgeFxDeal(normalizedHedgeFxDeal(record));
+            }
+
+            return fxPositionFromBatchBalancingTrade(
+              normalizedBatchBalancingTrade(record)
+            );
+          })
         : [];
 
       fxPositions.splice(0, fxPositions.length, ...restoredFxPositions);
@@ -22560,8 +22713,60 @@
       return "flat";
     }
 
-    function fxPositionAbsoluteBaseAmount(deal) {
-      return deal.amountSell + deal.amountBuy;
+    function fxPositionBaseCcyFractionDigits(deal) {
+      const fractionDigits = Number(deal?.baseCcyFractionDigits);
+      return Number.isInteger(fractionDigits)
+        && fractionDigits >= 0
+        && fractionDigits <= 10
+        ? fractionDigits
+        : null;
+    }
+
+    function fxPositionBaseAmountMinor(deal) {
+      const amount = deal?.baseCcyAmountMinor;
+
+      if (!Number.isSafeInteger(amount) || amount <= 0) {
+        return null;
+      }
+
+      return BigInt(amount);
+    }
+
+    function fxPositionQuoteCcyFractionDigits(deal) {
+      const fractionDigits = Number(deal?.quoteCcyFractionDigits);
+      return Number.isInteger(fractionDigits)
+        && fractionDigits >= 0
+        && fractionDigits <= 10
+        ? fractionDigits
+        : null;
+    }
+
+    function fxPositionQuoteAmountMinor(deal) {
+      const amount = deal?.quoteCcyAmountMinor;
+
+      if (!Number.isSafeInteger(amount) || amount <= 0) {
+        return null;
+      }
+
+      return BigInt(amount);
+    }
+
+    function scaledMinorAmount(minorAmount, sourceFractionDigits, targetFractionDigits) {
+      if (targetFractionDigits < sourceFractionDigits) {
+        throw new RangeError("Target Fraction Digits must not reduce monetary precision.");
+      }
+
+      return minorAmount
+        * (10n ** BigInt(targetFractionDigits - sourceFractionDigits));
+    }
+
+    function fxPositionBaseAmountCell(deal) {
+      const minorAmount = fxPositionBaseAmountMinor(deal);
+      const fractionDigits = fxPositionBaseCcyFractionDigits(deal);
+
+      return minorAmount === null || fractionDigits === null
+        ? amountCell(fxPositionBaseAmount(deal))
+        : minorAmountCell(minorAmount, fractionDigits);
     }
 
     function fxPositionSignedBaseAmount(deal) {
@@ -22578,26 +22783,8 @@
       return 0;
     }
 
-    function quoteCurrencyAmount(baseCurrencyAmount, dealRate) {
-      if (!Number.isFinite(baseCurrencyAmount) || !Number.isFinite(dealRate)) {
-        return null;
-      }
-
-      return -baseCurrencyAmount * dealRate;
-    }
-
     function fxPositionBaseAmount(deal) {
       const signedAmount = fxPositionSignedBaseAmount(deal);
-
-      return Number.isFinite(signedAmount) ? Math.abs(signedAmount) : null;
-    }
-
-    function fxPositionSignedQuoteAmount(deal) {
-      return quoteCurrencyAmount(fxPositionSignedBaseAmount(deal), deal.clientRate);
-    }
-
-    function fxPositionQuoteAmount(deal) {
-      const signedAmount = fxPositionSignedQuoteAmount(deal);
 
       return Number.isFinite(signedAmount) ? Math.abs(signedAmount) : null;
     }
@@ -22643,10 +22830,60 @@
       return String(deal?.partyName || deal?.clientName || deal?.executionVenue || "").trim();
     }
 
-    function fxPositionTradeLabel(deal) {
+    function fxPositionTradeTypePresentation(deal) {
       const type = fxPositionType(deal);
-      const partyName = fxPositionPartyName(deal, type);
-      return partyName ? `${type} : ${partyName}` : type;
+
+      if (type === "CLIENT_DEAL") {
+        return { type, label: "CLIENT DEAL", icon: "handshake" };
+      }
+
+      if (type === "HEDGE_DEAL") {
+        return { type, label: "HEDGE DEAL", icon: "shield" };
+      }
+
+      if (type === "BATCH_POSITION_OUT") {
+        return { type, label: "BATCH POSITION OUT", icon: "output" };
+      }
+
+      if (type === "BATCH_BALANCE_TRADE") {
+        return { type, label: "BATCH BALANCE TRADE", icon: "balance" };
+      }
+
+      return {
+        type,
+        label: type.replaceAll("_", " "),
+        icon: "receipt_long"
+      };
+    }
+
+    function fxPositionTradeLabel(deal) {
+      const presentation = fxPositionTradeTypePresentation(deal);
+      const partyName = fxPositionPartyName(deal, presentation.type);
+      return partyName
+        ? `${presentation.label} : ${partyName}`
+        : presentation.label;
+    }
+
+    function fxPositionTradeContext(deal, tradeType = fxPositionType(deal)) {
+      if (tradeType === "BATCH_POSITION_OUT") {
+        const batchId = Number(deal?.batchId);
+        return Number.isInteger(batchId) && batchId > 0
+          ? `Position Out · Batch #${batchId}`
+          : "Position Out";
+      }
+
+      return fxPositionPartyName(deal, tradeType);
+    }
+
+    function fxPositionTradeTypeTooltip(deal, presentation) {
+      if (presentation.type === "BATCH_POSITION_OUT") {
+        const batchId = Number(deal?.batchId);
+        return Number.isInteger(batchId) && batchId > 0
+          ? `BATCH POSITION OUT · created by FX Batch #${batchId}`
+          : presentation.label;
+      }
+
+      return presentation.label;
     }
 
     function fxPositionSide(deal) {
@@ -22735,55 +22972,18 @@
       return { base, quote, pair: currencyPairValue(base, quote) };
     }
 
-    function transferQuoteCurrencyDelta(baseCurrencyAmount, dealRate, transferRate) {
-      const quoteCurrencyCash = quoteCurrencyAmount(baseCurrencyAmount, dealRate);
-      const transferQuoteAmount = quoteCurrencyAmount(baseCurrencyAmount, transferRate);
+    function pnlCash(deal) {
+      const pnlMinor = deal?.analyticalPnlQuoteMinor;
+      const fractionDigits = Number(deal?.analyticalPnlQuoteFractionDigits);
 
-      if (!Number.isFinite(quoteCurrencyCash) || !Number.isFinite(transferQuoteAmount)) {
-        return null;
+      if (Number.isSafeInteger(pnlMinor)
+        && Number.isInteger(fractionDigits)
+        && fractionDigits >= 0
+        && fractionDigits <= 10) {
+        return Number(minorToMajorDecimal(pnlMinor, fractionDigits));
       }
 
-      return transferQuoteAmount - quoteCurrencyCash;
-    }
-
-    function pnlCashFromTransfer(baseCurrencyAmount, dealRate, transferRate) {
-      const transferAdjustment = transferQuoteCurrencyDelta(baseCurrencyAmount, dealRate, transferRate);
-
-      return Number.isFinite(transferAdjustment) ? -transferAdjustment : null;
-    }
-
-    function pnlCash(deal) {
-      const computed = pnlCashFromTransfer(fxPositionSignedBaseAmount(deal), deal.clientRate, deal.autoBatchRate);
-
-      return Number.isFinite(computed)
-        ? computed
-        : Number.isFinite(deal.pnlCash)
-          ? deal.pnlCash
-          : null;
-    }
-
-    function totals(source) {
-      return source.reduce((acc, deal) => {
-        acc.sell += deal.amountSell;
-        acc.buy += deal.amountBuy;
-        return acc;
-      }, { sell: 0, buy: 0 });
-    }
-
-    function weightedAverage(source, field) {
-      const weighted = source.reduce((acc, deal) => {
-        const amount = deal.amountSell + deal.amountBuy;
-
-        if (deal[field] === null || deal[field] === undefined || !Number.isFinite(deal[field])) {
-          return acc;
-        }
-
-        acc.sum += deal[field] * amount;
-        acc.amount += amount;
-        return acc;
-      }, { sum: 0, amount: 0 });
-
-      return weighted.amount === 0 ? null : weighted.sum / weighted.amount;
+      return Number.isFinite(deal?.pnlCash) ? deal.pnlCash : null;
     }
 
     function todayLabel() {
@@ -23042,18 +23242,7 @@
       );
     }
 
-    function isGeneratedBatchTrade(deal) {
-      return deal.databaseBackedBatchBalancingTrade === true
-        && ["BATCH_BALANCING_TRADE", "BATCH_POSITION_OUT"].includes(fxPositionType(deal));
-    }
-
-    function selectedGeneratedBatchTrades() {
-      return currentDisplayRows().filter(deal =>
-        selectedDealIds.has(deal.id) && isGeneratedBatchTrade(deal)
-      );
-    }
-
-    async function createBatchBalancingPairFromSelection() {
+    async function formOneBatchFromSelection() {
       const sourceDeals = selectedBatchBalancingSourceDeals();
 
       if (sourceDeals.length === 0) {
@@ -23061,85 +23250,55 @@
         return;
       }
 
-      const tradeIds = sourceDeals.map(deal => Number(fxPositionTradeId(deal)));
-      createBatchBalancingPairButton.disabled = true;
-      setBatchStatus("Calculating Batch Balancing Trade...");
+      const tradeIds = sourceDeals
+        .map(deal => Number(fxPositionTradeId(deal)))
+        .sort((left, right) => left - right);
+      const selectionKey = tradeIds.join(",");
+
+      if (pendingOneBatchRequest?.selectionKey !== selectionKey) {
+        pendingOneBatchRequest = {
+          idempotencyKey: crypto.randomUUID(),
+          selectionKey
+        };
+      }
+
+      oneBatchButton.disabled = true;
+      setBatchStatus("Forming FX Batch...");
 
       try {
         const result = await demoApiRequest(
-          "/api/v1/batch-balancing-trades",
+          "/api/v1/fx-batches",
           {
             method: "POST",
+            headers: {
+              "Idempotency-Key": pendingOneBatchRequest.idempotencyKey
+            },
             body: JSON.stringify({ tradeIds })
           }
         );
-        await reloadBatchBalancingTradesFromApi();
+        await reloadFxPositionsFromApi();
+        pendingOneBatchRequest = null;
         selectedDealIds.clear();
         render(fxPositions);
 
         const balancingTrade = result.trades?.find(trade =>
-          trade.tradeType === "BATCH_BALANCING_TRADE"
+          trade.tradeType === "BATCH_BALANCE_TRADE"
         );
         const positionOutTrade = result.trades?.find(trade =>
           trade.tradeType === "BATCH_POSITION_OUT"
         );
         setBatchStatus(
-          `Created Batch Pair ${result.batchPairId}: `
-          + `BATCH_BALANCING_TRADE ${balancingTrade?.tradeId ?? ""} `
-          + `and BATCH_POSITION_OUT ${positionOutTrade?.tradeId ?? ""}.`
+          balancingTrade
+            ? `FX Batch ${result.batchId} formed: BATCH_BALANCE_TRADE `
+              + `${balancingTrade.tradeId}, BATCH_POSITION_OUT `
+              + `${positionOutTrade?.tradeId ?? ""}.`
+            : `Ideal FX Batch ${result.batchId} formed without position transfer; `
+              + `zero BATCH_POSITION_OUT ${positionOutTrade?.tradeId ?? ""}.`
         );
       } catch (error) {
-        setBatchStatus(error.message || "Unable to create the Batch Balancing pair.", "error");
+        setBatchStatus(error.message || "Unable to form FX Batch.", "error");
       } finally {
         updateActionButtons();
-      }
-    }
-
-    async function deleteSelectedGeneratedBatchTrades() {
-      const trades = selectedGeneratedBatchTrades();
-
-      if (trades.length === 0) {
-        setBatchStatus("Select one or more generated Batch Trades to delete.", "warning");
-        updateActionButtons();
-        return;
-      }
-
-      const confirmationMessage = trades.length === 1
-        ? "Delete the selected generated Batch Trade from the demo database?"
-        : `Delete ${trades.length} selected generated Batch Trades from the demo database?`;
-
-      if (!window.confirm(confirmationMessage)) {
-        return;
-      }
-
-      const tradeIds = trades.map(trade => Number(fxPositionTradeId(trade)));
-      deleteGeneratedBatchTradesButton.disabled = true;
-      setBatchStatus("Deleting generated Batch Trades...");
-
-      try {
-        const result = await demoApiRequest(
-          "/api/v1/batch-balancing-trades",
-          {
-            method: "DELETE",
-            body: JSON.stringify({ tradeIds })
-          }
-        );
-        await reloadBatchBalancingTradesFromApi();
-        selectedDealIds.clear();
-        setBatchStatus(
-          result.deletedTradeIds.length === 1
-            ? "Deleted 1 generated Batch Trade."
-            : `Deleted ${result.deletedTradeIds.length} generated Batch Trades.`
-        );
-        render(fxPositions);
-      } catch (error) {
-        try {
-          await reloadBatchBalancingTradesFromApi();
-        } catch {}
-
-        selectedDealIds.clear();
-        setBatchStatus(error.message || "Unable to delete the selected generated Batch Trades.", "error");
-        render(fxPositions);
       }
     }
 
@@ -23319,10 +23478,8 @@
         deleteHedgeDealButton.disabled = !DEMO_API_ENABLED || selectedDeletableHedgeDeals().length === 0;
       }
 
-      createBatchBalancingPairButton.disabled =
+      oneBatchButton.disabled =
         !DEMO_API_ENABLED || selectedBatchBalancingSourceDeals().length === 0;
-      deleteGeneratedBatchTradesButton.disabled =
-        !DEMO_API_ENABLED || selectedGeneratedBatchTrades().length === 0;
     }
 
     function updateSelectAllCheckboxes(rows) {
@@ -23845,6 +24002,14 @@
         : addClientDealForm.elements.baseCcyAmount;
       const baseFractionDigits = currencyFractionDigits(currencies.base);
       const quoteFractionDigits = currencyFractionDigits(currencies.quote);
+      const dealtFractionDigits = fixing === "quote"
+        ? quoteFractionDigits
+        : baseFractionDigits;
+
+      if (!validateMinorPrecision(dealtInput, dealtCcyCode, dealtFractionDigits)) {
+        return null;
+      }
+
       const amounts = exactFxAmountsFromDealt({
         dealtAmount: dealtInput.value,
         dealtCcyCode,
@@ -24538,6 +24703,14 @@
         : addHedgeDealForm.elements.baseCcyAmount;
       const baseFractionDigits = currencyFractionDigits(currencies.base);
       const quoteFractionDigits = currencyFractionDigits(currencies.quote);
+      const dealtFractionDigits = fixing === "quote"
+        ? quoteFractionDigits
+        : baseFractionDigits;
+
+      if (!validateMinorPrecision(dealtInput, dealtCcyCode, dealtFractionDigits)) {
+        return null;
+      }
+
       const amounts = exactFxAmountsFromDealt({
         dealtAmount: dealtInput.value,
         dealtCcyCode,
@@ -25397,16 +25570,25 @@
       const fixing = editForm.elements.amountFixingCurrency.value === "quote" ? "quote" : "base";
       const baseInput = editForm.elements.amount;
       const quoteInput = editForm.elements.quoteAmount;
-      const baseAmount = normalizeNumber(baseInput.value);
-      const quoteAmount = normalizeNumber(quoteInput.value);
-      const rate = normalizeNumber(editForm.elements.clientRate.value);
+      const currencies = dealFormCurrencies();
+      const baseFractionDigits = currencyFractionDigits(currencies.base);
+      const quoteFractionDigits = currencyFractionDigits(currencies.quote);
+      const amounts = exactFxAmountsFromDealt({
+        dealtAmount: fixing === "quote" ? quoteInput.value : baseInput.value,
+        dealtCcyCode: fixing === "quote" ? currencies.quote : currencies.base,
+        baseCcyCode: currencies.base,
+        quoteCcyCode: currencies.quote,
+        baseFractionDigits,
+        quoteFractionDigits,
+        tradeRate: editForm.elements.clientRate.value
+      });
 
       baseInput.readOnly = fixing === "quote";
       quoteInput.readOnly = fixing === "base";
       baseInput.setCustomValidity("");
       quoteInput.setCustomValidity("");
 
-      if (!Number.isFinite(rate) || rate <= 0) {
+      if (!amounts) {
         if (fixing === "quote") {
           baseInput.value = "";
         } else {
@@ -25417,20 +25599,15 @@
       }
 
       if (fixing === "quote") {
-        if (Number.isFinite(quoteAmount)) {
-          baseInput.value = amountInputValue(quoteAmount / rate);
-        } else {
-          baseInput.value = "";
-        }
-
+        baseInput.value = groupedDecimalText(
+          minorToMajorDecimal(amounts.baseAmountMinor, baseFractionDigits)
+        );
         return;
       }
 
-      if (Number.isFinite(baseAmount)) {
-        quoteInput.value = amountInputValue(baseAmount * rate);
-      } else {
-        quoteInput.value = "";
-      }
+      quoteInput.value = groupedDecimalText(
+        minorToMajorDecimal(amounts.quoteAmountMinor, quoteFractionDigits)
+      );
     }
 
     function formatDealAmountInput(input) {
@@ -25445,17 +25622,6 @@
       formatDealAmountInput(editForm.elements.amount);
       formatDealAmountInput(editForm.elements.quoteAmount);
       syncDealFormDerivedFields();
-    }
-
-    function dealFormSignedBaseAmount() {
-      const side = editForm.elements.side.value;
-      const baseAmount = normalizeNumber(editForm.elements.amount.value);
-
-      if (!Number.isFinite(baseAmount) || (side !== "sell" && side !== "buy")) {
-        return null;
-      }
-
-      return side === "buy" ? -baseAmount : baseAmount;
     }
 
     function syncDealTransferRateFromPricingRule() {
@@ -25492,12 +25658,16 @@
     }
 
     function syncDealTransferCalculations() {
-      const signedBaseAmount = dealFormSignedBaseAmount();
-      const clientRate = normalizeNumber(editForm.elements.clientRate.value);
-      const transferRate = normalizeNumber(editForm.elements.autoBatchRate.value);
-      const pnl = pnlCashFromTransfer(signedBaseAmount, clientRate, transferRate);
+      const currencies = dealFormCurrencies();
+      const pnl = exactAnalyticalPnlText({
+        side: String(editForm.elements.side.value || "").toUpperCase(),
+        baseCcyAmount: editForm.elements.amount.value,
+        tradeRate: editForm.elements.clientRate.value,
+        transferRate: editForm.elements.autoBatchRate.value,
+        quoteFractionDigits: currencyFractionDigits(currencies.quote)
+      });
 
-      editForm.elements.pnlCash.value = Number.isFinite(pnl) ? amountInputValue(pnl) : "";
+      editForm.elements.pnlCash.value = pnl === null ? "" : groupedDecimalText(pnl);
     }
 
     function prepareEditDealForm() {
@@ -25608,11 +25778,9 @@
       editForm.elements.side.value = side === "buy" ? "buy" : "sell";
       editForm.elements.amountFixingCurrency.value = "base";
       editForm.elements.amount.value = amountInputValue(amount);
-      editForm.elements.quoteAmount.value = amountInputValue(
-        Number.isFinite(Number(deal.quoteCcyAmount))
-          ? Number(deal.quoteCcyAmount)
-          : Math.abs(quoteCurrencyAmount(amount, deal.clientRate))
-      );
+      editForm.elements.quoteAmount.value = Number.isFinite(Number(deal.quoteCcyAmount))
+        ? amountInputValue(Number(deal.quoteCcyAmount))
+        : "";
       editForm.elements.clientRate.value = editNumber(deal.clientRate, 4);
       autoBatchInput.value = editNumber(deal.autoBatchRate, 4);
       editForm.elements.pnlCash.value = amountInputValue(pnlCash(deal));
@@ -25818,13 +25986,19 @@
       const rowClass = `${sourceClass} side-${side}${selected ? " is-selected" : ""}`;
       const sellActive = side === "sell";
       const buyActive = side === "buy";
+      const flatActive = side === "flat";
       const safeId = escapeHtml(deal.id);
       const safeTradeLabel = escapeHtml(fxPositionTradeLabel(deal));
       const safeTradeId = escapeHtml(fxPositionTradeId(deal));
-      const baseCcyAmount = fxPositionBaseAmount(deal);
+      const tradeTypePresentation = fxPositionTradeTypePresentation(deal);
+      const tradeContext = fxPositionTradeContext(deal, tradeTypePresentation.type);
+      const tradeTypeTooltip = fxPositionTradeTypeTooltip(deal, tradeTypePresentation);
+      const baseCcyAmount = flatActive
+        ? formattedMinorAmount("0", fxPositionBaseCcyFractionDigits(deal) ?? 0)
+        : fxPositionBaseAmountCell(deal);
       const tradeRate = fxPositionTradeRate(deal);
       const transferRate = fxPositionTransferRate(deal);
-      const selectionBox = (isBatchBalancingSourceDeal(deal) || isGeneratedBatchTrade(deal))
+      const selectionBox = isBatchBalancingSourceDeal(deal)
         ? `<input type="checkbox" class="form-check-input deal-checkbox" data-deal-id="${safeId}" aria-label="Select ${safeTradeLabel}" ${selected ? "checked" : ""}>`
         : "";
       const tradeIdCopyButton = safeTradeId
@@ -25835,10 +26009,27 @@
           </button>
         `
         : "";
+      const tradeTypeChip = `
+        <span
+          class="position-trade-type-chip"
+          role="img"
+          tabindex="0"
+          aria-label="${escapeHtml(tradeTypeTooltip)}"
+          data-tooltip="${escapeHtml(tradeTypeTooltip)}"
+        >
+          <span class="button-icon position-trade-type-icon" aria-hidden="true">${escapeHtml(tradeTypePresentation.icon)}</span>
+        </span>
+      `;
+      const tradeContextLabel = tradeContext
+        ? `<span class="position-trade-context">${escapeHtml(tradeContext)}</span>`
+        : "";
       const tradeCell = `
         <span class="position-label-content">
           ${tradeIdCopyButton}
-          <span class="position-label-text">${safeTradeLabel}</span>
+          <span class="position-label-text">
+            ${tradeTypeChip}
+            ${tradeContextLabel}
+          </span>
         </span>
       `;
 
@@ -25848,7 +26039,7 @@
           <td class="identity date number">${escapeHtml(positionTradeDate(deal))}</td>
           <td class="identity base-value-date number">${escapeHtml(baseCurrencyValueDateLabel(deal))}</td>
           <td class="gap wide-gap trade-divider"></td>
-          <td class="sell-side sell-zone sell-zone-left amount number ${sellActive ? "" : "blank"}">${sellActive ? amountCell(baseCcyAmount) : ""}</td>
+          <td class="sell-side sell-zone sell-zone-left amount number ${sellActive || flatActive ? "" : "blank"}">${sellActive || flatActive ? baseCcyAmount : ""}</td>
           <td class="sell-side sell-zone rate number ${sellActive ? "" : "blank"}">${sellActive ? rateCell(tradeRate) : ""}</td>
           <td class="sell-side sell-zone sell-zone-right rate number rate-emphasis ${sellActive ? "" : "blank"}">${sellActive ? rateCell(transferRate) : ""}</td>
           <td class="gap selection-gap sell-check-zone ${sellActive ? "selection-active" : ""}">${sellActive ? selectionBox : ""}</td>
@@ -25857,75 +26048,124 @@
           <td class="gap selection-gap buy-check-zone ${buyActive ? "selection-active" : ""}">${buyActive ? selectionBox : ""}</td>
           <td class="buy-side buy-zone rate number rate-emphasis ${buyActive ? "" : "blank"}">${buyActive ? rateCell(transferRate) : ""}</td>
           <td class="buy-side buy-zone rate number ${buyActive ? "" : "blank"}">${buyActive ? rateCell(tradeRate) : ""}</td>
-          <td class="buy-side buy-zone amount number ${buyActive ? "" : "blank"}">${buyActive ? amountCell(baseCcyAmount) : ""}</td>
+          <td class="buy-side buy-zone amount number ${buyActive || flatActive ? "" : "blank"}">${buyActive || flatActive ? baseCcyAmount : ""}</td>
         </tr>
       `;
     }
 
-    function sideAmount(deal, side) {
-      return sideOf(deal) === side ? fxPositionBaseAmount(deal) : 0;
+    function batchingSummaryFractionDigits(source) {
+      return source.reduce((maximum, deal) => {
+        const fractionDigits = fxPositionBaseCcyFractionDigits(deal);
+        return fractionDigits === null ? maximum : Math.max(maximum, fractionDigits);
+      }, 0);
     }
 
-    function sideWeightedAverage(source, side, valueOf) {
+    function sideAmountMinor(deal, side, targetFractionDigits) {
+      if (sideOf(deal) !== side) {
+        return 0n;
+      }
+
+      const amountMinor = fxPositionBaseAmountMinor(deal);
+      const sourceFractionDigits = fxPositionBaseCcyFractionDigits(deal);
+
+      if (amountMinor === null || sourceFractionDigits === null) {
+        return 0n;
+      }
+
+      return scaledMinorAmount(
+        amountMinor,
+        sourceFractionDigits,
+        targetFractionDigits
+      );
+    }
+
+    function sideWeightedAverage(source, side, valueOf, targetFractionDigits) {
       const weighted = source.reduce((acc, deal) => {
         if (sideOf(deal) !== side) {
           return acc;
         }
 
-        const amount = sideAmount(deal, side);
+        const amountMinor = sideAmountMinor(deal, side, targetFractionDigits);
         const value = valueOf(deal);
+        let decimalValue;
 
-        if (amount <= 0 || value === null || value === undefined || !Number.isFinite(value)) {
+        if (amountMinor <= 0n || value === null || value === undefined) {
           return acc;
         }
 
-        acc.sum += value * amount;
-        acc.amount += amount;
-        return acc;
-      }, { sum: 0, amount: 0 });
+        try {
+          decimalValue = new Big(String(value));
+        } catch {
+          return acc;
+        }
 
-      return weighted.amount === 0 ? null : weighted.sum / weighted.amount;
+        if (decimalValue.lte(0)) {
+          return acc;
+        }
+
+        acc.sum = acc.sum.plus(decimalValue.times(amountMinor.toString()));
+        acc.amountMinor += amountMinor;
+        return acc;
+      }, { sum: new Big(0), amountMinor: 0n });
+
+      return weighted.amountMinor === 0n
+        ? null
+        : weighted.sum.div(weighted.amountMinor.toString()).toString();
     }
 
-    function batchingSideSummary(source, side) {
+    function batchingSideSummary(source, side, targetFractionDigits) {
       const sideRows = source.filter(deal => sideOf(deal) === side);
 
       return {
-        amount: sideRows.reduce((sum, deal) => sum + sideAmount(deal, side), 0),
-        tradeRate: sideWeightedAverage(source, side, fxPositionTradeRate),
-        transferRate: sideWeightedAverage(source, side, fxPositionTransferRate)
+        amountMinor: sideRows.reduce(
+          (sum, deal) => sum + sideAmountMinor(deal, side, targetFractionDigits),
+          0n
+        ),
+        tradeRate: sideWeightedAverage(
+          source,
+          side,
+          fxPositionTradeRate,
+          targetFractionDigits
+        ),
+        transferRate: sideWeightedAverage(
+          source,
+          side,
+          fxPositionTransferRate,
+          targetFractionDigits
+        )
       };
     }
 
     function renderBatchingSummary(source) {
-      const sell = batchingSideSummary(source, "sell");
-      const buy = batchingSideSummary(source, "buy");
-      const net = sell.amount - buy.amount;
-      const sellNet = net > 0 ? net : 0;
-      const buyNet = net < 0 ? Math.abs(net) : 0;
+      const fractionDigits = batchingSummaryFractionDigits(source);
+      const sell = batchingSideSummary(source, "sell", fractionDigits);
+      const buy = batchingSideSummary(source, "buy", fractionDigits);
+      const netMinor = sell.amountMinor - buy.amountMinor;
+      const sellNetMinor = netMinor > 0n ? netMinor : 0n;
+      const buyNetMinor = netMinor < 0n ? -netMinor : 0n;
 
       batchingSummaryRowsEl.innerHTML = `
         <tr class="batching-summary-row batching-summary-total">
           <td class="summary-label" colspan="3">Total</td>
           <td class="gap wide-gap trade-divider"></td>
-          <td class="summary-sell amount number">${amountCell(sell.amount)}</td>
+          <td class="summary-sell amount number">${minorAmountCell(sell.amountMinor, fractionDigits)}</td>
           <td class="summary-sell rate number">${rateCell(sell.tradeRate)}</td>
           <td class="summary-sell rate number">${rateCell(sell.transferRate)}</td>
           <td class="summary-bridge" colspan="4"></td>
           <td class="summary-buy rate number">${rateCell(buy.transferRate)}</td>
           <td class="summary-buy rate number">${rateCell(buy.tradeRate)}</td>
-          <td class="summary-buy amount number">${amountCell(buy.amount)}</td>
+          <td class="summary-buy amount number">${minorAmountCell(buy.amountMinor, fractionDigits)}</td>
         </tr>
         <tr class="batching-summary-row batching-summary-net">
           <td class="summary-label" colspan="3">Net Difference</td>
           <td class="gap wide-gap trade-divider"></td>
-          <td class="summary-sell ${sellNet > 0 ? "summary-net-active sell-side" : ""} amount number">${amountCell(sellNet)}</td>
+          <td class="summary-sell ${sellNetMinor > 0n ? "summary-net-active sell-side" : ""} amount number">${minorAmountCell(sellNetMinor, fractionDigits)}</td>
           <td class="summary-sell rate"></td>
           <td class="summary-sell rate"></td>
           <td class="summary-bridge" colspan="4"></td>
           <td class="summary-buy rate"></td>
           <td class="summary-buy rate"></td>
-          <td class="summary-buy ${buyNet > 0 ? "summary-net-active buy-side" : ""} amount number">${amountCell(buyNet)}</td>
+          <td class="summary-buy ${buyNetMinor > 0n ? "summary-net-active buy-side" : ""} amount number">${minorAmountCell(buyNetMinor, fractionDigits)}</td>
         </tr>
         <tr class="hedge-deals-toolbar-row">
           <td colspan="3"></td>
@@ -25957,15 +26197,44 @@
     }
 
     function fxDealBaseCurrencyPosition(deal) {
-      return fxPositionSignedBaseAmount(deal);
+      const amountMinor = fxPositionBaseAmountMinor(deal);
+      const fractionDigits = fxPositionBaseCcyFractionDigits(deal);
+      const side = sideOf(deal);
+
+      if (amountMinor === null
+        || fractionDigits === null
+        || (side !== "sell" && side !== "buy")) {
+        return null;
+      }
+
+      const signedMinor = side === "sell" ? amountMinor : -amountMinor;
+      return minorToMajorDecimal(signedMinor.toString(), fractionDigits);
     }
 
     function fxDealQuoteCurrencyPosition(deal) {
-      return quoteCurrencyAmount(fxDealBaseCurrencyPosition(deal), deal.clientRate);
+      const amountMinor = fxPositionQuoteAmountMinor(deal);
+      const fractionDigits = fxPositionQuoteCcyFractionDigits(deal);
+      const side = sideOf(deal);
+
+      if (amountMinor === null
+        || fractionDigits === null
+        || (side !== "sell" && side !== "buy")) {
+        return null;
+      }
+
+      const signedMinor = side === "sell" ? -amountMinor : amountMinor;
+      return minorToMajorDecimal(signedMinor.toString(), fractionDigits);
     }
 
     function currencyPositionCell(amount, currency) {
-      const formattedAmount = amountCell(amount);
+      let formattedAmount;
+
+      if (typeof amount === "string" && /^[+-]?\d+(?:\.\d+)?$/.test(amount)) {
+        formattedAmount = new Big(amount).eq(0) ? "" : groupedDecimalText(amount);
+      } else {
+        formattedAmount = amountCell(amount);
+      }
+
       return formattedAmount ? `${formattedAmount} ${currency}` : "";
     }
 
@@ -26010,6 +26279,28 @@
     }
 
     function clientFxDealsAmountFormatter(cell) {
+      const row = cell.getRow().getData();
+      const field = cell.getField();
+      const minorField = field === "baseCcyAmount"
+        ? "baseCcyAmountMinor"
+        : field === "quoteCcyAmount"
+          ? "quoteCcyAmountMinor"
+          : "";
+      const fractionDigitsField = field === "baseCcyAmount"
+        ? "baseCcyFractionDigits"
+        : field === "quoteCcyAmount"
+          ? "quoteCcyFractionDigits"
+          : "";
+      const fractionDigits = Number(row[fractionDigitsField]);
+
+      if (minorField
+        && Number.isSafeInteger(row[minorField])
+        && Number.isInteger(fractionDigits)
+        && fractionDigits >= 0
+        && fractionDigits <= 10) {
+        return escapeHtml(minorAmountCell(row[minorField], fractionDigits));
+      }
+
       return escapeHtml(amountCell(cell.getValue()));
     }
 
@@ -26038,10 +26329,23 @@
     }
 
     function clientFxDealsAnalyticalPnlFormatter(cell) {
+      const row = cell.getRow().getData();
+      const pnlMinor = row.analyticalPnlQuoteMinor;
+      const fractionDigits = Number(row.analyticalPnlQuoteFractionDigits);
+      const hasMinorPnl = Number.isSafeInteger(pnlMinor)
+        && Number.isInteger(fractionDigits)
+        && fractionDigits >= 0
+        && fractionDigits <= 10;
       const value = Number(cell.getValue());
-      const tone = Number.isFinite(value) && value < 0 ? " text-danger" : "";
+      const isNegative = hasMinorPnl
+        ? BigInt(pnlMinor) < 0n
+        : Number.isFinite(value) && value < 0;
+      const formattedValue = hasMinorPnl
+        ? minorAmountCell(pnlMinor, fractionDigits)
+        : amountCell(cell.getValue());
+      const tone = isNegative ? " text-danger" : "";
 
-      return `<span class="${tone.trim()}">${escapeHtml(amountCell(cell.getValue()))}</span>`;
+      return `<span class="${tone.trim()}">${escapeHtml(formattedValue)}</span>`;
     }
 
     function clientFxDealsExecutionContextLabel(executionContextId) {
@@ -26796,8 +27100,7 @@
     deleteDealButton.addEventListener("click", deleteSelectedClientDeal);
     generateClientDealButton.addEventListener("click", generateClientDeal);
     runClientDealGenerationButton.addEventListener("click", toggleClientDealGenerationProcess);
-    createBatchBalancingPairButton.addEventListener("click", createBatchBalancingPairFromSelection);
-    deleteGeneratedBatchTradesButton.addEventListener("click", deleteSelectedGeneratedBatchTrades);
+    oneBatchButton.addEventListener("click", formOneBatchFromSelection);
     clientDealSettingsButton.addEventListener("click", event => {
       event.stopPropagation();
       openClientDealGenerationDialog();

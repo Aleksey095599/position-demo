@@ -1,6 +1,9 @@
 "use strict";
 
 const Big = require("big.js");
+const {
+  minorToMajor
+} = require("../money/money");
 
 const Decimal = Big();
 Decimal.strict = true;
@@ -17,11 +20,11 @@ function finiteNumber(value, name) {
   return number;
 }
 
-function positiveNumber(value, name) {
-  const number = finiteNumber(value, name);
+function positiveSafeInteger(value, name) {
+  const number = Number(value);
 
-  if (number <= 0) {
-    throw new RangeError(`${name} must be a positive number.`);
+  if (!Number.isSafeInteger(number) || number <= 0) {
+    throw new RangeError(`${name} must be a positive safe integer.`);
   }
 
   return number;
@@ -73,13 +76,24 @@ function normalizedRandomValue(random) {
   return value;
 }
 
-function generatedBaseCcyAmount(settings, random = Math.random) {
-  const minimum = positiveNumber(settings.minBaseCcyAmount, "Min Base Ccy Amount");
-  const maximum = positiveNumber(settings.maxBaseCcyAmount, "Max Base Ccy Amount");
-  const step = positiveNumber(settings.baseCcyAmountStep, "Base Ccy Amount Step");
+function generatedBaseCcyAmountMinor(settings, random = Math.random) {
+  const minimum = positiveSafeInteger(
+    settings.minBaseCcyAmountMinor,
+    "Min Base Ccy Amount Minor"
+  );
+  const maximum = positiveSafeInteger(
+    settings.maxBaseCcyAmountMinor,
+    "Max Base Ccy Amount Minor"
+  );
+  const step = positiveSafeInteger(
+    settings.baseCcyAmountStepMinor,
+    "Base Ccy Amount Step Minor"
+  );
 
   if (maximum < minimum) {
-    throw new RangeError("Max Base Ccy Amount must not be below Min Base Ccy Amount.");
+    throw new RangeError(
+      "Max Base Ccy Amount Minor must not be below Min Base Ccy Amount Minor."
+    );
   }
 
   const stepCount = Math.floor((maximum - minimum) / step);
@@ -139,7 +153,14 @@ function generatedClientFxDeal({
   }
 
   const side = generatedClientSide(settings.buyProbabilityPercent, random);
-  const dealtCcyAmount = String(generatedBaseCcyAmount(settings, random));
+  const baseCcyFractionDigits = fractionDigits(
+    settings.baseCcyFractionDigits,
+    "Base Ccy Fraction Digits"
+  );
+  const dealtCcyAmount = minorToMajor(
+    generatedBaseCcyAmountMinor(settings, random),
+    baseCcyFractionDigits
+  );
   const marginPercent = new Decimal(String(finiteNumber(
     settings.marginPercent,
     "Margin Percent"
@@ -190,7 +211,7 @@ function generatedClientFxDeal({
 }
 
 module.exports = {
-  generatedBaseCcyAmount,
+  generatedBaseCcyAmountMinor,
   generatedClientFxDeal,
   generatedClientSide
 };

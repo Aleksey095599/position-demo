@@ -66,6 +66,20 @@ function majorToMinor(majorAmount, fractionDigits) {
   return BigInt(minorAmount.toFixed(0));
 }
 
+function majorToMinorExact(majorAmount, fractionDigits) {
+  const digits = normalizedFractionDigits(fractionDigits);
+  const amount = new Decimal(normalizedDecimalText(majorAmount, "Major amount"));
+  const scaledAmount = amount.times(powerOfTen(digits));
+
+  if (!scaledAmount.eq(scaledAmount.round(0, Decimal.roundHalfUp))) {
+    throw new RangeError(
+      `Major amount has more than ${digits} fractional digits.`
+    );
+  }
+
+  return BigInt(scaledAmount.toFixed(0));
+}
+
 function minorToMajor(minorAmount, fractionDigits) {
   const digits = normalizedFractionDigits(fractionDigits);
   const minor = normalizedMinorUnits(minorAmount);
@@ -161,7 +175,7 @@ function calculateFxAmountsFromDealt({
   }
 
   if (dealtCode === baseCode) {
-    const baseAmountMinor = majorToMinor(dealtAmount, baseFractionDigits);
+    const baseAmountMinor = majorToMinorExact(dealtAmount, baseFractionDigits);
 
     if (baseAmountMinor <= 0n) {
       throw new RangeError("Dealt amount must be positive.");
@@ -178,7 +192,7 @@ function calculateFxAmountsFromDealt({
     };
   }
 
-  const quoteAmountMinor = majorToMinor(dealtAmount, quoteFractionDigits);
+  const quoteAmountMinor = majorToMinorExact(dealtAmount, quoteFractionDigits);
 
   if (quoteAmountMinor <= 0n) {
     throw new RangeError("Dealt amount must be positive.");
@@ -210,6 +224,7 @@ module.exports = {
   calculateFxAmountsFromDealt,
   calculateQuoteMinor,
   majorToMinor,
+  majorToMinorExact,
   minorToMajor,
   minorToSafeInteger
 };

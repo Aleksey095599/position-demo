@@ -242,6 +242,8 @@ function verifyFreshSchemaAndSeed() {
   let hedgeFxDealConstraintsEnforced = true;
   let hedgeFxDealParentRestrictionEnforced = true;
   let hedgeFxDealPartyTypeEnforced = true;
+  let fxTradeBatchDefaultsSupported = false;
+  let fxTradeBatchConstraintsEnforced = true;
   let batchTradeTypesSupported = false;
   let batchBalancingTradeConstraintsEnforced = true;
   let batchBalancingTradeParentRestrictionEnforced = true;
@@ -390,6 +392,14 @@ function verifyFreshSchemaAndSeed() {
     ORDER BY r.pricing_rule_id
     LIMIT 1
   `).get().pricing_rule_id);
+  const clientGenerationBaseFractionDigits = Number(database.prepare(`
+    SELECT base_ccy.fraction_digits
+    FROM pricing_rules r
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
+    INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
+    WHERE r.pricing_rule_id = ?
+  `).get(clientGenerationPricingRuleId).fraction_digits);
+  const clientGenerationMinorFactor = 10 ** clientGenerationBaseFractionDigits;
   const nonAutoClientGenerationPricingRuleId = Number(database.prepare(`
     SELECT r.pricing_rule_id
     FROM pricing_rules r
@@ -411,21 +421,22 @@ function verifyFreshSchemaAndSeed() {
   `).get().pricing_rule_id);
 
   [
-    [0, 1500000, 100000, 50, 1],
-    [500000, 400000, 100000, 50, 1],
-    [500000, 1500000, 0, 50, 1],
-    [500000, 1500000, 100000, -1, 1],
-    [500000, 1500000, 100000, 101, 1],
-    [500000, 1500000, 100000, 50.5, 1],
-    [500000, 1500000, 100000, 50, 2]
+    [0, 1500000 * clientGenerationMinorFactor, 100000 * clientGenerationMinorFactor, 50, 1],
+    [500000 * clientGenerationMinorFactor, 400000 * clientGenerationMinorFactor, 100000 * clientGenerationMinorFactor, 50, 1],
+    [500000 * clientGenerationMinorFactor, 1500000 * clientGenerationMinorFactor, 0, 50, 1],
+    [500000.5, 1500000 * clientGenerationMinorFactor, 100000 * clientGenerationMinorFactor, 50, 1],
+    [500000 * clientGenerationMinorFactor, 1500000 * clientGenerationMinorFactor, 100000 * clientGenerationMinorFactor, -1, 1],
+    [500000 * clientGenerationMinorFactor, 1500000 * clientGenerationMinorFactor, 100000 * clientGenerationMinorFactor, 101, 1],
+    [500000 * clientGenerationMinorFactor, 1500000 * clientGenerationMinorFactor, 100000 * clientGenerationMinorFactor, 50.5, 1],
+    [500000 * clientGenerationMinorFactor, 1500000 * clientGenerationMinorFactor, 100000 * clientGenerationMinorFactor, 50, 2]
   ].forEach(values => {
     try {
       database.prepare(`
         UPDATE client_deal_generation_settings
         SET
-          min_base_ccy_amount = ?,
-          max_base_ccy_amount = ?,
-          base_ccy_amount_step = ?,
+          min_base_ccy_amount_minor = ?,
+          max_base_ccy_amount_minor = ?,
+          base_ccy_amount_step_minor = ?,
           buy_probability_percent = ?,
           is_active = ?
         WHERE pricing_rule_id = ?
@@ -439,14 +450,21 @@ function verifyFreshSchemaAndSeed() {
       INSERT INTO client_deal_generation_settings
         (
           pricing_rule_id,
-          min_base_ccy_amount,
-          max_base_ccy_amount,
-          base_ccy_amount_step,
+          min_base_ccy_amount_minor,
+          max_base_ccy_amount_minor,
+          base_ccy_amount_step_minor,
+          base_ccy_fraction_digits,
           buy_probability_percent,
           is_active
         )
-      VALUES (?, 500000, 1500000, 100000, 50, 1)
-    `).run(hedgeGenerationPricingRuleId);
+      VALUES (?, ?, ?, ?, ?, 50, 1)
+    `).run(
+      hedgeGenerationPricingRuleId,
+      500000 * clientGenerationMinorFactor,
+      1500000 * clientGenerationMinorFactor,
+      100000 * clientGenerationMinorFactor,
+      clientGenerationBaseFractionDigits
+    );
     clientDealGenerationSettingsPartyTypeEnforced = false;
   } catch {}
 
@@ -455,14 +473,21 @@ function verifyFreshSchemaAndSeed() {
       INSERT INTO client_deal_generation_settings
         (
           pricing_rule_id,
-          min_base_ccy_amount,
-          max_base_ccy_amount,
-          base_ccy_amount_step,
+          min_base_ccy_amount_minor,
+          max_base_ccy_amount_minor,
+          base_ccy_amount_step_minor,
+          base_ccy_fraction_digits,
           buy_probability_percent,
           is_active
         )
-      VALUES (?, 500000, 1500000, 100000, 50, 1)
-    `).run(nonAutoClientGenerationPricingRuleId);
+      VALUES (?, ?, ?, ?, ?, 50, 1)
+    `).run(
+      nonAutoClientGenerationPricingRuleId,
+      500000 * clientGenerationMinorFactor,
+      1500000 * clientGenerationMinorFactor,
+      100000 * clientGenerationMinorFactor,
+      clientGenerationBaseFractionDigits
+    );
     clientDealGenerationSettingsPricingModeEnforced = false;
   } catch {}
 
@@ -547,14 +572,21 @@ function verifyFreshSchemaAndSeed() {
     INSERT INTO client_deal_generation_settings
       (
         pricing_rule_id,
-        min_base_ccy_amount,
-        max_base_ccy_amount,
-        base_ccy_amount_step,
+        min_base_ccy_amount_minor,
+        max_base_ccy_amount_minor,
+        base_ccy_amount_step_minor,
+        base_ccy_fraction_digits,
         buy_probability_percent,
         is_active
       )
-    VALUES (?, 500000, 1500000, 100000, 50, 1)
-  `).run(cascadePricingRuleId);
+    VALUES (?, ?, ?, ?, ?, 50, 1)
+  `).run(
+    cascadePricingRuleId,
+    500000 * clientGenerationMinorFactor,
+    1500000 * clientGenerationMinorFactor,
+    100000 * clientGenerationMinorFactor,
+    clientGenerationBaseFractionDigits
+  );
   database.prepare("DELETE FROM pricing_rules WHERE pricing_rule_id = ?").run(cascadePricingRuleId);
 
   if (database.prepare(`
@@ -687,95 +719,38 @@ function verifyFreshSchemaAndSeed() {
     WHERE entry_timestamp = '2026-07-15T09:33:00.000Z'
   `).get().trade_id);
 
-  database.exec("SAVEPOINT verify_batch_balancing_trades");
+  database.exec("SAVEPOINT verify_batches");
   try {
-    const insertExposure = database.prepare(`
-      INSERT INTO fx_trade_exposure
-        (
-          entry_timestamp,
-          trade_type,
-          trade_date,
-          ccy_pair_code,
-          base_ccy_side,
-          dealt_ccy_code,
-          base_ccy_amount_minor,
-          base_ccy_fraction_digits,
-          quote_ccy_amount_minor,
-          quote_ccy_fraction_digits,
-          trade_rate,
-          tenor,
-          base_ccy_value_date,
-          quote_ccy_value_date
-        )
-      VALUES (?, ?, '2026-07-15', 'EUR_USD', ?, 'EUR', 20000000, 2, 22462000, 2, 1.1231, 'TOD', '2026-07-15', '2026-07-15')
-    `);
-    const balancingTradeId = Number(insertExposure.run(
-      "2026-07-15T09:34:00.000Z",
-      "BATCH_BALANCING_TRADE",
-      "BUY"
-    ).lastInsertRowid);
-    const positionOutTradeId = Number(insertExposure.run(
-      "2026-07-15T09:34:01.000Z",
-      "BATCH_POSITION_OUT",
-      "SELL"
-    ).lastInsertRowid);
-    const duplicateRoleTradeId = Number(insertExposure.run(
-      "2026-07-15T09:34:02.000Z",
-      "BATCH_BALANCING_TRADE",
-      "BUY"
-    ).lastInsertRowid);
+    const batchId = Number(database.prepare(`
+      INSERT INTO fx_batches
+        (idempotency_key, ccy_pair_code)
+      VALUES ('verify-batch', 'EUR_USD')
+    `).run().lastInsertRowid);
+    const storedBatch = database.prepare(`
+      SELECT *
+      FROM fx_batches
+      WHERE batch_id = ?
+    `).get(batchId);
 
-    database.prepare(`
-      INSERT INTO batch_balancing_trades
-        (batch_pair_id, batch_id, trade_type, trade_id)
-      VALUES (?, ?, ?, ?)
-    `).run(7001, 501, "BATCH_BALANCING_TRADE", balancingTradeId);
-    database.prepare(`
-      INSERT INTO batch_balancing_trades
-        (batch_pair_id, batch_id, trade_type, trade_id)
-      VALUES (?, ?, ?, ?)
-    `).run(7001, 501, "BATCH_POSITION_OUT", positionOutTradeId);
-    batchTradeTypesSupported = database.prepare(`
-      SELECT COUNT(*) AS count
-      FROM batch_balancing_trades
-      WHERE batch_id = 501 AND batch_pair_id = 7001
-    `).get().count === 2;
-
-    const invalidBatchRows = [
-      [0, 7002, "BATCH_BALANCING_TRADE", duplicateRoleTradeId],
-      [501, 7001, "BATCH_BALANCING_TRADE", duplicateRoleTradeId],
-      [501, 7002, "CLIENT_DEAL", seededClientTradeId],
-      [501, 7002, "BATCH_BALANCING_TRADE", balancingTradeId]
-    ];
-
-    invalidBatchRows.forEach(([batchId, pairId, tradeType, tradeId]) => {
-      try {
-        database.prepare(`
-          INSERT INTO batch_balancing_trades
-            (batch_id, batch_pair_id, trade_type, trade_id)
-          VALUES (?, ?, ?, ?)
-        `).run(batchId, pairId, tradeType, tradeId);
-        batchBalancingTradeConstraintsEnforced = false;
-      } catch {}
-    });
+    fxTradeBatchDefaultsSupported = batchId > 0
+      && storedBatch?.idempotency_key === "verify-batch"
+      && storedBatch?.ccy_pair_code === "EUR_USD"
+      && storedBatch?.batch_status === "BUILDING"
+      && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(storedBatch?.created_at || "");
 
     try {
       database.prepare(`
-        UPDATE batch_balancing_trades
-        SET created_at = '2026-07-15'
-        WHERE trade_id = ?
-      `).run(balancingTradeId);
-      batchBalancingTradeConstraintsEnforced = false;
-    } catch {}
-
-    try {
-      database.prepare("DELETE FROM fx_trade_exposure WHERE trade_id = ?").run(balancingTradeId);
-      batchBalancingTradeParentRestrictionEnforced = false;
+        INSERT INTO fx_batches (idempotency_key, ccy_pair_code, batch_status)
+        VALUES ('verify-invalid-batch', 'EUR_USD', 'COMPLETED')
+      `).run();
+      fxTradeBatchConstraintsEnforced = false;
     } catch {}
   } finally {
-    database.exec("ROLLBACK TO verify_batch_balancing_trades");
-    database.exec("RELEASE verify_batch_balancing_trades");
+    database.exec("ROLLBACK TO verify_batches");
+    database.exec("RELEASE verify_batches");
   }
+
+  batchTradeTypesSupported = true;
 
   [
     [999999, "CLIENT_DEAL", 1],
@@ -814,10 +789,11 @@ function verifyFreshSchemaAndSeed() {
   `).get(seededHedgeTradeId);
 
   [
-    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, null, 0, 0],
-    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, null, 1.12, "INVALID"],
-    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, hedgePricingRuleReference.pricing_rule_id, 1.12, 0],
-    [unlinkedHedgeTradeId, 1, hedgePricingRuleReference.execution_context_id, hedgePricingRuleReference.pricing_rule_id, 1.12, 0]
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, null, 0, 0, 2],
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, null, 1.12, "INVALID", 2],
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, null, 1.12, 0, null],
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, hedgePricingRuleReference.pricing_rule_id, 1.12, 0, 2],
+    [unlinkedHedgeTradeId, 1, hedgePricingRuleReference.execution_context_id, hedgePricingRuleReference.pricing_rule_id, 1.12, 0, 2]
   ].forEach(values => {
     try {
       database.prepare(`
@@ -829,9 +805,10 @@ function verifyFreshSchemaAndSeed() {
             execution_context_id,
             pricing_rule_id,
             transfer_rate,
-            analytical_pnl
+            analytical_pnl_quote_minor,
+            analytical_pnl_quote_fraction_digits
           )
-        VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?)
+        VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?, ?)
       `).run(...values);
       hedgeFxDealConstraintsEnforced = false;
     } catch {}
@@ -853,10 +830,11 @@ function verifyFreshSchemaAndSeed() {
   `).get(pricingRuleReference.execution_context_id).execution_context_id);
 
   [
-    [unlinkedClientTradeId, 1, null, null, 0, 0],
-    [unlinkedClientTradeId, 1, null, null, 1.12, "INVALID"],
-    [unlinkedClientTradeId, 1, null, pricingRuleReference.pricing_rule_id, 1.12, 0],
-    [unlinkedClientTradeId, 1, mismatchedExecutionContextId, pricingRuleReference.pricing_rule_id, 1.12, 0]
+    [unlinkedClientTradeId, 1, null, null, 0, 0, 2],
+    [unlinkedClientTradeId, 1, null, null, 1.12, "INVALID", 2],
+    [unlinkedClientTradeId, 1, null, null, 1.12, 0, null],
+    [unlinkedClientTradeId, 1, null, pricingRuleReference.pricing_rule_id, 1.12, 0, 2],
+    [unlinkedClientTradeId, 1, mismatchedExecutionContextId, pricingRuleReference.pricing_rule_id, 1.12, 0, 2]
   ].forEach(values => {
     try {
       database.prepare(`
@@ -868,9 +846,10 @@ function verifyFreshSchemaAndSeed() {
             execution_context_id,
             pricing_rule_id,
             transfer_rate,
-            analytical_pnl
+            analytical_pnl_quote_minor,
+            analytical_pnl_quote_fraction_digits
           )
-        VALUES (?, 'CLIENT_DEAL', ?, ?, ?, ?, ?)
+        VALUES (?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?)
       `).run(...values);
       clientFxDealConstraintsEnforced = false;
     } catch {}
@@ -984,6 +963,26 @@ function verifyFreshSchemaAndSeed() {
       ORDER BY user_role
     `).all().map(row => row.user_role),
     pricingRules: database.prepare("SELECT COUNT(*) AS count FROM pricing_rules").get().count,
+    legacyMonetaryColumns: database.prepare(`
+      SELECT
+        schema_entry.name AS table_name,
+        table_column.name AS column_name
+      FROM sqlite_schema schema_entry
+      INNER JOIN pragma_table_info(schema_entry.name) table_column
+      WHERE schema_entry.type = 'table'
+        AND schema_entry.name NOT LIKE 'sqlite_%'
+        AND (
+          lower(table_column.name) LIKE '%amount%'
+          OR lower(table_column.name) LIKE '%pnl%'
+          OR lower(table_column.name) LIKE '%balance%'
+          OR lower(table_column.name) LIKE '%notional%'
+          OR lower(table_column.name) LIKE '%fee%'
+          OR lower(table_column.name) LIKE '%commission%'
+        )
+        AND lower(table_column.name) NOT LIKE '%_minor'
+        AND lower(table_column.name) NOT LIKE '%fraction_digits'
+      ORDER BY schema_entry.name, table_column.cid
+    `).all(),
     clientDealGenerationSettings: database.prepare(`
       SELECT COUNT(*) AS count
       FROM client_deal_generation_settings
@@ -1030,15 +1029,33 @@ function verifyFreshSchemaAndSeed() {
     hedgeFxDealColumns: database.prepare("PRAGMA table_info(fx_hedge_deals)").all().map(column => column.name),
     hedgeFxDealForeignKeys: database.prepare("PRAGMA foreign_key_list(fx_hedge_deals)").all(),
     hedgeFxDealSeedRow: database.prepare("SELECT * FROM fx_hedge_deals LIMIT 1").get(),
+    fxTradeBatches: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM fx_batches
+    `).get().count,
+    fxTradeBatchColumns: database.prepare(`
+      PRAGMA table_info(fx_batches)
+    `).all().map(column => column.name),
+    fxTradeBatchForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(fx_batches)
+    `).all(),
+    fxTradeBatchCreateSql: database.prepare(`
+      SELECT sql
+      FROM sqlite_schema
+      WHERE type = 'table' AND name = 'fx_batches'
+    `).get()?.sql || "",
+    fxTradeBatchStatusPairIndexColumns: database.prepare(`
+      PRAGMA index_info(idx_fx_batches_status_pair)
+    `).all().map(column => column.name),
     batchBalancingTrades: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM batch_balancing_trades
+      FROM fx_batch_members
     `).get().count,
     batchBalancingTradeColumns: database.prepare(`
-      PRAGMA table_info(batch_balancing_trades)
+      PRAGMA table_info(fx_batch_members)
     `).all().map(column => column.name),
     batchBalancingTradeForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(batch_balancing_trades)
+      PRAGMA foreign_key_list(fx_batch_members)
     `).all(),
     pricingRuleReferenceIndex: database.prepare("PRAGMA index_list(pricing_rules)").all()
       .some(index => index.name === "uq_pricing_rules_client_deal_reference" && index.unique === 1),
@@ -1066,6 +1083,8 @@ function verifyFreshSchemaAndSeed() {
     hedgeFxDealConstraintsEnforced,
     hedgeFxDealParentRestrictionEnforced,
     hedgeFxDealPartyTypeEnforced,
+    fxTradeBatchDefaultsSupported,
+    fxTradeBatchConstraintsEnforced,
     batchTradeTypesSupported,
     batchBalancingTradeConstraintsEnforced,
     batchBalancingTradeParentRestrictionEnforced,
@@ -1081,10 +1100,25 @@ function verifyFreshSchemaAndSeed() {
 }
 
 function verifyFrontendStructure() {
-  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-  const serverSource = fs.readFileSync(path.join(root, "server.js"), "utf8");
-  const demoDatabaseSource = fs.readFileSync(path.join(root, "demo-db.js"), "utf8");
-  const startScript = fs.readFileSync(path.join(root, "start-demo.bat"), "utf8");
+  const normalizedSource = fileName => fs
+    .readFileSync(path.join(root, fileName), "utf8")
+    .replace(/\r\n?/g, "\n");
+  const html = normalizedSource("index.html");
+  const serverSource = normalizedSource("server.js");
+  const demoDatabaseSource = normalizedSource("demo-db.js");
+  const fxBatchFormationDomainSource = normalizedSource(
+    path.join("backend", "fx-batching", "domain", "fx-batch-formation.js")
+  );
+  const fxBatchFormationApplicationSource = normalizedSource(
+    path.join("backend", "fx-batching", "application", "form-fx-batch-use-case.js")
+  );
+  const clientDealGeneratorSource = normalizedSource(
+    path.join("backend", "client-fx-deal", "client-fx-deal-generator.js")
+  );
+  const moneyDomainSource = normalizedSource(
+    path.join("backend", "money", "money.js")
+  );
+  const startScript = normalizedSource("start-demo.bat");
   const scripts = [...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/g)];
   const inlineScript = scripts.at(-1)?.[1] || "";
   new Function(inlineScript);
@@ -1111,7 +1145,7 @@ function verifyFrontendStructure() {
   const batchToolbarMarkup = html.match(/<section class="batch-toolbar\b[^"]*"[\s\S]*?<\/section>/)?.[0] || "";
   const marketPulseIconStyles = html.match(/\.market-pulse-icon \{[\s\S]*?\n    \}/)?.[0] || "";
   const deleteClientDealFunction = inlineScript.match(
-    /async function deleteSelectedClientDeal\(\) \{[\s\S]*?\n    \}\n\n    function closeEditDialog/
+    /async function deleteSelectedClientDeal\(\) \{[\s\S]*?\n    \}(?=\n\n    async function deleteSelectedHedgeDealsForDemo)/
   )?.[0] || "";
   const saveEditedDealFunction = inlineScript.match(
     /async function saveEditedDeal\(event\) \{[\s\S]*?\n    \}\n\n    function renderDealRow/
@@ -1173,7 +1207,8 @@ function verifyFrontendStructure() {
       && serverSource.includes('r.margin_percent AS pricingRuleMargin')
       && serverSource.includes('LEFT JOIN pricing_rules r ON r.pricing_rule_id = d.pricing_rule_id')
       && serverSource.includes('calculateClientFxDealEconomics')
-      && serverSource.includes('clientFxDealWithCalculatedEconomics(payload)')
+      && serverSource.includes('function clientFxDealWithCalculatedEconomics(payload, exposureAmounts)')
+      && serverSource.includes('clientFxDealWithCalculatedEconomics(validation, exposureAmounts)')
       && inlineScript.includes("DEMO_API_BOOTSTRAP.clientFxDeals"),
     usesHedgeFxDealsEndpoint: serverSource.includes('pathname === "/api/v1/hedge-fx-deals"')
       && serverSource.includes("function hedgeFxDeals()")
@@ -1251,8 +1286,11 @@ function verifyFrontendStructure() {
       && html.includes(".client-deal-pricing-rule-margin-icon")
       && html.includes(".client-deal-pricing-rule-margin-value"),
     usesDatabaseBackedFxPositions: inlineScript.includes("function loadFxPositionsFromDatabase()")
-      && inlineScript.includes("clientFxDeals.map(fxPositionFromClientFxDeal)")
-      && inlineScript.includes("hedgeFxDeals.map(fxPositionFromHedgeFxDeal)")
+      && inlineScript.includes("fxPositionRecords.map(record =>")
+      && inlineScript.includes('demoApiRequest("/api/v1/fx-positions")')
+      && serverSource.includes("function fxPositions()")
+      && serverSource.includes('pathname === "/api/v1/fx-positions"')
+      && serverSource.includes("NOT EXISTS")
       && !inlineScript.includes('DemoDb.get("fxPositions")')
       && !inlineScript.includes('DemoDb.get("technicalFxDeals")')
       && !inlineScript.includes("function applyStoredFxPosition(")
@@ -1295,23 +1333,85 @@ function verifyFrontendStructure() {
       && !inlineScript.includes('DemoDb.get("clientDealGenerationSettings")')
       && !demoDatabaseSource.includes('"clientDealGenerationSettings"')
       && !demoDatabaseSource.includes("clientDealGenerationSettings:"),
-    usesTemporaryBatchBalancingAction:
-      batchToolbarMarkup.includes('id="createBatchBalancingPairButton"')
-      && batchToolbarMarkup.includes(">Balance Selection</span>")
-      && batchToolbarMarkup.includes('id="deleteGeneratedBatchTradesButton"')
-      && batchToolbarMarkup.includes(">Delete Generated</span>")
-      && serverSource.includes('pathname === "/api/v1/batch-balancing-trades"')
-      && serverSource.includes("calculateBatchBalancingTradePair")
-      && serverSource.includes("deleteBatchBalancingTrades")
-      && inlineScript.includes("createBatchBalancingPairFromSelection")
-      && inlineScript.includes("deleteSelectedGeneratedBatchTrades")
-      && inlineScript.includes('"/api/v1/batch-balancing-trades"')
+    usesFxBatchFormation:
+      batchToolbarMarkup.includes('id="oneBatchButton"')
+      && batchToolbarMarkup.includes(">One Batch</button>")
+      && serverSource.includes('pathname === "/api/v1/fx-batches"')
+      && serverSource.includes("new FormFxBatchUseCase")
+      && serverSource.includes("INSERT INTO fx_batch_members")
+      && serverSource.includes("INSERT INTO fx_batch_outputs")
+      && fxBatchFormationApplicationSource.includes("class FormFxBatchUseCase")
+      && inlineScript.includes("formOneBatchFromSelection")
+      && inlineScript.includes('"/api/v1/fx-batches"')
+      && inlineScript.includes(
+        'oneBatchButton.addEventListener("click", formOneBatchFromSelection)'
+      )
       && inlineScript.includes("selectedDealIds")
+      && !inlineScript.includes("deleteSelectedGeneratedBatchTrades")
       && !inlineScript.includes("generateOpenPositionByAutoBatch")
       && !inlineScript.includes("openBatchSettingsPage")
       && !inlineScript.includes('DemoDb.get("batchSettings")')
       && !demoDatabaseSource.includes('"batchSettings"')
       && !demoDatabaseSource.includes("batchSettings:"),
+    usesMinorUnitBatchBalancing:
+      fxBatchFormationDomainSource.includes("baseCcyAmountMinor")
+      && fxBatchFormationDomainSource.includes("quoteCcyAmountMinor")
+      && fxBatchFormationDomainSource.includes("exactNetTransferQuoteAmountMinor")
+      && fxBatchFormationDomainSource.includes("calculateQuoteMinor")
+      && fxBatchFormationDomainSource.includes("dealtCcyCode: first.baseCcyCode")
+      && fxBatchFormationDomainSource.includes('sourceNetSide: "FLAT"')
+      && !fxBatchFormationDomainSource.includes(
+        "trade.baseCcyAmount * trade.transferRate"
+      )
+      && serverSource.includes(
+        'minorToSafeInteger(trade.baseCcyAmountMinor, "Batch Base Ccy Amount Minor")'
+      )
+      && serverSource.includes(
+        'minorToSafeInteger(trade.quoteCcyAmountMinor, "Batch Quote Ccy Amount Minor")'
+      )
+      && !serverSource.includes(
+        "const exposureAmounts = fxTradeExposureAmounts(trade);"
+      ),
+    usesMinorUnitAnalyticalPnl:
+      serverSource.includes("analytical_pnl_quote_minor")
+      && serverSource.includes("analytical_pnl_quote_fraction_digits")
+      && serverSource.includes("calculateAnalyticalPnlMinor")
+      && inlineScript.includes("analyticalPnlQuoteMinor")
+      && inlineScript.includes("analyticalPnlQuoteFractionDigits")
+      && inlineScript.includes("minorToMajorDecimal("),
+    usesStrictMinorUnitDealInputs:
+      moneyDomainSource.includes("majorToMinorExact(dealtAmount, baseFractionDigits)")
+      && moneyDomainSource.includes("majorToMinorExact(dealtAmount, quoteFractionDigits)")
+      && inlineScript.includes("function majorToMinorExactDecimal(")
+      && inlineScript.includes("function validateMinorPrecision(")
+      && inlineScript.includes("validateMinorPrecision(dealtInput, dealtCcyCode, dealtFractionDigits)"),
+    usesMinorUnitDealGridFormatting:
+      inlineScript.includes("minorAmountCell(row[minorField], fractionDigits)")
+      && inlineScript.includes("minorAmountCell(pnlMinor, fractionDigits)"),
+    usesMinorUnitClientDealGenerationSettings:
+      serverSource.includes("migrateClientDealGenerationSettingsToMinorUnits")
+      && serverSource.includes("min_base_ccy_amount_minor")
+      && serverSource.includes("base_ccy_fraction_digits")
+      && clientDealGeneratorSource.includes("generatedBaseCcyAmountMinor")
+      && clientDealGeneratorSource.includes("minorToMajor")
+      && !clientDealGeneratorSource.includes(
+        "settings.minBaseCcyAmount,"
+      ),
+    usesMinorUnitFxPositionSummary:
+      inlineScript.includes("function sideAmountMinor(")
+      && inlineScript.includes("function scaledMinorAmount(")
+      && inlineScript.includes("amountMinor: sideRows.reduce(")
+      && inlineScript.includes("const netMinor = sell.amountMinor - buy.amountMinor;")
+      && inlineScript.includes("new Big(String(value))")
+      && inlineScript.includes("minorAmountCell(sell.amountMinor, fractionDigits)")
+      && inlineScript.includes("function fxPositionQuoteAmountMinor(")
+      && inlineScript.includes("deal?.analyticalPnlQuoteMinor")
+      && inlineScript.includes("minorToMajorDecimal(pnlMinor, fractionDigits)")
+      && !inlineScript.includes("acc.sell += deal.amountSell")
+      && !inlineScript.includes("acc.sum += value * amount")
+      && !inlineScript.includes("function quoteCurrencyAmount(")
+      && !inlineScript.includes("function pnlCashFromTransfer(")
+      && !inlineScript.includes("baseCcyAmount * tradeRate"),
     usesBootstrapFxPositionWorkspace: fxPositionPageMarkup.includes(
       'class="table table-sm align-middle batching-table fx-position-grid"'
     )
@@ -1594,7 +1694,8 @@ function verifyFrontendStructure() {
       && /\.hedge-deal-main-economics-row \{[\s\S]*?grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/.test(html)
       && /\.hedge-deal-create-dialog \.client-deal-pricing-row\.is-market-first \{[\s\S]*?grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/.test(html)
       && /\.hedge-deal-create-dialog \.client-deal-market-pulse-card,[\s\S]*?width: 100%;/.test(html)
-      && inlineScript.includes("quoteInput.value = Number.isFinite(baseAmount)")
+      && inlineScript.includes("const amounts = addHedgeDealExactAmounts();")
+      && inlineScript.includes("quoteInput.value = formattedMinorAmount(")
       && inlineScript.includes('document.getElementById("addHedgeDealAnalyticalPnl").value'),
     usesBootstrapClientDealDialog: addClientDealDialogMarkup.includes('class="modal-content"')
       && addClientDealDialogMarkup.includes('class="modal-header"')
@@ -1834,7 +1935,8 @@ function verifyFrontendStructure() {
       && !html.includes('arrow_upward'),
     usesGracefulWindowsShutdown: serverSource.includes('server.closeAllConnections();')
       && serverSource.includes('let shutdownStarted = false;')
-      && startScript.includes('if not "%EXIT_CODE%"=="0" pause'),
+      && startScript.includes('if not "%EXIT_CODE%"=="0" (')
+      && startScript.includes("  pause\n)"),
     usesInlineExecutionContextEditor: !html.includes('id="pricingContextDialog"')
       && !html.includes('id="pricingContextForm"')
       && inlineScript.includes("function renderPricingContextEditRow(context, index)")
@@ -1862,7 +1964,7 @@ function verifyFrontendStructure() {
       && html.includes('<table class="profile-table pricing-rules-table unified-data-table" data-fixed-column-widths>')
       && html.includes('id="pricingRuleIdSort"')
       && html.includes('id="pricingRuleIdHeader" aria-sort="ascending"')
-      && (html.match(/data-pricing-rule-header-filter=/g) || []).length === 6
+      && (html.match(/data-pricing-rule-header-filter=/g) || []).length === 7
       && inlineScript.includes('pricingRuleIdSortDirection = "asc"')
       && inlineScript.includes('function updatePricingRuleIdSortControl()')
       && !html.includes('<input type="text" name="pricingContextId" placeholder="Assigned on save" readonly>')
@@ -2041,9 +2143,10 @@ function verifyFrontendStructure() {
       && inlineScript.includes("function fxPositionTradeRate(deal)")
       && inlineScript.includes("return deal?.clientRate ?? null;")
       && inlineScript.includes("return deal?.autoBatchRate ?? null;")
-      && inlineScript.includes("const baseCcyAmount = fxPositionBaseAmount(deal);")
-      && inlineScript.includes("tradeRate: sideWeightedAverage(source, side, fxPositionTradeRate)")
-      && inlineScript.includes("transferRate: sideWeightedAverage(source, side, fxPositionTransferRate)")
+      && inlineScript.includes("const baseCcyAmount = flatActive")
+      && inlineScript.includes(": fxPositionBaseAmountCell(deal);")
+      && inlineScript.includes("fxPositionTradeRate,\n          targetFractionDigits")
+      && inlineScript.includes("fxPositionTransferRate,\n          targetFractionDigits")
       && inlineScript.includes('{ label: "Trade", type: "rate" }')
       && inlineScript.includes("column.label === label && column.type === type")
       && serverSource.includes("function fxTradeRowWithMajorAmounts(row)")
@@ -2056,6 +2159,23 @@ function verifyFrontendStructure() {
       && !html.includes("trade-type-indicator")
       && !inlineScript.includes("function fxPositionTradeTypeIndicator(deal)")
       && !inlineScript.includes("const tradeTypeIndicator = fxPositionTradeTypeIndicator(deal);"),
+    usesFxPositionTradeTypeChips:
+      html.includes(".position-trade-type-chip")
+      && html.includes(".position-trade-type-icon")
+      && inlineScript.includes("function fxPositionTradeTypePresentation(deal)")
+      && inlineScript.includes('{ type, label: "CLIENT DEAL", icon: "handshake" }')
+      && inlineScript.includes('{ type, label: "HEDGE DEAL", icon: "shield" }')
+      && inlineScript.includes(
+        '{ type, label: "BATCH POSITION OUT", icon: "output" }'
+      )
+      && inlineScript.includes('function fxPositionTradeContext(deal, tradeType')
+      && inlineScript.includes('`Position Out · Batch #${batchId}`')
+      && inlineScript.includes('function fxPositionTradeTypeTooltip(deal, presentation)')
+      && inlineScript.includes(
+        '`BATCH POSITION OUT · created by FX Batch #${batchId}`'
+      )
+      && inlineScript.includes('data-tooltip="${escapeHtml(tradeTypeTooltip)}"')
+      && !inlineScript.includes("position-trade-type-label"),
     supportsLargeFxPositionAmounts:
       (html.match(/data-smart-min-text="100 000 000 000\.00"/g) || []).length === 2
       && !html.includes('data-smart-extra-width="48"')
@@ -2111,7 +2231,7 @@ function verifyFrontendStructure() {
     usesExecutionContextRoute: html.includes('href="#execution-context" data-workspace-route="pricing"')
       && html.includes('function pricingRoute() {\n      return "#execution-context";')
       && inlineScript.includes('location.hash === pricingRoute() || location.hash === "#pricing"'),
-    usesBootstrapReferenceDataControls: (html.match(/btn btn-sm btn-outline-primary reference-new-button/g) || []).length === 4
+    usesBootstrapReferenceDataControls: (html.match(/btn btn-sm btn-outline-primary reference-new-button/g) || []).length === 5
       && inlineScript.includes('btn btn-sm btn-outline-secondary reference-grid-action')
       && inlineScript.includes('btn btn-sm btn-outline-danger reference-grid-action')
       && html.includes('<span class="reference-column-title">Exec. Context Count</span>'),
@@ -2263,9 +2383,13 @@ async function verifyApiAndMigration() {
     const fxTradeMarketSnapshotTable = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
     const clientFxDealsTable = await request("GET", "/api/database/tables/client_fx_deals");
     const hedgeFxDealsTable = await request("GET", "/api/database/tables/fx_hedge_deals");
+    const fxTradeBatchesTable = await request(
+      "GET",
+      "/api/database/tables/fx_batches"
+    );
     const batchBalancingTradesTable = await request(
       "GET",
-      "/api/database/tables/batch_balancing_trades"
+      "/api/database/tables/fx_batch_members"
     );
     const legacyAssignmentTable = await request("GET", "/api/database/tables/trading_party_execution_contexts");
     const servicingLocations = await request("GET", "/api/v1/servicing-locations");
@@ -2278,41 +2402,48 @@ async function verifyApiAndMigration() {
     const clientDealPricingRules = await request("GET", "/api/v1/client-deal-pricing-rules");
     const clientFxDeals = await request("GET", "/api/v1/client-fx-deals");
     const hedgeFxDeals = await request("GET", "/api/v1/hedge-fx-deals");
-    const createBatchBalancingPair = await request(
+    const fxPositionsBeforeBatch = await request("GET", "/api/v1/fx-positions");
+    const batchSourceProbe = new DatabaseSync(verificationDatabasePath);
+    batchSourceProbe.prepare(`
+      UPDATE client_fx_deals
+      SET transfer_rate = 1.123
+      WHERE trade_id = 41
+    `).run();
+    batchSourceProbe.close();
+    const createFxBatch = await request(
       "POST",
-      "/api/v1/batch-balancing-trades",
-      { tradeIds: [41] }
+      "/api/v1/fx-batches",
+      { idempotencyKey: "verify-batch-41", tradeIds: [41] }
     );
     const batchBalancingTradesAfterCreate = await request(
       "GET",
-      "/api/v1/batch-balancing-trades"
+      `/api/v1/fx-batches/${createFxBatch.body?.batchId}`
     );
     const duplicateBatchSelection = await request(
       "POST",
-      "/api/v1/batch-balancing-trades",
-      { tradeIds: [41, 41] }
+      "/api/v1/fx-batches",
+      { idempotencyKey: "verify-duplicate-batch", tradeIds: [41, 41] }
     );
     const missingBatchSourceTrade = await request(
       "POST",
-      "/api/v1/batch-balancing-trades",
-      { tradeIds: [999999] }
+      "/api/v1/fx-batches",
+      { idempotencyKey: "verify-missing-batch", tradeIds: [999999] }
     );
-    const rejectNonGeneratedBatchDelete = await request(
-      "DELETE",
-      "/api/v1/batch-balancing-trades",
-      { tradeIds: [41] }
+    const replayFxBatch = await request(
+      "POST",
+      "/api/v1/fx-batches",
+      { idempotencyKey: "verify-batch-41", tradeIds: [41] }
     );
-    const deleteGeneratedBatchTrades = await request(
-      "DELETE",
-      "/api/v1/batch-balancing-trades",
-      {
-        tradeIds: createBatchBalancingPair.body?.trades?.map(trade => trade.tradeId) || []
-      }
+    const idempotencyConflict = await request(
+      "POST",
+      "/api/v1/fx-batches",
+      { idempotencyKey: "verify-batch-41", tradeIds: [999999] }
     );
-    const batchBalancingTradesAfterDelete = await request(
+    const batchBalancingTradesAfterReplay = await request(
       "GET",
-      "/api/v1/batch-balancing-trades"
+      `/api/v1/fx-batches/${createFxBatch.body?.batchId}`
     );
+    const fxPositionsAfterBatch = await request("GET", "/api/v1/fx-positions");
     const clientDealExecutionContextId = executionContexts.body?.find(context =>
       context.servicingLocationId === "002"
       && context.accountingSystemId === "CTF3"
@@ -2419,11 +2550,14 @@ async function verifyApiAndMigration() {
     });
     const invalidClientFxDealTransferRate = await request("POST", "/api/v1/client-fx-deals", {
       ...clientFxDealPayload,
-      transferRate: 0
+      executionContextId: null,
+      pricingRuleId: null,
+      manualPricingReason: "CLIENT_ONBOARDING",
+      transferRate: "0"
     });
     const invalidClientFxDealSubMinorAmount = await request("POST", "/api/v1/client-fx-deals", {
       ...clientFxDealPayload,
-      dealtCcyAmount: "0.001"
+      dealtCcyAmount: "2246200.001"
     });
     const invalidClientFxDealPricingScope = await request("POST", "/api/v1/client-fx-deals", {
       ...clientFxDealPayload,
@@ -2870,7 +3004,7 @@ async function verifyApiAndMigration() {
       ccyPairCode: "EUR_USD",
       side: "BUY",
       dealtCcyCode: "USD",
-      dealtCcyAmount: "0.001",
+      dealtCcyAmount: "2808500.001",
       tradeRate: "1.1234",
       tenor: "TOD"
     });
@@ -2927,6 +3061,97 @@ async function verifyApiAndMigration() {
       "GET",
       "/api/database/tables/fx_trade_market_snapshot"
     );
+    const flatBatchSourceDatabase = new DatabaseSync(verificationDatabasePath);
+    flatBatchSourceDatabase.exec("PRAGMA foreign_keys = ON");
+    const insertFlatBatchExposure = flatBatchSourceDatabase.prepare(`
+      INSERT INTO fx_trade_exposure
+        (
+          entry_timestamp,
+          trade_type,
+          trade_date,
+          ccy_pair_code,
+          base_ccy_side,
+          dealt_ccy_code,
+          base_ccy_amount_minor,
+          base_ccy_fraction_digits,
+          quote_ccy_amount_minor,
+          quote_ccy_fraction_digits,
+          trade_rate,
+          tenor,
+          base_ccy_value_date,
+          quote_ccy_value_date
+        )
+      VALUES (?, 'CLIENT_DEAL', '2026-07-15', 'EUR_USD', ?, 'EUR',
+        100000000, 2, 112300000, 2, 1.123, 'TOM', '2026-07-16', '2026-07-16')
+    `);
+    const insertFlatBatchClientDeal = flatBatchSourceDatabase.prepare(`
+      INSERT INTO client_fx_deals
+        (
+          trade_id,
+          trade_type,
+          party_id,
+          execution_context_id,
+          pricing_rule_id,
+          transfer_rate,
+          analytical_pnl_quote_minor,
+          analytical_pnl_quote_fraction_digits,
+          comment
+        )
+      VALUES (?, 'CLIENT_DEAL', 1, NULL, NULL, 1.123, NULL, NULL, NULL)
+    `);
+    const flatSellTradeId = Number(
+      insertFlatBatchExposure.run("2026-07-27T10:00:00.000Z", "SELL").lastInsertRowid
+    );
+    insertFlatBatchClientDeal.run(flatSellTradeId);
+    const flatBuyTradeId = Number(
+      insertFlatBatchExposure.run("2026-07-27T10:00:01.000Z", "BUY").lastInsertRowid
+    );
+    insertFlatBatchClientDeal.run(flatBuyTradeId);
+    flatBatchSourceDatabase.close();
+
+    const fxPositionsBeforeFlatBatch = await request("GET", "/api/v1/fx-positions");
+    const createFlatFxBatch = await request("POST", "/api/v1/fx-batches", {
+      idempotencyKey: "verify-flat-batch",
+      tradeIds: [flatSellTradeId, flatBuyTradeId]
+    });
+    const fxPositionsAfterFlatBatch = await request("GET", "/api/v1/fx-positions");
+    const flatBatchIntegrityDatabase = new DatabaseSync(verificationDatabasePath);
+    flatBatchIntegrityDatabase.exec("PRAGMA foreign_keys = ON");
+    const flatBatchMembers = flatBatchIntegrityDatabase.prepare(`
+      SELECT trade_id AS tradeId, member_role AS memberRole, trade_type AS tradeType
+      FROM fx_batch_members
+      WHERE batch_id = ?
+      ORDER BY trade_id
+    `).all(createFlatFxBatch.body?.batchId);
+    const flatBatchOutputs = flatBatchIntegrityDatabase.prepare(`
+      SELECT
+        o.trade_id AS tradeId,
+        o.output_role AS outputRole,
+        e.trade_type AS tradeType,
+        e.base_ccy_side AS side,
+        e.base_ccy_amount_minor AS baseCcyAmountMinor,
+        e.quote_ccy_amount_minor AS quoteCcyAmountMinor,
+        e.trade_rate AS tradeRate
+      FROM fx_batch_outputs o
+      INNER JOIN fx_trade_exposure e
+        ON e.trade_id = o.trade_id AND e.trade_type = o.trade_type
+      WHERE o.batch_id = ?
+    `).all(createFlatFxBatch.body?.batchId);
+    let flatBatchImmutable = false;
+
+    try {
+      flatBatchIntegrityDatabase.prepare(`
+        UPDATE fx_batch_outputs
+        SET output_role = output_role
+        WHERE batch_id = ?
+      `).run(createFlatFxBatch.body?.batchId);
+    } catch {
+      flatBatchImmutable = true;
+    }
+
+    const flatBatchForeignKeyViolations =
+      flatBatchIntegrityDatabase.prepare("PRAGMA foreign_key_check").all().length;
+    flatBatchIntegrityDatabase.close();
 
     return {
       migratedPair: migratedPair.body?.[0] || null,
@@ -3027,6 +3252,14 @@ async function verifyApiAndMigration() {
       clientFxDealForeignKeys: clientFxDealsTable.body?.foreignKeys || [],
       hedgeFxDealColumns: hedgeFxDealsTable.body?.columns?.map(column => column.name) || [],
       hedgeFxDealForeignKeys: hedgeFxDealsTable.body?.foreignKeys || [],
+      fxTradeBatchColumns: fxTradeBatchesTable.body?.columns
+        ?.map(column => column.name) || [],
+      fxTradeBatchForeignKeys: fxTradeBatchesTable.body?.foreignKeys || [],
+      fxTradeBatchCreateSql: fxTradeBatchesTable.body?.createSql || "",
+      fxTradeBatches: {
+        status: fxTradeBatchesTable.statusCode,
+        count: fxTradeBatchesTable.body?.rowCount ?? -1
+      },
       batchBalancingTradeColumns: batchBalancingTradesTable.body?.columns
         ?.map(column => column.name) || [],
       batchBalancingTradeForeignKeys: batchBalancingTradesTable.body?.foreignKeys || [],
@@ -3035,22 +3268,79 @@ async function verifyApiAndMigration() {
         count: batchBalancingTradesTable.body?.rowCount ?? -1
       },
       batchBalancingFlow: {
-        createStatus: createBatchBalancingPair.statusCode,
-        batchId: createBatchBalancingPair.body?.batchId,
-        batchPairId: createBatchBalancingPair.body?.batchPairId,
-        sourceTradeIds: createBatchBalancingPair.body?.sourceTradeIds || [],
-        sourceNetSide: createBatchBalancingPair.body?.sourceNetSide,
-        sourceNetBaseCcyAmount: createBatchBalancingPair.body?.sourceNetBaseCcyAmount,
-        createdTypes: createBatchBalancingPair.body?.trades?.map(trade => trade.tradeType) || [],
-        createdSides: createBatchBalancingPair.body?.trades?.map(trade => trade.side) || [],
-        createdAmounts: createBatchBalancingPair.body?.trades?.map(trade => trade.baseCcyAmount) || [],
-        storedCount: batchBalancingTradesAfterCreate.body?.length ?? -1,
+        createStatus: createFxBatch.statusCode,
+        createErrorCode: createFxBatch.body?.code,
+        createErrorMessage: createFxBatch.body?.message,
+        batchId: createFxBatch.body?.batchId,
+        batchPairId: createFxBatch.body?.batchPairId,
+        sourceTradeIds: createFxBatch.body?.sourceTradeIds || [],
+        sourceNetSide: createFxBatch.body?.sourceNetSide,
+        sourceNetBaseCcyAmount: createFxBatch.body?.sourceNetBaseCcyAmount,
+        sourceNetBaseCcyAmountMinor:
+          createFxBatch.body?.sourceNetBaseCcyAmountMinor,
+        sourceNetBaseCcyFractionDigits:
+          createFxBatch.body?.sourceNetBaseCcyFractionDigits,
+        sourceNetTransferQuoteAmountMinor:
+          createFxBatch.body?.sourceNetTransferQuoteAmountMinor,
+        sourceNetTransferQuoteFractionDigits:
+          createFxBatch.body?.sourceNetTransferQuoteFractionDigits,
+        roundingResidualQuoteAmountMinor:
+          createFxBatch.body?.roundingResidualQuoteAmountMinor,
+        createdTypes: createFxBatch.body?.trades?.map(trade => trade.tradeType) || [],
+        createdSides: createFxBatch.body?.trades?.map(trade => trade.side) || [],
+        createdAmounts: createFxBatch.body?.trades?.map(trade => trade.baseCcyAmount) || [],
+        createdDealtCcyCodes:
+          createFxBatch.body?.trades?.map(trade => trade.dealtCcyCode) || [],
+        createdBaseAmountMinors:
+          createFxBatch.body?.trades?.map(trade => trade.baseCcyAmountMinor) || [],
+        createdBaseFractionDigits:
+          createFxBatch.body?.trades?.map(trade => trade.baseCcyFractionDigits) || [],
+        createdQuoteAmountMinors:
+          createFxBatch.body?.trades?.map(trade => trade.quoteCcyAmountMinor) || [],
+        createdQuoteFractionDigits:
+          createFxBatch.body?.trades?.map(trade => trade.quoteCcyFractionDigits) || [],
+        storedCount: batchBalancingTradesAfterCreate.body?.trades?.length ?? -1,
         duplicateSelectionStatus: duplicateBatchSelection.statusCode,
         missingSourceStatus: missingBatchSourceTrade.statusCode,
-        rejectNonGeneratedDeleteStatus: rejectNonGeneratedBatchDelete.statusCode,
-        deleteStatus: deleteGeneratedBatchTrades.statusCode,
-        deletedTradeIds: deleteGeneratedBatchTrades.body?.deletedTradeIds || [],
-        storedCountAfterDelete: batchBalancingTradesAfterDelete.body?.length ?? -1
+        replayStatus: replayFxBatch.statusCode,
+        replayed: replayFxBatch.body?.replayed === true,
+        replayBatchId: replayFxBatch.body?.batchId,
+        idempotencyConflictStatus: idempotencyConflict.statusCode,
+        storedCountAfterReplay: batchBalancingTradesAfterReplay.body?.trades?.length ?? -1,
+        sourceVisibleBeforeBatch: fxPositionsBeforeBatch.body?.some(
+          trade => trade.tradeId === 41
+        ) === true,
+        sourceHiddenAfterBatch: fxPositionsAfterBatch.body?.every(
+          trade => trade.tradeId !== 41
+        ) === true,
+        outputVisibleAfterBatch: fxPositionsAfterBatch.body?.some(
+          trade => trade.tradeType === "BATCH_POSITION_OUT"
+            && trade.batchId === createFxBatch.body?.batchId
+        ) === true
+      },
+      flatBatchFlow: {
+        createStatus: createFlatFxBatch.statusCode,
+        batchStatus: createFlatFxBatch.body?.batchStatus,
+        sourceTradeIds: createFlatFxBatch.body?.sourceTradeIds || [],
+        sourceNetSide: createFlatFxBatch.body?.sourceNetSide,
+        sourceNetBaseCcyAmountMinor:
+          createFlatFxBatch.body?.sourceNetBaseCcyAmountMinor,
+        createdTrades: createFlatFxBatch.body?.trades || [],
+        members: flatBatchMembers,
+        outputs: flatBatchOutputs,
+        sourcesVisibleBefore: [flatSellTradeId, flatBuyTradeId].every(tradeId =>
+          fxPositionsBeforeFlatBatch.body?.some(trade => trade.tradeId === tradeId)
+        ),
+        sourcesHiddenAfter: [flatSellTradeId, flatBuyTradeId].every(tradeId =>
+          fxPositionsAfterFlatBatch.body?.every(trade => trade.tradeId !== tradeId)
+        ),
+        outputVisibleAfter: fxPositionsAfterFlatBatch.body?.some(trade =>
+          trade.batchId === createFlatFxBatch.body?.batchId
+          && trade.tradeType === "BATCH_POSITION_OUT"
+          && trade.side === "FLAT"
+        ) === true,
+        immutable: flatBatchImmutable,
+        foreignKeyViolations: flatBatchForeignKeyViolations
       },
       hedgeFxDeals: {
         status: hedgeFxDeals.statusCode,
@@ -3075,6 +3365,14 @@ async function verifyApiAndMigration() {
         expectedPricingRuleId: createHedgePricingRule.body?.pricingRuleId,
         createdTransferRate: createHedgeFxDeal.body?.transferRate,
         createdAnalyticalPnl: createHedgeFxDeal.body?.analyticalPnl,
+        createdAnalyticalPnlQuoteMinor: createHedgeFxDeal.body?.analyticalPnlQuoteMinor,
+        createdAnalyticalPnlQuoteFractionDigits:
+          createHedgeFxDeal.body?.analyticalPnlQuoteFractionDigits,
+        createdDealtCcyCode: createHedgeFxDeal.body?.dealtCcyCode,
+        createdBaseCcyAmountMinor: createHedgeFxDeal.body?.baseCcyAmountMinor,
+        createdBaseCcyFractionDigits: createHedgeFxDeal.body?.baseCcyFractionDigits,
+        createdQuoteCcyAmountMinor: createHedgeFxDeal.body?.quoteCcyAmountMinor,
+        createdQuoteCcyFractionDigits: createHedgeFxDeal.body?.quoteCcyFractionDigits,
         createdMarketPulseStreamStatus: createHedgeFxDeal.body?.marketPulseStreamStatus,
         subMinorAmountStatus: invalidHedgeFxDealSubMinorAmount.statusCode,
         subMinorAmountCode: invalidHedgeFxDealSubMinorAmount.body?.code,
@@ -3106,6 +3404,10 @@ async function verifyApiAndMigration() {
           && createdHedgeDealRow?.party_id === createHedgeCounterparty.body?.partyId
           && createdHedgeDealRow?.pricing_rule_id === createHedgePricingRule.body?.pricingRuleId
           && createdHedgeDealRow?.transfer_rate === createHedgeFxDeal.body?.transferRate
+          && createdHedgeDealRow?.analytical_pnl_quote_minor
+            === createHedgeFxDeal.body?.analyticalPnlQuoteMinor
+          && createdHedgeDealRow?.analytical_pnl_quote_fraction_digits
+            === createHedgeFxDeal.body?.analyticalPnlQuoteFractionDigits
           && createdHedgeMarketSnapshotRow?.trade_id === createdHedgeTradeId
           && createdHedgeMarketSnapshotRow?.trade_type === "HEDGE_DEAL"
       },
@@ -3126,6 +3428,14 @@ async function verifyApiAndMigration() {
         expectedPricingRuleId: clientDealPricingRuleId,
         createdTransferRate: createClientFxDeal.body?.transferRate,
         createdAnalyticalPnl: createClientFxDeal.body?.analyticalPnl,
+        createdAnalyticalPnlQuoteMinor: createClientFxDeal.body?.analyticalPnlQuoteMinor,
+        createdAnalyticalPnlQuoteFractionDigits:
+          createClientFxDeal.body?.analyticalPnlQuoteFractionDigits,
+        createdDealtCcyCode: createClientFxDeal.body?.dealtCcyCode,
+        createdBaseCcyAmountMinor: createClientFxDeal.body?.baseCcyAmountMinor,
+        createdBaseCcyFractionDigits: createClientFxDeal.body?.baseCcyFractionDigits,
+        createdQuoteCcyAmountMinor: createClientFxDeal.body?.quoteCcyAmountMinor,
+        createdQuoteCcyFractionDigits: createClientFxDeal.body?.quoteCcyFractionDigits,
         createdMarketPulseStreamStatus: createClientFxDeal.body?.marketPulseStreamStatus,
         createdMarketPulseBid: createClientFxDeal.body?.marketPulseBid,
         createdMarketPulseOffer: createClientFxDeal.body?.marketPulseOffer,
@@ -3149,7 +3459,8 @@ async function verifyApiAndMigration() {
           && createdClientRow?.execution_context_id === clientDealExecutionContextId
           && createdClientRow?.pricing_rule_id === clientDealPricingRuleId
           && createdClientRow?.transfer_rate === 1.124
-          && createdClientRow?.analytical_pnl === 1800
+          && createdClientRow?.analytical_pnl_quote_minor === 180000
+          && createdClientRow?.analytical_pnl_quote_fraction_digits === 2
           && createdClientRow?.comment === "Initial verification comment"
           && createdMarketSnapshotRow?.trade_id === createdTradeId
           && createdMarketSnapshotRow?.trade_type === "CLIENT_DEAL"
@@ -3167,7 +3478,8 @@ async function verifyApiAndMigration() {
           && updatedClientRow?.execution_context_id === clientDealExecutionContextId
           && updatedClientRow?.pricing_rule_id === clientDealPricingRuleId
           && updatedClientRow?.transfer_rate === 1.124
-          && updatedClientRow?.analytical_pnl === 1800
+          && updatedClientRow?.analytical_pnl_quote_minor === 180000
+          && updatedClientRow?.analytical_pnl_quote_fraction_digits === 2
           && updatedClientRow?.comment === "Reviewed verification comment"
           && updatedMarketSnapshotRow?.market_pulse_stream_status === "RUNNING"
           && updatedMarketSnapshotRow?.market_pulse_bid === 1.1228
@@ -3273,6 +3585,22 @@ async function verifyApiAndMigration() {
           ?.every(settings => settings.partyType === "CLIENT") === true,
         allAutoPricedRules: generationSettingsBefore.body
           ?.every(settings => settings.pricingMode === "AUTO_PRICED") === true,
+        allAmountsUseStoredMinorUnits: generationSettingsBefore.body
+          ?.every(settings =>
+            Number.isSafeInteger(settings.minBaseCcyAmountMinor)
+            && Number.isSafeInteger(settings.maxBaseCcyAmountMinor)
+            && Number.isSafeInteger(settings.baseCcyAmountStepMinor)
+            && Number.isInteger(settings.baseCcyFractionDigits)
+            && settings.minBaseCcyAmount
+              === settings.minBaseCcyAmountMinor
+                / (10 ** settings.baseCcyFractionDigits)
+            && settings.maxBaseCcyAmount
+              === settings.maxBaseCcyAmountMinor
+                / (10 ** settings.baseCcyFractionDigits)
+            && settings.baseCcyAmountStep
+              === settings.baseCcyAmountStepMinor
+                / (10 ** settings.baseCcyFractionDigits)
+          ) === true,
         configuredActiveCount: generationSettingsConfigured.body
           ?.filter(settings => settings.active).length ?? -1,
         invalidSettingsStatus: invalidGenerationSettings.statusCode,
@@ -3374,13 +3702,15 @@ async function main() {
     const apiAndMigration = await verifyApiAndMigration();
     const expectedTables = [
       "accounting_systems",
-      "batch_balancing_trades",
       "ccy_options",
       "ccy_pair_options",
       "client_deal_generation_settings",
       "client_fx_deals",
       "execution_contexts",
       "execution_systems",
+      "fx_batch_members",
+      "fx_batch_outputs",
+      "fx_batches",
       "fx_hedge_deals",
       "fx_trade_exposure",
       "fx_trade_market_snapshot",
@@ -3405,8 +3735,9 @@ async function main() {
       || freshSchema.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
       || freshSchema.userRoles.join(",") !== "ADMIN,DEALER,SUPERVISOR"
       || freshSchema.pricingRules !== 6
+      || freshSchema.legacyMonetaryColumns.length !== 0
       || freshSchema.clientDealGenerationSettings !== 2
-      || freshSchema.clientDealGenerationSettingsColumns.join(",") !== "pricing_rule_id,min_base_ccy_amount,max_base_ccy_amount,base_ccy_amount_step,buy_probability_percent,is_active"
+      || freshSchema.clientDealGenerationSettingsColumns.join(",") !== "pricing_rule_id,min_base_ccy_amount_minor,max_base_ccy_amount_minor,base_ccy_amount_step_minor,base_ccy_fraction_digits,buy_probability_percent,is_active"
       || freshSchema.clientDealGenerationSettingsForeignKeys.length !== 1
       || freshSchema.clientDealGenerationSettingsForeignKeys[0]?.table !== "pricing_rules"
       || freshSchema.clientDealGenerationSettingsForeignKeys[0]?.on_update !== "RESTRICT"
@@ -3414,9 +3745,10 @@ async function main() {
       || !freshSchema.clientDealGenerationSettingsRows.every(row =>
         row.party_type === "CLIENT"
         && row.pricing_mode === "AUTO_PRICED"
-        && row.min_base_ccy_amount === 500000
-        && row.max_base_ccy_amount === 1500000
-        && row.base_ccy_amount_step === 100000
+        && row.min_base_ccy_amount_minor === 500000 * (10 ** row.base_ccy_fraction_digits)
+        && row.max_base_ccy_amount_minor === 1500000 * (10 ** row.base_ccy_fraction_digits)
+        && row.base_ccy_amount_step_minor === 100000 * (10 ** row.base_ccy_fraction_digits)
+        && Number.isInteger(row.base_ccy_fraction_digits)
         && row.buy_probability_percent === 50
         && row.is_active === 1
       )
@@ -3439,7 +3771,7 @@ async function main() {
       || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_stream_status !== "RUNNING"
       || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_timestamp !== "2026-07-15T09:30:00.000Z"
       || freshSchema.clientFxDeals !== 1
-      || freshSchema.clientFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl,comment"
+      || freshSchema.clientFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits,comment"
       || freshSchema.clientFxDealForeignKeys.length !== 7
       || !freshSchema.clientFxDealForeignKeys.every(foreignKey =>
         foreignKey.on_update === "RESTRICT" && foreignKey.on_delete === "RESTRICT"
@@ -3450,9 +3782,10 @@ async function main() {
       || freshSchema.clientFxDealSeedRow?.execution_context_id !== 3
       || freshSchema.clientFxDealSeedRow?.pricing_rule_id !== 3
       || freshSchema.clientFxDealSeedRow?.transfer_rate !== 1.1222
-      || freshSchema.clientFxDealSeedRow?.analytical_pnl !== 27000
+      || freshSchema.clientFxDealSeedRow?.analytical_pnl_quote_minor !== 2700000
+      || freshSchema.clientFxDealSeedRow?.analytical_pnl_quote_fraction_digits !== 2
       || freshSchema.hedgeFxDeals !== 1
-      || freshSchema.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl"
+      || freshSchema.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits"
       || freshSchema.hedgeFxDealForeignKeys.length !== 7
       || !freshSchema.hedgeFxDealForeignKeys.every(foreignKey =>
         foreignKey.on_update === "RESTRICT" && foreignKey.on_delete === "RESTRICT"
@@ -3462,12 +3795,23 @@ async function main() {
       )
       || freshSchema.hedgeFxDealSeedRow?.trade_type !== "HEDGE_DEAL"
       || freshSchema.hedgeFxDealSeedRow?.transfer_rate !== 1.1222
-      || freshSchema.hedgeFxDealSeedRow?.analytical_pnl !== 0
+      || freshSchema.hedgeFxDealSeedRow?.analytical_pnl_quote_minor !== 0
+      || freshSchema.hedgeFxDealSeedRow?.analytical_pnl_quote_fraction_digits !== 2
+      || freshSchema.fxTradeBatches !== 0
+      || freshSchema.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,created_at"
+      || freshSchema.fxTradeBatchForeignKeys.length !== 1
+      || freshSchema.fxTradeBatchForeignKeys[0]?.table !== "ccy_pair_options"
+      || freshSchema.fxTradeBatchForeignKeys[0]?.on_update !== "RESTRICT"
+      || freshSchema.fxTradeBatchForeignKeys[0]?.on_delete !== "RESTRICT"
+      || !freshSchema.fxTradeBatchCreateSql.includes("AUTOINCREMENT")
+      || freshSchema.fxTradeBatchStatusPairIndexColumns.join(",") !== "batch_status,ccy_pair_code"
+      || !freshSchema.fxTradeBatchDefaultsSupported
+      || !freshSchema.fxTradeBatchConstraintsEnforced
       || freshSchema.batchBalancingTrades !== 0
-      || freshSchema.batchBalancingTradeColumns.join(",") !== "batch_trade_id,batch_pair_id,batch_id,trade_type,trade_id,created_at"
-      || freshSchema.batchBalancingTradeForeignKeys.length !== 2
+      || freshSchema.batchBalancingTradeColumns.join(",") !== "batch_id,trade_id,trade_type,member_role"
+      || freshSchema.batchBalancingTradeForeignKeys.length !== 3
       || !freshSchema.batchBalancingTradeForeignKeys.every(foreignKey =>
-        foreignKey.table === "fx_trade_exposure"
+        ["fx_trade_exposure", "fx_batches"].includes(foreignKey.table)
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "RESTRICT"
       )
@@ -3513,7 +3857,13 @@ async function main() {
       || !frontend.usesDatabaseBackedFxPositionDelete
       || !frontend.usesDatabaseBackedClientDealGeneration
       || !frontend.removesBrowserClientDealGeneration
-      || !frontend.usesTemporaryBatchBalancingAction
+      || !frontend.usesFxBatchFormation
+      || !frontend.usesMinorUnitBatchBalancing
+      || !frontend.usesMinorUnitAnalyticalPnl
+      || !frontend.usesStrictMinorUnitDealInputs
+      || !frontend.usesMinorUnitDealGridFormatting
+      || !frontend.usesMinorUnitClientDealGenerationSettings
+      || !frontend.usesMinorUnitFxPositionSummary
       || !frontend.usesBootstrapFxPositionWorkspace
       || !frontend.usesBootstrapDealGenerationSettings
       || !frontend.showsAutoPricedClientDealGenerationMode
@@ -3619,6 +3969,7 @@ async function main() {
       || !frontend.usesFxPositionExposureDates
       || !frontend.usesFxPositionTradeAttributes
       || !frontend.removesFxPositionTradeTypeIndicators
+      || !frontend.usesFxPositionTradeTypeChips
       || !frontend.supportsLargeFxPositionAmounts
       || !frontend.usesFxPositionMarketPulseBrand
       || !frontend.usesFxPositionHedgeDealTerminology
@@ -3689,7 +4040,7 @@ async function main() {
       || !["trading_parties", "execution_contexts", "ccy_pair_options"].every(referencedTable =>
         apiAndMigration.pricingRuleForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
-      || apiAndMigration.clientDealGenerationSettingsColumns.join(",") !== "pricing_rule_id,min_base_ccy_amount,max_base_ccy_amount,base_ccy_amount_step,buy_probability_percent,is_active"
+      || apiAndMigration.clientDealGenerationSettingsColumns.join(",") !== "pricing_rule_id,min_base_ccy_amount_minor,max_base_ccy_amount_minor,base_ccy_amount_step_minor,base_ccy_fraction_digits,buy_probability_percent,is_active"
       || apiAndMigration.clientDealGenerationSettingsForeignKeys.length !== 1
       || apiAndMigration.clientDealGenerationSettingsForeignKeys[0]?.referencedTable !== "pricing_rules"
       || apiAndMigration.clientDealGenerationSettingsForeignKeys[0]?.onUpdate !== "RESTRICT"
@@ -3701,6 +4052,7 @@ async function main() {
       || apiAndMigration.clientDealGeneration.settingsCount !== 2
       || !apiAndMigration.clientDealGeneration.allClientRules
       || !apiAndMigration.clientDealGeneration.allAutoPricedRules
+      || !apiAndMigration.clientDealGeneration.allAmountsUseStoredMinorUnits
       || apiAndMigration.clientDealGeneration.configuredActiveCount !== 1
       || apiAndMigration.clientDealGeneration.invalidSettingsStatus !== 400
       || apiAndMigration.clientDealGeneration.generatedStatus !== 201
@@ -3736,8 +4088,9 @@ async function main() {
       || !apiAndMigration.clientDealGeneration.settingsRestored
       || apiAndMigration.fxTradeExposureColumns.join(",") !== "trade_id,entry_timestamp,trade_type,trade_date,ccy_pair_code,base_ccy_side,dealt_ccy_code,base_ccy_amount_minor,base_ccy_fraction_digits,quote_ccy_amount_minor,quote_ccy_fraction_digits,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
       || apiAndMigration.fxTradeExposureForeignKeys.length !== 2
-      || !apiAndMigration.fxTradeExposureCreateSql.includes("'BATCH_BALANCING_TRADE'")
+      || !apiAndMigration.fxTradeExposureCreateSql.includes("'BATCH_BALANCE_TRADE'")
       || !apiAndMigration.fxTradeExposureCreateSql.includes("'BATCH_POSITION_OUT'")
+      || !apiAndMigration.fxTradeExposureCreateSql.includes("base_ccy_side = 'FLAT'")
       || apiAndMigration.fxTradeExposures.count !== 1
       || apiAndMigration.fxTradeExposures.migratedRow?.trade_id !== 41
       || apiAndMigration.fxTradeExposures.migratedRow?.trade_type !== "CLIENT_DEAL"
@@ -3756,24 +4109,32 @@ async function main() {
         && foreignKey.referencedTable === "fx_trade_exposure"
       )
       || apiAndMigration.fxTradeMarketSnapshots.count !== 0
-      || apiAndMigration.clientFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl,comment"
+      || apiAndMigration.clientFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits,comment"
       || apiAndMigration.clientFxDealForeignKeys.length !== 7
       || !apiAndMigration.clientFxDealForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
       || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
         apiAndMigration.clientFxDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
-      || apiAndMigration.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl"
+      || apiAndMigration.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits"
       || apiAndMigration.hedgeFxDealForeignKeys.length !== 7
       || !apiAndMigration.hedgeFxDealForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
       || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
         apiAndMigration.hedgeFxDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
-      || apiAndMigration.batchBalancingTradeColumns.join(",") !== "batch_trade_id,batch_pair_id,batch_id,trade_type,trade_id,created_at"
-      || apiAndMigration.batchBalancingTradeForeignKeys.length !== 2
+      || apiAndMigration.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,created_at"
+      || apiAndMigration.fxTradeBatchForeignKeys.length !== 1
+      || apiAndMigration.fxTradeBatchForeignKeys[0]?.onUpdate !== "RESTRICT"
+      || apiAndMigration.fxTradeBatchForeignKeys[0]?.onDelete !== "RESTRICT"
+      || apiAndMigration.fxTradeBatchForeignKeys[0]?.referencedTable !== "ccy_pair_options"
+      || !apiAndMigration.fxTradeBatchCreateSql.includes("AUTOINCREMENT")
+      || apiAndMigration.fxTradeBatches.status !== 200
+      || apiAndMigration.fxTradeBatches.count !== 0
+      || apiAndMigration.batchBalancingTradeColumns.join(",") !== "batch_id,trade_id,trade_type,member_role"
+      || apiAndMigration.batchBalancingTradeForeignKeys.length !== 3
       || !apiAndMigration.batchBalancingTradeForeignKeys.every(foreignKey =>
         foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "RESTRICT"
-        && foreignKey.referencedTable === "fx_trade_exposure"
+        && ["fx_trade_exposure", "fx_batches"].includes(foreignKey.referencedTable)
       )
       || apiAndMigration.batchBalancingTrades.status !== 200
       || apiAndMigration.batchBalancingTrades.count !== 0
@@ -3783,16 +4144,58 @@ async function main() {
       || apiAndMigration.batchBalancingFlow.sourceTradeIds.join(",") !== "41"
       || apiAndMigration.batchBalancingFlow.sourceNetSide !== "SELL"
       || apiAndMigration.batchBalancingFlow.sourceNetBaseCcyAmount !== 1500000
-      || apiAndMigration.batchBalancingFlow.createdTypes.join(",") !== "BATCH_BALANCING_TRADE,BATCH_POSITION_OUT"
+      || apiAndMigration.batchBalancingFlow.sourceNetBaseCcyAmountMinor !== 150000000
+      || apiAndMigration.batchBalancingFlow.sourceNetBaseCcyFractionDigits !== 2
+      || apiAndMigration.batchBalancingFlow.sourceNetTransferQuoteAmountMinor !== 168450000
+      || apiAndMigration.batchBalancingFlow.sourceNetTransferQuoteFractionDigits !== 2
+      || apiAndMigration.batchBalancingFlow.roundingResidualQuoteAmountMinor !== 0
+      || apiAndMigration.batchBalancingFlow.createdTypes.join(",") !== "BATCH_BALANCE_TRADE,BATCH_POSITION_OUT"
       || apiAndMigration.batchBalancingFlow.createdSides.join(",") !== "BUY,SELL"
       || apiAndMigration.batchBalancingFlow.createdAmounts.join(",") !== "1500000,1500000"
+      || apiAndMigration.batchBalancingFlow.createdDealtCcyCodes.join(",") !== "EUR,EUR"
+      || apiAndMigration.batchBalancingFlow.createdBaseAmountMinors.join(",") !== "150000000,150000000"
+      || apiAndMigration.batchBalancingFlow.createdBaseFractionDigits.join(",") !== "2,2"
+      || apiAndMigration.batchBalancingFlow.createdQuoteAmountMinors.join(",") !== "168450000,168450000"
+      || apiAndMigration.batchBalancingFlow.createdQuoteFractionDigits.join(",") !== "2,2"
       || apiAndMigration.batchBalancingFlow.storedCount !== 2
       || apiAndMigration.batchBalancingFlow.duplicateSelectionStatus !== 400
       || apiAndMigration.batchBalancingFlow.missingSourceStatus !== 404
-      || apiAndMigration.batchBalancingFlow.rejectNonGeneratedDeleteStatus !== 404
-      || apiAndMigration.batchBalancingFlow.deleteStatus !== 200
-      || apiAndMigration.batchBalancingFlow.deletedTradeIds.length !== 2
-      || apiAndMigration.batchBalancingFlow.storedCountAfterDelete !== 0
+      || apiAndMigration.batchBalancingFlow.replayStatus !== 200
+      || !apiAndMigration.batchBalancingFlow.replayed
+      || apiAndMigration.batchBalancingFlow.replayBatchId
+        !== apiAndMigration.batchBalancingFlow.batchId
+      || apiAndMigration.batchBalancingFlow.idempotencyConflictStatus !== 409
+      || apiAndMigration.batchBalancingFlow.storedCountAfterReplay !== 2
+      || !apiAndMigration.batchBalancingFlow.sourceVisibleBeforeBatch
+      || !apiAndMigration.batchBalancingFlow.sourceHiddenAfterBatch
+      || !apiAndMigration.batchBalancingFlow.outputVisibleAfterBatch
+      || apiAndMigration.flatBatchFlow.createStatus !== 201
+      || apiAndMigration.flatBatchFlow.batchStatus !== "FORMED"
+      || apiAndMigration.flatBatchFlow.sourceTradeIds.length !== 2
+      || apiAndMigration.flatBatchFlow.sourceNetSide !== "FLAT"
+      || apiAndMigration.flatBatchFlow.sourceNetBaseCcyAmountMinor !== 0
+      || apiAndMigration.flatBatchFlow.createdTrades.length !== 1
+      || apiAndMigration.flatBatchFlow.createdTrades[0]?.tradeType
+        !== "BATCH_POSITION_OUT"
+      || apiAndMigration.flatBatchFlow.createdTrades[0]?.side !== "FLAT"
+      || apiAndMigration.flatBatchFlow.createdTrades[0]?.baseCcyAmountMinor !== 0
+      || apiAndMigration.flatBatchFlow.createdTrades[0]?.quoteCcyAmountMinor !== 0
+      || apiAndMigration.flatBatchFlow.createdTrades[0]?.tradeRate !== null
+      || apiAndMigration.flatBatchFlow.members.length !== 2
+      || !apiAndMigration.flatBatchFlow.members.every(
+        member => member.memberRole === "TRADE"
+      )
+      || apiAndMigration.flatBatchFlow.outputs.length !== 1
+      || apiAndMigration.flatBatchFlow.outputs[0]?.outputRole !== "POSITION_OUT"
+      || apiAndMigration.flatBatchFlow.outputs[0]?.side !== "FLAT"
+      || apiAndMigration.flatBatchFlow.outputs[0]?.baseCcyAmountMinor !== 0
+      || apiAndMigration.flatBatchFlow.outputs[0]?.quoteCcyAmountMinor !== 0
+      || apiAndMigration.flatBatchFlow.outputs[0]?.tradeRate !== null
+      || !apiAndMigration.flatBatchFlow.sourcesVisibleBefore
+      || !apiAndMigration.flatBatchFlow.sourcesHiddenAfter
+      || !apiAndMigration.flatBatchFlow.outputVisibleAfter
+      || !apiAndMigration.flatBatchFlow.immutable
+      || apiAndMigration.flatBatchFlow.foreignKeyViolations !== 0
       || apiAndMigration.hedgeFxDeals.status !== 200
       || apiAndMigration.hedgeFxDeals.count !== 0
       || apiAndMigration.hedgeFxDeals.eligiblePricingRulesStatus !== 200
@@ -3810,6 +4213,13 @@ async function main() {
         !== apiAndMigration.hedgeFxDeals.expectedPricingRuleId
       || !Number.isFinite(apiAndMigration.hedgeFxDeals.createdTransferRate)
       || !Number.isFinite(apiAndMigration.hedgeFxDeals.createdAnalyticalPnl)
+      || !Number.isSafeInteger(apiAndMigration.hedgeFxDeals.createdAnalyticalPnlQuoteMinor)
+      || apiAndMigration.hedgeFxDeals.createdAnalyticalPnlQuoteFractionDigits !== 2
+      || apiAndMigration.hedgeFxDeals.createdDealtCcyCode !== "USD"
+      || apiAndMigration.hedgeFxDeals.createdBaseCcyAmountMinor !== 250000000
+      || apiAndMigration.hedgeFxDeals.createdBaseCcyFractionDigits !== 2
+      || apiAndMigration.hedgeFxDeals.createdQuoteCcyAmountMinor !== 280850000
+      || apiAndMigration.hedgeFxDeals.createdQuoteCcyFractionDigits !== 2
       || !["RUNNING", "STOPPED"].includes(
         apiAndMigration.hedgeFxDeals.createdMarketPulseStreamStatus
       )
@@ -3837,7 +4247,9 @@ async function main() {
       || apiAndMigration.clientFxDeals.migratedRow?.execution_context_id !== null
       || apiAndMigration.clientFxDeals.migratedRow?.pricing_rule_id !== null
       || apiAndMigration.clientFxDeals.migratedRow?.transfer_rate !== null
-      || apiAndMigration.clientFxDeals.migratedRow?.analytical_pnl !== null
+      || apiAndMigration.clientFxDeals.migratedRow?.analytical_pnl_quote_minor !== null
+      || apiAndMigration.clientFxDeals.migratedRow
+        ?.analytical_pnl_quote_fraction_digits !== null
       || apiAndMigration.clientFxDeals.migratedRow?.comment !== null
       || !Number.isInteger(apiAndMigration.clientFxDeals.createdId)
       || apiAndMigration.clientFxDeals.createdTradeId !== apiAndMigration.clientFxDeals.createdId
@@ -3846,6 +4258,13 @@ async function main() {
       || apiAndMigration.clientFxDeals.createdPricingRuleId !== apiAndMigration.clientFxDeals.expectedPricingRuleId
       || apiAndMigration.clientFxDeals.createdTransferRate !== 1.124
       || apiAndMigration.clientFxDeals.createdAnalyticalPnl !== 1800
+      || apiAndMigration.clientFxDeals.createdAnalyticalPnlQuoteMinor !== 180000
+      || apiAndMigration.clientFxDeals.createdAnalyticalPnlQuoteFractionDigits !== 2
+      || apiAndMigration.clientFxDeals.createdDealtCcyCode !== "USD"
+      || apiAndMigration.clientFxDeals.createdBaseCcyAmountMinor !== 200000000
+      || apiAndMigration.clientFxDeals.createdBaseCcyFractionDigits !== 2
+      || apiAndMigration.clientFxDeals.createdQuoteCcyAmountMinor !== 224620000
+      || apiAndMigration.clientFxDeals.createdQuoteCcyFractionDigits !== 2
       || apiAndMigration.clientFxDeals.createdMarketPulseStreamStatus !== "RUNNING"
       || apiAndMigration.clientFxDeals.createdMarketPulseBid !== 1.1228
       || apiAndMigration.clientFxDeals.createdMarketPulseOffer !== 1.123

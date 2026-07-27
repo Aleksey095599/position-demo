@@ -1,6 +1,10 @@
 "use strict";
 
 const Big = require("big.js");
+const {
+  majorToMinor,
+  minorToMajor
+} = require("../money/money");
 
 const Decimal = Big();
 Decimal.strict = true;
@@ -87,20 +91,47 @@ function calculateAnalyticalPnl({
   const quoteRateDelta = side === "BUY"
     ? normalizedTradeRate.minus(normalizedTransferRate)
     : normalizedTransferRate.minus(normalizedTradeRate);
-
-  return roundToFractionDigits(
+  const analyticalPnlQuoteMinor = majorToMinor(
     normalizedBaseAmount.times(quoteRateDelta).toString(),
     pnlFractionDigits
+  );
+
+  return Number(minorToMajor(analyticalPnlQuoteMinor, pnlFractionDigits));
+}
+
+function calculateAnalyticalPnlMinor({
+  clientSide,
+  baseCcyAmountMinor,
+  baseCcyFractionDigits,
+  tradeRate,
+  transferRate,
+  quoteCcyFractionDigits
+}) {
+  const side = normalizedClientSide(clientSide);
+  const normalizedBaseAmount = positiveDecimal(
+    minorToMajor(baseCcyAmountMinor, baseCcyFractionDigits),
+    "Base Ccy Amount"
+  );
+  const normalizedTradeRate = positiveDecimal(tradeRate, "Trade Rate");
+  const normalizedTransferRate = positiveDecimal(transferRate, "Transfer Rate");
+  const quoteRateDelta = side === "BUY"
+    ? normalizedTradeRate.minus(normalizedTransferRate)
+    : normalizedTransferRate.minus(normalizedTradeRate);
+
+  return majorToMinor(
+    normalizedBaseAmount.times(quoteRateDelta).toString(),
+    quoteCcyFractionDigits
   );
 }
 
 function calculateClientFxDealEconomics({
   clientSide,
-  baseCcyAmount,
+  baseCcyAmountMinor,
+  baseCcyFractionDigits,
   tradeRate,
   marginPercent,
   rateFractionDigits = 4,
-  pnlFractionDigits = 2
+  quoteCcyFractionDigits = 2
 }) {
   const transferRate = calculateTransferRate({
     clientSide,
@@ -108,19 +139,25 @@ function calculateClientFxDealEconomics({
     marginPercent,
     rateFractionDigits
   });
-  const analyticalPnl = calculateAnalyticalPnl({
+  const analyticalPnlQuoteMinor = calculateAnalyticalPnlMinor({
     clientSide,
-    baseCcyAmount,
+    baseCcyAmountMinor,
+    baseCcyFractionDigits,
     tradeRate,
     transferRate,
-    pnlFractionDigits
+    quoteCcyFractionDigits
   });
 
-  return { transferRate, analyticalPnl };
+  return {
+    transferRate,
+    analyticalPnlQuoteMinor,
+    analyticalPnlQuoteFractionDigits: quoteCcyFractionDigits
+  };
 }
 
 module.exports = {
   calculateAnalyticalPnl,
+  calculateAnalyticalPnlMinor,
   calculateClientFxDealEconomics,
   calculateTransferRate,
   roundToFractionDigits

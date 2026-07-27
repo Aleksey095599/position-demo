@@ -99,23 +99,63 @@ INNER JOIN execution_contexts e
 INSERT INTO client_deal_generation_settings
     (
         pricing_rule_id,
-        min_base_ccy_amount,
-        max_base_ccy_amount,
-        base_ccy_amount_step,
+        min_base_ccy_amount_minor,
+        max_base_ccy_amount_minor,
+        base_ccy_amount_step_minor,
+        base_ccy_fraction_digits,
         buy_probability_percent,
         is_active
     )
 SELECT
     r.pricing_rule_id,
-    500000,
-    1500000,
-    100000,
+    500000 * CASE base_ccy.fraction_digits
+        WHEN 0 THEN 1
+        WHEN 1 THEN 10
+        WHEN 2 THEN 100
+        WHEN 3 THEN 1000
+        WHEN 4 THEN 10000
+        WHEN 5 THEN 100000
+        WHEN 6 THEN 1000000
+        WHEN 7 THEN 10000000
+        WHEN 8 THEN 100000000
+        WHEN 9 THEN 1000000000
+        WHEN 10 THEN 10000000000
+    END,
+    1500000 * CASE base_ccy.fraction_digits
+        WHEN 0 THEN 1
+        WHEN 1 THEN 10
+        WHEN 2 THEN 100
+        WHEN 3 THEN 1000
+        WHEN 4 THEN 10000
+        WHEN 5 THEN 100000
+        WHEN 6 THEN 1000000
+        WHEN 7 THEN 10000000
+        WHEN 8 THEN 100000000
+        WHEN 9 THEN 1000000000
+        WHEN 10 THEN 10000000000
+    END,
+    100000 * CASE base_ccy.fraction_digits
+        WHEN 0 THEN 1
+        WHEN 1 THEN 10
+        WHEN 2 THEN 100
+        WHEN 3 THEN 1000
+        WHEN 4 THEN 10000
+        WHEN 5 THEN 100000
+        WHEN 6 THEN 1000000
+        WHEN 7 THEN 10000000
+        WHEN 8 THEN 100000000
+        WHEN 9 THEN 1000000000
+        WHEN 10 THEN 10000000000
+    END,
+    base_ccy.fraction_digits,
     50,
     1
 FROM pricing_rules r
 INNER JOIN trading_parties p ON p.party_id = r.party_id
 INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
 INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
+INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
 WHERE p.party_type = 'CLIENT'
   AND e.pricing_mode = 'AUTO_PRICED';
 
@@ -162,7 +202,8 @@ INSERT INTO client_fx_deals
         execution_context_id,
         pricing_rule_id,
         transfer_rate,
-        analytical_pnl
+        analytical_pnl_quote_minor,
+        analytical_pnl_quote_fraction_digits
     )
 SELECT
     last_insert_rowid(),
@@ -171,7 +212,8 @@ SELECT
     r.execution_context_id,
     r.pricing_rule_id,
     1.1222,
-    27000
+    2700000,
+    2
 FROM pricing_rules r
 INNER JOIN trading_parties p ON p.party_id = r.party_id
 INNER JOIN execution_contexts e ON e.execution_context_id = r.execution_context_id
@@ -244,7 +286,8 @@ INSERT INTO fx_hedge_deals
         execution_context_id,
         pricing_rule_id,
         transfer_rate,
-        analytical_pnl
+        analytical_pnl_quote_minor,
+        analytical_pnl_quote_fraction_digits
     )
 SELECT
     last_insert_rowid(),
@@ -253,7 +296,8 @@ SELECT
     r.execution_context_id,
     r.pricing_rule_id,
     1.1222,
-    0
+    0,
+    2
 FROM pricing_rules r
 INNER JOIN trading_parties p ON p.party_id = r.party_id
 INNER JOIN execution_contexts e ON e.execution_context_id = r.execution_context_id
