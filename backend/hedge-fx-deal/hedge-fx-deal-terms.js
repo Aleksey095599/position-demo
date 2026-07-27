@@ -1,31 +1,22 @@
 "use strict";
 
+const {
+  calculateAnalyticalPnl,
+  calculateTransferRate,
+  roundToFractionDigits
+} = require("../client-fx-deal/client-fx-deal-economics");
+const {
+  calculateQuoteMinor,
+  majorToMinor,
+  minorToMajor
+} = require("../money/money");
+
 const HEDGE_SIDES = new Set(["BUY", "SELL"]);
 const HEDGE_TENOR_DAYS = new Map([
   ["TOD", 0],
   ["TOM", 1],
   ["SPOT", 2]
 ]);
-
-function finiteNumber(value, name) {
-  const number = Number(value);
-
-  if (!Number.isFinite(number)) {
-    throw new TypeError(`${name} must be a finite number.`);
-  }
-
-  return number;
-}
-
-function positiveNumber(value, name) {
-  const number = finiteNumber(value, name);
-
-  if (number <= 0) {
-    throw new RangeError(`${name} must be a positive number.`);
-  }
-
-  return number;
-}
 
 function fractionDigits(value, name) {
   const digits = Number(value);
@@ -35,10 +26,6 @@ function fractionDigits(value, name) {
   }
 
   return digits;
-}
-
-function roundToFractionDigits(value, digits) {
-  return Number(value.toFixed(digits));
 }
 
 function normalizedHedgeSide(value) {
@@ -59,16 +46,6 @@ function normalizedHedgeTenor(value) {
   }
 
   return tenor;
-}
-
-function normalizedMarginPercent(value) {
-  const marginPercent = finiteNumber(value, "Margin Percent");
-
-  if (marginPercent < 0 || marginPercent >= 100) {
-    throw new RangeError("Margin Percent must be from 0 up to, but not including, 100.");
-  }
-
-  return marginPercent;
 }
 
 function localIsoCalendarDate(date) {
@@ -99,18 +76,12 @@ function calculateHedgeTransferRate({
   marginPercent,
   rateFractionDigits = 4
 }) {
-  const side = normalizedHedgeSide(hedgeSide);
-  const normalizedTradeRate = positiveNumber(tradeRate, "Trade Rate");
-  const normalizedMargin = normalizedMarginPercent(marginPercent);
-  const digits = fractionDigits(rateFractionDigits, "Rate Fraction Digits");
-  const marginFactor = normalizedMargin / 100;
-  const tradeRateFactor = side === "BUY" ? 1 + marginFactor : 1 - marginFactor;
-
-  if (tradeRateFactor <= 0) {
-    throw new RangeError("Pricing Rule Margin produces an invalid Transfer Rate.");
-  }
-
-  return roundToFractionDigits(normalizedTradeRate / tradeRateFactor, digits);
+  return calculateTransferRate({
+    clientSide: normalizedHedgeSide(hedgeSide),
+    tradeRate,
+    marginPercent,
+    rateFractionDigits
+  });
 }
 
 function calculateHedgeAnalyticalPnl({
@@ -120,16 +91,13 @@ function calculateHedgeAnalyticalPnl({
   transferRate,
   pnlFractionDigits = 2
 }) {
-  const side = normalizedHedgeSide(hedgeSide);
-  const amount = positiveNumber(baseCcyAmount, "Base Ccy Amount");
-  const normalizedTradeRate = positiveNumber(tradeRate, "Trade Rate");
-  const normalizedTransferRate = positiveNumber(transferRate, "Transfer Rate");
-  const digits = fractionDigits(pnlFractionDigits, "PnL Fraction Digits");
-  const rateDelta = side === "BUY"
-    ? normalizedTradeRate - normalizedTransferRate
-    : normalizedTransferRate - normalizedTradeRate;
-
-  return roundToFractionDigits(amount * rateDelta, digits);
+  return calculateAnalyticalPnl({
+    clientSide: normalizedHedgeSide(hedgeSide),
+    baseCcyAmount,
+    tradeRate,
+    transferRate,
+    pnlFractionDigits
+  });
 }
 
 function createHedgeFxDealTerms({
@@ -139,34 +107,47 @@ function createHedgeFxDealTerms({
   tenor,
   marginPercent,
   rateFractionDigits = 4,
+  baseFractionDigits = 2,
   quoteFractionDigits = 2,
   now = () => new Date()
 }) {
   const side = normalizedHedgeSide(hedgeSide);
-  const normalizedBaseAmount = positiveNumber(baseCcyAmount, "Base Ccy Amount");
-  const normalizedTradeRate = positiveNumber(tradeRate, "Trade Rate");
   const normalizedTenor = normalizedHedgeTenor(tenor);
   const rateDigits = fractionDigits(rateFractionDigits, "Rate Fraction Digits");
+  const baseDigits = fractionDigits(baseFractionDigits, "Base Fraction Digits");
   const quoteDigits = fractionDigits(quoteFractionDigits, "Quote Fraction Digits");
-  const timestamp = now();
+  const baseAmountMinor = majorToMinor(String(baseCcyAmount), baseDigits);
 
-  if (!(timestamp instanceof Date) || Number.isNaN(timestamp.getTime())) {
-    throw new TypeError("Current timestamp must be a valid Date.");
+  if (baseAmountMinor <= 0n) {
+    throw new RangeError("Base Ccy Amount must be positive.");
   }
 
+  const normalizedBaseAmount = minorToMajor(baseAmountMinor, baseDigits);
+  const quoteAmountMinor = calculateQuoteMinor({
+    baseAmountMinor,
+    baseFractionDigits: baseDigits,
+    rate: String(tradeRate),
+    quoteFractionDigits: quoteDigits
+  });
   const transferRate = calculateHedgeTransferRate({
     hedgeSide: side,
-    tradeRate: normalizedTradeRate,
+    tradeRate,
     marginPercent,
     rateFractionDigits: rateDigits
   });
   const analyticalPnl = calculateHedgeAnalyticalPnl({
     hedgeSide: side,
     baseCcyAmount: normalizedBaseAmount,
-    tradeRate: normalizedTradeRate,
+    tradeRate,
     transferRate,
     pnlFractionDigits: quoteDigits
   });
+  const timestamp = now();
+
+  if (!(timestamp instanceof Date) || Number.isNaN(timestamp.getTime())) {
+    throw new TypeError("Current timestamp must be a valid Date.");
+  }
+
   const tradeDate = localIsoCalendarDate(timestamp);
   const valueDate = localIsoCalendarDate(
     addBusinessDays(timestamp, HEDGE_TENOR_DAYS.get(normalizedTenor))
@@ -176,12 +157,9 @@ function createHedgeFxDealTerms({
     entryTimestamp: timestamp.toISOString(),
     tradeDate,
     side,
-    baseCcyAmount: normalizedBaseAmount,
-    quoteCcyAmount: roundToFractionDigits(
-      normalizedBaseAmount * normalizedTradeRate,
-      quoteDigits
-    ),
-    tradeRate: roundToFractionDigits(normalizedTradeRate, rateDigits),
+    baseCcyAmount: Number(normalizedBaseAmount),
+    quoteCcyAmount: Number(minorToMajor(quoteAmountMinor, quoteDigits)),
+    tradeRate: roundToFractionDigits(String(tradeRate), rateDigits),
     transferRate,
     analyticalPnl,
     tenor: normalizedTenor,

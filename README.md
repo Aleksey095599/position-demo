@@ -4,10 +4,10 @@
 
 1. Double-click `start-demo.bat`.
 2. Open `http://127.0.0.1:8000` in a browser.
-3. Use **Market Pulse**, **Trading Parties** and **Reference Data > Servicing Locations** to edit SQLite-backed data.
+3. Use **Market Pulse**, **Trading Parties**, **Users** and **Reference Data > Servicing Locations** to edit SQLite-backed data.
 4. Open **Database** to inspect the real SQLite tables, columns, foreign keys and rows.
 
-The data is stored in `data/demo.sqlite`. Closing and reopening the browser does not reset the currency, pair, simulation, Trading Party, Reference Data or Execution Context settings.
+The data is stored in `data/demo.sqlite`. Closing and reopening the browser does not reset the currency, pair, simulation, Trading Party, User, Reference Data or Execution Context settings.
 
 SQLite separates the reference data from the simulation configuration:
 
@@ -19,6 +19,7 @@ SQLite separates the reference data from the simulation configuration:
 - `execution_systems`
 - `execution_contexts`
 - `trading_parties`
+- `users`
 - `pricing_rules`
 
 Reference Data `Usage` is a read-model value. The backend exposes it as `executionContextCount` and calculates it with `COUNT(...)` over `execution_contexts`; the count is not duplicated in the reference tables.
@@ -71,6 +72,10 @@ Opening `index.html` directly remains supported as a fallback, but that mode can
 - `POST /api/v1/trading-parties`
 - `PUT /api/v1/trading-parties/{partyId}`
 - `DELETE /api/v1/trading-parties/{partyId}`
+- `GET /api/v1/users`
+- `POST /api/v1/users`
+- `PUT /api/v1/users/{userId}`
+- `DELETE /api/v1/users/{userId}`
 - `GET /api/v1/pricing-rules`
 - `POST /api/v1/pricing-rules`
 - `PUT /api/v1/pricing-rules/{pricingRuleId}`

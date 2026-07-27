@@ -21,7 +21,7 @@ test("uses BUY probability as the single source for BUY and SELL selection", () 
   assert.equal(generatedClientSide(0, () => 0), "SELL");
 });
 
-test("builds TOD Client FX Deal economics from the Market Pulse side and Pricing Rule margin", () => {
+test("builds a base-dealt AUTO_PRICED payload from the Market Pulse quote", () => {
   const randomValues = [0.25, 0.999];
   const deal = generatedClientFxDeal({
     settings: {
@@ -47,24 +47,30 @@ test("builds TOD Client FX Deal economics from the Market Pulse side and Pricing
     },
     pair: {
       pairCode: "EUR_USD",
+      baseCcy: "EUR",
       defaultQuoteDecimals: 4
     },
-    quoteCurrencyFractionDigits: 2,
     random: () => randomValues.shift(),
     now: () => new Date(2026, 6, 24, 11, 15, 0)
   });
 
   assert.equal(deal.side, "BUY");
-  assert.equal(deal.baseCcyAmount, 900000);
-  assert.equal(deal.tradeRate, 1.1244);
-  assert.equal(deal.transferRate, 1.1222);
-  assert.equal(deal.quoteCcyAmount, 1011960);
-  assert.equal(deal.analyticalPnl, 1980);
+  assert.equal(deal.dealtCcyCode, "EUR");
+  assert.equal(deal.dealtCcyAmount, "900000");
+  assert.equal(deal.tradeRate, "1.1244");
+  assert.equal(Object.hasOwn(deal, "baseCcyAmount"), false);
+  assert.equal(Object.hasOwn(deal, "quoteCcyAmount"), false);
+  assert.equal(Object.hasOwn(deal, "baseCcyAmountMinor"), false);
+  assert.equal(Object.hasOwn(deal, "quoteCcyAmountMinor"), false);
+  assert.equal(Object.hasOwn(deal, "transferRate"), false);
+  assert.equal(Object.hasOwn(deal, "analyticalPnl"), false);
   assert.equal(deal.tradeDate, "2026-07-24");
   assert.equal(deal.tenor, "TOD");
   assert.equal(deal.baseCcyValueDate, "2026-07-24");
   assert.equal(deal.quoteCcyValueDate, "2026-07-24");
   assert.equal(deal.marketPulseStreamStatus, "STOPPED");
+  assert.equal(deal.marketPulseBid, "1.122");
+  assert.equal(deal.marketPulseOffer, "1.1222");
 });
 
 test("rejects generation for a non-AUTO_PRICED Pricing Rule", () => {

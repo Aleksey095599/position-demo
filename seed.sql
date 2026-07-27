@@ -62,6 +62,13 @@ VALUES
     ('CLIENT', '5409876543', 'INN', 'Gladiolus Company', 1),
     ('HEDGE_COUNTERPARTY', '7707000001', 'INN', 'Aurora Bank', 1);
 
+INSERT INTO users
+    (user_code, first_name, last_name, user_role, is_active)
+VALUES
+    ('GANDALF', 'Gandalf', 'Grey', 'DEALER', 1),
+    ('TIN_WOODMAN', 'Tin', 'Woodman', 'SUPERVISOR', 1),
+    ('ALICE', 'Alice', 'Wonderland', 'ADMIN', 1);
+
 WITH pricing_rule_seed
     (party_code, servicing_location_id, accounting_system_id, execution_system_id, ccy_pair_code, margin_percent)
 AS
@@ -72,7 +79,7 @@ AS
         ('7701234567', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'EUR_USD', 0.08),
         ('7812345678', '1234', 'AFINA', 'RFQ', 'EUR_USD', 0.05),
         ('5409876543', '001', 'CTF3', 'CLICK_TRADE_EFX', 'EUR_USD', 0.20),
-        ('7707000001', '002', 'AFINA', 'RFQ', 'EUR_USD', 0.03)
+        ('7707000001', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'EUR_USD', 0.03)
 )
 INSERT INTO pricing_rules (party_id, execution_context_id, ccy_pair_code, margin_percent)
 SELECT
@@ -118,9 +125,12 @@ INSERT INTO fx_trade_exposure
         trade_type,
         trade_date,
         ccy_pair_code,
-        side,
-        base_ccy_amount,
-        quote_ccy_amount,
+        base_ccy_side,
+        dealt_ccy_code,
+        base_ccy_amount_minor,
+        base_ccy_fraction_digits,
+        quote_ccy_amount_minor,
+        quote_ccy_fraction_digits,
         trade_rate,
         tenor,
         base_ccy_value_date,
@@ -133,8 +143,11 @@ VALUES
         '2026-07-15',
         'EUR_USD',
         'BUY',
-        30000000,
-        33693000,
+        'EUR',
+        3000000000,
+        2,
+        3369300000,
+        2,
         1.1231,
         'TOD',
         '2026-07-15',
@@ -194,9 +207,12 @@ INSERT INTO fx_trade_exposure
         trade_type,
         trade_date,
         ccy_pair_code,
-        side,
-        base_ccy_amount,
-        quote_ccy_amount,
+        base_ccy_side,
+        dealt_ccy_code,
+        base_ccy_amount_minor,
+        base_ccy_fraction_digits,
+        quote_ccy_amount_minor,
+        quote_ccy_fraction_digits,
         trade_rate,
         tenor,
         base_ccy_value_date,
@@ -209,8 +225,11 @@ VALUES
         '2026-07-15',
         'EUR_USD',
         'SELL',
-        30000000,
-        33666000,
+        'EUR',
+        3000000000,
+        2,
+        3366600000,
+        2,
         1.1222,
         'TOD',
         '2026-07-15',
@@ -242,8 +261,8 @@ WHERE p.party_code_type = 'INN'
   AND p.party_code = '7707000001'
   AND r.ccy_pair_code = 'EUR_USD'
   AND e.servicing_location_id = '002'
-  AND e.accounting_system_id = 'AFINA'
-  AND e.execution_system_id = 'RFQ';
+  AND e.accounting_system_id = 'CTF3'
+  AND e.execution_system_id = 'MANUAL_CLIENT_DEAL_ENTRY';
 
 INSERT INTO fx_trade_market_snapshot
     (

@@ -218,6 +218,33 @@ CREATE TABLE IF NOT EXISTS trading_parties
         CHECK (is_active IN (0, 1))
 );
 
+CREATE TABLE IF NOT EXISTS users
+(
+    user_id    INTEGER PRIMARY KEY,
+    user_code  TEXT    NOT NULL COLLATE NOCASE,
+    first_name TEXT    NOT NULL,
+    last_name  TEXT    NOT NULL,
+    user_role  TEXT    NOT NULL,
+    is_active  INTEGER NOT NULL DEFAULT 1,
+
+    CONSTRAINT uq_users_code
+        UNIQUE (user_code),
+    CONSTRAINT chk_users_code
+        CHECK (
+            length(user_code) BETWEEN 2 AND 30
+            AND user_code = upper(user_code)
+            AND user_code NOT GLOB '*[^A-Z0-9._-]*'
+        ),
+    CONSTRAINT chk_users_first_name
+        CHECK (length(trim(first_name)) BETWEEN 1 AND 50),
+    CONSTRAINT chk_users_last_name
+        CHECK (length(trim(last_name)) BETWEEN 1 AND 50),
+    CONSTRAINT chk_users_role
+        CHECK (user_role IN ('DEALER', 'SUPERVISOR', 'ADMIN')),
+    CONSTRAINT chk_users_active
+        CHECK (is_active IN (0, 1))
+);
+
 CREATE TABLE IF NOT EXISTS pricing_rules
 (
     pricing_rule_id     INTEGER PRIMARY KEY,
@@ -286,17 +313,25 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
     trade_type           TEXT    NOT NULL,
     trade_date           TEXT    NOT NULL,
     ccy_pair_code        TEXT    NOT NULL,
-    side                 TEXT    NOT NULL,
-    base_ccy_amount      NUMERIC NOT NULL,
-    quote_ccy_amount     NUMERIC NOT NULL,
-    trade_rate           NUMERIC NOT NULL,
-    tenor                TEXT    NOT NULL,
-    base_ccy_value_date  TEXT    NOT NULL,
-    quote_ccy_value_date TEXT    NOT NULL,
+    base_ccy_side        TEXT    NOT NULL,
+    dealt_ccy_code       TEXT    NOT NULL,
+    base_ccy_amount_minor      INTEGER NOT NULL,
+    base_ccy_fraction_digits   INTEGER NOT NULL,
+    quote_ccy_amount_minor     INTEGER NOT NULL,
+    quote_ccy_fraction_digits  INTEGER NOT NULL,
+    trade_rate                 NUMERIC NOT NULL,
+    tenor                      TEXT    NOT NULL,
+    base_ccy_value_date         TEXT    NOT NULL,
+    quote_ccy_value_date        TEXT    NOT NULL,
 
     CONSTRAINT fk_fx_trade_exposure_ccy_pair
         FOREIGN KEY (ccy_pair_code)
             REFERENCES ccy_pair_options (ccy_pair_code)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT fk_fx_trade_exposure_dealt_ccy
+        FOREIGN KEY (dealt_ccy_code)
+            REFERENCES ccy_options (ccy_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT chk_fx_trade_exposure_entry_timestamp
@@ -306,21 +341,45 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
             AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
         ),
     CONSTRAINT chk_fx_trade_exposure_trade_type
-        CHECK (trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')),
+        CHECK (
+            trade_type IN
+            (
+                'CLIENT_DEAL',
+                'HEDGE_DEAL',
+                'BATCH_BALANCING_TRADE',
+                'BATCH_POSITION_OUT'
+            )
+        ),
     CONSTRAINT chk_fx_trade_exposure_trade_date
         CHECK (
             trade_date GLOB '????-??-??'
             AND strftime('%Y-%m-%d', trade_date) = trade_date
         ),
-    CONSTRAINT chk_fx_trade_exposure_side
-        CHECK (side IN ('BUY', 'SELL')),
-    CONSTRAINT chk_fx_trade_exposure_amounts_and_rate
+    CONSTRAINT chk_fx_trade_exposure_base_ccy_side
+        CHECK (base_ccy_side IN ('BUY', 'SELL')),
+    CONSTRAINT chk_fx_trade_exposure_dealt_ccy_code
         CHECK (
-            typeof(base_ccy_amount) IN ('integer', 'real')
-            AND base_ccy_amount > 0
-            AND typeof(quote_ccy_amount) IN ('integer', 'real')
-            AND quote_ccy_amount > 0
-            AND typeof(trade_rate) IN ('integer', 'real')
+            length(dealt_ccy_code) = 3
+            AND dealt_ccy_code = upper(dealt_ccy_code)
+            AND dealt_ccy_code NOT GLOB '*[^A-Z]*'
+        ),
+    CONSTRAINT chk_fx_trade_exposure_amounts
+        CHECK (
+            typeof(base_ccy_amount_minor) = 'integer'
+            AND base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+            AND typeof(quote_ccy_amount_minor) = 'integer'
+            AND quote_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+        ),
+    CONSTRAINT chk_fx_trade_exposure_fraction_digits
+        CHECK (
+            typeof(base_ccy_fraction_digits) = 'integer'
+            AND base_ccy_fraction_digits BETWEEN 0 AND 10
+            AND typeof(quote_ccy_fraction_digits) = 'integer'
+            AND quote_ccy_fraction_digits BETWEEN 0 AND 10
+        ),
+    CONSTRAINT chk_fx_trade_exposure_rate
+        CHECK (
+            typeof(trade_rate) IN ('integer', 'real')
             AND trade_rate > 0
         ),
     CONSTRAINT chk_fx_trade_exposure_tenor
@@ -483,6 +542,43 @@ CREATE TABLE IF NOT EXISTS fx_hedge_deals
         CHECK (
             analytical_pnl IS NULL
             OR typeof(analytical_pnl) IN ('integer', 'real')
+    )
+);
+
+CREATE TABLE IF NOT EXISTS batch_balancing_trades
+(
+    batch_trade_id INTEGER PRIMARY KEY,
+    batch_pair_id  INTEGER NOT NULL,
+    batch_id       INTEGER NOT NULL,
+    trade_type     TEXT    NOT NULL,
+    trade_id       INTEGER NOT NULL,
+    created_at     TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT fk_batch_balancing_trades_trade
+        FOREIGN KEY (trade_id, trade_type)
+            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT uq_batch_balancing_trades_trade
+        UNIQUE (trade_id),
+    CONSTRAINT uq_batch_balancing_trades_pair_role
+        UNIQUE (batch_id, batch_pair_id, trade_type),
+    CONSTRAINT chk_batch_balancing_trades_ids
+        CHECK (batch_id > 0 AND batch_pair_id > 0),
+    CONSTRAINT chk_batch_balancing_trades_trade_type
+        CHECK (
+            trade_type IN
+            (
+                'BATCH_BALANCING_TRADE',
+                'BATCH_POSITION_OUT'
+            )
+        ),
+    CONSTRAINT chk_batch_balancing_trades_created_at
+        CHECK (
+            length(created_at) = 24
+            AND created_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
         )
 );
 
@@ -530,11 +626,59 @@ CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_ccy_pair
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_trade_exposure_identity
     ON fx_trade_exposure (trade_id, trade_type);
 
+CREATE TRIGGER IF NOT EXISTS trg_fx_trade_exposure_require_dealt_ccy_insert
+BEFORE INSERT ON fx_trade_exposure
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM ccy_pair_options p
+    WHERE p.ccy_pair_code = NEW.ccy_pair_code
+      AND NEW.dealt_ccy_code IN (p.base_ccy_code, p.quote_ccy_code)
+)
+BEGIN
+    SELECT RAISE(ABORT, 'fx_trade_exposure.dealt_ccy_code must belong to its Ccy Pair');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_trade_exposure_require_dealt_ccy_update
+BEFORE UPDATE OF ccy_pair_code, dealt_ccy_code ON fx_trade_exposure
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM ccy_pair_options p
+    WHERE p.ccy_pair_code = NEW.ccy_pair_code
+      AND NEW.dealt_ccy_code IN (p.base_ccy_code, p.quote_ccy_code)
+)
+BEGIN
+    SELECT RAISE(ABORT, 'fx_trade_exposure.dealt_ccy_code must belong to its Ccy Pair');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_ccy_pair_options_preserve_exposure_dealt_ccy
+BEFORE UPDATE OF base_ccy_code, quote_ccy_code ON ccy_pair_options
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM fx_trade_exposure e
+    WHERE e.ccy_pair_code = OLD.ccy_pair_code
+      AND e.dealt_ccy_code NOT IN (NEW.base_ccy_code, NEW.quote_ccy_code)
+)
+BEGIN
+    SELECT RAISE(ABORT, 'a Ccy Pair used by fx_trade_exposure must preserve its dealt currency');
+END;
+
 CREATE INDEX IF NOT EXISTS idx_client_fx_deals_party
     ON client_fx_deals (party_id);
 
 CREATE INDEX IF NOT EXISTS idx_fx_hedge_deals_party
     ON fx_hedge_deals (party_id);
+
+CREATE INDEX IF NOT EXISTS idx_batch_balancing_trades_batch
+    ON batch_balancing_trades (batch_id);
+
+CREATE INDEX IF NOT EXISTS idx_batch_balancing_trades_pair
+    ON batch_balancing_trades (batch_id, batch_pair_id);
 
 CREATE INDEX IF NOT EXISTS idx_ccy_pair_options_base
     ON ccy_pair_options (base_ccy_code);

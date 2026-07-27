@@ -1,5 +1,12 @@
 "use strict";
 
+const Big = require("big.js");
+
+const Decimal = Big();
+Decimal.strict = true;
+Decimal.DP = 40;
+Decimal.RM = Decimal.roundHalfUp;
+
 const CLIENT_SIDES = new Set(["BUY", "SELL"]);
 
 function roundToFractionDigits(value, fractionDigits) {
@@ -7,7 +14,11 @@ function roundToFractionDigits(value, fractionDigits) {
     throw new RangeError("Fraction digits must be an integer from 0 to 10.");
   }
 
-  return Number(value.toFixed(fractionDigits));
+  return Number(
+    new Decimal(String(value))
+      .round(fractionDigits, Decimal.roundHalfUp)
+      .toFixed(fractionDigits)
+  );
 }
 
 function normalizedClientSide(value) {
@@ -20,29 +31,46 @@ function normalizedClientSide(value) {
   return clientSide;
 }
 
-function positiveNumber(value, name) {
-  const number = Number(value);
+function positiveDecimal(value, name) {
+  let decimal;
 
-  if (!Number.isFinite(number) || number <= 0) {
+  try {
+    decimal = new Decimal(String(value));
+  } catch {
     throw new RangeError(`${name} must be a positive number.`);
   }
 
-  return number;
+  if (decimal.lte("0")) {
+    throw new RangeError(`${name} must be a positive number.`);
+  }
+
+  return decimal;
 }
 
 function calculateTransferRate({ clientSide, tradeRate, marginPercent, rateFractionDigits = 4 }) {
   const side = normalizedClientSide(clientSide);
-  const normalizedTradeRate = positiveNumber(tradeRate, "Trade Rate");
-  const normalizedMarginPercent = Number(marginPercent);
+  const normalizedTradeRate = positiveDecimal(tradeRate, "Trade Rate");
+  let normalizedMarginPercent;
 
-  if (!Number.isFinite(normalizedMarginPercent) || normalizedMarginPercent < 0 || normalizedMarginPercent >= 100) {
+  try {
+    normalizedMarginPercent = new Decimal(String(marginPercent));
+  } catch {
     throw new RangeError("Margin Percent must be a number from 0 up to, but not including, 100.");
   }
 
-  const marginFactor = normalizedMarginPercent / 100;
-  const clientRateFactor = side === "BUY" ? 1 + marginFactor : 1 - marginFactor;
+  if (normalizedMarginPercent.lt("0") || normalizedMarginPercent.gte("100")) {
+    throw new RangeError("Margin Percent must be a number from 0 up to, but not including, 100.");
+  }
 
-  return roundToFractionDigits(normalizedTradeRate / clientRateFactor, rateFractionDigits);
+  const marginFactor = normalizedMarginPercent.div("100");
+  const clientRateFactor = side === "BUY"
+    ? new Decimal("1").plus(marginFactor)
+    : new Decimal("1").minus(marginFactor);
+
+  return roundToFractionDigits(
+    normalizedTradeRate.div(clientRateFactor).toString(),
+    rateFractionDigits
+  );
 }
 
 function calculateAnalyticalPnl({
@@ -53,14 +81,17 @@ function calculateAnalyticalPnl({
   pnlFractionDigits = 2
 }) {
   const side = normalizedClientSide(clientSide);
-  const normalizedBaseAmount = positiveNumber(baseCcyAmount, "Base Ccy Amount");
-  const normalizedTradeRate = positiveNumber(tradeRate, "Trade Rate");
-  const normalizedTransferRate = positiveNumber(transferRate, "Transfer Rate");
+  const normalizedBaseAmount = positiveDecimal(baseCcyAmount, "Base Ccy Amount");
+  const normalizedTradeRate = positiveDecimal(tradeRate, "Trade Rate");
+  const normalizedTransferRate = positiveDecimal(transferRate, "Transfer Rate");
   const quoteRateDelta = side === "BUY"
-    ? normalizedTradeRate - normalizedTransferRate
-    : normalizedTransferRate - normalizedTradeRate;
+    ? normalizedTradeRate.minus(normalizedTransferRate)
+    : normalizedTransferRate.minus(normalizedTradeRate);
 
-  return roundToFractionDigits(normalizedBaseAmount * quoteRateDelta, pnlFractionDigits);
+  return roundToFractionDigits(
+    normalizedBaseAmount.times(quoteRateDelta).toString(),
+    pnlFractionDigits
+  );
 }
 
 function calculateClientFxDealEconomics({
@@ -91,5 +122,6 @@ function calculateClientFxDealEconomics({
 module.exports = {
   calculateAnalyticalPnl,
   calculateClientFxDealEconomics,
-  calculateTransferRate
+  calculateTransferRate,
+  roundToFractionDigits
 };

@@ -47,6 +47,32 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "isActive": true
     }
   ],
+  "users": [
+    {
+      "userId": 1,
+      "userCode": "AIVANOV",
+      "firstName": "Aleksey",
+      "lastName": "Ivanov",
+      "userRole": "DEALER",
+      "active": true
+    },
+    {
+      "userId": 2,
+      "userCode": "MPETROVA",
+      "firstName": "Maria",
+      "lastName": "Petrova",
+      "userRole": "SUPERVISOR",
+      "active": true
+    },
+    {
+      "userId": 3,
+      "userCode": "ADMIN",
+      "firstName": "Demo",
+      "lastName": "Administrator",
+      "userRole": "ADMIN",
+      "active": true
+    }
+  ],
   "servicingBranches": [
     {
       "servicingBranchCode": "000",
@@ -242,6 +268,11 @@ window.__DEMO_DB_STARTUP_DATA__ = {
         clientCodeType: "INN",
         isActive: true
       }
+    ],
+    users: [
+      { userId: 1, userCode: "AIVANOV", firstName: "Aleksey", lastName: "Ivanov", userRole: "DEALER", active: true },
+      { userId: 2, userCode: "MPETROVA", firstName: "Maria", lastName: "Petrova", userRole: "SUPERVISOR", active: true },
+      { userId: 3, userCode: "ADMIN", firstName: "Demo", lastName: "Administrator", userRole: "ADMIN", active: true }
     ],
     servicingBranches: [
       { servicingBranchCode: "000", servicingBranchName: "Bank Central Office", region: "Middle-earth, Mordor", locationType: "HEAD_OFFICE", isActive: true },

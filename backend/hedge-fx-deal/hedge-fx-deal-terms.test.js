@@ -42,3 +42,23 @@ test("Hedge Deal terms derive quote amount, dates and zero-margin economics", ()
     quoteCcyValueDate: "2026-07-28"
   });
 });
+
+test("Hedge Deal terms use decimal minor-unit rounding for amounts", () => {
+  const terms = createHedgeFxDealTerms({
+    hedgeSide: "SELL",
+    baseCcyAmount: "1000.63",
+    tradeRate: "1.12235",
+    tenor: "TOD",
+    marginPercent: "0",
+    rateFractionDigits: 5,
+    baseFractionDigits: 2,
+    quoteFractionDigits: 2,
+    now: () => new Date(2026, 6, 24, 12, 30, 0)
+  });
+
+  assert.equal(terms.baseCcyAmount, 1000.63);
+  assert.equal(terms.quoteCcyAmount, 1123.06);
+  assert.equal(terms.tradeRate, 1.12235);
+  assert.equal(terms.transferRate, 1.12235);
+  assert.equal(terms.analyticalPnl, 0);
+});

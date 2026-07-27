@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Demo FX Position application",
   "dependencies": {
+    "big.js": "7.0.1",
     "bootstrap": "5.3.8",
     "tabulator-tables": "6.5.0"
   }

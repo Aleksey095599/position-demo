@@ -8,7 +8,8 @@ const { DatabaseSync } = require("node:sqlite");
 const { MarketPulseSimulator } = require("./backend/market-pulse-simulation/market-pulse-simulator");
 const {
   calculateAnalyticalPnl,
-  calculateClientFxDealEconomics
+  calculateClientFxDealEconomics,
+  roundToFractionDigits
 } = require("./backend/client-fx-deal/client-fx-deal-economics");
 const {
   generatedClientFxDeal
@@ -19,6 +20,16 @@ const {
 const {
   createHedgeFxDealTerms
 } = require("./backend/hedge-fx-deal/hedge-fx-deal-terms");
+const {
+  calculateBatchBalancingTradePair
+} = require("./backend/batch-balancing/batch-balancing-trade-pair");
+const {
+  calculateFxAmountsFromDealt,
+  calculateQuoteMinor,
+  majorToMinor,
+  minorToMajor,
+  minorToSafeInteger
+} = require("./backend/money/money");
 
 const HOST = "127.0.0.1";
 const configuredPort = Number(process.env.DEMO_PORT);
@@ -51,7 +62,17 @@ const CCY_OPTION_NAME_MAX_LENGTH = 20;
 const CCY_OPTION_COUNTRY_MAX_LENGTH = 30;
 const PARTY_CODE_MAX_LENGTH = 20;
 const PARTY_NAME_MAX_LENGTH = 200;
+const USER_CODE_MAX_LENGTH = 30;
+const USER_NAME_MAX_LENGTH = 50;
+const USER_ROLES = ["DEALER", "SUPERVISOR", "ADMIN"];
+const FX_TRADE_TYPES = [
+  "CLIENT_DEAL",
+  "HEDGE_DEAL",
+  "BATCH_BALANCING_TRADE",
+  "BATCH_POSITION_OUT"
+];
 const CLIENT_DEAL_GENERATION_INTERVAL_MS = 1000;
+const CLIENT_ONBOARDING_MANUAL_PRICING = "CLIENT_ONBOARDING";
 
 fs.mkdirSync(path.dirname(DATABASE_PATH), { recursive: true });
 
@@ -89,6 +110,11 @@ const tradingPartiesAlreadyInitialized = Boolean(database.prepare(`
   FROM sqlite_master
   WHERE type = 'table' AND name = 'trading_parties'
 `).get());
+const usersAlreadyInitialized = Boolean(database.prepare(`
+  SELECT 1 AS present
+  FROM sqlite_master
+  WHERE type = 'table' AND name = 'users'
+`).get());
 const pricingRulesAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
   FROM sqlite_master
@@ -113,6 +139,7 @@ database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 if (!hedgeFxDealsAlreadyInitialized) {
   database.exec("DROP TABLE fx_hedge_deals");
 }
+dropFxTradeExposureDealtCurrencyTriggers(database);
 dropClientFxDealTriggers(database);
 dropHedgeFxDealTriggers(database);
 dropClientDealGenerationSettingsTriggers(database);
@@ -122,6 +149,7 @@ if (databaseAlreadyInitialized) {
   migrateLegacySimulationSettings(database);
 }
 migrateCcyPairOptionsConstraints(database);
+migrateFxTradeExposureTypes(database);
 migrateLegacyExecutionContextIds(database);
 migrateServicingLocationTextLimits(database);
 migrateAccountingSystemsShape(database);
@@ -130,6 +158,9 @@ migrateTradingPartiesConstraints(database);
 ensurePricingRuleClientDealReferenceIndex(database);
 synchronizeClientDealGenerationSettings(database);
 migrateClientFxDealsToTradeExposure(database);
+migrateFxTradeExposureAmountsToMinorUnits(database);
+migrateFxTradeExposureTradeSemantics(database);
+ensureFxTradeExposureDealtCurrencyTriggers(database);
 migrateFxTradeMarketSnapshot(database);
 ensureClientFxDealIndexes(database);
 backfillInitialClientFxDealAttribution(database);
@@ -158,6 +189,10 @@ if (!databaseAlreadyInitialized) {
 
   if (!tradingPartiesAlreadyInitialized) {
     seedInitialTradingParties(database);
+  }
+
+  if (!usersAlreadyInitialized) {
+    seedInitialUsers(database);
   }
 
   if (!pricingRulesAlreadyInitialized) {
@@ -192,6 +227,776 @@ function runInImmediateTransaction(sqlite, operation) {
 
     throw error;
   }
+}
+
+function migrateFxTradeExposureTypes(sqlite) {
+  const tableDefinition = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'fx_trade_exposure'
+  `).get()?.sql || "";
+  const supportsEveryTradeType = FX_TRADE_TYPES.every(tradeType =>
+    tableDefinition.includes(`'${tradeType}'`)
+  );
+
+  if (supportsEveryTradeType) {
+    return;
+  }
+
+  const expectedColumns = [
+    "trade_id",
+    "entry_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "side",
+    "base_ccy_amount",
+    "quote_ccy_amount",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
+  const columns = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all()
+    .map(column => column.name);
+
+  if (columns.join(",") !== expectedColumns.join(",")) {
+    throw new Error("Unsupported FX Trade Exposure schema.");
+  }
+
+  const invalidTrade = sqlite.prepare(`
+    SELECT trade_id, trade_type
+    FROM fx_trade_exposure
+    WHERE trade_type NOT IN (${FX_TRADE_TYPES.map(() => "?").join(", ")})
+    LIMIT 1
+  `).get(...FX_TRADE_TYPES);
+
+  if (invalidTrade) {
+    throw new Error(
+      `FX Trade Exposure ${invalidTrade.trade_id} has unsupported type ${invalidTrade.trade_type}.`
+    );
+  }
+
+  const originalRowCount = Number(
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+  );
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      CREATE TABLE fx_trade_exposure_migrated
+      (
+          trade_id             INTEGER PRIMARY KEY,
+          entry_timestamp      TEXT    NOT NULL,
+          trade_type           TEXT    NOT NULL,
+          trade_date           TEXT    NOT NULL,
+          ccy_pair_code        TEXT    NOT NULL,
+          side                 TEXT    NOT NULL,
+          base_ccy_amount      NUMERIC NOT NULL,
+          quote_ccy_amount     NUMERIC NOT NULL,
+          trade_rate           NUMERIC NOT NULL,
+          tenor                TEXT    NOT NULL,
+          base_ccy_value_date  TEXT    NOT NULL,
+          quote_ccy_value_date TEXT    NOT NULL,
+
+          CONSTRAINT fk_fx_trade_exposure_ccy_pair
+              FOREIGN KEY (ccy_pair_code)
+                  REFERENCES ccy_pair_options (ccy_pair_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT chk_fx_trade_exposure_entry_timestamp
+              CHECK (
+                  length(entry_timestamp) = 24
+                  AND entry_timestamp GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
+              ),
+          CONSTRAINT chk_fx_trade_exposure_trade_type
+              CHECK (
+                  trade_type IN
+                  (
+                      'CLIENT_DEAL',
+                      'HEDGE_DEAL',
+                      'BATCH_BALANCING_TRADE',
+                      'BATCH_POSITION_OUT'
+                  )
+              ),
+          CONSTRAINT chk_fx_trade_exposure_trade_date
+              CHECK (
+                  trade_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', trade_date) = trade_date
+              ),
+          CONSTRAINT chk_fx_trade_exposure_side
+              CHECK (side IN ('BUY', 'SELL')),
+          CONSTRAINT chk_fx_trade_exposure_amounts_and_rate
+              CHECK (
+                  typeof(base_ccy_amount) IN ('integer', 'real')
+                  AND base_ccy_amount > 0
+                  AND typeof(quote_ccy_amount) IN ('integer', 'real')
+                  AND quote_ccy_amount > 0
+                  AND typeof(trade_rate) IN ('integer', 'real')
+                  AND trade_rate > 0
+              ),
+          CONSTRAINT chk_fx_trade_exposure_tenor
+              CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
+          CONSTRAINT chk_fx_trade_exposure_value_dates
+              CHECK (
+                  base_ccy_value_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
+                  AND quote_ccy_value_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', quote_ccy_value_date) = quote_ccy_value_date
+              )
+      );
+
+      INSERT INTO fx_trade_exposure_migrated
+        (
+          trade_id,
+          entry_timestamp,
+          trade_type,
+          trade_date,
+          ccy_pair_code,
+          side,
+          base_ccy_amount,
+          quote_ccy_amount,
+          trade_rate,
+          tenor,
+          base_ccy_value_date,
+          quote_ccy_value_date
+        )
+      SELECT
+        trade_id,
+        entry_timestamp,
+        trade_type,
+        trade_date,
+        ccy_pair_code,
+        side,
+        base_ccy_amount,
+        quote_ccy_amount,
+        trade_rate,
+        tenor,
+        base_ccy_value_date,
+        quote_ccy_value_date
+      FROM fx_trade_exposure
+      ORDER BY trade_id;
+
+      DROP TABLE fx_trade_exposure;
+      ALTER TABLE fx_trade_exposure_migrated RENAME TO fx_trade_exposure;
+
+      CREATE INDEX idx_fx_trade_exposure_entry_timestamp
+          ON fx_trade_exposure (entry_timestamp);
+      CREATE INDEX idx_fx_trade_exposure_trade_type
+          ON fx_trade_exposure (trade_type);
+      CREATE INDEX idx_fx_trade_exposure_trade_date
+          ON fx_trade_exposure (trade_date);
+      CREATE INDEX idx_fx_trade_exposure_ccy_pair
+          ON fx_trade_exposure (ccy_pair_code);
+      CREATE UNIQUE INDEX uq_fx_trade_exposure_identity
+          ON fx_trade_exposure (trade_id, trade_type);
+    `);
+
+    const migratedRowCount = Number(
+      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+    );
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (migratedRowCount !== originalRowCount) {
+      throw new Error("FX Trade Exposure type migration did not preserve every row.");
+    }
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error("FX Trade Exposure type migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
+  const sourceColumns = [
+    "trade_id",
+    "entry_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "side",
+    "base_ccy_amount",
+    "quote_ccy_amount",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
+  const targetColumns = [
+    "trade_id",
+    "entry_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "side",
+    "base_ccy_amount_minor",
+    "base_ccy_fraction_digits",
+    "quote_ccy_amount_minor",
+    "quote_ccy_fraction_digits",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
+  const finalColumns = [
+    "trade_id",
+    "entry_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "base_ccy_side",
+    "dealt_ccy_code",
+    "base_ccy_amount_minor",
+    "base_ccy_fraction_digits",
+    "quote_ccy_amount_minor",
+    "quote_ccy_fraction_digits",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
+  const tableInfo = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all();
+  const columns = tableInfo.map(column => column.name);
+  const tableDefinition = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'fx_trade_exposure'
+  `).get()?.sql || "";
+
+  const isIntermediateSchema = columns.join(",") === targetColumns.join(",");
+  const isFinalSchema = columns.join(",") === finalColumns.join(",");
+
+  if (isIntermediateSchema || isFinalSchema) {
+    const amountColumnOffset = isFinalSchema ? 7 : 6;
+    const targetDefinitionsAreValid = tableInfo[amountColumnOffset]?.type === "INTEGER"
+      && tableInfo[amountColumnOffset]?.notnull === 1
+      && tableInfo[amountColumnOffset + 1]?.type === "INTEGER"
+      && tableInfo[amountColumnOffset + 1]?.notnull === 1
+      && tableInfo[amountColumnOffset + 2]?.type === "INTEGER"
+      && tableInfo[amountColumnOffset + 2]?.notnull === 1
+      && tableInfo[amountColumnOffset + 3]?.type === "INTEGER"
+      && tableInfo[amountColumnOffset + 3]?.notnull === 1
+      && tableDefinition.includes("chk_fx_trade_exposure_amounts")
+      && tableDefinition.includes("chk_fx_trade_exposure_fraction_digits");
+
+    if (!targetDefinitionsAreValid) {
+      throw new Error("Unsupported FX Trade Exposure minor-unit schema.");
+    }
+
+    return;
+  }
+
+  if (columns.join(",") !== sourceColumns.join(",")) {
+    throw new Error("Unsupported FX Trade Exposure amount schema.");
+  }
+
+  const sourceRows = sqlite.prepare(`
+    SELECT
+      e.*,
+      base_ccy.fraction_digits AS base_ccy_fraction_digits,
+      quote_ccy.fraction_digits AS quote_ccy_fraction_digits
+    FROM fx_trade_exposure e
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
+    INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
+    INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = pair.quote_ccy_code
+    ORDER BY e.trade_id
+  `).all();
+  const originalRowCount = Number(
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+  );
+
+  if (sourceRows.length !== originalRowCount) {
+    throw new Error("Every FX Trade Exposure must resolve both currency fraction digits.");
+  }
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      CREATE TABLE fx_trade_exposure_minor
+      (
+          trade_id                    INTEGER PRIMARY KEY,
+          entry_timestamp             TEXT    NOT NULL,
+          trade_type                  TEXT    NOT NULL,
+          trade_date                  TEXT    NOT NULL,
+          ccy_pair_code               TEXT    NOT NULL,
+          side                        TEXT    NOT NULL,
+          base_ccy_amount_minor       INTEGER NOT NULL,
+          base_ccy_fraction_digits    INTEGER NOT NULL,
+          quote_ccy_amount_minor      INTEGER NOT NULL,
+          quote_ccy_fraction_digits   INTEGER NOT NULL,
+          trade_rate                  NUMERIC NOT NULL,
+          tenor                       TEXT    NOT NULL,
+          base_ccy_value_date         TEXT    NOT NULL,
+          quote_ccy_value_date        TEXT    NOT NULL,
+
+          CONSTRAINT fk_fx_trade_exposure_ccy_pair
+              FOREIGN KEY (ccy_pair_code)
+                  REFERENCES ccy_pair_options (ccy_pair_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT chk_fx_trade_exposure_entry_timestamp
+              CHECK (
+                  length(entry_timestamp) = 24
+                  AND entry_timestamp GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
+              ),
+          CONSTRAINT chk_fx_trade_exposure_trade_type
+              CHECK (
+                  trade_type IN
+                  (
+                      'CLIENT_DEAL',
+                      'HEDGE_DEAL',
+                      'BATCH_BALANCING_TRADE',
+                      'BATCH_POSITION_OUT'
+                  )
+              ),
+          CONSTRAINT chk_fx_trade_exposure_trade_date
+              CHECK (
+                  trade_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', trade_date) = trade_date
+              ),
+          CONSTRAINT chk_fx_trade_exposure_side
+              CHECK (side IN ('BUY', 'SELL')),
+          CONSTRAINT chk_fx_trade_exposure_amounts
+              CHECK (
+                  typeof(base_ccy_amount_minor) = 'integer'
+                  AND base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                  AND typeof(quote_ccy_amount_minor) = 'integer'
+                  AND quote_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+              ),
+          CONSTRAINT chk_fx_trade_exposure_fraction_digits
+              CHECK (
+                  typeof(base_ccy_fraction_digits) = 'integer'
+                  AND base_ccy_fraction_digits BETWEEN 0 AND 10
+                  AND typeof(quote_ccy_fraction_digits) = 'integer'
+                  AND quote_ccy_fraction_digits BETWEEN 0 AND 10
+              ),
+          CONSTRAINT chk_fx_trade_exposure_rate
+              CHECK (
+                  typeof(trade_rate) IN ('integer', 'real')
+                  AND trade_rate > 0
+              ),
+          CONSTRAINT chk_fx_trade_exposure_tenor
+              CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
+          CONSTRAINT chk_fx_trade_exposure_value_dates
+              CHECK (
+                  base_ccy_value_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
+                  AND quote_ccy_value_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', quote_ccy_value_date) = quote_ccy_value_date
+              )
+      );
+    `);
+
+    const insert = sqlite.prepare(`
+      INSERT INTO fx_trade_exposure_minor
+        (
+          trade_id,
+          entry_timestamp,
+          trade_type,
+          trade_date,
+          ccy_pair_code,
+          side,
+          base_ccy_amount_minor,
+          base_ccy_fraction_digits,
+          quote_ccy_amount_minor,
+          quote_ccy_fraction_digits,
+          trade_rate,
+          tenor,
+          base_ccy_value_date,
+          quote_ccy_value_date
+        )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    sourceRows.forEach(row => {
+      const baseMinor = minorToSafeInteger(
+        majorToMinor(String(row.base_ccy_amount), row.base_ccy_fraction_digits),
+        "Base Ccy Amount Minor"
+      );
+      const quoteMinor = minorToSafeInteger(
+        majorToMinor(String(row.quote_ccy_amount), row.quote_ccy_fraction_digits),
+        "Quote Ccy Amount Minor"
+      );
+
+      insert.run(
+        row.trade_id,
+        row.entry_timestamp,
+        row.trade_type,
+        row.trade_date,
+        row.ccy_pair_code,
+        row.side,
+        baseMinor,
+        row.base_ccy_fraction_digits,
+        quoteMinor,
+        row.quote_ccy_fraction_digits,
+        row.trade_rate,
+        row.tenor,
+        row.base_ccy_value_date,
+        row.quote_ccy_value_date
+      );
+    });
+
+    sqlite.exec(`
+      DROP TABLE fx_trade_exposure;
+      ALTER TABLE fx_trade_exposure_minor RENAME TO fx_trade_exposure;
+
+      CREATE INDEX idx_fx_trade_exposure_entry_timestamp
+          ON fx_trade_exposure (entry_timestamp);
+      CREATE INDEX idx_fx_trade_exposure_trade_type
+          ON fx_trade_exposure (trade_type);
+      CREATE INDEX idx_fx_trade_exposure_trade_date
+          ON fx_trade_exposure (trade_date);
+      CREATE INDEX idx_fx_trade_exposure_ccy_pair
+          ON fx_trade_exposure (ccy_pair_code);
+      CREATE UNIQUE INDEX uq_fx_trade_exposure_identity
+          ON fx_trade_exposure (trade_id, trade_type);
+    `);
+
+    const migratedRowCount = Number(
+      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+    );
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (migratedRowCount !== originalRowCount) {
+      throw new Error("FX Trade Exposure minor-unit migration did not preserve every row.");
+    }
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error("FX Trade Exposure minor-unit migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function migrateFxTradeExposureTradeSemantics(sqlite) {
+  const sourceColumns = [
+    "trade_id",
+    "entry_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "side",
+    "base_ccy_amount_minor",
+    "base_ccy_fraction_digits",
+    "quote_ccy_amount_minor",
+    "quote_ccy_fraction_digits",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
+  const targetColumns = [
+    "trade_id",
+    "entry_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "base_ccy_side",
+    "dealt_ccy_code",
+    "base_ccy_amount_minor",
+    "base_ccy_fraction_digits",
+    "quote_ccy_amount_minor",
+    "quote_ccy_fraction_digits",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
+  const tableInfo = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all();
+  const columns = tableInfo.map(column => column.name);
+  const tableDefinition = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'fx_trade_exposure'
+  `).get()?.sql || "";
+
+  if (columns.join(",") === targetColumns.join(",")) {
+    const definitionsAreValid = tableInfo[5]?.type === "TEXT"
+      && tableInfo[5]?.notnull === 1
+      && tableInfo[6]?.type === "TEXT"
+      && tableInfo[6]?.notnull === 1
+      && tableDefinition.includes("chk_fx_trade_exposure_base_ccy_side")
+      && tableDefinition.includes("chk_fx_trade_exposure_dealt_ccy_code");
+
+    if (!definitionsAreValid) {
+      throw new Error("Unsupported FX Trade Exposure trade-semantics schema.");
+    }
+
+    return;
+  }
+
+  if (columns.join(",") !== sourceColumns.join(",")) {
+    throw new Error("Unsupported FX Trade Exposure trade-semantics migration source.");
+  }
+
+  const sourceRows = sqlite.prepare(`
+    SELECT e.*, pair.base_ccy_code
+    FROM fx_trade_exposure e
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
+    ORDER BY e.trade_id
+  `).all();
+  const originalRowCount = Number(
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+  );
+
+  if (sourceRows.length !== originalRowCount) {
+    throw new Error("Every FX Trade Exposure must resolve its Ccy Pair.");
+  }
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      CREATE TABLE fx_trade_exposure_semantics
+      (
+          trade_id                    INTEGER PRIMARY KEY,
+          entry_timestamp             TEXT    NOT NULL,
+          trade_type                  TEXT    NOT NULL,
+          trade_date                  TEXT    NOT NULL,
+          ccy_pair_code               TEXT    NOT NULL,
+          base_ccy_side               TEXT    NOT NULL,
+          dealt_ccy_code              TEXT    NOT NULL,
+          base_ccy_amount_minor       INTEGER NOT NULL,
+          base_ccy_fraction_digits    INTEGER NOT NULL,
+          quote_ccy_amount_minor      INTEGER NOT NULL,
+          quote_ccy_fraction_digits   INTEGER NOT NULL,
+          trade_rate                  NUMERIC NOT NULL,
+          tenor                       TEXT    NOT NULL,
+          base_ccy_value_date         TEXT    NOT NULL,
+          quote_ccy_value_date        TEXT    NOT NULL,
+
+          CONSTRAINT fk_fx_trade_exposure_ccy_pair
+              FOREIGN KEY (ccy_pair_code)
+                  REFERENCES ccy_pair_options (ccy_pair_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_trade_exposure_dealt_ccy
+              FOREIGN KEY (dealt_ccy_code)
+                  REFERENCES ccy_options (ccy_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT chk_fx_trade_exposure_entry_timestamp
+              CHECK (
+                  length(entry_timestamp) = 24
+                  AND entry_timestamp GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
+              ),
+          CONSTRAINT chk_fx_trade_exposure_trade_type
+              CHECK (
+                  trade_type IN
+                  (
+                      'CLIENT_DEAL',
+                      'HEDGE_DEAL',
+                      'BATCH_BALANCING_TRADE',
+                      'BATCH_POSITION_OUT'
+                  )
+              ),
+          CONSTRAINT chk_fx_trade_exposure_trade_date
+              CHECK (
+                  trade_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', trade_date) = trade_date
+              ),
+          CONSTRAINT chk_fx_trade_exposure_base_ccy_side
+              CHECK (base_ccy_side IN ('BUY', 'SELL')),
+          CONSTRAINT chk_fx_trade_exposure_dealt_ccy_code
+              CHECK (
+                  length(dealt_ccy_code) = 3
+                  AND dealt_ccy_code = upper(dealt_ccy_code)
+                  AND dealt_ccy_code NOT GLOB '*[^A-Z]*'
+              ),
+          CONSTRAINT chk_fx_trade_exposure_amounts
+              CHECK (
+                  typeof(base_ccy_amount_minor) = 'integer'
+                  AND base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                  AND typeof(quote_ccy_amount_minor) = 'integer'
+                  AND quote_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+              ),
+          CONSTRAINT chk_fx_trade_exposure_fraction_digits
+              CHECK (
+                  typeof(base_ccy_fraction_digits) = 'integer'
+                  AND base_ccy_fraction_digits BETWEEN 0 AND 10
+                  AND typeof(quote_ccy_fraction_digits) = 'integer'
+                  AND quote_ccy_fraction_digits BETWEEN 0 AND 10
+              ),
+          CONSTRAINT chk_fx_trade_exposure_rate
+              CHECK (
+                  typeof(trade_rate) IN ('integer', 'real')
+                  AND trade_rate > 0
+              ),
+          CONSTRAINT chk_fx_trade_exposure_tenor
+              CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
+          CONSTRAINT chk_fx_trade_exposure_value_dates
+              CHECK (
+                  base_ccy_value_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
+                  AND quote_ccy_value_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', quote_ccy_value_date) = quote_ccy_value_date
+              )
+      );
+    `);
+
+    const insert = sqlite.prepare(`
+      INSERT INTO fx_trade_exposure_semantics
+        (
+          trade_id,
+          entry_timestamp,
+          trade_type,
+          trade_date,
+          ccy_pair_code,
+          base_ccy_side,
+          dealt_ccy_code,
+          base_ccy_amount_minor,
+          base_ccy_fraction_digits,
+          quote_ccy_amount_minor,
+          quote_ccy_fraction_digits,
+          trade_rate,
+          tenor,
+          base_ccy_value_date,
+          quote_ccy_value_date
+        )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    sourceRows.forEach(row => {
+      insert.run(
+        row.trade_id,
+        row.entry_timestamp,
+        row.trade_type,
+        row.trade_date,
+        row.ccy_pair_code,
+        row.side,
+        row.base_ccy_code,
+        row.base_ccy_amount_minor,
+        row.base_ccy_fraction_digits,
+        row.quote_ccy_amount_minor,
+        row.quote_ccy_fraction_digits,
+        row.trade_rate,
+        row.tenor,
+        row.base_ccy_value_date,
+        row.quote_ccy_value_date
+      );
+    });
+
+    sqlite.exec(`
+      DROP TABLE fx_trade_exposure;
+      ALTER TABLE fx_trade_exposure_semantics RENAME TO fx_trade_exposure;
+
+      CREATE INDEX idx_fx_trade_exposure_entry_timestamp
+          ON fx_trade_exposure (entry_timestamp);
+      CREATE INDEX idx_fx_trade_exposure_trade_type
+          ON fx_trade_exposure (trade_type);
+      CREATE INDEX idx_fx_trade_exposure_trade_date
+          ON fx_trade_exposure (trade_date);
+      CREATE INDEX idx_fx_trade_exposure_ccy_pair
+          ON fx_trade_exposure (ccy_pair_code);
+      CREATE UNIQUE INDEX uq_fx_trade_exposure_identity
+          ON fx_trade_exposure (trade_id, trade_type);
+    `);
+
+    const migratedRowCount = Number(
+      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+    );
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (migratedRowCount !== originalRowCount) {
+      throw new Error("FX Trade Exposure trade-semantics migration did not preserve every row.");
+    }
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error("FX Trade Exposure trade-semantics migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function dropFxTradeExposureDealtCurrencyTriggers(sqlite) {
+  sqlite.exec(`
+    DROP TRIGGER IF EXISTS trg_fx_trade_exposure_require_dealt_ccy_insert;
+    DROP TRIGGER IF EXISTS trg_fx_trade_exposure_require_dealt_ccy_update;
+    DROP TRIGGER IF EXISTS trg_ccy_pair_options_preserve_exposure_dealt_ccy;
+  `);
+}
+
+function ensureFxTradeExposureDealtCurrencyTriggers(sqlite) {
+  dropFxTradeExposureDealtCurrencyTriggers(sqlite);
+
+  sqlite.exec(`
+    CREATE TRIGGER trg_fx_trade_exposure_require_dealt_ccy_insert
+    BEFORE INSERT ON fx_trade_exposure
+    FOR EACH ROW
+    WHEN NOT EXISTS
+    (
+      SELECT 1
+      FROM ccy_pair_options p
+      WHERE p.ccy_pair_code = NEW.ccy_pair_code
+        AND NEW.dealt_ccy_code IN (p.base_ccy_code, p.quote_ccy_code)
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'fx_trade_exposure.dealt_ccy_code must belong to its Ccy Pair');
+    END;
+
+    CREATE TRIGGER trg_fx_trade_exposure_require_dealt_ccy_update
+    BEFORE UPDATE OF ccy_pair_code, dealt_ccy_code ON fx_trade_exposure
+    FOR EACH ROW
+    WHEN NOT EXISTS
+    (
+      SELECT 1
+      FROM ccy_pair_options p
+      WHERE p.ccy_pair_code = NEW.ccy_pair_code
+        AND NEW.dealt_ccy_code IN (p.base_ccy_code, p.quote_ccy_code)
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'fx_trade_exposure.dealt_ccy_code must belong to its Ccy Pair');
+    END;
+
+    CREATE TRIGGER trg_ccy_pair_options_preserve_exposure_dealt_ccy
+    BEFORE UPDATE OF base_ccy_code, quote_ccy_code ON ccy_pair_options
+    FOR EACH ROW
+    WHEN EXISTS
+    (
+      SELECT 1
+      FROM fx_trade_exposure e
+      WHERE e.ccy_pair_code = OLD.ccy_pair_code
+        AND e.dealt_ccy_code NOT IN (NEW.base_ccy_code, NEW.quote_ccy_code)
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'a Ccy Pair used by fx_trade_exposure must preserve its dealt currency');
+    END;
+  `);
 }
 
 function migrateFxTradeMarketSnapshot(sqlite) {
@@ -428,6 +1233,17 @@ function ensureHedgeFxDealTriggers(sqlite) {
 function migrateClientFxDealsToTradeExposure(sqlite) {
   const tableInfo = sqlite.prepare("PRAGMA table_info(client_fx_deals)").all();
   const columns = tableInfo.map(column => column.name);
+  const exposureColumns = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)")
+    .all()
+    .map(column => column.name);
+  const exposureUsesMajorAmounts = exposureColumns.includes("base_ccy_amount")
+    && exposureColumns.includes("quote_ccy_amount");
+  const exposureUsesMinorAmounts = exposureColumns.includes("base_ccy_amount_minor")
+    && exposureColumns.includes("base_ccy_fraction_digits")
+    && exposureColumns.includes("quote_ccy_amount_minor")
+    && exposureColumns.includes("quote_ccy_fraction_digits");
+  const exposureUsesBaseCcySide = exposureColumns.includes("base_ccy_side");
+  const exposureUsesDealtCcyCode = exposureColumns.includes("dealt_ccy_code");
   const foreignKeys = sqlite.prepare("PRAGMA foreign_key_list(client_fx_deals)").all();
   const tableDefinition = sqlite.prepare(`
     SELECT sql
@@ -609,6 +1425,10 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   }
 
   if (hasLegacySchema) {
+    if (!exposureUsesMajorAmounts && !exposureUsesMinorAmounts) {
+      throw new Error("Unsupported FX Trade Exposure amount schema.");
+    }
+
     const invalidTenor = sqlite.prepare(`
       SELECT client_deal_id
       FROM client_fx_deals
@@ -650,37 +1470,134 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     if (hasLegacySchema) {
-      sqlite.exec(`
-        INSERT INTO fx_trade_exposure
-          (
-            trade_id,
-            entry_timestamp,
-            trade_type,
-            trade_date,
-            ccy_pair_code,
-            side,
-            base_ccy_amount,
-            quote_ccy_amount,
-            trade_rate,
-            tenor,
-            base_ccy_value_date,
-            quote_ccy_value_date
-          )
-        SELECT
-          d.client_deal_id,
-          d.entry_timestamp,
-          'CLIENT_DEAL',
-          d.trade_date,
-          d.ccy_pair_code,
-          d.side,
-          d.base_ccy_amount,
-          d.quote_ccy_amount,
-          d.trade_rate,
-          d.tenor,
-          d.base_ccy_value_date,
-          d.quote_ccy_value_date
-        FROM client_fx_deals d;
-      `);
+      if (exposureUsesMinorAmounts) {
+        const legacyRows = sqlite.prepare(`
+          SELECT
+            d.*,
+            pair.base_ccy_code,
+            base_ccy.fraction_digits AS base_ccy_fraction_digits,
+            quote_ccy.fraction_digits AS quote_ccy_fraction_digits
+          FROM client_fx_deals d
+          INNER JOIN ccy_pair_options pair
+            ON pair.ccy_pair_code = d.ccy_pair_code
+          INNER JOIN ccy_options base_ccy
+            ON base_ccy.ccy_code = pair.base_ccy_code
+          INNER JOIN ccy_options quote_ccy
+            ON quote_ccy.ccy_code = pair.quote_ccy_code
+          ORDER BY d.client_deal_id
+        `).all();
+        const exposureUsesFinalTradeSemantics = exposureUsesBaseCcySide
+          && exposureUsesDealtCcyCode;
+        const insertExposure = sqlite.prepare(exposureUsesFinalTradeSemantics
+          ? `
+            INSERT INTO fx_trade_exposure
+              (
+                trade_id,
+                entry_timestamp,
+                trade_type,
+                trade_date,
+                ccy_pair_code,
+                base_ccy_side,
+                dealt_ccy_code,
+                base_ccy_amount_minor,
+                base_ccy_fraction_digits,
+                quote_ccy_amount_minor,
+                quote_ccy_fraction_digits,
+                trade_rate,
+                tenor,
+                base_ccy_value_date,
+                quote_ccy_value_date
+              )
+            VALUES (?, ?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `
+          : `
+            INSERT INTO fx_trade_exposure
+              (
+                trade_id,
+                entry_timestamp,
+                trade_type,
+                trade_date,
+                ccy_pair_code,
+                side,
+                base_ccy_amount_minor,
+                base_ccy_fraction_digits,
+                quote_ccy_amount_minor,
+                quote_ccy_fraction_digits,
+                trade_rate,
+                tenor,
+                base_ccy_value_date,
+                quote_ccy_value_date
+              )
+            VALUES (?, ?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+
+        for (const row of legacyRows) {
+          const baseMinor = majorToMinor(
+            String(row.base_ccy_amount),
+            row.base_ccy_fraction_digits
+          );
+          const quoteMinor = majorToMinor(
+            String(row.quote_ccy_amount),
+            row.quote_ccy_fraction_digits
+          );
+
+          const values = [
+            row.client_deal_id,
+            row.entry_timestamp,
+            row.trade_date,
+            row.ccy_pair_code,
+            row.side
+          ];
+
+          if (exposureUsesFinalTradeSemantics) {
+            values.push(row.base_ccy_code);
+          }
+
+          values.push(
+            minorToSafeInteger(baseMinor, "Legacy Base Ccy Amount Minor"),
+            row.base_ccy_fraction_digits,
+            minorToSafeInteger(quoteMinor, "Legacy Quote Ccy Amount Minor"),
+            row.quote_ccy_fraction_digits,
+            row.trade_rate,
+            row.tenor,
+            row.base_ccy_value_date,
+            row.quote_ccy_value_date
+          );
+          insertExposure.run(...values);
+        }
+      } else {
+        sqlite.exec(`
+          INSERT INTO fx_trade_exposure
+            (
+              trade_id,
+              entry_timestamp,
+              trade_type,
+              trade_date,
+              ccy_pair_code,
+              side,
+              base_ccy_amount,
+              quote_ccy_amount,
+              trade_rate,
+              tenor,
+              base_ccy_value_date,
+              quote_ccy_value_date
+            )
+          SELECT
+            d.client_deal_id,
+            d.entry_timestamp,
+            'CLIENT_DEAL',
+            d.trade_date,
+            d.ccy_pair_code,
+            d.side,
+            d.base_ccy_amount,
+            d.quote_ccy_amount,
+            d.trade_rate,
+            d.tenor,
+            d.base_ccy_value_date,
+            d.quote_ccy_value_date
+          FROM client_fx_deals d;
+        `);
+      }
     }
 
     sqlite.exec(`
@@ -843,8 +1760,9 @@ function backfillInitialClientFxDealAttribution(sqlite) {
       d.trade_id,
       d.party_id,
       e.trade_rate,
-      e.base_ccy_amount,
-      e.side,
+      e.base_ccy_amount_minor,
+      e.base_ccy_fraction_digits,
+      e.base_ccy_side AS side,
       e.ccy_pair_code
     FROM client_fx_deals d
     INNER JOIN fx_trade_exposure e
@@ -859,9 +1777,9 @@ function backfillInitialClientFxDealAttribution(sqlite) {
       AND e.entry_timestamp = '2026-07-15T09:30:00.000Z'
       AND e.trade_date = '2026-07-15'
       AND e.ccy_pair_code = 'EUR_USD'
-      AND e.side = 'BUY'
-      AND e.base_ccy_amount = 30000000
-      AND e.quote_ccy_amount = 33693000
+      AND e.base_ccy_side = 'BUY'
+      AND e.base_ccy_amount_minor = 3000000000
+      AND e.quote_ccy_amount_minor = 3369300000
       AND e.trade_rate = 1.1231
       AND e.tenor = 'TOD'
       AND e.base_ccy_value_date = '2026-07-15'
@@ -889,7 +1807,10 @@ function backfillInitialClientFxDealAttribution(sqlite) {
   const transferRate = 1.1222;
   const analyticalPnl = calculateAnalyticalPnl({
     clientSide: deal.side,
-    baseCcyAmount: deal.base_ccy_amount,
+    baseCcyAmount: Number(minorToMajor(
+      deal.base_ccy_amount_minor,
+      deal.base_ccy_fraction_digits
+    )),
     tradeRate: deal.trade_rate,
     transferRate
   });
@@ -1807,6 +2728,17 @@ function seedInitialTradingParties(sqlite) {
   `);
 }
 
+function seedInitialUsers(sqlite) {
+  sqlite.exec(`
+    INSERT INTO users
+      (user_code, first_name, last_name, user_role, is_active)
+    VALUES
+      ('GANDALF', 'Gandalf', 'Grey', 'DEALER', 1),
+      ('TIN_WOODMAN', 'Tin', 'Woodman', 'SUPERVISOR', 1),
+      ('ALICE', 'Alice', 'Wonderland', 'ADMIN', 1);
+  `);
+}
+
 function seedInitialPricingRules(sqlite) {
   const rules = [
     ["7701234567", "002", "AFINA", "CLICK_TRADE_EFX", "EUR_USD", 0.10],
@@ -1814,7 +2746,7 @@ function seedInitialPricingRules(sqlite) {
     ["7701234567", "002", "CTF3", "MANUAL_CLIENT_DEAL_ENTRY", "EUR_USD", 0.08],
     ["7812345678", "1234", "AFINA", "RFQ", "EUR_USD", 0.05],
     ["5409876543", "001", "CTF3", "CLICK_TRADE_EFX", "EUR_USD", 0.20],
-    ["7707000001", "002", "AFINA", "RFQ", "EUR_USD", 0.03]
+    ["7707000001", "002", "CTF3", "MANUAL_CLIENT_DEAL_ENTRY", "EUR_USD", 0.03]
   ];
   const insert = sqlite.prepare(`
     INSERT OR IGNORE INTO pricing_rules
@@ -1902,9 +2834,12 @@ function seedInitialClientFxDeals(sqlite) {
           trade_type,
           trade_date,
           ccy_pair_code,
-          side,
-          base_ccy_amount,
-          quote_ccy_amount,
+          base_ccy_side,
+          dealt_ccy_code,
+          base_ccy_amount_minor,
+          base_ccy_fraction_digits,
+          quote_ccy_amount_minor,
+          quote_ccy_fraction_digits,
           trade_rate,
           tenor,
           base_ccy_value_date,
@@ -1917,8 +2852,11 @@ function seedInitialClientFxDeals(sqlite) {
           '2026-07-15',
           'EUR_USD',
           'BUY',
-          30000000,
-          33693000,
+          'EUR',
+          3000000000,
+          2,
+          3369300000,
+          2,
           1.1231,
           'TOD',
           '2026-07-15',
@@ -2011,6 +2949,8 @@ function ccyPairOption(pairCode) {
       p.base_ccy_code AS baseCcy,
       p.quote_ccy_code AS quoteCcy,
       p.base_ccy_code || '/' || p.quote_ccy_code AS currencyPair,
+      base_ccy.fraction_digits AS baseCurrencyFractionDigits,
+      quote_ccy.fraction_digits AS quoteCurrencyFractionDigits,
       p.default_quote_decimals AS defaultQuoteDecimals,
       (
         SELECT COUNT(*)
@@ -2021,10 +2961,91 @@ function ccyPairOption(pairCode) {
       s.spread,
       s.bid_max AS bidMax
     FROM ccy_pair_options p
+    INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = p.base_ccy_code
+    INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = p.quote_ccy_code
     LEFT JOIN market_quote_simulation_settings s
       ON s.ccy_pair_code = p.ccy_pair_code
     WHERE p.ccy_pair_code = ?
   `).get(pairCode) || null;
+}
+
+function fxTradeExposureAmounts(payload, generatedAmounts = null) {
+  const pair = ccyPairOption(payload.ccyPairCode);
+
+  if (!pair) {
+    throw new Error(`Ccy Pair ${payload.ccyPairCode} was not found.`);
+  }
+
+  const baseFractionDigits = pair.baseCurrencyFractionDigits;
+  const quoteFractionDigits = pair.quoteCurrencyFractionDigits;
+  const dealtCcyCode = normalizedText(payload.dealtCcyCode || pair.baseCcy).toUpperCase();
+
+  if (!/^[A-Z]{3}$/.test(dealtCcyCode)
+    || ![pair.baseCcy, pair.quoteCcy].includes(dealtCcyCode)) {
+    throw new Error(
+      `Dealt Ccy Code must be ${pair.baseCcy} or ${pair.quoteCcy} for ${pair.currencyPair}.`
+    );
+  }
+
+  let calculatedBaseMinor;
+  let calculatedQuoteMinor;
+
+  if (payload.dealtCcyAmount !== null
+    && payload.dealtCcyAmount !== undefined
+    && String(payload.dealtCcyAmount).trim() !== "") {
+    const calculated = calculateFxAmountsFromDealt({
+      dealtAmount: String(payload.dealtCcyAmount),
+      dealtCcyCode,
+      baseCcyCode: pair.baseCcy,
+      quoteCcyCode: pair.quoteCcy,
+      baseFractionDigits,
+      quoteFractionDigits,
+      rate: String(payload.tradeRate)
+    });
+    calculatedBaseMinor = calculated.baseAmountMinor;
+    calculatedQuoteMinor = calculated.quoteAmountMinor;
+  } else {
+    calculatedBaseMinor = majorToMinor(String(payload.baseCcyAmount), baseFractionDigits);
+    calculatedQuoteMinor = majorToMinor(String(payload.quoteCcyAmount), quoteFractionDigits);
+  }
+
+  const baseMinor = generatedAmounts?.baseCcyAmountMinor ?? calculatedBaseMinor;
+  const quoteMinor = generatedAmounts?.quoteCcyAmountMinor ?? calculatedQuoteMinor;
+
+  if (generatedAmounts) {
+    if (generatedAmounts.baseCcyFractionDigits !== baseFractionDigits
+      || generatedAmounts.quoteCcyFractionDigits !== quoteFractionDigits) {
+      throw new Error("Generated FX Trade currency fraction digits do not match Reference Data.");
+    }
+
+    if (BigInt(baseMinor) !== calculatedBaseMinor || BigInt(quoteMinor) !== calculatedQuoteMinor) {
+      throw new Error("Generated FX Trade major and minor amounts are inconsistent.");
+    }
+  }
+
+  return {
+    dealtCcyCode,
+    baseCcyAmountMinor: minorToSafeInteger(baseMinor, "Base Ccy Amount Minor"),
+    baseCcyFractionDigits: baseFractionDigits,
+    quoteCcyAmountMinor: minorToSafeInteger(quoteMinor, "Quote Ccy Amount Minor"),
+    quoteCcyFractionDigits: quoteFractionDigits,
+    baseCcyAmount: minorToMajor(baseMinor, baseFractionDigits),
+    quoteCcyAmount: minorToMajor(quoteMinor, quoteFractionDigits)
+  };
+}
+
+function fxTradeRowWithMajorAmounts(row) {
+  return {
+    ...row,
+    baseCcyAmount: Number(minorToMajor(
+      row.baseCcyAmountMinor,
+      row.baseCcyFractionDigits
+    )),
+    quoteCcyAmount: Number(minorToMajor(
+      row.quoteCcyAmountMinor,
+      row.quoteCcyFractionDigits
+    ))
+  };
 }
 
 function marketQuoteSimulationSettings(pairCode) {
@@ -2161,6 +3182,24 @@ function tradingParty(partyId) {
   return tradingParties().find(party => party.partyId === Number(partyId)) || null;
 }
 
+function users() {
+  return database.prepare(`
+    SELECT
+      user_id AS userId,
+      user_code AS userCode,
+      first_name AS firstName,
+      last_name AS lastName,
+      user_role AS userRole,
+      is_active AS active
+    FROM users
+    ORDER BY last_name, first_name, user_code
+  `).all().map(user => ({ ...user, active: user.active === 1 }));
+}
+
+function user(userId) {
+  return users().find(item => item.userId === Number(userId)) || null;
+}
+
 function pricingRules(pricingMode = null) {
   return database.prepare(`
     SELECT
@@ -2229,6 +3268,7 @@ function clientDealGenerationSettings() {
       r.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
       pair.default_quote_decimals AS defaultQuoteDecimals,
+      base_ccy.fraction_digits AS baseCurrencyFractionDigits,
       quote_ccy.fraction_digits AS quoteCurrencyFractionDigits,
       r.margin_percent AS marginPercent,
       location.servicing_location_id AS servicingLocationId,
@@ -2249,6 +3289,7 @@ function clientDealGenerationSettings() {
     INNER JOIN pricing_rules r ON r.pricing_rule_id = s.pricing_rule_id
     INNER JOIN trading_parties p ON p.party_id = r.party_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
+    INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = pair.quote_ccy_code
     INNER JOIN execution_contexts context ON context.execution_context_id = r.execution_context_id
     INNER JOIN servicing_locations location
@@ -2356,9 +3397,12 @@ function clientFxDeals() {
       e.trade_date AS tradeDate,
       e.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
-      e.side,
-      e.base_ccy_amount AS baseCcyAmount,
-      e.quote_ccy_amount AS quoteCcyAmount,
+      e.base_ccy_side AS side,
+      e.dealt_ccy_code AS dealtCcyCode,
+      e.base_ccy_amount_minor AS baseCcyAmountMinor,
+      e.base_ccy_fraction_digits AS baseCcyFractionDigits,
+      e.quote_ccy_amount_minor AS quoteCcyAmountMinor,
+      e.quote_ccy_fraction_digits AS quoteCcyFractionDigits,
       e.trade_rate AS tradeRate,
       e.tenor,
       e.base_ccy_value_date AS baseCcyValueDate,
@@ -2372,7 +3416,7 @@ function clientFxDeals() {
     LEFT JOIN fx_trade_market_snapshot a
       ON a.trade_id = e.trade_id AND a.trade_type = e.trade_type
     ORDER BY e.trade_id
-  `).all();
+  `).all().map(fxTradeRowWithMajorAmounts);
 }
 
 function clientFxDeal(clientDealId) {
@@ -2401,9 +3445,12 @@ function hedgeFxDeals() {
       e.trade_date AS tradeDate,
       e.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
-      e.side,
-      e.base_ccy_amount AS baseCcyAmount,
-      e.quote_ccy_amount AS quoteCcyAmount,
+      e.base_ccy_side AS side,
+      e.dealt_ccy_code AS dealtCcyCode,
+      e.base_ccy_amount_minor AS baseCcyAmountMinor,
+      e.base_ccy_fraction_digits AS baseCcyFractionDigits,
+      e.quote_ccy_amount_minor AS quoteCcyAmountMinor,
+      e.quote_ccy_fraction_digits AS quoteCcyFractionDigits,
       e.trade_rate AS tradeRate,
       e.tenor,
       e.base_ccy_value_date AS baseCcyValueDate,
@@ -2417,31 +3464,268 @@ function hedgeFxDeals() {
     LEFT JOIN fx_trade_market_snapshot a
       ON a.trade_id = e.trade_id AND a.trade_type = e.trade_type
     ORDER BY e.trade_id
-  `).all();
+  `).all().map(fxTradeRowWithMajorAmounts);
 }
 
 function hedgeFxDeal(hedgeDealId) {
   return hedgeFxDeals().find(deal => deal.hedgeDealId === Number(hedgeDealId)) || null;
 }
 
-function clientFxDealWithCalculatedEconomics(payload) {
-  const rule = clientDealPricingRule(payload.pricingRuleId);
+function batchBalancingTrades() {
+  return database.prepare(`
+    SELECT
+      b.batch_trade_id AS batchTradeId,
+      b.batch_pair_id AS batchPairId,
+      b.batch_id AS batchId,
+      b.trade_type AS tradeType,
+      b.trade_id AS tradeId,
+      b.created_at AS createdAt,
+      e.entry_timestamp AS entryTimestamp,
+      e.trade_date AS tradeDate,
+      e.ccy_pair_code AS ccyPairCode,
+      pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
+      e.base_ccy_side AS side,
+      e.dealt_ccy_code AS dealtCcyCode,
+      e.base_ccy_amount_minor AS baseCcyAmountMinor,
+      e.base_ccy_fraction_digits AS baseCcyFractionDigits,
+      e.quote_ccy_amount_minor AS quoteCcyAmountMinor,
+      e.quote_ccy_fraction_digits AS quoteCcyFractionDigits,
+      e.trade_rate AS tradeRate,
+      e.tenor,
+      e.base_ccy_value_date AS baseCcyValueDate,
+      e.quote_ccy_value_date AS quoteCcyValueDate
+    FROM batch_balancing_trades b
+    INNER JOIN fx_trade_exposure e
+      ON e.trade_id = b.trade_id AND e.trade_type = b.trade_type
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
+    ORDER BY b.batch_id, b.batch_pair_id, b.batch_trade_id
+  `).all().map(fxTradeRowWithMajorAmounts);
+}
+
+function batchBalancingTradeSources(tradeIds) {
+  const placeholders = tradeIds.map(() => "?").join(", ");
+  const sourceTrades = database.prepare(`
+    SELECT
+      e.trade_id AS tradeId,
+      e.trade_type AS tradeType,
+      e.ccy_pair_code AS ccyPairCode,
+      e.trade_date AS tradeDate,
+      e.base_ccy_side AS side,
+      e.dealt_ccy_code AS dealtCcyCode,
+      e.base_ccy_amount_minor AS baseCcyAmountMinor,
+      e.base_ccy_fraction_digits AS baseCcyFractionDigits,
+      e.quote_ccy_amount_minor AS quoteCcyAmountMinor,
+      e.quote_ccy_fraction_digits AS quoteCcyFractionDigits,
+      COALESCE(c.transfer_rate, h.transfer_rate, e.trade_rate) AS transferRate,
+      e.tenor,
+      e.base_ccy_value_date AS baseCcyValueDate,
+      e.quote_ccy_value_date AS quoteCcyValueDate,
+      pair.default_quote_decimals AS rateFractionDigits,
+      quote_ccy.fraction_digits AS quoteFractionDigits
+    FROM fx_trade_exposure e
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
+    INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = pair.quote_ccy_code
+    LEFT JOIN client_fx_deals c
+      ON c.trade_id = e.trade_id AND c.trade_type = e.trade_type
+    LEFT JOIN fx_hedge_deals h
+      ON h.trade_id = e.trade_id AND h.trade_type = e.trade_type
+    WHERE e.trade_id IN (${placeholders})
+      AND e.trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')
+    ORDER BY e.trade_id
+  `).all(...tradeIds).map(fxTradeRowWithMajorAmounts);
+  const foundTradeIds = new Set(sourceTrades.map(trade => trade.tradeId));
+  const missingTradeIds = tradeIds.filter(tradeId => !foundTradeIds.has(tradeId));
+
+  if (missingTradeIds.length > 0) {
+    const error = new Error(
+      `Trade ${missingTradeIds.join(", ")} was not found or is not a Client/Hedge FX Deal.`
+    );
+    error.code = "BATCH_SOURCE_TRADE_NOT_FOUND";
+    throw error;
+  }
+
+  return sourceTrades;
+}
+
+function createBatchBalancingTradePair(sourceTradeIds) {
+  return runInImmediateTransaction(database, () => {
+    const sourceTrades = batchBalancingTradeSources(sourceTradeIds);
+    const calculation = calculateBatchBalancingTradePair({
+      trades: sourceTrades,
+      rateFractionDigits: sourceTrades[0].rateFractionDigits,
+      quoteFractionDigits: sourceTrades[0].quoteFractionDigits
+    });
+    const batchId = Number(database.prepare(`
+      SELECT COALESCE(MAX(batch_id), 0) + 1 AS nextId
+      FROM batch_balancing_trades
+    `).get().nextId);
+    const batchPairId = Number(database.prepare(`
+      SELECT COALESCE(MAX(batch_pair_id), 0) + 1 AS nextId
+      FROM batch_balancing_trades
+    `).get().nextId);
+    const insertExposure = database.prepare(`
+      INSERT INTO fx_trade_exposure
+        (
+          entry_timestamp,
+          trade_type,
+          trade_date,
+          ccy_pair_code,
+          base_ccy_side,
+          dealt_ccy_code,
+          base_ccy_amount_minor,
+          base_ccy_fraction_digits,
+          quote_ccy_amount_minor,
+          quote_ccy_fraction_digits,
+          trade_rate,
+          tenor,
+          base_ccy_value_date,
+          quote_ccy_value_date
+        )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertBatchTrade = database.prepare(`
+      INSERT INTO batch_balancing_trades
+        (batch_pair_id, batch_id, trade_type, trade_id)
+      VALUES (?, ?, ?, ?)
+    `);
+    const createdTradeIds = [
+      calculation.balancingTrade,
+      calculation.positionOutTrade
+    ].map(trade => {
+      const exposureAmounts = fxTradeExposureAmounts(trade);
+      const exposureResult = insertExposure.run(
+        trade.entryTimestamp,
+        trade.tradeType,
+        trade.tradeDate,
+        trade.ccyPairCode,
+        trade.side,
+        exposureAmounts.dealtCcyCode,
+        exposureAmounts.baseCcyAmountMinor,
+        exposureAmounts.baseCcyFractionDigits,
+        exposureAmounts.quoteCcyAmountMinor,
+        exposureAmounts.quoteCcyFractionDigits,
+        trade.tradeRate,
+        trade.tenor,
+        trade.baseCcyValueDate,
+        trade.quoteCcyValueDate
+      );
+      const tradeId = Number(exposureResult.lastInsertRowid);
+
+      insertBatchTrade.run(batchPairId, batchId, trade.tradeType, tradeId);
+      return tradeId;
+    });
+    const createdTradeIdSet = new Set(createdTradeIds);
+
+    return {
+      batchId,
+      batchPairId,
+      sourceTradeIds: calculation.sourceTradeIds,
+      sourceNetSide: calculation.sourceNetSide,
+      sourceNetBaseCcyAmount: calculation.sourceNetBaseCcyAmount,
+      sourceNetTransferQuoteAmount: calculation.sourceNetTransferQuoteAmount,
+      balancingRate: calculation.balancingTrade.tradeRate,
+      roundingResidualQuoteAmount: calculation.roundingResidualQuoteAmount,
+      trades: batchBalancingTrades().filter(trade => createdTradeIdSet.has(trade.tradeId))
+    };
+  });
+}
+
+function deleteBatchBalancingTrades(tradeIds) {
+  return runInImmediateTransaction(database, () => {
+    const placeholders = tradeIds.map(() => "?").join(", ");
+    const storedTrades = database.prepare(`
+      SELECT trade_id AS tradeId, trade_type AS tradeType
+      FROM batch_balancing_trades
+      WHERE trade_id IN (${placeholders})
+        AND trade_type IN ('BATCH_BALANCING_TRADE', 'BATCH_POSITION_OUT')
+      ORDER BY trade_id
+    `).all(...tradeIds);
+    const storedTradeIds = new Set(storedTrades.map(trade => trade.tradeId));
+    const missingTradeIds = tradeIds.filter(tradeId => !storedTradeIds.has(tradeId));
+
+    if (missingTradeIds.length > 0) {
+      const error = new Error(
+        `Trade ${missingTradeIds.join(", ")} was not found or is not a generated Batch Trade.`
+      );
+      error.code = "BATCH_GENERATED_TRADE_NOT_FOUND";
+      throw error;
+    }
+
+    const subtypeResult = database.prepare(`
+      DELETE FROM batch_balancing_trades
+      WHERE trade_id IN (${placeholders})
+        AND trade_type IN ('BATCH_BALANCING_TRADE', 'BATCH_POSITION_OUT')
+    `).run(...tradeIds);
+
+    if (subtypeResult.changes !== tradeIds.length) {
+      throw new Error("Not every selected generated Batch Trade was deleted.");
+    }
+
+    const exposureResult = database.prepare(`
+      DELETE FROM fx_trade_exposure
+      WHERE trade_id IN (${placeholders})
+        AND trade_type IN ('BATCH_BALANCING_TRADE', 'BATCH_POSITION_OUT')
+    `).run(...tradeIds);
+
+    if (exposureResult.changes !== tradeIds.length) {
+      throw new Error("Not every generated FX Trade Exposure was deleted.");
+    }
+
+    return {
+      deletedTradeIds: [...tradeIds].sort((left, right) => left - right)
+    };
+  });
+}
+
+function clientFxDealWithCalculatedEconomics(payload, exposureAmounts) {
   const pair = ccyPairOption(payload.ccyPairCode);
   const quoteCurrency = ccyOptions().find(currency => currency.code === pair.quoteCcy);
+  const pnlFractionDigits = quoteCurrency?.fractionDigits ?? 2;
+  const baseCcyAmount = exposureAmounts.baseCcyAmount;
+
+  if (payload.pricingRuleId === null) {
+    const transferRate = roundToFractionDigits(
+      payload.transferRate,
+      pair.defaultQuoteDecimals
+    );
+    const analyticalPnl = calculateAnalyticalPnl({
+      clientSide: payload.side,
+      baseCcyAmount,
+      tradeRate: payload.tradeRate,
+      transferRate,
+      pnlFractionDigits
+    });
+
+    return {
+      ...payload,
+      baseCcyAmount,
+      quoteCcyAmount: exposureAmounts.quoteCcyAmount,
+      transferRate,
+      analyticalPnl
+    };
+  }
+
+  const rule = pricingRule(payload.pricingRuleId);
   const economics = calculateClientFxDealEconomics({
     clientSide: payload.side,
-    baseCcyAmount: payload.baseCcyAmount,
+    baseCcyAmount,
     tradeRate: payload.tradeRate,
     marginPercent: rule.marginPercent,
     rateFractionDigits: pair.defaultQuoteDecimals,
-    pnlFractionDigits: quoteCurrency?.fractionDigits ?? 2
+    pnlFractionDigits
   });
 
-  return { ...payload, ...economics };
+  return {
+    ...payload,
+    baseCcyAmount,
+    quoteCcyAmount: exposureAmounts.quoteCcyAmount,
+    ...economics
+  };
 }
 
-function createClientFxDeal(payload) {
+function createClientFxDeal(payload, suppliedExposureAmounts = null) {
   return runInImmediateTransaction(database, () => {
+    const exposureAmounts = suppliedExposureAmounts || fxTradeExposureAmounts(payload);
     const exposureResult = database.prepare(`
       INSERT INTO fx_trade_exposure
         (
@@ -2449,22 +3733,28 @@ function createClientFxDeal(payload) {
           trade_type,
           trade_date,
           ccy_pair_code,
-          side,
-          base_ccy_amount,
-          quote_ccy_amount,
+          base_ccy_side,
+          dealt_ccy_code,
+          base_ccy_amount_minor,
+          base_ccy_fraction_digits,
+          quote_ccy_amount_minor,
+          quote_ccy_fraction_digits,
           trade_rate,
           tenor,
           base_ccy_value_date,
           quote_ccy_value_date
         )
-      VALUES (?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       payload.entryTimestamp,
       payload.tradeDate,
       payload.ccyPairCode,
       payload.side,
-      payload.baseCcyAmount,
-      payload.quoteCcyAmount,
+      exposureAmounts.dealtCcyCode,
+      exposureAmounts.baseCcyAmountMinor,
+      exposureAmounts.baseCcyFractionDigits,
+      exposureAmounts.quoteCcyAmountMinor,
+      exposureAmounts.quoteCcyFractionDigits,
       payload.tradeRate,
       payload.tenor,
       payload.baseCcyValueDate,
@@ -2518,18 +3808,18 @@ function createClientFxDeal(payload) {
   });
 }
 
-function hedgeFxDealWithCalculatedTerms(payload) {
+function hedgeFxDealWithCalculatedTerms(payload, exposureAmounts) {
   const rule = hedgeDealPricingRule(payload.pricingRuleId);
   const pair = ccyPairOption(rule.ccyPairCode);
-  const quoteCurrency = ccyOptions().find(currency => currency.code === pair.quoteCcy);
   const terms = createHedgeFxDealTerms({
     hedgeSide: payload.side,
-    baseCcyAmount: payload.baseCcyAmount,
+    baseCcyAmount: exposureAmounts.baseCcyAmount,
     tradeRate: payload.tradeRate,
     tenor: payload.tenor,
     marginPercent: rule.marginPercent,
     rateFractionDigits: pair.defaultQuoteDecimals,
-    quoteFractionDigits: quoteCurrency?.fractionDigits ?? 2
+    baseFractionDigits: exposureAmounts.baseCcyFractionDigits,
+    quoteFractionDigits: exposureAmounts.quoteCcyFractionDigits
   });
   const marketPulseSnapshot = marketPulseSimulator.snapshot();
   const marketQuote = marketPulseSnapshot.quotes
@@ -2541,6 +3831,11 @@ function hedgeFxDealWithCalculatedTerms(payload) {
     executionContextId: rule.executionContextId,
     pricingRuleId: rule.pricingRuleId,
     ccyPairCode: rule.ccyPairCode,
+    dealtCcyCode: exposureAmounts.dealtCcyCode,
+    dealtCcyAmount: payload.dealtCcyAmount,
+    baseCcyAmount: exposureAmounts.baseCcyAmount,
+    quoteCcyAmount: exposureAmounts.quoteCcyAmount,
+    tradeRate: payload.tradeRate,
     marketPulseStreamStatus: marketPulseSnapshot.status,
     marketPulseBid: marketQuote?.bid ?? null,
     marketPulseOffer: marketQuote?.offer ?? null,
@@ -2548,8 +3843,9 @@ function hedgeFxDealWithCalculatedTerms(payload) {
   };
 }
 
-function createHedgeFxDeal(payload) {
+function createHedgeFxDeal(payload, suppliedExposureAmounts = null) {
   return runInImmediateTransaction(database, () => {
+    const exposureAmounts = suppliedExposureAmounts || fxTradeExposureAmounts(payload);
     const exposureResult = database.prepare(`
       INSERT INTO fx_trade_exposure
         (
@@ -2557,22 +3853,28 @@ function createHedgeFxDeal(payload) {
           trade_type,
           trade_date,
           ccy_pair_code,
-          side,
-          base_ccy_amount,
-          quote_ccy_amount,
+          base_ccy_side,
+          dealt_ccy_code,
+          base_ccy_amount_minor,
+          base_ccy_fraction_digits,
+          quote_ccy_amount_minor,
+          quote_ccy_fraction_digits,
           trade_rate,
           tenor,
           base_ccy_value_date,
           quote_ccy_value_date
         )
-      VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       payload.entryTimestamp,
       payload.tradeDate,
       payload.ccyPairCode,
       payload.side,
-      payload.baseCcyAmount,
-      payload.quoteCcyAmount,
+      exposureAmounts.dealtCcyCode,
+      exposureAmounts.baseCcyAmountMinor,
+      exposureAmounts.baseCcyFractionDigits,
+      exposureAmounts.quoteCcyAmountMinor,
+      exposureAmounts.quoteCcyFractionDigits,
       payload.tradeRate,
       payload.tenor,
       payload.baseCcyValueDate,
@@ -2738,8 +4040,7 @@ function generateOneClientFxDeal() {
     settings: selected.settings,
     marketPulseSnapshot,
     quote: selected.quote,
-    pair,
-    quoteCurrencyFractionDigits: selected.settings.quoteCurrencyFractionDigits
+    pair
   });
   const validation = validateClientFxDealPayload(payload);
 
@@ -2750,7 +4051,11 @@ function generateOneClientFxDeal() {
     );
   }
 
-  const tradeId = createClientFxDeal(validation);
+  const exposureAmounts = fxTradeExposureAmounts(validation);
+  const tradeId = createClientFxDeal(
+    clientFxDealWithCalculatedEconomics(validation, exposureAmounts),
+    exposureAmounts
+  );
   return clientFxDeal(tradeId);
 }
 
@@ -2839,6 +4144,16 @@ function normalizedCcyCode(value) {
 
 function normalizedText(value) {
   return String(value || "").trim();
+}
+
+function normalizedPositiveDecimalText(value) {
+  const text = normalizedText(value);
+
+  if (!/^(?:\d+)(?:\.\d+)?$/.test(text) || !/[1-9]/.test(text)) {
+    return null;
+  }
+
+  return text;
 }
 
 function normalizedCcyText(value) {
@@ -3095,6 +4410,38 @@ function validateTradingPartyPayload(body) {
   return { partyType, partyCode, partyCodeType, partyName, active };
 }
 
+function validateUserPayload(body) {
+  const userCode = normalizedText(body.userCode).toUpperCase();
+  const firstName = normalizedText(body.firstName);
+  const lastName = normalizedText(body.lastName);
+  const userRole = normalizedText(body.userRole).toUpperCase();
+  const active = typeof body.active === "boolean" ? body.active : null;
+
+  if (!new RegExp(`^[A-Z0-9._-]{2,${USER_CODE_MAX_LENGTH}}$`).test(userCode)) {
+    return {
+      error: `User Code must contain from 2 to ${USER_CODE_MAX_LENGTH} uppercase letters, digits, dots, underscores or hyphens.`
+    };
+  }
+
+  if (!firstName || firstName.length > USER_NAME_MAX_LENGTH) {
+    return { error: `First Name must contain from 1 to ${USER_NAME_MAX_LENGTH} characters.` };
+  }
+
+  if (!lastName || lastName.length > USER_NAME_MAX_LENGTH) {
+    return { error: `Last Name must contain from 1 to ${USER_NAME_MAX_LENGTH} characters.` };
+  }
+
+  if (!USER_ROLES.includes(userRole)) {
+    return { error: `Role must be ${USER_ROLES.join(", ")}.` };
+  }
+
+  if (active === null) {
+    return { error: "Active must be a boolean value." };
+  }
+
+  return { userCode, firstName, lastName, userRole, active };
+}
+
 function validatePricingRulePayload(body) {
   const partyId = integerInRange(body.partyId, 1, Number.MAX_SAFE_INTEGER);
   const executionContextId = normalizedExecutionContextId(body.executionContextId);
@@ -3178,18 +4525,14 @@ function validateClientFxDealPayload(body) {
   const partyId = integerInRange(body.partyId, 1, Number.MAX_SAFE_INTEGER);
   const executionContextId = optionalPositiveInteger(body.executionContextId);
   const pricingRuleId = optionalPositiveInteger(body.pricingRuleId);
-  const transferRate = Number(body.transferRate);
-  const analyticalPnl = body.analyticalPnl === null
-    || body.analyticalPnl === undefined
-    || String(body.analyticalPnl).trim() === ""
-    ? NaN
-    : Number(body.analyticalPnl);
+  const manualPricingReason = normalizedText(body.manualPricingReason).toUpperCase();
+  const transferRate = normalizedPositiveDecimalText(body.transferRate);
   const tradeDate = normalizedText(body.tradeDate);
   const ccyPairCode = normalizedText(body.ccyPairCode).toUpperCase();
   const side = normalizedText(body.side).toUpperCase();
-  const baseCcyAmount = Number(body.baseCcyAmount);
-  const quoteCcyAmount = Number(body.quoteCcyAmount);
-  const tradeRate = Number(body.tradeRate);
+  const dealtCcyCode = normalizedText(body.dealtCcyCode).toUpperCase();
+  const dealtCcyAmount = normalizedPositiveDecimalText(body.dealtCcyAmount);
+  const tradeRate = normalizedPositiveDecimalText(body.tradeRate);
   const tenor = normalizedText(body.tenor).toUpperCase();
   const baseCcyValueDate = normalizedText(body.baseCcyValueDate);
   const quoteCcyValueDate = normalizedText(body.quoteCcyValueDate);
@@ -3221,28 +4564,36 @@ function validateClientFxDealPayload(body) {
     return { error: "Execution Context ID must be a positive integer when provided." };
   }
 
-  if (executionContextId === null) {
-    return { error: "Execution Context ID is required for a Client FX Deal." };
-  }
-
   if (Number.isNaN(pricingRuleId)) {
     return { error: "Pricing Rule ID must be a positive integer when provided." };
   }
 
-  if (pricingRuleId === null) {
-    return { error: "Pricing Rule ID is required for a Client FX Deal." };
+  if (manualPricingReason
+    && manualPricingReason !== CLIENT_ONBOARDING_MANUAL_PRICING) {
+    return { error: "Manual Pricing Reason must be CLIENT_ONBOARDING when provided." };
   }
 
-  if (pricingRuleId !== null && executionContextId === null) {
-    return { error: "Execution Context ID is required when Pricing Rule ID is provided." };
+  if ((pricingRuleId === null) !== (executionContextId === null)) {
+    return {
+      error: "Pricing Rule ID and Execution Context ID must either both be provided or both be omitted."
+    };
   }
 
-  if (!Number.isFinite(transferRate) || transferRate <= 0) {
-    return { error: "Transfer Rate must be a positive number." };
+  if (pricingRuleId === null
+    && manualPricingReason !== CLIENT_ONBOARDING_MANUAL_PRICING) {
+    return {
+      error: "Pricing Rule ID is required unless Client Onboarding — Manual Pricing is selected."
+    };
   }
 
-  if (!Number.isFinite(analyticalPnl)) {
-    return { error: "Analytical PnL must be a number." };
+  if (pricingRuleId !== null && manualPricingReason) {
+    return {
+      error: "Manual Pricing Reason cannot be used together with a Pricing Rule."
+    };
+  }
+
+  if (pricingRuleId === null && transferRate === null) {
+    return { error: "Transfer Rate must be a positive decimal for manual pricing." };
   }
 
   if (!isIsoCalendarDate(tradeDate)) {
@@ -3257,8 +4608,16 @@ function validateClientFxDealPayload(body) {
     return { error: "Side must be BUY or SELL." };
   }
 
-  if (![baseCcyAmount, quoteCcyAmount, tradeRate].every(value => Number.isFinite(value) && value > 0)) {
-    return { error: "Base Ccy Amount, Quote Ccy Amount and Trade Rate must be positive numbers." };
+  if (!/^[A-Z]{3}$/.test(dealtCcyCode)) {
+    return { error: "Dealt Ccy Code must contain exactly three uppercase Latin letters." };
+  }
+
+  if (dealtCcyAmount === null) {
+    return { error: "Dealt Ccy Amount must be a positive decimal string." };
+  }
+
+  if (tradeRate === null) {
+    return { error: "Trade Rate must be a positive decimal string." };
   }
 
   if (!["TOD", "TOM", "SPOT"].includes(tenor)) {
@@ -3298,13 +4657,13 @@ function validateClientFxDealPayload(body) {
     partyId,
     executionContextId,
     pricingRuleId,
-    transferRate,
-    analyticalPnl,
+    manualPricingReason: manualPricingReason || null,
+    transferRate: pricingRuleId === null ? transferRate : null,
     tradeDate,
     ccyPairCode,
     side,
-    baseCcyAmount,
-    quoteCcyAmount,
+    dealtCcyCode,
+    dealtCcyAmount,
     tradeRate,
     tenor,
     baseCcyValueDate,
@@ -3321,8 +4680,9 @@ function validateHedgeFxDealPayload(body) {
   const pricingRuleId = optionalPositiveInteger(body.pricingRuleId);
   const ccyPairCode = normalizedText(body.ccyPairCode).toUpperCase();
   const side = normalizedText(body.side).toUpperCase();
-  const baseCcyAmount = Number(body.baseCcyAmount);
-  const tradeRate = Number(body.tradeRate);
+  const dealtCcyCode = normalizedText(body.dealtCcyCode).toUpperCase();
+  const dealtCcyAmount = normalizedPositiveDecimalText(body.dealtCcyAmount);
+  const tradeRate = normalizedPositiveDecimalText(body.tradeRate);
   const tenor = normalizedText(body.tenor).toUpperCase();
 
   if (Number.isNaN(pricingRuleId) || pricingRuleId === null) {
@@ -3337,12 +4697,16 @@ function validateHedgeFxDealPayload(body) {
     return { error: "Hedge Side must be BUY or SELL." };
   }
 
-  if (!Number.isFinite(baseCcyAmount) || baseCcyAmount <= 0) {
-    return { error: "Base Ccy Amount must be a positive number." };
+  if (!/^[A-Z]{3}$/.test(dealtCcyCode)) {
+    return { error: "Dealt Ccy Code must contain exactly three uppercase Latin letters." };
   }
 
-  if (!Number.isFinite(tradeRate) || tradeRate <= 0) {
-    return { error: "Trade Rate must be a positive number." };
+  if (dealtCcyAmount === null) {
+    return { error: "Dealt Ccy Amount must be a positive decimal string." };
+  }
+
+  if (tradeRate === null) {
+    return { error: "Trade Rate must be a positive decimal string." };
   }
 
   if (!["TOD", "TOM", "SPOT"].includes(tenor)) {
@@ -3353,10 +4717,59 @@ function validateHedgeFxDealPayload(body) {
     pricingRuleId,
     ccyPairCode,
     side,
-    baseCcyAmount,
+    dealtCcyCode,
+    dealtCcyAmount,
     tradeRate,
     tenor
   };
+}
+
+function validateBatchBalancingTradeSelection(body) {
+  if (!Array.isArray(body?.tradeIds) || body.tradeIds.length === 0) {
+    return { error: "Select at least one Client or Hedge FX Deal." };
+  }
+
+  if (body.tradeIds.length > 200) {
+    return { error: "No more than 200 trades can be processed at once." };
+  }
+
+  const tradeIds = body.tradeIds.map(tradeId =>
+    integerInRange(tradeId, 1, Number.MAX_SAFE_INTEGER)
+  );
+
+  if (tradeIds.some(tradeId => tradeId === null)) {
+    return { error: "Every Trade ID must be a positive integer." };
+  }
+
+  if (new Set(tradeIds).size !== tradeIds.length) {
+    return { error: "Every Trade ID may be selected only once." };
+  }
+
+  return { tradeIds };
+}
+
+function validateGeneratedBatchTradeSelection(body) {
+  if (!Array.isArray(body?.tradeIds) || body.tradeIds.length === 0) {
+    return { error: "Select at least one generated Batch Trade." };
+  }
+
+  if (body.tradeIds.length > 200) {
+    return { error: "No more than 200 generated Batch Trades can be deleted at once." };
+  }
+
+  const tradeIds = body.tradeIds.map(tradeId =>
+    integerInRange(tradeId, 1, Number.MAX_SAFE_INTEGER)
+  );
+
+  if (tradeIds.some(tradeId => tradeId === null)) {
+    return { error: "Every Trade ID must be a positive integer." };
+  }
+
+  if (new Set(tradeIds).size !== tradeIds.length) {
+    return { error: "Every Trade ID may be selected only once." };
+  }
+
+  return { tradeIds };
 }
 
 function validateClientFxDealCommentPayload(body) {
@@ -3412,8 +4825,15 @@ function clientFxDealReferenceError(payload) {
     return `Trading Party ${payload.partyId} must have type CLIENT.`;
   }
 
-  if (!ccyPairOption(payload.ccyPairCode)) {
+  const pair = ccyPairOption(payload.ccyPairCode);
+
+  if (!pair) {
     return `Ccy Pair ${payload.ccyPairCode} was not found.`;
+  }
+
+  if (payload.dealtCcyCode
+    && ![pair.baseCcy, pair.quoteCcy].includes(payload.dealtCcyCode)) {
+    return `Dealt Ccy Code must be ${pair.baseCcy} or ${pair.quoteCcy}.`;
   }
 
   if (payload.executionContextId !== null && !executionContext(payload.executionContextId)) {
@@ -3453,11 +4873,18 @@ function hedgeFxDealReferenceError(payload) {
   }
 
   if (!hedgeDealPricingRule(payload.pricingRuleId)) {
-    return `Pricing Rule ${payload.pricingRuleId} must be active and use an active DEALER_PRICED Execution System.`;
+    return `Pricing Rule ${payload.pricingRuleId} must reference an active HEDGE_COUNTERPARTY and use an active DEALER_PRICED Execution System.`;
   }
 
   if (rule.ccyPairCode !== payload.ccyPairCode) {
     return `Pricing Rule ${payload.pricingRuleId} does not match Ccy Pair ${payload.ccyPairCode}.`;
+  }
+
+  const pair = ccyPairOption(payload.ccyPairCode);
+
+  if (payload.dealtCcyCode
+    && ![pair.baseCcy, pair.quoteCcy].includes(payload.dealtCcyCode)) {
+    return `Dealt Ccy Code must be ${pair.baseCcy} or ${pair.quoteCcy}.`;
   }
 
   return "";
@@ -3623,11 +5050,13 @@ async function handleApi(request, response, url) {
       executionSystems: executionSystems(),
       executionContexts: executionContexts(),
       tradingParties: tradingParties(),
+      users: users(),
       pricingRules: pricingRules(),
       clientDealPricingRules: clientDealPricingRules(),
       hedgeDealPricingRules: hedgeDealPricingRules(),
       clientFxDeals: clientFxDeals(),
-      hedgeFxDeals: hedgeFxDeals()
+      hedgeFxDeals: hedgeFxDeals(),
+      batchBalancingTrades: batchBalancingTrades()
     }).replace(/</g, "\\u003c");
     sendText(
       response,
@@ -3722,6 +5151,60 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (pathname === "/api/v1/batch-balancing-trades" && method === "GET") {
+    sendJson(response, 200, batchBalancingTrades());
+    return true;
+  }
+
+  if (pathname === "/api/v1/batch-balancing-trades" && method === "POST") {
+    const body = await readJsonBody(request);
+    const payload = validateBatchBalancingTradeSelection(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_BATCH_SELECTION", payload.error);
+      return true;
+    }
+
+    try {
+      sendJson(response, 201, createBatchBalancingTradePair(payload.tradeIds));
+    } catch (error) {
+      if (error?.code === "BATCH_SOURCE_TRADE_NOT_FOUND") {
+        apiError(response, 404, error.code, error.message);
+      } else if (String(error?.code || "").startsWith("BATCH_")
+        || error?.code === "INCOMPATIBLE_BATCH_SELECTION"
+        || error?.code === "INVALID_BATCH_BALANCING_RATE") {
+        apiError(response, 409, error.code, error.message);
+      } else {
+        handleDatabaseError(response, error);
+      }
+    }
+
+    return true;
+  }
+
+  if (pathname === "/api/v1/batch-balancing-trades" && method === "DELETE") {
+    const body = await readJsonBody(request);
+    const payload = validateGeneratedBatchTradeSelection(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_GENERATED_BATCH_SELECTION", payload.error);
+      return true;
+    }
+
+    try {
+      // Temporary test-only deletion until generated trades move into the complete Batch workflow.
+      sendJson(response, 200, deleteBatchBalancingTrades(payload.tradeIds));
+    } catch (error) {
+      if (error?.code === "BATCH_GENERATED_TRADE_NOT_FOUND") {
+        apiError(response, 404, error.code, error.message);
+      } else {
+        handleDatabaseError(response, error);
+      }
+    }
+
+    return true;
+  }
+
   if (pathname === "/api/v1/hedge-deal-pricing-rules" && method === "GET") {
     sendJson(response, 200, hedgeDealPricingRules());
     return true;
@@ -3749,10 +5232,18 @@ async function handleApi(request, response, url) {
     }
 
     try {
-      const tradeId = createHedgeFxDeal(hedgeFxDealWithCalculatedTerms(payload));
+      const exposureAmounts = fxTradeExposureAmounts(payload);
+      const tradeId = createHedgeFxDeal(
+        hedgeFxDealWithCalculatedTerms(payload, exposureAmounts),
+        exposureAmounts
+      );
       sendJson(response, 201, hedgeFxDeal(tradeId));
     } catch (error) {
-      handleDatabaseError(response, error);
+      if (error instanceof TypeError || error instanceof RangeError) {
+        apiError(response, 400, "INVALID_HEDGE_FX_DEAL_AMOUNT", error.message);
+      } else {
+        handleDatabaseError(response, error);
+      }
     }
 
     return true;
@@ -3796,10 +5287,18 @@ async function handleApi(request, response, url) {
     }
 
     try {
-      const tradeId = createClientFxDeal(clientFxDealWithCalculatedEconomics(payload));
+      const exposureAmounts = fxTradeExposureAmounts(payload);
+      const tradeId = createClientFxDeal(
+        clientFxDealWithCalculatedEconomics(payload, exposureAmounts),
+        exposureAmounts
+      );
       sendJson(response, 201, clientFxDeal(tradeId));
     } catch (error) {
-      handleDatabaseError(response, error);
+      if (error instanceof TypeError || error instanceof RangeError) {
+        apiError(response, 400, "INVALID_CLIENT_FX_DEAL_AMOUNT", error.message);
+      } else {
+        handleDatabaseError(response, error);
+      }
     }
 
     return true;
@@ -4108,6 +5607,93 @@ async function handleApi(request, response, url) {
       handleDatabaseError(response, error);
     }
 
+    return true;
+  }
+
+  if (pathname === "/api/v1/users" && method === "GET") {
+    sendJson(response, 200, users());
+    return true;
+  }
+
+  if (pathname === "/api/v1/users" && method === "POST") {
+    const body = await readJsonBody(request);
+    const payload = validateUserPayload(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_USER", payload.error);
+      return true;
+    }
+
+    try {
+      const result = database.prepare(`
+        INSERT INTO users
+          (user_code, first_name, last_name, user_role, is_active)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(
+        payload.userCode,
+        payload.firstName,
+        payload.lastName,
+        payload.userRole,
+        payload.active ? 1 : 0
+      );
+      sendJson(response, 201, user(Number(result.lastInsertRowid)));
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
+    return true;
+  }
+
+  const userMatch = /^\/api\/v1\/users\/(\d+)$/.exec(pathname);
+
+  if (userMatch && method === "PUT") {
+    const userId = Number(userMatch[1]);
+
+    if (!user(userId)) {
+      apiError(response, 404, "USER_NOT_FOUND", `User ${userId} was not found.`);
+      return true;
+    }
+
+    const body = await readJsonBody(request);
+    const payload = validateUserPayload(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_USER", payload.error);
+      return true;
+    }
+
+    try {
+      database.prepare(`
+        UPDATE users
+        SET user_code = ?, first_name = ?, last_name = ?, user_role = ?, is_active = ?
+        WHERE user_id = ?
+      `).run(
+        payload.userCode,
+        payload.firstName,
+        payload.lastName,
+        payload.userRole,
+        payload.active ? 1 : 0,
+        userId
+      );
+      sendJson(response, 200, user(userId));
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
+    return true;
+  }
+
+  if (userMatch && method === "DELETE") {
+    const userId = Number(userMatch[1]);
+    const result = database.prepare("DELETE FROM users WHERE user_id = ?").run(userId);
+
+    if (result.changes === 0) {
+      apiError(response, 404, "USER_NOT_FOUND", `User ${userId} was not found.`);
+      return true;
+    }
+
+    response.writeHead(204);
+    response.end();
     return true;
   }
 

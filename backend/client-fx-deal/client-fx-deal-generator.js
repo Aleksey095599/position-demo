@@ -1,6 +1,11 @@
 "use strict";
 
-const { calculateClientFxDealEconomics } = require("./client-fx-deal-economics");
+const Big = require("big.js");
+
+const Decimal = Big();
+Decimal.strict = true;
+Decimal.DP = 40;
+Decimal.RM = Decimal.roundHalfUp;
 
 function finiteNumber(value, name) {
   const number = Number(value);
@@ -22,6 +27,32 @@ function positiveNumber(value, name) {
   return number;
 }
 
+function positiveDecimal(value, name) {
+  let decimal;
+
+  try {
+    decimal = new Decimal(String(value));
+  } catch {
+    throw new TypeError(`${name} must be a valid decimal.`);
+  }
+
+  if (decimal.lte("0")) {
+    throw new RangeError(`${name} must be positive.`);
+  }
+
+  return decimal;
+}
+
+function fractionDigits(value, name) {
+  const digits = Number(value);
+
+  if (!Number.isInteger(digits) || digits < 0 || digits > 10) {
+    throw new RangeError(`${name} must be an integer from 0 to 10.`);
+  }
+
+  return digits;
+}
+
 function normalizedProbability(value) {
   const probability = Number(value);
 
@@ -40,14 +71,6 @@ function normalizedRandomValue(random) {
   }
 
   return value;
-}
-
-function roundToFractionDigits(value, fractionDigits) {
-  if (!Number.isInteger(fractionDigits) || fractionDigits < 0 || fractionDigits > 10) {
-    throw new RangeError("Fraction digits must be an integer from 0 to 10.");
-  }
-
-  return Number(value.toFixed(fractionDigits));
 }
 
 function generatedBaseCcyAmount(settings, random = Math.random) {
@@ -80,7 +103,6 @@ function generatedClientFxDeal({
   marketPulseSnapshot,
   quote,
   pair,
-  quoteCurrencyFractionDigits = 2,
   random = Math.random,
   now = () => new Date()
 }) {
@@ -104,6 +126,12 @@ function generatedClientFxDeal({
     throw new TypeError("Ccy Pair is required.");
   }
 
+  const baseCcyCode = String(pair.baseCcy || "").trim().toUpperCase();
+
+  if (!/^[A-Z]{3}$/.test(baseCcyCode)) {
+    throw new RangeError("Generated Client FX Deal requires a valid Base Ccy Code.");
+  }
+
   const timestamp = now();
 
   if (!(timestamp instanceof Date) || Number.isNaN(timestamp.getTime())) {
@@ -111,27 +139,32 @@ function generatedClientFxDeal({
   }
 
   const side = generatedClientSide(settings.buyProbabilityPercent, random);
-  const baseCcyAmount = generatedBaseCcyAmount(settings, random);
-  const marginPercent = finiteNumber(settings.marginPercent, "Margin Percent");
-  const rateFractionDigits = Number(pair.defaultQuoteDecimals);
-  const referenceRate = positiveNumber(side === "BUY" ? quote.offer : quote.bid, "Market reference rate");
-  const marginFactor = marginPercent / 100;
-  const tradeRate = roundToFractionDigits(
-    referenceRate * (side === "BUY" ? 1 + marginFactor : 1 - marginFactor),
-    rateFractionDigits
+  const dealtCcyAmount = String(generatedBaseCcyAmount(settings, random));
+  const marginPercent = new Decimal(String(finiteNumber(
+    settings.marginPercent,
+    "Margin Percent"
+  )));
+
+  if (marginPercent.lt("0") || marginPercent.gte("100")) {
+    throw new RangeError("Margin Percent must be from 0 up to, but not including, 100.");
+  }
+
+  const rateFractionDigits = fractionDigits(
+    pair.defaultQuoteDecimals,
+    "Default Quote Decimals"
   );
-  const quoteCcyAmount = roundToFractionDigits(
-    baseCcyAmount * tradeRate,
-    Number(quoteCurrencyFractionDigits)
+  const referenceRate = positiveDecimal(
+    side === "BUY" ? quote.offer : quote.bid,
+    "Market reference rate"
   );
-  const economics = calculateClientFxDealEconomics({
-    clientSide: side,
-    baseCcyAmount,
-    tradeRate,
-    marginPercent,
-    rateFractionDigits,
-    pnlFractionDigits: Number(quoteCurrencyFractionDigits)
-  });
+  const marginFactor = marginPercent.div("100");
+  const tradeRateFactor = side === "BUY"
+    ? new Decimal("1").plus(marginFactor)
+    : new Decimal("1").minus(marginFactor);
+  const tradeRate = referenceRate
+    .times(tradeRateFactor)
+    .round(rateFractionDigits, Decimal.roundHalfUp)
+    .toFixed(rateFractionDigits);
   const tradeDate = localIsoCalendarDate(timestamp);
 
   return {
@@ -142,17 +175,15 @@ function generatedClientFxDeal({
     tradeDate,
     ccyPairCode: String(settings.ccyPairCode || "").trim().toUpperCase(),
     side,
-    baseCcyAmount,
-    quoteCcyAmount,
+    dealtCcyCode: baseCcyCode,
+    dealtCcyAmount,
     tradeRate,
-    transferRate: economics.transferRate,
-    analyticalPnl: economics.analyticalPnl,
     tenor: "TOD",
     baseCcyValueDate: tradeDate,
     quoteCcyValueDate: tradeDate,
     marketPulseStreamStatus: marketPulseSnapshot.status,
-    marketPulseBid: positiveNumber(quote.bid, "Market Pulse Bid"),
-    marketPulseOffer: positiveNumber(quote.offer, "Market Pulse Offer"),
+    marketPulseBid: positiveDecimal(quote.bid, "Market Pulse Bid").toString(),
+    marketPulseOffer: positiveDecimal(quote.offer, "Market Pulse Offer").toString(),
     marketPulseTimestamp: marketPulseSnapshot.generatedAt,
     comment: null
   };
