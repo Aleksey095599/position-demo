@@ -278,6 +278,74 @@ test("accepts an upstream Position Out as an ordinary batch source", () => {
   assert.equal(result.positionOut, null);
 });
 
+test("accepts an upstream Balance Trade as an ordinary batch source", () => {
+  const result = formFxBatch({
+    trades: [
+      {
+        ...commonTerms,
+        tradeId: 26,
+        tradeType: "BATCH_BALANCE_TRADE",
+        side: "BUY",
+        baseCcyAmountMinor: 10000000n,
+        quoteCcyAmountMinor: 11200000n,
+        transferRate: 1.12
+      },
+      {
+        ...commonTerms,
+        tradeId: 27,
+        side: "SELL",
+        baseCcyAmountMinor: 10000000n,
+        quoteCcyAmountMinor: 11300000n,
+        transferRate: 1.13
+      }
+    ],
+    now: fixedNow
+  });
+
+  assert.deepEqual(result.sourceTradeIds, [26, 27]);
+  assert.equal(result.sourceNetSide, "FLAT");
+  assert.equal(result.balanceTrade, null);
+  assert.equal(result.positionOut, null);
+});
+
+test("accepts any FX trade type when the trade has a positive Transfer Rate", () => {
+  const result = formFxBatch({
+    trades: [{
+      ...commonTerms,
+      tradeId: 28,
+      tradeType: "FUTURE_FX_TRADE",
+      side: "SELL",
+      baseCcyAmountMinor: 10000000n,
+      quoteCcyAmountMinor: 11200000n,
+      transferRate: 1.12
+    }],
+    now: fixedNow
+  });
+
+  assert.deepEqual(result.sourceTradeIds, [28]);
+  assert.equal(result.balanceTrade.tradeType, "BATCH_BALANCE_TRADE");
+});
+
+test("rejects any FX trade without a positive Transfer Rate", () => {
+  for (const transferRate of [null, 0, -1]) {
+    assert.throws(
+      () => formFxBatch({
+        trades: [{
+          ...commonTerms,
+          tradeId: 29,
+          tradeType: "FUTURE_FX_TRADE",
+          side: "SELL",
+          baseCcyAmountMinor: 10000000n,
+          quoteCcyAmountMinor: 11200000n,
+          transferRate
+        }],
+        now: fixedNow
+      }),
+      error => error.code === "INVALID_BATCH_SOURCE_TRADE"
+    );
+  }
+});
+
 test("rejects trades from different settlement buckets", () => {
   assert.throws(
     () => formFxBatch({

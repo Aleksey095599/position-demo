@@ -88,6 +88,15 @@ class ClientDealGenerationProcess {
     return this.status();
   }
 
+  reset() {
+    this.stop();
+    this.generatedDealCount = 0;
+    this.lastGeneratedTradeId = null;
+    this.lastGeneratedAt = null;
+    this.lastError = null;
+    return this.status();
+  }
+
   dispose() {
     this.stop();
   }

@@ -10,11 +10,6 @@ Decimal.strict = true;
 Decimal.DP = 40;
 Decimal.RM = Decimal.roundHalfUp;
 
-const SOURCE_TRADE_TYPES = new Set([
-  "CLIENT_DEAL",
-  "HEDGE_DEAL",
-  "BATCH_POSITION_OUT"
-]);
 const TRADE_SIDES = new Set(["BUY", "SELL"]);
 
 function batchFormationError(code, message) {
@@ -126,13 +121,6 @@ function normalizedSourceTrade(value) {
     throw batchFormationError(
       "INVALID_BATCH_SOURCE_TRADE",
       "Trade ID must be a positive integer."
-    );
-  }
-
-  if (!SOURCE_TRADE_TYPES.has(tradeType)) {
-    throw batchFormationError(
-      "INVALID_BATCH_SOURCE_TRADE",
-      `Trade ${tradeId} must be a CLIENT_DEAL, HEDGE_DEAL, or BATCH_POSITION_OUT.`
     );
   }
 

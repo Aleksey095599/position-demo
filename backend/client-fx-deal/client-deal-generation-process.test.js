@@ -58,3 +58,31 @@ test("keeps the process alive and exposes a generation error in status", async (
   assert.equal(status.lastError, "No eligible Pricing Rule.");
   process.dispose();
 });
+
+test("resets demo generation state after stopping the process", async () => {
+  let clearedTimer = null;
+  const timer = { unref() {} };
+  const process = new ClientDealGenerationProcess({
+    generateOne: async () => ({ tradeId: 41 }),
+    setIntervalFn: () => timer,
+    clearIntervalFn: value => {
+      clearedTimer = value;
+    },
+    now: () => new Date("2026-07-24T08:15:00.000Z")
+  });
+
+  await process.start();
+  const reset = process.reset();
+
+  assert.equal(clearedTimer, timer);
+  assert.deepEqual(reset, {
+    running: false,
+    status: "STOPPED",
+    intervalMs: 3000,
+    generationInProgress: false,
+    generatedDealCount: 0,
+    lastGeneratedTradeId: null,
+    lastGeneratedAt: null,
+    lastError: null
+  });
+});

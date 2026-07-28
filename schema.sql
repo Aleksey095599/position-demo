@@ -648,13 +648,7 @@ CREATE TABLE IF NOT EXISTS fx_batch_members
         CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'BALANCE_QUOTE_CASH')),
     CONSTRAINT chk_fx_batch_members_role_trade_type
         CHECK (
-            (member_role = 'TRADE'
-                AND trade_type IN
-                (
-                    'CLIENT_DEAL',
-                    'HEDGE_DEAL',
-                    'BATCH_POSITION_OUT'
-                ))
+            member_role = 'TRADE'
             OR (member_role = 'BALANCE_TRADE'
                 AND trade_type = 'BATCH_BALANCE_TRADE')
             OR (member_role = 'BALANCE_QUOTE_CASH'
@@ -815,6 +809,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_batch_members_single_balancer
     ON fx_batch_members (batch_id, member_role)
     WHERE member_role IN ('BALANCE_TRADE', 'BALANCE_QUOTE_CASH');
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_batch_members_single_technical_origin
+    ON fx_batch_members (trade_id)
+    WHERE member_role IN ('BALANCE_TRADE', 'BALANCE_QUOTE_CASH');
+
 CREATE INDEX IF NOT EXISTS idx_fx_batch_outputs_batch
     ON fx_batch_outputs (batch_id, output_role);
 
@@ -885,6 +883,27 @@ WHEN
                   FROM fx_demo_hidden_batches hidden
                   WHERE hidden.batch_id = o.batch_id
               )
+            UNION ALL
+            SELECT 1
+            FROM fx_batch_members origin_member
+            INNER JOIN fx_batches source_batch
+                ON source_batch.batch_id = origin_member.batch_id
+            INNER JOIN fx_trade_exposure e
+                ON e.trade_id = origin_member.trade_id
+                AND e.trade_type = origin_member.trade_type
+            WHERE origin_member.trade_id = NEW.trade_id
+              AND origin_member.trade_type = NEW.trade_type
+              AND origin_member.member_role = 'BALANCE_TRADE'
+              AND source_batch.batch_status = 'ROLLED_BACK'
+              AND e.trade_type = 'BATCH_BALANCE_TRADE'
+              AND e.base_ccy_side IN ('BUY', 'SELL')
+              AND e.trade_rate IS NOT NULL
+              AND NOT EXISTS
+              (
+                  SELECT 1
+                  FROM fx_demo_hidden_batches hidden
+                  WHERE hidden.batch_id = origin_member.batch_id
+              )
         )
     )
     OR EXISTS
@@ -894,17 +913,14 @@ WHEN
         INNER JOIN fx_batches existing_batch
             ON existing_batch.batch_id = existing.batch_id
         WHERE existing.trade_id = NEW.trade_id
+          AND existing.trade_type = NEW.trade_type
           AND existing.batch_id <> NEW.batch_id
-          AND (
-              NEW.member_role <> 'TRADE'
-              OR existing.member_role <> 'TRADE'
-              OR existing_batch.batch_status IN ('BUILDING', 'FORMED')
-          )
+          AND existing_batch.batch_status IN ('BUILDING', 'FORMED')
     )
 BEGIN
     SELECT RAISE(
         ABORT,
-        'batch member must match one active BUILDING batch and source trades require a transfer rate'
+        'trade may belong to only one active batch and source trades require a transfer rate'
     );
 END;
 

@@ -1057,6 +1057,17 @@ function verifyFreshSchemaAndSeed() {
     batchBalancingTradeForeignKeys: database.prepare(`
       PRAGMA foreign_key_list(fx_batch_members)
     `).all(),
+    batchMemberCreateSql: database.prepare(`
+      SELECT sql
+      FROM sqlite_schema
+      WHERE type = 'table' AND name = 'fx_batch_members'
+    `).get()?.sql || "",
+    batchMemberTechnicalOriginIndex: database.prepare(`
+      PRAGMA index_list(fx_batch_members)
+    `).all().some(index =>
+      index.name === "uq_fx_batch_members_single_technical_origin"
+      && index.unique === 1
+    ),
     pricingRuleReferenceIndex: database.prepare("PRAGMA index_list(pricing_rules)").all()
       .some(index => index.name === "uq_pricing_rules_client_deal_reference" && index.unique === 1),
     pricingRuleReferenceIndexColumns: database.prepare("PRAGMA index_info(uq_pricing_rules_client_deal_reference)").all()
@@ -1110,6 +1121,9 @@ function verifyFrontendStructure() {
   const fxBatchFormationDomainSource = normalizedSource(
     path.join("backend", "fx-batching", "domain", "fx-batch-formation.js")
   );
+  const fxBatchBalanceDomainSource = normalizedSource(
+    path.join("backend", "fx-batching", "domain", "fx-batch-balance.js")
+  );
   const fxBatchFormationApplicationSource = normalizedSource(
     path.join("backend", "fx-batching", "application", "form-fx-batch-use-case.js")
   );
@@ -1123,6 +1137,18 @@ function verifyFrontendStructure() {
   const scripts = [...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/g)];
   const inlineScript = scripts.at(-1)?.[1] || "";
   new Function(inlineScript);
+  const batchStructureColumnsSource = inlineScript.match(
+    /function batchStructureTradeTypeFormatter[\s\S]*?function initializeBatchDetailsGrid/
+  )?.[0] || "";
+  const batchDetailsGridInitializerSource = inlineScript.match(
+    /function initializeBatchDetailsGrid[\s\S]*?function renderBatchDetailsGrids/
+  )?.[0] || "";
+  const batchDetailsGridCss = html.match(
+    /#batchDetailsPage \.batch-details-grid \{[\s\S]*?\}/
+  )?.[0] || "";
+  const batchDetailsPageLoaderSource = inlineScript.match(
+    /async function loadBatchDetailsPage\(\)[\s\S]*?function marketGridActionMarkup/
+  )?.[0] || "";
 
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)]
     .map(match => match[1])
@@ -1140,16 +1166,25 @@ function verifyFrontendStructure() {
   const fxPositionPageMarkup = html.match(
     /<main class="shell fx-position-bootstrap workbench-page" id="mainPage"[\s\S]*?<\/main>/
   )?.[0] || "";
+  const fxPositionDealToolbarMarkup = fxPositionPageMarkup.match(
+    /<section class="deal-toolbar\b[^"]*"[\s\S]*?<\/section>/
+  )?.[0] || "";
   const generationSettingsDialogMarkup = html.match(
     /<dialog class="deal-dialog generation-dialog" id="clientDealGenerationDialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
   const batchToolbarMarkup = html.match(/<section class="batch-toolbar\b[^"]*"[\s\S]*?<\/section>/)?.[0] || "";
   const marketPulseIconStyles = html.match(/\.market-pulse-icon \{[\s\S]*?\n    \}/)?.[0] || "";
-  const deleteClientDealFunction = inlineScript.match(
-    /async function deleteSelectedClientDeal\(\) \{[\s\S]*?\n    \}(?=\n\n    async function deleteSelectedHedgeDealsForDemo)/
-  )?.[0] || "";
   const saveEditedDealFunction = inlineScript.match(
     /async function saveEditedDeal\(event\) \{[\s\S]*?\n    \}\n\n    function renderDealRow/
+  )?.[0] || "";
+  const reloadClientFxDealsFunction = inlineScript.match(
+    /async function reloadClientFxDealsFromApi\(\) \{[\s\S]*?\n    \}/
+  )?.[0] || "";
+  const reloadHedgeFxDealsFunction = inlineScript.match(
+    /async function reloadHedgeFxDealsFromApi\(\) \{[\s\S]*?\n    \}/
+  )?.[0] || "";
+  const persistCreatedClientDealFunction = inlineScript.match(
+    /async function persistCreatedClientDeal\(targetDeal\) \{[\s\S]*?\n    \}(?=\n\n    async function confirmClientDealDuplicateCheck)/
   )?.[0] || "";
 
   return {
@@ -1214,8 +1249,8 @@ function verifyFrontendStructure() {
     usesHedgeFxDealsEndpoint: serverSource.includes('pathname === "/api/v1/hedge-fx-deals"')
       && serverSource.includes("function hedgeFxDeals()")
       && serverSource.includes("FROM fx_hedge_deals d")
-      && serverSource.includes("function deleteHedgeFxDeal(tradeId)")
-      && serverSource.includes('method === "DELETE"')
+      && serverSource.includes('"HEDGE_FX_DEAL_IMMUTABLE"')
+      && !serverSource.includes("function deleteHedgeFxDeal(tradeId)")
       && inlineScript.includes("DEMO_API_BOOTSTRAP.hedgeFxDeals"),
     usesDedicatedAddHedgeDealFlow: addHedgeDealDialogMarkup.includes('id="addHedgeDealDialog"')
       && addHedgeDealDialogMarkup.includes('id="addHedgeDealForm"')
@@ -1302,19 +1337,18 @@ function verifyFrontendStructure() {
       && serverSource.includes("a.market_pulse_stream_status AS marketPulseStreamStatus")
       && serverSource.includes("a.market_pulse_bid AS marketPulseBid")
       && serverSource.includes("a.market_pulse_offer AS marketPulseOffer"),
-    usesDatabaseBackedFxPositionDelete: inlineScript.includes("deal.databaseBackedClientFxDeal === true")
-      && inlineScript.includes("deleteDealButton.disabled = !DEMO_API_ENABLED")
-      && inlineScript.includes("async function reloadClientFxDealsFromApi()")
-      && deleteClientDealFunction.includes('if (!DEMO_API_ENABLED)')
-      && deleteClientDealFunction.includes('{ method: "DELETE" }')
-      && deleteClientDealFunction.includes("await reloadClientFxDealsFromApi();")
-      && !deleteClientDealFunction.includes("fxPositions.splice")
-      && !deleteClientDealFunction.includes("DemoDb")
-      && !deleteClientDealFunction.includes("localStorage")
-      && serverSource.includes("function deleteClientFxDeal(tradeId)")
-      && serverSource.includes("DELETE FROM fx_trade_market_snapshot")
-      && serverSource.includes("DELETE FROM client_fx_deals")
-      && serverSource.includes("DELETE FROM fx_trade_exposure"),
+    usesClientDealCommentOnlyEditing:
+      html.includes('id="editDealButton" disabled>Edit Comment</button>')
+      && editClientDealDialogMarkup.includes(">Edit Client Deal Comment</h2>")
+      && editClientDealDialogMarkup.includes('id="editClientDealSide" name="side" disabled')
+      && editClientDealDialogMarkup.includes('id="editClientDealTenor" name="tenor" disabled')
+      && editClientDealDialogMarkup.includes('id="editClientDealComment" name="comment" maxlength="500"')
+      && editClientDealDialogMarkup.includes('id="dealSubmitButton">Save Comment</button>')
+      && saveEditedDealFunction.includes('method: "PATCH"')
+      && saveEditedDealFunction.includes("JSON.stringify({ comment })")
+      && serverSource.includes("function updateClientFxDealComment(tradeId, comment)")
+      && serverSource.includes('"CLIENT_FX_DEAL_IMMUTABLE"')
+      && !serverSource.includes("function deleteClientFxDeal(tradeId)"),
     usesDatabaseBackedClientDealGeneration: serverSource.includes(
       'pathname === "/api/v1/client-deal-generation/one"'
     )
@@ -1369,6 +1403,89 @@ function verifyFrontendStructure() {
       && serverSource.includes("function fxBatches()")
       && serverSource.includes(
         'pathname === "/api/v1/fx-batches" && method === "GET"'
+      ),
+    usesBatchStructure:
+      html.includes('data-workspace-routes="batching-history batch-details"')
+      && !html.includes('href="#batching:details"')
+      && html.includes('<h1 class="page-title">Batch Structure</h1>')
+      && !html.includes(">Batch Details<")
+      && html.includes('id="batchDetailsPage"')
+      && !html.includes('id="batchDetailsSelect"')
+      && !html.includes('id="batchDetailsPickerSearch"')
+      && html.includes('id="batchDetailsContent"')
+      && html.includes('id="batchDetailsMembersGrid"')
+      && html.includes('id="batchDetailsOutputsGrid"')
+      && html.includes(
+        'class="btn btn-sm btn-outline-secondary workbench-detail-back-button" href="#batching:history" aria-label="Back to Batching History"'
+      )
+      && html.includes('<span class="button-icon" aria-hidden="true">arrow_back</span>')
+      && html.includes("This batch did not create any outputs.")
+      && inlineScript.includes("function batchDetailsRoute(batchId)")
+      && inlineScript.includes("/^#batching:details\\/(\\d+)$/")
+      && inlineScript.includes("async function loadFxBatchDetailsFromApi(batchId)")
+      && inlineScript.includes("function normalizedFxBatchDetails(value)")
+      && inlineScript.includes("function initializeBatchDetailsGrid(")
+      && batchDetailsPageLoaderSource.includes("await loadSelectedBatchDetails(batchId)")
+      && !batchDetailsPageLoaderSource.includes("reloadFxBatchesFromApi")
+      && !batchDetailsPageLoaderSource.includes("renderBatchDetailsSelect")
+      && inlineScript.includes('if (location.hash === "#batching:details")')
+      && inlineScript.includes("location.hash = batchingHistoryRoute()")
+      && batchDetailsGridInitializerSource.includes('layout: "fitDataTable"')
+      && batchDetailsGridInitializerSource.includes('renderVertical: "basic"')
+      && !batchDetailsGridInitializerSource.includes('renderVertical: "virtual"')
+      && batchDetailsGridCss.includes("max-width: 100%")
+      && batchDetailsGridCss.includes("height: auto")
+      && !/^\s*width:\s*100%;/m.test(batchDetailsGridCss)
+      && inlineScript.includes('batchStructureTradeColumns("memberRole")')
+      && inlineScript.includes('batchStructureTradeColumns("outputRole")')
+      && batchStructureColumnsSource.indexOf('title: "Trade ID"')
+        < batchStructureColumnsSource.indexOf('title: "Trade Type"')
+      && batchStructureColumnsSource.includes('title: "Base Ccy Leg"')
+      && batchStructureColumnsSource.includes('title: "Quote Ccy Leg"')
+      && batchStructureColumnsSource.includes('field: "baseBalanceContributionMinor"')
+      && batchStructureColumnsSource.includes('field: "quoteBalanceContributionMinor"')
+      && batchStructureColumnsSource.includes('title: "Base Ccy Value Date"')
+      && batchStructureColumnsSource.includes('field: "baseCcyValueDate"')
+      && batchStructureColumnsSource.includes('title: "Quote Ccy Value Date"')
+      && batchStructureColumnsSource.includes('field: "quoteCcyValueDate"')
+      && batchStructureColumnsSource.includes('bottomCalc: () => "NET"')
+      && batchStructureColumnsSource.includes('bottomCalc: "sum"')
+      && batchStructureColumnsSource.includes("function batchStructureTradeTypeFormatter")
+      && batchStructureColumnsSource.includes("fxPositionTradeTypePresentation(trade)")
+      && batchStructureColumnsSource.includes('trade.memberRole === "TRADE"')
+      && batchStructureColumnsSource.includes("trade.createdByBatchId")
+      && batchStructureColumnsSource.includes("position-trade-type-chip")
+      && !batchStructureColumnsSource.includes('title: "Created By Batch"')
+      && !batchStructureColumnsSource.includes('title: "Side"')
+      && inlineScript.includes("function loadBatchDetailsPage()")
+      && inlineScript.includes('data-batching-history-action="view"')
+      && inlineScript.includes("location.hash = batchDetailsRoute(batch.batchId)")
+      && !inlineScript.includes("batchDetailsSelect")
+      && serverSource.includes("function fxBatchContent(batchId)")
+      && serverSource.includes("function fxBatchBalanceRow(row)")
+      && serverSource.includes(".map(fxBatchBalanceRow)")
+      && fxBatchBalanceDomainSource.includes(
+        'baseBalanceContributionMinor: normalizedSide === "SELL"'
+      )
+      && fxBatchBalanceDomainSource.includes(
+        'quoteBalanceContributionMinor: normalizedSide === "BUY"'
+      )
+      && serverSource.includes("function fxBatchDetails(batchId)")
+      && serverSource.includes("members: content.members")
+      && serverSource.includes("outputs: content.outputs")
+      && serverSource.includes("sendJson(response, 200, fxBatchDetails(batchId))"),
+    removesBatchingPositionsWorkspace:
+      !html.includes('href="#batching-positions"')
+      && !html.includes('data-workspace-route="batching-positions"')
+      && !html.includes('id="batchingPositionsPage"')
+      && !html.includes(">Batching Positions</span>")
+      && !inlineScript.includes("function initializeBatchingPositionsGrid(data)")
+      && !inlineScript.includes('demoApiRequest("/api/v1/batching-positions")')
+      && !serverSource.includes("batchingPositions: fxBatchTrades()")
+      && inlineScript.includes('type === "BATCH_BALANCE_TRADE"')
+      && fxBatchFormationDomainSource.includes('"BATCH_BALANCE_TRADE"')
+      && serverSource.includes(
+        'pathname === "/api/v1/batching-positions" && method === "GET"'
       ),
     supportsBatchRollback:
       html.includes('id="batchRollbackDialog"')
@@ -1463,8 +1580,7 @@ function verifyFrontendStructure() {
       && fxPositionPageMarkup.includes('title="Select all SELL deals · Shortcut: S"')
       && fxPositionPageMarkup.includes('title="Select all BUY deals · Shortcut: B"')
       && html.includes(".deal-toolbar .action-button.primary:hover:not(:disabled)")
-      && html.includes(".deal-toolbar #editDealButton:is(:hover, :focus-visible):not(:disabled)")
-      && html.includes(".deal-toolbar #deleteDealButton:is(:hover, :focus-visible):not(:disabled)"),
+      && html.includes(".deal-toolbar #editDealButton:is(:hover, :focus-visible):not(:disabled)"),
     usesBootstrapDealGenerationSettings: generationSettingsDialogMarkup.includes(
       'class="generation-dialog-title-block"'
     )
@@ -1507,7 +1623,9 @@ function verifyFrontendStructure() {
     usesGroupedTradesNavigation: html.includes('id="workspaceTradesToggle"')
       && html.includes('aria-controls="workspaceTradesMenu"')
       && html.includes('data-workspace-nav-menu-toggle="workspaceTradesMenu"')
-      && html.includes('data-workspace-routes="client-fx-deals hedge-fx-deals"')
+      && html.includes(
+        'data-workspace-routes="client-fx-deals hedge-fx-deals"'
+      )
       && html.includes('>currency_exchange</span>')
       && html.includes('id="workspaceTradesMenu" role="menu" aria-label="Trades" data-workspace-nav-menu hidden')
       && html.includes('class="workspace-nav-menu-link" href="#client-fx-deals"')
@@ -1530,7 +1648,7 @@ function verifyFrontendStructure() {
       && html.includes('<nav class="home-links" aria-label="Trades navigation">')
       && html.includes('<span class="home-link-title">Client FX Deals</span>')
       && html.includes('<span class="home-link-title">Hedge FX Deals</span>'),
-    usesImmutableClientFxDealEdit: editClientDealDialogMarkup.includes(">Edit Client Deal</h2>")
+    usesImmutableClientFxDealEdit: editClientDealDialogMarkup.includes(">Edit Client Deal Comment</h2>")
       && editClientDealDialogMarkup.includes('class="modal-content"')
       && editClientDealDialogMarkup.includes(">Trade Context</div>")
       && editClientDealDialogMarkup.includes(">Trade Economics</div>")
@@ -1558,13 +1676,29 @@ function verifyFrontendStructure() {
       && inlineScript.includes('control.name === "comment"')
       && inlineScript.includes('deal.databaseBackedClientFxDeal !== true')
       && saveEditedDealFunction.includes('method: "PATCH"')
-      && saveEditedDealFunction.includes("await reloadClientFxDealsFromApi();")
+      && saveEditedDealFunction.includes("await refreshClientDealViewsFromApi();")
       && !saveEditedDealFunction.includes("persistClientFxDealRecord")
       && !saveEditedDealFunction.includes("targetDeal.")
       && serverSource.includes("function updateClientFxDealComment(tradeId, comment)")
       && serverSource.includes("SET comment = ?")
       && serverSource.includes('"CLIENT_FX_DEAL_IMMUTABLE"')
       && !serverSource.includes("function replaceClientFxDeal("),
+    usesAuthoritativeClientDealRefresh:
+      inlineScript.includes("async function refreshClientDealViewsFromApi()")
+      && inlineScript.includes("async function refreshHedgeDealViewsFromApi()")
+      && !reloadClientFxDealsFunction.includes("reloadFxPositionsFromApi")
+      && !reloadHedgeFxDealsFunction.includes("reloadFxPositionsFromApi")
+      && persistCreatedClientDealFunction.includes(
+        "const createdDeal = await createClientFxDealRecord(targetDeal);"
+      )
+      && persistCreatedClientDealFunction.includes(
+        "await refreshClientDealViewsFromApi();"
+      )
+      && persistCreatedClientDealFunction.includes(
+        "selectedCurrencyPair = createdDeal.currencyPair;"
+      )
+      && !persistCreatedClientDealFunction.includes("fxPositions.push")
+      && inlineScript.includes("return normalizedClientFxDeal(saved);"),
     usesHedgeFxDealsTabulator: html.includes('id="hedgeFxDealsGrid"')
       && html.includes('id="hedgeFxDealsColumnMenu"')
       && inlineScript.includes("hedgeFxDealsGrid = new Tabulator")
@@ -1692,8 +1826,8 @@ function verifyFrontendStructure() {
       && inlineScript.includes('quoteDisplay.querySelector("[data-market-quote-bid]").textContent')
       && inlineScript.includes('quoteDisplay.querySelector("[data-market-quote-offer]").textContent'),
     usesUnifiedDialogCloseButtons:
-      (html.match(/<dialog\b/g) || []).length === 7
-      && (html.match(/class="[^"]*btn-close[^"]*"[^>]*aria-label="Close"/g) || []).length === 7
+      (html.match(/<dialog\b/g) || []).length === 9
+      && (html.match(/class="[^"]*btn-close[^"]*"[^>]*aria-label="Close"/g) || []).length === 9
       && html.includes("dialog .modal-header > .btn-close {")
       && /dialog \.modal-header > \.btn-close \{[\s\S]*?width: 32px;[\s\S]*?height: 32px;[\s\S]*?border-radius: var\(--bs-border-radius\);/.test(html)
       && html.includes("dialog .modal-header > .btn-close:hover,"),
@@ -1826,6 +1960,7 @@ function verifyFrontendStructure() {
     usesTradingPartyDetailRoutes: html.includes('id="clientProfileListView"')
       && html.includes('id="clientProfileDetailView"')
       && html.includes('id="clientProfileBackButton"')
+      && html.includes('client-profile-back-button workbench-detail-back-button" id="clientProfileBackButton"')
       && inlineScript.includes("function clientProfileRouteStateFromLocation()")
       && inlineScript.includes("function syncClientProfileRouteView()")
       && inlineScript.includes("navigateToClientProfileIndex(index)"),
@@ -2208,19 +2343,45 @@ function verifyFrontendStructure() {
       )
       && inlineScript.includes('data-tooltip="${escapeHtml(tradeTypeTooltip)}"')
       && !inlineScript.includes("position-trade-type-label"),
-    usesFxPositionDemoDeleteActions:
-      html.includes('id="deleteDealButton" disabled>Delete (Demo)</button>')
-      && html.includes(
-        'id="deleteBatchTechnicalTradesButton" disabled>Delete (Demo)</button>'
-      )
-      && inlineScript.includes("function isSelectableFxPositionTrade(deal)")
-      && inlineScript.includes("function selectedTechnicalBatchIds()")
-      && inlineScript.includes("async function deleteSelectedBatchTechnicalTradesForDemo()")
+    removesFxPositionDemoDeleteActions:
+      !html.includes("Delete (Demo)")
+      && !html.includes('id="deleteDealButton"')
+      && !html.includes('id="deleteBatchTechnicalTradesButton"')
+      && !html.includes('id="deleteHedgeDealDemoButton"')
+      && inlineScript.includes("function isBatchableFxPositionTrade(deal)")
       && inlineScript.includes('${sellActive || flatActive ? selectionBox : ""}')
-      && inlineScript.includes('"/api/v1/fx-batches/demo-hide-technical-trades"')
-      && serverSource.includes("function hideFxBatchTechnicalTradesForDemo(batchIds)")
-      && serverSource.includes("INSERT INTO fx_demo_hidden_batches")
+      && !inlineScript.includes("function selectedTechnicalBatchIds()")
+      && !inlineScript.includes("async function deleteSelectedBatchTechnicalTradesForDemo()")
+      && !inlineScript.includes("async function deleteSelectedClientDeal()")
+      && !inlineScript.includes("async function deleteSelectedHedgeDealsForDemo()")
+      && !inlineScript.includes('"/api/v1/fx-batches/demo-hide-technical-trades"')
+      && !serverSource.includes("function hideFxBatchTechnicalTradesForDemo(batchIds)")
+      && serverSource.includes('"FX_BATCH_TECHNICAL_TRADES_IMMUTABLE"')
       && schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_demo_hidden_batches"),
+    usesDemoTradeReset:
+      html.includes('id="resetDemoTradesButton">Reset Trades (Demo)</button>')
+      && fxPositionPageMarkup.includes('class="fx-position-footer"')
+      && fxPositionPageMarkup.includes('id="batchStatus"')
+      && !fxPositionDealToolbarMarkup.includes('id="resetDemoTradesButton"')
+      && !fxPositionDealToolbarMarkup.includes('id="batchStatus"')
+      && html.includes('id="resetDemoTradesDialog"')
+      && html.includes('id="resetDemoTradesConfirmButton"')
+      && html.includes('id="resetDemoTradesDialogTitle">Reset Trading Demo</h2>')
+      && html.includes("<strong>Will be preserved:</strong>")
+      && inlineScript.includes("function openResetDemoTradesDialog()")
+      && inlineScript.includes("async function confirmResetDemoTradeWorkspace()")
+      && !inlineScript.includes("window.confirm(")
+      && inlineScript.includes('"/api/v1/demo/trades/reset"')
+      && inlineScript.includes('confirmation: "RESET_ALL_TRADES"')
+      && inlineScript.includes("reloadClientFxDealsFromApi()")
+      && inlineScript.includes("reloadHedgeFxDealsFromApi()")
+      && inlineScript.includes("reloadFxBatchesFromApi()")
+      && serverSource.includes("function resetDemoTrades()")
+      && serverSource.includes('DELETE FROM fx_trade_exposure;')
+      && serverSource.includes('DELETE FROM fx_batches;')
+      && serverSource.includes("DELETE FROM sqlite_sequence WHERE name = 'fx_batches';")
+      && serverSource.includes("runInImmediateTransaction(database, () =>")
+      && serverSource.includes("Demo Trade reset requires confirmation"),
     supportsLargeFxPositionAmounts:
       (html.match(/data-smart-min-text="100 000 000 000\.00"/g) || []).length === 2
       && !html.includes('data-smart-extra-width="48"')
@@ -2243,10 +2404,9 @@ function verifyFrontendStructure() {
       && html.includes('<span class="hedge-deals-center-label">Hedge Deals</span>')
       && html.includes('id="addHedgeSellDealButton"')
       && html.includes('id="addHedgeBuyDealButton"')
-      && html.includes('id="deleteHedgeDealDemoButton" disabled>Delete (Demo)</button>')
-      && inlineScript.includes("function selectedDeletableHedgeDeals()")
-      && inlineScript.includes("async function deleteSelectedHedgeDealsForDemo()")
-      && inlineScript.includes('`/api/v1/hedge-fx-deals/${encodeURIComponent(deal.hedgeFxDealId)}`')
+      && !html.includes('id="deleteHedgeDealDemoButton"')
+      && !inlineScript.includes("function selectedDeletableHedgeDeals()")
+      && !inlineScript.includes("async function deleteSelectedHedgeDealsForDemo()")
       && !html.includes("Add Market Deal")
       && !html.includes("Market Deals"),
     usesCentralTabulatorColumnSizing: inlineScript.includes('const TABULATOR_COLUMN_SIZES = Object.freeze({')
@@ -2465,6 +2625,10 @@ async function verifyApiAndMigration() {
       "GET",
       `/api/v1/fx-batches/${createFxBatch.body?.batchId}`
     );
+    const missingFxBatchDetails = await request(
+      "GET",
+      "/api/v1/fx-batches/999999"
+    );
     const duplicateBatchSelection = await request(
       "POST",
       "/api/v1/fx-batches",
@@ -2506,26 +2670,26 @@ async function verifyApiAndMigration() {
       { idempotencyKey: "verify-reformed-batch-41", tradeIds: [41] }
     );
     const fxPositionsAfterReformedBatch = await request("GET", "/api/v1/fx-positions");
-    const deleteReformedBatchTechnicalTrades = await request(
+    const rejectReformedBatchTechnicalDelete = await request(
       "POST",
       "/api/v1/fx-batches/demo-hide-technical-trades",
       { batchIds: [reformedFxBatch.body?.batchId] }
     );
-    const fxPositionsAfterDemoTechnicalDelete = await request("GET", "/api/v1/fx-positions");
-    const fxBatchHistoryAfterDemoTechnicalDelete = await request("GET", "/api/v1/fx-batches");
-    const fxDemoHiddenBatchesAfterDelete = await request(
+    const fxPositionsAfterRejectedTechnicalDelete = await request("GET", "/api/v1/fx-positions");
+    const fxBatchHistoryAfterRejectedTechnicalDelete = await request("GET", "/api/v1/fx-batches");
+    const fxDemoHiddenBatchesAfterRejectedDelete = await request(
       "GET",
       "/api/database/tables/fx_demo_hidden_batches"
     );
-    const fxTradeExposureAfterDemoTechnicalDelete = await request(
+    const fxTradeExposureAfterRejectedTechnicalDelete = await request(
       "GET",
       "/api/database/tables/fx_trade_exposure"
     );
-    const fxBatchMembersAfterDemoTechnicalDelete = await request(
+    const fxBatchMembersAfterRejectedTechnicalDelete = await request(
       "GET",
       "/api/database/tables/fx_batch_members"
     );
-    const fxBatchOutputsAfterDemoTechnicalDelete = await request(
+    const fxBatchOutputsAfterRejectedTechnicalDelete = await request(
       "GET",
       "/api/database/tables/fx_batch_outputs"
     );
@@ -2679,11 +2843,23 @@ async function verifyApiAndMigration() {
       executionContextId: nonDealerPricedExecutionContextId,
       pricingRuleId: nonDealerPricedPricingRuleId
     });
-    const deleteClientFxDeal = await request("DELETE", `/api/v1/client-fx-deals/${clientFxDealId}`);
-    const clientFxDealsAfterDelete = await request("GET", "/api/v1/client-fx-deals");
-    const fxTradeExposureAfterDelete = await request("GET", "/api/database/tables/fx_trade_exposure");
-    const fxTradeMarketSnapshotAfterDelete = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
-    const clientFxDealsTableAfterDelete = await request("GET", "/api/database/tables/client_fx_deals");
+    const rejectClientFxDealDelete = await request(
+      "DELETE",
+      `/api/v1/client-fx-deals/${clientFxDealId}`
+    );
+    const clientFxDealsAfterRejectedDelete = await request("GET", "/api/v1/client-fx-deals");
+    const fxTradeExposureAfterRejectedClientDelete = await request(
+      "GET",
+      "/api/database/tables/fx_trade_exposure"
+    );
+    const fxTradeMarketSnapshotAfterRejectedClientDelete = await request(
+      "GET",
+      "/api/database/tables/fx_trade_market_snapshot"
+    );
+    const clientFxDealsTableAfterRejectedDelete = await request(
+      "GET",
+      "/api/database/tables/client_fx_deals"
+    );
     const integrityProbe = new DatabaseSync(verificationDatabasePath);
     integrityProbe.exec("PRAGMA foreign_keys = ON");
     const foreignKeyViolations = integrityProbe.prepare("PRAGMA foreign_key_check").all().length;
@@ -2786,7 +2962,7 @@ async function verifyApiAndMigration() {
     }
 
     restoreGenerationFractionDigitsProbe.close();
-    const deleteGeneratedClientFxDeal = await request(
+    const rejectGeneratedClientFxDealDelete = await request(
       "DELETE",
       `/api/v1/client-fx-deals/${generatedClientFxDealId}`
     );
@@ -2805,7 +2981,7 @@ async function verifyApiAndMigration() {
     const processGeneratedTradeId = Number(
       startClientDealGenerationProcess.body?.lastGeneratedTradeId
     );
-    const deleteProcessGeneratedClientFxDeal = await request(
+    const rejectProcessGeneratedClientFxDealDelete = await request(
       "DELETE",
       `/api/v1/client-fx-deals/${processGeneratedTradeId}`
     );
@@ -3161,14 +3337,20 @@ async function verifyApiAndMigration() {
       ?.find(row => row.trade_id === createdHedgeTradeId) || null;
     const createdHedgeMarketSnapshotRow = fxTradeMarketSnapshotAfterHedgeCreate.body?.rows
       ?.find(row => row.trade_id === createdHedgeTradeId) || null;
-    const deleteHedgeFxDeal = await request(
+    const rejectHedgeFxDealDelete = await request(
       "DELETE",
       `/api/v1/hedge-fx-deals/${createdHedgeTradeId}`
     );
-    const hedgeFxDealsAfterDelete = await request("GET", "/api/v1/hedge-fx-deals");
-    const fxTradeExposureAfterHedgeDelete = await request("GET", "/api/database/tables/fx_trade_exposure");
-    const fxHedgeDealsAfterDelete = await request("GET", "/api/database/tables/fx_hedge_deals");
-    const fxTradeMarketSnapshotAfterHedgeDelete = await request(
+    const hedgeFxDealsAfterRejectedDelete = await request("GET", "/api/v1/hedge-fx-deals");
+    const fxTradeExposureAfterRejectedHedgeDelete = await request(
+      "GET",
+      "/api/database/tables/fx_trade_exposure"
+    );
+    const fxHedgeDealsAfterRejectedDelete = await request(
+      "GET",
+      "/api/database/tables/fx_hedge_deals"
+    );
+    const fxTradeMarketSnapshotAfterRejectedHedgeDelete = await request(
       "GET",
       "/api/database/tables/fx_trade_market_snapshot"
     );
@@ -3238,16 +3420,87 @@ async function verifyApiAndMigration() {
     const parentPositionOutTrade = createParentPositionOutBatch.body?.trades?.find(
       trade => trade.tradeType === "BATCH_POSITION_OUT"
     ) || null;
+    const parentBalanceTrade = createParentPositionOutBatch.body?.trades?.find(
+      trade => trade.tradeType === "BATCH_BALANCE_TRADE"
+    ) || null;
     const parentPositionOutTradeId = Number(parentPositionOutTrade?.tradeId);
+    const parentBalanceTradeId = Number(parentBalanceTrade?.tradeId);
     const fxPositionsAfterParentPositionOut = await request(
       "GET",
       "/api/v1/fx-positions"
+    );
+    const batchingPositionsWhileParentFormed = await request(
+      "GET",
+      "/api/v1/batching-positions"
+    );
+    const rejectBalanceSourceWhileParentFormed = await request(
+      "POST",
+      "/api/v1/fx-batches",
+      {
+        idempotencyKey: "verify-balance-trade-source-active-rejection",
+        tradeIds: [parentBalanceTradeId]
+      }
+    );
+    const activeMembershipProbe = new DatabaseSync(verificationDatabasePath);
+    activeMembershipProbe.exec("PRAGMA foreign_keys = ON");
+    let activeMembershipConstraintEnforced = false;
+
+    try {
+      activeMembershipProbe.exec("BEGIN IMMEDIATE");
+      const probeBatchId = Number(activeMembershipProbe.prepare(`
+        INSERT INTO fx_batches (idempotency_key, ccy_pair_code)
+        VALUES ('verify-active-membership-db-guard', 'EUR_USD')
+      `).run().lastInsertRowid);
+      activeMembershipProbe.prepare(`
+        INSERT INTO fx_batch_members
+          (batch_id, trade_id, trade_type, member_role)
+        VALUES (?, ?, 'BATCH_BALANCE_TRADE', 'TRADE')
+      `).run(probeBatchId, parentBalanceTradeId);
+    } catch (error) {
+      activeMembershipConstraintEnforced = String(error?.message || "")
+        .includes("trade may belong to only one active batch");
+    } finally {
+      try {
+        activeMembershipProbe.exec("ROLLBACK");
+      } catch {}
+      activeMembershipProbe.close();
+    }
+    const rollbackParentFxBatch = await request(
+      "POST",
+      `/api/v1/fx-batches/${createParentPositionOutBatch.body?.batchId}/rollback`
+    );
+    const fxPositionsAfterParentRollback = await request(
+      "GET",
+      "/api/v1/fx-positions"
+    );
+    const batchingPositionsAfterParentRollback = await request(
+      "GET",
+      "/api/v1/batching-positions"
+    );
+    const createBalanceSourceBatch = await request("POST", "/api/v1/fx-batches", {
+      idempotencyKey: "verify-balance-trade-source",
+      tradeIds: [parentBalanceTradeId]
+    });
+    const balanceSourceBatchDetails = await request(
+      "GET",
+      `/api/v1/fx-batches/${createBalanceSourceBatch.body?.batchId}`
+    );
+    const fxPositionsAfterBalanceRebatch = await request(
+      "GET",
+      "/api/v1/fx-positions"
+    );
+    const batchingPositionsAfterBalanceRebatch = await request(
+      "GET",
+      "/api/v1/batching-positions"
     );
     const createFlatFxBatch = await request("POST", "/api/v1/fx-batches", {
       idempotencyKey: "verify-flat-batch",
       tradeIds: [parentPositionOutTradeId, flatBuyTradeId]
     });
     const flatBatchId = Number(createFlatFxBatch.body?.batchId);
+    const flatBatchDetails = Number.isInteger(flatBatchId) && flatBatchId > 0
+      ? await request("GET", `/api/v1/fx-batches/${flatBatchId}`)
+      : { statusCode: 0, body: null };
     const fxPositionsAfterFlatBatch = await request("GET", "/api/v1/fx-positions");
     const rollbackFlatFxBatch = Number.isInteger(flatBatchId) && flatBatchId > 0
       ? await request("POST", `/api/v1/fx-batches/${flatBatchId}/rollback`)
@@ -3293,6 +3546,74 @@ async function verifyApiAndMigration() {
     const flatBatchForeignKeyViolations =
       flatBatchIntegrityDatabase.prepare("PRAGMA foreign_key_check").all().length;
     flatBatchIntegrityDatabase.close();
+
+    const demoResetReferenceBefore = await Promise.all([
+      request("GET", "/api/v1/ccy-options"),
+      request("GET", "/api/v1/ccy-pair-options"),
+      request("GET", "/api/v1/execution-contexts"),
+      request("GET", "/api/v1/trading-parties"),
+      request("GET", "/api/v1/pricing-rules"),
+      request("GET", "/api/v1/client-deal-generation/settings")
+    ]);
+    const invalidDemoTradeReset = await request(
+      "POST",
+      "/api/v1/demo/trades/reset",
+      { confirmation: "WRONG" }
+    );
+    const demoTradeReset = await request(
+      "POST",
+      "/api/v1/demo/trades/reset",
+      { confirmation: "RESET_ALL_TRADES" }
+    );
+    const demoResetReferenceAfter = await Promise.all([
+      request("GET", "/api/v1/ccy-options"),
+      request("GET", "/api/v1/ccy-pair-options"),
+      request("GET", "/api/v1/execution-contexts"),
+      request("GET", "/api/v1/trading-parties"),
+      request("GET", "/api/v1/pricing-rules"),
+      request("GET", "/api/v1/client-deal-generation/settings")
+    ]);
+    const demoResetTradeReads = await Promise.all([
+      request("GET", "/api/v1/client-fx-deals"),
+      request("GET", "/api/v1/hedge-fx-deals"),
+      request("GET", "/api/v1/fx-positions"),
+      request("GET", "/api/v1/fx-batches"),
+      request("GET", "/api/v1/batching-positions")
+    ]);
+    const demoResetProbe = new DatabaseSync(verificationDatabasePath);
+    demoResetProbe.exec("PRAGMA foreign_keys = ON");
+    const demoResetTradeTableCounts = [
+      "fx_trade_exposure",
+      "client_fx_deals",
+      "fx_hedge_deals",
+      "fx_trade_market_snapshot",
+      "fx_batches",
+      "fx_batch_members",
+      "fx_batch_outputs",
+      "fx_demo_hidden_batches"
+    ].map(tableName => Number(
+      demoResetProbe.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count
+    ));
+    const demoResetDeleteTriggers = demoResetProbe.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'trigger'
+        AND name IN
+        (
+          'trg_fx_batch_members_immutable_delete',
+          'trg_fx_batch_outputs_immutable_delete',
+          'trg_fx_batches_immutable_delete'
+        )
+      ORDER BY name
+    `).all();
+    const demoResetBatchSequence = demoResetProbe.prepare(`
+      SELECT seq
+      FROM sqlite_sequence
+      WHERE name = 'fx_batches'
+    `).get();
+    const demoResetForeignKeyViolations =
+      demoResetProbe.prepare("PRAGMA foreign_key_check").all().length;
+    demoResetProbe.close();
 
     return {
       migratedPair: migratedPair.body?.[0] || null,
@@ -3404,6 +3725,7 @@ async function verifyApiAndMigration() {
       batchBalancingTradeColumns: batchBalancingTradesTable.body?.columns
         ?.map(column => column.name) || [],
       batchBalancingTradeForeignKeys: batchBalancingTradesTable.body?.foreignKeys || [],
+      batchMemberCreateSql: batchBalancingTradesTable.body?.createSql || "",
       batchBalancingTrades: {
         status: batchBalancingTradesTable.statusCode,
         count: batchBalancingTradesTable.body?.rowCount ?? -1
@@ -3447,6 +3769,68 @@ async function verifyApiAndMigration() {
         createdQuoteFractionDigits:
           createFxBatch.body?.trades?.map(trade => trade.quoteCcyFractionDigits) || [],
         storedCount: batchBalancingTradesAfterCreate.body?.trades?.length ?? -1,
+        detailStatus: batchBalancingTradesAfterCreate.statusCode,
+        detailCurrencyPair: batchBalancingTradesAfterCreate.body?.currencyPair,
+        detailSettlementBucket:
+          batchBalancingTradesAfterCreate.body?.settlementBucket || null,
+        detailMemberCount: batchBalancingTradesAfterCreate.body?.memberCount ?? -1,
+        detailOutputCount: batchBalancingTradesAfterCreate.body?.outputCount ?? -1,
+        detailMemberRoles:
+          batchBalancingTradesAfterCreate.body?.members
+            ?.map(member => member.memberRole) || [],
+        detailOutputRoles:
+          batchBalancingTradesAfterCreate.body?.outputs
+            ?.map(output => output.outputRole) || [],
+        detailContainsAttributedSource:
+          batchBalancingTradesAfterCreate.body?.members?.some(member =>
+            member.tradeId === 41
+            && member.tradeType === "CLIENT_DEAL"
+            && member.partyName === "Romashka Company"
+            && member.transferRate === 1.123
+            && member.createdByBatchId === null
+          ) === true,
+        detailTechnicalTradeSemantics:
+          [
+            ...(batchBalancingTradesAfterCreate.body?.members || []),
+            ...(batchBalancingTradesAfterCreate.body?.outputs || [])
+          ].filter(trade =>
+            ["BATCH_BALANCE_TRADE", "BATCH_POSITION_OUT"].includes(trade.tradeType)
+          ).every(trade =>
+            trade.createdByBatchId === createFxBatch.body?.batchId
+            && trade.transferRate === trade.tradeRate
+          ),
+        detailBalanceContributionSemantics:
+          batchBalancingTradesAfterCreate.body?.members?.some(trade =>
+            trade.tradeId === 41
+            && trade.baseCcyCode === "EUR"
+            && trade.quoteCcyCode === "USD"
+            && trade.baseBalanceContributionMinor === 150000000
+            && trade.quoteBalanceContributionMinor === -168450000
+          ) === true
+          && batchBalancingTradesAfterCreate.body?.members?.some(trade =>
+            trade.tradeType === "BATCH_BALANCE_TRADE"
+            && trade.baseBalanceContributionMinor === -150000000
+            && trade.quoteBalanceContributionMinor === 168450000
+          ) === true
+          && batchBalancingTradesAfterCreate.body?.outputs?.some(trade =>
+            trade.tradeType === "BATCH_POSITION_OUT"
+            && trade.baseBalanceContributionMinor === 150000000
+            && trade.quoteBalanceContributionMinor === -168450000
+          ) === true,
+        detailMemberBaseBalanceMinor:
+          (batchBalancingTradesAfterCreate.body?.members || [])
+            .reduce(
+              (total, trade) => total + trade.baseBalanceContributionMinor,
+              0
+            ),
+        detailMemberQuoteBalanceMinor:
+          (batchBalancingTradesAfterCreate.body?.members || [])
+            .reduce(
+              (total, trade) => total + trade.quoteBalanceContributionMinor,
+              0
+            ),
+        missingDetailStatus: missingFxBatchDetails.statusCode,
+        missingDetailCode: missingFxBatchDetails.body?.code,
         duplicateSelectionStatus: duplicateBatchSelection.statusCode,
         missingSourceStatus: missingBatchSourceTrade.statusCode,
         replayStatus: replayFxBatch.statusCode,
@@ -3460,6 +3844,14 @@ async function verifyApiAndMigration() {
         sourceHiddenAfterBatch: fxPositionsAfterBatch.body?.every(
           trade => trade.tradeId !== 41
         ) === true,
+        balanceHiddenAfterBatch:
+          createFxBatch.body?.trades
+            ?.filter(trade => trade.tradeType === "BATCH_BALANCE_TRADE")
+            .every(balanceTrade =>
+              fxPositionsAfterBatch.body?.every(trade =>
+                trade.tradeId !== balanceTrade.tradeId
+              )
+            ) === true,
         outputVisibleAfterBatch: fxPositionsAfterBatch.body?.some(
           trade => trade.tradeType === "BATCH_POSITION_OUT"
             && trade.batchId === createFxBatch.body?.batchId
@@ -3499,47 +3891,52 @@ async function verifyApiAndMigration() {
         sourceHiddenAfterReformedBatch: fxPositionsAfterReformedBatch.body?.every(
           trade => trade.tradeId !== 41
         ) === true,
-        demoTechnicalDeleteStatus: deleteReformedBatchTechnicalTrades.statusCode,
-        demoTechnicalDeleteHiddenBatchCount:
-          deleteReformedBatchTechnicalTrades.body?.hiddenBatchCount,
-        demoTechnicalDeleteHiddenTradeCount:
-          deleteReformedBatchTechnicalTrades.body?.hiddenTechnicalTradeCount,
-        demoTechnicalDeleteRetainsAudit:
-          deleteReformedBatchTechnicalTrades.body?.auditRecordsRetained === true,
-        batchRolledBackByDemoTechnicalDelete:
-          fxBatchHistoryAfterDemoTechnicalDelete.body?.some(batch =>
+        technicalDeleteStatus: rejectReformedBatchTechnicalDelete.statusCode,
+        technicalDeleteCode: rejectReformedBatchTechnicalDelete.body?.code,
+        batchRemainsFormedAfterRejectedTechnicalDelete:
+          fxBatchHistoryAfterRejectedTechnicalDelete.body?.some(batch =>
             batch.batchId === reformedFxBatch.body?.batchId
-            && batch.batchStatus === "ROLLED_BACK"
+            && batch.batchStatus === "FORMED"
           ) === true,
-        sourceVisibleAfterDemoTechnicalDelete:
-          fxPositionsAfterDemoTechnicalDelete.body?.some(
-          trade => trade.tradeId === 41
+        sourceRemainsHiddenAfterRejectedTechnicalDelete:
+          fxPositionsAfterRejectedTechnicalDelete.body?.every(
+            trade => trade.tradeId !== 41
           ) === true,
-        technicalTradesHiddenAfterDemoTechnicalDelete:
+        balanceTradeRemainsHiddenAfterRejectedDelete:
+          reformedFxBatch.body?.trades
+            ?.filter(trade => trade.tradeType === "BATCH_BALANCE_TRADE")
+            .every(balanceTrade =>
+              fxPositionsAfterRejectedTechnicalDelete.body?.every(trade =>
+                trade.tradeId !== balanceTrade.tradeId
+              )
+            ) === true,
+        positionOutRemainsVisibleAfterRejectedDelete:
+          reformedFxBatch.body?.trades
+            ?.filter(trade => trade.tradeType === "BATCH_POSITION_OUT")
+            .every(positionOut =>
+              fxPositionsAfterRejectedTechnicalDelete.body?.some(trade =>
+                trade.tradeId === positionOut.tradeId
+              )
+            ) === true,
+        positionPreservedByRejectedTechnicalDelete:
+          signedBasePosition(fxPositionsAfterReformedBatch.body)
+          === signedBasePosition(fxPositionsAfterRejectedTechnicalDelete.body),
+        demoHiddenBatchNotRecorded:
+          fxDemoHiddenBatchesAfterRejectedDelete.body?.rows?.every(row =>
+            row.batch_id !== reformedFxBatch.body?.batchId
+          ) === true,
+        technicalTradeAuditRowsRetained:
           reformedFxBatch.body?.trades?.every(createdTrade =>
-            fxPositionsAfterDemoTechnicalDelete.body?.every(trade =>
-              trade.tradeId !== createdTrade.tradeId
-            )
-          ) === true,
-        positionPreservedByDemoTechnicalDelete:
-          signedBasePosition(fxPositionsBeforeBatch.body)
-          === signedBasePosition(fxPositionsAfterDemoTechnicalDelete.body),
-        demoHiddenBatchRecorded:
-          fxDemoHiddenBatchesAfterDelete.body?.rows?.some(row =>
-            row.batch_id === reformedFxBatch.body?.batchId
-          ) === true,
-        demoTechnicalTradeAuditRowsRetained:
-          reformedFxBatch.body?.trades?.every(createdTrade =>
-            fxTradeExposureAfterDemoTechnicalDelete.body?.rows?.some(row =>
+            fxTradeExposureAfterRejectedTechnicalDelete.body?.rows?.some(row =>
               row.trade_id === createdTrade.tradeId
               && row.trade_type === createdTrade.tradeType
             )
           ) === true
-          && fxBatchMembersAfterDemoTechnicalDelete.body?.rows?.some(row =>
+          && fxBatchMembersAfterRejectedTechnicalDelete.body?.rows?.some(row =>
             row.batch_id === reformedFxBatch.body?.batchId
             && row.member_role === "BALANCE_TRADE"
           ) === true
-          && fxBatchOutputsAfterDemoTechnicalDelete.body?.rows?.some(row =>
+          && fxBatchOutputsAfterRejectedTechnicalDelete.body?.rows?.some(row =>
             row.batch_id === reformedFxBatch.body?.batchId
             && row.output_role === "POSITION_OUT"
           ) === true
@@ -3568,6 +3965,17 @@ async function verifyApiAndMigration() {
         createdTrades: createFlatFxBatch.body?.trades || [],
         members: flatBatchMembers,
         outputs: flatBatchOutputs,
+        detailStatus: flatBatchDetails.statusCode,
+        detailMembers: flatBatchDetails.body?.members || [],
+        detailOutputs: flatBatchDetails.body?.outputs || [],
+        detailPositionOutPreservesOrigin:
+          flatBatchDetails.body?.members?.some(member =>
+            member.tradeId === parentPositionOutTradeId
+            && member.tradeType === "BATCH_POSITION_OUT"
+            && member.memberRole === "TRADE"
+            && member.createdByBatchId === createParentPositionOutBatch.body?.batchId
+            && member.transferRate === member.tradeRate
+          ) === true,
         sourcesVisibleBefore: [flatSellTradeId, flatBuyTradeId].every(tradeId =>
           fxPositionsBeforeFlatBatch.body?.some(trade => trade.tradeId === tradeId)
         ),
@@ -3582,6 +3990,76 @@ async function verifyApiAndMigration() {
           ),
         immutable: flatBatchImmutable,
         foreignKeyViolations: flatBatchForeignKeyViolations
+      },
+      demoTradeReset: {
+        invalidStatus: invalidDemoTradeReset.statusCode,
+        invalidCode: invalidDemoTradeReset.body?.code,
+        status: demoTradeReset.statusCode,
+        removedTrades: demoTradeReset.body?.removed?.trades,
+        removedBatches: demoTradeReset.body?.removed?.batches,
+        generationProcess: demoTradeReset.body?.generationProcess,
+        tradeReadsEmpty: demoResetTradeReads.every(result =>
+          Array.isArray(result.body) && result.body.length === 0
+        ),
+        tradeTablesEmpty: demoResetTradeTableCounts.every(count => count === 0),
+        referenceDataPreserved:
+          JSON.stringify(demoResetReferenceBefore.map(result => result.body))
+          === JSON.stringify(demoResetReferenceAfter.map(result => result.body)),
+        deleteTriggersRestored: demoResetDeleteTriggers.length === 3,
+        batchSequenceCleared: demoResetBatchSequence === undefined,
+        foreignKeyViolations: demoResetForeignKeyViolations
+      },
+      balanceTradeSourceFlow: {
+        parentBalanceTradeId,
+        hiddenWhileParentFormed:
+          fxPositionsAfterParentPositionOut.body?.every(trade =>
+            trade.tradeId !== parentBalanceTradeId
+          ) === true,
+        unavailableWhileParentFormed:
+          batchingPositionsWhileParentFormed.body?.some(trade =>
+            trade.tradeId === parentBalanceTradeId
+            && trade.tradeType === "BATCH_BALANCE_TRADE"
+            && trade.availableForBatching === 0
+            && trade.transferRate === trade.tradeRate
+          ) === true,
+        activeRebatchStatus: rejectBalanceSourceWhileParentFormed.statusCode,
+        activeRebatchCode: rejectBalanceSourceWhileParentFormed.body?.code,
+        activeMembershipConstraintEnforced,
+        parentRollbackStatus: rollbackParentFxBatch.statusCode,
+        visibleAfterParentRollback:
+          fxPositionsAfterParentRollback.body?.some(trade =>
+            trade.tradeId === parentBalanceTradeId
+            && trade.tradeType === "BATCH_BALANCE_TRADE"
+            && trade.transferRate === trade.tradeRate
+          ) === true,
+        availableAfterParentRollback:
+          batchingPositionsAfterParentRollback.body?.some(trade =>
+            trade.tradeId === parentBalanceTradeId
+            && trade.tradeType === "BATCH_BALANCE_TRADE"
+            && trade.availableForBatching === 1
+            && trade.transferRate === trade.tradeRate
+          ) === true,
+        createStatus: createBalanceSourceBatch.statusCode,
+        sourceTradeIds: createBalanceSourceBatch.body?.sourceTradeIds || [],
+        reusedAsOrdinaryTrade:
+          balanceSourceBatchDetails.body?.members?.some(member =>
+            member.tradeId === parentBalanceTradeId
+            && member.tradeType === "BATCH_BALANCE_TRADE"
+            && member.memberRole === "TRADE"
+            && member.createdByBatchId
+              === createParentPositionOutBatch.body?.batchId
+          ) === true,
+        hiddenAfterBatching:
+          fxPositionsAfterBalanceRebatch.body?.every(trade =>
+            trade.tradeId !== parentBalanceTradeId
+          ) === true,
+        listedAsConsumed:
+          batchingPositionsAfterBalanceRebatch.body?.some(trade =>
+            trade.tradeId === parentBalanceTradeId
+            && trade.availableForBatching === 0
+            && trade.consumedByBatchId === createBalanceSourceBatch.body?.batchId
+            && trade.consumedByBatchStatus === "FORMED"
+          ) === true
       },
       hedgeFxDeals: {
         status: hedgeFxDeals.statusCode,
@@ -3619,16 +4097,17 @@ async function verifyApiAndMigration() {
         subMinorAmountCode: invalidHedgeFxDealSubMinorAmount.body?.code,
         invalidClientRuleStatus: invalidHedgeFxDealClientRule.statusCode,
         countAfterCreate: hedgeFxDealsAfterCreate.body?.length ?? -1,
-        deleteStatus: deleteHedgeFxDeal.statusCode,
-        countAfterDelete: hedgeFxDealsAfterDelete.body?.length ?? -1,
-        deletedFromAllTables:
-          !fxTradeExposureAfterHedgeDelete.body?.rows?.some(row =>
+        deleteStatus: rejectHedgeFxDealDelete.statusCode,
+        deleteCode: rejectHedgeFxDealDelete.body?.code,
+        countAfterRejectedDelete: hedgeFxDealsAfterRejectedDelete.body?.length ?? -1,
+        preservedAfterRejectedDelete:
+          fxTradeExposureAfterRejectedHedgeDelete.body?.rows?.some(row =>
             row.trade_id === createdHedgeTradeId && row.trade_type === "HEDGE_DEAL"
           )
-          && !fxHedgeDealsAfterDelete.body?.rows?.some(row =>
+          && fxHedgeDealsAfterRejectedDelete.body?.rows?.some(row =>
             row.trade_id === createdHedgeTradeId && row.trade_type === "HEDGE_DEAL"
           )
-          && !fxTradeMarketSnapshotAfterHedgeDelete.body?.rows?.some(row =>
+          && fxTradeMarketSnapshotAfterRejectedHedgeDelete.body?.rows?.some(row =>
             row.trade_id === createdHedgeTradeId && row.trade_type === "HEDGE_DEAL"
           ),
         createdRowsShareId: createdHedgeExposureRow?.trade_id === createdHedgeTradeId
@@ -3686,7 +4165,9 @@ async function verifyApiAndMigration() {
         immutableUpdateCode: immutableClientFxDealUpdate.body?.code,
         updatedComment: updateClientFxDealComment.body?.comment,
         invalidCommentStatus: invalidClientFxDealComment.statusCode,
-        countAfterDelete: clientFxDealsAfterDelete.body?.length ?? -1,
+        deleteStatus: rejectClientFxDealDelete.statusCode,
+        deleteCode: rejectClientFxDealDelete.body?.code,
+        countAfterRejectedDelete: clientFxDealsAfterRejectedDelete.body?.length ?? -1,
         migratedRow: migratedClientRow,
         rollbackStatus: rollbackClientFxDeal?.statusCode,
         rollbackPreservedCounts: rollbackCountsBefore.exposures === rollbackCountsAfter.exposures
@@ -3726,12 +4207,13 @@ async function verifyApiAndMigration() {
           && updatedMarketSnapshotRow?.market_pulse_bid === 1.1228
           && updatedMarketSnapshotRow?.market_pulse_offer === 1.123
           && updatedMarketSnapshotRow?.market_pulse_timestamp === "2026-07-16T10:15:29.000Z",
-        deletedFromBothTables: !fxTradeExposureAfterDelete.body?.rows
-          ?.some(row => row.trade_id === createdTradeId)
-          && !clientFxDealsTableAfterDelete.body?.rows
-            ?.some(row => row.trade_id === createdTradeId)
-          && !fxTradeMarketSnapshotAfterDelete.body?.rows
-            ?.some(row => row.trade_id === createdTradeId),
+        preservedAfterRejectedDelete:
+          fxTradeExposureAfterRejectedClientDelete.body?.rows
+            ?.some(row => row.trade_id === createdTradeId && row.trade_type === "CLIENT_DEAL")
+          && clientFxDealsTableAfterRejectedDelete.body?.rows
+            ?.some(row => row.trade_id === createdTradeId && row.trade_type === "CLIENT_DEAL")
+          && fxTradeMarketSnapshotAfterRejectedClientDelete.body?.rows
+            ?.some(row => row.trade_id === createdTradeId && row.trade_type === "CLIENT_DEAL"),
         foreignKeyViolations,
         subMinorAmountStatus: invalidClientFxDealSubMinorAmount.statusCode,
         subMinorAmountCode: invalidClientFxDealSubMinorAmount.body?.code,
@@ -3748,7 +4230,7 @@ async function verifyApiAndMigration() {
           invalidClientFxDealSubMinorAmount.statusCode,
           invalidClientFxDealPricingScope.statusCode,
           invalidClientFxDealPricingMode.statusCode,
-          deleteClientFxDeal.statusCode
+          rejectClientFxDealDelete.statusCode
         ]
       },
       pricingRules: {
@@ -3863,7 +4345,7 @@ async function verifyApiAndMigration() {
         expectedBaseFractionDigits: 3,
         generatedQuoteFractionDigits: generatedExposureRow?.quote_ccy_fraction_digits,
         expectedQuoteFractionDigits: 0,
-        deletedGeneratedStatus: deleteGeneratedClientFxDeal.statusCode,
+        generatedDeleteStatus: rejectGeneratedClientFxDealDelete.statusCode,
         processStartStatus: startClientDealGenerationProcess.statusCode,
         processStartedRunning: startClientDealGenerationProcess.body?.running,
         processIntervalMs: startClientDealGenerationProcess.body?.intervalMs,
@@ -3872,7 +4354,7 @@ async function verifyApiAndMigration() {
         processStatusRunning: clientDealGenerationProcessStatus.body?.running,
         processStopStatus: stopClientDealGenerationProcess.statusCode,
         processStoppedRunning: stopClientDealGenerationProcess.body?.running,
-        deletedProcessGeneratedStatus: deleteProcessGeneratedClientFxDeal.statusCode,
+        processGeneratedDeleteStatus: rejectProcessGeneratedClientFxDealDelete.statusCode,
         rejectedProcessStartStatus: rejectedClientDealGenerationProcessStart.statusCode,
         rejectedProcessStartCode: rejectedClientDealGenerationProcessStart.body?.code,
         remainsStoppedWithoutEligibleRules:
@@ -4057,6 +4539,11 @@ async function main() {
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "RESTRICT"
       )
+      || !/\bmember_role\s*=\s*'TRADE'\s+OR\b/i
+        .test(freshSchema.batchMemberCreateSql)
+      || /\bmember_role\s*=\s*'TRADE'\s+AND\s+trade_type\s+IN\b/i
+        .test(freshSchema.batchMemberCreateSql)
+      || !freshSchema.batchMemberTechnicalOriginIndex
       || !freshSchema.batchTradeTypesSupported
       || !freshSchema.batchBalancingTradeConstraintsEnforced
       || !freshSchema.batchBalancingTradeParentRestrictionEnforced
@@ -4096,11 +4583,13 @@ async function main() {
       || !frontend.usesPricingModeIndicators
       || !frontend.usesUnifiedMarginIndicators
       || !frontend.usesDatabaseBackedFxPositions
-      || !frontend.usesDatabaseBackedFxPositionDelete
+      || !frontend.usesClientDealCommentOnlyEditing
       || !frontend.usesDatabaseBackedClientDealGeneration
       || !frontend.removesBrowserClientDealGeneration
       || !frontend.usesFxBatchFormation
       || !frontend.usesBatchingHistory
+      || !frontend.usesBatchStructure
+      || !frontend.removesBatchingPositionsWorkspace
       || !frontend.supportsBatchRollback
       || !frontend.usesMinorUnitBatchBalancing
       || !frontend.usesMinorUnitAnalyticalPnl
@@ -4117,6 +4606,7 @@ async function main() {
       || !frontend.usesGroupedPricingWorkspace
       || !frontend.usesGroupedTradesWorkspace
       || !frontend.usesImmutableClientFxDealEdit
+      || !frontend.usesAuthoritativeClientDealRefresh
       || !frontend.usesHedgeFxDealsTabulator
       || !frontend.usesAccountingSystemsEndpoint
       || !frontend.usesExecutionSystemsEndpoint
@@ -4214,7 +4704,8 @@ async function main() {
       || !frontend.usesFxPositionTradeAttributes
       || !frontend.removesFxPositionTradeTypeIndicators
       || !frontend.usesFxPositionTradeTypeChips
-      || !frontend.usesFxPositionDemoDeleteActions
+      || !frontend.removesFxPositionDemoDeleteActions
+      || !frontend.usesDemoTradeReset
       || !frontend.supportsLargeFxPositionAmounts
       || !frontend.usesFxPositionMarketPulseBrand
       || !frontend.usesFxPositionHedgeDealTerminology
@@ -4243,6 +4734,21 @@ async function main() {
       || simulator.startedQuote.bid < 1.122
       || simulator.startedQuote.bid > 1.1222
       || simulator.startedQuote.offer < simulator.startedQuote.bid
+      || apiAndMigration.demoTradeReset.invalidStatus !== 400
+      || apiAndMigration.demoTradeReset.invalidCode
+        !== "INVALID_DEMO_TRADE_RESET_CONFIRMATION"
+      || apiAndMigration.demoTradeReset.status !== 200
+      || !(apiAndMigration.demoTradeReset.removedTrades > 0)
+      || !(apiAndMigration.demoTradeReset.removedBatches > 0)
+      || apiAndMigration.demoTradeReset.generationProcess?.running !== false
+      || apiAndMigration.demoTradeReset.generationProcess?.generatedDealCount !== 0
+      || apiAndMigration.demoTradeReset.generationProcess?.lastGeneratedTradeId !== null
+      || !apiAndMigration.demoTradeReset.tradeReadsEmpty
+      || !apiAndMigration.demoTradeReset.tradeTablesEmpty
+      || !apiAndMigration.demoTradeReset.referenceDataPreserved
+      || !apiAndMigration.demoTradeReset.deleteTriggersRestored
+      || !apiAndMigration.demoTradeReset.batchSequenceCleared
+      || apiAndMigration.demoTradeReset.foreignKeyViolations !== 0
       || apiAndMigration.tables.join(",") !== expectedTables.join(",")
       || !apiAndMigration.ccyOptionsConstraintMigrated
       || !apiAndMigration.ccyPairOptionsConstraintMigrated
@@ -4316,7 +4822,7 @@ async function main() {
         !== apiAndMigration.clientDealGeneration.expectedBaseFractionDigits
       || apiAndMigration.clientDealGeneration.generatedQuoteFractionDigits
         !== apiAndMigration.clientDealGeneration.expectedQuoteFractionDigits
-      || apiAndMigration.clientDealGeneration.deletedGeneratedStatus !== 204
+      || apiAndMigration.clientDealGeneration.generatedDeleteStatus !== 405
       || apiAndMigration.clientDealGeneration.processStartStatus !== 200
       || !apiAndMigration.clientDealGeneration.processStartedRunning
       || apiAndMigration.clientDealGeneration.processIntervalMs !== 1000
@@ -4325,7 +4831,7 @@ async function main() {
       || !apiAndMigration.clientDealGeneration.processStatusRunning
       || apiAndMigration.clientDealGeneration.processStopStatus !== 200
       || apiAndMigration.clientDealGeneration.processStoppedRunning
-      || apiAndMigration.clientDealGeneration.deletedProcessGeneratedStatus !== 204
+      || apiAndMigration.clientDealGeneration.processGeneratedDeleteStatus !== 405
       || apiAndMigration.clientDealGeneration.rejectedProcessStartStatus !== 409
       || apiAndMigration.clientDealGeneration.rejectedProcessStartCode
         !== "CLIENT_DEAL_GENERATION_NOT_CONFIGURED"
@@ -4381,6 +4887,10 @@ async function main() {
         && foreignKey.onDelete === "RESTRICT"
         && ["fx_trade_exposure", "fx_batches"].includes(foreignKey.referencedTable)
       )
+      || !/\bmember_role\s*=\s*'TRADE'\s+OR\b/i
+        .test(apiAndMigration.batchMemberCreateSql)
+      || /\bmember_role\s*=\s*'TRADE'\s+AND\s+trade_type\s+IN\b/i
+        .test(apiAndMigration.batchMemberCreateSql)
       || apiAndMigration.batchBalancingTrades.status !== 200
       || apiAndMigration.batchBalancingTrades.count !== 0
       || apiAndMigration.batchBalancingFlow.createStatus !== 201
@@ -4408,6 +4918,23 @@ async function main() {
       || apiAndMigration.batchBalancingFlow.createdQuoteAmountMinors.join(",") !== "168450000,168450000"
       || apiAndMigration.batchBalancingFlow.createdQuoteFractionDigits.join(",") !== "2,2"
       || apiAndMigration.batchBalancingFlow.storedCount !== 2
+      || apiAndMigration.batchBalancingFlow.detailStatus !== 200
+      || apiAndMigration.batchBalancingFlow.detailCurrencyPair !== "EUR/USD"
+      || apiAndMigration.batchBalancingFlow.detailSettlementBucket?.tradeDate !== "2026-07-15"
+      || apiAndMigration.batchBalancingFlow.detailSettlementBucket?.tenor !== "TOM"
+      || apiAndMigration.batchBalancingFlow.detailMemberCount !== 2
+      || apiAndMigration.batchBalancingFlow.detailOutputCount !== 1
+      || apiAndMigration.batchBalancingFlow.detailMemberRoles.join(",")
+        !== "TRADE,BALANCE_TRADE"
+      || apiAndMigration.batchBalancingFlow.detailOutputRoles.join(",")
+        !== "POSITION_OUT"
+      || !apiAndMigration.batchBalancingFlow.detailContainsAttributedSource
+      || !apiAndMigration.batchBalancingFlow.detailTechnicalTradeSemantics
+      || !apiAndMigration.batchBalancingFlow.detailBalanceContributionSemantics
+      || apiAndMigration.batchBalancingFlow.detailMemberBaseBalanceMinor !== 0
+      || apiAndMigration.batchBalancingFlow.detailMemberQuoteBalanceMinor !== 0
+      || apiAndMigration.batchBalancingFlow.missingDetailStatus !== 404
+      || apiAndMigration.batchBalancingFlow.missingDetailCode !== "FX_BATCH_NOT_FOUND"
       || apiAndMigration.batchBalancingFlow.duplicateSelectionStatus !== 400
       || apiAndMigration.batchBalancingFlow.missingSourceStatus !== 404
       || apiAndMigration.batchBalancingFlow.replayStatus !== 200
@@ -4418,6 +4945,7 @@ async function main() {
       || apiAndMigration.batchBalancingFlow.storedCountAfterReplay !== 2
       || !apiAndMigration.batchBalancingFlow.sourceVisibleBeforeBatch
       || !apiAndMigration.batchBalancingFlow.sourceHiddenAfterBatch
+      || !apiAndMigration.batchBalancingFlow.balanceHiddenAfterBatch
       || !apiAndMigration.batchBalancingFlow.outputVisibleAfterBatch
       || apiAndMigration.batchBalancingFlow.rollbackStatus !== 200
       || apiAndMigration.batchBalancingFlow.rolledBackBatchStatus !== "ROLLED_BACK"
@@ -4434,16 +4962,16 @@ async function main() {
       || apiAndMigration.batchBalancingFlow.reformedBatchId
         === apiAndMigration.batchBalancingFlow.batchId
       || !apiAndMigration.batchBalancingFlow.sourceHiddenAfterReformedBatch
-      || apiAndMigration.batchBalancingFlow.demoTechnicalDeleteStatus !== 200
-      || apiAndMigration.batchBalancingFlow.demoTechnicalDeleteHiddenBatchCount !== 1
-      || apiAndMigration.batchBalancingFlow.demoTechnicalDeleteHiddenTradeCount !== 2
-      || !apiAndMigration.batchBalancingFlow.demoTechnicalDeleteRetainsAudit
-      || !apiAndMigration.batchBalancingFlow.batchRolledBackByDemoTechnicalDelete
-      || !apiAndMigration.batchBalancingFlow.sourceVisibleAfterDemoTechnicalDelete
-      || !apiAndMigration.batchBalancingFlow.technicalTradesHiddenAfterDemoTechnicalDelete
-      || !apiAndMigration.batchBalancingFlow.positionPreservedByDemoTechnicalDelete
-      || !apiAndMigration.batchBalancingFlow.demoHiddenBatchRecorded
-      || !apiAndMigration.batchBalancingFlow.demoTechnicalTradeAuditRowsRetained
+      || apiAndMigration.batchBalancingFlow.technicalDeleteStatus !== 405
+      || apiAndMigration.batchBalancingFlow.technicalDeleteCode
+        !== "FX_BATCH_TECHNICAL_TRADES_IMMUTABLE"
+      || !apiAndMigration.batchBalancingFlow.batchRemainsFormedAfterRejectedTechnicalDelete
+      || !apiAndMigration.batchBalancingFlow.sourceRemainsHiddenAfterRejectedTechnicalDelete
+      || !apiAndMigration.batchBalancingFlow.balanceTradeRemainsHiddenAfterRejectedDelete
+      || !apiAndMigration.batchBalancingFlow.positionOutRemainsVisibleAfterRejectedDelete
+      || !apiAndMigration.batchBalancingFlow.positionPreservedByRejectedTechnicalDelete
+      || !apiAndMigration.batchBalancingFlow.demoHiddenBatchNotRecorded
+      || !apiAndMigration.batchBalancingFlow.technicalTradeAuditRowsRetained
       || apiAndMigration.flatBatchFlow.parentCreateStatus !== 201
       || !Number.isInteger(apiAndMigration.flatBatchFlow.parentPositionOutTradeId)
       || !apiAndMigration.flatBatchFlow.parentPositionOutVisible
@@ -4463,6 +4991,10 @@ async function main() {
         .sort()
         .join(",") !== "BATCH_POSITION_OUT,CLIENT_DEAL"
       || apiAndMigration.flatBatchFlow.outputs.length !== 0
+      || apiAndMigration.flatBatchFlow.detailStatus !== 200
+      || apiAndMigration.flatBatchFlow.detailMembers.length !== 2
+      || apiAndMigration.flatBatchFlow.detailOutputs.length !== 0
+      || !apiAndMigration.flatBatchFlow.detailPositionOutPreservesOrigin
       || !apiAndMigration.flatBatchFlow.sourcesVisibleBefore
       || !apiAndMigration.flatBatchFlow.sourcesHiddenAfter
       || apiAndMigration.flatBatchFlow.rollbackStatus !== 200
@@ -4470,6 +5002,22 @@ async function main() {
       || !apiAndMigration.flatBatchFlow.sourcesVisibleAfterRollback
       || !apiAndMigration.flatBatchFlow.immutable
       || apiAndMigration.flatBatchFlow.foreignKeyViolations !== 0
+      || !Number.isInteger(apiAndMigration.balanceTradeSourceFlow.parentBalanceTradeId)
+      || !apiAndMigration.balanceTradeSourceFlow.hiddenWhileParentFormed
+      || !apiAndMigration.balanceTradeSourceFlow.unavailableWhileParentFormed
+      || apiAndMigration.balanceTradeSourceFlow.activeRebatchStatus !== 404
+      || apiAndMigration.balanceTradeSourceFlow.activeRebatchCode
+        !== "BATCH_SOURCE_TRADE_NOT_FOUND"
+      || !apiAndMigration.balanceTradeSourceFlow.activeMembershipConstraintEnforced
+      || apiAndMigration.balanceTradeSourceFlow.parentRollbackStatus !== 200
+      || !apiAndMigration.balanceTradeSourceFlow.visibleAfterParentRollback
+      || !apiAndMigration.balanceTradeSourceFlow.availableAfterParentRollback
+      || apiAndMigration.balanceTradeSourceFlow.createStatus !== 201
+      || apiAndMigration.balanceTradeSourceFlow.sourceTradeIds.join(",")
+        !== String(apiAndMigration.balanceTradeSourceFlow.parentBalanceTradeId)
+      || !apiAndMigration.balanceTradeSourceFlow.reusedAsOrdinaryTrade
+      || !apiAndMigration.balanceTradeSourceFlow.hiddenAfterBatching
+      || !apiAndMigration.balanceTradeSourceFlow.listedAsConsumed
       || apiAndMigration.hedgeFxDeals.status !== 200
       || apiAndMigration.hedgeFxDeals.count !== 0
       || apiAndMigration.hedgeFxDeals.eligiblePricingRulesStatus !== 200
@@ -4501,9 +5049,10 @@ async function main() {
       || apiAndMigration.hedgeFxDeals.subMinorAmountCode !== "INVALID_HEDGE_FX_DEAL_AMOUNT"
       || apiAndMigration.hedgeFxDeals.invalidClientRuleStatus !== 400
       || apiAndMigration.hedgeFxDeals.countAfterCreate !== 1
-      || apiAndMigration.hedgeFxDeals.deleteStatus !== 204
-      || apiAndMigration.hedgeFxDeals.countAfterDelete !== 0
-      || !apiAndMigration.hedgeFxDeals.deletedFromAllTables
+      || apiAndMigration.hedgeFxDeals.deleteStatus !== 405
+      || apiAndMigration.hedgeFxDeals.deleteCode !== "HEDGE_FX_DEAL_IMMUTABLE"
+      || apiAndMigration.hedgeFxDeals.countAfterRejectedDelete !== 1
+      || !apiAndMigration.hedgeFxDeals.preservedAfterRejectedDelete
       || !apiAndMigration.hedgeFxDeals.createdRowsShareId
       || apiAndMigration.clientDealPricingRules.status !== 200
       || apiAndMigration.clientDealPricingRules.count !== 1
@@ -4548,18 +5097,20 @@ async function main() {
       || apiAndMigration.clientFxDeals.immutableUpdateCode !== "CLIENT_FX_DEAL_IMMUTABLE"
       || apiAndMigration.clientFxDeals.updatedComment !== "Reviewed verification comment"
       || apiAndMigration.clientFxDeals.invalidCommentStatus !== 400
-      || apiAndMigration.clientFxDeals.countAfterDelete !== 1
+      || apiAndMigration.clientFxDeals.deleteStatus !== 405
+      || apiAndMigration.clientFxDeals.deleteCode !== "CLIENT_FX_DEAL_IMMUTABLE"
+      || apiAndMigration.clientFxDeals.countAfterRejectedDelete !== 2
       || apiAndMigration.clientFxDeals.rollbackStatus !== 500
       || !apiAndMigration.clientFxDeals.rollbackPreservedCounts
       || !apiAndMigration.clientFxDeals.createdRowsShareId
       || !apiAndMigration.clientFxDeals.commentUpdatePreservesTrade
-      || !apiAndMigration.clientFxDeals.deletedFromBothTables
+      || !apiAndMigration.clientFxDeals.preservedAfterRejectedDelete
       || apiAndMigration.clientFxDeals.foreignKeyViolations !== 0
       || apiAndMigration.clientFxDeals.subMinorAmountStatus !== 400
       || apiAndMigration.clientFxDeals.subMinorAmountCode !== "INVALID_CLIENT_FX_DEAL_AMOUNT"
       || apiAndMigration.clientFxDeals.nonDealerPricingRuleStatus !== 400
       || !apiAndMigration.clientFxDeals.nonDealerPricingRuleMessage?.includes("DEALER_PRICED")
-      || apiAndMigration.clientFxDeals.lifecycle.join(",") !== "201,405,200,400,400,400,400,400,400,400,204"
+      || apiAndMigration.clientFxDeals.lifecycle.join(",") !== "201,405,200,400,400,400,400,400,400,400,405"
       || apiAndMigration.pricingRules.count !== 5
       || apiAndMigration.pricingRules.migratedPartyTypes.join(",") !== "CLIENT"
       || !apiAndMigration.pricingRules.allPricingModesResolved
