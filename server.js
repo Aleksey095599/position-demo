@@ -5271,6 +5271,16 @@ function fxBatchContent(batchId) {
         WHEN 'HEDGE_DEAL' THEN hedge.transfer_rate
         ELSE exposure.trade_rate
       END AS transferRate,
+      CASE exposure.trade_type
+        WHEN 'CLIENT_DEAL' THEN client.analytical_pnl_quote_minor
+        WHEN 'HEDGE_DEAL' THEN hedge.analytical_pnl_quote_minor
+        ELSE 0
+      END AS analyticalPnlQuoteMinor,
+      CASE exposure.trade_type
+        WHEN 'CLIENT_DEAL' THEN client.analytical_pnl_quote_fraction_digits
+        WHEN 'HEDGE_DEAL' THEN hedge.analytical_pnl_quote_fraction_digits
+        ELSE exposure.quote_ccy_fraction_digits
+      END AS analyticalPnlQuoteFractionDigits,
       exposure.tenor,
       exposure.base_ccy_value_date AS baseCcyValueDate,
       exposure.quote_ccy_value_date AS quoteCcyValueDate,

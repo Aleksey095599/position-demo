@@ -1326,7 +1326,7 @@
     .pricing-rules-table td:nth-child(6) {
       width: var(--pricing-rule-context-width);
       min-width: var(--pricing-rule-context-width);
-      max-width: var(--pricing-rule-context-width);
+      max-width: none;
     }
 
     .pricing-rules-table th:nth-child(7),
@@ -1345,9 +1345,22 @@
     }
 
     .pricing-rules-table .pricing-rules-context-path {
-      flex-wrap: wrap;
+      width: max-content;
+      min-width: max-content;
+      flex-wrap: nowrap;
       gap: 4px;
       overflow: visible;
+    }
+
+    .pricing-rules-table .pricing-rules-context-path .client-pricing-context-candidate-facet {
+      flex: 0 0 auto;
+      min-width: max-content;
+      overflow: visible;
+    }
+
+    .pricing-rules-table .pricing-rules-context-path .client-pricing-context-candidate-name {
+      overflow: visible;
+      text-overflow: clip;
     }
 
     .pricing-rules-table tbody tr.is-editing td {
@@ -6471,12 +6484,16 @@
     .pricing-rule-bootstrap-dialog .client-pricing-context-facet-clear,
     .pricing-rule-bootstrap-dialog .client-pricing-context-facet-toggle {
       width: 34px;
-      border-left: 1px solid var(--bs-border-color);
-      background: var(--bs-body-bg);
       color: var(--bs-secondary-color);
     }
 
+    .pricing-rule-bootstrap-dialog .client-pricing-context-facet-clear {
+      border-left: 1px solid var(--bs-border-color);
+      background: var(--bs-body-bg);
+    }
+
     .pricing-rule-bootstrap-dialog .client-pricing-context-facet-toggle {
+      border-left: 1px solid var(--bs-border-color);
       background: var(--bs-tertiary-bg);
     }
 
@@ -6845,13 +6862,42 @@
       padding: 0;
     }
 
+    .client-deal-client-picker-toggle,
+    .client-deal-pricing-rule-select-toggle {
+      border-color: var(--bs-border-color);
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-secondary-color);
+    }
+
+    .client-deal-client-picker-toggle:hover:not(:disabled),
+    .client-deal-client-picker-toggle:focus-visible,
+    .client-deal-client-picker-toggle[aria-expanded="true"],
+    .client-deal-pricing-rule-select-toggle:hover:not(:disabled),
+    .client-deal-pricing-rule-select-toggle:focus-visible,
+    .client-deal-pricing-rule-select-toggle[aria-expanded="true"] {
+      border-color: var(--bs-border-color);
+      background: var(--bs-secondary-bg);
+      color: var(--bs-primary);
+    }
+
     .client-deal-client-picker-clear {
+      position: static;
       width: 40px;
+      min-height: 44px;
+      border-color: var(--bs-border-color);
+      border-radius: 0 !important;
+      background: var(--bs-body-bg);
       color: var(--bs-secondary-color);
     }
 
     .client-deal-client-picker-clear[hidden] {
       display: none;
+    }
+
+    .client-deal-client-picker-clear:hover,
+    .client-deal-client-picker-clear:focus-visible {
+      background: var(--bs-secondary-bg);
+      color: var(--bs-body-color);
     }
 
     .client-deal-client-picker-clear:focus-visible,
@@ -7978,7 +8024,8 @@
 
     #batchingHistoryPage .batching-history-content,
     #batchingHistoryPage .batching-history-grid-shell {
-      width: min(660px, 100%);
+      width: min(680px, 100%);
+      min-width: 0;
     }
 
     #batchingHistoryPage .batching-history-content,
@@ -10558,6 +10605,11 @@
 
     /* FX Position keeps its mirrored domain layout while following the Bootstrap 5 + Tabulator workbench contract. */
     #mainPage.fx-position-bootstrap.workbench-page {
+      --market-trade-bg: #fff8e1;
+      --market-trade-border: #ffe082;
+      --market-trade-border-active: #ffca28;
+      --market-trade-text: #795500;
+      --market-trade-focus-ring: rgba(255, 202, 40, 0.24);
       display: flex;
       height: calc(100vh - var(--workspace-nav-height));
       min-height: 0;
@@ -11143,22 +11195,31 @@
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .hedge-deal-button {
+      display: inline-flex;
       width: calc(100% - 12px);
       max-width: 210px;
       min-height: 30px;
       height: 30px;
-      border-color: var(--bs-warning-border-subtle);
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border-color: var(--market-trade-border);
       border-radius: var(--workbench-radius);
       background: var(--bs-body-bg);
-      color: var(--bs-warning-text-emphasis);
+      color: var(--market-trade-text);
       font-size: 12px;
       font-weight: 500;
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .hedge-deal-button:hover:not(:disabled) {
-      border-color: var(--bs-warning);
-      background: var(--bs-warning-bg-subtle);
-      color: var(--bs-warning-text-emphasis);
+      border-color: var(--market-trade-border-active);
+      background: var(--market-trade-bg);
+      color: var(--market-trade-text);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .hedge-deal-button:focus-visible {
+      border-color: var(--market-trade-border-active);
+      box-shadow: 0 0 0 3px var(--market-trade-focus-ring);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) {
@@ -11202,11 +11263,11 @@
       min-height: 30px;
       flex: 0 0 auto;
       flex-wrap: nowrap;
-      align-items: stretch;
-      gap: 0;
+      align-items: center;
+      gap: 6px;
       padding: 0;
       border: 0;
-      border-radius: var(--workbench-radius);
+      border-radius: 0;
       background: transparent;
     }
 
@@ -11214,10 +11275,10 @@
       display: inline-flex;
       height: 30px;
       align-items: center;
-      padding: 4px 9px;
-      border-color: var(--bs-border-color);
-      border-radius: var(--workbench-radius) 0 0 var(--workbench-radius);
-      background: var(--bs-tertiary-bg);
+      padding: 0 3px 0 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
       color: var(--bs-secondary-color);
       font-size: 11px;
       font-weight: 500;
@@ -11225,8 +11286,10 @@
       text-transform: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar .batch-label {
-      background: var(--bs-body-bg);
+    #mainPage.fx-position-bootstrap.workbench-page .deal-generation-control {
+      margin-left: auto;
+      padding-left: 12px;
+      border-left: 1px solid var(--bs-border-color);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .action-button {
@@ -11245,12 +11308,21 @@
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .batch-control .action-button {
-      margin-left: -1px;
-      border-radius: 0;
+      width: auto;
+      min-width: auto;
+      margin: 0;
+      border-width: 1px;
+      border-style: solid;
+      border-radius: var(--workbench-radius);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-control .action-button:last-child {
-      border-radius: 0 var(--workbench-radius) var(--workbench-radius) 0;
+    #mainPage.fx-position-bootstrap.workbench-page .batch-control :is(
+      .generation-settings-toggle,
+      .batch-settings-toggle
+    ) {
+      width: 30px;
+      min-width: 30px;
+      padding: 0;
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar #oneBatchButton:is(
@@ -11261,6 +11333,16 @@
       border-color: var(--bs-primary);
       background: var(--bs-primary-bg-subtle);
       color: var(--bs-primary-text-emphasis);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar #autoBatchButton:is(
+      :hover,
+      :focus-visible,
+      :active
+    ):not(:disabled) {
+      border-color: var(--bs-success);
+      background: var(--bs-success-bg-subtle);
+      color: var(--bs-success-text-emphasis);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .deal-toolbar .action-button.primary {
@@ -11275,10 +11357,23 @@
       color: #ffffff;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .deal-toolbar .action-button.primary:hover:not(:disabled) {
-      border-color: #0b5ed7;
+    #mainPage.fx-position-bootstrap.workbench-page .deal-toolbar #createDealButton:is(
+      :hover,
+      :focus-visible
+    ):not(:disabled) {
+      border-color: #0a58ca;
       background: #0b5ed7;
       color: #ffffff;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .deal-generation-control :is(
+      #generateClientDealButton,
+      #runClientDealGenerationButton,
+      #clientDealSettingsButton
+    ):is(:hover, :focus-visible):not(:disabled):not(.is-running) {
+      border-color: var(--bs-secondary-color);
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-emphasis-color);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .deal-toolbar #editDealButton:is(:hover, :focus-visible):not(:disabled) {
@@ -11304,7 +11399,18 @@
       background: var(--bs-tertiary-bg);
       color: var(--bs-secondary-color);
       cursor: default;
-      opacity: 0.58;
+      opacity: 1;
+    }
+
+    @media (max-width: 860px) {
+      #mainPage.fx-position-bootstrap.workbench-page .deal-generation-control {
+        width: 100%;
+        margin-left: 118px;
+        padding-top: 7px;
+        padding-left: 0;
+        border-top: 1px solid var(--bs-border-color);
+        border-left: 0;
+      }
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .batch-status {
@@ -11815,7 +11921,7 @@
                   <button type="button" class="sort-button" data-sort-key="transferRate" title="Transfer Rate">Transfer</button>
                 </th>
                 <th class="gap selection-gap select-all-cell sell-check-zone">
-                  <input type="checkbox" class="form-check-input select-all-checkbox" data-select-side="sell" aria-label="Select all sell deals" title="Select all SELL deals · Shortcut: S">
+                  <input type="checkbox" class="form-check-input select-all-checkbox" data-select-side="sell" aria-label="Select all sell deals" aria-keyshortcuts="S" title="Select all SELL deals · Shortcut: S">
                 </th>
                 <th class="rate market-left market-head">
                   <button type="button" class="sort-button" data-sort-key="marketBid" title="Market Pulse Bid">Bid</button>
@@ -11824,7 +11930,7 @@
                   <button type="button" class="sort-button" data-sort-key="marketOffer" title="Market Pulse Offer">Offer</button>
                 </th>
                 <th class="gap selection-gap select-all-cell buy-check-zone">
-                  <input type="checkbox" class="form-check-input select-all-checkbox" data-select-side="buy" aria-label="Select all buy deals" title="Select all BUY deals · Shortcut: B">
+                  <input type="checkbox" class="form-check-input select-all-checkbox" data-select-side="buy" aria-label="Select all buy deals" aria-keyshortcuts="B" title="Select all BUY deals · Shortcut: B">
                 </th>
                 <th class="rate header-rate buy-head buy-zone">
                   <button type="button" class="sort-button" data-sort-key="transferRate" title="Transfer Rate">Transfer</button>
@@ -11842,29 +11948,28 @@
 
         <section class="deal-toolbar btn-toolbar" aria-label="Client Deal Toolbar">
           <span class="deal-toolbar-title">Client Deal Toolbar</span>
-          <div class="batch-control input-group input-group-sm" aria-label="Deal Generating actions">
-            <span class="batch-label input-group-text">Deal Generating</span>
-            <button type="button" class="action-button primary btn btn-sm btn-outline-primary batch-main" id="generateClientDealButton">One Deal</button>
-            <button type="button" class="action-button primary btn btn-sm btn-outline-primary batch-process" id="runClientDealGenerationButton" aria-label="Start Deal Generating process" title="Start Deal Generating process" aria-pressed="false">
-              <span class="button-icon" id="runClientDealGenerationIcon" aria-hidden="true">play_arrow</span>
+          <div class="batch-control client-deal-actions" aria-label="Client Deal actions">
+            <button type="button" class="action-button primary btn btn-sm btn-primary" id="createDealButton">Add Client Deal</button>
+            <button type="button" class="action-button btn btn-sm btn-outline-secondary" id="editDealButton" disabled>Edit Comment</button>
+          </div>
+          <div class="batch-control deal-generation-control" aria-label="Demo Deal Generation actions">
+            <span class="batch-label">Demo Generation</span>
+            <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-main" id="generateClientDealButton">One Deal</button>
+            <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-process" id="runClientDealGenerationButton" aria-label="Start automatic Deal Generation" title="Start automatic Deal Generation" aria-pressed="false">
+              <span id="runClientDealGenerationLabel">Auto Generate</span>
             </button>
-            <button type="button" class="action-button primary btn btn-sm btn-outline-primary generation-settings-toggle" id="clientDealSettingsButton" aria-label="Deal Generating settings" aria-expanded="false">
+            <button type="button" class="action-button btn btn-sm btn-outline-secondary generation-settings-toggle" id="clientDealSettingsButton" aria-label="Demo Deal Generation settings" title="Demo Deal Generation settings" aria-expanded="false">
               <span class="button-icon" aria-hidden="true">settings</span>
             </button>
           </div>
-          <button type="button" class="action-button primary btn btn-sm btn-primary" id="createDealButton">Add Client Deal</button>
-          <button type="button" class="action-button btn btn-sm btn-outline-secondary" id="editDealButton" disabled>Edit Comment</button>
         </section>
 
         <section class="batch-toolbar btn-toolbar" aria-label="Batch Toolbar">
           <span class="batch-toolbar-title">Batch Toolbar</span>
-          <div class="batch-control input-group input-group-sm" aria-label="Auto Batching actions">
-            <span class="batch-label input-group-text">Auto Batching</span>
-            <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-main" id="oneBatchButton" aria-label="One Batch" disabled>One Batch</button>
-            <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-process" aria-label="Run Auto Batching process" disabled>
-              <span class="button-icon" aria-hidden="true">play_arrow</span>
-            </button>
-            <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-settings-toggle" aria-label="Auto Batching settings" disabled>
+          <div class="batch-control" aria-label="Batching actions">
+            <button type="button" class="action-button btn btn-sm btn-outline-primary batch-main" id="oneBatchButton" aria-label="One Batch" aria-keyshortcuts="G" title="One Batch · Shortcut: G" disabled>One Batch</button>
+            <button type="button" class="action-button btn btn-sm btn-outline-success batch-process" id="autoBatchButton" aria-label="Auto Batch" disabled>Auto Batch</button>
+            <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-settings-toggle" aria-label="Auto Batching settings" title="Auto Batching settings" disabled>
               <span class="button-icon" aria-hidden="true">settings</span>
             </button>
           </div>
@@ -12777,7 +12882,7 @@
                 </th>
                 <th>
                   <div class="reference-column-head reference-column-head-static reference-column-head-centered">
-                    <span class="reference-column-title">Margin %</span>
+                    <span class="reference-column-title">Margin</span>
                   </div>
                 </th>
               </tr>
@@ -12814,7 +12919,7 @@
                       <span class="button-icon" aria-hidden="true">close</span>
                     </button>
                     <button type="button" class="btn btn-outline-secondary client-deal-client-picker-toggle" id="addClientDealClientPickerToggle" aria-label="Open client list" aria-haspopup="listbox" aria-controls="addClientDealClientOptions" aria-expanded="false">
-                      <span class="button-icon" aria-hidden="true">expand_more</span>
+                      <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
                     </button>
                   </div>
                   <div class="client-deal-client-options" id="addClientDealClientOptions" role="listbox" aria-labelledby="addClientDealPartyLabel" hidden></div>
@@ -12992,7 +13097,7 @@
                       <span class="button-icon" aria-hidden="true">close</span>
                     </button>
                     <button type="button" class="btn btn-outline-secondary client-deal-client-picker-toggle" id="addHedgeDealCounterpartyPickerToggle" aria-label="Open Hedge Counterparty list" aria-haspopup="listbox" aria-controls="addHedgeDealCounterpartyOptions" aria-expanded="false">
-                      <span class="button-icon" aria-hidden="true">expand_more</span>
+                      <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
                     </button>
                   </div>
                   <div class="client-deal-client-options" id="addHedgeDealCounterpartyOptions" role="listbox" aria-labelledby="addHedgeDealCounterpartyLabel" hidden></div>
@@ -13011,7 +13116,7 @@
           <div class="client-deal-create-section-body">
             <div class="hedge-deal-main-economics-row">
               <div class="client-deal-economics-field">
-                <label class="form-label" for="addHedgeDealSide">Hedge Side</label>
+                <label class="form-label" for="addHedgeDealSide">Our Side</label>
                 <input class="form-control" type="text" id="addHedgeDealSide" readonly>
               </div>
               <div class="client-deal-economics-field client-deal-amount-field" data-add-hedge-deal-amount-field="base">
@@ -13146,7 +13251,7 @@
                   <div class="input-group">
                     <div class="form-control client-deal-client-picker-value" id="editClientDealClientPickerValue" aria-labelledby="editClientDealPartyLabel"></div>
                     <button type="button" class="btn btn-outline-secondary client-deal-client-picker-toggle" aria-label="Client selection is locked" disabled>
-                      <span class="button-icon" aria-hidden="true">expand_more</span>
+                      <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
                     </button>
                   </div>
                 </div>
@@ -13536,6 +13641,9 @@
       lastError: null
     };
     let clientDealGenerationRefreshTimer = null;
+    let clientDealGenerationRefreshInFlight = false;
+    let fxPositionsRequestSequence = 0;
+    let oneBatchInFlight = false;
     let pendingOneBatchRequest = null;
     const fxPositions = [];
 
@@ -14125,7 +14233,7 @@
     const resetDemoTradesConfirmButton = document.getElementById("resetDemoTradesConfirmButton");
     const generateClientDealButton = document.getElementById("generateClientDealButton");
     const runClientDealGenerationButton = document.getElementById("runClientDealGenerationButton");
-    const runClientDealGenerationIcon = document.getElementById("runClientDealGenerationIcon");
+    const runClientDealGenerationLabel = document.getElementById("runClientDealGenerationLabel");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
     const oneBatchButton = document.getElementById("oneBatchButton");
     const clientProfileForm = document.getElementById("clientProfileForm");
@@ -16262,6 +16370,26 @@
       const side = String(source.side || "").trim().toUpperCase();
       const baseCcyAmountMinor = Number(source.baseCcyAmountMinor);
       const quoteCcyAmountMinor = Number(source.quoteCcyAmountMinor);
+      const analyticalPnlQuoteMinorSource = source.analyticalPnlQuoteMinor;
+      const analyticalPnlQuoteFractionDigitsSource =
+        source.analyticalPnlQuoteFractionDigits;
+      const analyticalPnlQuoteMinor = nullableNumber(
+        analyticalPnlQuoteMinorSource
+      );
+      const analyticalPnlQuoteFractionDigits = nullableNumber(
+        analyticalPnlQuoteFractionDigitsSource
+      );
+      const hasMinorAnalyticalPnl =
+        analyticalPnlQuoteMinorSource !== null
+        && analyticalPnlQuoteMinorSource !== undefined
+        && analyticalPnlQuoteMinorSource !== ""
+        && analyticalPnlQuoteFractionDigitsSource !== null
+        && analyticalPnlQuoteFractionDigitsSource !== undefined
+        && analyticalPnlQuoteFractionDigitsSource !== ""
+        && Number.isSafeInteger(analyticalPnlQuoteMinor)
+        && Number.isInteger(analyticalPnlQuoteFractionDigits)
+        && analyticalPnlQuoteFractionDigits >= 0
+        && analyticalPnlQuoteFractionDigits <= 10;
       const currencyPair = String(source.currencyPair || "").trim().toUpperCase();
       const [pairBaseCcyCode = "", pairQuoteCcyCode = ""] =
         currencyPair.split("/");
@@ -16302,6 +16430,13 @@
         ),
         tradeRate: nullableNumber(source.tradeRate),
         transferRate: nullableNumber(source.transferRate),
+        analyticalPnl: nullableNumber(source.analyticalPnl),
+        analyticalPnlQuoteMinor: hasMinorAnalyticalPnl
+          ? analyticalPnlQuoteMinor
+          : null,
+        analyticalPnlQuoteFractionDigits: hasMinorAnalyticalPnl
+          ? analyticalPnlQuoteFractionDigits
+          : null,
         tenor: String(source.tenor || "").trim().toUpperCase(),
         baseCcyValueDate: String(source.baseCcyValueDate || "").trim(),
         quoteCcyValueDate: String(source.quoteCcyValueDate || "").trim(),
@@ -16401,7 +16536,13 @@
     }
 
     async function reloadFxPositionsFromApi() {
+      const requestSequence = ++fxPositionsRequestSequence;
       const records = await demoApiRequest("/api/v1/fx-positions");
+
+      if (requestSequence !== fxPositionsRequestSequence) {
+        return fxPositionRecords;
+      }
+
       fxPositionRecords = Array.isArray(records) ? records : [];
       loadFxPositionsFromDatabase();
       return fxPositionRecords;
@@ -17261,7 +17402,7 @@
             escapeHtml(pricingMode),
             false
           )}</td>
-          <td>${escapeHtml(editNumber(rule.marginPercent, 4))}</td>
+          <td>${escapeHtml(editNumber(rule.marginPercent, 2))}%</td>
         </tr>
       `;
     }
@@ -21999,6 +22140,52 @@
       });
     }
 
+    function batchStructureAnalyticalPnlFormatter(cell) {
+      const pnlMinor = Number(cell.getValue());
+      const rowComponent = typeof cell.getRow === "function"
+        ? cell.getRow()
+        : null;
+      const currentRow = rowComponent && typeof rowComponent.getData === "function"
+        ? rowComponent.getData()
+        : {};
+      const referenceTrade = cell.getTable().getData().find(trade => {
+        const fractionDigits = Number(
+          trade.analyticalPnlQuoteFractionDigits
+        );
+
+        return Number.isInteger(fractionDigits)
+          && fractionDigits >= 0
+          && fractionDigits <= 10;
+      }) || {};
+      const row = Number.isInteger(
+        Number(currentRow.analyticalPnlQuoteFractionDigits)
+      )
+        ? currentRow
+        : referenceTrade;
+      const fractionDigits = Number(row.analyticalPnlQuoteFractionDigits);
+      const quoteCcyCode = String(row.quoteCcyCode || "").trim().toUpperCase();
+
+      if (
+        !Number.isSafeInteger(pnlMinor)
+        || !Number.isInteger(fractionDigits)
+        || fractionDigits < 0
+        || fractionDigits > 10
+      ) {
+        return "";
+      }
+
+      const formattedValue = formattedMinorAmount(
+        pnlMinor.toString(),
+        fractionDigits
+      );
+      const sign = pnlMinor > 0 ? "+" : "";
+      const tone = pnlMinor < 0 ? " text-danger" : "";
+
+      return `<span class="${tone.trim()}">${escapeHtml(
+        `${sign}${formattedValue}${quoteCcyCode ? ` ${quoteCcyCode}` : ""}`
+      )}</span>`;
+    }
+
     function batchStructureTradeColumns(roleField) {
       const includeNetTotal = roleField === "memberRole";
       const columns = [
@@ -22055,6 +22242,22 @@
           headerHozAlign: "right",
           width: 124,
           minWidth: 116
+        }),
+        tabulatorSizedColumn("positionAmount", {
+          title: "Analytical PnL",
+          field: "analyticalPnlQuoteMinor",
+          sorter: "number",
+          formatter: batchStructureAnalyticalPnlFormatter,
+          hozAlign: "right",
+          headerHozAlign: "right",
+          width: 154,
+          minWidth: 146,
+          ...(includeNetTotal
+            ? {
+                bottomCalc: "sum",
+                bottomCalcFormatter: batchStructureAnalyticalPnlFormatter
+              }
+            : {})
         }),
         {
           title: "Base Ccy Value Date",
@@ -24560,6 +24763,10 @@
     }
 
     async function formOneBatchFromSelection() {
+      if (oneBatchInFlight) {
+        return;
+      }
+
       const sourceDeals = selectedBatchSourceTrades();
 
       if (sourceDeals.length === 0) {
@@ -24573,6 +24780,7 @@
       const tradeIds = sourceDeals
         .map(deal => Number(fxPositionTradeId(deal)))
         .sort((left, right) => left - right);
+      const submittedDealIds = sourceDeals.map(deal => deal.id);
       const selectionKey = tradeIds.join(",");
 
       if (pendingOneBatchRequest?.selectionKey !== selectionKey) {
@@ -24582,8 +24790,10 @@
         };
       }
 
-      oneBatchButton.disabled = true;
-      setBatchStatus("Forming FX Batch...");
+      const batchRequest = pendingOneBatchRequest;
+      oneBatchInFlight = true;
+      updateActionButtons();
+      setBatchStatus(`Forming FX Batch from ${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}...`);
 
       try {
         const result = await demoApiRequest(
@@ -24591,14 +24801,18 @@
           {
             method: "POST",
             headers: {
-              "Idempotency-Key": pendingOneBatchRequest.idempotencyKey
+              "Idempotency-Key": batchRequest.idempotencyKey
             },
             body: JSON.stringify({ tradeIds })
           }
         );
         await reloadFxPositionsFromApi();
-        pendingOneBatchRequest = null;
-        selectedDealIds.clear();
+
+        if (pendingOneBatchRequest === batchRequest) {
+          pendingOneBatchRequest = null;
+        }
+
+        submittedDealIds.forEach(dealId => selectedDealIds.delete(dealId));
         render(fxPositions);
 
         const balancingTrade = result.trades?.find(trade =>
@@ -24617,6 +24831,7 @@
       } catch (error) {
         setBatchStatus(error.message || "Unable to form FX Batch.", "error");
       } finally {
+        oneBatchInFlight = false;
         updateActionButtons();
       }
     }
@@ -24702,6 +24917,31 @@
       }
     }
 
+    async function refreshClientDealGenerationViews() {
+      if (clientDealGenerationRefreshInFlight) {
+        return;
+      }
+
+      clientDealGenerationRefreshInFlight = true;
+
+      try {
+        const [processState] = await Promise.all([
+          demoApiRequest("/api/v1/client-deal-generation/process"),
+          refreshClientDealViewsFromApi()
+        ]);
+        applyClientDealGenerationProcessState(processState);
+        render(fxPositions);
+
+        if (processState.lastError) {
+          setBatchStatus(processState.lastError, "error");
+        }
+      } catch (error) {
+        setBatchStatus(error.message || "Unable to refresh Deal Generating process.", "error");
+      } finally {
+        clientDealGenerationRefreshInFlight = false;
+      }
+    }
+
     function applyClientDealGenerationProcessState(state) {
       clientDealGenerationProcessState = {
         ...clientDealGenerationProcessState,
@@ -24713,28 +24953,15 @@
       runClientDealGenerationButton.setAttribute("aria-pressed", String(running));
       runClientDealGenerationButton.setAttribute(
         "aria-label",
-        running ? "Stop Deal Generating process" : "Start Deal Generating process"
+        running ? "Stop automatic Deal Generation" : "Start automatic Deal Generation"
       );
-      runClientDealGenerationButton.dataset.tooltip =
-        running ? "Stop Deal Generating process" : "Start Deal Generating process";
-      runClientDealGenerationIcon.textContent = running ? "stop" : "play_arrow";
+      runClientDealGenerationButton.title =
+        running ? "Stop automatic Deal Generation" : "Start automatic Deal Generation";
+      runClientDealGenerationLabel.textContent = running ? "Stop Generation" : "Auto Generate";
 
       if (running && clientDealGenerationRefreshTimer === null) {
-        clientDealGenerationRefreshTimer = window.setInterval(async () => {
-          try {
-            const [processState] = await Promise.all([
-              demoApiRequest("/api/v1/client-deal-generation/process"),
-              refreshClientDealViewsFromApi()
-            ]);
-            applyClientDealGenerationProcessState(processState);
-            render(fxPositions);
-
-            if (processState.lastError) {
-              setBatchStatus(processState.lastError, "error");
-            }
-          } catch (error) {
-            setBatchStatus(error.message || "Unable to refresh Deal Generating process.", "error");
-          }
+        clientDealGenerationRefreshTimer = window.setInterval(() => {
+          void refreshClientDealGenerationViews();
         }, Number(clientDealGenerationProcessState.intervalMs) || 1000);
       } else if (!running && clientDealGenerationRefreshTimer !== null) {
         window.clearInterval(clientDealGenerationRefreshTimer);
@@ -24879,7 +25106,9 @@
       editDealButton.disabled = selectedEditableDeal() === null;
 
       oneBatchButton.disabled =
-        !DEMO_API_ENABLED || selectedBatchSourceTrades().length === 0;
+        !DEMO_API_ENABLED
+        || oneBatchInFlight
+        || selectedBatchSourceTrades().length === 0;
     }
 
     function updateSelectAllCheckboxes(rows) {
@@ -24937,7 +25166,7 @@
         event.ctrlKey ||
         event.metaKey ||
         mainPage.hidden ||
-        editDialog.hasAttribute("open") ||
+        Boolean(document.querySelector("dialog[open]")) ||
         isTextEntryTarget(event.target)
       ) {
         return;
@@ -24953,6 +25182,14 @@
       if (key === "s" || key === "\u044b") {
         event.preventDefault();
         toggleSideSelectionByShortcut("sell");
+      }
+
+      if (key === "g" || key === "\u043f") {
+        event.preventDefault();
+
+        if (!oneBatchButton.disabled) {
+          oneBatchButton.click();
+        }
       }
     }
 
@@ -25142,9 +25379,6 @@
       addClientDealClientPickerToggle.setAttribute("aria-expanded", String(isExpanded));
       addClientDealClientPickerValue.setAttribute("aria-expanded", String(isExpanded));
       addClientDealClientOptions.hidden = !isExpanded;
-      addClientDealClientPickerToggle.querySelector(".button-icon").textContent = isExpanded
-        ? "expand_less"
-        : "expand_more";
     }
 
     function syncAddClientDealClientClearAvailability() {
@@ -25330,7 +25564,7 @@
                   : emptyMessage)}</span><span></span>`}
           </div>
           <button type="button" class="btn btn-outline-secondary client-deal-pricing-rule-select-toggle" data-add-client-deal-pricing-rule-toggle aria-label="Open Pricing Rule list" aria-haspopup="listbox" aria-controls="addClientDealPricingRuleOptions" aria-expanded="${addClientDealPricingRulesExpanded}"${pickerAvailable ? "" : " disabled"}>
-            <span class="button-icon" aria-hidden="true">${addClientDealPricingRulesExpanded ? "expand_less" : "expand_more"}</span>
+            <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
           </button>
         </div>
         <div class="client-deal-context-picker-viewport" id="addClientDealPricingRuleOptions" role="listbox" aria-labelledby="addClientDealPricingRuleLabel"${addClientDealPricingRulesExpanded && pickerAvailable ? "" : " hidden"}>
@@ -25828,9 +26062,6 @@
       addHedgeDealCounterpartyPickerToggle.setAttribute("aria-expanded", String(isExpanded));
       addHedgeDealCounterpartyPickerValue.setAttribute("aria-expanded", String(isExpanded));
       addHedgeDealCounterpartyOptions.hidden = !isExpanded;
-      addHedgeDealCounterpartyPickerToggle.querySelector(".button-icon").textContent = isExpanded
-        ? "expand_less"
-        : "expand_more";
     }
 
     function syncAddHedgeDealCounterpartyClearAvailability() {
@@ -26017,7 +26248,7 @@
                 )}</span><span></span>`}
           </div>
           <button type="button" class="btn btn-outline-secondary client-deal-pricing-rule-select-toggle" data-add-hedge-deal-pricing-rule-toggle aria-label="Open Pricing Rule list" aria-haspopup="listbox" aria-controls="addHedgeDealPricingRuleOptions" aria-expanded="${addHedgeDealPricingRulesExpanded}"${options.length === 0 ? " disabled" : ""}>
-            <span class="button-icon" aria-hidden="true">${addHedgeDealPricingRulesExpanded ? "expand_less" : "expand_more"}</span>
+            <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
           </button>
         </div>
         <div class="client-deal-context-picker-viewport" id="addHedgeDealPricingRuleOptions" role="listbox" aria-labelledby="addHedgeDealPricingRuleLabel"${addHedgeDealPricingRulesExpanded && options.length > 0 ? "" : " hidden"}>
@@ -26072,14 +26303,35 @@
       marketPulseCard.classList.toggle("is-live", status === "Active" && Boolean(quote));
     }
 
+    function oppositeFxSide(side) {
+      const normalizedSide = String(side || "").trim().toUpperCase();
+
+      if (normalizedSide === "BUY") {
+        return "SELL";
+      }
+
+      if (normalizedSide === "SELL") {
+        return "BUY";
+      }
+
+      return "";
+    }
+
     function syncAddHedgeDealCurrencyLabels() {
       const pairValue = normalizedPricingRuleCurrencyPair(addHedgeDealForm.elements.currencyPair.value);
       const currencies = currenciesFromPair(pairValue || "BASE/QUOTE");
-      const side = addHedgeDealForm.elements.side.value;
+      const positionSide = addHedgeDealForm.elements.side.value;
+      const ourSide = oppositeFxSide(positionSide);
+      const ourSideLabel = ourSide === "BUY"
+        ? "We Buy"
+        : ourSide === "SELL"
+          ? "We Sell"
+          : "";
 
       addHedgeDealForm.querySelector("[data-add-hedge-deal-base-ccy]").textContent = currencies.base;
       addHedgeDealForm.querySelector("[data-add-hedge-deal-quote-ccy]").textContent = currencies.quote;
-      document.getElementById("addHedgeDealSide").value = `${side} ${currencies.base}`;
+      document.getElementById("addHedgeDealSide").value =
+        ourSideLabel ? `${ourSideLabel} ${currencies.base}` : "";
 
       addHedgeDealForm.querySelectorAll("[data-add-hedge-deal-fixing-currency]").forEach(control => {
         const currency = control.dataset.addHedgeDealFixingCurrency === "quote"
@@ -26282,16 +26534,16 @@
         ?.focus();
     }
 
-    function openAddHedgeDealDialog(side) {
-      const normalizedSide = String(side || "").toUpperCase();
+    function openAddHedgeDealDialog(ourSide) {
+      const normalizedOurSide = String(ourSide || "").toUpperCase();
 
-      if (!["BUY", "SELL"].includes(normalizedSide)) {
+      if (!["BUY", "SELL"].includes(normalizedOurSide)) {
         return;
       }
 
       addHedgeDealForm.reset();
       renderAddHedgeDealCurrencyPairs(activeCurrencyPairOrDefault());
-      addHedgeDealForm.elements.side.value = normalizedSide;
+      addHedgeDealForm.elements.side.value = oppositeFxSide(normalizedOurSide);
       addHedgeDealForm.elements.tenor.value = "TOD";
       addHedgeDealCounterpartyPickerExpanded = false;
       addHedgeDealPricingRulesExpanded = false;
@@ -26881,7 +27133,7 @@
               : '<span class="client-deal-pricing-rule-placeholder">Pricing Rule is unavailable.</span><span></span>'}
           </div>
           <button type="button" class="btn btn-outline-secondary client-deal-pricing-rule-select-toggle" aria-label="Pricing Rule selection is locked" disabled>
-            <span class="button-icon" aria-hidden="true">expand_more</span>
+            <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
           </button>
         </div>
       `;
@@ -27301,7 +27553,15 @@
       const side = sideOf(deal);
       const sourceClass = deal.synthetic ? "open-row" : `source-${deal.tone || "blue"}`;
       const selected = selectedDealIds.has(deal.id);
-      const rowClass = `${sourceClass} side-${side}${selected ? " is-selected" : ""}`;
+      const positionType = fxPositionType(deal);
+      const hedgeDealClass = positionType === "HEDGE_DEAL"
+        ? " is-hedge-deal"
+        : "";
+      const batchTechnicalClass = ["BATCH_POSITION_OUT", "BATCH_BALANCE_TRADE"].includes(positionType)
+        ? " is-batch-technical"
+        : "";
+      const rowClass =
+        `${sourceClass} side-${side}${hedgeDealClass}${batchTechnicalClass}${selected ? " is-selected" : ""}`;
       const sellActive = side === "sell";
       const buyActive = side === "buy";
       const flatActive = side === "flat";
@@ -27456,6 +27716,7 @@
 
     function renderBatchingSummary(source) {
       const fractionDigits = batchingSummaryFractionDigits(source);
+      const baseCcyCode = currenciesFromPair(activeCurrencyPairOrDefault()).base || "BASE";
       const sell = batchingSideSummary(source, "sell", fractionDigits);
       const buy = batchingSideSummary(source, "buy", fractionDigits);
       const netMinor = sell.amountMinor - buy.amountMinor;
@@ -27489,7 +27750,10 @@
           <td colspan="3"></td>
           <td class="gap wide-gap trade-divider"></td>
           <td class="hedge-deals-side hedge-deals-sell" colspan="3">
-            <button type="button" class="action-button btn btn-sm btn-outline-warning hedge-deal-button hedge-deal-sell-button" id="addHedgeSellDealButton">Add Hedge Deal</button>
+            <button type="button" class="action-button btn btn-sm btn-outline-warning hedge-deal-button hedge-deal-sell-button" id="addHedgeSellDealButton">
+              <span class="button-icon" aria-hidden="true">shield</span>
+              <span>SELL ${escapeHtml(baseCcyCode)}</span>
+            </button>
           </td>
           <td class="hedge-deals-center" colspan="4">
             <div class="hedge-deals-center-content">
@@ -27497,7 +27761,10 @@
             </div>
           </td>
           <td class="hedge-deals-side hedge-deals-buy" colspan="3">
-            <button type="button" class="action-button btn btn-sm btn-outline-warning hedge-deal-button hedge-deal-buy-button" id="addHedgeBuyDealButton">Add Hedge Deal</button>
+            <button type="button" class="action-button btn btn-sm btn-outline-warning hedge-deal-button hedge-deal-buy-button" id="addHedgeBuyDealButton">
+              <span class="button-icon" aria-hidden="true">shield</span>
+              <span>BUY ${escapeHtml(baseCcyCode)}</span>
+            </button>
           </td>
         </tr>
       `;
