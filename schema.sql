@@ -586,6 +586,7 @@ CREATE TABLE IF NOT EXISTS fx_batches
     batch_status    TEXT    NOT NULL DEFAULT 'BUILDING',
     created_at      TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    rolled_back_at  TEXT,
 
     CONSTRAINT fk_fx_batches_ccy_pair
         FOREIGN KEY (ccy_pair_code)
@@ -602,12 +603,25 @@ CREATE TABLE IF NOT EXISTS fx_batches
             AND idempotency_key = trim(idempotency_key)
         ),
     CONSTRAINT chk_fx_batches_status
-        CHECK (batch_status IN ('BUILDING', 'FORMED')),
+        CHECK (batch_status IN ('BUILDING', 'FORMED', 'ROLLED_BACK')),
     CONSTRAINT chk_fx_batches_created_at
         CHECK (
             length(created_at) = 24
             AND created_at GLOB '????-??-??T??:??:??.???Z'
             AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
+        ),
+    CONSTRAINT chk_fx_batches_rolled_back_at
+        CHECK (
+            (
+                batch_status IN ('BUILDING', 'FORMED')
+                AND rolled_back_at IS NULL
+            )
+            OR (
+                batch_status = 'ROLLED_BACK'
+                AND length(rolled_back_at) = 24
+                AND rolled_back_at GLOB '????-??-??T??:??:??.???Z'
+                AND strftime('%Y-%m-%dT%H:%M:%fZ', rolled_back_at) = rolled_back_at
+            )
         )
 );
 
@@ -630,14 +644,17 @@ CREATE TABLE IF NOT EXISTS fx_batch_members
             REFERENCES fx_trade_exposure (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT uq_fx_batch_members_trade
-        UNIQUE (trade_id),
     CONSTRAINT chk_fx_batch_members_role
         CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'BALANCE_QUOTE_CASH')),
     CONSTRAINT chk_fx_batch_members_role_trade_type
         CHECK (
             (member_role = 'TRADE'
-                AND trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL'))
+                AND trade_type IN
+                (
+                    'CLIENT_DEAL',
+                    'HEDGE_DEAL',
+                    'BATCH_POSITION_OUT'
+                ))
             OR (member_role = 'BALANCE_TRADE'
                 AND trade_type = 'BATCH_BALANCE_TRADE')
             OR (member_role = 'BALANCE_QUOTE_CASH'
@@ -672,6 +689,27 @@ CREATE TABLE IF NOT EXISTS fx_batch_outputs
         CHECK (
             output_role = 'POSITION_OUT'
             AND trade_type = 'BATCH_POSITION_OUT'
+        )
+);
+
+CREATE TABLE IF NOT EXISTS fx_demo_hidden_batches
+(
+    batch_id  INTEGER PRIMARY KEY,
+    hidden_at TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT fk_fx_demo_hidden_batches_batch
+        FOREIGN KEY (batch_id)
+            REFERENCES fx_batches (batch_id)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT chk_fx_demo_hidden_batches_id
+        CHECK (batch_id > 0),
+    CONSTRAINT chk_fx_demo_hidden_batches_hidden_at
+        CHECK (
+            length(hidden_at) = 24
+            AND hidden_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', hidden_at) = hidden_at
         )
 );
 
@@ -780,6 +818,23 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_batch_members_single_balancer
 CREATE INDEX IF NOT EXISTS idx_fx_batch_outputs_batch
     ON fx_batch_outputs (batch_id, output_role);
 
+CREATE TRIGGER IF NOT EXISTS trg_fx_demo_hidden_batches_validate_insert
+BEFORE INSERT ON fx_demo_hidden_batches
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM fx_batches
+    WHERE batch_id = NEW.batch_id
+      AND batch_status = 'ROLLED_BACK'
+)
+BEGIN
+    SELECT RAISE(
+        ABORT,
+        'demo-hidden technical trades must belong to a ROLLED_BACK batch'
+    );
+END;
+
 CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_validate_insert
 BEFORE INSERT ON fx_batch_members
 FOR EACH ROW
@@ -809,12 +864,47 @@ WHEN
             WHERE d.trade_id = NEW.trade_id
               AND d.trade_type = NEW.trade_type
               AND d.transfer_rate IS NOT NULL
+            UNION ALL
+            SELECT 1
+            FROM fx_batch_outputs o
+            INNER JOIN fx_batches source_batch
+                ON source_batch.batch_id = o.batch_id
+            INNER JOIN fx_trade_exposure e
+                ON e.trade_id = o.trade_id
+                AND e.trade_type = o.trade_type
+            WHERE o.trade_id = NEW.trade_id
+              AND o.trade_type = NEW.trade_type
+              AND o.output_role = 'POSITION_OUT'
+              AND source_batch.batch_status IN ('FORMED', 'ROLLED_BACK')
+              AND e.trade_type = 'BATCH_POSITION_OUT'
+              AND e.base_ccy_side IN ('BUY', 'SELL')
+              AND e.trade_rate IS NOT NULL
+              AND NOT EXISTS
+              (
+                  SELECT 1
+                  FROM fx_demo_hidden_batches hidden
+                  WHERE hidden.batch_id = o.batch_id
+              )
         )
+    )
+    OR EXISTS
+    (
+        SELECT 1
+        FROM fx_batch_members existing
+        INNER JOIN fx_batches existing_batch
+            ON existing_batch.batch_id = existing.batch_id
+        WHERE existing.trade_id = NEW.trade_id
+          AND existing.batch_id <> NEW.batch_id
+          AND (
+              NEW.member_role <> 'TRADE'
+              OR existing.member_role <> 'TRADE'
+              OR existing_batch.batch_status IN ('BUILDING', 'FORMED')
+          )
     )
 BEGIN
     SELECT RAISE(
         ABORT,
-        'batch member must match a BUILDING batch and ordinary trades require transfer_rate'
+        'batch member must match one active BUILDING batch and source trades require a transfer rate'
     );
 END;
 
@@ -976,14 +1066,50 @@ BEGIN
         THEN RAISE(ABORT, 'flat batch must not contain a balance trade')
     END;
     SELECT CASE
-        WHEN NOT EXISTS
+        WHEN
+        (
+            SELECT COALESCE(SUM(
+                CASE e.base_ccy_side
+                    WHEN 'BUY' THEN e.base_ccy_amount_minor
+                    ELSE -e.base_ccy_amount_minor
+                END
+            ), 0)
+            FROM fx_batch_members m
+            INNER JOIN fx_trade_exposure e ON e.trade_id = m.trade_id
+            WHERE m.batch_id = OLD.batch_id
+              AND m.member_role = 'TRADE'
+        ) <> 0
+        AND NOT EXISTS
         (
             SELECT 1
             FROM fx_batch_outputs
             WHERE batch_id = OLD.batch_id
               AND output_role = 'POSITION_OUT'
         )
-        THEN RAISE(ABORT, 'formed batch must contain a position output')
+        THEN RAISE(ABORT, 'non-flat batch must contain a position output')
+    END;
+    SELECT CASE
+        WHEN
+        (
+            SELECT COALESCE(SUM(
+                CASE e.base_ccy_side
+                    WHEN 'BUY' THEN e.base_ccy_amount_minor
+                    ELSE -e.base_ccy_amount_minor
+                END
+            ), 0)
+            FROM fx_batch_members m
+            INNER JOIN fx_trade_exposure e ON e.trade_id = m.trade_id
+            WHERE m.batch_id = OLD.batch_id
+              AND m.member_role = 'TRADE'
+        ) = 0
+        AND EXISTS
+        (
+            SELECT 1
+            FROM fx_batch_outputs
+            WHERE batch_id = OLD.batch_id
+              AND output_role = 'POSITION_OUT'
+        )
+        THEN RAISE(ABORT, 'flat batch must not contain a position output')
     END;
     SELECT CASE
         WHEN
@@ -1034,7 +1160,10 @@ END;
 CREATE TRIGGER IF NOT EXISTS trg_fx_batches_reject_invalid_status_update
 BEFORE UPDATE OF batch_status ON fx_batches
 FOR EACH ROW
-WHEN NOT (OLD.batch_status = 'BUILDING' AND NEW.batch_status = 'FORMED')
+WHEN NOT (
+    (OLD.batch_status = 'BUILDING' AND NEW.batch_status = 'FORMED')
+    OR (OLD.batch_status = 'FORMED' AND NEW.batch_status = 'ROLLED_BACK')
+)
 BEGIN
     SELECT RAISE(ABORT, 'batch status transition is not allowed');
 END;
@@ -1042,17 +1171,30 @@ END;
 CREATE TRIGGER IF NOT EXISTS trg_fx_batches_immutable_update
 BEFORE UPDATE ON fx_batches
 FOR EACH ROW
-WHEN OLD.batch_status = 'FORMED'
+WHEN
+    OLD.batch_status = 'ROLLED_BACK'
+    OR (
+        OLD.batch_status = 'FORMED'
+        AND NOT (
+            NEW.batch_id = OLD.batch_id
+            AND NEW.idempotency_key = OLD.idempotency_key
+            AND NEW.ccy_pair_code = OLD.ccy_pair_code
+            AND NEW.batch_status = 'ROLLED_BACK'
+            AND NEW.created_at = OLD.created_at
+            AND OLD.rolled_back_at IS NULL
+            AND NEW.rolled_back_at IS NOT NULL
+        )
+    )
 BEGIN
-    SELECT RAISE(ABORT, 'formed batch is immutable');
+    SELECT RAISE(ABORT, 'completed batch is immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_batches_immutable_delete
 BEFORE DELETE ON fx_batches
 FOR EACH ROW
-WHEN OLD.batch_status = 'FORMED'
+WHEN OLD.batch_status IN ('FORMED', 'ROLLED_BACK')
 BEGIN
-    SELECT RAISE(ABORT, 'formed batch is immutable');
+    SELECT RAISE(ABORT, 'completed batch is immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_immutable_update
@@ -1061,10 +1203,11 @@ FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1 FROM fx_batches
-    WHERE batch_id = OLD.batch_id AND batch_status = 'FORMED'
+    WHERE batch_id = OLD.batch_id
+      AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'formed batch members are immutable');
+    SELECT RAISE(ABORT, 'completed batch members are immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_immutable_delete
@@ -1073,10 +1216,11 @@ FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1 FROM fx_batches
-    WHERE batch_id = OLD.batch_id AND batch_status = 'FORMED'
+    WHERE batch_id = OLD.batch_id
+      AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'formed batch members are immutable');
+    SELECT RAISE(ABORT, 'completed batch members are immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_batch_outputs_immutable_update
@@ -1085,10 +1229,11 @@ FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1 FROM fx_batches
-    WHERE batch_id = OLD.batch_id AND batch_status = 'FORMED'
+    WHERE batch_id = OLD.batch_id
+      AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'formed batch outputs are immutable');
+    SELECT RAISE(ABORT, 'completed batch outputs are immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_batch_outputs_immutable_delete
@@ -1097,10 +1242,11 @@ FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1 FROM fx_batches
-    WHERE batch_id = OLD.batch_id AND batch_status = 'FORMED'
+    WHERE batch_id = OLD.batch_id
+      AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'formed batch outputs are immutable');
+    SELECT RAISE(ABORT, 'completed batch outputs are immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_trade_immutable_update
@@ -1114,11 +1260,11 @@ WHEN EXISTS
         ON m.batch_id = b.batch_id AND m.trade_id = OLD.trade_id
     LEFT JOIN fx_batch_outputs o
         ON o.batch_id = b.batch_id AND o.trade_id = OLD.trade_id
-    WHERE b.batch_status = 'FORMED'
+    WHERE b.batch_status IN ('FORMED', 'ROLLED_BACK')
       AND (m.trade_id IS NOT NULL OR o.trade_id IS NOT NULL)
 )
 BEGIN
-    SELECT RAISE(ABORT, 'trade linked to a formed batch is immutable');
+    SELECT RAISE(ABORT, 'trade linked to a completed batch is immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_trade_immutable_delete
@@ -1132,11 +1278,11 @@ WHEN EXISTS
         ON m.batch_id = b.batch_id AND m.trade_id = OLD.trade_id
     LEFT JOIN fx_batch_outputs o
         ON o.batch_id = b.batch_id AND o.trade_id = OLD.trade_id
-    WHERE b.batch_status = 'FORMED'
+    WHERE b.batch_status IN ('FORMED', 'ROLLED_BACK')
       AND (m.trade_id IS NOT NULL OR o.trade_id IS NOT NULL)
 )
 BEGIN
-    SELECT RAISE(ABORT, 'trade linked to a formed batch is immutable');
+    SELECT RAISE(ABORT, 'trade linked to a completed batch is immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_client_trade_immutable_update
@@ -1147,10 +1293,11 @@ WHEN EXISTS
     SELECT 1
     FROM fx_batch_members m
     INNER JOIN fx_batches b ON b.batch_id = m.batch_id
-    WHERE m.trade_id = OLD.trade_id AND b.batch_status = 'FORMED'
+    WHERE m.trade_id = OLD.trade_id
+      AND b.batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'client trade linked to a formed batch is immutable');
+    SELECT RAISE(ABORT, 'client trade linked to a completed batch is immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_client_trade_immutable_delete
@@ -1161,10 +1308,11 @@ WHEN EXISTS
     SELECT 1
     FROM fx_batch_members m
     INNER JOIN fx_batches b ON b.batch_id = m.batch_id
-    WHERE m.trade_id = OLD.trade_id AND b.batch_status = 'FORMED'
+    WHERE m.trade_id = OLD.trade_id
+      AND b.batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'client trade linked to a formed batch is immutable');
+    SELECT RAISE(ABORT, 'client trade linked to a completed batch is immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_hedge_trade_immutable_update
@@ -1175,10 +1323,11 @@ WHEN EXISTS
     SELECT 1
     FROM fx_batch_members m
     INNER JOIN fx_batches b ON b.batch_id = m.batch_id
-    WHERE m.trade_id = OLD.trade_id AND b.batch_status = 'FORMED'
+    WHERE m.trade_id = OLD.trade_id
+      AND b.batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'hedge trade linked to a formed batch is immutable');
+    SELECT RAISE(ABORT, 'hedge trade linked to a completed batch is immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_hedge_trade_immutable_delete
@@ -1189,10 +1338,11 @@ WHEN EXISTS
     SELECT 1
     FROM fx_batch_members m
     INNER JOIN fx_batches b ON b.batch_id = m.batch_id
-    WHERE m.trade_id = OLD.trade_id AND b.batch_status = 'FORMED'
+    WHERE m.trade_id = OLD.trade_id
+      AND b.batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'hedge trade linked to a formed batch is immutable');
+    SELECT RAISE(ABORT, 'hedge trade linked to a completed batch is immutable');
 END;
 
 CREATE INDEX IF NOT EXISTS idx_ccy_pair_options_base

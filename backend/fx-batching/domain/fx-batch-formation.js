@@ -10,7 +10,11 @@ Decimal.strict = true;
 Decimal.DP = 40;
 Decimal.RM = Decimal.roundHalfUp;
 
-const SOURCE_TRADE_TYPES = new Set(["CLIENT_DEAL", "HEDGE_DEAL"]);
+const SOURCE_TRADE_TYPES = new Set([
+  "CLIENT_DEAL",
+  "HEDGE_DEAL",
+  "BATCH_POSITION_OUT"
+]);
 const TRADE_SIDES = new Set(["BUY", "SELL"]);
 
 function batchFormationError(code, message) {
@@ -128,7 +132,7 @@ function normalizedSourceTrade(value) {
   if (!SOURCE_TRADE_TYPES.has(tradeType)) {
     throw batchFormationError(
       "INVALID_BATCH_SOURCE_TRADE",
-      `Trade ${tradeId} must be a CLIENT_DEAL or HEDGE_DEAL.`
+      `Trade ${tradeId} must be a CLIENT_DEAL, HEDGE_DEAL, or BATCH_POSITION_OUT.`
     );
   }
 
@@ -230,35 +234,22 @@ function commonTradeTerms(first, timestamp) {
 function formFlatFxBatch({
   sourceTradeIds,
   exactNetTransferQuoteAmountMinor,
-  first,
-  timestamp
+  first
 }) {
-  if (!exactNetTransferQuoteAmountMinor.eq("0")) {
-    throw batchFormationError(
-      "BATCH_QUOTE_CASH_BALANCER_REQUIRED",
-      "Flat Base Ccy selection has non-zero Quote Ccy cash and requires BALANCE_QUOTE_CASH."
-    );
-  }
-
   return {
     sourceTradeIds,
     sourceNetSide: "FLAT",
     sourceNetBaseCcyAmountMinor: 0n,
     sourceNetBaseCcyFractionDigits: first.baseCcyFractionDigits,
-    sourceNetTransferQuoteAmountMinor: 0n,
+    sourceNetTransferQuoteAmountMinor: roundedMinorUnits(
+      exactNetTransferQuoteAmountMinor.abs()
+    ),
     sourceNetTransferQuoteFractionDigits: first.quoteCcyFractionDigits,
     exactTransferRate: null,
     roundingResidualQuoteAmountMinor: 0n,
     roundingResidualQuoteFractionDigits: first.quoteCcyFractionDigits,
     balanceTrade: null,
-    positionOut: {
-      ...commonTradeTerms(first, timestamp),
-      tradeType: "BATCH_POSITION_OUT",
-      side: "FLAT",
-      baseCcyAmountMinor: 0n,
-      quoteCcyAmountMinor: 0n,
-      tradeRate: null
-    }
+    positionOut: null
   };
 }
 
@@ -270,7 +261,7 @@ function formFxBatch({
   if (!Array.isArray(trades) || trades.length === 0) {
     throw batchFormationError(
       "EMPTY_BATCH_SELECTION",
-      "Select at least one Client or Hedge FX Deal."
+      "Select at least one eligible FX Trade."
     );
   }
 
@@ -323,30 +314,37 @@ function formFxBatch({
     return formFlatFxBatch({
       sourceTradeIds,
       exactNetTransferQuoteAmountMinor,
-      first,
-      timestamp
+      first
     });
   }
 
   const netBaseIsPositive = netBaseCcyAmountMinor > 0n;
-
-  if (exactNetTransferQuoteAmountMinor.eq("0")
-    || netBaseIsPositive === exactNetTransferQuoteAmountMinor.gt("0")) {
-    throw batchFormationError(
-      "INVALID_BATCH_BALANCING_RATE",
-      "Selected trades do not produce a positive balancing Transfer Rate."
-    );
-  }
-
+  const sourceNetSide = netBaseIsPositive ? "SELL" : "BUY";
   const balancingSide = netBaseIsPositive ? "BUY" : "SELL";
   const positionOutSide = balancingSide === "BUY" ? "SELL" : "BUY";
   const baseCcyAmountMinor = absoluteMinorUnits(netBaseCcyAmountMinor);
-  const exactTransferRate = exactNetTransferQuoteAmountMinor
-    .abs()
-    .div(new Decimal(baseCcyAmountMinor.toString()))
+  let rateSourceBaseCcyAmountMinor = 0n;
+  let exactRateSourceQuoteAmountMinor = new Decimal("0");
+
+  normalizedTrades
+    .filter(trade => trade.side === sourceNetSide)
+    .forEach(trade => {
+      rateSourceBaseCcyAmountMinor += trade.baseCcyAmountMinor;
+      exactRateSourceQuoteAmountMinor = exactRateSourceQuoteAmountMinor.plus(
+        exactQuoteMinor(
+          trade.baseCcyAmountMinor,
+          trade.baseCcyFractionDigits,
+          trade.transferRate,
+          trade.quoteCcyFractionDigits
+        )
+      );
+    });
+
+  const exactWeightedTransferRate = exactRateSourceQuoteAmountMinor
+    .div(new Decimal(rateSourceBaseCcyAmountMinor.toString()))
     .times(powerOfTen(baseDigits))
     .div(powerOfTen(quoteDigits));
-  const tradeRateText = exactTransferRate
+  const tradeRateText = exactWeightedTransferRate
     .round(rateDigits, Decimal.roundHalfUp)
     .toFixed(rateDigits);
   const quoteCcyAmountMinor = calculateQuoteMinor({
@@ -358,10 +356,16 @@ function formFxBatch({
   const sourceNetTransferQuoteAmountMinor = roundedMinorUnits(
     exactNetTransferQuoteAmountMinor.abs()
   );
+  const exactBalancingQuoteAmountMinor = exactQuoteMinor(
+    baseCcyAmountMinor,
+    baseDigits,
+    exactWeightedTransferRate,
+    quoteDigits
+  );
   const roundingResidualQuoteAmountMinor = roundedMinorUnits(
-    exactNetTransferQuoteAmountMinor
-      .abs()
-      .minus(new Decimal(quoteCcyAmountMinor.toString()))
+    exactBalancingQuoteAmountMinor.minus(
+      new Decimal(quoteCcyAmountMinor.toString())
+    )
   );
   const terms = {
     ...commonTradeTerms(first, timestamp),
@@ -372,12 +376,12 @@ function formFxBatch({
 
   return {
     sourceTradeIds,
-    sourceNetSide: netBaseIsPositive ? "SELL" : "BUY",
+    sourceNetSide,
     sourceNetBaseCcyAmountMinor: baseCcyAmountMinor,
     sourceNetBaseCcyFractionDigits: baseDigits,
     sourceNetTransferQuoteAmountMinor,
     sourceNetTransferQuoteFractionDigits: quoteDigits,
-    exactTransferRate: Number(exactTransferRate.toString()),
+    exactTransferRate: Number(exactWeightedTransferRate.toString()),
     roundingResidualQuoteAmountMinor,
     roundingResidualQuoteFractionDigits: quoteDigits,
     balanceTrade: {

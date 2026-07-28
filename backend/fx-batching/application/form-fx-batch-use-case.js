@@ -24,7 +24,7 @@ function normalizedCommand(command) {
   if (!Array.isArray(source.tradeIds) || source.tradeIds.length === 0) {
     throw applicationError(
       "INVALID_BATCH_COMMAND",
-      "Select at least one Client or Hedge FX Deal."
+      "Select at least one eligible FX Trade."
     );
   }
 

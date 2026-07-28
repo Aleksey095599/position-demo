@@ -166,6 +166,8 @@ migrateClientFxDealsToTradeExposure(database);
 migrateFxTradeExposureAmountsToMinorUnits(database);
 migrateFxTradeExposureTradeSemantics(database);
 migrateFxBatchTradeSemantics(database);
+migrateFxBatchRollbackSemantics(database);
+migrateFxBatchPositionOutMembershipSemantics(database);
 migrateFxDealAnalyticalPnlToMinorUnits(database);
 ensureFxTradeExposureDealtCurrencyTriggers(database);
 migrateFxTradeMarketSnapshot(database);
@@ -1194,7 +1196,12 @@ function migrateFxBatchTradeSemantics(sqlite) {
           CONSTRAINT chk_fx_batch_members_role_trade_type
               CHECK (
                   (member_role = 'TRADE'
-                      AND trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL'))
+                      AND trade_type IN
+                      (
+                          'CLIENT_DEAL',
+                          'HEDGE_DEAL',
+                          'BATCH_POSITION_OUT'
+                      ))
                   OR (member_role = 'BALANCE_TRADE'
                       AND trade_type = 'BATCH_BALANCE_TRADE')
                   OR (member_role = 'BALANCE_QUOTE_CASH'
@@ -1290,6 +1297,321 @@ function migrateFxBatchTradeSemantics(sqlite) {
 
     if (foreignKeyViolations.length > 0) {
       throw new Error("FX Batch trade-semantics migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function migrateFxBatchRollbackSemantics(sqlite) {
+  const batchColumns = [...tableColumnNames(sqlite, "fx_batches")];
+  const batchSql = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'fx_batches'
+  `).get()?.sql || "";
+  const membersSql = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'fx_batch_members'
+  `).get()?.sql || "";
+  const alreadyMigrated = batchColumns.includes("rolled_back_at")
+    && batchSql.includes("'ROLLED_BACK'")
+    && !/\bUNIQUE\s*\(\s*trade_id\s*\)/i.test(membersSql);
+
+  if (alreadyMigrated) {
+    return;
+  }
+
+  const invalidBatch = sqlite.prepare(`
+    SELECT batch_id, batch_status
+    FROM fx_batches
+    WHERE batch_status NOT IN ('BUILDING', 'FORMED')
+    LIMIT 1
+  `).get();
+
+  if (invalidBatch) {
+    throw new Error(
+      `FX Batch ${invalidBatch.batch_id} has unsupported status ${invalidBatch.batch_status}.`
+    );
+  }
+
+  const originalCounts = {
+    batches: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count),
+    members: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count),
+    outputs: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_outputs").get().count)
+  };
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      CREATE TABLE fx_batches_rollback_semantics
+      (
+          batch_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+          idempotency_key TEXT    NOT NULL,
+          ccy_pair_code   TEXT    NOT NULL,
+          batch_status    TEXT    NOT NULL DEFAULT 'BUILDING',
+          created_at      TEXT    NOT NULL
+              DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          rolled_back_at  TEXT,
+
+          CONSTRAINT fk_fx_batches_ccy_pair
+              FOREIGN KEY (ccy_pair_code)
+                  REFERENCES ccy_pair_options (ccy_pair_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT uq_fx_batches_idempotency_key
+              UNIQUE (idempotency_key),
+          CONSTRAINT chk_fx_batches_id
+              CHECK (batch_id > 0),
+          CONSTRAINT chk_fx_batches_idempotency_key
+              CHECK (
+                  length(idempotency_key) BETWEEN 1 AND 100
+                  AND idempotency_key = trim(idempotency_key)
+              ),
+          CONSTRAINT chk_fx_batches_status
+              CHECK (batch_status IN ('BUILDING', 'FORMED', 'ROLLED_BACK')),
+          CONSTRAINT chk_fx_batches_created_at
+              CHECK (
+                  length(created_at) = 24
+                  AND created_at GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
+              ),
+          CONSTRAINT chk_fx_batches_rolled_back_at
+              CHECK (
+                  (
+                      batch_status IN ('BUILDING', 'FORMED')
+                      AND rolled_back_at IS NULL
+                  )
+                  OR (
+                      batch_status = 'ROLLED_BACK'
+                      AND length(rolled_back_at) = 24
+                      AND rolled_back_at GLOB '????-??-??T??:??:??.???Z'
+                      AND strftime('%Y-%m-%dT%H:%M:%fZ', rolled_back_at) = rolled_back_at
+                  )
+              )
+      );
+
+      INSERT INTO fx_batches_rollback_semantics
+        (batch_id, idempotency_key, ccy_pair_code, batch_status, created_at)
+      SELECT batch_id, idempotency_key, ccy_pair_code, batch_status, created_at
+      FROM fx_batches
+      ORDER BY batch_id;
+
+      CREATE TABLE fx_batch_members_rollback_semantics
+      (
+          batch_id    INTEGER NOT NULL,
+          trade_id    INTEGER NOT NULL,
+          trade_type  TEXT    NOT NULL,
+          member_role TEXT    NOT NULL,
+
+          CONSTRAINT pk_fx_batch_members
+              PRIMARY KEY (batch_id, trade_id),
+          CONSTRAINT fk_fx_batch_members_batch
+              FOREIGN KEY (batch_id)
+                  REFERENCES fx_batches_rollback_semantics (batch_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_batch_members_trade
+              FOREIGN KEY (trade_id, trade_type)
+                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT chk_fx_batch_members_role
+              CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'BALANCE_QUOTE_CASH')),
+          CONSTRAINT chk_fx_batch_members_role_trade_type
+              CHECK (
+                  (member_role = 'TRADE'
+                      AND trade_type IN
+                      (
+                          'CLIENT_DEAL',
+                          'HEDGE_DEAL',
+                          'BATCH_POSITION_OUT'
+                      ))
+                  OR (member_role = 'BALANCE_TRADE'
+                      AND trade_type = 'BATCH_BALANCE_TRADE')
+                  OR (member_role = 'BALANCE_QUOTE_CASH'
+                      AND trade_type = 'BATCH_BALANCE_QUOTE_CASH')
+              )
+      );
+
+      INSERT INTO fx_batch_members_rollback_semantics
+      SELECT batch_id, trade_id, trade_type, member_role
+      FROM fx_batch_members
+      ORDER BY batch_id, trade_id;
+
+      CREATE TABLE fx_batch_outputs_rollback_semantics
+      (
+          batch_id    INTEGER NOT NULL,
+          trade_id    INTEGER NOT NULL,
+          trade_type  TEXT    NOT NULL,
+          output_role TEXT    NOT NULL,
+
+          CONSTRAINT pk_fx_batch_outputs
+              PRIMARY KEY (batch_id, trade_id),
+          CONSTRAINT fk_fx_batch_outputs_batch
+              FOREIGN KEY (batch_id)
+                  REFERENCES fx_batches_rollback_semantics (batch_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_batch_outputs_trade
+              FOREIGN KEY (trade_id, trade_type)
+                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT uq_fx_batch_outputs_trade
+              UNIQUE (trade_id),
+          CONSTRAINT uq_fx_batch_outputs_role
+              UNIQUE (batch_id, output_role),
+          CONSTRAINT chk_fx_batch_outputs_role
+              CHECK (
+                  output_role = 'POSITION_OUT'
+                  AND trade_type = 'BATCH_POSITION_OUT'
+              )
+      );
+
+      INSERT INTO fx_batch_outputs_rollback_semantics
+      SELECT batch_id, trade_id, trade_type, output_role
+      FROM fx_batch_outputs
+      ORDER BY batch_id, trade_id;
+
+      DROP TABLE fx_batch_outputs;
+      DROP TABLE fx_batch_members;
+      DROP TABLE fx_batches;
+
+      ALTER TABLE fx_batches_rollback_semantics
+          RENAME TO fx_batches;
+      ALTER TABLE fx_batch_members_rollback_semantics
+          RENAME TO fx_batch_members;
+      ALTER TABLE fx_batch_outputs_rollback_semantics
+          RENAME TO fx_batch_outputs;
+    `);
+
+    const migratedCounts = {
+      batches: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count),
+      members: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count),
+      outputs: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_outputs").get().count)
+    };
+
+    if (migratedCounts.batches !== originalCounts.batches
+      || migratedCounts.members !== originalCounts.members
+      || migratedCounts.outputs !== originalCounts.outputs) {
+      throw new Error("FX Batch rollback migration did not preserve every row.");
+    }
+
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error("FX Batch rollback migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function migrateFxBatchPositionOutMembershipSemantics(sqlite) {
+  const membersSql = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'fx_batch_members'
+  `).get()?.sql || "";
+
+  if (membersSql.includes("'BATCH_POSITION_OUT'")) {
+    return;
+  }
+
+  const originalCount = Number(
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count
+  );
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      CREATE TABLE fx_batch_members_position_out_semantics
+      (
+          batch_id    INTEGER NOT NULL,
+          trade_id    INTEGER NOT NULL,
+          trade_type  TEXT    NOT NULL,
+          member_role TEXT    NOT NULL,
+
+          CONSTRAINT pk_fx_batch_members
+              PRIMARY KEY (batch_id, trade_id),
+          CONSTRAINT fk_fx_batch_members_batch
+              FOREIGN KEY (batch_id)
+                  REFERENCES fx_batches (batch_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_batch_members_trade
+              FOREIGN KEY (trade_id, trade_type)
+                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT chk_fx_batch_members_role
+              CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'BALANCE_QUOTE_CASH')),
+          CONSTRAINT chk_fx_batch_members_role_trade_type
+              CHECK (
+                  (member_role = 'TRADE'
+                      AND trade_type IN
+                      (
+                          'CLIENT_DEAL',
+                          'HEDGE_DEAL',
+                          'BATCH_POSITION_OUT'
+                      ))
+                  OR (member_role = 'BALANCE_TRADE'
+                      AND trade_type = 'BATCH_BALANCE_TRADE')
+                  OR (member_role = 'BALANCE_QUOTE_CASH'
+                      AND trade_type = 'BATCH_BALANCE_QUOTE_CASH')
+              )
+      );
+
+      INSERT INTO fx_batch_members_position_out_semantics
+        (batch_id, trade_id, trade_type, member_role)
+      SELECT batch_id, trade_id, trade_type, member_role
+      FROM fx_batch_members
+      ORDER BY batch_id, trade_id;
+
+      DROP TABLE fx_batch_members;
+
+      ALTER TABLE fx_batch_members_position_out_semantics
+          RENAME TO fx_batch_members;
+    `);
+
+    const migratedCount = Number(
+      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count
+    );
+
+    if (migratedCount !== originalCount) {
+      throw new Error(
+        "FX Batch Position Out membership migration did not preserve every row."
+      );
+    }
+
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error(
+        "FX Batch Position Out membership migration produced foreign key violations."
+      );
     }
 
     sqlite.exec("COMMIT");
@@ -4604,7 +4926,13 @@ function fxPositions() {
       COALESCE(c.execution_context_id, h.execution_context_id) AS executionContextId,
       COALESCE(c.pricing_rule_id, h.pricing_rule_id) AS pricingRuleId,
       r.margin_percent AS pricingRuleMargin,
-      COALESCE(c.transfer_rate, h.transfer_rate) AS transferRate,
+      COALESCE(
+        c.transfer_rate,
+        h.transfer_rate,
+        CASE
+          WHEN e.trade_type = 'BATCH_POSITION_OUT' THEN e.trade_rate
+        END
+      ) AS transferRate,
       COALESCE(
         c.analytical_pnl_quote_minor,
         h.analytical_pnl_quote_minor
@@ -4621,8 +4949,17 @@ function fxPositions() {
       a.market_pulse_bid AS marketPulseBid,
       a.market_pulse_offer AS marketPulseOffer,
       a.market_pulse_timestamp AS marketPulseTimestamp,
-      output.batch_id AS batchId,
-      output.output_role AS outputRole
+      COALESCE(output.batch_id, balance_member.batch_id) AS batchId,
+      output.output_role AS outputRole,
+      EXISTS
+      (
+        SELECT 1
+        FROM fx_batch_members historical_member
+        INNER JOIN fx_batches historical_batch
+          ON historical_batch.batch_id = historical_member.batch_id
+        WHERE historical_member.trade_id = e.trade_id
+          AND historical_batch.batch_status = 'ROLLED_BACK'
+      ) AS historicalBatchMember
     FROM fx_trade_exposure e
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     LEFT JOIN client_fx_deals c
@@ -4637,7 +4974,12 @@ function fxPositions() {
       ON a.trade_id = e.trade_id AND a.trade_type = e.trade_type
     LEFT JOIN fx_batch_outputs output
       ON output.trade_id = e.trade_id AND output.trade_type = e.trade_type
-    WHERE e.trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL', 'BATCH_POSITION_OUT')
+    LEFT JOIN fx_batch_members balance_member
+      ON balance_member.trade_id = e.trade_id
+      AND balance_member.trade_type = e.trade_type
+      AND balance_member.member_role = 'BALANCE_TRADE'
+    WHERE e.trade_type IN
+      ('CLIENT_DEAL', 'HEDGE_DEAL', 'BATCH_BALANCE_TRADE', 'BATCH_POSITION_OUT')
       AND NOT EXISTS
       (
         SELECT 1
@@ -4645,6 +4987,16 @@ function fxPositions() {
         INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
         WHERE member.trade_id = e.trade_id
           AND batch.batch_status = 'FORMED'
+      )
+      AND NOT
+      (
+        e.trade_type IN ('BATCH_BALANCE_TRADE', 'BATCH_POSITION_OUT')
+        AND EXISTS
+        (
+          SELECT 1
+          FROM fx_demo_hidden_batches hidden_batch
+          WHERE hidden_batch.batch_id = COALESCE(output.batch_id, balance_member.batch_id)
+        )
       )
     ORDER BY e.trade_id
   `).all().map(row => ({
@@ -4655,6 +5007,19 @@ function fxPositions() {
     clientCodeType: row.tradeType === "CLIENT_DEAL" ? row.partyCodeType : undefined,
     clientName: row.tradeType === "CLIENT_DEAL" ? row.partyName : undefined
   }));
+}
+
+function fxBatches() {
+  return database.prepare(`
+    SELECT
+      batch_id AS batchId,
+      ccy_pair_code AS ccyPairCode,
+      batch_status AS batchStatus,
+      created_at AS createdAt,
+      rolled_back_at AS rolledBackAt
+    FROM fx_batches
+    ORDER BY batch_id DESC
+  `).all();
 }
 
 function fxBatchTrades() {
@@ -4705,7 +5070,7 @@ function fxBatchTrades() {
     INNER JOIN fx_trade_exposure e
       ON e.trade_id = t.trade_id AND e.trade_type = t.trade_type
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
-    WHERE b.batch_status = 'FORMED'
+    WHERE b.batch_status IN ('FORMED', 'ROLLED_BACK')
     ORDER BY t.batch_id, t.trade_id
   `).all().map(fxTradeRowWithMajorAmounts);
 }
@@ -4726,7 +5091,13 @@ function batchBalancingTradeSources(tradeIds) {
       e.base_ccy_fraction_digits AS baseCcyFractionDigits,
       e.quote_ccy_amount_minor AS quoteCcyAmountMinor,
       e.quote_ccy_fraction_digits AS quoteCcyFractionDigits,
-      COALESCE(c.transfer_rate, h.transfer_rate) AS transferRate,
+      COALESCE(
+        c.transfer_rate,
+        h.transfer_rate,
+        CASE
+          WHEN e.trade_type = 'BATCH_POSITION_OUT' THEN e.trade_rate
+        END
+      ) AS transferRate,
       e.tenor,
       e.base_ccy_value_date AS baseCcyValueDate,
       e.quote_ccy_value_date AS quoteCcyValueDate,
@@ -4738,13 +5109,39 @@ function batchBalancingTradeSources(tradeIds) {
     LEFT JOIN fx_hedge_deals h
       ON h.trade_id = e.trade_id AND h.trade_type = e.trade_type
     WHERE e.trade_id IN (${placeholders})
-      AND e.trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')
+      AND
+      (
+        e.trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')
+        OR (
+          e.trade_type = 'BATCH_POSITION_OUT'
+          AND e.base_ccy_side IN ('BUY', 'SELL')
+          AND e.trade_rate IS NOT NULL
+          AND EXISTS
+          (
+            SELECT 1
+            FROM fx_batch_outputs source_output
+            INNER JOIN fx_batches source_batch
+              ON source_batch.batch_id = source_output.batch_id
+            WHERE source_output.trade_id = e.trade_id
+              AND source_output.trade_type = e.trade_type
+              AND source_output.output_role = 'POSITION_OUT'
+              AND source_batch.batch_status IN ('FORMED', 'ROLLED_BACK')
+              AND NOT EXISTS
+              (
+                SELECT 1
+                FROM fx_demo_hidden_batches hidden
+                WHERE hidden.batch_id = source_output.batch_id
+              )
+          )
+        )
+      )
       AND NOT EXISTS
       (
         SELECT 1
         FROM fx_batch_members m
         INNER JOIN fx_batches b ON b.batch_id = m.batch_id
         WHERE m.trade_id = e.trade_id
+          AND m.trade_type = e.trade_type
           AND b.batch_status = 'FORMED'
       )
     ORDER BY e.trade_id
@@ -4754,7 +5151,8 @@ function batchBalancingTradeSources(tradeIds) {
 
   if (missingTradeIds.length > 0) {
     const error = new Error(
-      `Trade ${missingTradeIds.join(", ")} was not found or is not a Client/Hedge FX Deal.`
+      `Trade ${missingTradeIds.join(", ")} was not found or is not an eligible `
+        + "Client, Hedge, or Position Out FX Trade."
     );
     error.code = "BATCH_SOURCE_TRADE_NOT_FOUND";
     throw error;
@@ -4774,13 +5172,15 @@ function batchBalancingTradeSources(tradeIds) {
 }
 
 function saveFormedFxBatch({ idempotencyKey, sourceTrades, formation }) {
-    const pair = ccyPairOption(formation.positionOut.ccyPairCode);
+    const firstSourceTrade = sourceTrades[0];
+    const pair = ccyPairOption(firstSourceTrade.ccyPairCode);
 
     if (!pair
-      || formation.positionOut.dealtCcyCode !== pair.baseCcy
-      || formation.positionOut.baseCcyFractionDigits
+      || firstSourceTrade.baseCcyCode !== pair.baseCcy
+      || firstSourceTrade.quoteCcyCode !== pair.quoteCcy
+      || firstSourceTrade.baseCcyFractionDigits
         !== pair.baseCurrencyFractionDigits
-      || formation.positionOut.quoteCcyFractionDigits
+      || firstSourceTrade.quoteCcyFractionDigits
         !== pair.quoteCurrencyFractionDigits) {
       const error = new RangeError(
         "Selected trades use currency precision that differs from current Reference Data."
@@ -4792,7 +5192,7 @@ function saveFormedFxBatch({ idempotencyKey, sourceTrades, formation }) {
     const batchResult = database.prepare(`
       INSERT INTO fx_batches (idempotency_key, ccy_pair_code)
       VALUES (?, ?)
-    `).run(idempotencyKey, formation.positionOut.ccyPairCode);
+    `).run(idempotencyKey, firstSourceTrade.ccyPairCode);
     const batchId = Number(batchResult.lastInsertRowid);
     const insertExposure = database.prepare(`
       INSERT INTO fx_trade_exposure
@@ -4862,7 +5262,7 @@ function saveFormedFxBatch({ idempotencyKey, sourceTrades, formation }) {
     `).run(batchId);
 
     return {
-      ...formedBatchResult(batchId),
+      ...completedBatchResult(batchId),
       batchPairId: batchId,
       sourceTradeIds: formation.sourceTradeIds,
       sourceNetSide: formation.sourceNetSide,
@@ -4900,20 +5300,22 @@ function saveFormedFxBatch({ idempotencyKey, sourceTrades, formation }) {
     };
 }
 
-function formedBatchResult(batchId) {
+function completedBatchResult(batchId) {
   const batch = database.prepare(`
     SELECT
       batch_id AS batchId,
       idempotency_key AS idempotencyKey,
       ccy_pair_code AS ccyPairCode,
       batch_status AS batchStatus,
-      created_at AS createdAt
+      created_at AS createdAt,
+      rolled_back_at AS rolledBackAt
     FROM fx_batches
-    WHERE batch_id = ? AND batch_status = 'FORMED'
+    WHERE batch_id = ?
+      AND batch_status IN ('FORMED', 'ROLLED_BACK')
   `).get(batchId);
 
   if (!batch) {
-    throw new Error(`Formed Batch ${batchId} was not found.`);
+    throw new Error(`Completed FX Batch ${batchId} was not found.`);
   }
 
   return {
@@ -4933,10 +5335,139 @@ function formedBatchByIdempotencyKey(idempotencyKey) {
     SELECT batch_id AS batchId
     FROM fx_batches
     WHERE idempotency_key = ?
-      AND batch_status = 'FORMED'
+      AND batch_status IN ('FORMED', 'ROLLED_BACK')
   `).get(idempotencyKey);
 
-  return batch ? formedBatchResult(batch.batchId) : null;
+  return batch ? completedBatchResult(batch.batchId) : null;
+}
+
+function rollbackFxBatchWithinTransaction(batchId) {
+  const batch = database.prepare(`
+    SELECT batch_status AS batchStatus
+    FROM fx_batches
+    WHERE batch_id = ?
+  `).get(batchId);
+
+  if (!batch) {
+    const error = new Error(`FX Batch ${batchId} was not found.`);
+    error.code = "FX_BATCH_NOT_FOUND";
+    throw error;
+  }
+
+  if (batch.batchStatus === "ROLLED_BACK") {
+    return {
+      ...completedBatchResult(batchId),
+      replayed: true
+    };
+  }
+
+  if (batch.batchStatus !== "FORMED") {
+    const error = new Error(
+      `FX Batch ${batchId} cannot be rolled back from status ${batch.batchStatus}.`
+    );
+    error.code = "FX_BATCH_NOT_ROLLBACKABLE";
+    throw error;
+  }
+
+  const rolledBackAt = new Date().toISOString();
+  const update = database.prepare(`
+    UPDATE fx_batches
+    SET batch_status = 'ROLLED_BACK',
+        rolled_back_at = ?
+    WHERE batch_id = ?
+      AND batch_status = 'FORMED'
+      AND rolled_back_at IS NULL
+  `).run(rolledBackAt, batchId);
+
+  if (Number(update.changes) !== 1) {
+    const error = new Error(`FX Batch ${batchId} could not be rolled back.`);
+    error.code = "FX_BATCH_ROLLBACK_CONFLICT";
+    throw error;
+  }
+
+  return {
+    ...completedBatchResult(batchId),
+    replayed: false
+  };
+}
+
+function rollbackFxBatch(batchId) {
+  return runInImmediateTransaction(
+    database,
+    () => rollbackFxBatchWithinTransaction(batchId)
+  );
+}
+
+function hideFxBatchTechnicalTradesForDemo(batchIds) {
+  if (!Array.isArray(batchIds) || batchIds.length === 0) {
+    const error = new TypeError("Select one or more technical FX Batch trades.");
+    error.code = "INVALID_DEMO_BATCH_SELECTION";
+    throw error;
+  }
+
+  const normalizedBatchIds = [...new Set(batchIds.map(Number))];
+
+  if (
+    normalizedBatchIds.length > 100
+    || normalizedBatchIds.some(batchId => !Number.isInteger(batchId) || batchId <= 0)
+  ) {
+    const error = new TypeError(
+      "Demo technical trade selection must contain up to 100 positive FX Batch IDs."
+    );
+    error.code = "INVALID_DEMO_BATCH_SELECTION";
+    throw error;
+  }
+
+  return runInImmediateTransaction(database, () => {
+    const insertHiddenBatch = database.prepare(`
+      INSERT INTO fx_demo_hidden_batches (batch_id)
+      VALUES (?)
+      ON CONFLICT (batch_id) DO NOTHING
+    `);
+    let hiddenBatchCount = 0;
+    let hiddenTechnicalTradeCount = 0;
+
+    for (const batchId of normalizedBatchIds) {
+      const rollback = rollbackFxBatchWithinTransaction(batchId);
+      const technicalTradeCount = Number(database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM
+        (
+          SELECT trade_id
+          FROM fx_batch_members
+          WHERE batch_id = ?
+            AND member_role = 'BALANCE_TRADE'
+
+          UNION ALL
+
+          SELECT trade_id
+          FROM fx_batch_outputs
+          WHERE batch_id = ?
+            AND output_role = 'POSITION_OUT'
+        )
+      `).get(batchId, batchId).count);
+      const insert = insertHiddenBatch.run(batchId);
+
+      hiddenBatchCount += Number(insert.changes);
+
+      if (Number(insert.changes) === 1) {
+        hiddenTechnicalTradeCount += technicalTradeCount;
+      }
+
+      if (rollback.batchStatus !== "ROLLED_BACK") {
+        const error = new Error(`FX Batch ${batchId} was not rolled back.`);
+        error.code = "FX_BATCH_ROLLBACK_CONFLICT";
+        throw error;
+      }
+    }
+
+    return {
+      batchIds: normalizedBatchIds,
+      hiddenBatchCount,
+      hiddenTechnicalTradeCount,
+      auditRecordsRetained: true
+    };
+  });
 }
 
 const formFxBatchUseCase = new FormFxBatchUseCase({
@@ -6330,6 +6861,7 @@ async function handleApi(request, response, url) {
       clientFxDeals: clientFxDeals(),
       hedgeFxDeals: hedgeFxDeals(),
       fxPositions: fxPositions(),
+      fxBatches: fxBatches()
     }).replace(/</g, "\\u003c");
     sendText(
       response,
@@ -6433,6 +6965,11 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (pathname === "/api/v1/fx-batches" && method === "GET") {
+    sendJson(response, 200, fxBatches());
+    return true;
+  }
+
   if (pathname === "/api/v1/fx-batches" && method === "POST") {
     const body = await readJsonBody(request);
 
@@ -6459,6 +6996,52 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (pathname === "/api/v1/fx-batches/demo-hide-technical-trades" && method === "POST") {
+    const body = await readJsonBody(request);
+
+    try {
+      sendJson(response, 200, hideFxBatchTechnicalTradesForDemo(body.batchIds));
+    } catch (error) {
+      if (error?.code === "INVALID_DEMO_BATCH_SELECTION") {
+        apiError(response, 400, error.code, error.message);
+      } else if (error?.code === "FX_BATCH_NOT_FOUND") {
+        apiError(response, 404, error.code, error.message);
+      } else if (
+        error?.code === "FX_BATCH_NOT_ROLLBACKABLE"
+        || error?.code === "FX_BATCH_ROLLBACK_CONFLICT"
+      ) {
+        apiError(response, 409, error.code, error.message);
+      } else {
+        handleDatabaseError(response, error);
+      }
+    }
+
+    return true;
+  }
+
+  const fxBatchRollbackMatch = /^\/api\/v1\/fx-batches\/(\d+)\/rollback$/.exec(pathname);
+
+  if (fxBatchRollbackMatch && method === "POST") {
+    const batchId = Number(fxBatchRollbackMatch[1]);
+
+    try {
+      sendJson(response, 200, rollbackFxBatch(batchId));
+    } catch (error) {
+      if (error?.code === "FX_BATCH_NOT_FOUND") {
+        apiError(response, 404, error.code, error.message);
+      } else if (
+        error?.code === "FX_BATCH_NOT_ROLLBACKABLE"
+        || error?.code === "FX_BATCH_ROLLBACK_CONFLICT"
+      ) {
+        apiError(response, 409, error.code, error.message);
+      } else {
+        handleDatabaseError(response, error);
+      }
+    }
+
+    return true;
+  }
+
   const fxBatchMatch = /^\/api\/v1\/fx-batches\/(\d+)$/.exec(pathname);
 
   if (fxBatchMatch && method === "GET") {
@@ -6466,13 +7049,14 @@ async function handleApi(request, response, url) {
     const batch = database.prepare(`
       SELECT 1 AS present
       FROM fx_batches
-      WHERE batch_id = ? AND batch_status = 'FORMED'
+      WHERE batch_id = ?
+        AND batch_status IN ('FORMED', 'ROLLED_BACK')
     `).get(batchId);
 
     if (!batch) {
       apiError(response, 404, "FX_BATCH_NOT_FOUND", `FX Batch ${batchId} was not found.`);
     } else {
-      sendJson(response, 200, formedBatchResult(batchId));
+      sendJson(response, 200, completedBatchResult(batchId));
     }
 
     return true;

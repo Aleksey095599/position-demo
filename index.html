@@ -7986,6 +7986,112 @@
       max-height: 760px;
     }
 
+    #batchingHistoryPage .reference-switcher {
+      width: min(660px, 100%);
+      min-height: 40px;
+      margin: 4px 0 14px;
+      gap: 18px;
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    #batchingHistoryPage .reference-switcher-link {
+      min-height: 39px;
+      margin-bottom: -1px;
+      padding: 8px 4px 9px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      background: transparent;
+      color: var(--bs-secondary-color);
+      font-size: 13px;
+      font-weight: 400;
+    }
+
+    #batchingHistoryPage .reference-switcher-link.is-active {
+      border-bottom-color: var(--bs-primary);
+      color: var(--bs-primary);
+      font-weight: 500;
+    }
+
+    #batchingHistoryPage .batching-history-content,
+    #batchingHistoryPage .batching-history-grid-shell {
+      width: min(660px, 100%);
+    }
+
+    #batchingHistoryPage .batching-history-status:not([hidden]) {
+      margin: 0 0 8px;
+    }
+
+    #batchingHistoryPage .batching-history-grid {
+      width: 100%;
+      height: clamp(240px, calc(100vh - 240px), 560px);
+    }
+
+    #batchingHistoryPage .tabulator {
+      box-sizing: border-box;
+    }
+
+    #batchingHistoryPage .tabulator .tabulator-header-filter select {
+      min-height: 27px;
+      padding: 3px 26px 3px 7px;
+      border: 1px solid #cfd5dc;
+      border-radius: var(--bs-border-radius-sm);
+      background-color: rgba(255, 255, 255, 0.9);
+      font-size: 11px;
+    }
+
+    #batchingHistoryPage .batch-status-token {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 2px 7px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    #batchingHistoryPage .batch-status-token.is-formed {
+      border-color: #b8daca;
+      background: #e8f4ed;
+      color: #226548;
+    }
+
+    #batchingHistoryPage .batch-status-token.is-rolled-back {
+      border-color: #e4d39b;
+      background: #fff7dc;
+      color: #715b16;
+    }
+
+    #batchingHistoryPage .batching-history-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 28px;
+      padding: 0;
+    }
+
+    #batchingHistoryPage .batching-history-action .button-icon {
+      font-size: 16px;
+    }
+
+    .batch-rollback-dialog {
+      width: min(500px, calc(100vw - 32px));
+    }
+
+    .batch-rollback-dialog .batch-rollback-summary {
+      margin: 0;
+      color: var(--bs-body-color);
+      line-height: 1.5;
+    }
+
+    .batch-rollback-dialog .batch-rollback-status:not([hidden]) {
+      margin-top: 12px;
+    }
+
     .client-deals-bootstrap .tabulator {
       border: 0;
       border-bottom: 1px solid var(--bs-border-color);
@@ -11155,6 +11261,11 @@
         <span class="button-icon workspace-nav-icon" aria-hidden="true">table_chart</span>
         <span>FX Position</span>
       </a>
+      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceBatchingToggle" aria-haspopup="menu" aria-controls="workspaceBatchingMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceBatchingMenu" data-workspace-routes="batching-history">
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">inventory_2</span>
+        <span>Batching</span>
+        <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
+      </button>
       <a class="workspace-nav-link" href="#market-pulse" data-workspace-route="market">
         <span class="button-icon workspace-nav-icon market-pulse-icon" aria-hidden="true">monitoring</span>
         <span>Market Pulse</span>
@@ -11191,6 +11302,12 @@
     <a class="workspace-nav-menu-link" href="#hedge-fx-deals" data-workspace-route="hedge-fx-deals" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">shield</span>
       <span>Hedge FX Deals</span>
+    </a>
+  </div>
+  <div class="workspace-nav-menu" id="workspaceBatchingMenu" role="menu" aria-label="Batching" data-workspace-nav-menu hidden>
+    <a class="workspace-nav-menu-link" href="#batching:history" data-workspace-route="batching-history" role="menuitem">
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">history</span>
+      <span>Batching History</span>
     </a>
   </div>
   <div class="workspace-nav-menu" id="workspacePricingMenu" role="menu" aria-label="Pricing" data-workspace-nav-menu hidden>
@@ -11259,6 +11376,20 @@
             <span class="home-icon" aria-hidden="true">shield</span>
             <span>
               <span class="home-link-title">Hedge FX Deals</span>
+            </span>
+          </a>
+        </nav>
+      </section>
+      <section class="home-navigation-group" aria-labelledby="homeBatchingTitle">
+        <div class="home-navigation-group-header">
+          <span class="button-icon home-navigation-group-icon" aria-hidden="true">inventory_2</span>
+          <h2 class="home-navigation-group-title" id="homeBatchingTitle">Batching</h2>
+        </div>
+        <nav class="home-links" aria-label="Batching navigation">
+          <a class="home-link" href="#batching:history">
+            <span class="home-icon" aria-hidden="true">history</span>
+            <span>
+              <span class="home-link-title">Batching History</span>
             </span>
           </a>
         </nav>
@@ -11580,7 +11711,7 @@
           </div>
           <button type="button" class="action-button primary btn btn-sm btn-primary" id="createDealButton">Add Client Deal</button>
           <button type="button" class="action-button btn btn-sm btn-outline-secondary" id="editDealButton" disabled>Edit</button>
-          <button type="button" class="action-button danger btn btn-sm btn-outline-danger" id="deleteDealButton" disabled>Delete</button>
+          <button type="button" class="action-button danger btn btn-sm btn-outline-danger" id="deleteDealButton" disabled>Delete (Demo)</button>
           <div class="batch-status" id="batchStatus" role="status" aria-live="polite"></div>
         </section>
 
@@ -11596,10 +11727,52 @@
               <span class="button-icon" aria-hidden="true">settings</span>
             </button>
           </div>
+          <button type="button" class="action-button danger btn btn-sm btn-outline-danger" id="deleteBatchTechnicalTradesButton" disabled>Delete (Demo)</button>
         </section>
       </div>
     </section>
   </main>
+
+  <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace batching-history-page workbench-page" id="batchingHistoryPage" hidden>
+    <section class="action-bar" aria-label="Batching header">
+      <h1 class="page-title">Batching</h1>
+      <span class="client-deals-count" id="batchingHistoryCount">0 batches</span>
+    </section>
+
+    <nav class="reference-switcher" aria-label="Batching sections">
+      <a class="reference-switcher-link is-active active" href="#batching:history" data-batching-route="history" aria-current="page">
+        <span class="button-icon" aria-hidden="true">history</span>
+        <span>Batching History</span>
+      </a>
+    </nav>
+
+    <section class="batching-history-content" aria-label="Batching History">
+      <div class="profile-status batching-history-status" id="batchingHistoryStatus" role="status" aria-live="polite" hidden></div>
+      <div class="client-deals-grid-shell batching-history-grid-shell">
+        <div class="batching-history-grid" id="batchingHistoryGrid" aria-label="FX Batches table"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="market-bootstrap-dialog batch-rollback-dialog" id="batchRollbackDialog" aria-labelledby="batchRollbackDialogTitle">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2 class="modal-title fs-6" id="batchRollbackDialogTitle">Rollback FX Batch</h2>
+        <button type="button" class="btn-close" id="batchRollbackDialogClose" aria-label="Close"></button>
+      </header>
+      <div class="modal-body">
+        <p class="batch-rollback-summary" id="batchRollbackSummary"></p>
+        <div class="alert alert-danger batch-rollback-status" id="batchRollbackStatus" role="alert" hidden></div>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="batchRollbackCancelButton">Cancel</button>
+        <button type="button" class="btn btn-sm btn-warning" id="batchRollbackConfirmButton">
+          <span class="button-icon" aria-hidden="true">undo</span>
+          <span>Rollback batch</span>
+        </button>
+      </footer>
+    </div>
+  </dialog>
 
   <main class="shell blotter-shell client-deals-bootstrap workbench-page" id="clientFxDealsPage" hidden>
     <section class="action-bar" aria-label="Client FX Deals header">
@@ -13097,6 +13270,7 @@
     let hedgeDealEligiblePricingRules = loadHedgeDealEligiblePricingRules();
     let clientFxDeals = loadClientFxDeals();
     let hedgeFxDeals = loadHedgeFxDeals();
+    let fxBatchHistory = loadFxBatches();
     let fxPositionRecords = Array.isArray(DEMO_API_BOOTSTRAP.fxPositions)
       ? DEMO_API_BOOTSTRAP.fxPositions
       : [];
@@ -13588,6 +13762,16 @@
     const marketPage = document.getElementById("marketPage");
     const databasePage = document.getElementById("databasePage");
     const mainPage = document.getElementById("mainPage");
+    const batchingHistoryPage = document.getElementById("batchingHistoryPage");
+    const batchingHistoryGridEl = document.getElementById("batchingHistoryGrid");
+    const batchingHistoryCountEl = document.getElementById("batchingHistoryCount");
+    const batchingHistoryStatusEl = document.getElementById("batchingHistoryStatus");
+    const batchRollbackDialog = document.getElementById("batchRollbackDialog");
+    const batchRollbackDialogClose = document.getElementById("batchRollbackDialogClose");
+    const batchRollbackSummary = document.getElementById("batchRollbackSummary");
+    const batchRollbackStatus = document.getElementById("batchRollbackStatus");
+    const batchRollbackCancelButton = document.getElementById("batchRollbackCancelButton");
+    const batchRollbackConfirmButton = document.getElementById("batchRollbackConfirmButton");
     const clientFxDealsPage = document.getElementById("clientFxDealsPage");
     const clientFxDealsGridEl = document.getElementById("clientFxDealsGrid");
     const clientFxDealsCountEl = document.getElementById("clientFxDealsCount");
@@ -13667,6 +13851,8 @@
     const runClientDealGenerationIcon = document.getElementById("runClientDealGenerationIcon");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
     const oneBatchButton = document.getElementById("oneBatchButton");
+    const deleteBatchTechnicalTradesButton =
+      document.getElementById("deleteBatchTechnicalTradesButton");
     const clientProfileForm = document.getElementById("clientProfileForm");
     const clientProfileFormTitle = document.getElementById("clientProfileFormTitle");
     const clientProfileSubmitButton = document.getElementById("clientProfileSubmitButton");
@@ -13769,6 +13955,9 @@
     let clientFxDealsGridReady = false;
     let clientFxDealsPendingData = [];
     let clientFxDealsTotalCount = 0;
+    let batchingHistoryGrid = null;
+    let batchingHistoryGridReady = false;
+    let rollbackBatchId = null;
     let hedgeFxDealsGrid = null;
     let hedgeFxDealsGridReady = false;
     let hedgeFxDealsPendingData = [];
@@ -15642,6 +15831,8 @@
         marketPulseStreamStatus: ["RUNNING", "STOPPED"].includes(marketPulseStreamStatus)
           ? marketPulseStreamStatus
           : "",
+        historicalBatchMember: source.historicalBatchMember === true
+          || Number(source.historicalBatchMember) === 1,
         clientCode: String(source.clientCode ?? source.inn ?? "").trim(),
         clientCodeType: String(source.clientCodeType || "").trim().toUpperCase(),
         clientName: String(source.clientName || "").trim(),
@@ -15719,6 +15910,37 @@
         .sort((left, right) => left.hedgeDealId - right.hedgeDealId);
       await reloadFxPositionsFromApi();
       return hedgeFxDeals;
+    }
+
+    function normalizedFxBatch(value) {
+      const source = value && typeof value === "object" ? value : {};
+
+      return {
+        batchId: Number(source.batchId),
+        ccyPairCode: String(source.ccyPairCode || "").trim().toUpperCase(),
+        batchStatus: String(source.batchStatus || "").trim().toUpperCase(),
+        createdAt: String(source.createdAt || "").trim(),
+        rolledBackAt: String(source.rolledBackAt || "").trim()
+      };
+    }
+
+    function loadFxBatches() {
+      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.fxBatches : [];
+
+      return (Array.isArray(source) ? source : [])
+        .map(normalizedFxBatch)
+        .filter(batch => Number.isInteger(batch.batchId) && batch.batchId > 0)
+        .sort((left, right) => right.batchId - left.batchId);
+    }
+
+    async function reloadFxBatchesFromApi() {
+      const records = await demoApiRequest("/api/v1/fx-batches");
+      fxBatchHistory = (Array.isArray(records) ? records : [])
+        .map(normalizedFxBatch)
+        .filter(batch => Number.isInteger(batch.batchId) && batch.batchId > 0)
+        .sort((left, right) => right.batchId - left.batchId);
+      renderBatchingHistory(fxBatchHistory);
+      return fxBatchHistory;
     }
 
     function normalizedBatchBalancingTrade(value) {
@@ -15818,7 +16040,8 @@
         entryMarketStreamStatus: record.marketPulseStreamStatus,
         tone: "blue",
         batchId: "",
-        isBatched: false
+        isBatched: false,
+        historicalBatchMember: record.historicalBatchMember === true
       };
     }
 
@@ -15875,7 +16098,8 @@
         entryMarketStreamStatus: record.marketPulseStreamStatus,
         tone: "blue",
         batchId: "",
-        isBatched: false
+        isBatched: false,
+        historicalBatchMember: record.historicalBatchMember === true
       };
     }
 
@@ -20972,6 +21196,259 @@
       };
     }
 
+    function batchingHistoryStatusFormatter(cell) {
+      const status = String(cell.getValue() || "").trim().toUpperCase();
+      const tone = status === "FORMED"
+        ? " is-formed"
+        : status === "ROLLED_BACK"
+          ? " is-rolled-back"
+          : "";
+
+      return `<span class="batch-status-token${tone}">${escapeHtml(status)}</span>`;
+    }
+
+    function batchingHistoryStatusHeaderFilter(_cell, _onRendered, success) {
+      const select = document.createElement("select");
+      select.className = "form-select form-select-sm";
+      select.setAttribute("aria-label", "Filter batches by status");
+
+      [
+        ["", "All"],
+        ["BUILDING", "BUILDING"],
+        ["FORMED", "FORMED"],
+        ["ROLLED_BACK", "ROLLED_BACK"]
+      ].forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        select.append(option);
+      });
+      select.addEventListener("change", () => success(select.value));
+
+      return select;
+    }
+
+    function batchingHistoryActionFormatter(cell) {
+      const batch = cell.getRow().getData();
+      const rollbackAllowed = batch.batchStatus === "FORMED";
+      const actionTitle = rollbackAllowed
+        ? "Rollback batch"
+        : batch.batchStatus === "ROLLED_BACK"
+          ? "Batch has already been rolled back"
+          : "Only a formed batch can be rolled back";
+
+      return `
+        <button type="button"
+          class="btn btn-sm btn-outline-secondary batching-history-action"
+          aria-label="Rollback batch ${escapeHtml(batch.batchId)}"
+          title="${actionTitle}"
+          ${rollbackAllowed ? "" : "disabled"}>
+          <span class="button-icon" aria-hidden="true">undo</span>
+        </button>
+      `;
+    }
+
+    function closeBatchRollbackDialog() {
+      rollbackBatchId = null;
+      batchRollbackStatus.textContent = "";
+      batchRollbackStatus.hidden = true;
+      batchRollbackConfirmButton.disabled = false;
+      batchRollbackCancelButton.disabled = false;
+
+      if (typeof batchRollbackDialog.close === "function") {
+        batchRollbackDialog.close();
+      } else {
+        batchRollbackDialog.removeAttribute("open");
+      }
+    }
+
+    function openBatchRollbackDialog(batch) {
+      if (!batch || batch.batchStatus !== "FORMED") {
+        return;
+      }
+
+      rollbackBatchId = batch.batchId;
+      batchRollbackSummary.textContent =
+        `Batch ${batch.batchId} (${batch.ccyPairCode}) will be marked ROLLED_BACK. `
+        + "Its source trades and Batch Balance Trade, when present, will return "
+        + "to FX Position. Any Batch Position Out created by this batch remains unchanged.";
+      batchRollbackStatus.textContent = "";
+      batchRollbackStatus.hidden = true;
+
+      if (typeof batchRollbackDialog.showModal === "function") {
+        batchRollbackDialog.showModal();
+      } else {
+        batchRollbackDialog.setAttribute("open", "");
+      }
+
+      batchRollbackCancelButton.focus();
+    }
+
+    async function confirmBatchRollback() {
+      if (!Number.isInteger(rollbackBatchId) || rollbackBatchId <= 0) {
+        return;
+      }
+
+      const batchId = rollbackBatchId;
+      batchRollbackConfirmButton.disabled = true;
+      batchRollbackCancelButton.disabled = true;
+      batchRollbackStatus.textContent = "Rolling back batch...";
+      batchRollbackStatus.className = "alert alert-secondary batch-rollback-status";
+      batchRollbackStatus.hidden = false;
+
+      try {
+        await demoApiRequest(
+          `/api/v1/fx-batches/${encodeURIComponent(batchId)}/rollback`,
+          { method: "POST" }
+        );
+        await Promise.all([
+          reloadFxBatchesFromApi(),
+          reloadFxPositionsFromApi()
+        ]);
+        selectedDealIds.clear();
+        render(fxPositions);
+        closeBatchRollbackDialog();
+        batchingHistoryStatusEl.textContent =
+          `FX Batch ${batchId} rolled back. Source trades returned to FX Position.`;
+        batchingHistoryStatusEl.hidden = false;
+      } catch (error) {
+        batchRollbackStatus.textContent =
+          error.message || `Unable to roll back FX Batch ${batchId}.`;
+        batchRollbackStatus.className = "alert alert-danger batch-rollback-status";
+        batchRollbackStatus.hidden = false;
+        batchRollbackConfirmButton.disabled = false;
+        batchRollbackCancelButton.disabled = false;
+      }
+    }
+
+    function updateBatchingHistoryCount(filteredCount = fxBatchHistory.length) {
+      const total = fxBatchHistory.length;
+      const label = total === 1 ? "batch" : "batches";
+      batchingHistoryCountEl.textContent = filteredCount === total
+        ? `${total} ${label}`
+        : `${filteredCount} of ${total} batches`;
+    }
+
+    function initializeBatchingHistoryGrid(data) {
+      batchingHistoryGrid = new Tabulator(batchingHistoryGridEl, {
+        data,
+        index: "batchId",
+        layout: "fitColumns",
+        renderVertical: "virtual",
+        renderVerticalBuffer: 240,
+        placeholder: "No FX Batches have been formed.",
+        movableColumns: false,
+        resizableColumns: false,
+        headerFilterLiveFilterDelay: 250,
+        initialSort: [{ column: "batchId", dir: "desc" }],
+        columnDefaults: {
+          resizable: false,
+          vertAlign: "middle",
+          tooltip: false,
+          headerSort: false
+        },
+        columns: [
+          {
+            title: "Batch ID",
+            field: "batchId",
+            width: 100,
+            minWidth: 96,
+            sorter: "number",
+            headerSort: true,
+            headerFilter: "input"
+          },
+          {
+            title: "Ccy Pair Code",
+            field: "ccyPairCode",
+            width: 132,
+            minWidth: 124,
+            headerFilter: "input"
+          },
+          {
+            title: "Batch Status",
+            field: "batchStatus",
+            width: 124,
+            minWidth: 116,
+            headerFilter: batchingHistoryStatusHeaderFilter,
+            headerFilterFunc: "=",
+            formatter: batchingHistoryStatusFormatter
+          },
+          {
+            title: "Created At",
+            field: "createdAt",
+            width: 216,
+            minWidth: 204,
+            headerFilter: "input"
+          },
+          {
+            title: "Actions",
+            field: "actions",
+            width: workbenchActionsColumnWidth,
+            minWidth: workbenchActionsColumnWidth,
+            hozAlign: "center",
+            headerHozAlign: "center",
+            formatter: batchingHistoryActionFormatter,
+            cellClick(event, cell) {
+              if (event.target.closest(".batching-history-action:not(:disabled)")) {
+                openBatchRollbackDialog(cell.getRow().getData());
+              }
+            }
+          }
+        ]
+      });
+
+      batchingHistoryGrid.on("tableBuilt", () => {
+        batchingHistoryGridReady = true;
+        updateBatchingHistoryCount(data.length);
+        batchingHistoryGrid.redraw(true);
+      });
+      batchingHistoryGrid.on("dataFiltered", (_filters, rows) => {
+        updateBatchingHistoryCount(rows.length);
+      });
+    }
+
+    function renderBatchingHistory(source = fxBatchHistory) {
+      const data = Array.isArray(source) ? source : [];
+      updateBatchingHistoryCount(data.length);
+
+      if (!batchingHistoryGrid) {
+        if (!batchingHistoryPage.hidden) {
+          initializeBatchingHistoryGrid(data);
+        }
+        return;
+      }
+
+      if (!batchingHistoryGridReady) {
+        return;
+      }
+
+      batchingHistoryGrid.replaceData(data).then(() => {
+        batchingHistoryGrid.redraw(true);
+      });
+    }
+
+    async function loadBatchingHistoryPage() {
+      if (!DEMO_API_ENABLED) {
+        batchingHistoryStatusEl.textContent = "Batching History requires the demo server.";
+        batchingHistoryStatusEl.hidden = false;
+        renderBatchingHistory([]);
+        return;
+      }
+
+      batchingHistoryStatusEl.textContent = "Loading...";
+      batchingHistoryStatusEl.hidden = false;
+
+      try {
+        await reloadFxBatchesFromApi();
+        batchingHistoryStatusEl.textContent = "";
+        batchingHistoryStatusEl.hidden = true;
+      } catch (error) {
+        batchingHistoryStatusEl.textContent =
+          error.message || "Unable to load Batching History.";
+        batchingHistoryStatusEl.hidden = false;
+      }
+    }
+
     function marketGridActionMarkup(action, icon, label, { danger = false, primary = false, disabled = false } = {}) {
       const variant = danger ? "btn-outline-danger" : primary ? "btn-outline-primary" : "btn-outline-secondary";
       return `
@@ -22206,6 +22683,10 @@
       return "#fx-position";
     }
 
+    function batchingHistoryRoute() {
+      return "#batching:history";
+    }
+
     function clientProfileRoute(partyId = "") {
       const routeToken = String(partyId ?? "").trim();
 
@@ -22331,6 +22812,11 @@
       return location.hash === batchingBlotterRoute()
         || location.hash === "#fx-position-management"
         || location.hash === "#batching-blotter";
+    }
+
+    function isBatchingHistoryRoute() {
+      return location.hash === "#batching"
+        || location.hash === batchingHistoryRoute();
     }
 
     function isClientProfileRoute() {
@@ -22872,6 +23358,13 @@
           : "Position Out";
       }
 
+      if (tradeType === "BATCH_BALANCE_TRADE") {
+        const batchId = Number(deal?.batchId);
+        return Number.isInteger(batchId) && batchId > 0
+          ? `Batch Balance · Batch #${batchId}`
+          : "Batch Balance";
+      }
+
       return fxPositionPartyName(deal, tradeType);
     }
 
@@ -22880,6 +23373,13 @@
         const batchId = Number(deal?.batchId);
         return Number.isInteger(batchId) && batchId > 0
           ? `BATCH POSITION OUT · created by FX Batch #${batchId}`
+          : presentation.label;
+      }
+
+      if (presentation.type === "BATCH_BALANCE_TRADE") {
+        const batchId = Number(deal?.batchId);
+        return Number.isInteger(batchId) && batchId > 0
+          ? `BATCH BALANCE TRADE · created by FX Batch #${batchId}`
           : presentation.label;
       }
 
@@ -23201,6 +23701,7 @@
         || selectedRows[0].synthetic
         || fxPositionType(selectedRows[0]) !== "CLIENT_DEAL"
         || selectedRows[0].databaseBackedClientFxDeal !== true
+        || selectedRows[0].historicalBatchMember === true
       ) {
         return null;
       }
@@ -23214,6 +23715,7 @@
       return selectedRows.filter(deal =>
         fxPositionType(deal) === "CLIENT_DEAL"
         && deal.databaseBackedClientFxDeal === true
+        && deal.historicalBatchMember !== true
         && Number.isInteger(deal.clientFxDealId)
         && deal.clientFxDealId > 0
       );
@@ -23225,6 +23727,7 @@
       return selectedRows.filter(deal =>
         fxPositionType(deal) === "HEDGE_DEAL"
         && deal.databaseBackedHedgeFxDeal === true
+        && deal.historicalBatchMember !== true
         && Number.isInteger(deal.hedgeFxDealId)
         && deal.hedgeFxDealId > 0
       );
@@ -23233,7 +23736,25 @@
     function isBatchBalancingSourceDeal(deal) {
       const type = fxPositionType(deal);
       return (type === "CLIENT_DEAL" && deal.databaseBackedClientFxDeal === true)
-        || (type === "HEDGE_DEAL" && deal.databaseBackedHedgeFxDeal === true);
+        || (type === "HEDGE_DEAL" && deal.databaseBackedHedgeFxDeal === true)
+        || (
+          type === "BATCH_POSITION_OUT"
+          && deal.databaseBackedBatchBalancingTrade === true
+          && ["buy", "sell"].includes(sideOf(deal))
+        );
+    }
+
+    function isBatchTechnicalTrade(deal) {
+      const type = fxPositionType(deal);
+      return (
+        type === "BATCH_BALANCE_TRADE"
+        || type === "BATCH_POSITION_OUT"
+      ) && Number.isInteger(Number(deal?.batchId))
+        && Number(deal.batchId) > 0;
+    }
+
+    function isSelectableFxPositionTrade(deal) {
+      return isBatchBalancingSourceDeal(deal) || isBatchTechnicalTrade(deal);
     }
 
     function selectedBatchBalancingSourceDeals() {
@@ -23242,11 +23763,75 @@
       );
     }
 
+    function selectedTechnicalBatchIds() {
+      return [...new Set(
+        currentDisplayRows()
+          .filter(deal => selectedDealIds.has(deal.id) && isBatchTechnicalTrade(deal))
+          .map(deal => Number(deal.batchId))
+      )].sort((left, right) => left - right);
+    }
+
+    async function deleteSelectedBatchTechnicalTradesForDemo() {
+      const batchIds = selectedTechnicalBatchIds();
+
+      if (batchIds.length === 0) {
+        setBatchStatus("Select one or more Batch Balance or Position Out trades.", "warning");
+        updateActionButtons();
+        return;
+      }
+
+      if (!DEMO_API_ENABLED) {
+        setBatchStatus("SQLite API is unavailable. Technical trades were not removed.", "error");
+        updateActionButtons();
+        return;
+      }
+
+      const confirmationMessage = batchIds.length === 1
+        ? "Remove the selected FX Batch technical pair from the demo FX Position view?"
+        : `Remove technical pairs for ${batchIds.length} selected FX Batches from the demo FX Position view?`;
+
+      if (!window.confirm(confirmationMessage)) {
+        return;
+      }
+
+      deleteBatchTechnicalTradesButton.disabled = true;
+      setBatchStatus("Removing technical FX Batch trades from the demo view...");
+
+      try {
+        const result = await demoApiRequest(
+          "/api/v1/fx-batches/demo-hide-technical-trades",
+          {
+            method: "POST",
+            body: JSON.stringify({ batchIds })
+          }
+        );
+
+        await Promise.all([
+          reloadFxBatchesFromApi(),
+          reloadFxPositionsFromApi()
+        ]);
+        selectedDealIds.clear();
+        render(fxPositions);
+
+        const tradeCount = Number(result.hiddenTechnicalTradeCount || 0);
+        setBatchStatus(
+          `${tradeCount} technical trade${tradeCount === 1 ? "" : "s"} removed from the demo view. Audit records retained.`
+        );
+      } catch (error) {
+        setBatchStatus(error.message || "Unable to remove technical FX Batch trades.", "error");
+      } finally {
+        updateActionButtons();
+      }
+    }
+
     async function formOneBatchFromSelection() {
       const sourceDeals = selectedBatchBalancingSourceDeals();
 
       if (sourceDeals.length === 0) {
-        setBatchStatus("Select one or more Client or Hedge FX Deals.", "warning");
+        setBatchStatus(
+          "Select one or more eligible Client, Hedge, or Position Out FX Trades.",
+          "warning"
+        );
         return;
       }
 
@@ -23292,8 +23877,7 @@
             ? `FX Batch ${result.batchId} formed: BATCH_BALANCE_TRADE `
               + `${balancingTrade.tradeId}, BATCH_POSITION_OUT `
               + `${positionOutTrade?.tradeId ?? ""}.`
-            : `Ideal FX Batch ${result.batchId} formed without position transfer; `
-              + `zero BATCH_POSITION_OUT ${positionOutTrade?.tradeId ?? ""}.`
+            : `Ideal FX Batch ${result.batchId} formed without technical trades.`
         );
       } catch (error) {
         setBatchStatus(error.message || "Unable to form FX Batch.", "error");
@@ -23480,13 +24064,15 @@
 
       oneBatchButton.disabled =
         !DEMO_API_ENABLED || selectedBatchBalancingSourceDeals().length === 0;
+      deleteBatchTechnicalTradesButton.disabled =
+        !DEMO_API_ENABLED || selectedTechnicalBatchIds().length === 0;
     }
 
     function updateSelectAllCheckboxes(rows) {
       selectAllCheckboxes.forEach(checkbox => {
         const side = checkbox.dataset.selectSide;
         const sideRows = rows.filter(deal =>
-          sideOf(deal) === side && isBatchBalancingSourceDeal(deal)
+          sideOf(deal) === side && isSelectableFxPositionTrade(deal)
         );
         const selectedRows = sideRows.filter(deal => selectedDealIds.has(deal.id));
 
@@ -23498,7 +24084,7 @@
 
     function toggleSideSelection(side, checked) {
       currentDisplayRows()
-        .filter(deal => sideOf(deal) === side && isBatchBalancingSourceDeal(deal))
+        .filter(deal => sideOf(deal) === side && isSelectableFxPositionTrade(deal))
         .forEach(deal => {
           if (checked) {
             selectedDealIds.add(deal.id);
@@ -23513,7 +24099,7 @@
 
     function toggleSideSelectionByShortcut(side) {
       const sideRows = currentDisplayRows().filter(deal =>
-        sideOf(deal) === side && isBatchBalancingSourceDeal(deal)
+        sideOf(deal) === side && isSelectableFxPositionTrade(deal)
       );
 
       if (sideRows.length === 0) {
@@ -25998,7 +26584,7 @@
         : fxPositionBaseAmountCell(deal);
       const tradeRate = fxPositionTradeRate(deal);
       const transferRate = fxPositionTransferRate(deal);
-      const selectionBox = isBatchBalancingSourceDeal(deal)
+      const selectionBox = isSelectableFxPositionTrade(deal)
         ? `<input type="checkbox" class="form-check-input deal-checkbox" data-deal-id="${safeId}" aria-label="Select ${safeTradeLabel}" ${selected ? "checked" : ""}>`
         : "";
       const tradeIdCopyButton = safeTradeId
@@ -26042,7 +26628,7 @@
           <td class="sell-side sell-zone sell-zone-left amount number ${sellActive || flatActive ? "" : "blank"}">${sellActive || flatActive ? baseCcyAmount : ""}</td>
           <td class="sell-side sell-zone rate number ${sellActive ? "" : "blank"}">${sellActive ? rateCell(tradeRate) : ""}</td>
           <td class="sell-side sell-zone sell-zone-right rate number rate-emphasis ${sellActive ? "" : "blank"}">${sellActive ? rateCell(transferRate) : ""}</td>
-          <td class="gap selection-gap sell-check-zone ${sellActive ? "selection-active" : ""}">${sellActive ? selectionBox : ""}</td>
+          <td class="gap selection-gap sell-check-zone ${sellActive || flatActive ? "selection-active" : ""}">${sellActive || flatActive ? selectionBox : ""}</td>
           <td class="market-sell rate number market-left">${rateCell(marketBid(deal))}</td>
           <td class="market-buy rate number market-right">${rateCell(marketOffer(deal))}</td>
           <td class="gap selection-gap buy-check-zone ${buyActive ? "selection-active" : ""}">${buyActive ? selectionBox : ""}</td>
@@ -26862,6 +27448,22 @@
       clientFxDealsPage.hidden = true;
       hedgeFxDealsPage.hidden = true;
       databasePage.hidden = true;
+      batchingHistoryPage.hidden = true;
+
+      if (isBatchingHistoryRoute()) {
+        setWorkspaceRoute("batching-history");
+        homePage.hidden = true;
+        marketPage.hidden = true;
+        mainPage.hidden = true;
+        clientProfilePage.hidden = true;
+        pricingPage.hidden = true;
+        referenceDataPage.hidden = true;
+        pricingRulesPage.hidden = true;
+        batchingHistoryPage.hidden = false;
+        document.title = "Batching History";
+        loadBatchingHistoryPage();
+        return;
+      }
 
       if (isClientFxDealsRoute()) {
         setWorkspaceRoute("client-fx-deals");
@@ -27101,6 +27703,17 @@
     generateClientDealButton.addEventListener("click", generateClientDeal);
     runClientDealGenerationButton.addEventListener("click", toggleClientDealGenerationProcess);
     oneBatchButton.addEventListener("click", formOneBatchFromSelection);
+    deleteBatchTechnicalTradesButton.addEventListener(
+      "click",
+      deleteSelectedBatchTechnicalTradesForDemo
+    );
+    batchRollbackDialogClose.addEventListener("click", closeBatchRollbackDialog);
+    batchRollbackCancelButton.addEventListener("click", closeBatchRollbackDialog);
+    batchRollbackConfirmButton.addEventListener("click", confirmBatchRollback);
+    batchRollbackDialog.addEventListener("cancel", event => {
+      event.preventDefault();
+      closeBatchRollbackDialog();
+    });
     clientDealSettingsButton.addEventListener("click", event => {
       event.stopPropagation();
       openClientDealGenerationDialog();

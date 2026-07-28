@@ -55,10 +55,10 @@ test("creates the expected mirrored pair for Trade IDs 5 and 16", () => {
   assert.equal(result.balanceTrade.dealtCcyCode, "EUR");
   assert.equal(result.balanceTrade.baseCcyAmountMinor, 30000000n);
   assert.equal(result.balanceTrade.baseCcyFractionDigits, 2);
-  assert.equal(result.balanceTrade.tradeRate, 1.1225);
-  assert.equal(result.balanceTrade.quoteCcyAmountMinor, 33675000n);
+  assert.equal(result.balanceTrade.tradeRate, 1.1223);
+  assert.equal(result.balanceTrade.quoteCcyAmountMinor, 33669000n);
   assert.equal(result.balanceTrade.quoteCcyFractionDigits, 2);
-  assert.equal(result.roundingResidualQuoteAmountMinor, 1000n);
+  assert.equal(result.roundingResidualQuoteAmountMinor, 0n);
   assert.equal(result.positionOut.tradeType, "BATCH_POSITION_OUT");
   assert.equal(result.positionOut.side, "SELL");
   assert.equal(result.positionOut.dealtCcyCode, "EUR");
@@ -100,7 +100,95 @@ test("supports a selection containing trades in one direction", () => {
   assert.equal(result.balanceTrade.tradeRate, 1.126);
 });
 
-test("forms an ideal flat batch without an unnecessary balance trade", () => {
+test("uses the Base-weighted Transfer Rate of the side causing a SELL imbalance", () => {
+  const result = formFxBatch({
+    trades: [
+      {
+        ...commonTerms,
+        tradeId: 12,
+        side: "SELL",
+        baseCcyAmountMinor: 100000000n,
+        quoteCcyAmountMinor: 110000000n,
+        transferRate: 1.1
+      },
+      {
+        ...commonTerms,
+        tradeId: 13,
+        side: "SELL",
+        baseCcyAmountMinor: 50000000n,
+        quoteCcyAmountMinor: 65000000n,
+        transferRate: 1.3
+      },
+      {
+        ...commonTerms,
+        tradeId: 14,
+        side: "BUY",
+        baseCcyAmountMinor: 120000000n,
+        quoteCcyAmountMinor: 144000000n,
+        transferRate: 1.2
+      }
+    ],
+    now: fixedNow
+  });
+
+  assert.equal(result.sourceNetSide, "SELL");
+  assert.equal(result.sourceNetBaseCcyAmountMinor, 30000000n);
+  assert.equal(result.balanceTrade.side, "BUY");
+  assert.equal(result.positionOut.side, "SELL");
+  assert.equal(result.balanceTrade.tradeRate, 1.1667);
+  assert.equal(result.balanceTrade.quoteCcyAmountMinor, 35001000n);
+  assert.equal(result.positionOut.tradeRate, result.balanceTrade.tradeRate);
+  assert.equal(
+    result.positionOut.quoteCcyAmountMinor,
+    result.balanceTrade.quoteCcyAmountMinor
+  );
+});
+
+test("uses the Base-weighted Transfer Rate of the side causing a BUY imbalance", () => {
+  const result = formFxBatch({
+    trades: [
+      {
+        ...commonTerms,
+        tradeId: 15,
+        side: "SELL",
+        baseCcyAmountMinor: 30000000n,
+        quoteCcyAmountMinor: 36000000n,
+        transferRate: 1.2
+      },
+      {
+        ...commonTerms,
+        tradeId: 16,
+        side: "BUY",
+        baseCcyAmountMinor: 100000000n,
+        quoteCcyAmountMinor: 110000000n,
+        transferRate: 1.1
+      },
+      {
+        ...commonTerms,
+        tradeId: 17,
+        side: "BUY",
+        baseCcyAmountMinor: 50000000n,
+        quoteCcyAmountMinor: 65000000n,
+        transferRate: 1.3
+      }
+    ],
+    now: fixedNow
+  });
+
+  assert.equal(result.sourceNetSide, "BUY");
+  assert.equal(result.sourceNetBaseCcyAmountMinor, 120000000n);
+  assert.equal(result.balanceTrade.side, "SELL");
+  assert.equal(result.positionOut.side, "BUY");
+  assert.equal(result.balanceTrade.tradeRate, 1.1667);
+  assert.equal(result.balanceTrade.quoteCcyAmountMinor, 140004000n);
+  assert.equal(result.positionOut.tradeRate, result.balanceTrade.tradeRate);
+  assert.equal(
+    result.positionOut.quoteCcyAmountMinor,
+    result.balanceTrade.quoteCcyAmountMinor
+  );
+});
+
+test("forms an ideal flat batch without technical trades", () => {
   const result = formFxBatch({
     trades: [
       {
@@ -125,39 +213,69 @@ test("forms an ideal flat batch without an unnecessary balance trade", () => {
 
   assert.equal(result.sourceNetSide, "FLAT");
   assert.equal(result.sourceNetBaseCcyAmountMinor, 0n);
+  assert.equal(result.sourceNetTransferQuoteAmountMinor, 0n);
   assert.equal(result.balanceTrade, null);
-  assert.equal(result.positionOut.tradeType, "BATCH_POSITION_OUT");
-  assert.equal(result.positionOut.side, "FLAT");
-  assert.equal(result.positionOut.baseCcyAmountMinor, 0n);
-  assert.equal(result.positionOut.quoteCcyAmountMinor, 0n);
-  assert.equal(result.positionOut.tradeRate, null);
+  assert.equal(result.positionOut, null);
 });
 
-test("requires the future quote cash balancer for a flat base with non-zero cash", () => {
-  assert.throws(
-    () => formFxBatch({
-      trades: [
-        {
-          ...commonTerms,
-          tradeId: 22,
-          side: "BUY",
-          baseCcyAmountMinor: 10000000n,
-          quoteCcyAmountMinor: 11200000n,
-          transferRate: 1.12
-        },
-        {
-          ...commonTerms,
-          tradeId: 23,
-          side: "SELL",
-          baseCcyAmountMinor: 10000000n,
-          quoteCcyAmountMinor: 11300000n,
-          transferRate: 1.13
-        }
-      ],
-      now: fixedNow
-    }),
-    error => error.code === "BATCH_QUOTE_CASH_BALANCER_REQUIRED"
-  );
+test("forms a flat Base batch regardless of its Quote cash imbalance", () => {
+  const result = formFxBatch({
+    trades: [
+      {
+        ...commonTerms,
+        tradeId: 22,
+        side: "BUY",
+        baseCcyAmountMinor: 10000000n,
+        quoteCcyAmountMinor: 11200000n,
+        transferRate: 1.12
+      },
+      {
+        ...commonTerms,
+        tradeId: 23,
+        side: "SELL",
+        baseCcyAmountMinor: 10000000n,
+        quoteCcyAmountMinor: 11300000n,
+        transferRate: 1.13
+      }
+    ],
+    now: fixedNow
+  });
+
+  assert.equal(result.sourceNetSide, "FLAT");
+  assert.equal(result.sourceNetBaseCcyAmountMinor, 0n);
+  assert.equal(result.sourceNetTransferQuoteAmountMinor, 100000n);
+  assert.equal(result.balanceTrade, null);
+  assert.equal(result.positionOut, null);
+});
+
+test("accepts an upstream Position Out as an ordinary batch source", () => {
+  const result = formFxBatch({
+    trades: [
+      {
+        ...commonTerms,
+        tradeId: 24,
+        tradeType: "BATCH_POSITION_OUT",
+        side: "SELL",
+        baseCcyAmountMinor: 10000000n,
+        quoteCcyAmountMinor: 11200000n,
+        transferRate: 1.12
+      },
+      {
+        ...commonTerms,
+        tradeId: 25,
+        side: "BUY",
+        baseCcyAmountMinor: 10000000n,
+        quoteCcyAmountMinor: 11300000n,
+        transferRate: 1.13
+      }
+    ],
+    now: fixedNow
+  });
+
+  assert.deepEqual(result.sourceTradeIds, [24, 25]);
+  assert.equal(result.sourceNetSide, "FLAT");
+  assert.equal(result.balanceTrade, null);
+  assert.equal(result.positionOut, null);
 });
 
 test("rejects trades from different settlement buckets", () => {
