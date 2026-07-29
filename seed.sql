@@ -96,6 +96,16 @@ INNER JOIN execution_contexts e
     AND e.accounting_system_id = seed.accounting_system_id
     AND e.execution_system_id = seed.execution_system_id;
 
+INSERT OR IGNORE INTO client_deal_generation_process_settings
+    (
+        settings_id,
+        min_interval_seconds,
+        max_interval_seconds,
+        min_deals_per_cycle,
+        max_deals_per_cycle
+    )
+VALUES (1, 1, 3, 3, 7);
+
 INSERT INTO client_deal_generation_settings
     (
         pricing_rule_id,

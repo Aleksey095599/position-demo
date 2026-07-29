@@ -49,11 +49,23 @@ function useCaseWith(overrides = {}) {
 
 test("forms a batch through one transaction boundary", () => {
   let transactions = 0;
+  let savedFormation;
   const useCase = useCaseWith({
     transactionRunner: {
       run(operation) {
         transactions += 1;
         return operation();
+      }
+    },
+    fxBatchRepository: {
+      findFormedByIdempotencyKey: () => null,
+      saveFormed(value) {
+        savedFormation = value.formation;
+        return {
+          batchId: 7,
+          batchStatus: "FORMED",
+          sourceTradeIds: value.formation.sourceTradeIds
+        };
       }
     }
   });
@@ -66,6 +78,7 @@ test("forms a batch through one transaction boundary", () => {
   assert.equal(transactions, 1);
   assert.equal(result.batchId, 7);
   assert.equal(result.replayed, false);
+  assert.equal(savedFormation.quoteCashOut.tradeType, "BATCH_QUOTE_CASH_OUT");
 });
 
 test("returns an idempotent replay for the same selection", () => {

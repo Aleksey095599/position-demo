@@ -4,6 +4,14 @@ const Big = require("big.js");
 const {
   calculateQuoteMinor
 } = require("../../money/money");
+const {
+  fxTradeBalanceContributionsMinor,
+  quoteCashOutContributionMinor
+} = require("./fx-batch-balance");
+const {
+  FX_BATCH_MEMBER_ROLE,
+  FX_BATCH_SPECIAL_MEMBER_TYPE
+} = require("./fx-trade-batching-policy");
 
 const Decimal = Big();
 Decimal.strict = true;
@@ -219,10 +227,26 @@ function commonTradeTerms(first, timestamp) {
   };
 }
 
+function formQuoteCashOut(first, timestamp, netQuoteCcyAmountMinor) {
+  return {
+    tradeType: FX_BATCH_SPECIAL_MEMBER_TYPE.QUOTE_CASH_OUT,
+    memberRole: FX_BATCH_MEMBER_ROLE.BALANCE_QUOTE_CASH,
+    quoteCcyCode: first.quoteCcyCode,
+    quoteBalanceContributionMinor: quoteCashOutContributionMinor(
+      netQuoteCcyAmountMinor
+    ),
+    quoteCcyFractionDigits: first.quoteCcyFractionDigits,
+    quoteCcyValueDate: first.quoteCcyValueDate,
+    createdAt: timestamp.toISOString()
+  };
+}
+
 function formFlatFxBatch({
   sourceTradeIds,
   exactNetTransferQuoteAmountMinor,
-  first
+  sourceNetQuoteCcyAmountMinor,
+  first,
+  timestamp
 }) {
   return {
     sourceTradeIds,
@@ -234,10 +258,16 @@ function formFlatFxBatch({
     ),
     sourceNetTransferQuoteFractionDigits: first.quoteCcyFractionDigits,
     exactTransferRate: null,
+    netQuoteCcyAmountMinorBeforeCash: sourceNetQuoteCcyAmountMinor,
     roundingResidualQuoteAmountMinor: 0n,
     roundingResidualQuoteFractionDigits: first.quoteCcyFractionDigits,
     balanceTrade: null,
-    positionOut: null
+    positionOut: null,
+    quoteCashOut: formQuoteCashOut(
+      first,
+      timestamp,
+      sourceNetQuoteCcyAmountMinor
+    )
   };
 }
 
@@ -279,13 +309,14 @@ function formFxBatch({
   }
 
   let netBaseCcyAmountMinor = 0n;
+  let netQuoteCcyAmountMinor = 0n;
   let exactNetTransferQuoteAmountMinor = new Decimal("0");
 
   normalizedTrades.forEach(trade => {
+    const balanceContributions = fxTradeBalanceContributionsMinor(trade);
     const isSell = trade.side === "SELL";
-    netBaseCcyAmountMinor += isSell
-      ? trade.baseCcyAmountMinor
-      : -trade.baseCcyAmountMinor;
+    netBaseCcyAmountMinor += balanceContributions.baseBalanceContributionMinor;
+    netQuoteCcyAmountMinor += balanceContributions.quoteBalanceContributionMinor;
 
     const transferQuoteAmountMinor = exactQuoteMinor(
       trade.baseCcyAmountMinor,
@@ -302,7 +333,9 @@ function formFxBatch({
     return formFlatFxBatch({
       sourceTradeIds,
       exactNetTransferQuoteAmountMinor,
-      first
+      sourceNetQuoteCcyAmountMinor: netQuoteCcyAmountMinor,
+      first,
+      timestamp
     });
   }
 
@@ -361,6 +394,18 @@ function formFxBatch({
     quoteCcyAmountMinor,
     tradeRate: Number(tradeRateText)
   };
+  const balanceTrade = {
+    ...terms,
+    tradeType: "BATCH_BALANCE_TRADE",
+    side: balancingSide
+  };
+  const balanceTradeContributions = fxTradeBalanceContributionsMinor({
+    ...balanceTrade,
+    baseCcyCode: first.baseCcyCode,
+    quoteCcyCode: first.quoteCcyCode
+  });
+  const netQuoteCcyAmountMinorBeforeCash = netQuoteCcyAmountMinor
+    + balanceTradeContributions.quoteBalanceContributionMinor;
 
   return {
     sourceTradeIds,
@@ -370,18 +415,20 @@ function formFxBatch({
     sourceNetTransferQuoteAmountMinor,
     sourceNetTransferQuoteFractionDigits: quoteDigits,
     exactTransferRate: Number(exactWeightedTransferRate.toString()),
+    netQuoteCcyAmountMinorBeforeCash,
     roundingResidualQuoteAmountMinor,
     roundingResidualQuoteFractionDigits: quoteDigits,
-    balanceTrade: {
-      ...terms,
-      tradeType: "BATCH_BALANCE_TRADE",
-      side: balancingSide
-    },
+    balanceTrade,
     positionOut: {
       ...terms,
       tradeType: "BATCH_POSITION_OUT",
       side: positionOutSide
-    }
+    },
+    quoteCashOut: formQuoteCashOut(
+      first,
+      timestamp,
+      netQuoteCcyAmountMinorBeforeCash
+    )
   };
 }
 

@@ -274,6 +274,32 @@ CREATE TABLE IF NOT EXISTS pricing_rules
         CHECK (margin_percent >= 0 AND margin_percent < 100)
 );
 
+CREATE TABLE IF NOT EXISTS client_deal_generation_process_settings
+(
+    settings_id             INTEGER PRIMARY KEY,
+    min_interval_seconds    INTEGER NOT NULL DEFAULT 1,
+    max_interval_seconds    INTEGER NOT NULL DEFAULT 3,
+    min_deals_per_cycle     INTEGER NOT NULL DEFAULT 3,
+    max_deals_per_cycle     INTEGER NOT NULL DEFAULT 7,
+
+    CONSTRAINT chk_client_deal_generation_process_settings_singleton
+        CHECK (settings_id = 1),
+    CONSTRAINT chk_client_deal_generation_process_settings_interval
+        CHECK (
+            typeof(min_interval_seconds) = 'integer'
+            AND min_interval_seconds BETWEEN 1 AND 3600
+            AND typeof(max_interval_seconds) = 'integer'
+            AND max_interval_seconds BETWEEN min_interval_seconds AND 3600
+        ),
+    CONSTRAINT chk_client_deal_generation_process_settings_cycle_size
+        CHECK (
+            typeof(min_deals_per_cycle) = 'integer'
+            AND min_deals_per_cycle BETWEEN 1 AND 100
+            AND typeof(max_deals_per_cycle) = 'integer'
+            AND max_deals_per_cycle BETWEEN min_deals_per_cycle AND 100
+        )
+);
+
 CREATE TABLE IF NOT EXISTS client_deal_generation_settings
 (
     pricing_rule_id                   INTEGER PRIMARY KEY,
@@ -645,14 +671,12 @@ CREATE TABLE IF NOT EXISTS fx_batch_members
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT chk_fx_batch_members_role
-        CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'BALANCE_QUOTE_CASH')),
+        CHECK (member_role IN ('TRADE', 'BALANCE_TRADE')),
     CONSTRAINT chk_fx_batch_members_role_trade_type
         CHECK (
             member_role = 'TRADE'
             OR (member_role = 'BALANCE_TRADE'
                 AND trade_type = 'BATCH_BALANCE_TRADE')
-            OR (member_role = 'BALANCE_QUOTE_CASH'
-                AND trade_type = 'BATCH_BALANCE_QUOTE_CASH')
         )
 );
 
@@ -686,24 +710,47 @@ CREATE TABLE IF NOT EXISTS fx_batch_outputs
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_demo_hidden_batches
+CREATE TABLE IF NOT EXISTS fx_batch_quote_cash_members
 (
-    batch_id  INTEGER PRIMARY KEY,
-    hidden_at TEXT    NOT NULL
+    batch_id                        INTEGER PRIMARY KEY,
+    quote_ccy_code                  TEXT    NOT NULL,
+    quote_balance_contribution_minor INTEGER NOT NULL,
+    quote_ccy_fraction_digits       INTEGER NOT NULL,
+    quote_ccy_value_date            TEXT    NOT NULL,
+    created_at                      TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-    CONSTRAINT fk_fx_demo_hidden_batches_batch
+    CONSTRAINT fk_fx_batch_quote_cash_members_batch
         FOREIGN KEY (batch_id)
             REFERENCES fx_batches (batch_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_demo_hidden_batches_id
-        CHECK (batch_id > 0),
-    CONSTRAINT chk_fx_demo_hidden_batches_hidden_at
+    CONSTRAINT fk_fx_batch_quote_cash_members_currency
+        FOREIGN KEY (quote_ccy_code)
+            REFERENCES ccy_options (ccy_code)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT chk_fx_batch_quote_cash_members_amount
         CHECK (
-            length(hidden_at) = 24
-            AND hidden_at GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', hidden_at) = hidden_at
+            typeof(quote_balance_contribution_minor) = 'integer'
+            AND quote_balance_contribution_minor
+                BETWEEN -9007199254740991 AND 9007199254740991
+        ),
+    CONSTRAINT chk_fx_batch_quote_cash_members_fraction_digits
+        CHECK (
+            typeof(quote_ccy_fraction_digits) = 'integer'
+            AND quote_ccy_fraction_digits BETWEEN 0 AND 10
+        ),
+    CONSTRAINT chk_fx_batch_quote_cash_members_value_date
+        CHECK (
+            quote_ccy_value_date GLOB '????-??-??'
+            AND strftime('%Y-%m-%d', quote_ccy_value_date) = quote_ccy_value_date
+        ),
+    CONSTRAINT chk_fx_batch_quote_cash_members_created_at
+        CHECK (
+            length(created_at) = 24
+            AND created_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
         )
 );
 
@@ -807,31 +854,14 @@ CREATE INDEX IF NOT EXISTS idx_fx_batch_members_trade
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_batch_members_single_balancer
     ON fx_batch_members (batch_id, member_role)
-    WHERE member_role IN ('BALANCE_TRADE', 'BALANCE_QUOTE_CASH');
+    WHERE member_role = 'BALANCE_TRADE';
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_batch_members_single_technical_origin
     ON fx_batch_members (trade_id)
-    WHERE member_role IN ('BALANCE_TRADE', 'BALANCE_QUOTE_CASH');
+    WHERE member_role = 'BALANCE_TRADE';
 
 CREATE INDEX IF NOT EXISTS idx_fx_batch_outputs_batch
     ON fx_batch_outputs (batch_id, output_role);
-
-CREATE TRIGGER IF NOT EXISTS trg_fx_demo_hidden_batches_validate_insert
-BEFORE INSERT ON fx_demo_hidden_batches
-FOR EACH ROW
-WHEN NOT EXISTS
-(
-    SELECT 1
-    FROM fx_batches
-    WHERE batch_id = NEW.batch_id
-      AND batch_status = 'ROLLED_BACK'
-)
-BEGIN
-    SELECT RAISE(
-        ABORT,
-        'demo-hidden technical trades must belong to a ROLLED_BACK batch'
-    );
-END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_validate_insert
 BEFORE INSERT ON fx_batch_members
@@ -877,12 +907,6 @@ WHEN
               AND e.trade_type = 'BATCH_POSITION_OUT'
               AND e.base_ccy_side IN ('BUY', 'SELL')
               AND e.trade_rate IS NOT NULL
-              AND NOT EXISTS
-              (
-                  SELECT 1
-                  FROM fx_demo_hidden_batches hidden
-                  WHERE hidden.batch_id = o.batch_id
-              )
             UNION ALL
             SELECT 1
             FROM fx_batch_members origin_member
@@ -898,12 +922,6 @@ WHEN
               AND e.trade_type = 'BATCH_BALANCE_TRADE'
               AND e.base_ccy_side IN ('BUY', 'SELL')
               AND e.trade_rate IS NOT NULL
-              AND NOT EXISTS
-              (
-                  SELECT 1
-                  FROM fx_demo_hidden_batches hidden
-                  WHERE hidden.batch_id = origin_member.batch_id
-              )
         )
     )
     OR EXISTS
@@ -939,6 +957,43 @@ WHEN NOT EXISTS
 )
 BEGIN
     SELECT RAISE(ABORT, 'batch output must match a BUILDING batch');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_members_validate_insert
+BEFORE INSERT ON fx_batch_quote_cash_members
+FOR EACH ROW
+WHEN
+    NOT EXISTS
+    (
+        SELECT 1
+        FROM fx_batches b
+        INNER JOIN ccy_pair_options p
+            ON p.ccy_pair_code = b.ccy_pair_code
+        INNER JOIN ccy_options c
+            ON c.ccy_code = p.quote_ccy_code
+        WHERE b.batch_id = NEW.batch_id
+          AND b.batch_status = 'BUILDING'
+          AND p.quote_ccy_code = NEW.quote_ccy_code
+          AND c.fraction_digits = NEW.quote_ccy_fraction_digits
+    )
+    OR EXISTS
+    (
+        SELECT 1
+        FROM fx_batch_members m
+        INNER JOIN fx_trade_exposure e
+            ON e.trade_id = m.trade_id
+            AND e.trade_type = m.trade_type
+        WHERE m.batch_id = NEW.batch_id
+          AND (
+              e.quote_ccy_fraction_digits <> NEW.quote_ccy_fraction_digits
+              OR e.quote_ccy_value_date <> NEW.quote_ccy_value_date
+          )
+    )
+BEGIN
+    SELECT RAISE(
+        ABORT,
+        'quote cash member must match the BUILDING batch quote currency and settlement'
+    );
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_batches_form
@@ -1034,6 +1089,15 @@ BEGIN
               AND member_role = 'TRADE'
         )
         THEN RAISE(ABORT, 'formed batch must contain at least one ordinary trade')
+    END;
+    SELECT CASE
+        WHEN NOT EXISTS
+        (
+            SELECT 1
+            FROM fx_batch_quote_cash_members
+            WHERE batch_id = OLD.batch_id
+        )
+        THEN RAISE(ABORT, 'formed batch must contain one quote cash member')
     END;
     SELECT CASE
         WHEN
@@ -1141,6 +1205,27 @@ BEGIN
             WHERE m.batch_id = OLD.batch_id
         ) <> 0
         THEN RAISE(ABORT, 'formed batch must have zero base currency position')
+    END;
+    SELECT CASE
+        WHEN
+        (
+            SELECT COALESCE(SUM(
+                CASE e.base_ccy_side
+                    WHEN 'BUY' THEN e.quote_ccy_amount_minor
+                    ELSE -e.quote_ccy_amount_minor
+                END
+            ), 0)
+            FROM fx_batch_members m
+            INNER JOIN fx_trade_exposure e ON e.trade_id = m.trade_id
+            WHERE m.batch_id = OLD.batch_id
+        )
+        +
+        (
+            SELECT quote_balance_contribution_minor
+            FROM fx_batch_quote_cash_members
+            WHERE batch_id = OLD.batch_id
+        ) <> 0
+        THEN RAISE(ABORT, 'formed batch must have zero quote currency cash balance')
     END;
     SELECT CASE
         WHEN
@@ -1263,6 +1348,32 @@ WHEN EXISTS
 )
 BEGIN
     SELECT RAISE(ABORT, 'completed batch outputs are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_members_immutable_update
+BEFORE UPDATE ON fx_batch_quote_cash_members
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1 FROM fx_batches
+    WHERE batch_id = OLD.batch_id
+      AND batch_status IN ('FORMED', 'ROLLED_BACK')
+)
+BEGIN
+    SELECT RAISE(ABORT, 'completed batch quote cash members are immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_members_immutable_delete
+BEFORE DELETE ON fx_batch_quote_cash_members
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1 FROM fx_batches
+    WHERE batch_id = OLD.batch_id
+      AND batch_status IN ('FORMED', 'ROLLED_BACK')
+)
+BEGIN
+    SELECT RAISE(ABORT, 'completed batch quote cash members are immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_trade_immutable_update

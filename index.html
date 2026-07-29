@@ -965,6 +965,12 @@
       background: var(--surface-card);
     }
 
+    .smart-sized-table .smart-cell-ellipsis {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .pricing-context-table thead th,
     .pricing-rules-table thead th {
       overflow: visible;
@@ -1045,11 +1051,6 @@
       background: var(--surface-hover);
     }
 
-    .profile-table th:nth-child(2),
-    .profile-table td:nth-child(2) {
-      width: 46%;
-    }
-
     .profile-table .profile-actions-cell {
       width: var(--workbench-actions-column-width);
       min-width: var(--workbench-actions-column-width);
@@ -1111,236 +1112,34 @@
       max-width: var(--market-actions-col-width);
     }
 
-    .client-profile-table {
-      --client-profile-party-type-width: 190px;
-      --client-profile-code-width: 150px;
-      --client-profile-code-type-width: 110px;
-      --client-profile-name-min-width: 240px;
-      --client-profile-name-max-width: 420px;
-      --client-profile-status-width: 88px;
+    .client-profile-table,
+    .pricing-context-table,
+    .pricing-rules-table {
       width: max-content;
       min-width: 0;
-      table-layout: auto;
-    }
-
-    .client-profile-table thead tr:not(.reference-filter-row) th:nth-child(1),
-    .client-profile-table tbody td:nth-child(1) {
-      width: var(--client-profile-party-type-width);
-      min-width: var(--client-profile-party-type-width);
-      max-width: var(--client-profile-party-type-width);
-    }
-
-    .client-profile-table thead tr:not(.reference-filter-row) th:nth-child(2),
-    .client-profile-table tbody td:nth-child(2) {
-      width: var(--client-profile-code-width);
-      min-width: var(--client-profile-code-width);
-      max-width: var(--client-profile-code-width);
-    }
-
-    .client-profile-table thead tr:not(.reference-filter-row) th:nth-child(3),
-    .client-profile-table tbody td:nth-child(3) {
-      width: var(--client-profile-code-type-width);
-      min-width: var(--client-profile-code-type-width);
-      max-width: var(--client-profile-code-type-width);
-    }
-
-    .client-profile-table thead tr:not(.reference-filter-row) th:nth-child(4),
-    .client-profile-table tbody td:nth-child(4) {
-      width: auto;
-      min-width: var(--client-profile-name-min-width);
-      max-width: var(--client-profile-name-max-width);
-    }
-
-    .client-profile-table thead tr:not(.reference-filter-row) th:nth-child(5),
-    .client-profile-table tbody td:nth-child(5) {
-      width: var(--client-profile-status-width);
-      min-width: var(--client-profile-status-width);
-      max-width: var(--client-profile-status-width);
-    }
-
-    .client-profile-table .client-profile-party-type-col {
-      width: var(--client-profile-party-type-width);
-    }
-
-    .client-profile-table .client-profile-inn-col {
-      width: var(--client-profile-code-width);
-    }
-
-    .client-profile-table .client-profile-code-type-col {
-      width: var(--client-profile-code-type-width);
-    }
-
-    .client-profile-table .client-profile-name-col {
-      width: var(--client-profile-name-min-width);
-    }
-
-    .client-profile-table .client-profile-status-col {
-      width: var(--client-profile-status-width);
-    }
-
-    .pricing-context-table {
-      --pricing-context-id-width: 9ch;
-      --pricing-context-location-width: 52ch;
-      --pricing-context-accounting-width: 52ch;
-      --pricing-context-execution-width: 52ch;
-      --pricing-context-count-width: 20ch;
-      --pricing-context-actions-width: var(--workbench-actions-column-width);
-      /* Keep the same natural-width model as the Reference Data tables. */
-      width: max-content;
-      min-width: 0;
-      table-layout: auto;
+      table-layout: fixed;
     }
 
     .pricing-context-table thead th {
       white-space: nowrap;
     }
 
-    .pricing-context-table .pricing-context-id-col {
-      width: var(--pricing-context-id-width);
-    }
-
-    .pricing-context-table .pricing-context-location-col {
-      width: var(--pricing-context-location-width);
-    }
-
-    .pricing-context-table .pricing-context-accounting-col {
-      width: var(--pricing-context-accounting-width);
-    }
-
-    .pricing-context-table .pricing-context-execution-col {
-      width: var(--pricing-context-execution-width);
-    }
-
-    .pricing-context-table .pricing-context-count-col {
-      width: var(--pricing-context-count-width);
-    }
-
-    .pricing-context-table .pricing-context-actions-col {
-      width: var(--pricing-context-actions-width);
-    }
-
-    .pricing-context-table th:nth-child(1),
-    .pricing-context-table td:nth-child(1) {
-      width: var(--pricing-context-id-width);
-      min-width: var(--pricing-context-id-width);
-      max-width: var(--pricing-context-id-width);
-    }
-
-    .pricing-context-table th:nth-child(2),
-    .pricing-context-table td:nth-child(2) {
-      width: var(--pricing-context-location-width);
-      min-width: var(--pricing-context-location-width);
-      max-width: var(--pricing-context-location-width);
-    }
-
-    .pricing-context-table th:nth-child(3),
-    .pricing-context-table td:nth-child(3) {
-      width: var(--pricing-context-accounting-width);
-      min-width: var(--pricing-context-accounting-width);
-      max-width: var(--pricing-context-accounting-width);
-    }
-
-    .pricing-context-table th:nth-child(4),
-    .pricing-context-table td:nth-child(4) {
-      width: var(--pricing-context-execution-width);
-      min-width: var(--pricing-context-execution-width);
-      max-width: var(--pricing-context-execution-width);
-    }
-
     .pricing-context-table td:nth-child(2),
     .pricing-context-table td:nth-child(3),
     .pricing-context-table td:nth-child(4) {
       line-height: 1.25;
-      white-space: normal;
+      white-space: nowrap;
     }
 
-    .pricing-context-table th:nth-child(5),
     .pricing-context-table td:nth-child(5) {
-      width: var(--pricing-context-count-width);
-      min-width: var(--pricing-context-count-width);
-      max-width: var(--pricing-context-count-width);
       text-align: right;
-    }
-
-    .pricing-context-table th:nth-child(6),
-    .pricing-context-table td:nth-child(6) {
-      width: var(--pricing-context-actions-width);
-      min-width: var(--pricing-context-actions-width);
-      max-width: var(--pricing-context-actions-width);
     }
 
     .pricing-context-table tbody tr.is-editing td {
       background: #fbfdff;
     }
 
-    .pricing-rules-table {
-      --pricing-rule-id-width: 9ch;
-      --pricing-rule-party-type-width: 22ch;
-      --pricing-rule-party-code-width: 16ch;
-      --pricing-rule-party-name-width: 32ch;
-      --pricing-rule-currency-width: 12ch;
-      --pricing-rule-context-width: 82ch;
-      --pricing-rule-pricing-mode-width: 24ch;
-      --pricing-rule-margin-width: 12ch;
-      width: max-content;
-      min-width: 0;
-      table-layout: auto;
-    }
-
-    .pricing-rules-table th:nth-child(1),
-    .pricing-rules-table td:nth-child(1) {
-      width: var(--pricing-rule-id-width);
-      min-width: var(--pricing-rule-id-width);
-      max-width: var(--pricing-rule-id-width);
-    }
-
-    .pricing-rules-table th:nth-child(2),
-    .pricing-rules-table td:nth-child(2) {
-      width: var(--pricing-rule-party-type-width);
-      min-width: var(--pricing-rule-party-type-width);
-      max-width: var(--pricing-rule-party-type-width);
-    }
-
-    .pricing-rules-table th:nth-child(3),
-    .pricing-rules-table td:nth-child(3) {
-      width: var(--pricing-rule-party-code-width);
-      min-width: var(--pricing-rule-party-code-width);
-      max-width: var(--pricing-rule-party-code-width);
-    }
-
-    .pricing-rules-table th:nth-child(4),
-    .pricing-rules-table td:nth-child(4) {
-      width: var(--pricing-rule-party-name-width);
-      min-width: var(--pricing-rule-party-name-width);
-      max-width: var(--pricing-rule-party-name-width);
-    }
-
-    .pricing-rules-table th:nth-child(5),
-    .pricing-rules-table td:nth-child(5) {
-      width: var(--pricing-rule-currency-width);
-      min-width: var(--pricing-rule-currency-width);
-      max-width: var(--pricing-rule-currency-width);
-    }
-
-    .pricing-rules-table th:nth-child(6),
-    .pricing-rules-table td:nth-child(6) {
-      width: var(--pricing-rule-context-width);
-      min-width: var(--pricing-rule-context-width);
-      max-width: none;
-    }
-
-    .pricing-rules-table th:nth-child(7),
-    .pricing-rules-table td:nth-child(7) {
-      width: var(--pricing-rule-pricing-mode-width);
-      min-width: var(--pricing-rule-pricing-mode-width);
-      max-width: var(--pricing-rule-pricing-mode-width);
-    }
-
-    .pricing-rules-table th:nth-child(8),
     .pricing-rules-table td:nth-child(8) {
-      width: var(--pricing-rule-margin-width);
-      min-width: var(--pricing-rule-margin-width);
-      max-width: var(--pricing-rule-margin-width);
       text-align: right;
     }
 
@@ -2438,390 +2237,15 @@
     }
 
     .reference-table {
-      min-width: 980px;
-    }
-
-    .servicing-branch-table {
-      --servicing-branch-code-width: 12ch;
-      --servicing-branch-name-min-width: 52ch;
-      --servicing-branch-name-max-width: 52ch;
-      --servicing-branch-region-min-width: 52ch;
-      --servicing-branch-region-max-width: 52ch;
-      --servicing-branch-type-width: 16ch;
-      --servicing-branch-active-width: 76px;
-      --servicing-branch-count-width: 144px;
-      --servicing-branch-actions-width: var(--workbench-actions-column-width);
       width: max-content;
       min-width: 0;
-      table-layout: auto;
+      table-layout: fixed;
     }
 
-    .servicing-branch-table th:nth-child(1),
-    .servicing-branch-table td:nth-child(1) {
-      width: var(--servicing-branch-code-width);
-      min-width: var(--servicing-branch-code-width);
-      max-width: var(--servicing-branch-code-width);
-    }
-
-    .servicing-branch-table th:nth-child(2),
-    .servicing-branch-table td:nth-child(2) {
-      width: auto;
-      min-width: var(--servicing-branch-name-min-width);
-      max-width: var(--servicing-branch-name-max-width);
-    }
-
-    .servicing-branch-table th:nth-child(3),
-    .servicing-branch-table td:nth-child(3) {
-      width: auto;
-      min-width: var(--servicing-branch-region-min-width);
-      max-width: var(--servicing-branch-region-max-width);
-    }
-
-    .servicing-branch-table th:nth-child(4),
-    .servicing-branch-table td:nth-child(4) {
-      width: var(--servicing-branch-type-width);
-      min-width: var(--servicing-branch-type-width);
-      max-width: var(--servicing-branch-type-width);
-    }
-
-    .servicing-branch-table th:nth-child(5),
-    .servicing-branch-table td:nth-child(5) {
-      width: var(--servicing-branch-active-width);
-      min-width: var(--servicing-branch-active-width);
-      max-width: var(--servicing-branch-active-width);
-    }
-
-    .servicing-branch-table th:nth-child(6),
-    .servicing-branch-table td:nth-child(6) {
-      width: var(--servicing-branch-count-width);
-      min-width: var(--servicing-branch-count-width);
-      max-width: var(--servicing-branch-count-width);
-    }
-
-    .settlement-system-table {
-      --settlement-system-id-width: 22ch;
-      --settlement-system-name-width: 52ch;
-      --settlement-system-active-width: 88px;
-      --settlement-system-count-width: 144px;
-      --settlement-system-actions-width: var(--workbench-actions-column-width);
-      width: max-content;
-      min-width: 0;
-      table-layout: auto;
-    }
-
-    .settlement-system-table th:nth-child(1),
-    .settlement-system-table td:nth-child(1) {
-      width: var(--settlement-system-id-width);
-      min-width: var(--settlement-system-id-width);
-      max-width: var(--settlement-system-id-width);
-    }
-
-    .settlement-system-table th:nth-child(2),
-    .settlement-system-table td:nth-child(2) {
-      width: var(--settlement-system-name-width);
-      min-width: var(--settlement-system-name-width);
-      max-width: var(--settlement-system-name-width);
-    }
-
-    .settlement-system-table th:nth-child(3),
-    .settlement-system-table td:nth-child(3) {
-      width: var(--settlement-system-active-width);
-      min-width: var(--settlement-system-active-width);
-      max-width: var(--settlement-system-active-width);
-    }
-
-    .settlement-system-table th:nth-child(4),
-    .settlement-system-table td:nth-child(4) {
-      width: var(--settlement-system-count-width);
-      min-width: var(--settlement-system-count-width);
-      max-width: var(--settlement-system-count-width);
-    }
-
-    .settlement-system-table th:nth-child(5),
-    .settlement-system-table td:nth-child(5) {
-      width: var(--settlement-system-actions-width);
-      min-width: var(--settlement-system-actions-width);
-      max-width: var(--settlement-system-actions-width);
-    }
-
-    .trade-capture-channel-table {
-      --trade-capture-channel-id-min-width: 32ch;
-      --trade-capture-channel-id-max-width: 32ch;
-      --trade-capture-channel-name-min-width: 52ch;
-      --trade-capture-channel-name-max-width: 52ch;
-      --trade-capture-channel-type-min-width: 24ch;
-      --trade-capture-channel-type-max-width: 24ch;
-      --trade-capture-channel-active-width: 76px;
-      --trade-capture-channel-count-width: 144px;
-      --trade-capture-channel-actions-width: var(--workbench-actions-column-width);
-      width: max-content;
-      min-width: 0;
-      table-layout: auto;
-    }
-
-    .trade-capture-channel-table th:nth-child(1),
-    .trade-capture-channel-table td:nth-child(1) {
-      width: auto;
-      min-width: var(--trade-capture-channel-id-min-width);
-      max-width: var(--trade-capture-channel-id-max-width);
-    }
-
-    .trade-capture-channel-table th:nth-child(2),
-    .trade-capture-channel-table td:nth-child(2) {
-      width: auto;
-      min-width: var(--trade-capture-channel-name-min-width);
-      max-width: var(--trade-capture-channel-name-max-width);
-    }
-
-    .trade-capture-channel-table th:nth-child(3),
-    .trade-capture-channel-table td:nth-child(3) {
-      width: auto;
-      min-width: var(--trade-capture-channel-type-min-width);
-      max-width: var(--trade-capture-channel-type-max-width);
-    }
-
-    .trade-capture-channel-table th:nth-child(4),
-    .trade-capture-channel-table td:nth-child(4) {
-      width: var(--trade-capture-channel-active-width);
-      min-width: var(--trade-capture-channel-active-width);
-      max-width: var(--trade-capture-channel-active-width);
-    }
-
-    .trade-capture-channel-table th:nth-child(5),
-    .trade-capture-channel-table td:nth-child(5) {
-      width: var(--trade-capture-channel-count-width);
-      min-width: var(--trade-capture-channel-count-width);
-      max-width: var(--trade-capture-channel-count-width);
-    }
-
-    .trade-capture-channel-table th:nth-child(6),
-    .trade-capture-channel-table td:nth-child(6) {
-      width: var(--trade-capture-channel-actions-width);
-      min-width: var(--trade-capture-channel-actions-width);
-      max-width: var(--trade-capture-channel-actions-width);
-    }
-
-    .reference-table th:nth-child(4),
-    .reference-table td:nth-child(4) {
-      width: 8%;
-    }
-
-    .reference-table th:nth-child(5),
-    .reference-table td:nth-child(5) {
-      width: 11%;
-      text-align: right;
-    }
-
-    .reference-table th:nth-child(6),
-    .reference-table td:nth-child(6) {
-      width: 80px;
-      min-width: 80px;
-    }
-
-    .reference-table.servicing-branch-table th:nth-child(1),
-    .reference-table.servicing-branch-table td:nth-child(1) {
-      width: var(--servicing-branch-code-width);
-      min-width: var(--servicing-branch-code-width);
-      max-width: var(--servicing-branch-code-width);
-    }
-
-    .reference-table.servicing-branch-table th:nth-child(2),
-    .reference-table.servicing-branch-table td:nth-child(2) {
-      width: auto;
-      min-width: var(--servicing-branch-name-min-width);
-      max-width: var(--servicing-branch-name-max-width);
-    }
-
-    .reference-table.servicing-branch-table th:nth-child(3),
-    .reference-table.servicing-branch-table td:nth-child(3) {
-      width: auto;
-      min-width: var(--servicing-branch-region-min-width);
-      max-width: var(--servicing-branch-region-max-width);
-    }
-
-    .reference-table.servicing-branch-table th:nth-child(4),
-    .reference-table.servicing-branch-table td:nth-child(4) {
-      width: var(--servicing-branch-type-width);
-      min-width: var(--servicing-branch-type-width);
-      max-width: var(--servicing-branch-type-width);
-    }
-
-    .reference-table.servicing-branch-table th:nth-child(5),
-    .reference-table.servicing-branch-table td:nth-child(5) {
-      width: var(--servicing-branch-active-width);
-      min-width: var(--servicing-branch-active-width);
-      max-width: var(--servicing-branch-active-width);
-    }
-
-    .reference-table.servicing-branch-table th:nth-child(6),
-    .reference-table.servicing-branch-table td:nth-child(6) {
-      width: var(--servicing-branch-count-width);
-      min-width: var(--servicing-branch-count-width);
-      max-width: var(--servicing-branch-count-width);
-      text-align: right;
-    }
-
-    .reference-table.servicing-branch-table th:nth-child(7),
-    .reference-table.servicing-branch-table td:nth-child(7) {
-      width: var(--servicing-branch-actions-width);
-      min-width: var(--servicing-branch-actions-width);
-      max-width: var(--servicing-branch-actions-width);
-    }
-
-    .reference-table.settlement-system-table th:nth-child(1),
-    .reference-table.settlement-system-table td:nth-child(1) {
-      width: var(--settlement-system-id-width);
-      min-width: var(--settlement-system-id-width);
-      max-width: var(--settlement-system-id-width);
-    }
-
-    .reference-table.settlement-system-table th:nth-child(2),
-    .reference-table.settlement-system-table td:nth-child(2) {
-      width: var(--settlement-system-name-width);
-      min-width: var(--settlement-system-name-width);
-      max-width: var(--settlement-system-name-width);
-    }
-
-    .reference-table.settlement-system-table th:nth-child(3),
-    .reference-table.settlement-system-table td:nth-child(3) {
-      width: var(--settlement-system-active-width);
-      min-width: var(--settlement-system-active-width);
-      max-width: var(--settlement-system-active-width);
-    }
-
-    .reference-table.settlement-system-table th:nth-child(4),
-    .reference-table.settlement-system-table td:nth-child(4) {
-      width: var(--settlement-system-count-width);
-      min-width: var(--settlement-system-count-width);
-      max-width: var(--settlement-system-count-width);
-      text-align: right;
-    }
-
-    .reference-table.settlement-system-table th:nth-child(5),
-    .reference-table.settlement-system-table td:nth-child(5) {
-      width: var(--settlement-system-actions-width);
-      min-width: var(--settlement-system-actions-width);
-      max-width: var(--settlement-system-actions-width);
-    }
-
-    .reference-table.trade-capture-channel-table th:nth-child(1),
-    .reference-table.trade-capture-channel-table td:nth-child(1) {
-      width: auto;
-      min-width: var(--trade-capture-channel-id-min-width);
-      max-width: var(--trade-capture-channel-id-max-width);
-    }
-
-    .reference-table.trade-capture-channel-table th:nth-child(2),
-    .reference-table.trade-capture-channel-table td:nth-child(2) {
-      width: auto;
-      min-width: var(--trade-capture-channel-name-min-width);
-      max-width: var(--trade-capture-channel-name-max-width);
-    }
-
-    .reference-table.trade-capture-channel-table th:nth-child(3),
-    .reference-table.trade-capture-channel-table td:nth-child(3) {
-      width: auto;
-      min-width: var(--trade-capture-channel-type-min-width);
-      max-width: var(--trade-capture-channel-type-max-width);
-    }
-
-    .reference-table.trade-capture-channel-table th:nth-child(4),
-    .reference-table.trade-capture-channel-table td:nth-child(4) {
-      width: var(--trade-capture-channel-active-width);
-      min-width: var(--trade-capture-channel-active-width);
-      max-width: var(--trade-capture-channel-active-width);
-    }
-
-    .reference-table.trade-capture-channel-table th:nth-child(5),
+    .reference-table.servicing-branch-table td:nth-child(6),
+    .reference-table.settlement-system-table td:nth-child(4),
     .reference-table.trade-capture-channel-table td:nth-child(5) {
-      width: var(--trade-capture-channel-count-width);
-      min-width: var(--trade-capture-channel-count-width);
-      max-width: var(--trade-capture-channel-count-width);
       text-align: right;
-    }
-
-    .reference-table.trade-capture-channel-table th:nth-child(6),
-    .reference-table.trade-capture-channel-table td:nth-child(6) {
-      width: var(--trade-capture-channel-actions-width);
-      min-width: var(--trade-capture-channel-actions-width);
-      max-width: var(--trade-capture-channel-actions-width);
-    }
-
-    .reference-table.servicing-branch-table .servicing-branch-code-col {
-      width: var(--servicing-branch-code-width);
-    }
-
-    .reference-table.servicing-branch-table .servicing-branch-active-col {
-      width: var(--servicing-branch-active-width);
-    }
-
-    .reference-table.servicing-branch-table .servicing-branch-actions-col {
-      width: var(--servicing-branch-actions-width);
-    }
-
-    .reference-table.servicing-branch-table .servicing-branch-count-col {
-      width: var(--servicing-branch-count-width);
-    }
-
-    .reference-table.servicing-branch-table .servicing-branch-name-col {
-      width: var(--servicing-branch-name-min-width);
-    }
-
-    .reference-table.servicing-branch-table .servicing-branch-region-col {
-      width: var(--servicing-branch-region-min-width);
-    }
-
-    .reference-table.servicing-branch-table .servicing-branch-type-col {
-      width: var(--servicing-branch-type-width);
-    }
-
-    .reference-table.servicing-branch-table th:nth-child(6),
-    .reference-table.servicing-branch-table td:nth-child(6) {
-      text-align: right;
-    }
-
-    .reference-table.settlement-system-table .settlement-system-id-col {
-      width: var(--settlement-system-id-width);
-    }
-
-    .reference-table.settlement-system-table .settlement-system-name-col {
-      width: var(--settlement-system-name-width);
-    }
-
-    .reference-table.settlement-system-table .settlement-system-active-col {
-      width: var(--settlement-system-active-width);
-    }
-
-    .reference-table.settlement-system-table .settlement-system-count-col {
-      width: var(--settlement-system-count-width);
-    }
-
-    .reference-table.settlement-system-table .settlement-system-actions-col {
-      width: var(--settlement-system-actions-width);
-    }
-
-    .reference-table.trade-capture-channel-table .trade-capture-channel-id-col {
-      width: var(--trade-capture-channel-id-min-width);
-    }
-
-    .reference-table.trade-capture-channel-table .trade-capture-channel-name-col {
-      width: var(--trade-capture-channel-name-min-width);
-    }
-
-    .reference-table.trade-capture-channel-table .trade-capture-channel-type-col {
-      width: var(--trade-capture-channel-type-min-width);
-    }
-
-    .reference-table.trade-capture-channel-table .trade-capture-channel-active-col {
-      width: var(--trade-capture-channel-active-width);
-    }
-
-    .reference-table.trade-capture-channel-table .trade-capture-channel-count-col {
-      width: var(--trade-capture-channel-count-width);
-    }
-
-    .reference-table.trade-capture-channel-table .trade-capture-channel-actions-col {
-      width: var(--trade-capture-channel-actions-width);
     }
 
     .reference-table tbody tr.is-editing td,
@@ -5492,6 +4916,69 @@
       background: var(--bs-body-bg, #ffffff);
     }
 
+    .generation-cycle-settings {
+      display: grid;
+      grid-template-columns: minmax(210px, 1fr) repeat(4, minmax(110px, 0.55fr)) auto;
+      align-items: end;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid var(--bs-border-color, #dee2e6);
+      border-radius: var(--workbench-radius, 0.25rem);
+      background: var(--bs-tertiary-bg, #f8f9fa);
+    }
+
+    .generation-cycle-settings-copy {
+      align-self: center;
+      min-width: 0;
+    }
+
+    .generation-cycle-settings-title {
+      margin: 0 0 2px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .generation-cycle-settings-help {
+      margin: 0;
+      color: var(--bs-secondary-color, #6c757d);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .generation-cycle-settings-field {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .generation-cycle-settings-field label {
+      color: var(--bs-secondary-color, #6c757d);
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    .generation-cycle-settings-field .form-control {
+      min-width: 0;
+      text-align: right;
+    }
+
+    .generation-cycle-settings-save {
+      min-width: 68px;
+    }
+
+    @media (max-width: 1100px) {
+      .generation-cycle-settings {
+        grid-template-columns: repeat(4, minmax(110px, 1fr)) auto;
+      }
+
+      .generation-cycle-settings-copy {
+        grid-column: 1 / -1;
+      }
+    }
+
     .generation-settings-status {
       display: flex;
       min-height: 34px;
@@ -5525,8 +5012,8 @@
     }
 
     .generation-settings-table {
-      width: 100%;
-      min-width: 1115px;
+      width: max-content;
+      min-width: 0;
       margin: 0;
       border: 0;
       border-collapse: separate;
@@ -5590,48 +5077,6 @@
       background: transparent;
     }
 
-    .generation-settings-table :is(th, td):nth-child(1) {
-      width: 60px;
-    }
-
-    .generation-settings-table :is(th, td):nth-child(2) {
-      width: 130px;
-    }
-
-    .generation-settings-table :is(th, td):nth-child(3) {
-      width: 70px;
-    }
-
-    .generation-settings-table :is(th, td):nth-child(4) {
-      width: 205px;
-    }
-
-    .generation-settings-table :is(th, td):nth-child(5) {
-      width: 95px;
-    }
-
-    .generation-settings-table :is(th, td):nth-child(6),
-    .generation-settings-table :is(th, td):nth-child(7) {
-      width: 105px;
-    }
-
-    .generation-settings-table :is(th, td):nth-child(8) {
-      width: 90px;
-    }
-
-    .generation-settings-table :is(th, td):nth-child(9),
-    .generation-settings-table :is(th, td):nth-child(10) {
-      width: 60px;
-    }
-
-    .generation-settings-table :is(th, td):nth-child(11) {
-      width: 55px;
-    }
-
-    .generation-settings-table :is(th, td):nth-child(12) {
-      width: 80px;
-    }
-
     .generation-settings-rule-id {
       color: var(--bs-secondary-color, #6c757d);
       font-variant-numeric: tabular-nums;
@@ -5650,11 +5095,6 @@
       font-size: 10px;
       text-overflow: ellipsis;
       white-space: nowrap;
-    }
-
-    .generation-settings-context {
-      line-height: 1.3;
-      white-space: normal;
     }
 
     .generation-settings-table .form-control {
@@ -6075,15 +5515,8 @@
 
     .database-data-table {
       width: max-content;
-      min-width: 100%;
-      table-layout: auto;
-    }
-
-    .database-data-table th,
-    .database-data-table td {
-      width: auto !important;
-      min-width: 110px !important;
-      max-width: 280px !important;
+      min-width: 0;
+      table-layout: fixed;
     }
 
     .database-empty-state {
@@ -8024,7 +7457,8 @@
 
     #batchingHistoryPage .batching-history-content,
     #batchingHistoryPage .batching-history-grid-shell {
-      width: min(680px, 100%);
+      width: fit-content;
+      max-width: 100%;
       min-width: 0;
     }
 
@@ -8038,8 +7472,10 @@
     }
 
     #batchingHistoryPage .batching-history-grid {
-      width: 100%;
-      height: clamp(240px, calc(100vh - 178px), 560px);
+      width: max-content;
+      max-width: 100%;
+      height: auto;
+      max-height: 465px;
     }
 
     #batchingHistoryPage .tabulator {
@@ -8209,6 +7645,10 @@
       align-items: baseline;
       gap: 8px;
       margin-bottom: 8px;
+    }
+
+    #batchDetailsPage .batch-details-section-header .client-deals-count {
+      margin-left: 0;
     }
 
     #batchDetailsPage .batch-details-section-title {
@@ -9509,7 +8949,6 @@
       padding: 0 0 8px;
     }
 
-    #marketPage.market-bootstrap.workbench-page .market-bootstrap-panel,
     #referenceDataPage.unified-bootstrap-workspace.workbench-page .reference-layout .profile-table-panel {
       width: min(1120px, calc(100vw - var(--workbench-page-inline-total)));
     }
@@ -9529,8 +8968,10 @@
       table-layout: auto;
     }
 
-    #marketPage.market-bootstrap.workbench-page [data-market-panel="streams"] {
-      width: min(760px, calc(100vw - var(--workbench-page-inline-total)));
+    #marketPage.market-bootstrap.workbench-page .market-bootstrap-panel {
+      justify-self: start;
+      width: fit-content;
+      max-width: calc(100vw - var(--workbench-page-inline-total));
     }
 
     #marketPage.market-bootstrap.workbench-page .market-grid-frame,
@@ -9545,32 +8986,16 @@
     }
 
     #marketPage.market-bootstrap.workbench-page .market-grid-frame {
-      overflow: hidden;
+      width: fit-content;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
     }
 
-    /* Keep each compact market panel and its command toolbar aligned to its table. */
-    #marketPage.market-bootstrap.workbench-page [data-market-panel="streams"] .market-grid-frame {
-      width: min(426px, 100%);
-    }
-
-    #marketPage.market-bootstrap.workbench-page [data-market-panel="streams"] {
-      width: min(426px, calc(100vw - var(--workbench-page-inline-total)));
-    }
-
-    #marketPage.market-bootstrap.workbench-page [data-market-panel="currencies"] .market-grid-frame {
-      width: min(816px, 100%);
-    }
-
-    #marketPage.market-bootstrap.workbench-page [data-market-panel="currencies"] {
-      width: min(816px, calc(100vw - var(--workbench-page-inline-total)));
-    }
-
-    #marketPage.market-bootstrap.workbench-page [data-market-panel="pairs"] .market-grid-frame {
-      width: min(680px, 100%);
-    }
-
-    #marketPage.market-bootstrap.workbench-page [data-market-panel="pairs"] {
-      width: min(680px, calc(100vw - var(--workbench-page-inline-total)));
+    #marketPage.market-bootstrap.workbench-page .market-tabulator {
+      width: max-content;
+      min-width: 0;
+      max-width: none;
     }
 
     #marketPage.market-bootstrap.workbench-page .market-tabulator .tabulator-tableholder {
@@ -9970,14 +9395,8 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page {
-      --trading-party-id-column-width: 64px;
-      --trading-party-type-column-width: 184px;
-      --trading-party-code-column-width: 160px;
-      --trading-party-code-type-column-width: 184px;
-      --trading-party-name-column-width: 420px;
-      --trading-party-status-column-width: 92px;
-      --trading-party-content-width: 1184px;
-      --trading-party-frame-width: 1186px;
+      --trading-party-detail-frame-width: 1186px;
+      --trading-party-form-name-max-width: 420px;
       width: 100%;
       min-width: 0;
       padding: 12px var(--workbench-page-padding-x) var(--workbench-page-padding-bottom);
@@ -10057,10 +9476,16 @@
       grid-template-columns: minmax(0, 1fr);
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-table-panel,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-table-panel {
+      justify-self: start;
+      width: fit-content;
+      min-width: 0;
+      max-width: 100%;
+    }
+
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-detail-panel {
       justify-self: start;
-      width: min(var(--trading-party-frame-width), 100%);
+      width: min(var(--trading-party-detail-frame-width), 100%);
       min-width: 0;
       max-width: 100%;
     }
@@ -10108,8 +9533,8 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table {
-      width: var(--trading-party-content-width);
-      min-width: var(--trading-party-content-width);
+      width: max-content;
+      min-width: 0;
       border: 0;
       border-collapse: separate;
       border-spacing: 0;
@@ -10266,75 +9691,8 @@
       box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-id-col {
-      width: var(--trading-party-id-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-party-type-col {
-      width: var(--trading-party-type-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-inn-col {
-      width: var(--trading-party-code-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-code-type-col {
-      width: var(--trading-party-code-type-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-name-col {
-      width: var(--trading-party-name-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-status-col {
-      width: var(--trading-party-status-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-actions-col {
-      width: var(--workbench-actions-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table :is(th, td):nth-child(1) {
-      width: var(--trading-party-id-column-width);
-      min-width: var(--trading-party-id-column-width);
-      max-width: var(--trading-party-id-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table :is(th, td):nth-child(2) {
-      width: var(--trading-party-type-column-width);
-      min-width: var(--trading-party-type-column-width);
-      max-width: var(--trading-party-type-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table :is(th, td):nth-child(3) {
-      width: var(--trading-party-code-column-width);
-      min-width: var(--trading-party-code-column-width);
-      max-width: var(--trading-party-code-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table :is(th, td):nth-child(4) {
-      width: var(--trading-party-code-type-column-width);
-      min-width: var(--trading-party-code-type-column-width);
-      max-width: var(--trading-party-code-type-column-width);
-    }
-
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table :is(th, td):nth-child(5) {
-      width: var(--trading-party-name-column-width);
-      min-width: var(--trading-party-name-column-width);
-      max-width: var(--trading-party-name-column-width);
       text-align: left;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table :is(th, td):nth-child(6) {
-      width: var(--trading-party-status-column-width);
-      min-width: var(--trading-party-status-column-width);
-      max-width: var(--trading-party-status-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table :is(th, td):nth-child(7) {
-      width: var(--workbench-actions-column-width);
-      min-width: var(--workbench-actions-column-width);
-      max-width: var(--workbench-actions-column-width);
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-actions-cell {
@@ -10429,7 +9787,7 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-form .party-name-field {
-      max-width: var(--trading-party-name-column-width);
+      max-width: var(--trading-party-form-name-max-width);
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-form .party-active-field {
@@ -10524,73 +9882,21 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView {
-      --users-id-column-width: 64px;
-      --users-code-column-width: 220px;
-      --users-first-name-column-width: 240px;
-      --users-last-name-column-width: 240px;
-      --users-role-column-width: 140px;
-      --users-status-column-width: 92px;
-      --users-content-width: 1076px;
       --users-frame-width: 1078px;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .profile-table-panel,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .profile-table-panel {
+      width: fit-content;
+      max-width: 100%;
+    }
+
     #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .profile-detail-panel {
       width: min(var(--users-frame-width), 100%);
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table {
-      width: var(--users-content-width);
-      min-width: var(--users-content-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-id-col,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table :is(th, td):nth-child(1) {
-      width: var(--users-id-column-width);
-      min-width: var(--users-id-column-width);
-      max-width: var(--users-id-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-code-col,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table :is(th, td):nth-child(2) {
-      width: var(--users-code-column-width);
-      min-width: var(--users-code-column-width);
-      max-width: var(--users-code-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-first-name-col,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table :is(th, td):nth-child(3) {
-      width: var(--users-first-name-column-width);
-      min-width: var(--users-first-name-column-width);
-      max-width: var(--users-first-name-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-last-name-col,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table :is(th, td):nth-child(4) {
-      width: var(--users-last-name-column-width);
-      min-width: var(--users-last-name-column-width);
-      max-width: var(--users-last-name-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-role-col,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table :is(th, td):nth-child(5) {
-      width: var(--users-role-column-width);
-      min-width: var(--users-role-column-width);
-      max-width: var(--users-role-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-status-col,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table :is(th, td):nth-child(6) {
-      width: var(--users-status-column-width);
-      min-width: var(--users-status-column-width);
-      max-width: var(--users-status-column-width);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-actions-col,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table :is(th, td):nth-child(7) {
-      width: var(--workbench-actions-column-width);
-      min-width: var(--workbench-actions-column-width);
-      max-width: var(--workbench-actions-column-width);
+      width: max-content;
+      min-width: 0;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .user-fields {
@@ -12071,7 +11377,7 @@
 
         <section class="batch-details-section" aria-labelledby="batchDetailsOutputsTitle">
           <div class="batch-details-section-header">
-            <h2 class="batch-details-section-title" id="batchDetailsOutputsTitle">Outputs</h2>
+            <h2 class="batch-details-section-title" id="batchDetailsOutputsTitle">Position Output</h2>
             <span class="client-deals-count" id="batchDetailsOutputsCount">0 trades</span>
           </div>
           <div class="batch-details-output-empty" id="batchDetailsOutputsEmpty" hidden>
@@ -12198,7 +11504,7 @@
           </div>
         </div>
         <div class="profile-table-wrap">
-          <table class="profile-table reference-table client-profile-table unified-data-table" data-fixed-column-widths>
+          <table class="profile-table reference-table client-profile-table unified-data-table">
             <colgroup>
               <col class="client-profile-id-col">
               <col class="client-profile-party-type-col">
@@ -12374,7 +11680,7 @@
             </div>
           </div>
           <div class="profile-table-wrap">
-            <table class="profile-table reference-table client-profile-table users-table unified-data-table" data-fixed-column-widths>
+            <table class="profile-table reference-table client-profile-table users-table unified-data-table">
               <colgroup>
                 <col class="users-id-col">
                 <col class="users-code-col">
@@ -12524,7 +11830,7 @@
           </div>
         </div>
         <div class="profile-table-wrap">
-          <table class="profile-table pricing-context-table unified-data-table" data-fixed-column-widths>
+          <table class="profile-table pricing-context-table unified-data-table">
             <colgroup>
               <col class="pricing-context-id-col">
               <col class="pricing-context-location-col">
@@ -12562,9 +11868,17 @@
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="tradeCaptureChannelId" aria-label="Filter execution contexts by execution system">
                   </div>
                 </th>
-                <th>
+                <th data-column-kind="count">
                   <div class="reference-column-head reference-column-head-static reference-column-head-centered">
-                    <span class="reference-column-title">Pricing Rules Count</span>
+                    <span
+                      class="button-icon"
+                      role="img"
+                      tabindex="0"
+                      aria-label="Pricing Rules using this Execution Context"
+                      data-tooltip="Pricing Rules using this Execution Context"
+                    >
+                      rule
+                    </span>
                   </div>
                 </th>
                 <th class="profile-actions-cell">Actions</th>
@@ -12610,7 +11924,7 @@
           </button>
         </div>
         <div class="profile-table-wrap">
-          <table class="profile-table reference-table servicing-branch-table unified-data-table" data-fixed-column-widths>
+          <table class="profile-table reference-table servicing-branch-table unified-data-table">
             <colgroup>
               <col class="servicing-branch-code-col">
               <col class="servicing-branch-name-col">
@@ -12659,10 +11973,16 @@
                     </select>
                   </div>
                 </th>
-                <th>
+                <th data-column-kind="count">
                   <div class="reference-column-head reference-column-head-static reference-column-head-centered">
-                    <span class="reference-column-title">
-                      Exec. Context Count
+                    <span
+                      class="button-icon"
+                      role="img"
+                      tabindex="0"
+                      aria-label="Execution Contexts using this location"
+                      data-tooltip="Execution Contexts using this location"
+                    >
+                      hub
                     </span>
                   </div>
                 </th>
@@ -12687,7 +12007,7 @@
           </button>
         </div>
         <div class="profile-table-wrap">
-          <table class="profile-table reference-table settlement-system-table unified-data-table" data-fixed-column-widths>
+          <table class="profile-table reference-table settlement-system-table unified-data-table">
             <colgroup>
               <col class="settlement-system-id-col">
               <col class="settlement-system-name-col">
@@ -12722,10 +12042,16 @@
                     </select>
                   </div>
                 </th>
-                <th>
+                <th data-column-kind="count">
                   <div class="reference-column-head reference-column-head-static reference-column-head-centered">
-                    <span class="reference-column-title">
-                      Exec. Context Count
+                    <span
+                      class="button-icon"
+                      role="img"
+                      tabindex="0"
+                      aria-label="Execution Contexts using this accounting system"
+                      data-tooltip="Execution Contexts using this accounting system"
+                    >
+                      hub
                     </span>
                   </div>
                 </th>
@@ -12750,7 +12076,7 @@
           </button>
         </div>
         <div class="profile-table-wrap">
-          <table class="profile-table reference-table trade-capture-channel-table unified-data-table" data-fixed-column-widths>
+          <table class="profile-table reference-table trade-capture-channel-table unified-data-table">
             <colgroup>
               <col class="trade-capture-channel-id-col">
               <col class="trade-capture-channel-name-col">
@@ -12792,9 +12118,17 @@
                     </select>
                   </div>
                 </th>
-                <th>
+                <th data-column-kind="count">
                   <div class="reference-column-head reference-column-head-static reference-column-head-centered">
-                    <span class="reference-column-title">Exec. Context Count</span>
+                    <span
+                      class="button-icon"
+                      role="img"
+                      tabindex="0"
+                      aria-label="Execution Contexts using this execution system"
+                      data-tooltip="Execution Contexts using this execution system"
+                    >
+                      hub
+                    </span>
                   </div>
                 </th>
                 <th class="profile-actions-cell">
@@ -12822,7 +12156,7 @@
       <section class="profile-panel profile-table-panel" aria-label="Trading Party pricing rules">
         <div class="profile-status" id="pricingRuleStatus" role="status" aria-live="polite" hidden></div>
         <div class="profile-table-wrap">
-          <table class="profile-table pricing-rules-table unified-data-table" data-fixed-column-widths>
+          <table class="profile-table pricing-rules-table unified-data-table">
             <colgroup>
               <col>
               <col>
@@ -13412,23 +12746,45 @@
         <button type="button" class="dialog-close btn-close" id="generationDialogClose" aria-label="Close"></button>
       </div>
       <div class="deal-form-body modal-body">
+        <form class="generation-cycle-settings" id="clientDealGenerationProcessSettingsForm">
+          <div class="generation-cycle-settings-copy">
+            <h3 class="generation-cycle-settings-title">Generation Cycle</h3>
+            <p class="generation-cycle-settings-help">Each cycle uses a random delay and creates a random number of deals.</p>
+          </div>
+          <div class="generation-cycle-settings-field">
+            <label for="generationMinIntervalSeconds">Interval From, sec</label>
+            <input class="form-control form-control-sm" type="number" id="generationMinIntervalSeconds" name="minIntervalSeconds" min="1" max="3600" step="1" required>
+          </div>
+          <div class="generation-cycle-settings-field">
+            <label for="generationMaxIntervalSeconds">Interval To, sec</label>
+            <input class="form-control form-control-sm" type="number" id="generationMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" required>
+          </div>
+          <div class="generation-cycle-settings-field">
+            <label for="generationMinDealsPerCycle">Deals From</label>
+            <input class="form-control form-control-sm" type="number" id="generationMinDealsPerCycle" name="minDealsPerCycle" min="1" max="100" step="1" required>
+          </div>
+          <div class="generation-cycle-settings-field">
+            <label for="generationMaxDealsPerCycle">Deals To</label>
+            <input class="form-control form-control-sm" type="number" id="generationMaxDealsPerCycle" name="maxDealsPerCycle" min="1" max="100" step="1" required>
+          </div>
+          <button class="btn btn-sm btn-outline-primary generation-cycle-settings-save" type="submit" id="clientDealGenerationProcessSettingsSave" disabled>Save</button>
+        </form>
         <div class="generation-settings-status" id="clientDealGenerationSettingsStatus" role="status" aria-live="polite"></div>
         <div class="table-responsive generation-settings-table-wrap">
-          <table class="table table-sm table-hover align-middle generation-settings-table">
+          <table class="table table-sm table-hover align-middle generation-settings-table unified-data-table">
             <thead class="table-light">
               <tr>
-                <th scope="col">Pricing Rule</th>
-                <th scope="col">Client</th>
-                <th scope="col">Ccy Pair</th>
-                <th scope="col">Execution Context</th>
-                <th scope="col">Pricing Mode</th>
-                <th scope="col" class="text-end">Min Base Ccy Amount</th>
-                <th scope="col" class="text-end">Max Base Ccy Amount</th>
-                <th scope="col" class="text-end">Amount Step</th>
-                <th scope="col" class="text-end">BUY %</th>
-                <th scope="col" class="text-end">SELL %</th>
-                <th scope="col" class="text-center">Active</th>
-                <th scope="col" aria-label="Actions"></th>
+                <th scope="col" data-column-kind="primaryId">Pricing Rule</th>
+                <th scope="col" data-column-kind="name">Client</th>
+                <th scope="col" data-column-kind="pair">Ccy Pair</th>
+                <th scope="col" data-column-kind="type">Pricing Mode</th>
+                <th scope="col" class="text-end" data-column-kind="amount">Min Base Ccy Amount</th>
+                <th scope="col" class="text-end" data-column-kind="amount">Max Base Ccy Amount</th>
+                <th scope="col" class="text-end" data-column-kind="amount">Amount Step</th>
+                <th scope="col" class="text-end" data-column-kind="number">BUY %</th>
+                <th scope="col" class="text-end" data-column-kind="number">SELL %</th>
+                <th scope="col" class="text-center" data-column-kind="boolean">Active</th>
+                <th scope="col" aria-label="Actions" data-column-kind="actions"></th>
               </tr>
             </thead>
             <tbody id="clientDealGenerationSettingsRows"></tbody>
@@ -13544,6 +12900,7 @@
       ? window.__DEMO_API_BOOTSTRAP__
       : null;
     const DEMO_API_ENABLED = DEMO_API_BOOTSTRAP?.available === true;
+    const CLIENT_DEAL_GENERATION_REFRESH_INTERVAL_MS = 1000;
     const DEFAULT_MARKET_PAIRS = DemoDb.defaults.marketPairs;
     const DEFAULT_CCY_OPTIONS = DemoDb.defaults.ccyOptions;
     const DEFAULT_QUOTE_DECIMALS = 4;
@@ -13630,14 +12987,26 @@
       ? DEMO_API_BOOTSTRAP.fxPositions
       : [];
     let clientDealGenerationSettings = [];
+    let clientDealGenerationProcessSettings = {
+      minIntervalSeconds: 1,
+      maxIntervalSeconds: 3,
+      minDealsPerCycle: 3,
+      maxDealsPerCycle: 7
+    };
     let clientDealGenerationSettingsEditPricingRuleId = null;
     let clientDealGenerationProcessState = {
       running: false,
       status: "STOPPED",
-      intervalMs: 1000,
+      minIntervalMs: 1000,
+      maxIntervalMs: 3000,
+      minDealsPerCycle: 3,
+      maxDealsPerCycle: 7,
       generatedDealCount: 0,
+      lastCycleSize: null,
+      lastCycleGeneratedDealCount: 0,
       lastGeneratedTradeId: null,
       lastGeneratedAt: null,
+      nextCycleAt: null,
       lastError: null
     };
     let clientDealGenerationRefreshTimer = null;
@@ -13679,6 +13048,62 @@
 
     let smartSizingFrame = null;
     let smartSizingContext = null;
+    const smartActionsColumnWidth = Number.parseInt(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--workbench-actions-column-width"),
+      10
+    ) || 80;
+
+    const TABLE_COLUMN_POLICIES = Object.freeze({
+      actions: {
+        min: smartActionsColumnWidth,
+        max: smartActionsColumnWidth,
+        pad: 12,
+        ellipsize: false
+      },
+      amount: { min: 118, max: 220, pad: 18, ellipsize: false },
+      boolean: { min: 72, max: 96, pad: 14, ellipsize: false },
+      code: { min: 84, max: 180, pad: 18, ellipsize: true },
+      contextPath: { min: 280, max: 620, pad: 18, ellipsize: true },
+      count: { min: 64, max: 80, pad: 12, ellipsize: false },
+      date: { min: 104, max: 172, pad: 18, ellipsize: false },
+      default: { min: 92, max: 280, pad: 18, ellipsize: true },
+      marketRate: { min: 70, max: 76, pad: 12, ellipsize: false },
+      name: { min: 140, max: 360, pad: 18, ellipsize: true },
+      number: { min: 82, max: 160, pad: 18, ellipsize: false },
+      pair: { min: 88, max: 132, pad: 18, ellipsize: false },
+      primaryId: { min: 64, max: 110, pad: 18, ellipsize: false },
+      rate: { min: 82, max: 150, pad: 18, ellipsize: false },
+      referenceId: { min: 92, max: 180, pad: 18, ellipsize: true },
+      short: { min: 72, max: 140, pad: 18, ellipsize: true },
+      side: { min: 72, max: 100, pad: 14, ellipsize: false },
+      text: { min: 120, max: 360, pad: 18, ellipsize: true },
+      timestamp: { min: 156, max: 210, pad: 18, ellipsize: false },
+      tradeSummary: { min: 280, max: 420, pad: 18, ellipsize: true },
+      type: { min: 100, max: 220, pad: 18, ellipsize: true }
+    });
+
+    const TABLE_COLUMN_POLICY_ALIASES = Object.freeze({
+      dealId: "referenceId",
+      id: "primaryId",
+      label: "text",
+      margin: "number",
+      positionAmount: "amount",
+      shortText: "short",
+      tenor: "short",
+      transferRate: "rate",
+      valueDate: "date"
+    });
+
+    function normalizedTableColumnType(type) {
+      return TABLE_COLUMN_POLICY_ALIASES[type] || type || "default";
+    }
+
+    function tableColumnPolicy(type) {
+      const normalizedType = normalizedTableColumnType(type);
+
+      return TABLE_COLUMN_POLICIES[normalizedType] || TABLE_COLUMN_POLICIES.default;
+    }
 
     function smartSizingFont(element) {
       const style = window.getComputedStyle(element);
@@ -13700,6 +13125,22 @@
       smartSizingContext.font = smartSizingFont(element);
 
       return Math.ceil(smartSizingContext.measureText(String(text || "")).width);
+    }
+
+    function smartHeaderLabel(headerCell) {
+      const labelElement = headerCell.querySelector?.(
+        ".reference-column-title, .sort-button, [data-column-label]"
+      );
+      const clone = (labelElement || headerCell).cloneNode(true);
+
+      clone
+        .querySelectorAll(
+          ".button-icon, .reference-sort-indicator, .reference-column-filter, "
+          + ".reference-column-filter-trigger, .icon-action, input, select, textarea"
+        )
+        .forEach(element => element.remove());
+
+      return clone.textContent.replace(/\s+/g, " ").trim();
     }
 
     function smartCellText(cell) {
@@ -13770,7 +13211,13 @@
     }
 
     function smartColumnType(headerCell) {
-      const text = smartCellText(headerCell).toLowerCase();
+      const explicitType = headerCell.dataset.columnKind;
+
+      if (explicitType) {
+        return normalizedTableColumnType(explicitType);
+      }
+
+      const text = smartHeaderLabel(headerCell).toLowerCase();
       const classes = headerCell.classList;
 
       if (classes.contains("gap") || classes.contains("selection-gap")) {
@@ -13781,7 +13228,23 @@
         return "actions";
       }
 
-      if (classes.contains("amount") || classes.contains("quote-amount") || classes.contains("cash-column") || classes.contains("pnl-column") || text.includes("amount") || text.includes("cash")) {
+      if (classes.contains("client") && text === "trade") {
+        return "tradeSummary";
+      }
+
+      if (classes.contains("market-left") || classes.contains("market-right")) {
+        return "marketRate";
+      }
+
+      if (
+        classes.contains("amount")
+        || classes.contains("quote-amount")
+        || classes.contains("cash-column")
+        || classes.contains("pnl-column")
+        || text.includes("amount")
+        || text.includes("cash")
+        || text.includes("pnl")
+      ) {
         return "amount";
       }
 
@@ -13789,7 +13252,19 @@
         return "rate";
       }
 
-      if (classes.contains("date") || classes.contains("entry-date-column") || classes.contains("trade-date-column") || classes.contains("value-date-column") || classes.contains("settlement-day-column") || text.includes("date") || text.includes("day")) {
+      if (text.includes("timestamp")) {
+        return "timestamp";
+      }
+
+      if (
+        classes.contains("date")
+        || classes.contains("entry-date-column")
+        || classes.contains("trade-date-column")
+        || classes.contains("value-date-column")
+        || classes.contains("settlement-day-column")
+        || text.includes("date")
+        || text.includes("day")
+      ) {
         return "date";
       }
 
@@ -13797,31 +13272,67 @@
         return "side";
       }
 
-      if (classes.contains("currency-column") || text.includes("ccy")) {
-        return "code";
-      }
-
       if (classes.contains("currency-pair-column") || text.includes("pair")) {
         return "pair";
       }
 
-      if (classes.contains("deal-id-column")) {
-        return "dealId";
+      if (classes.contains("currency-column") || text.includes("ccy") || text.includes("code")) {
+        return "code";
       }
 
-      if (classes.contains("pricing-rule-context-column")) {
+      if (classes.contains("deal-id-column")) {
+        return "referenceId";
+      }
+
+      if (classes.contains("pricing-rule-context-column") || text.includes("context")) {
         return "contextPath";
       }
 
-      if (classes.contains("batch-id-column") || classes.contains("pricing-context-column") || classes.contains("position-id-column") || classes.contains("external-ref-column") || text.includes(" id") || text.endsWith("id") || text.includes("context") || text.includes("ref")) {
-        return "id";
+      if (
+        classes.contains("external-ref-column")
+        || text.includes("reference")
+        || text.includes(" ref")
+      ) {
+        return "referenceId";
+      }
+
+      if (
+        classes.contains("batch-id-column")
+        || classes.contains("pricing-context-column")
+        || classes.contains("position-id-column")
+        || text === "id"
+        || text.includes(" id")
+        || text.endsWith("id")
+      ) {
+        return "primaryId";
       }
 
       if (classes.contains("client") || classes.contains("name-column") || text.includes("name") || text.includes("label") || text.includes("description")) {
-        return "text";
+        return "name";
       }
 
-      if (classes.contains("tenor-column") || text === "tenor" || text === "active" || text.includes("count")) {
+      if (/\bcount\b/.test(text)) {
+        return "count";
+      }
+
+      if (text === "active") {
+        return "boolean";
+      }
+
+      if (text.includes("margin") || text.includes("%") || text.includes("digits")) {
+        return "number";
+      }
+
+      if (
+        text.includes("type")
+        || text.includes("mode")
+        || text.includes("role")
+        || text === "status"
+      ) {
+        return "type";
+      }
+
+      if (classes.contains("tenor-column") || text === "tenor") {
         return "short";
       }
 
@@ -13841,42 +13352,7 @@
         return { min: 14, max: 14, pad: 0, ellipsize: false };
       }
 
-      if (smartCellText(headerCell).toLowerCase() === "active" && headerCell.closest("#referenceDataPage")) {
-        return { min: 100, max: 110, pad: 18, ellipsize: false };
-      }
-
-      if (
-        headerCell.closest(".batching-table")
-        && (headerCell.classList.contains("market-left") || headerCell.classList.contains("market-right"))
-      ) {
-        return { min: 70, max: 76, pad: 14, ellipsize: false };
-      }
-
-      if (
-        headerCell.closest(".batching-table")
-        && headerCell.classList.contains("client")
-        && smartCellText(headerCell).toLowerCase() === "trade"
-      ) {
-        return { min: 320, max: 420, pad: 18, ellipsize: true };
-      }
-
-      const policies = {
-        actions: { min: 88, max: 104, pad: 18, ellipsize: false },
-        amount: { min: 118, max: 220, pad: 18, ellipsize: false },
-        rate: { min: 82, max: 150, pad: 18, ellipsize: false },
-        date: { min: 92, max: 172, pad: 18, ellipsize: false },
-        side: { min: 64, max: 76, pad: 14, ellipsize: false },
-        code: { min: 78, max: 128, pad: 18, ellipsize: false },
-        pair: { min: 92, max: 142, pad: 18, ellipsize: false },
-        dealId: { min: 72, max: 110, pad: 18, ellipsize: false },
-        contextPath: { min: 480, max: 620, pad: 18, ellipsize: true },
-        id: { min: 120, max: 360, pad: 18, ellipsize: true },
-        text: { min: 140, max: 420, pad: 18, ellipsize: true },
-        short: { min: 64, max: 126, pad: 18, ellipsize: false },
-        default: { min: 86, max: 260, pad: 18, ellipsize: true }
-      };
-
-      return policies[type] || policies.default;
+      return tableColumnPolicy(type);
     }
 
     function smartCssPixels(value) {
@@ -13907,7 +13383,7 @@
     }
 
     function smartHeaderMinimumWidth(headerCell, policy) {
-      const label = smartCellText(headerCell);
+      const label = smartHeaderLabel(headerCell);
       const legacyWidth = smartTextWidth(label, headerCell)
         + policy.pad
         + (headerCell.querySelector(".sort-button, .reference-column-filter-trigger") ? 16 : 0);
@@ -13948,16 +13424,37 @@
       return Math.ceil(smartTextWidth(minimumText, headerCell) + extraWidth);
     }
 
+    function smartCellContentWidth(cell, policy) {
+      const text = smartCellText(cell);
+      const textWidth = smartTextWidth(text, cell)
+        + Math.max(policy.pad, smartHorizontalChrome(cell));
+      const composite = cell.querySelector?.(
+        "[data-smart-width-content], "
+        + ".pricing-rules-context-path, .client-pricing-context-candidate-path"
+      );
+
+      if (!composite) {
+        return textWidth;
+      }
+
+      const compositeWidth = Math.max(
+        composite.scrollWidth,
+        smartElementOuterWidth(composite)
+      );
+
+      return Math.max(
+        textWidth,
+        Math.ceil(compositeWidth + smartHorizontalChrome(cell))
+      );
+    }
+
     function smartColumnWidth(headerCell, bodyCells) {
       const type = smartColumnType(headerCell);
       const policy = smartColumnPolicy(type, headerCell);
       const headerWidth = smartHeaderMinimumWidth(headerCell, policy);
       const requestedMinimumWidth = smartRequestedMinimumWidth(headerCell);
       const contentWidth = bodyCells.reduce((max, cell) => {
-        const text = smartCellText(cell);
-        const width = smartTextWidth(text, cell) + policy.pad;
-
-        return Math.max(max, width);
+        return Math.max(max, smartCellContentWidth(cell, policy));
       }, 0);
       const requiredWidth = Math.max(
         policy.min,
@@ -13965,10 +13462,7 @@
         contentWidth,
         requestedMinimumWidth
       );
-      const cappedWidth = Math.min(
-        requiredWidth,
-        Math.max(policy.max, headerWidth, requestedMinimumWidth)
-      );
+      const cappedWidth = Math.min(requiredWidth, policy.max);
 
       return {
         width: cappedWidth,
@@ -13998,10 +13492,55 @@
       }
     }
 
-    function applySmartTableSizing(table) {
-      if (table.hasAttribute("data-fixed-column-widths")) {
+    function resetSmartTableSizing(table) {
+      table.style.removeProperty("width");
+      table.style.removeProperty("min-width");
+      table.style.removeProperty("max-width");
+      table.style.removeProperty("table-layout");
+
+      table.querySelectorAll("col").forEach(col => {
+        col.style.removeProperty("width");
+        col.style.removeProperty("min-width");
+        col.style.removeProperty("max-width");
+      });
+
+      table.querySelectorAll("th, td").forEach(cell => {
+        if (cell.dataset.smartSizingTooltip === "true") {
+          cell.removeAttribute("data-tooltip");
+          delete cell.dataset.smartSizingTooltip;
+        }
+
+        cell.style.removeProperty("width");
+        cell.style.removeProperty("min-width");
+        cell.style.removeProperty("max-width");
+      });
+    }
+
+    function syncSmartCellTooltip(cell, ellipsize) {
+      if (
+        !ellipsize
+        || cell.hasAttribute("data-tooltip")
+        || cell.querySelector("input, select, textarea")
+        || cell.scrollWidth <= cell.clientWidth + 1
+      ) {
         return;
       }
+
+      const text = smartCellText(cell);
+
+      if (text) {
+        cell.dataset.tooltip = text;
+        cell.dataset.smartSizingTooltip = "true";
+        initializeTooltipElement(cell);
+      }
+    }
+
+    function applySmartTableSizing(table) {
+      if (table.closest("[hidden]") || table.hidden) {
+        return;
+      }
+
+      resetSmartTableSizing(table);
 
       const headerRow = smartHeaderRow(table);
 
@@ -14044,12 +13583,14 @@
       columns.forEach((column, index) => {
         const col = colgroup.children[index];
 
-        col.style.width = `${Math.ceil(column.width)}px`;
+        col.style.setProperty("width", `${Math.ceil(column.width)}px`, "important");
       });
 
       table.classList.add("smart-sized-table");
-      table.style.width = `${totalWidth}px`;
-      table.style.minWidth = `${totalWidth}px`;
+      table.style.setProperty("width", `${totalWidth}px`, "important");
+      table.style.setProperty("min-width", `${totalWidth}px`, "important");
+      table.style.setProperty("max-width", `${totalWidth}px`, "important");
+      table.style.setProperty("table-layout", "fixed", "important");
 
       columns.forEach((column, index) => {
         const cells = [
@@ -14058,17 +13599,22 @@
         ];
 
         cells.forEach(cell => {
-          cell.style.width = `${Math.ceil(column.width)}px`;
-          cell.style.minWidth = `${Math.ceil(column.width)}px`;
-          cell.style.maxWidth = `${Math.ceil(column.width)}px`;
+          const width = `${Math.ceil(column.width)}px`;
 
+          cell.style.setProperty("width", width, "important");
+          cell.style.setProperty("min-width", width, "important");
+          cell.style.setProperty("max-width", width, "important");
+          cell.classList.toggle("smart-cell-ellipsis", column.ellipsize);
+          syncSmartCellTooltip(cell, column.ellipsize);
         });
       });
     }
 
     function applySmartColumnSizing() {
       document
-        .querySelectorAll(".batching-table, .blotter-table, .profile-table")
+        .querySelectorAll(
+          ".batching-table, .blotter-table, .profile-table, .generation-settings-table"
+        )
         .forEach(applySmartTableSizing);
     }
 
@@ -14096,25 +13642,7 @@
         routes: toggle.dataset.workspaceRoutes.split(/\s+/).filter(Boolean)
       };
     });
-    const workbenchActionsColumnWidth = Number.parseInt(
-      getComputedStyle(document.documentElement).getPropertyValue("--workbench-actions-column-width"),
-      10
-    ) || 80;
     const ccyOptionTextLimits = Object.freeze({ code: 3, name: 20, country: 30 });
-    const ccyOptionColumnWidths = Object.freeze({
-      code: 104,
-      name: 176,
-      country: 248,
-      fractionDigits: 116,
-      pairCount: 92
-    });
-    const ccyPairOptionColumnWidths = Object.freeze({
-      baseCcy: 88,
-      quoteCcy: 88,
-      currencyPair: 104,
-      defaultQuoteDecimals: 176,
-      pricingRulesCount: 144
-    });
     const workspaceNavLinks = Array.from(document.querySelectorAll("[data-workspace-route]"));
     const homePage = document.getElementById("homePage");
     const marketPage = document.getElementById("marketPage");
@@ -14304,6 +13832,10 @@
     const editDialogClose = document.getElementById("editDialogClose");
     const editCancelButton = document.getElementById("editCancelButton");
     const clientDealGenerationDialog = document.getElementById("clientDealGenerationDialog");
+    const clientDealGenerationProcessSettingsForm =
+      document.getElementById("clientDealGenerationProcessSettingsForm");
+    const clientDealGenerationProcessSettingsSave =
+      document.getElementById("clientDealGenerationProcessSettingsSave");
     const clientDealGenerationSettingsRows = document.getElementById("clientDealGenerationSettingsRows");
     const clientDealGenerationSettingsStatus = document.getElementById("clientDealGenerationSettingsStatus");
     const generationDialogClose = document.getElementById("generationDialogClose");
@@ -15507,7 +15039,7 @@
         : 'aria-hidden="true"';
 
       return `
-        <span class="reference-pricing-mode">
+        <span class="reference-pricing-mode" data-smart-width-content>
           <span class="pricing-mode-indicator is-${escapeHtml(presentation.tone)}" ${indicatorAttributes}>
             <span class="button-icon" aria-hidden="true">${escapeHtml(presentation.icon)}</span>
           </span>
@@ -16368,6 +15900,9 @@
           ? null
           : Number(rawValue);
       const side = String(source.side || "").trim().toUpperCase();
+      const tradeId = nullableNumber(source.tradeId);
+      const tradeType = String(source.tradeType || "").trim().toUpperCase();
+      const createdByBatchId = nullableNumber(source.createdByBatchId);
       const baseCcyAmountMinor = Number(source.baseCcyAmountMinor);
       const quoteCcyAmountMinor = Number(source.quoteCcyAmountMinor);
       const analyticalPnlQuoteMinorSource = source.analyticalPnlQuoteMinor;
@@ -16395,8 +15930,14 @@
         currencyPair.split("/");
 
       return {
-        tradeId: Number(source.tradeId),
-        tradeType: String(source.tradeType || "").trim().toUpperCase(),
+        batchContentKey: String(
+          source.batchContentKey
+          || (Number.isInteger(tradeId) && tradeId > 0
+            ? `TRADE:${tradeId}`
+            : `${tradeType}:${createdByBatchId || "UNASSIGNED"}`)
+        ),
+        tradeId,
+        tradeType,
         [roleField]: String(source[roleField] || "").trim().toUpperCase(),
         entryTimestamp: String(source.entryTimestamp || "").trim(),
         tradeDate: String(source.tradeDate || "").trim(),
@@ -16444,7 +15985,7 @@
         partyCode: String(source.partyCode || "").trim(),
         partyCodeType: String(source.partyCodeType || "").trim(),
         partyName: String(source.partyName || "").trim(),
-        createdByBatchId: nullableNumber(source.createdByBatchId)
+        createdByBatchId
       };
     }
 
@@ -16457,7 +15998,10 @@
         : {};
       const members = (Array.isArray(source.members) ? source.members : [])
         .map(member => normalizedBatchDetailTrade(member, "memberRole"))
-        .filter(member => Number.isInteger(member.tradeId) && member.tradeId > 0);
+        .filter(member =>
+          (Number.isInteger(member.tradeId) && member.tradeId > 0)
+          || member.tradeType === "BATCH_QUOTE_CASH_OUT"
+        );
       const outputs = (Array.isArray(source.outputs) ? source.outputs : [])
         .map(output => normalizedBatchDetailTrade(output, "outputRole"))
         .filter(output => Number.isInteger(output.tradeId) && output.tradeId > 0);
@@ -16531,7 +16075,6 @@
         ).trim().toUpperCase(),
         availableForBatching: source.availableForBatching === true
           || Number(source.availableForBatching) === 1,
-        demoHidden: source.demoHidden === true || Number(source.demoHidden) === 1
       };
     }
 
@@ -17552,27 +17095,137 @@
       clientDealGenerationSettingsStatus.classList.toggle("is-error", tone === "error");
     }
 
-    function clientDealGenerationSettingsSummary() {
-      return `${clientDealGenerationSettings.length} AUTO_PRICED CLIENT Pricing Rule${clientDealGenerationSettings.length === 1 ? "" : "s"} configured.`;
+    function clientDealGenerationProcessSettingsDraft() {
+      const minIntervalSeconds = Number(
+        clientDealGenerationProcessSettingsForm.elements.minIntervalSeconds.value
+      );
+      const maxIntervalSeconds = Number(
+        clientDealGenerationProcessSettingsForm.elements.maxIntervalSeconds.value
+      );
+      const minDealsPerCycle = Number(
+        clientDealGenerationProcessSettingsForm.elements.minDealsPerCycle.value
+      );
+      const maxDealsPerCycle = Number(
+        clientDealGenerationProcessSettingsForm.elements.maxDealsPerCycle.value
+      );
+
+      if (
+        !Number.isInteger(minIntervalSeconds)
+        || !Number.isInteger(maxIntervalSeconds)
+        || minIntervalSeconds < 1
+        || maxIntervalSeconds < minIntervalSeconds
+        || maxIntervalSeconds > 3600
+      ) {
+        throw new Error(
+          "Generation Interval must be an ascending range of whole seconds from 1 to 3600."
+        );
+      }
+
+      if (
+        !Number.isInteger(minDealsPerCycle)
+        || !Number.isInteger(maxDealsPerCycle)
+        || minDealsPerCycle < 1
+        || maxDealsPerCycle < minDealsPerCycle
+        || maxDealsPerCycle > 100
+      ) {
+        throw new Error("Deals per Cycle must be an ascending integer range from 1 to 100.");
+      }
+
+      return {
+        minIntervalSeconds,
+        maxIntervalSeconds,
+        minDealsPerCycle,
+        maxDealsPerCycle
+      };
     }
 
-    function generationSettingsContextLabel(settings) {
-      return [
-        settings.servicingLocationName || settings.servicingLocationId,
-        settings.accountingSystemName || "Not applicable",
-        settings.executionSystemName || settings.executionSystemId
-      ].filter(Boolean).join(" | ");
+    function updateClientDealGenerationProcessSettingsSaveAvailability() {
+      let draft;
+
+      try {
+        draft = clientDealGenerationProcessSettingsDraft();
+      } catch {
+        setSaveButtonAvailability(
+          clientDealGenerationProcessSettingsSave,
+          false,
+          "Enter a valid Generation Cycle before saving"
+        );
+        return;
+      }
+
+      const changed = Object.entries(draft).some(
+        ([field, value]) => value !== Number(clientDealGenerationProcessSettings[field])
+      );
+      setSaveButtonAvailability(clientDealGenerationProcessSettingsSave, changed);
+    }
+
+    function renderClientDealGenerationProcessSettings() {
+      Object.entries(clientDealGenerationProcessSettings).forEach(([field, value]) => {
+        if (clientDealGenerationProcessSettingsForm.elements[field]) {
+          clientDealGenerationProcessSettingsForm.elements[field].value = value;
+        }
+      });
+      updateClientDealGenerationProcessSettingsSaveAvailability();
+    }
+
+    async function saveClientDealGenerationProcessSettings(event) {
+      event.preventDefault();
+      let payload;
+
+      try {
+        payload = clientDealGenerationProcessSettingsDraft();
+      } catch (error) {
+        setClientDealGenerationSettingsStatus(error.message, "error");
+        return;
+      }
+
+      clientDealGenerationProcessSettingsSave.disabled = true;
+      setClientDealGenerationSettingsStatus("Saving Generation Cycle...");
+
+      try {
+        clientDealGenerationProcessSettings = await demoApiRequest(
+          "/api/v1/client-deal-generation/process-settings",
+          { method: "PUT", body: JSON.stringify(payload) }
+        );
+        clientDealGenerationProcessState = {
+          ...clientDealGenerationProcessState,
+          minIntervalMs: clientDealGenerationProcessSettings.minIntervalSeconds * 1000,
+          maxIntervalMs: clientDealGenerationProcessSettings.maxIntervalSeconds * 1000,
+          minDealsPerCycle: clientDealGenerationProcessSettings.minDealsPerCycle,
+          maxDealsPerCycle: clientDealGenerationProcessSettings.maxDealsPerCycle
+        };
+        renderClientDealGenerationProcessSettings();
+        setClientDealGenerationSettingsStatus(
+          "Generation Cycle settings saved."
+        );
+      } catch (error) {
+        updateClientDealGenerationProcessSettingsSaveAvailability();
+        setClientDealGenerationSettingsStatus(
+          error.message || "Unable to save Generation Cycle settings.",
+          "error"
+        );
+      }
+    }
+
+    function clientDealGenerationSettingsSummary() {
+      const cycle = clientDealGenerationProcessSettings;
+      return `Cycle: ${cycle.minIntervalSeconds}–${cycle.maxIntervalSeconds} sec · `
+        + `${cycle.minDealsPerCycle}–${cycle.maxDealsPerCycle} deals. `
+        + `${clientDealGenerationSettings.length} AUTO_PRICED CLIENT Pricing Rule${
+          clientDealGenerationSettings.length === 1 ? "" : "s"
+        } configured.`;
     }
 
     function renderClientDealGenerationSettings() {
       if (clientDealGenerationSettings.length === 0) {
         clientDealGenerationSettingsRows.innerHTML = `
           <tr>
-            <td colspan="12" class="text-center text-secondary py-4">
+            <td colspan="11" class="text-center text-secondary py-4">
               No AUTO_PRICED Client Deal Generation Settings found.
             </td>
           </tr>
         `;
+        scheduleSmartColumnSizing();
         return;
       }
 
@@ -17635,7 +17288,6 @@
               <span class="generation-settings-client-code">${escapeHtml(settings.partyCodeType)}: ${escapeHtml(settings.partyCode)}</span>
             </td>
             <td><span class="badge text-bg-light border">${escapeHtml(settings.currencyPair)}</span></td>
-            <td class="generation-settings-context">${escapeHtml(generationSettingsContextLabel(settings))}</td>
             <td>
               <span class="badge text-bg-light border">${escapeHtml(settings.pricingMode)}</span>${inactiveExecutionSystem}
             </td>
@@ -17648,6 +17300,7 @@
           </tr>
         `;
       }).join("");
+      scheduleSmartColumnSizing();
     }
 
     async function loadClientDealGenerationSettingsFromApi() {
@@ -17655,12 +17308,18 @@
       setClientDealGenerationSettingsStatus("Loading settings...");
 
       try {
-        const settings = await demoApiRequest("/api/v1/client-deal-generation/settings");
+        const [settings, processSettings] = await Promise.all([
+          demoApiRequest("/api/v1/client-deal-generation/settings"),
+          demoApiRequest("/api/v1/client-deal-generation/process-settings")
+        ]);
         clientDealGenerationSettings = Array.isArray(settings) ? settings : [];
+        clientDealGenerationProcessSettings = processSettings;
+        renderClientDealGenerationProcessSettings();
         renderClientDealGenerationSettings();
         setClientDealGenerationSettingsStatus(clientDealGenerationSettingsSummary());
       } catch (error) {
         clientDealGenerationSettings = [];
+        renderClientDealGenerationProcessSettings();
         renderClientDealGenerationSettings();
         setClientDealGenerationSettingsStatus(
           error.message || "Unable to load Client Deal Generation Settings.",
@@ -21702,39 +21361,34 @@
       return marketPairs.filter(pair => pair.baseCcy === code || pair.quoteCcy === code).length;
     }
 
-    const TABULATOR_COLUMN_SIZES = Object.freeze({
-      primaryId: { width: 88, minWidth: 80 },
-      referenceId: { width: 112, minWidth: 100 },
-      date: { width: 118, minWidth: 108 },
-      timestamp: { width: 174, minWidth: 164 },
-      code: { width: 138, minWidth: 120 },
-      shortText: { width: 112, minWidth: 102 },
-      name: { width: 220, minWidth: 180 },
-      pair: { width: 104, minWidth: 96 },
-      side: { width: 84, minWidth: 78 },
-      amount: { width: 160, minWidth: 148 },
-      rate: { width: 112, minWidth: 104 },
-      transferRate: { width: 136, minWidth: 128 },
-      tenor: { width: 88, minWidth: 80 },
-      margin: { width: 120, minWidth: 110 },
-      label: { width: 238, minWidth: 200 },
-      contextPath: { width: 480, minWidth: 380 },
-      type: { width: 148, minWidth: 132 },
-      positionAmount: { width: 180, minWidth: 165 },
-      valueDate: { width: 176, minWidth: 160 },
-      text: { width: 160, minWidth: 120 }
-    });
-
     function tabulatorSizedColumn(size, definition) {
+      const policy = tableColumnPolicy(size);
+
       return {
-        ...(TABULATOR_COLUMN_SIZES[size] || TABULATOR_COLUMN_SIZES.text),
+        minWidth: policy.min,
+        maxWidth: policy.max,
+        tooltip: policy.ellipsize,
         ...definition
       };
     }
 
+    function tabulatorIconColumnTitle(icon, tooltip) {
+      return `
+        <span
+          class="button-icon"
+          role="img"
+          tabindex="0"
+          aria-label="${escapeHtml(tooltip)}"
+          data-tooltip="${escapeHtml(tooltip)}"
+        >
+          ${escapeHtml(icon)}
+        </span>
+      `;
+    }
+
     function marketTabulatorOptions(placeholder, columns, data = [], overrides = {}) {
       const defaults = {
-        layout: "fitColumns",
+        layout: "fitDataTable",
         index: "id",
         data,
         placeholder,
@@ -21909,9 +21563,10 @@
       batchingHistoryGrid = new Tabulator(batchingHistoryGridEl, {
         data,
         index: "batchId",
-        layout: "fitColumns",
+        layout: "fitDataTable",
         renderVertical: "virtual",
         renderVerticalBuffer: 240,
+        maxHeight: 465,
         placeholder: "No FX Batches have been formed.",
         movableColumns: false,
         resizableColumns: false,
@@ -21924,43 +21579,33 @@
           headerSort: false
         },
         columns: [
-          {
+          tabulatorSizedColumn("primaryId", {
             title: "Batch ID",
             field: "batchId",
-            width: 100,
-            minWidth: 96,
             sorter: "number",
             headerSort: true,
             headerFilter: "input"
-          },
-          {
+          }),
+          tabulatorSizedColumn("pair", {
             title: "Ccy Pair Code",
             field: "ccyPairCode",
-            width: 132,
-            minWidth: 124,
             headerFilter: "input"
-          },
-          {
+          }),
+          tabulatorSizedColumn("type", {
             title: "Batch Status",
             field: "batchStatus",
-            width: 124,
-            minWidth: 116,
             headerFilter: batchingHistoryStatusHeaderFilter,
             headerFilterFunc: "=",
             formatter: batchingHistoryStatusFormatter
-          },
-          {
+          }),
+          tabulatorSizedColumn("timestamp", {
             title: "Created At",
             field: "createdAt",
-            width: 216,
-            minWidth: 204,
             headerFilter: "input"
-          },
-          {
+          }),
+          tabulatorSizedColumn("actions", {
             title: "Actions",
             field: "actions",
-            width: workbenchActionsColumnWidth,
-            minWidth: workbenchActionsColumnWidth,
             hozAlign: "center",
             headerHozAlign: "center",
             formatter: batchingHistoryActionFormatter,
@@ -21984,7 +21629,7 @@
                 openBatchRollbackDialog(batch);
               }
             }
-          }
+          })
         ]
       });
 
@@ -22046,6 +21691,14 @@
       );
     }
 
+    function batchStructureTradeIdFormatter(cell) {
+      const tradeId = Number(cell.getValue());
+
+      return Number.isInteger(tradeId) && tradeId > 0
+        ? escapeHtml(tradeId)
+        : "&mdash;";
+    }
+
     function batchStructureTradeTypeFormatter(cell) {
       const trade = cell.getRow().getData();
       const presentation = fxPositionTradeTypePresentation(trade);
@@ -22096,6 +21749,13 @@
       ).trim().toUpperCase();
 
       if (
+        formatterParams.emptyForQuoteCash === true
+        && currentRow.tradeType === "BATCH_QUOTE_CASH_OUT"
+      ) {
+        return "&mdash;";
+      }
+
+      if (
         !Number.isSafeInteger(contributionMinor)
         || !Number.isInteger(fractionDigits)
         || fractionDigits < 0
@@ -22118,19 +21778,25 @@
       field,
       fractionDigitsField,
       currencyField,
-      includeTotal
+      isMemberTable,
+      emptyForQuoteCash = false
     }) {
-      const formatterParams = { fractionDigitsField, currencyField };
+      const formatterParams = {
+        fractionDigitsField,
+        currencyField,
+        emptyForQuoteCash
+      };
 
       return tabulatorSizedColumn("positionAmount", {
         title,
         field,
         sorter: "number",
+        headerSort: isMemberTable,
         formatter: batchStructureLegFormatter,
         formatterParams,
         hozAlign: "right",
         headerHozAlign: "right",
-        ...(includeTotal
+        ...(isMemberTable
           ? {
               bottomCalc: "sum",
               bottomCalcFormatter: batchStructureLegFormatter,
@@ -22141,7 +21807,13 @@
     }
 
     function batchStructureAnalyticalPnlFormatter(cell) {
-      const pnlMinor = Number(cell.getValue());
+      const pnlSource = cell.getValue();
+
+      if (pnlSource === null || pnlSource === undefined || pnlSource === "") {
+        return "";
+      }
+
+      const pnlMinor = Number(pnlSource);
       const rowComponent = typeof cell.getRow === "function"
         ? cell.getRow()
         : null;
@@ -22157,9 +21829,11 @@
           && fractionDigits >= 0
           && fractionDigits <= 10;
       }) || {};
-      const row = Number.isInteger(
-        Number(currentRow.analyticalPnlQuoteFractionDigits)
-      )
+      const currentFractionDigits = currentRow.analyticalPnlQuoteFractionDigits;
+      const row = currentFractionDigits !== null
+        && currentFractionDigits !== undefined
+        && currentFractionDigits !== ""
+        && Number.isInteger(Number(currentFractionDigits))
         ? currentRow
         : referenceTrade;
       const fractionDigits = Number(row.analyticalPnlQuoteFractionDigits);
@@ -22187,35 +21861,42 @@
     }
 
     function batchStructureTradeColumns(roleField) {
-      const includeNetTotal = roleField === "memberRole";
+      const isMemberTable = roleField === "memberRole";
+      const memberTextFilter = isMemberTable
+        ? {
+            headerFilter: "input",
+            headerFilterFunc: "like"
+          }
+        : {};
       const columns = [
-        {
+        tabulatorSizedColumn("referenceId", {
           title: "Trade ID",
           field: "tradeId",
-          width: 102,
-          minWidth: 96,
           sorter: "number",
-          ...(includeNetTotal
+          headerSort: isMemberTable,
+          ...memberTextFilter,
+          formatter: batchStructureTradeIdFormatter,
+          ...(isMemberTable
             ? {
                 bottomCalc: () => "NET",
                 bottomCalcFormatter: batchDetailsRoleFormatter
               }
             : {})
-        },
-        {
+        }),
+        tabulatorSizedColumn("tradeSummary", {
           title: "Trade Type",
           field: "tradeType",
-          width: 220,
-          minWidth: 210,
+          headerSort: isMemberTable,
+          ...memberTextFilter,
           formatter: batchStructureTradeTypeFormatter
-        },
-        {
+        }),
+        tabulatorSizedColumn("type", {
           title: roleField === "memberRole" ? "Member Role" : "Output Role",
           field: roleField,
-          width: 132,
-          minWidth: 120,
+          headerSort: isMemberTable,
+          ...memberTextFilter,
           formatter: batchDetailsRoleFormatter
-        }
+        })
       ];
 
       columns.push(
@@ -22224,81 +21905,86 @@
           field: "baseBalanceContributionMinor",
           fractionDigitsField: "baseCcyFractionDigits",
           currencyField: "baseCcyCode",
-          includeTotal: includeNetTotal
+          isMemberTable,
+          emptyForQuoteCash: true
         }),
         batchStructureLegColumn({
           title: "Quote Ccy Leg",
           field: "quoteBalanceContributionMinor",
           fractionDigitsField: "quoteCcyFractionDigits",
           currencyField: "quoteCcyCode",
-          includeTotal: includeNetTotal
+          isMemberTable
         }),
         tabulatorSizedColumn("transferRate", {
           title: "Transfer Rate",
           field: "transferRate",
           sorter: "number",
+          headerSort: isMemberTable,
           formatter: clientFxDealsRateFormatter,
           hozAlign: "right",
-          headerHozAlign: "right",
-          width: 124,
-          minWidth: 116
+          headerHozAlign: "right"
         }),
         tabulatorSizedColumn("positionAmount", {
           title: "Analytical PnL",
           field: "analyticalPnlQuoteMinor",
           sorter: "number",
+          headerSort: isMemberTable,
           formatter: batchStructureAnalyticalPnlFormatter,
           hozAlign: "right",
           headerHozAlign: "right",
-          width: 154,
-          minWidth: 146,
-          ...(includeNetTotal
+          ...(isMemberTable
             ? {
                 bottomCalc: "sum",
                 bottomCalcFormatter: batchStructureAnalyticalPnlFormatter
               }
             : {})
         }),
-        {
+        tabulatorSizedColumn("valueDate", {
           title: "Base Ccy Value Date",
           field: "baseCcyValueDate",
-          width: 170,
-          minWidth: 164,
-          sorter: "string",
+          headerSort: false,
+          ...memberTextFilter,
           formatter: clientFxDealsDateFormatter,
           hozAlign: "center",
           headerHozAlign: "center"
-        },
-        {
+        }),
+        tabulatorSizedColumn("valueDate", {
           title: "Quote Ccy Value Date",
           field: "quoteCcyValueDate",
-          width: 174,
-          minWidth: 168,
-          sorter: "string",
+          headerSort: false,
+          ...memberTextFilter,
           formatter: clientFxDealsDateFormatter,
           hozAlign: "center",
           headerHozAlign: "center"
-        }
+        })
       );
 
       return columns;
     }
 
     function initializeBatchDetailsGrid(element, data, columns, placeholder) {
+      const supportsTradeIdSorting = columns.some(column =>
+        column.field === "tradeId" && column.headerSort === true
+      );
+
       return new Tabulator(element, {
         data,
-        index: "tradeId",
+        index: "batchContentKey",
         layout: "fitDataTable",
         renderVertical: "basic",
         placeholder,
         movableColumns: false,
         resizableColumns: false,
+        headerFilterLiveFilterDelay: 300,
+        initialSort: supportsTradeIdSorting
+          ? [{ column: "tradeId", dir: "asc" }]
+          : [],
         columnHeaderVertAlign: "bottom",
         columnDefaults: {
           resizable: false,
           vertAlign: "middle",
           tooltip: false,
-          headerSort: true
+          headerSort: false
         },
         columns
       });
@@ -22364,10 +22050,6 @@
         });
       }
 
-      requestAnimationFrame(() => {
-        batchDetailsMembersGrid?.redraw(true);
-        batchDetailsOutputsGrid?.redraw(true);
-      });
     }
 
     function renderBatchDetails(details) {
@@ -22379,7 +22061,7 @@
           : "";
       const settlement = details.settlementBucket || {};
 
-      batchDetailsSummaryTitle.textContent = `FX Batch #${details.batchId}`;
+      batchDetailsSummaryTitle.textContent = `Batch #${details.batchId}`;
       batchDetailsBatchStatus.textContent = status;
       batchDetailsBatchStatus.className = `batch-status-token${statusTone}`;
       batchDetailsCurrencyPair.textContent =
@@ -22581,23 +22263,28 @@
 
       if (!marketCcyOptionGrid) {
         marketCcyOptionGrid = new Tabulator(marketCcyOptionRowsEl, marketTabulatorOptions("No currencies configured.", [
-          { title: "Ccy Code", field: "code", width: ccyOptionColumnWidths.code, minWidth: ccyOptionColumnWidths.code, headerFilter: "input", headerSort: true, formatter: marketCcyOptionFieldFormatter("code") },
-          { title: "Name", field: "name", width: ccyOptionColumnWidths.name, minWidth: ccyOptionColumnWidths.name, headerFilter: "input", headerSort: false, formatter: marketCcyOptionFieldFormatter("name") },
-          { title: "Country", field: "country", width: ccyOptionColumnWidths.country, minWidth: ccyOptionColumnWidths.country, headerFilter: "input", headerSort: false, formatter: marketCcyOptionFieldFormatter("country") },
-          { title: "Fraction Digits", field: "fractionDigits", width: ccyOptionColumnWidths.fractionDigits, minWidth: ccyOptionColumnWidths.fractionDigits, headerSort: false, hozAlign: "right", headerHozAlign: "right", formatter: marketCcyOptionFieldFormatter("fractionDigits") },
-          { title: "Pair Count", field: "pairCount", width: ccyOptionColumnWidths.pairCount, minWidth: ccyOptionColumnWidths.pairCount, headerSort: false, hozAlign: "right", headerHozAlign: "right" },
-          {
+          tabulatorSizedColumn("code", { title: "Ccy Code", field: "code", headerFilter: "input", headerSort: true, formatter: marketCcyOptionFieldFormatter("code") }),
+          tabulatorSizedColumn("name", { title: "Name", field: "name", headerFilter: "input", headerSort: false, formatter: marketCcyOptionFieldFormatter("name") }),
+          tabulatorSizedColumn("name", { title: "Country", field: "country", headerFilter: "input", headerSort: false, formatter: marketCcyOptionFieldFormatter("country") }),
+          tabulatorSizedColumn("number", {
+            title: tabulatorIconColumnTitle("decimal_increase", "Fraction Digits"),
+            field: "fractionDigits",
+            headerSort: false,
+            hozAlign: "right",
+            headerHozAlign: "center",
+            formatter: marketCcyOptionFieldFormatter("fractionDigits")
+          }),
+          tabulatorSizedColumn("count", { title: "Ccy Pairs", field: "pairCount", headerSort: false, hozAlign: "right", headerHozAlign: "right" }),
+          tabulatorSizedColumn("actions", {
             title: "Actions",
             field: "actions",
-            width: workbenchActionsColumnWidth,
-            minWidth: workbenchActionsColumnWidth,
             cssClass: "market-grid-actions-cell",
             headerSort: false,
             hozAlign: "center",
             headerHozAlign: "center",
             formatter: marketCcyOptionActionsFormatter,
             cellClick: handleMarketCcyOptionGridAction
-          }
+          })
         ], data, {
           rowFormatter: marketCcyOptionRowFormatter,
           initialSort: [{ column: "code", dir: "asc" }]
@@ -22811,23 +22498,34 @@
 
       if (!marketPairOptionGrid) {
         marketPairOptionGrid = new Tabulator(marketPairOptionRowsEl, marketTabulatorOptions("No Ccy Pairs configured.", [
-          { title: "Base Ccy", field: "baseCcy", width: ccyPairOptionColumnWidths.baseCcy, minWidth: ccyPairOptionColumnWidths.baseCcy, headerFilter: "input", headerSort: false, formatter: marketPairOptionCurrencyFormatter("baseCcy") },
-          { title: "Quote Ccy", field: "quoteCcy", width: ccyPairOptionColumnWidths.quoteCcy, minWidth: ccyPairOptionColumnWidths.quoteCcy, headerFilter: "input", headerSort: false, formatter: marketPairOptionCurrencyFormatter("quoteCcy") },
-          { title: "Ccy Pair", field: "currencyPair", width: ccyPairOptionColumnWidths.currencyPair, minWidth: ccyPairOptionColumnWidths.currencyPair, headerFilter: "input", headerSort: true, formatter: marketPairOptionCodeFormatter },
-          { title: "Default Quote Decimals", field: "defaultQuoteDecimals", width: ccyPairOptionColumnWidths.defaultQuoteDecimals, minWidth: ccyPairOptionColumnWidths.defaultQuoteDecimals, headerSort: false, hozAlign: "right", headerHozAlign: "right", formatter: marketPairOptionDecimalsFormatter },
-          { title: "Pricing Rules Count", field: "pricingRulesCount", width: ccyPairOptionColumnWidths.pricingRulesCount, minWidth: ccyPairOptionColumnWidths.pricingRulesCount, headerSort: false, hozAlign: "right", headerHozAlign: "right" },
-          {
+          tabulatorSizedColumn("code", { title: "Base Ccy", field: "baseCcy", headerFilter: "input", headerSort: false, formatter: marketPairOptionCurrencyFormatter("baseCcy") }),
+          tabulatorSizedColumn("code", { title: "Quote Ccy", field: "quoteCcy", headerFilter: "input", headerSort: false, formatter: marketPairOptionCurrencyFormatter("quoteCcy") }),
+          tabulatorSizedColumn("pair", { title: "Ccy Pair", field: "currencyPair", headerFilter: "input", headerSort: true, formatter: marketPairOptionCodeFormatter }),
+          tabulatorSizedColumn("number", {
+            title: tabulatorIconColumnTitle("decimal_increase", "Default Quote Decimals"),
+            field: "defaultQuoteDecimals",
+            headerSort: false,
+            hozAlign: "right",
+            headerHozAlign: "center",
+            formatter: marketPairOptionDecimalsFormatter
+          }),
+          tabulatorSizedColumn("count", {
+            title: tabulatorIconColumnTitle("rule", "Pricing Rules using this Ccy Pair"),
+            field: "pricingRulesCount",
+            headerSort: false,
+            hozAlign: "right",
+            headerHozAlign: "center"
+          }),
+          tabulatorSizedColumn("actions", {
             title: "Actions",
             field: "actions",
-            width: workbenchActionsColumnWidth,
-            minWidth: workbenchActionsColumnWidth,
             cssClass: "market-grid-actions-cell",
             headerSort: false,
             hozAlign: "center",
             headerHozAlign: "center",
             formatter: marketPairOptionActionsFormatter,
             cellClick: handleMarketPairOptionGridAction
-          }
+          })
         ], data, {
           rowFormatter: marketPairOptionRowFormatter,
           initialSort: [{ column: "currencyPair", dir: "asc" }]
@@ -23393,39 +23091,33 @@
 
       if (!marketStreamGrid) {
         marketStreamGrid = new Tabulator(marketStreamTable, marketTabulatorOptions("No market pairs configured.", [
-          { title: "Ccy Pair", field: "currencyPair", width: 104, minWidth: 104, headerFilter: "input", headerSort: true },
-          {
+          tabulatorSizedColumn("pair", { title: "Ccy Pair", field: "currencyPair", headerFilter: "input", headerSort: true }),
+          tabulatorSizedColumn("rate", {
             title: "Bid",
             field: "bid",
-            width: 120,
-            minWidth: 120,
             headerSort: false,
             hozAlign: "right",
             headerHozAlign: "right",
             formatter: marketStreamRateFormatter
-          },
-          {
+          }),
+          tabulatorSizedColumn("rate", {
             title: "Offer",
             field: "offer",
-            width: 120,
-            minWidth: 120,
             headerSort: false,
             hozAlign: "right",
             headerHozAlign: "right",
             formatter: marketStreamRateFormatter
-          },
-          {
+          }),
+          tabulatorSizedColumn("actions", {
             title: "Actions",
             field: "actions",
-            width: workbenchActionsColumnWidth,
-            minWidth: workbenchActionsColumnWidth,
             cssClass: "market-grid-actions-cell",
             headerSort: false,
             hozAlign: "center",
             headerHozAlign: "center",
             formatter: marketStreamActionsFormatter,
             cellClick: handleMarketStreamGridAction
-          }
+          })
         ], rows));
         marketStreamGrid.on("tableBuilt", () => {
           marketStreamGridReady = true;
@@ -24370,6 +24062,10 @@
         return { type, label: "BATCH BALANCE TRADE", icon: "balance" };
       }
 
+      if (type === "BATCH_QUOTE_CASH_OUT") {
+        return { type, label: "BATCH QUOTE CASH OUT", icon: "payments" };
+      }
+
       return {
         type,
         label: type.replaceAll("_", " "),
@@ -24825,8 +24521,8 @@
           balancingTrade
             ? `FX Batch ${result.batchId} formed: BATCH_BALANCE_TRADE `
               + `${balancingTrade.tradeId}, BATCH_POSITION_OUT `
-              + `${positionOutTrade?.tradeId ?? ""}.`
-            : `Ideal FX Batch ${result.batchId} formed without technical trades.`
+              + `${positionOutTrade?.tradeId ?? ""}, BATCH_QUOTE_CASH_OUT.`
+            : `Flat FX Batch ${result.batchId} formed with BATCH_QUOTE_CASH_OUT.`
         );
       } catch (error) {
         setBatchStatus(error.message || "Unable to form FX Batch.", "error");
@@ -24962,7 +24658,7 @@
       if (running && clientDealGenerationRefreshTimer === null) {
         clientDealGenerationRefreshTimer = window.setInterval(() => {
           void refreshClientDealGenerationViews();
-        }, Number(clientDealGenerationProcessState.intervalMs) || 1000);
+        }, CLIENT_DEAL_GENERATION_REFRESH_INTERVAL_MS);
       } else if (!running && clientDealGenerationRefreshTimer !== null) {
         window.clearInterval(clientDealGenerationRefreshTimer);
         clientDealGenerationRefreshTimer = null;
@@ -24986,9 +24682,17 @@
         if (state.lastError) {
           setBatchStatus(state.lastError, "error");
         } else {
+          const minIntervalSeconds =
+            Number(state.minIntervalMs) / 1000;
+          const maxIntervalSeconds =
+            Number(state.maxIntervalMs) / 1000;
           setBatchStatus(
             state.running
-              ? "Deal Generating process started. One CLIENT_DEAL is generated every second."
+              ? `Deal Generating process started. ${
+                  state.minDealsPerCycle
+                }–${state.maxDealsPerCycle} CLIENT_DEALs are generated every ${
+                  minIntervalSeconds
+                }–${maxIntervalSeconds} seconds.`
               : "Deal Generating process stopped."
           );
         }
@@ -28787,6 +28491,14 @@
     editForm.addEventListener("submit", saveEditedDeal);
     editDialogClose.addEventListener("click", closeEditDialog);
     editCancelButton.addEventListener("click", closeEditDialog);
+    clientDealGenerationProcessSettingsForm.addEventListener(
+      "submit",
+      saveClientDealGenerationProcessSettings
+    );
+    clientDealGenerationProcessSettingsForm.addEventListener(
+      "input",
+      updateClientDealGenerationProcessSettingsSaveAvailability
+    );
     clientDealGenerationSettingsRows.addEventListener("input", event => {
       const row = event.target.closest("[data-generation-settings-pricing-rule-id]");
       const amountInput = event.target.closest("[data-generation-settings-amount]");

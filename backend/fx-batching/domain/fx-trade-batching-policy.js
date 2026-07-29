@@ -12,6 +12,10 @@ const FX_BATCH_MEMBER_ROLE = Object.freeze({
   BALANCE_QUOTE_CASH: "BALANCE_QUOTE_CASH"
 });
 
+const FX_BATCH_SPECIAL_MEMBER_TYPE = Object.freeze({
+  QUOTE_CASH_OUT: "BATCH_QUOTE_CASH_OUT"
+});
+
 const FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES = Object.freeze([
   FX_BATCH_STATUS.BUILDING,
   FX_BATCH_STATUS.FORMED
@@ -43,6 +47,7 @@ function hasBlockingBatchMembership(memberships) {
 module.exports = {
   FX_BATCH_MEMBER_ROLE,
   FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES,
+  FX_BATCH_SPECIAL_MEMBER_TYPE,
   FX_BATCH_STATUS,
   hasBlockingBatchMembership,
   isTradeBatched

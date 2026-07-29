@@ -68,6 +68,16 @@ test("creates the expected mirrored pair for Trade IDs 5 and 16", () => {
     result.positionOut.quoteCcyAmountMinor,
     result.balanceTrade.quoteCcyAmountMinor
   );
+  assert.equal(result.netQuoteCcyAmountMinorBeforeCash, -7000n);
+  assert.deepEqual(result.quoteCashOut, {
+    tradeType: "BATCH_QUOTE_CASH_OUT",
+    memberRole: "BALANCE_QUOTE_CASH",
+    quoteCcyCode: "USD",
+    quoteBalanceContributionMinor: 7000n,
+    quoteCcyFractionDigits: 2,
+    quoteCcyValueDate: "2026-07-24",
+    createdAt: "2026-07-24T14:00:00.000Z"
+  });
 });
 
 test("supports a selection containing trades in one direction", () => {
@@ -216,6 +226,8 @@ test("forms an ideal flat batch without technical trades", () => {
   assert.equal(result.sourceNetTransferQuoteAmountMinor, 0n);
   assert.equal(result.balanceTrade, null);
   assert.equal(result.positionOut, null);
+  assert.equal(result.netQuoteCcyAmountMinorBeforeCash, 0n);
+  assert.equal(result.quoteCashOut.quoteBalanceContributionMinor, 0n);
 });
 
 test("forms a flat Base batch regardless of its Quote cash imbalance", () => {
@@ -246,6 +258,9 @@ test("forms a flat Base batch regardless of its Quote cash imbalance", () => {
   assert.equal(result.sourceNetTransferQuoteAmountMinor, 100000n);
   assert.equal(result.balanceTrade, null);
   assert.equal(result.positionOut, null);
+  assert.equal(result.netQuoteCcyAmountMinorBeforeCash, -100000n);
+  assert.equal(result.quoteCashOut.tradeType, "BATCH_QUOTE_CASH_OUT");
+  assert.equal(result.quoteCashOut.quoteBalanceContributionMinor, 100000n);
 });
 
 test("accepts an upstream Position Out as an ordinary batch source", () => {
