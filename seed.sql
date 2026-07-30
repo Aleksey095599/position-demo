@@ -79,7 +79,8 @@ AS
         ('7701234567', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'EUR_USD', 0.08),
         ('7812345678', '1234', 'AFINA', 'RFQ', 'EUR_USD', 0.05),
         ('5409876543', '001', 'CTF3', 'CLICK_TRADE_EFX', 'EUR_USD', 0.20),
-        ('7707000001', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'EUR_USD', 0.03)
+        ('7707000001', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'EUR_USD', 0.03),
+        ('7707000001', '002', 'AFINA', 'CLICK_TRADE_EFX', 'EUR_USD', 0.03)
 )
 INSERT INTO pricing_rules (party_id, execution_context_id, ccy_pair_code, margin_percent)
 SELECT
@@ -95,6 +96,54 @@ INNER JOIN execution_contexts e
     ON e.servicing_location_id = seed.servicing_location_id
     AND e.accounting_system_id = seed.accounting_system_id
     AND e.execution_system_id = seed.execution_system_id;
+
+WITH eligible_rule AS
+(
+    SELECT
+        MIN(r.pricing_rule_id) AS pricing_rule_id,
+        base_ccy.fraction_digits AS base_ccy_fraction_digits
+    FROM pricing_rules r
+    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN execution_contexts c
+        ON c.execution_context_id = r.execution_context_id
+    INNER JOIN execution_systems e
+        ON e.execution_system_id = c.execution_system_id
+    INNER JOIN ccy_pair_options pair
+        ON pair.ccy_pair_code = r.ccy_pair_code
+    INNER JOIN ccy_options base_ccy
+        ON base_ccy.ccy_code = pair.base_ccy_code
+    WHERE r.ccy_pair_code = 'EUR_USD'
+      AND p.party_type = 'HEDGE_COUNTERPARTY'
+      AND p.is_active = 1
+      AND e.pricing_mode = 'AUTO_PRICED'
+      AND e.is_active = 1
+    GROUP BY base_ccy.fraction_digits
+    HAVING COUNT(*) = 1
+)
+INSERT INTO fx_hedge_quick_mode_settings
+    (
+        ccy_pair_code,
+        pricing_rule_id,
+        base_ccy_fraction_digits,
+        small_base_ccy_amount_minor,
+        medium_base_ccy_amount_minor,
+        large_base_ccy_amount_minor,
+        xlarge_base_ccy_amount_minor,
+        is_active,
+        default_tenor
+    )
+SELECT
+    'EUR_USD',
+    pricing_rule_id,
+    base_ccy_fraction_digits,
+    500000000,
+    2000000000,
+    5000000000,
+    10000000000,
+    1,
+    'TOD'
+FROM eligible_rule
+WHERE base_ccy_fraction_digits = 2;
 
 INSERT OR IGNORE INTO client_deal_generation_process_settings
     (

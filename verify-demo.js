@@ -142,6 +142,24 @@ function createLegacyDatabase() {
       market_pulse_timestamp TEXT    NOT NULL
     );
 
+    CREATE TABLE fx_batch_outputs
+    (
+      batch_id    INTEGER NOT NULL,
+      trade_id    INTEGER NOT NULL,
+      trade_type  TEXT    NOT NULL,
+      output_role TEXT    NOT NULL
+    );
+
+    CREATE TABLE fx_batch_quote_cash_members
+    (
+      batch_id                         INTEGER PRIMARY KEY,
+      quote_ccy_code                   TEXT    NOT NULL,
+      quote_balance_contribution_minor INTEGER NOT NULL,
+      quote_ccy_fraction_digits        INTEGER NOT NULL,
+      quote_ccy_value_date             TEXT    NOT NULL,
+      created_at                       TEXT    NOT NULL
+    );
+
     INSERT INTO ccy_options (ccy_code, name, country, fraction_digits)
     VALUES
       ('EUR', 'Euro', 'Euro Area', 2),
@@ -799,7 +817,7 @@ function verifyFreshSchemaAndSeed() {
       && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(storedBatch?.created_at || "");
 
     const insertQuoteCashMember = database.prepare(`
-      INSERT INTO fx_batch_quote_cash_members
+      INSERT INTO fx_batch_quote_cash_output
         (
           batch_id,
           quote_ccy_code,
@@ -818,7 +836,7 @@ function verifyFreshSchemaAndSeed() {
     );
     const storedQuoteCashMember = database.prepare(`
       SELECT *
-      FROM fx_batch_quote_cash_members
+      FROM fx_batch_quote_cash_output
       WHERE batch_id = ?
     `).get(batchId);
     batchQuoteCashMemberSupported =
@@ -843,7 +861,7 @@ function verifyFreshSchemaAndSeed() {
     }
 
     database.prepare(`
-      DELETE FROM fx_batch_quote_cash_members
+      DELETE FROM fx_batch_quote_cash_output
       WHERE batch_id = ?
     `).run(batchId);
 
@@ -858,7 +876,7 @@ function verifyFreshSchemaAndSeed() {
         insertQuoteCashMember.run(batchId, ...values);
         batchQuoteCashMemberConstraintsEnforced = false;
         database.prepare(`
-          DELETE FROM fx_batch_quote_cash_members
+          DELETE FROM fx_batch_quote_cash_output
           WHERE batch_id = ?
         `).run(batchId);
       } catch {}
@@ -913,7 +931,7 @@ function verifyFreshSchemaAndSeed() {
     insertMember.run(cashNeutralityBatchId, seededClientTradeId, "CLIENT_DEAL");
     insertMember.run(cashNeutralityBatchId, seededHedgeTradeId, "HEDGE_DEAL");
     const insertCashMember = database.prepare(`
-      INSERT INTO fx_batch_quote_cash_members
+      INSERT INTO fx_batch_quote_cash_output
         (
           batch_id,
           quote_ccy_code,
@@ -936,7 +954,7 @@ function verifyFreshSchemaAndSeed() {
     }
 
     database.prepare(`
-      DELETE FROM fx_batch_quote_cash_members
+      DELETE FROM fx_batch_quote_cash_output
       WHERE batch_id = ?
     `).run(cashNeutralityBatchId);
     insertCashMember.run(cashNeutralityBatchId, -2700000);
@@ -948,7 +966,7 @@ function verifyFreshSchemaAndSeed() {
 
     try {
       database.prepare(`
-        UPDATE fx_batch_quote_cash_members
+        UPDATE fx_batch_quote_cash_output
         SET quote_balance_contribution_minor = 0
         WHERE batch_id = ?
       `).run(cashNeutralityBatchId);
@@ -1247,6 +1265,47 @@ function verifyFreshSchemaAndSeed() {
     hedgeFxDealColumns: database.prepare("PRAGMA table_info(fx_hedge_deals)").all().map(column => column.name),
     hedgeFxDealForeignKeys: database.prepare("PRAGMA foreign_key_list(fx_hedge_deals)").all(),
     hedgeFxDealSeedRow: database.prepare("SELECT * FROM fx_hedge_deals LIMIT 1").get(),
+    hedgeQuickModeSettings: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM fx_hedge_quick_mode_settings
+    `).get().count,
+    hedgeQuickModeSettingsColumns: database.prepare(`
+      PRAGMA table_info(fx_hedge_quick_mode_settings)
+    `).all().map(column => column.name),
+    hedgeQuickModeSettingsForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(fx_hedge_quick_mode_settings)
+    `).all(),
+    hedgeQuickModeSettingsSeedRow: database.prepare(`
+      SELECT
+        settings.*,
+        party.party_type,
+        execution.pricing_mode
+      FROM fx_hedge_quick_mode_settings settings
+      INNER JOIN pricing_rules rule
+        ON rule.pricing_rule_id = settings.pricing_rule_id
+      INNER JOIN trading_parties party ON party.party_id = rule.party_id
+      INNER JOIN execution_contexts context
+        ON context.execution_context_id = rule.execution_context_id
+      INNER JOIN execution_systems execution
+        ON execution.execution_system_id = context.execution_system_id
+      WHERE settings.ccy_pair_code = 'EUR_USD'
+    `).get(),
+    hedgeQuickModeSettingsReferenceIndex: database.prepare(`
+      PRAGMA index_list(pricing_rules)
+    `).all().some(index =>
+      index.name === "uq_pricing_rules_hedge_quick_mode_reference"
+      && index.unique === 1
+    ),
+    hedgeQuickModeSettingsReferenceIndexColumns: database.prepare(`
+      PRAGMA index_info(uq_pricing_rules_hedge_quick_mode_reference)
+    `).all().map(column => column.name),
+    hedgeQuickModeSettingsTriggers: database.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'trigger'
+        AND name LIKE '%hedge_quick_mode_settings%'
+      ORDER BY name
+    `).all().map(trigger => trigger.name),
     fxTradeBatches: database.prepare(`
       SELECT COUNT(*) AS count
       FROM fx_batches
@@ -1286,26 +1345,41 @@ function verifyFreshSchemaAndSeed() {
       index.name === "uq_fx_batch_members_single_technical_origin"
       && index.unique === 1
     ),
+    batchPositionOutputs: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM fx_batch_position_output
+    `).get().count,
+    batchPositionOutputColumns: database.prepare(`
+      PRAGMA table_info(fx_batch_position_output)
+    `).all(),
+    batchPositionOutputForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(fx_batch_position_output)
+    `).all(),
+    batchPositionOutputCreateSql: database.prepare(`
+      SELECT sql
+      FROM sqlite_schema
+      WHERE type = 'table' AND name = 'fx_batch_position_output'
+    `).get()?.sql || "",
     batchQuoteCashMembers: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_batch_quote_cash_members
+      FROM fx_batch_quote_cash_output
     `).get().count,
     batchQuoteCashMemberColumns: database.prepare(`
-      PRAGMA table_info(fx_batch_quote_cash_members)
+      PRAGMA table_info(fx_batch_quote_cash_output)
     `).all().map(column => column.name),
     batchQuoteCashMemberForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(fx_batch_quote_cash_members)
+      PRAGMA foreign_key_list(fx_batch_quote_cash_output)
     `).all(),
     batchQuoteCashMemberCreateSql: database.prepare(`
       SELECT sql
       FROM sqlite_schema
-      WHERE type = 'table' AND name = 'fx_batch_quote_cash_members'
+      WHERE type = 'table' AND name = 'fx_batch_quote_cash_output'
     `).get()?.sql || "",
     batchQuoteCashMemberTriggers: database.prepare(`
       SELECT name
       FROM sqlite_schema
       WHERE type = 'trigger'
-        AND tbl_name = 'fx_batch_quote_cash_members'
+        AND tbl_name = 'fx_batch_quote_cash_output'
       ORDER BY name
     `).all().map(trigger => trigger.name),
     pricingRuleReferenceIndex: database.prepare("PRAGMA index_list(pricing_rules)").all()
@@ -1437,6 +1511,9 @@ function verifyFrontendStructure() {
   const persistCreatedClientDealFunction = inlineScript.match(
     /async function persistCreatedClientDeal\(targetDeal\) \{[\s\S]*?\n    \}(?=\n\n    async function confirmClientDealDuplicateCheck)/
   )?.[0] || "";
+  const databaseTableSectionsSource = inlineScript.match(
+    /const DATABASE_TABLE_SECTIONS = Object\.freeze\(\[[\s\S]*?\n    \]\);/
+  )?.[0] || "";
 
   return {
     inlineJavaScript: "OK",
@@ -1458,7 +1535,7 @@ function verifyFrontendStructure() {
     usesUsersWorkspace: inlineScript.includes("/api/v1/users")
       && html.includes('href="#users" data-workspace-route="users"')
       && html.includes('id="usersView"')
-      && html.includes('class="button-icon workspace-nav-icon" aria-hidden="true">person</span>')
+      && html.includes('class="button-icon workspace-nav-icon" aria-hidden="true">group</span>')
       && html.includes('id="usersNewButton"')
       && html.includes('data-user-header-filter="userCode"')
       && html.includes('data-user-action="edit"')
@@ -1517,12 +1594,22 @@ function verifyFrontendStructure() {
       && addHedgeDealDialogMarkup.includes('name="amountFixingCurrency" value="base"')
       && (addHedgeDealDialogMarkup.match(/data-add-hedge-deal-fixing-currency=/g) || []).length === 2
       && !addHedgeDealDialogMarkup.includes("Net Difference")
-      && inlineScript.includes('openAddHedgeDealDialog("SELL")')
-      && inlineScript.includes('openAddHedgeDealDialog("BUY")')
+      && inlineScript.includes("function openAddHedgeDealDialog(")
+      && inlineScript.includes('pricingMode = "DEALER_PRICED"')
+      && inlineScript.includes("addHedgeDealPricingMode = normalizedPricingMode;")
+      && inlineScript.includes('event.target.closest("[data-hedge-side][data-hedge-pricing-mode]")')
       && inlineScript.includes("const ourSide = oppositeFxSide(positionSide);")
       && inlineScript.includes("addHedgeDealForm.elements.side.value = oppositeFxSide(normalizedOurSide);")
       && /ourSide === "BUY"\s*\?\s*"We Buy"\s*:\s*ourSide === "SELL"\s*\?\s*"We Sell"/.test(inlineScript)
-      && inlineScript.includes('demoApiRequest("/api/v1/hedge-fx-deals"')
+      && inlineScript.includes('"/api/v1/hedge-fx-deals/auto-priced"')
+      && inlineScript.includes('"/api/v1/hedge-fx-deals"')
+      && inlineScript.includes('addHedgeDealPricingMode === "AUTO_PRICED"')
+      && inlineScript.includes("tradeRateInput.readOnly = autoPriced;")
+      && inlineScript.includes('ourSide === "SELL"')
+      && inlineScript.includes('document.getElementById("addHedgeDealMarketBid").value')
+      && inlineScript.includes('document.getElementById("addHedgeDealMarketOffer").value')
+      && inlineScript.includes("if (!autoPriced) {")
+      && inlineScript.includes("requestBody.tradeRate = tradeRate;")
       && inlineScript.includes("function syncAddHedgeDealAmounts()")
       && inlineScript.includes("function addHedgeDealExactAmounts()")
       && inlineScript.includes("dealtCcyAmount,")
@@ -1530,21 +1617,42 @@ function verifyFrontendStructure() {
       && inlineScript.includes("function selectAddHedgeDealAmountFixingCurrency(event)")
       && inlineScript.includes('addHedgeDealForm.addEventListener("click", selectAddHedgeDealAmountFixingCurrency)')
       && inlineScript.includes("async function reloadHedgeFxDealsFromApi()"),
-    usesHedgeCounterpartyPricingRules: serverSource.includes("function hedgeDealPricingRules()")
+    usesQuickHedgeMode:
+      serverSource.includes('pathname === "/api/v1/hedge-quick-mode-settings"')
+      && serverSource.includes('pathname === "/api/v1/hedge-fx-deals/quick-mode"')
+      && serverSource.includes("function validateHedgeQuickModeDealPayload(body)")
+      && inlineScript.includes("function hedgeDealAutoSplitMarkup(ourSide, baseCcyCode)")
+      && inlineScript.includes('demoApiRequest("/api/v1/hedge-quick-mode-settings")')
+      && inlineScript.includes('endpoint = "/api/v1/hedge-fx-deals/quick-mode";')
+      && inlineScript.includes("currencyPairControl.disabled = quickMode;")
+      && inlineScript.includes("addHedgeDealCounterpartyPickerValue.readOnly = quickMode;")
+      && inlineScript.includes("baseAmountInput.readOnly = quickMode;")
+      && inlineScript.includes("pricingRuleToggle.disabled = quickMode")
+      && inlineScript.includes('"Hedge Deal - Quick Mode"')
+      && inlineScript.includes('data-hedge-quick-menu-toggle')
+      && inlineScript.includes('data-hedge-quick-preset'),
+    usesHedgeCounterpartyPricingRules: serverSource.includes("function eligibleHedgeDealPricingRules(pricingMode)")
+      && serverSource.includes('new Set(["AUTO_PRICED", "DEALER_PRICED"])')
       && serverSource.includes('party?.partyType === "HEDGE_COUNTERPARTY"')
-      && serverSource.includes('return pricingRules("DEALER_PRICED").filter(rule =>')
+      && serverSource.includes("pricingRules(normalizedPricingMode).filter(rule =>")
       && serverSource.includes('pathname === "/api/v1/hedge-deal-pricing-rules"')
+      && serverSource.includes('url.searchParams.get("pricingMode")')
+      && serverSource.includes("...autoPricedHedgeDealPricingRules()")
       && serverSource.includes("createHedgeFxDealTerms")
       && serverSource.includes("hedgeFxDealWithCalculatedTerms(payload, exposureAmounts)")
       && inlineScript.includes("DEMO_API_BOOTSTRAP.hedgeDealPricingRules")
-      && inlineScript.includes("function isHedgeDealPricingRule(rule)")
-      && inlineScript.includes("return isDealerPricedPricingRule(rule);")
+      && inlineScript.includes('function isHedgeDealPricingRule(rule, pricingMode = "")')
+      && inlineScript.includes("rulePricingMode === requestedPricingMode")
       && inlineScript.includes("function eligibleHedgeDealPartyIds(")
+      && inlineScript.includes("isHedgeDealPricingRule(rule, addHedgeDealPricingMode)")
       && inlineScript.includes("eligiblePartyIds.has(String(profile.partyId))")
       && inlineScript.includes("profiles.length === 1 ? profiles[0] : null")
-      && inlineScript.includes("No Hedge Counterparty with a Dealer Priced Pricing Rule is available")
+      && inlineScript.includes("No Hedge Counterparty with ${escapeHtml(")
       && inlineScript.includes("addHedgeDealPricingRuleContentMarkup")
       && inlineScript.includes('id="addHedgeDealPricingRuleLabel">Pricing Rule</span>')
+      && inlineScript.includes('class="pricing-rule-availability-note" id="addHedgeDealPricingRuleHelp"')
+      && inlineScript.includes("Only Pricing Rules linked to ${escapeHtml(addHedgeDealPricingMode)} Execution Systems are available.")
+      && inlineScript.includes('aria-hidden="true">warning</span>')
       && inlineScript.includes("Select Pricing Rule")
       && inlineScript.includes("Select a Pricing Rule.")
       && inlineScript.includes("return addClientDealPricingRuleContentMarkup(rule, context);")
@@ -1557,7 +1665,9 @@ function verifyFrontendStructure() {
       && html.includes('icon: "bolt"')
       && html.includes('icon: "contact_phone"')
       && html.includes('icon: "price_change"')
-      && (html.match(/icon: "price_change"/g) || []).length === 1
+      && /MANUAL_PRICING:\s*Object\.freeze\(\{\s*label: "Manual Pricing",\s*icon: "price_change"/.test(
+        inlineScript
+      )
       && html.includes('icon: "verified"')
       && html.includes(".pricing-mode-indicator.is-auto-priced")
       && html.includes(".pricing-mode-indicator.is-dealer-priced")
@@ -1577,6 +1687,54 @@ function verifyFrontendStructure() {
       && inlineScript.includes('marginIndicatorMarkup(rule.marginPercent, "client-pricing-rules-margin", false)')
       && html.includes(".client-deal-pricing-rule-margin-icon")
       && html.includes(".client-deal-pricing-rule-margin-value"),
+    usesGroupedDatabaseExplorer:
+      html.includes('id="databaseTableSearch"')
+      && html.includes('placeholder="Find table..."')
+      && [
+        "FX Trades",
+        "Hedging Settings",
+        "FX Batching",
+        "Pricing",
+        "Market Pulse",
+        "Trading Parties & Users",
+        "Demo & Generation",
+        "Audit",
+        "Other"
+      ].every(label => databaseTableSectionsSource.includes(`label: "${label}"`))
+      && databaseTableSectionsSource.includes('"fx_trade_exposure"')
+      && /id: "fx-trading",[\s\S]*?label: "FX Trades",[\s\S]*?tables: \[\s*"client_fx_deals",\s*"fx_hedge_deals",\s*"fx_trade_exposure"\s*\]/.test(
+        databaseTableSectionsSource
+      )
+      && /id: "hedging-settings",[\s\S]*?label: "Hedging Settings",[\s\S]*?icon: "shield",[\s\S]*?tables: \[\s*"fx_hedge_quick_mode_settings"\s*\]/.test(
+        databaseTableSectionsSource
+      )
+      && databaseTableSectionsSource.includes('"fx_batch_quote_cash_output"')
+      && databaseTableSectionsSource.includes('"pricing_rules"')
+      && databaseTableSectionsSource.includes('"execution_contexts"')
+      && databaseTableSectionsSource.includes('"ccy_pair_options"')
+      && databaseTableSectionsSource.includes('"trading_parties"')
+      && databaseTableSectionsSource.includes('"client_deal_generation_settings"')
+      && /id: "pricing",[\s\S]*?label: "Pricing",[\s\S]*?icon: "price_change",[\s\S]*?tables: \[\s*"pricing_rules",\s*"accounting_systems",\s*"execution_contexts",\s*"execution_systems",\s*"servicing_locations"\s*\]/.test(
+        databaseTableSectionsSource
+      )
+      && !databaseTableSectionsSource.includes('id: "execution-context"')
+      && /id: "market-pulse",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options"\s*\]/.test(
+        databaseTableSectionsSource
+      )
+      && /id: "demo-generation",[\s\S]*?tables: \[\s*"client_deal_generation_process_settings",\s*"client_deal_generation_settings",\s*"market_quote_simulation_settings"\s*\]/.test(
+        databaseTableSectionsSource
+      )
+      && databaseTableSectionsSource.includes('label: "Audit"')
+      && databaseTableSectionsSource.includes('icon: "policy"')
+      && /id: "audit",[\s\S]*?tables: \[\s*"fx_trade_market_snapshot"\s*\]/.test(
+        databaseTableSectionsSource
+      )
+      && (databaseTableSectionsSource.match(/"fx_trade_market_snapshot"/g) || []).length === 1
+      && inlineScript.includes('function databaseTableGroups(query = "")')
+      && inlineScript.includes('data-database-section="${escapeHtml(section.id)}"')
+      && inlineScript.includes('databaseTableSearchEl.addEventListener("input"')
+      && !inlineScript.includes("const containsSelectedTable")
+      && inlineScript.includes('expandedDatabaseTableSections.add(databaseTableSection(selectedDatabaseTable).id)'),
     usesDatabaseBackedFxPositions: inlineScript.includes("function loadFxPositionsFromDatabase()")
       && inlineScript.includes("fxPositionRecords.map(record =>")
       && inlineScript.includes('demoApiRequest("/api/v1/fx-positions")')
@@ -1628,6 +1786,18 @@ function verifyFrontendStructure() {
       && html.includes('id="generationMaxIntervalSeconds"')
       && html.includes('id="generationMinDealsPerCycle"')
       && html.includes('id="generationMaxDealsPerCycle"')
+      && html.includes('data-column-kind="compactActions">Actions</th>')
+      && inlineScript.includes("compactActions: {")
+      && inlineScript.includes("const configuredPricingRuleIds = new Set(")
+      && inlineScript.includes('const pricingRuleLabel = configuredPricingRuleCount === 1 ? "Pricing Rule" : "Pricing Rules"')
+      && inlineScript.includes("${pricingRuleLabel} linked to AUTO_PRICED ")
+      && html.includes('id="generationCycleDelayLabel"')
+      && html.includes(">schedule</span>")
+      && html.includes("<span>Delay between generation cycles</span>")
+      && html.includes('id="generationCycleDealsLabel"')
+      && html.includes(">format_list_numbered</span>")
+      && html.includes("<span>Deals per generation cycle</span>")
+      && (html.match(/class="generation-cycle-settings-range-control"/g) || []).length === 2
       && clientDealGenerationProcessSource.includes("randomIntegerInRange")
       && clientDealGenerationProcessSource.includes("setTimeoutFn")
       && clientDealGenerationProcessSource.includes("minDealsPerCycle")
@@ -1643,7 +1813,7 @@ function verifyFrontendStructure() {
       && serverSource.includes('pathname === "/api/v1/fx-batches"')
       && serverSource.includes("new FormFxBatchUseCase")
       && serverSource.includes("INSERT INTO fx_batch_members")
-      && serverSource.includes("INSERT INTO fx_batch_outputs")
+      && serverSource.includes("INSERT INTO fx_batch_position_output")
       && fxBatchFormationApplicationSource.includes("class FormFxBatchUseCase")
       && inlineScript.includes("formOneBatchFromSelection")
       && inlineScript.includes('"/api/v1/fx-batches"')
@@ -1705,15 +1875,26 @@ function verifyFrontendStructure() {
       && !html.includes('id="batchDetailsPickerSearch"')
       && html.includes('id="batchDetailsContent"')
       && html.includes('id="batchDetailsMembersGrid"')
+      && html.includes('id="batchDetailsCashOutputGrid"')
       && html.includes('id="batchDetailsOutputsGrid"')
       && html.includes(
-        '<h2 class="batch-details-section-title" id="batchDetailsOutputsTitle">Position Output</h2>'
+        '<h2 class="batch-details-section-title" id="batchDetailsMembersTitle">FX Trade Members</h2>'
+      )
+      && html.includes(
+        '<h2 class="batch-details-section-title" id="batchDetailsCashOutputTitle">Cash Output</h2>'
+      )
+      && html.includes(
+        '<h2 class="batch-details-section-title" id="batchDetailsOutputsTitle">Net Position Output</h2>'
       )
       && html.includes(
         'class="btn btn-sm btn-outline-secondary workbench-detail-back-button" href="#batching:history" aria-label="Back to Batching History"'
       )
       && html.includes('<span class="button-icon" aria-hidden="true">arrow_back</span>')
-      && html.includes("This batch did not create any outputs.")
+      && html.includes("source position was already flat")
+      && html.includes('id="batchNeutralityMembersBase"')
+      && html.includes('id="batchNeutralityCashQuote"')
+      && html.includes(">FX Position Neutral</span>")
+      && html.includes(">Cash Balance Neutral</span>")
       && inlineScript.includes("function batchDetailsRoute(batchId)")
       && inlineScript.includes("/^#batching:details\\/(\\d+)$/")
       && inlineScript.includes("async function loadFxBatchDetailsFromApi(batchId)")
@@ -1733,6 +1914,8 @@ function verifyFrontendStructure() {
       && /#batchDetailsPage \.batch-details-section-header \.client-deals-count \{[\s\S]*?margin-left: 0;/.test(html)
       && inlineScript.includes('batchStructureTradeColumns("memberRole")')
       && inlineScript.includes('batchStructureTradeColumns("outputRole")')
+      && inlineScript.includes("function batchStructureCashOutputColumns()")
+      && inlineScript.includes("function renderBatchNeutrality(details)")
       && batchStructureColumnsSource.includes(
         'const isMemberTable = roleField === "memberRole";'
       )
@@ -1790,15 +1973,10 @@ function verifyFrontendStructure() {
       && batchStructureColumnsSource.includes('bottomCalc: "sum"')
       && batchStructureColumnsSource.includes("function batchStructureTradeTypeFormatter")
       && batchStructureColumnsSource.includes("fxPositionTradeTypePresentation(trade)")
-      && inlineScript.includes('type === "BATCH_QUOTE_CASH_OUT"')
-      && inlineScript.includes('icon: "payments"')
       && inlineScript.includes('index: "batchContentKey"')
-      && inlineScript.includes(
-        'member.tradeType === "BATCH_QUOTE_CASH_OUT"'
-      )
-      && batchStructureColumnsSource.includes(
-        'currentRow.tradeType === "BATCH_QUOTE_CASH_OUT"'
-      )
+      && inlineScript.includes("function normalizedBatchCashOutput(value)")
+      && !inlineScript.includes('member.tradeType === "BATCH_QUOTE_CASH_OUT"')
+      && !batchStructureColumnsSource.includes("emptyForQuoteCash")
       && batchStructureColumnsSource.includes('trade.memberRole === "TRADE"')
       && batchStructureColumnsSource.includes("trade.createdByBatchId")
       && batchStructureColumnsSource.includes("position-trade-type-chip")
@@ -1828,6 +2006,8 @@ function verifyFrontendStructure() {
       && serverSource.includes("function fxBatchDetails(batchId)")
       && serverSource.includes("members: content.members")
       && serverSource.includes("outputs: content.outputs")
+      && serverSource.includes("cashOutput")
+      && !serverSource.includes("content.members.push")
       && serverSource.includes("sendJson(response, 200, fxBatchDetails(batchId))"),
     removesBatchingPositionsWorkspace:
       !html.includes('href="#batching-positions"')
@@ -1876,7 +2056,7 @@ function verifyFrontendStructure() {
       && serverSource.includes(
         'minorToSafeInteger(trade.quoteCcyAmountMinor, "Batch Quote Ccy Amount Minor")'
       )
-      && serverSource.includes("INSERT INTO fx_batch_quote_cash_members")
+      && serverSource.includes("INSERT INTO fx_batch_quote_cash_output")
       && schemaSource.includes(
         "formed batch must have zero quote currency cash balance"
       )
@@ -1963,8 +2143,9 @@ function verifyFrontendStructure() {
     showsAutoPricedClientDealGenerationMode:
       generationSettingsDialogMarkup.includes(">Pricing Mode</th>")
       && generationSettingsDialogMarkup.includes(
-        "Generation settings for each AUTO_PRICED CLIENT Pricing Rule"
+        "Only Pricing Rules linked to AUTO_PRICED Execution Systems are available."
       )
+      && generationSettingsDialogMarkup.includes('aria-hidden="true">warning</span>')
       && !generationSettingsDialogMarkup.includes(">Margin %</th>")
       && !inlineScript.includes("editNumber(settings.marginPercent, 4)")
       && inlineScript.includes("settings.pricingMode"),
@@ -2104,6 +2285,10 @@ function verifyFrontendStructure() {
       && inlineScript.includes("Manual Pricing")
       && inlineScript.includes('pricingModeIndicatorMarkup("MANUAL_PRICING")')
       && inlineScript.includes("data-add-client-deal-onboarding-pricing")
+      && inlineScript.includes('class="pricing-rule-availability-note" id="addClientDealPricingRuleHelp"')
+      && inlineScript.includes(
+        "Only Pricing Rules linked to DEALER_PRICED Execution Systems are available, or select Client Onboarding."
+      )
       && inlineScript.includes("Pricing Rule is pending. Transfer Rate must be entered manually.")
       && inlineScript.includes("addClientDealManualTransferEdited")
       && inlineScript.includes('pricingRuleControlStatus: onboardingPricing')
@@ -2119,6 +2304,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("Select Pricing Rule")
       && inlineScript.includes("client-deal-pricing-rule-margin")
       && inlineScript.includes("pricingContextFacetsMarkup(context)")
+      && /\.client-deal-create-dialog \.client-deal-context-picker-label \{\s*margin-bottom: 0;/.test(html)
       && inlineScript.includes('addClientDealPricingRulePicker.addEventListener("click", handleAddClientDealPricingRulePicker)'),
     usesPricingRuleDropdown: inlineScript.includes("client-deal-pricing-rule-select-toggle")
       && inlineScript.includes("client-deal-pricing-rule-select-value")
@@ -2175,7 +2361,7 @@ function verifyFrontendStructure() {
       (html.match(/class="[^"]*client-deal-client-picker-clear[^"]*"/g) || []).length === 2
       && (html.match(/class="client-pricing-context-facet-clear"/g) || []).length === 3
       && /\.client-deal-client-picker-clear \{[\s\S]*?position: static;[\s\S]*?width: 40px;[\s\S]*?min-height: 44px;[\s\S]*?border-radius: 0 !important;/.test(html)
-      && /\.client-deal-client-picker-clear:hover,[\s\S]*?background: var\(--bs-secondary-bg\);/.test(html)
+      && /\.client-deal-client-picker-clear:hover,[\s\S]*?border-color: var\(--bs-border-color\);[\s\S]*?background: var\(--bs-secondary-bg\);/.test(html)
       && /\.client-pricing-context-facet-clear \{[\s\S]*?border-left: 1px solid var\(--large-table-line\);/.test(html)
       && /\.pricing-rule-bootstrap-dialog \.client-pricing-context-facet-clear \{[\s\S]*?border-left: 1px solid var\(--bs-border-color\);[\s\S]*?background: var\(--bs-body-bg\);/.test(html),
     usesUnifiedCustomDropdownToggles:
@@ -2326,7 +2512,14 @@ function verifyFrontendStructure() {
     usesTradingPartiesLanguage: html.includes(">Trading Parties<")
       && html.includes(">Party Type<")
       && html.includes('name="partyType"'),
-    usesTradingPartyBadgeIcon: (html.match(/>badge<\/span>/g) || []).length >= 3
+    usesDomainNavigationIcons:
+      html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>\n        <span>Batching</span>')
+      && html.includes('<span class="button-icon home-navigation-group-icon" aria-hidden="true">stacks</span>')
+      && html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">badge</span>\n        <span>Trading Parties</span>')
+      && html.includes('<span class="home-icon" aria-hidden="true">badge</span>\n          <span>\n            <span class="home-link-title">Trading Parties</span>')
+      && html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">group</span>\n        <span>Users</span>')
+      && html.includes('<span class="home-icon" aria-hidden="true">group</span>\n          <span>\n            <span class="home-link-title">Users</span>')
+      && (html.match(/>badge<\/span>/g) || []).length === 3
       && !html.includes(">manage_accounts</span>"),
     usesTradingPartyColumnFilters: html.includes('id="tradingPartyTypeFilter"')
       && html.includes('id="tradingPartyCodeTypeFilter"')
@@ -2820,14 +3013,18 @@ function verifyFrontendStructure() {
       && inlineScript.includes('marketRate: { min: 70, max: 76, pad: 12, ellipsize: false }'),
     usesFxPositionHedgeDealTerminology:
       inlineScript.includes('const baseCcyCode = currenciesFromPair(activeCurrencyPairOrDefault()).base || "BASE";')
-      && inlineScript.includes('<span class="button-icon" aria-hidden="true">shield</span>')
+      && (inlineScript.match(/<span class="button-icon" aria-hidden="true">contact_phone<\/span>/g) || []).length >= 2
+      && (inlineScript.match(/<span class="button-icon" aria-hidden="true">bolt<\/span>/g) || []).length >= 1
       && inlineScript.includes('<span>SELL ${escapeHtml(baseCcyCode)}</span>')
       && inlineScript.includes('<span>BUY ${escapeHtml(baseCcyCode)}</span>')
       && html.includes('<span class="hedge-deals-center-label">Hedge Deals</span>')
       && html.includes('id="addHedgeSellDealButton"')
       && html.includes('id="addHedgeBuyDealButton"')
-      && inlineScript.includes('openAddHedgeDealDialog("SELL")')
-      && inlineScript.includes('openAddHedgeDealDialog("BUY")')
+      && inlineScript.includes('id="addAutoHedge${normalizedSide === "BUY" ? "Buy" : "Sell"}DealButton"')
+      && (inlineScript.match(/data-hedge-pricing-mode="DEALER_PRICED"/g) || []).length === 2
+      && (inlineScript.match(/data-hedge-pricing-mode="AUTO_PRICED"/g) || []).length >= 1
+      && inlineScript.includes('aria-label="Add DEALER_PRICED Hedge Deal: SELL ${escapeHtml(baseCcyCode)}"')
+      && inlineScript.includes('aria-label="Add AUTO_PRICED Hedge Deal: ${escapeHtml(sideLabel)}"')
       && inlineScript.includes("function oppositeFxSide(side)")
       && inlineScript.includes("const positionSide = addHedgeDealForm.elements.side.value;")
       && inlineScript.includes("const ourSide = oppositeFxSide(positionSide);")
@@ -3050,6 +3247,10 @@ async function verifyApiAndMigration() {
     const fxTradeMarketSnapshotTable = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
     const clientFxDealsTable = await request("GET", "/api/database/tables/client_fx_deals");
     const hedgeFxDealsTable = await request("GET", "/api/database/tables/fx_hedge_deals");
+    const hedgeQuickModeSettingsTable = await request(
+      "GET",
+      "/api/database/tables/fx_hedge_quick_mode_settings"
+    );
     const fxTradeBatchesTable = await request(
       "GET",
       "/api/database/tables/fx_batches"
@@ -3058,9 +3259,13 @@ async function verifyApiAndMigration() {
       "GET",
       "/api/database/tables/fx_batch_members"
     );
+    const batchPositionOutputTable = await request(
+      "GET",
+      "/api/database/tables/fx_batch_position_output"
+    );
     const batchQuoteCashMembersTable = await request(
       "GET",
-      "/api/database/tables/fx_batch_quote_cash_members"
+      "/api/database/tables/fx_batch_quote_cash_output"
     );
     const legacyAssignmentTable = await request("GET", "/api/database/tables/trading_party_execution_contexts");
     const servicingLocations = await request("GET", "/api/v1/servicing-locations");
@@ -3147,7 +3352,7 @@ async function verifyApiAndMigration() {
     );
     const fxBatchOutputsAfterReformedBatch = await request(
       "GET",
-      "/api/database/tables/fx_batch_outputs"
+      "/api/database/tables/fx_batch_position_output"
     );
     const signedBasePosition = records => (Array.isArray(records) ? records : [])
       .reduce((total, trade) => {
@@ -3765,7 +3970,21 @@ async function verifyApiAndMigration() {
       ccyPairCode: "EUR_USD",
       marginPercent: 0.15
     });
+    const createAutoPricedHedgePricingRule = await request("POST", "/api/v1/pricing-rules", {
+      partyId: createHedgeCounterparty.body?.partyId,
+      executionContextId: nonDealerPricedExecutionContextId,
+      ccyPairCode: "EUR_USD",
+      marginPercent: 0
+    });
     const hedgeDealPricingRules = await request("GET", "/api/v1/hedge-deal-pricing-rules");
+    const autoPricedHedgeDealPricingRules = await request(
+      "GET",
+      "/api/v1/hedge-deal-pricing-rules?pricingMode=AUTO_PRICED"
+    );
+    const invalidHedgeDealPricingMode = await request(
+      "GET",
+      "/api/v1/hedge-deal-pricing-rules?pricingMode=DEALER_APPROVED"
+    );
     const createHedgeFxDeal = await request("POST", "/api/v1/hedge-fx-deals", {
       pricingRuleId: createHedgePricingRule.body?.pricingRuleId,
       ccyPairCode: "EUR_USD",
@@ -3775,6 +3994,19 @@ async function verifyApiAndMigration() {
       tradeRate: "1.1234",
       tenor: "TOD"
     });
+    const invalidManualHedgeFxDealAutoPricedRule = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals",
+      {
+        pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
+        ccyPairCode: "EUR_USD",
+        side: "BUY",
+        dealtCcyCode: "EUR",
+        dealtCcyAmount: "1000000",
+        tradeRate: "1.1234",
+        tenor: "TOD"
+      }
+    );
     const invalidHedgeFxDealDealerApprovedRule = await request("POST", "/api/v1/hedge-fx-deals", {
       pricingRuleId: createDealerApprovedHedgePricingRule.body?.pricingRuleId,
       ccyPairCode: "EUR_USD",
@@ -3852,6 +4084,232 @@ async function verifyApiAndMigration() {
       "GET",
       "/api/database/tables/fx_trade_market_snapshot"
     );
+    const invalidAutoPricedHedgeFxDealDealerRule = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals/auto-priced",
+      {
+        pricingRuleId: createHedgePricingRule.body?.pricingRuleId,
+        ccyPairCode: "EUR_USD",
+        side: "BUY",
+        dealtCcyCode: "EUR",
+        dealtCcyAmount: "1000000",
+        tenor: "TOD"
+      }
+    );
+    const invalidAutoPricedHedgeFxDealSuppliedRate = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals/auto-priced",
+      {
+        pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
+        ccyPairCode: "EUR_USD",
+        side: "BUY",
+        dealtCcyCode: "EUR",
+        dealtCcyAmount: "1000000",
+        tradeRate: "9.9999",
+        tenor: "TOD"
+      }
+    );
+    const hedgeQuickModeSettingsBefore = await request(
+      "GET",
+      "/api/v1/hedge-quick-mode-settings"
+    );
+    const hedgeQuickModeSettingsPayload = {
+      pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
+      smallBaseCcyAmount: "5000000",
+      mediumBaseCcyAmount: "20000000",
+      largeBaseCcyAmount: "50000000",
+      xlargeBaseCcyAmount: "100000000",
+      defaultTenor: "TOD",
+      active: true
+    };
+    const createHedgeQuickModeSettings = await request(
+      "PUT",
+      "/api/v1/hedge-quick-mode-settings/EUR_USD",
+      hedgeQuickModeSettingsPayload
+    );
+    const getHedgeQuickModeSettings = await request(
+      "GET",
+      "/api/v1/hedge-quick-mode-settings/EUR_USD"
+    );
+    const invalidHedgeQuickModeSettings = await request(
+      "PUT",
+      "/api/v1/hedge-quick-mode-settings/EUR_USD",
+      {
+        ...hedgeQuickModeSettingsPayload,
+        mediumBaseCcyAmount: "5000000"
+      }
+    );
+    const invalidHedgeQuickModeOwnedField = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals/quick-mode",
+      {
+        ccyPairCode: "EUR_USD",
+        side: "BUY",
+        presetCode: "SMALL",
+        tenor: "TOD",
+        pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId
+      }
+    );
+    const invalidHedgeQuickModeExtraField = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals/quick-mode",
+      {
+        ccyPairCode: "EUR_USD",
+        side: "BUY",
+        presetCode: "SMALL",
+        tenor: "TOD",
+        partyId: createHedgeCounterparty.body?.partyId
+      }
+    );
+    const invalidHedgeQuickModePreset = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals/quick-mode",
+      {
+        ccyPairCode: "EUR_USD",
+        side: "BUY",
+        presetCode: "CUSTOM",
+        tenor: "TOD"
+      }
+    );
+    const createQuickModeBankSellHedgeFxDeal = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals/quick-mode",
+      {
+        ccyPairCode: "EUR_USD",
+        side: "BUY",
+        presetCode: "MEDIUM",
+        tenor: "TOD"
+      }
+    );
+    const createQuickModeBankBuyHedgeFxDeal = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals/quick-mode",
+      {
+        ccyPairCode: "EUR_USD",
+        side: "SELL",
+        presetCode: "LARGE",
+        tenor: "TOD"
+      }
+    );
+    const disableHedgeQuickModeSettings = await request(
+      "PUT",
+      "/api/v1/hedge-quick-mode-settings/EUR_USD",
+      {
+        ...hedgeQuickModeSettingsPayload,
+        active: false
+      }
+    );
+    const rejectDisabledHedgeQuickMode = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals/quick-mode",
+      {
+        ccyPairCode: "EUR_USD",
+        side: "BUY",
+        presetCode: "SMALL",
+        tenor: "TOD"
+      }
+    );
+    const deleteHedgeQuickModeSettings = await request(
+      "DELETE",
+      "/api/v1/hedge-quick-mode-settings/EUR_USD"
+    );
+    const missingHedgeQuickModeSettings = await request(
+      "GET",
+      "/api/v1/hedge-quick-mode-settings/EUR_USD"
+    );
+    const restoreHedgeQuickModeSettings = await request(
+      "PUT",
+      "/api/v1/hedge-quick-mode-settings/EUR_USD",
+      hedgeQuickModeSettingsPayload
+    );
+    const hedgeQuickModeSettingsAfterRestore = await request(
+      "GET",
+      "/api/v1/hedge-quick-mode-settings"
+    );
+    const createAutoPricedBankSellHedgeFxDeal = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals/auto-priced",
+      {
+        pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
+        ccyPairCode: "EUR_USD",
+        side: "BUY",
+        dealtCcyCode: "EUR",
+        dealtCcyAmount: "1000000",
+        tenor: "TOD"
+      }
+    );
+    const createAutoPricedBankBuyHedgeFxDeal = await request(
+      "POST",
+      "/api/v1/hedge-fx-deals/auto-priced",
+      {
+        pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
+        ccyPairCode: "EUR_USD",
+        side: "SELL",
+        dealtCcyCode: "EUR",
+        dealtCcyAmount: "1200000",
+        tenor: "TOD"
+      }
+    );
+    const fxTradeExposureAfterAutoPricedHedgeCreate = await request(
+      "GET",
+      "/api/database/tables/fx_trade_exposure"
+    );
+    const fxHedgeDealsAfterAutoPricedHedgeCreate = await request(
+      "GET",
+      "/api/database/tables/fx_hedge_deals"
+    );
+    const fxTradeMarketSnapshotAfterAutoPricedHedgeCreate = await request(
+      "GET",
+      "/api/database/tables/fx_trade_market_snapshot"
+    );
+    const autoPricedBankSellTradeId = Number(
+      createAutoPricedBankSellHedgeFxDeal.body?.tradeId
+    );
+    const autoPricedBankBuyTradeId = Number(
+      createAutoPricedBankBuyHedgeFxDeal.body?.tradeId
+    );
+    const quickModeBankSellTradeId = Number(
+      createQuickModeBankSellHedgeFxDeal.body?.tradeId
+    );
+    const quickModeBankBuyTradeId = Number(
+      createQuickModeBankBuyHedgeFxDeal.body?.tradeId
+    );
+    const autoPricedBankSellExposureRow =
+      fxTradeExposureAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === autoPricedBankSellTradeId) || null;
+    const autoPricedBankBuyExposureRow =
+      fxTradeExposureAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === autoPricedBankBuyTradeId) || null;
+    const autoPricedBankSellDealRow =
+      fxHedgeDealsAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === autoPricedBankSellTradeId) || null;
+    const autoPricedBankBuyDealRow =
+      fxHedgeDealsAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === autoPricedBankBuyTradeId) || null;
+    const autoPricedBankSellSnapshotRow =
+      fxTradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === autoPricedBankSellTradeId) || null;
+    const autoPricedBankBuySnapshotRow =
+      fxTradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === autoPricedBankBuyTradeId) || null;
+    const quickModeBankSellExposureRow =
+      fxTradeExposureAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === quickModeBankSellTradeId) || null;
+    const quickModeBankBuyExposureRow =
+      fxTradeExposureAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === quickModeBankBuyTradeId) || null;
+    const quickModeBankSellDealRow =
+      fxHedgeDealsAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === quickModeBankSellTradeId) || null;
+    const quickModeBankBuyDealRow =
+      fxHedgeDealsAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === quickModeBankBuyTradeId) || null;
+    const quickModeBankSellSnapshotRow =
+      fxTradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === quickModeBankSellTradeId) || null;
+    const quickModeBankBuySnapshotRow =
+      fxTradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
+        ?.find(row => row.trade_id === quickModeBankBuyTradeId) || null;
     const flatBatchSourceDatabase = new DatabaseSync(verificationDatabasePath);
     flatBatchSourceDatabase.exec("PRAGMA foreign_keys = ON");
     const insertFlatBatchExposure = flatBatchSourceDatabase.prepare(`
@@ -4018,13 +4476,13 @@ async function verifyApiAndMigration() {
     const flatBatchOutputs = flatBatchIntegrityDatabase.prepare(`
       SELECT
         o.trade_id AS tradeId,
-        o.output_role AS outputRole,
+        'POSITION_OUT' AS outputRole,
         e.trade_type AS tradeType,
         e.base_ccy_side AS side,
         e.base_ccy_amount_minor AS baseCcyAmountMinor,
         e.quote_ccy_amount_minor AS quoteCcyAmountMinor,
         e.trade_rate AS tradeRate
-      FROM fx_batch_outputs o
+      FROM fx_batch_position_output o
       INNER JOIN fx_trade_exposure e
         ON e.trade_id = o.trade_id AND e.trade_type = o.trade_type
       WHERE o.batch_id = ?
@@ -4051,7 +4509,8 @@ async function verifyApiAndMigration() {
       request("GET", "/api/v1/execution-contexts"),
       request("GET", "/api/v1/trading-parties"),
       request("GET", "/api/v1/pricing-rules"),
-      request("GET", "/api/v1/client-deal-generation/settings")
+      request("GET", "/api/v1/client-deal-generation/settings"),
+      request("GET", "/api/v1/hedge-quick-mode-settings")
     ]);
     const invalidDemoTradeReset = await request(
       "POST",
@@ -4069,7 +4528,8 @@ async function verifyApiAndMigration() {
       request("GET", "/api/v1/execution-contexts"),
       request("GET", "/api/v1/trading-parties"),
       request("GET", "/api/v1/pricing-rules"),
-      request("GET", "/api/v1/client-deal-generation/settings")
+      request("GET", "/api/v1/client-deal-generation/settings"),
+      request("GET", "/api/v1/hedge-quick-mode-settings")
     ]);
     const demoResetTradeReads = await Promise.all([
       request("GET", "/api/v1/client-fx-deals"),
@@ -4087,8 +4547,8 @@ async function verifyApiAndMigration() {
       "fx_trade_market_snapshot",
       "fx_batches",
       "fx_batch_members",
-      "fx_batch_outputs",
-      "fx_batch_quote_cash_members"
+      "fx_batch_position_output",
+      "fx_batch_quote_cash_output"
     ].map(tableName => Number(
       demoResetProbe.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count
     ));
@@ -4099,8 +4559,8 @@ async function verifyApiAndMigration() {
         AND name IN
         (
           'trg_fx_batch_members_immutable_delete',
-          'trg_fx_batch_outputs_immutable_delete',
-          'trg_fx_batch_quote_cash_members_immutable_delete',
+          'trg_fx_batch_position_output_immutable_delete',
+          'trg_fx_batch_quote_cash_output_immutable_delete',
           'trg_fx_batches_immutable_delete'
         )
       ORDER BY name
@@ -4218,6 +4678,12 @@ async function verifyApiAndMigration() {
       clientFxDealForeignKeys: clientFxDealsTable.body?.foreignKeys || [],
       hedgeFxDealColumns: hedgeFxDealsTable.body?.columns?.map(column => column.name) || [],
       hedgeFxDealForeignKeys: hedgeFxDealsTable.body?.foreignKeys || [],
+      hedgeQuickModeSettingsColumns: hedgeQuickModeSettingsTable.body?.columns
+        ?.map(column => column.name) || [],
+      hedgeQuickModeSettingsForeignKeys:
+        hedgeQuickModeSettingsTable.body?.foreignKeys || [],
+      hedgeQuickModeSettingsCreateSql:
+        hedgeQuickModeSettingsTable.body?.createSql || "",
       fxTradeBatchColumns: fxTradeBatchesTable.body?.columns
         ?.map(column => column.name) || [],
       fxTradeBatchForeignKeys: fxTradeBatchesTable.body?.foreignKeys || [],
@@ -4233,6 +4699,15 @@ async function verifyApiAndMigration() {
       batchBalancingTrades: {
         status: batchBalancingTradesTable.statusCode,
         count: batchBalancingTradesTable.body?.rowCount ?? -1
+      },
+      batchPositionOutputColumns: batchPositionOutputTable.body?.columns || [],
+      batchPositionOutputForeignKeys:
+        batchPositionOutputTable.body?.foreignKeys || [],
+      batchPositionOutputCreateSql:
+        batchPositionOutputTable.body?.createSql || "",
+      batchPositionOutputs: {
+        status: batchPositionOutputTable.statusCode,
+        count: batchPositionOutputTable.body?.rowCount ?? -1
       },
       batchQuoteCashMemberColumns: batchQuoteCashMembersTable.body?.columns
         ?.map(column => column.name) || [],
@@ -4295,10 +4770,8 @@ async function verifyApiAndMigration() {
         detailMemberRoles:
           batchBalancingTradesAfterCreate.body?.members
             ?.map(member => member.memberRole) || [],
-        detailQuoteCashMember:
-          batchBalancingTradesAfterCreate.body?.members?.find(member =>
-            member.tradeType === "BATCH_QUOTE_CASH_OUT"
-          ) || null,
+        detailCashOutput:
+          batchBalancingTradesAfterCreate.body?.cashOutput || null,
         detailOutputRoles:
           batchBalancingTradesAfterCreate.body?.outputs
             ?.map(output => output.outputRole) || [],
@@ -4346,13 +4819,10 @@ async function verifyApiAndMigration() {
             && trade.baseBalanceContributionMinor === -150000000
             && trade.quoteBalanceContributionMinor === 168450000
           ) === true
-          && batchBalancingTradesAfterCreate.body?.members?.some(trade =>
-            trade.tradeType === "BATCH_QUOTE_CASH_OUT"
-            && trade.memberRole === "BALANCE_QUOTE_CASH"
-            && trade.tradeId === null
-            && trade.baseBalanceContributionMinor === 0
-            && trade.quoteBalanceContributionMinor === 0
-          ) === true
+          && batchBalancingTradesAfterCreate.body?.cashOutput?.outputType
+            === "BATCH_QUOTE_CASH_OUT"
+          && batchBalancingTradesAfterCreate.body?.cashOutput
+            ?.balanceContributionMinor === 0
           && batchBalancingTradesAfterCreate.body?.outputs?.some(trade =>
             trade.tradeType === "BATCH_POSITION_OUT"
             && trade.baseBalanceContributionMinor === 150000000
@@ -4469,7 +4939,7 @@ async function verifyApiAndMigration() {
           ) === true
           && fxBatchOutputsAfterReformedBatch.body?.rows?.some(row =>
             row.batch_id === reformedFxBatch.body?.batchId
-            && row.output_role === "POSITION_OUT"
+            && row.trade_type === "BATCH_POSITION_OUT"
           ) === true
       },
       flatBatchFlow: {
@@ -4512,10 +4982,7 @@ async function verifyApiAndMigration() {
             (total, member) => total + member.quoteBalanceContributionMinor,
             0
           ),
-        detailQuoteCashMember:
-          flatBatchDetails.body?.members?.find(member =>
-            member.tradeType === "BATCH_QUOTE_CASH_OUT"
-          ) || null,
+        detailCashOutput: flatBatchDetails.body?.cashOutput || null,
         detailPositionOutPreservesOrigin:
           flatBatchDetails.body?.members?.some(member =>
             member.tradeId === parentPositionOutTradeId
@@ -4621,6 +5088,186 @@ async function verifyApiAndMigration() {
         excludesDealerApprovedRules: hedgeDealPricingRules.body?.every(rule =>
           rule.pricingMode !== "DEALER_APPROVED"
         ) === true,
+        autoPriced: {
+          pricingRuleCreateStatus: createAutoPricedHedgePricingRule.statusCode,
+          pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
+          eligiblePricingRulesStatus: autoPricedHedgeDealPricingRules.statusCode,
+          eligiblePricingRulesCount:
+            autoPricedHedgeDealPricingRules.body?.length ?? -1,
+          allEligibleRulesAreAutoPricedHedgeRules:
+            autoPricedHedgeDealPricingRules.body?.every(rule =>
+              rule.partyType === "HEDGE_COUNTERPARTY"
+              && rule.pricingMode === "AUTO_PRICED"
+            ) === true,
+          includesCreatedPricingRule:
+            autoPricedHedgeDealPricingRules.body?.some(rule =>
+              rule.pricingRuleId
+                === createAutoPricedHedgePricingRule.body?.pricingRuleId
+            ) === true,
+          invalidPricingModeStatus: invalidHedgeDealPricingMode.statusCode,
+          invalidPricingModeCode: invalidHedgeDealPricingMode.body?.code,
+          manualEndpointAutoRuleStatus:
+            invalidManualHedgeFxDealAutoPricedRule.statusCode,
+          manualEndpointAutoRuleCode:
+            invalidManualHedgeFxDealAutoPricedRule.body?.code,
+          manualEndpointAutoRuleMessage:
+            invalidManualHedgeFxDealAutoPricedRule.body?.message,
+          autoEndpointDealerRuleStatus:
+            invalidAutoPricedHedgeFxDealDealerRule.statusCode,
+          autoEndpointDealerRuleCode:
+            invalidAutoPricedHedgeFxDealDealerRule.body?.code,
+          autoEndpointDealerRuleMessage:
+            invalidAutoPricedHedgeFxDealDealerRule.body?.message,
+          suppliedTradeRateStatus:
+            invalidAutoPricedHedgeFxDealSuppliedRate.statusCode,
+          suppliedTradeRateCode:
+            invalidAutoPricedHedgeFxDealSuppliedRate.body?.code,
+          suppliedTradeRateMessage:
+            invalidAutoPricedHedgeFxDealSuppliedRate.body?.message,
+          bankSell: {
+            status: createAutoPricedBankSellHedgeFxDeal.statusCode,
+            tradeId: createAutoPricedBankSellHedgeFxDeal.body?.tradeId,
+            counterpartySide: createAutoPricedBankSellHedgeFxDeal.body?.side,
+            tradeRate: createAutoPricedBankSellHedgeFxDeal.body?.tradeRate,
+            marketBid: createAutoPricedBankSellHedgeFxDeal.body?.marketPulseBid,
+            marketOffer:
+              createAutoPricedBankSellHedgeFxDeal.body?.marketPulseOffer,
+            usesBid:
+              createAutoPricedBankSellHedgeFxDeal.body?.tradeRate
+                === createAutoPricedBankSellHedgeFxDeal.body?.marketPulseBid,
+            persistedFromSameSnapshot:
+              autoPricedBankSellExposureRow?.base_ccy_side === "BUY"
+              && autoPricedBankSellExposureRow?.trade_rate
+                === createAutoPricedBankSellHedgeFxDeal.body?.tradeRate
+              && autoPricedBankSellDealRow?.pricing_rule_id
+                === createAutoPricedHedgePricingRule.body?.pricingRuleId
+              && autoPricedBankSellDealRow?.transfer_rate
+                === createAutoPricedBankSellHedgeFxDeal.body?.transferRate
+              && autoPricedBankSellSnapshotRow?.market_pulse_bid
+                === createAutoPricedBankSellHedgeFxDeal.body?.marketPulseBid
+              && autoPricedBankSellSnapshotRow?.market_pulse_offer
+                === createAutoPricedBankSellHedgeFxDeal.body?.marketPulseOffer
+              && autoPricedBankSellSnapshotRow?.market_pulse_timestamp
+                === createAutoPricedBankSellHedgeFxDeal.body
+                  ?.marketPulseTimestamp
+          },
+          bankBuy: {
+            status: createAutoPricedBankBuyHedgeFxDeal.statusCode,
+            tradeId: createAutoPricedBankBuyHedgeFxDeal.body?.tradeId,
+            counterpartySide: createAutoPricedBankBuyHedgeFxDeal.body?.side,
+            tradeRate: createAutoPricedBankBuyHedgeFxDeal.body?.tradeRate,
+            marketBid: createAutoPricedBankBuyHedgeFxDeal.body?.marketPulseBid,
+            marketOffer:
+              createAutoPricedBankBuyHedgeFxDeal.body?.marketPulseOffer,
+            usesOffer:
+              createAutoPricedBankBuyHedgeFxDeal.body?.tradeRate
+                === createAutoPricedBankBuyHedgeFxDeal.body
+                  ?.marketPulseOffer,
+            persistedFromSameSnapshot:
+              autoPricedBankBuyExposureRow?.base_ccy_side === "SELL"
+              && autoPricedBankBuyExposureRow?.trade_rate
+                === createAutoPricedBankBuyHedgeFxDeal.body?.tradeRate
+              && autoPricedBankBuyDealRow?.pricing_rule_id
+                === createAutoPricedHedgePricingRule.body?.pricingRuleId
+              && autoPricedBankBuyDealRow?.transfer_rate
+                === createAutoPricedBankBuyHedgeFxDeal.body?.transferRate
+              && autoPricedBankBuySnapshotRow?.market_pulse_bid
+                === createAutoPricedBankBuyHedgeFxDeal.body?.marketPulseBid
+              && autoPricedBankBuySnapshotRow?.market_pulse_offer
+                === createAutoPricedBankBuyHedgeFxDeal.body?.marketPulseOffer
+              && autoPricedBankBuySnapshotRow?.market_pulse_timestamp
+                === createAutoPricedBankBuyHedgeFxDeal.body
+                  ?.marketPulseTimestamp
+          }
+        },
+        quickMode: {
+          settingsBeforeCount:
+            hedgeQuickModeSettingsBefore.body?.length ?? -1,
+          createSettingsStatus: createHedgeQuickModeSettings.statusCode,
+          getSettingsStatus: getHedgeQuickModeSettings.statusCode,
+          configuredPricingRuleId:
+            getHedgeQuickModeSettings.body?.pricingRuleId,
+          configuredDefaultTenor:
+            getHedgeQuickModeSettings.body?.defaultTenor,
+          configuredPresetCodes:
+            getHedgeQuickModeSettings.body?.presets
+              ?.map(preset => preset.presetCode) || [],
+          configuredPresetAmounts:
+            getHedgeQuickModeSettings.body?.presets
+              ?.map(preset => preset.baseCcyAmount) || [],
+          invalidSettingsStatus: invalidHedgeQuickModeSettings.statusCode,
+          invalidSettingsCode: invalidHedgeQuickModeSettings.body?.code,
+          ownedFieldStatus: invalidHedgeQuickModeOwnedField.statusCode,
+          ownedFieldCode: invalidHedgeQuickModeOwnedField.body?.code,
+          extraFieldStatus: invalidHedgeQuickModeExtraField.statusCode,
+          extraFieldCode: invalidHedgeQuickModeExtraField.body?.code,
+          invalidPresetStatus: invalidHedgeQuickModePreset.statusCode,
+          invalidPresetCode: invalidHedgeQuickModePreset.body?.code,
+          bankSell: {
+            status: createQuickModeBankSellHedgeFxDeal.statusCode,
+            tradeId: createQuickModeBankSellHedgeFxDeal.body?.tradeId,
+            counterpartySide: createQuickModeBankSellHedgeFxDeal.body?.side,
+            baseCcyAmountMinor:
+              createQuickModeBankSellHedgeFxDeal.body?.baseCcyAmountMinor,
+            tradeRate: createQuickModeBankSellHedgeFxDeal.body?.tradeRate,
+            marketBid: createQuickModeBankSellHedgeFxDeal.body?.marketPulseBid,
+            marketOffer:
+              createQuickModeBankSellHedgeFxDeal.body?.marketPulseOffer,
+            usesBid:
+              createQuickModeBankSellHedgeFxDeal.body?.tradeRate
+                === createQuickModeBankSellHedgeFxDeal.body?.marketPulseBid,
+            persistedFromSameSnapshot:
+              quickModeBankSellExposureRow?.base_ccy_side === "BUY"
+              && quickModeBankSellExposureRow?.base_ccy_amount_minor
+                === 2000000000
+              && quickModeBankSellDealRow?.pricing_rule_id
+                === createAutoPricedHedgePricingRule.body?.pricingRuleId
+              && quickModeBankSellSnapshotRow?.market_pulse_bid
+                === createQuickModeBankSellHedgeFxDeal.body?.marketPulseBid
+              && quickModeBankSellSnapshotRow?.market_pulse_offer
+                === createQuickModeBankSellHedgeFxDeal.body?.marketPulseOffer
+              && quickModeBankSellSnapshotRow?.market_pulse_timestamp
+                === createQuickModeBankSellHedgeFxDeal.body
+                  ?.marketPulseTimestamp
+          },
+          bankBuy: {
+            status: createQuickModeBankBuyHedgeFxDeal.statusCode,
+            tradeId: createQuickModeBankBuyHedgeFxDeal.body?.tradeId,
+            counterpartySide: createQuickModeBankBuyHedgeFxDeal.body?.side,
+            baseCcyAmountMinor:
+              createQuickModeBankBuyHedgeFxDeal.body?.baseCcyAmountMinor,
+            tradeRate: createQuickModeBankBuyHedgeFxDeal.body?.tradeRate,
+            marketBid: createQuickModeBankBuyHedgeFxDeal.body?.marketPulseBid,
+            marketOffer:
+              createQuickModeBankBuyHedgeFxDeal.body?.marketPulseOffer,
+            usesOffer:
+              createQuickModeBankBuyHedgeFxDeal.body?.tradeRate
+                === createQuickModeBankBuyHedgeFxDeal.body?.marketPulseOffer,
+            persistedFromSameSnapshot:
+              quickModeBankBuyExposureRow?.base_ccy_side === "SELL"
+              && quickModeBankBuyExposureRow?.base_ccy_amount_minor
+                === 5000000000
+              && quickModeBankBuyDealRow?.pricing_rule_id
+                === createAutoPricedHedgePricingRule.body?.pricingRuleId
+              && quickModeBankBuySnapshotRow?.market_pulse_bid
+                === createQuickModeBankBuyHedgeFxDeal.body?.marketPulseBid
+              && quickModeBankBuySnapshotRow?.market_pulse_offer
+                === createQuickModeBankBuyHedgeFxDeal.body?.marketPulseOffer
+              && quickModeBankBuySnapshotRow?.market_pulse_timestamp
+                === createQuickModeBankBuyHedgeFxDeal.body
+                  ?.marketPulseTimestamp
+          },
+          disableSettingsStatus: disableHedgeQuickModeSettings.statusCode,
+          disabledDealStatus: rejectDisabledHedgeQuickMode.statusCode,
+          disabledDealCode: rejectDisabledHedgeQuickMode.body?.code,
+          deleteSettingsStatus: deleteHedgeQuickModeSettings.statusCode,
+          missingSettingsStatus: missingHedgeQuickModeSettings.statusCode,
+          restoreSettingsStatus: restoreHedgeQuickModeSettings.statusCode,
+          restoredSettingsCount:
+            hedgeQuickModeSettingsAfterRestore.body?.length ?? -1,
+          restoredAvailable:
+            hedgeQuickModeSettingsAfterRestore.body?.[0]?.available
+        },
         rejectedDealerApprovedRuleStatus: invalidHedgeFxDealDealerApprovedRule.statusCode,
         dealerApprovedRuleDeleteStatus: deleteDealerApprovedHedgePricingRule.statusCode,
         createdStatus: createHedgeFxDeal.statusCode,
@@ -4997,10 +5644,11 @@ async function main() {
       "execution_contexts",
       "execution_systems",
       "fx_batch_members",
-      "fx_batch_outputs",
-      "fx_batch_quote_cash_members",
+      "fx_batch_position_output",
+      "fx_batch_quote_cash_output",
       "fx_batches",
       "fx_hedge_deals",
+      "fx_hedge_quick_mode_settings",
       "fx_trade_exposure",
       "fx_trade_market_snapshot",
       "market_quote_simulation_settings",
@@ -5023,7 +5671,7 @@ async function main() {
       || freshSchema.users !== 3
       || freshSchema.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
       || freshSchema.userRoles.join(",") !== "ADMIN,DEALER,SUPERVISOR"
-      || freshSchema.pricingRules !== 6
+      || freshSchema.pricingRules !== 7
       || freshSchema.legacyMonetaryColumns.length !== 0
       || freshSchema.clientDealGenerationProcessSettingsColumns.join(",")
         !== "settings_id,min_interval_seconds,max_interval_seconds,min_deals_per_cycle,max_deals_per_cycle"
@@ -5093,6 +5741,36 @@ async function main() {
       || freshSchema.hedgeFxDealSeedRow?.transfer_rate !== 1.1222
       || freshSchema.hedgeFxDealSeedRow?.analytical_pnl_quote_minor !== 0
       || freshSchema.hedgeFxDealSeedRow?.analytical_pnl_quote_fraction_digits !== 2
+      || freshSchema.hedgeQuickModeSettings !== 1
+      || freshSchema.hedgeQuickModeSettingsColumns.join(",")
+        !== "ccy_pair_code,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
+      || freshSchema.hedgeQuickModeSettingsForeignKeys.length !== 3
+      || !freshSchema.hedgeQuickModeSettingsForeignKeys.every(foreignKey =>
+        ["ccy_pair_options", "pricing_rules"].includes(foreignKey.table)
+        && foreignKey.on_update === "RESTRICT"
+        && foreignKey.on_delete === "RESTRICT"
+      )
+      || freshSchema.hedgeQuickModeSettingsSeedRow?.ccy_pair_code !== "EUR_USD"
+      || freshSchema.hedgeQuickModeSettingsSeedRow
+        ?.base_ccy_fraction_digits !== 2
+      || freshSchema.hedgeQuickModeSettingsSeedRow
+        ?.small_base_ccy_amount_minor !== 500000000
+      || freshSchema.hedgeQuickModeSettingsSeedRow
+        ?.medium_base_ccy_amount_minor !== 2000000000
+      || freshSchema.hedgeQuickModeSettingsSeedRow
+        ?.large_base_ccy_amount_minor !== 5000000000
+      || freshSchema.hedgeQuickModeSettingsSeedRow
+        ?.xlarge_base_ccy_amount_minor !== 10000000000
+      || freshSchema.hedgeQuickModeSettingsSeedRow?.is_active !== 1
+      || freshSchema.hedgeQuickModeSettingsSeedRow?.default_tenor !== "TOD"
+      || freshSchema.hedgeQuickModeSettingsSeedRow
+        ?.party_type !== "HEDGE_COUNTERPARTY"
+      || freshSchema.hedgeQuickModeSettingsSeedRow
+        ?.pricing_mode !== "AUTO_PRICED"
+      || !freshSchema.hedgeQuickModeSettingsReferenceIndex
+      || freshSchema.hedgeQuickModeSettingsReferenceIndexColumns.join(",")
+        !== "pricing_rule_id,ccy_pair_code"
+      || freshSchema.hedgeQuickModeSettingsTriggers.length < 9
       || freshSchema.fxTradeBatches !== 0
       || freshSchema.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,created_at,rolled_back_at"
       || freshSchema.fxTradeBatchForeignKeys.length !== 1
@@ -5117,6 +5795,22 @@ async function main() {
         .test(freshSchema.batchMemberCreateSql)
       || freshSchema.batchMemberCreateSql.includes("BALANCE_QUOTE_CASH")
       || !freshSchema.batchMemberTechnicalOriginIndex
+      || freshSchema.batchPositionOutputs !== 0
+      || freshSchema.batchPositionOutputColumns.map(column => column.name).join(",")
+        !== "batch_id,trade_id,trade_type"
+      || freshSchema.batchPositionOutputColumns
+        .find(column => column.name === "batch_id")?.pk !== 1
+      || freshSchema.batchPositionOutputForeignKeys.length !== 3
+      || !freshSchema.batchPositionOutputForeignKeys.every(foreignKey =>
+        ["fx_batches", "fx_trade_exposure"].includes(foreignKey.table)
+        && foreignKey.on_update === "RESTRICT"
+        && foreignKey.on_delete === "RESTRICT"
+      )
+      || !/\bUNIQUE\s*\(\s*trade_id\s*\)/i
+        .test(freshSchema.batchPositionOutputCreateSql)
+      || !/\bCHECK\s*\(\s*trade_type\s*=\s*'BATCH_POSITION_OUT'\s*\)/i
+        .test(freshSchema.batchPositionOutputCreateSql)
+      || freshSchema.batchPositionOutputCreateSql.includes("output_role")
       || freshSchema.batchQuoteCashMembers !== 0
       || freshSchema.batchQuoteCashMemberColumns.join(",")
         !== "batch_id,quote_ccy_code,quote_balance_contribution_minor,quote_ccy_fraction_digits,quote_ccy_value_date,created_at"
@@ -5130,7 +5824,7 @@ async function main() {
         .test(freshSchema.batchQuoteCashMemberCreateSql)
       || freshSchema.batchQuoteCashMemberColumns.includes("batch_status")
       || freshSchema.batchQuoteCashMemberTriggers.join(",")
-        !== "trg_fx_batch_quote_cash_members_immutable_delete,trg_fx_batch_quote_cash_members_immutable_update,trg_fx_batch_quote_cash_members_validate_insert"
+        !== "trg_fx_batch_quote_cash_output_immutable_delete,trg_fx_batch_quote_cash_output_immutable_update,trg_fx_batch_quote_cash_output_validate_insert"
       || !freshSchema.batchQuoteCashMemberSupported
       || !freshSchema.batchQuoteCashMemberConstraintsEnforced
       || !freshSchema.batchQuoteCashMemberParentRestrictionEnforced
@@ -5173,9 +5867,11 @@ async function main() {
       || !frontend.usesServicingLocationsEndpoint
       || !frontend.usesHedgeFxDealsEndpoint
       || !frontend.usesDedicatedAddHedgeDealFlow
+      || !frontend.usesQuickHedgeMode
       || !frontend.usesHedgeCounterpartyPricingRules
       || !frontend.usesPricingModeIndicators
       || !frontend.usesUnifiedMarginIndicators
+      || !frontend.usesGroupedDatabaseExplorer
       || !frontend.usesDatabaseBackedFxPositions
       || !frontend.usesClientDealCommentOnlyEditing
       || !frontend.usesDatabaseBackedClientDealGeneration
@@ -5237,7 +5933,7 @@ async function main() {
       || !frontend.usesCollapsibleAdditionalAttributes
       || !frontend.usesClientDealDuplicateCheck
       || !frontend.usesTradingPartiesLanguage
-      || !frontend.usesTradingPartyBadgeIcon
+      || !frontend.usesDomainNavigationIcons
       || !frontend.usesTradingPartyColumnFilters
       || !frontend.usesBootstrapTradingPartyGrid
       || !frontend.usesTradingPartyPricingContextBricks
@@ -5495,6 +6191,22 @@ async function main() {
       || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
         apiAndMigration.hedgeFxDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
+      || apiAndMigration.hedgeQuickModeSettingsColumns.join(",")
+        !== "ccy_pair_code,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
+      || apiAndMigration.hedgeQuickModeSettingsForeignKeys.length !== 3
+      || !apiAndMigration.hedgeQuickModeSettingsForeignKeys.every(foreignKey =>
+        foreignKey.onUpdate === "RESTRICT"
+        && foreignKey.onDelete === "RESTRICT"
+        && ["ccy_pair_options", "pricing_rules"].includes(
+          foreignKey.referencedTable
+        )
+      )
+      || !apiAndMigration.hedgeQuickModeSettingsCreateSql
+        .includes("small_base_ccy_amount_minor < medium_base_ccy_amount_minor")
+      || !apiAndMigration.hedgeQuickModeSettingsCreateSql
+        .includes("large_base_ccy_amount_minor < xlarge_base_ccy_amount_minor")
+      || !apiAndMigration.hedgeQuickModeSettingsCreateSql
+        .includes("default_tenor IN ('TOD', 'TOM', 'SPOT')")
       || apiAndMigration.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,created_at,rolled_back_at"
       || apiAndMigration.fxTradeBatchForeignKeys.length !== 1
       || apiAndMigration.fxTradeBatchForeignKeys[0]?.onUpdate !== "RESTRICT"
@@ -5517,6 +6229,21 @@ async function main() {
       || apiAndMigration.batchMemberCreateSql.includes("BALANCE_QUOTE_CASH")
       || apiAndMigration.batchBalancingTrades.status !== 200
       || apiAndMigration.batchBalancingTrades.count !== 0
+      || apiAndMigration.batchPositionOutputColumns.map(column => column.name).join(",")
+        !== "batch_id,trade_id,trade_type"
+      || !apiAndMigration.batchPositionOutputColumns
+        .find(column => column.name === "batch_id")?.primaryKey
+      || apiAndMigration.batchPositionOutputForeignKeys.length !== 3
+      || !apiAndMigration.batchPositionOutputForeignKeys.every(foreignKey =>
+        foreignKey.onUpdate === "RESTRICT"
+        && foreignKey.onDelete === "RESTRICT"
+        && ["fx_batches", "fx_trade_exposure"].includes(foreignKey.referencedTable)
+      )
+      || !/\bUNIQUE\s*\(\s*trade_id\s*\)/i
+        .test(apiAndMigration.batchPositionOutputCreateSql)
+      || apiAndMigration.batchPositionOutputCreateSql.includes("output_role")
+      || apiAndMigration.batchPositionOutputs.status !== 200
+      || apiAndMigration.batchPositionOutputs.count !== 0
       || apiAndMigration.batchQuoteCashMemberColumns.join(",")
         !== "batch_id,quote_ccy_code,quote_balance_contribution_minor,quote_ccy_fraction_digits,quote_ccy_value_date,created_at"
       || apiAndMigration.batchQuoteCashMemberForeignKeys.length !== 2
@@ -5541,12 +6268,10 @@ async function main() {
       || apiAndMigration.batchBalancingFlow.sourceNetTransferQuoteAmountMinor !== 168450000
       || apiAndMigration.batchBalancingFlow.sourceNetTransferQuoteFractionDigits !== 2
       || apiAndMigration.batchBalancingFlow.netQuoteCcyAmountMinorBeforeCash !== 0
-      || apiAndMigration.batchBalancingFlow.quoteCashOut?.tradeType
+      || apiAndMigration.batchBalancingFlow.quoteCashOut?.outputType
         !== "BATCH_QUOTE_CASH_OUT"
-      || apiAndMigration.batchBalancingFlow.quoteCashOut?.memberRole
-        !== "BALANCE_QUOTE_CASH"
       || apiAndMigration.batchBalancingFlow.quoteCashOut
-        ?.quoteBalanceContributionMinor !== 0
+        ?.balanceContributionMinor !== 0
       || apiAndMigration.batchBalancingFlow.roundingResidualQuoteAmountMinor !== 0
       || apiAndMigration.batchBalancingFlow.historyStatus !== 200
       || apiAndMigration.batchBalancingFlow.historyCount !== 1
@@ -5566,15 +6291,15 @@ async function main() {
       || apiAndMigration.batchBalancingFlow.detailCurrencyPair !== "EUR/USD"
       || apiAndMigration.batchBalancingFlow.detailSettlementBucket?.tradeDate !== "2026-07-15"
       || apiAndMigration.batchBalancingFlow.detailSettlementBucket?.tenor !== "TOM"
-      || apiAndMigration.batchBalancingFlow.detailMemberCount !== 3
+      || apiAndMigration.batchBalancingFlow.detailMemberCount !== 2
       || apiAndMigration.batchBalancingFlow.detailOutputCount !== 1
       || apiAndMigration.batchBalancingFlow.detailMemberRoles.join(",")
-        !== "TRADE,BALANCE_TRADE,BALANCE_QUOTE_CASH"
+        !== "TRADE,BALANCE_TRADE"
       || apiAndMigration.batchBalancingFlow.detailOutputRoles.join(",")
         !== "POSITION_OUT"
-      || apiAndMigration.batchBalancingFlow.detailQuoteCashMember?.tradeId
-        !== null
-      || apiAndMigration.batchBalancingFlow.detailQuoteCashMember?.createdByBatchId
+      || apiAndMigration.batchBalancingFlow.detailCashOutput?.outputType
+        !== "BATCH_QUOTE_CASH_OUT"
+      || apiAndMigration.batchBalancingFlow.detailCashOutput?.batchId
         !== apiAndMigration.batchBalancingFlow.batchId
       || !apiAndMigration.batchBalancingFlow.detailPnlFieldsPresent
       || !apiAndMigration.batchBalancingFlow.detailContainsAttributedSource
@@ -5626,9 +6351,9 @@ async function main() {
       || apiAndMigration.flatBatchFlow.sourceNetBaseCcyAmountMinor !== 0
       || apiAndMigration.flatBatchFlow.sourceNetTransferQuoteAmountMinor !== 100000
       || apiAndMigration.flatBatchFlow.netQuoteCcyAmountMinorBeforeCash !== 100000
-      || apiAndMigration.flatBatchFlow.quoteCashOut?.tradeType
+      || apiAndMigration.flatBatchFlow.quoteCashOut?.outputType
         !== "BATCH_QUOTE_CASH_OUT"
-      || apiAndMigration.flatBatchFlow.quoteCashOut?.quoteBalanceContributionMinor
+      || apiAndMigration.flatBatchFlow.quoteCashOut?.balanceContributionMinor
         !== -100000
       || apiAndMigration.flatBatchFlow.createdTrades.length !== 0
       || apiAndMigration.flatBatchFlow.members.length !== 2
@@ -5641,14 +6366,14 @@ async function main() {
         .join(",") !== "BATCH_POSITION_OUT,CLIENT_DEAL"
       || apiAndMigration.flatBatchFlow.outputs.length !== 0
       || apiAndMigration.flatBatchFlow.detailStatus !== 200
-      || apiAndMigration.flatBatchFlow.detailMembers.length !== 3
+      || apiAndMigration.flatBatchFlow.detailMembers.length !== 2
       || apiAndMigration.flatBatchFlow.detailOutputs.length !== 0
-      || apiAndMigration.flatBatchFlow.detailQuoteCashMember?.memberRole
-        !== "BALANCE_QUOTE_CASH"
-      || apiAndMigration.flatBatchFlow.detailQuoteCashMember
-        ?.quoteBalanceContributionMinor !== -100000
+      || apiAndMigration.flatBatchFlow.detailCashOutput?.outputType
+        !== "BATCH_QUOTE_CASH_OUT"
+      || apiAndMigration.flatBatchFlow.detailCashOutput
+        ?.balanceContributionMinor !== -100000
       || apiAndMigration.flatBatchFlow.detailMemberBaseBalanceMinor !== 0
-      || apiAndMigration.flatBatchFlow.detailMemberQuoteBalanceMinor !== 0
+      || apiAndMigration.flatBatchFlow.detailMemberQuoteBalanceMinor !== 100000
       || !apiAndMigration.flatBatchFlow.detailPositionOutPreservesOrigin
       || !apiAndMigration.flatBatchFlow.sourcesVisibleBefore
       || !apiAndMigration.flatBatchFlow.sourcesHiddenAfter
@@ -5679,6 +6404,115 @@ async function main() {
       || apiAndMigration.hedgeFxDeals.eligiblePricingRulesCount !== 1
       || !apiAndMigration.hedgeFxDeals.allHedgeCounterpartyRules
       || !apiAndMigration.hedgeFxDeals.excludesDealerApprovedRules
+      || apiAndMigration.hedgeFxDeals.autoPriced.pricingRuleCreateStatus !== 201
+      || !Number.isInteger(
+        apiAndMigration.hedgeFxDeals.autoPriced.pricingRuleId
+      )
+      || apiAndMigration.hedgeFxDeals.autoPriced.eligiblePricingRulesStatus
+        !== 200
+      || apiAndMigration.hedgeFxDeals.autoPriced.eligiblePricingRulesCount
+        !== 1
+      || !apiAndMigration.hedgeFxDeals.autoPriced
+        .allEligibleRulesAreAutoPricedHedgeRules
+      || !apiAndMigration.hedgeFxDeals.autoPriced.includesCreatedPricingRule
+      || apiAndMigration.hedgeFxDeals.autoPriced.invalidPricingModeStatus
+        !== 400
+      || apiAndMigration.hedgeFxDeals.autoPriced.invalidPricingModeCode
+        !== "INVALID_HEDGE_DEAL_PRICING_MODE"
+      || apiAndMigration.hedgeFxDeals.autoPriced.manualEndpointAutoRuleStatus
+        !== 400
+      || apiAndMigration.hedgeFxDeals.autoPriced.manualEndpointAutoRuleCode
+        !== "INVALID_HEDGE_FX_DEAL_REFERENCE"
+      || !apiAndMigration.hedgeFxDeals.autoPriced
+        .manualEndpointAutoRuleMessage?.includes("DEALER_PRICED")
+      || apiAndMigration.hedgeFxDeals.autoPriced.autoEndpointDealerRuleStatus
+        !== 400
+      || apiAndMigration.hedgeFxDeals.autoPriced.autoEndpointDealerRuleCode
+        !== "INVALID_AUTO_PRICED_HEDGE_FX_DEAL_REFERENCE"
+      || !apiAndMigration.hedgeFxDeals.autoPriced
+        .autoEndpointDealerRuleMessage?.includes("AUTO_PRICED")
+      || apiAndMigration.hedgeFxDeals.autoPriced.suppliedTradeRateStatus
+        !== 400
+      || apiAndMigration.hedgeFxDeals.autoPriced.suppliedTradeRateCode
+        !== "INVALID_AUTO_PRICED_HEDGE_FX_DEAL"
+      || !apiAndMigration.hedgeFxDeals.autoPriced
+        .suppliedTradeRateMessage?.includes("must not be provided")
+      || apiAndMigration.hedgeFxDeals.autoPriced.bankSell.status !== 201
+      || !Number.isInteger(
+        apiAndMigration.hedgeFxDeals.autoPriced.bankSell.tradeId
+      )
+      || apiAndMigration.hedgeFxDeals.autoPriced.bankSell.counterpartySide
+        !== "BUY"
+      || !(apiAndMigration.hedgeFxDeals.autoPriced.bankSell.marketBid
+        < apiAndMigration.hedgeFxDeals.autoPriced.bankSell.marketOffer)
+      || !apiAndMigration.hedgeFxDeals.autoPriced.bankSell.usesBid
+      || !apiAndMigration.hedgeFxDeals.autoPriced.bankSell
+        .persistedFromSameSnapshot
+      || apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.status !== 201
+      || !Number.isInteger(
+        apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.tradeId
+      )
+      || apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.counterpartySide
+        !== "SELL"
+      || !(apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.marketBid
+        < apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.marketOffer)
+      || !apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.usesOffer
+      || !apiAndMigration.hedgeFxDeals.autoPriced.bankBuy
+        .persistedFromSameSnapshot
+      || apiAndMigration.hedgeFxDeals.quickMode.settingsBeforeCount !== 0
+      || apiAndMigration.hedgeFxDeals.quickMode.createSettingsStatus !== 201
+      || apiAndMigration.hedgeFxDeals.quickMode.getSettingsStatus !== 200
+      || apiAndMigration.hedgeFxDeals.quickMode.configuredPricingRuleId
+        !== apiAndMigration.hedgeFxDeals.autoPriced.pricingRuleId
+      || apiAndMigration.hedgeFxDeals.quickMode.configuredDefaultTenor !== "TOD"
+      || apiAndMigration.hedgeFxDeals.quickMode.configuredPresetCodes.join(",")
+        !== "SMALL,MEDIUM,LARGE,XLARGE"
+      || apiAndMigration.hedgeFxDeals.quickMode
+        .configuredPresetAmounts.join(",")
+        !== "5000000.00,20000000.00,50000000.00,100000000.00"
+      || apiAndMigration.hedgeFxDeals.quickMode.invalidSettingsStatus !== 400
+      || apiAndMigration.hedgeFxDeals.quickMode.invalidSettingsCode
+        !== "INVALID_HEDGE_QUICK_MODE_SETTINGS"
+      || apiAndMigration.hedgeFxDeals.quickMode.ownedFieldStatus !== 400
+      || apiAndMigration.hedgeFxDeals.quickMode.ownedFieldCode
+        !== "INVALID_HEDGE_QUICK_MODE_DEAL"
+      || apiAndMigration.hedgeFxDeals.quickMode.extraFieldStatus !== 400
+      || apiAndMigration.hedgeFxDeals.quickMode.extraFieldCode
+        !== "INVALID_HEDGE_QUICK_MODE_DEAL"
+      || apiAndMigration.hedgeFxDeals.quickMode.invalidPresetStatus !== 400
+      || apiAndMigration.hedgeFxDeals.quickMode.invalidPresetCode
+        !== "INVALID_HEDGE_QUICK_MODE_DEAL"
+      || apiAndMigration.hedgeFxDeals.quickMode.bankSell.status !== 201
+      || !Number.isInteger(
+        apiAndMigration.hedgeFxDeals.quickMode.bankSell.tradeId
+      )
+      || apiAndMigration.hedgeFxDeals.quickMode.bankSell.counterpartySide
+        !== "BUY"
+      || apiAndMigration.hedgeFxDeals.quickMode.bankSell.baseCcyAmountMinor
+        !== 2000000000
+      || !apiAndMigration.hedgeFxDeals.quickMode.bankSell.usesBid
+      || !apiAndMigration.hedgeFxDeals.quickMode.bankSell
+        .persistedFromSameSnapshot
+      || apiAndMigration.hedgeFxDeals.quickMode.bankBuy.status !== 201
+      || !Number.isInteger(
+        apiAndMigration.hedgeFxDeals.quickMode.bankBuy.tradeId
+      )
+      || apiAndMigration.hedgeFxDeals.quickMode.bankBuy.counterpartySide
+        !== "SELL"
+      || apiAndMigration.hedgeFxDeals.quickMode.bankBuy.baseCcyAmountMinor
+        !== 5000000000
+      || !apiAndMigration.hedgeFxDeals.quickMode.bankBuy.usesOffer
+      || !apiAndMigration.hedgeFxDeals.quickMode.bankBuy
+        .persistedFromSameSnapshot
+      || apiAndMigration.hedgeFxDeals.quickMode.disableSettingsStatus !== 200
+      || apiAndMigration.hedgeFxDeals.quickMode.disabledDealStatus !== 409
+      || apiAndMigration.hedgeFxDeals.quickMode.disabledDealCode
+        !== "HEDGE_QUICK_MODE_DISABLED"
+      || apiAndMigration.hedgeFxDeals.quickMode.deleteSettingsStatus !== 200
+      || apiAndMigration.hedgeFxDeals.quickMode.missingSettingsStatus !== 404
+      || apiAndMigration.hedgeFxDeals.quickMode.restoreSettingsStatus !== 201
+      || apiAndMigration.hedgeFxDeals.quickMode.restoredSettingsCount !== 1
+      || apiAndMigration.hedgeFxDeals.quickMode.restoredAvailable !== true
       || apiAndMigration.hedgeFxDeals.rejectedDealerApprovedRuleStatus !== 400
       || apiAndMigration.hedgeFxDeals.dealerApprovedRuleDeleteStatus !== 204
       || apiAndMigration.hedgeFxDeals.createdStatus !== 201

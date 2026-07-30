@@ -78,7 +78,9 @@ test("forms a batch through one transaction boundary", () => {
   assert.equal(transactions, 1);
   assert.equal(result.batchId, 7);
   assert.equal(result.replayed, false);
-  assert.equal(savedFormation.quoteCashOut.tradeType, "BATCH_QUOTE_CASH_OUT");
+  assert.equal("tradeType" in savedFormation.quoteCashOut, false);
+  assert.equal("memberRole" in savedFormation.quoteCashOut, false);
+  assert.equal(savedFormation.quoteCashOut.quoteBalanceContributionMinor, 0n);
 });
 
 test("returns an idempotent replay for the same selection", () => {

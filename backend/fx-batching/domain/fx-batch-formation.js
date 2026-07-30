@@ -8,10 +8,6 @@ const {
   fxTradeBalanceContributionsMinor,
   quoteCashOutContributionMinor
 } = require("./fx-batch-balance");
-const {
-  FX_BATCH_MEMBER_ROLE,
-  FX_BATCH_SPECIAL_MEMBER_TYPE
-} = require("./fx-trade-batching-policy");
 
 const Decimal = Big();
 Decimal.strict = true;
@@ -229,8 +225,6 @@ function commonTradeTerms(first, timestamp) {
 
 function formQuoteCashOut(first, timestamp, netQuoteCcyAmountMinor) {
   return {
-    tradeType: FX_BATCH_SPECIAL_MEMBER_TYPE.QUOTE_CASH_OUT,
-    memberRole: FX_BATCH_MEMBER_ROLE.BALANCE_QUOTE_CASH,
     quoteCcyCode: first.quoteCcyCode,
     quoteBalanceContributionMinor: quoteCashOutContributionMinor(
       netQuoteCcyAmountMinor

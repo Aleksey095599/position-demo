@@ -3351,7 +3351,7 @@
     }
 
     .hedge-deals-toolbar-row td {
-      height: 37px;
+      height: auto;
       border-top: 0;
       border-bottom: 0;
       padding: 5px 4px 7px;
@@ -3360,6 +3360,120 @@
 
     .hedge-deals-side {
       text-align: center;
+    }
+
+    .hedge-deal-button-stack {
+      display: grid;
+      gap: 5px;
+      justify-items: center;
+    }
+
+    .hedge-deal-auto-split {
+      position: relative;
+      display: flex;
+      width: calc(100% - 10px);
+      max-width: 220px;
+    }
+
+    .hedge-deal-auto-split .hedge-deal-button {
+      width: auto;
+      max-width: none;
+      flex: 1 1 auto;
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    .hedge-deal-quick-menu-toggle {
+      display: inline-flex;
+      width: 32px;
+      min-width: 32px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #c7a13f;
+      border-left: 0;
+      border-radius: 0 4px 4px 0;
+      background: #fff0bd;
+      color: #5e4610;
+    }
+
+    .hedge-deal-quick-menu-toggle:hover,
+    .hedge-deal-quick-menu-toggle:focus-visible {
+      border-color: #ae8420;
+      background: #ffe39a;
+      color: #4d390c;
+    }
+
+    .hedge-deal-quick-menu {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      z-index: 30;
+      display: grid;
+      min-width: 245px;
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: 6px;
+      background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow);
+      color: var(--bs-body-color);
+      text-align: left;
+    }
+
+    .hedge-deal-quick-menu[hidden] {
+      display: none;
+    }
+
+    .hedge-deals-sell .hedge-deal-quick-menu {
+      left: 0;
+    }
+
+    .hedge-deals-buy .hedge-deal-quick-menu {
+      right: 0;
+    }
+
+    .hedge-deal-quick-menu-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      min-height: 36px;
+      align-items: center;
+      padding: 7px 10px;
+      border: 0;
+      border-bottom: 1px solid var(--bs-border-color);
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      font: inherit;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .hedge-deal-quick-menu-item:last-child {
+      border-bottom: 0;
+    }
+
+    .hedge-deal-quick-menu-item:hover,
+    .hedge-deal-quick-menu-item:focus-visible {
+      background: var(--bs-primary-bg-subtle);
+      color: var(--bs-primary-text-emphasis);
+      outline: 0;
+    }
+
+    .hedge-deal-quick-menu-label {
+      font-weight: 600;
+    }
+
+    .hedge-deal-quick-menu-amount {
+      color: var(--bs-secondary-color);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hedge-deal-quick-menu-state {
+      min-width: 245px;
+      padding: 10px 12px;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      line-height: 16px;
+      text-align: left;
     }
 
     .hedge-deals-sell {
@@ -4881,11 +4995,19 @@
     }
 
     .generation-dialog-subtitle {
+      display: flex;
+      align-items: center;
+      gap: 5px;
       margin-top: 3px;
-      color: var(--bs-secondary-color, #6c757d);
+      color: var(--bs-warning-text-emphasis, #664d03);
       font-size: 12px;
-      font-weight: 400;
+      font-weight: 500;
       line-height: 1.35;
+    }
+
+    .generation-dialog-subtitle .button-icon {
+      flex: 0 0 auto;
+      font-size: 15px;
     }
 
     .generation-dialog .dialog-close.btn-close {
@@ -4917,65 +5039,124 @@
     }
 
     .generation-cycle-settings {
-      display: grid;
-      grid-template-columns: minmax(210px, 1fr) repeat(4, minmax(110px, 0.55fr)) auto;
-      align-items: end;
+      display: inline-grid;
+      grid-template-columns: repeat(2, max-content) max-content;
+      align-items: center;
+      width: fit-content;
+      max-width: 100%;
       gap: 10px;
-      margin-bottom: 12px;
-      padding: 12px;
+      margin-bottom: 10px;
+      padding: 8px 10px;
       border: 1px solid var(--bs-border-color, #dee2e6);
       border-radius: var(--workbench-radius, 0.25rem);
       background: var(--bs-tertiary-bg, #f8f9fa);
     }
 
-    .generation-cycle-settings-copy {
-      align-self: center;
-      min-width: 0;
-    }
-
-    .generation-cycle-settings-title {
-      margin: 0 0 2px;
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .generation-cycle-settings-help {
-      margin: 0;
-      color: var(--bs-secondary-color, #6c757d);
-      font-size: 11px;
-      line-height: 1.35;
-    }
-
-    .generation-cycle-settings-field {
+    .generation-cycle-settings-range {
       display: grid;
-      gap: 4px;
+      grid-template-columns: max-content 190px;
+      align-items: center;
+      gap: 8px;
       min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
     }
 
-    .generation-cycle-settings-field label {
+    .generation-cycle-settings-range + .generation-cycle-settings-range {
+      margin-left: 4px;
+      padding-left: 14px;
+      border-left: 1px solid var(--bs-border-color, #dee2e6);
+    }
+
+    .generation-cycle-settings-range-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       color: var(--bs-secondary-color, #6c757d);
       font-size: 10px;
       font-weight: 600;
       line-height: 1.2;
       text-transform: uppercase;
+      white-space: nowrap;
     }
 
-    .generation-cycle-settings-field .form-control {
+    .generation-cycle-settings-range-label .button-icon {
+      font-size: 17px;
+      font-weight: 400;
+    }
+
+    .generation-cycle-settings-range-control {
+      display: grid;
+      grid-template-columns: minmax(64px, 1fr) auto minmax(64px, 1fr) auto;
+      align-items: center;
+      width: 190px;
+      min-height: 30px;
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color, #dee2e6);
+      border-radius: var(--workbench-radius, 0.25rem);
+      background: var(--bs-body-bg, #ffffff);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .generation-cycle-settings-range-control:focus-within {
+      border-color: #86b7fe;
+      box-shadow: 0 0 0 0.2rem rgb(13 110 253 / 15%);
+    }
+
+    .generation-cycle-settings-range-control .form-control {
       min-width: 0;
+      height: 28px;
+      padding-inline: 8px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
       text-align: right;
+    }
+
+    .generation-cycle-settings-range-separator {
+      color: var(--bs-secondary-color, #6c757d);
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .generation-cycle-settings-range-unit {
+      align-self: stretch;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 8px;
+      border-left: 1px solid var(--bs-border-color, #dee2e6);
+      background: var(--bs-tertiary-bg, #f8f9fa);
+      color: var(--bs-secondary-color, #6c757d);
+      font-size: 11px;
+      white-space: nowrap;
     }
 
     .generation-cycle-settings-save {
       min-width: 68px;
     }
 
-    @media (max-width: 1100px) {
+    @media (max-width: 760px) {
       .generation-cycle-settings {
-        grid-template-columns: repeat(4, minmax(110px, 1fr)) auto;
+        grid-template-columns: 1fr;
       }
 
-      .generation-cycle-settings-copy {
-        grid-column: 1 / -1;
+      .generation-cycle-settings-range {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+
+      .generation-cycle-settings-range + .generation-cycle-settings-range {
+        margin-left: 0;
+        padding-top: 8px;
+        padding-left: 0;
+        border-top: 1px solid var(--bs-border-color, #dee2e6);
+        border-left: 0;
+      }
+
+      .generation-cycle-settings-save {
+        justify-self: end;
       }
     }
 
@@ -5004,6 +5185,8 @@
     }
 
     .generation-settings-table-wrap {
+      width: fit-content;
+      max-width: 100%;
       max-height: min(58vh, 560px);
       overflow: auto;
       border: var(--data-grid-line-width) solid var(--data-grid-line-color);
@@ -5039,6 +5222,7 @@
     }
 
     .generation-settings-table tr > :last-child {
+      padding-inline: 4px;
       border-right: 0;
     }
 
@@ -6329,6 +6513,7 @@
 
     .client-deal-client-picker-clear:hover,
     .client-deal-client-picker-clear:focus-visible {
+      border-color: var(--bs-border-color);
       background: var(--bs-secondary-bg);
       color: var(--bs-body-color);
     }
@@ -6434,8 +6619,23 @@
       box-shadow: 0 0 0 3px rgba(var(--bs-danger-rgb), 0.12);
     }
 
-    .client-deal-context-picker-label {
+    .client-deal-create-dialog .client-deal-context-picker-label {
       margin-bottom: 0;
+    }
+
+    .pricing-rule-availability-note {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--bs-warning-text-emphasis);
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .pricing-rule-availability-note .button-icon {
+      flex: 0 0 auto;
+      font-size: 14px;
     }
 
     .client-deal-pricing-rule-select-value {
@@ -7636,6 +7836,136 @@
       font-weight: 500;
     }
 
+    #batchDetailsPage .batch-neutrality {
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #batchDetailsPage .batch-neutrality-title {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    #batchDetailsPage .batch-neutrality-equation {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr) auto minmax(200px, 1fr);
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    #batchDetailsPage .batch-neutrality-node {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      min-width: 0;
+      padding: 12px;
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #batchDetailsPage .batch-neutrality-node-heading {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    #batchDetailsPage .batch-neutrality-node-heading .button-icon {
+      flex: 0 0 auto;
+      color: var(--bs-secondary-color);
+      font-size: 18px;
+    }
+
+    #batchDetailsPage .batch-neutrality-metrics {
+      display: grid;
+      gap: 4px;
+      margin: 0;
+    }
+
+    #batchDetailsPage .batch-neutrality-metric {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+      font-size: 12px;
+    }
+
+    #batchDetailsPage .batch-neutrality-metric dt {
+      color: var(--bs-secondary-color);
+      font-weight: 400;
+    }
+
+    #batchDetailsPage .batch-neutrality-metric dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    #batchDetailsPage .batch-neutrality-operator {
+      display: grid;
+      place-items: center;
+      color: var(--bs-secondary-color);
+      font-size: 22px;
+      font-weight: 500;
+    }
+
+    #batchDetailsPage .batch-neutrality-result {
+      border: 1px solid var(--bs-success-border-subtle);
+      background: var(--bs-success-bg-subtle);
+      color: var(--bs-success-text-emphasis);
+    }
+
+    #batchDetailsPage .batch-neutrality-result.is-invalid {
+      border-color: var(--bs-danger-border-subtle);
+      background: var(--bs-danger-bg-subtle);
+      color: var(--bs-danger-text-emphasis);
+    }
+
+    #batchDetailsPage .batch-neutrality-result-list {
+      display: grid;
+      gap: 5px;
+    }
+
+    #batchDetailsPage .batch-neutrality-result-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    #batchDetailsPage .batch-neutrality-result-line .button-icon {
+      font-size: 16px;
+    }
+
+    #batchDetailsPage .batch-position-carry {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--bs-border-color);
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+    }
+
+    #batchDetailsPage .batch-position-carry strong {
+      color: var(--bs-body-color);
+      font-weight: 600;
+    }
+
+    #batchDetailsPage .batch-position-carry .button-icon {
+      font-size: 18px;
+    }
+
     #batchDetailsPage .batch-details-section {
       min-width: 0;
     }
@@ -7691,6 +8021,16 @@
     #batchDetailsPage .batch-structure-trade-label {
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    @media (max-width: 980px) {
+      #batchDetailsPage .batch-neutrality-equation {
+        grid-template-columns: 1fr;
+      }
+
+      #batchDetailsPage .batch-neutrality-operator {
+        min-height: 18px;
+      }
     }
 
     .batch-rollback-dialog {
@@ -9353,10 +9693,92 @@
     }
 
     #databasePage.unified-bootstrap-workspace.workbench-page .database-table-list {
+      display: block;
       overflow: hidden;
+      padding: 0;
       border: 1px solid var(--bs-border-color);
       border-radius: var(--workbench-radius);
       background: var(--bs-body-bg);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-search {
+      padding: 8px 0;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-search .profile-search-control {
+      grid-template-columns: 22px minmax(0, 1fr);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section + .database-table-section {
+      border-top: 1px solid var(--bs-border-color);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-summary {
+      display: grid;
+      min-height: 46px;
+      grid-template-columns: 20px minmax(0, 1fr) 18px;
+      grid-template-rows: auto auto;
+      align-items: center;
+      column-gap: 7px;
+      padding: 7px 9px;
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-emphasis-color);
+      cursor: pointer;
+      list-style: none;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-summary:hover {
+      background: var(--workbench-grid-hover-bg);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-summary:focus-visible {
+      position: relative;
+      z-index: 1;
+      outline: 2px solid var(--bs-primary);
+      outline-offset: -2px;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-icon {
+      grid-row: 1 / 3;
+      color: var(--bs-secondary-color);
+      font-size: 17px;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-name {
+      min-width: 0;
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 16px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-meta {
+      color: var(--bs-secondary-color);
+      font-size: 10px;
+      line-height: 14px;
+      white-space: nowrap;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-chevron {
+      grid-column: 3;
+      grid-row: 1 / 3;
+      color: var(--bs-secondary-color);
+      font-size: 18px;
+      transition: transform 120ms ease;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section[open] .database-table-section-chevron {
+      transform: rotate(90deg);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-tables {
+      display: grid;
     }
 
     #databasePage.unified-bootstrap-workspace.workbench-page .database-table-button {
@@ -9372,8 +9794,15 @@
       font-weight: 400;
     }
 
-    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-button:last-child {
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-tables .database-table-button:last-child {
       border-bottom: 0;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     #databasePage.unified-bootstrap-workspace.workbench-page .database-table-button:hover {
@@ -9384,6 +9813,13 @@
       background: var(--bs-primary-bg-subtle);
       color: var(--bs-primary-text-emphasis);
       font-weight: 500;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-empty-state {
+      padding: 14px 10px;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+      line-height: 1.4;
     }
 
     #databasePage.unified-bootstrap-workspace.workbench-page .database-sql {
@@ -10120,7 +10556,8 @@
     #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tfoot {
       position: sticky;
       bottom: 0;
-      z-index: 3;
+      z-index: 10;
+      overflow: visible;
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(th, td) {
@@ -10479,7 +10916,10 @@
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .hedge-deals-toolbar-row td {
-      height: 46px;
+      position: relative;
+      z-index: 1;
+      height: auto;
+      overflow: visible;
       padding: 7px 6px;
       border-bottom: 0;
       background: var(--bs-body-bg);
@@ -10525,6 +10965,36 @@
 
     #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .hedge-deal-button:focus-visible {
       border-color: var(--market-trade-border-active);
+      box-shadow: 0 0 0 3px var(--market-trade-focus-ring);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .hedge-deal-auto-split {
+      z-index: 2;
+      width: calc(100% - 12px);
+      max-width: 210px;
+      overflow: visible;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .hedge-deal-auto-split .hedge-deal-button {
+      width: auto;
+      max-width: none;
+      flex: 1 1 auto;
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .hedge-deal-quick-menu-toggle {
+      height: 30px;
+      border-color: var(--market-trade-border);
+      border-radius: 0 var(--workbench-radius) var(--workbench-radius) 0;
+      background: var(--bs-body-bg);
+      color: var(--market-trade-text);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .hedge-deal-quick-menu-toggle:hover,
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .hedge-deal-quick-menu-toggle:focus-visible {
+      border-color: var(--market-trade-border-active);
+      background: var(--market-trade-bg);
       box-shadow: 0 0 0 3px var(--market-trade-focus-ring);
     }
 
@@ -10817,7 +11287,7 @@
         <span>FX Position</span>
       </a>
       <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceBatchingToggle" aria-haspopup="menu" aria-controls="workspaceBatchingMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceBatchingMenu" data-workspace-routes="batching-history batch-details">
-        <span class="button-icon workspace-nav-icon" aria-hidden="true">inventory_2</span>
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
         <span>Batching</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
@@ -10835,7 +11305,7 @@
         <span>Trading Parties</span>
       </a>
       <a class="workspace-nav-link" href="#users" data-workspace-route="users">
-        <span class="button-icon workspace-nav-icon" aria-hidden="true">person</span>
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">group</span>
         <span>Users</span>
       </a>
       <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspacePricingToggle" aria-haspopup="menu" aria-controls="workspacePricingMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspacePricingMenu" data-workspace-routes="reference pricing pricing-rules">
@@ -10903,7 +11373,7 @@
           </span>
         </a>
         <a class="home-link" href="#users">
-          <span class="home-icon" aria-hidden="true">person</span>
+          <span class="home-icon" aria-hidden="true">group</span>
           <span>
             <span class="home-link-title">Users</span>
           </span>
@@ -10937,7 +11407,7 @@
       </section>
       <section class="home-navigation-group" aria-labelledby="homeBatchingTitle">
         <div class="home-navigation-group-header">
-          <span class="button-icon home-navigation-group-icon" aria-hidden="true">inventory_2</span>
+          <span class="button-icon home-navigation-group-icon" aria-hidden="true">stacks</span>
           <h2 class="home-navigation-group-title" id="homeBatchingTitle">Batching</h2>
         </div>
         <nav class="home-links" aria-label="Batching navigation">
@@ -11090,6 +11560,19 @@
       <aside class="profile-panel">
         <div class="profile-panel-head">
           <h2 class="database-section-title">Tables</h2>
+        </div>
+        <div class="database-table-search">
+          <label class="sr-only" for="databaseTableSearch">Find a database table</label>
+          <div class="profile-search-control">
+            <span class="button-icon" aria-hidden="true">search</span>
+            <input
+              type="search"
+              id="databaseTableSearch"
+              placeholder="Find table..."
+              autocomplete="off"
+              spellcheck="false"
+            >
+          </div>
         </div>
         <div class="database-table-list" id="databaseTableList"></div>
       </aside>
@@ -11323,7 +11806,7 @@
         <div>
           <span class="button-icon batch-details-prompt-icon" aria-hidden="true">schema</span>
           <p class="batch-details-prompt-title" id="batchDetailsPromptTitle">Loading FX Batch</p>
-          <p class="batch-details-prompt-copy" id="batchDetailsPromptCopy">Reading the exact members and outputs...</p>
+          <p class="batch-details-prompt-copy" id="batchDetailsPromptCopy">Reading FX Trade Members and batch outputs...</p>
         </div>
       </section>
 
@@ -11365,26 +11848,101 @@
           </dl>
         </div>
 
+        <section class="batch-neutrality" aria-labelledby="batchNeutralityTitle">
+          <h2 class="batch-neutrality-title" id="batchNeutralityTitle">Batch Neutrality</h2>
+          <div class="batch-neutrality-equation">
+            <article class="batch-neutrality-node">
+              <div class="batch-neutrality-node-heading">
+                <span class="button-icon" aria-hidden="true">swap_horiz</span>
+                <span>FX Trade Members</span>
+              </div>
+              <dl class="batch-neutrality-metrics">
+                <div class="batch-neutrality-metric">
+                  <dt>Base Ccy net</dt>
+                  <dd id="batchNeutralityMembersBase">—</dd>
+                </div>
+                <div class="batch-neutrality-metric">
+                  <dt>Quote Ccy net</dt>
+                  <dd id="batchNeutralityMembersQuote">—</dd>
+                </div>
+              </dl>
+            </article>
+            <div class="batch-neutrality-operator" aria-hidden="true">+</div>
+            <article class="batch-neutrality-node">
+              <div class="batch-neutrality-node-heading">
+                <span class="button-icon" aria-hidden="true">account_balance_wallet</span>
+                <span>Cash Output</span>
+              </div>
+              <dl class="batch-neutrality-metrics">
+                <div class="batch-neutrality-metric">
+                  <dt>Base Ccy</dt>
+                  <dd>—</dd>
+                </div>
+                <div class="batch-neutrality-metric">
+                  <dt>Quote Ccy leg</dt>
+                  <dd id="batchNeutralityCashQuote">—</dd>
+                </div>
+              </dl>
+            </article>
+            <div class="batch-neutrality-operator" aria-hidden="true">=</div>
+            <article class="batch-neutrality-node batch-neutrality-result" id="batchNeutralityResult">
+              <div class="batch-neutrality-node-heading">
+                <span class="button-icon" aria-hidden="true">verified</span>
+                <span>Neutral Batch</span>
+              </div>
+              <div class="batch-neutrality-result-list">
+                <div class="batch-neutrality-result-line">
+                  <span class="button-icon" aria-hidden="true">check_circle</span>
+                  <span id="batchNeutralityPositionStatus">FX Position Neutral</span>
+                </div>
+                <div class="batch-neutrality-result-line">
+                  <span class="button-icon" aria-hidden="true">check_circle</span>
+                  <span id="batchNeutralityCashStatus">Cash Balance Neutral</span>
+                </div>
+              </div>
+            </article>
+          </div>
+          <div class="batch-position-carry">
+            <span class="button-icon" aria-hidden="true">output</span>
+            <strong>Net Position Output</strong>
+            <span aria-hidden="true">·</span>
+            <span id="batchNeutralityPositionOutput">Carried forward outside the batch</span>
+          </div>
+        </section>
+
         <section class="batch-details-section" aria-labelledby="batchDetailsMembersTitle">
           <div class="batch-details-section-header">
-            <h2 class="batch-details-section-title" id="batchDetailsMembersTitle">Members</h2>
+            <h2 class="batch-details-section-title" id="batchDetailsMembersTitle">FX Trade Members</h2>
             <span class="client-deals-count" id="batchDetailsMembersCount">0 trades</span>
           </div>
           <div class="client-deals-grid-shell">
-            <div class="batch-details-grid" id="batchDetailsMembersGrid" aria-label="FX Batch members table"></div>
+            <div class="batch-details-grid" id="batchDetailsMembersGrid" aria-label="FX Trade Members table"></div>
+          </div>
+        </section>
+
+        <section class="batch-details-section" aria-labelledby="batchDetailsCashOutputTitle">
+          <div class="batch-details-section-header">
+            <h2 class="batch-details-section-title" id="batchDetailsCashOutputTitle">Cash Output</h2>
+            <span class="client-deals-count" id="batchDetailsCashOutputCount">0 outputs</span>
+          </div>
+          <div class="batch-details-output-empty" id="batchDetailsCashOutputEmpty" hidden>
+            This batch has no Cash Output.
+          </div>
+          <div class="client-deals-grid-shell" id="batchDetailsCashOutputGridShell">
+            <div class="batch-details-grid" id="batchDetailsCashOutputGrid" aria-label="FX Batch Cash Output table"></div>
           </div>
         </section>
 
         <section class="batch-details-section" aria-labelledby="batchDetailsOutputsTitle">
           <div class="batch-details-section-header">
-            <h2 class="batch-details-section-title" id="batchDetailsOutputsTitle">Position Output</h2>
+            <h2 class="batch-details-section-title" id="batchDetailsOutputsTitle">Net Position Output</h2>
             <span class="client-deals-count" id="batchDetailsOutputsCount">0 trades</span>
           </div>
           <div class="batch-details-output-empty" id="batchDetailsOutputsEmpty" hidden>
-            This batch did not create any outputs.
+            This batch has no Net Position Output because its source position was already flat.
           </div>
           <div class="client-deals-grid-shell" id="batchDetailsOutputsGridShell">
-            <div class="batch-details-grid" id="batchDetailsOutputsGrid" aria-label="FX Batch outputs table"></div>
+            <div class="batch-details-grid" id="batchDetailsOutputsGrid" aria-label="FX Batch Net Position Output table"></div>
           </div>
         </section>
       </section>
@@ -12409,7 +12967,7 @@
   <dialog class="client-deal-create-dialog hedge-deal-create-dialog" id="addHedgeDealDialog">
     <form class="modal-content" id="addHedgeDealForm" autocomplete="off">
       <div class="modal-header">
-        <h2 class="modal-title">Add Hedge Deal</h2>
+        <h2 class="modal-title" id="addHedgeDealDialogTitle">Hedge Deal - Manual</h2>
         <button type="button" class="btn-close" id="addHedgeDealDialogClose" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -12741,31 +13299,42 @@
       <div class="dialog-head modal-header">
         <div class="generation-dialog-title-block">
           <h2 class="dialog-title modal-title">Deal Generating Settings</h2>
-          <div class="generation-dialog-subtitle">Generation settings for each AUTO_PRICED CLIENT Pricing Rule</div>
+          <div class="generation-dialog-subtitle">
+            <span class="button-icon" aria-hidden="true">warning</span>
+            <span>Only Pricing Rules linked to AUTO_PRICED Execution Systems are available.</span>
+          </div>
         </div>
         <button type="button" class="dialog-close btn-close" id="generationDialogClose" aria-label="Close"></button>
       </div>
       <div class="deal-form-body modal-body">
         <form class="generation-cycle-settings" id="clientDealGenerationProcessSettingsForm">
-          <div class="generation-cycle-settings-copy">
-            <h3 class="generation-cycle-settings-title">Generation Cycle</h3>
-            <p class="generation-cycle-settings-help">Each cycle uses a random delay and creates a random number of deals.</p>
+          <div class="generation-cycle-settings-range" role="group" aria-labelledby="generationCycleDelayLabel">
+            <div class="generation-cycle-settings-range-label" id="generationCycleDelayLabel">
+              <span class="button-icon" aria-hidden="true">schedule</span>
+              <span>Delay between generation cycles</span>
+            </div>
+            <div class="generation-cycle-settings-range-control">
+              <label class="visually-hidden" for="generationMinIntervalSeconds">Minimum delay between cycles in seconds</label>
+              <input class="form-control form-control-sm" type="number" id="generationMinIntervalSeconds" name="minIntervalSeconds" min="1" max="3600" step="1" required>
+              <span class="generation-cycle-settings-range-separator" aria-hidden="true">–</span>
+              <label class="visually-hidden" for="generationMaxIntervalSeconds">Maximum delay between cycles in seconds</label>
+              <input class="form-control form-control-sm" type="number" id="generationMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" required>
+              <span class="generation-cycle-settings-range-unit">sec</span>
+            </div>
           </div>
-          <div class="generation-cycle-settings-field">
-            <label for="generationMinIntervalSeconds">Interval From, sec</label>
-            <input class="form-control form-control-sm" type="number" id="generationMinIntervalSeconds" name="minIntervalSeconds" min="1" max="3600" step="1" required>
-          </div>
-          <div class="generation-cycle-settings-field">
-            <label for="generationMaxIntervalSeconds">Interval To, sec</label>
-            <input class="form-control form-control-sm" type="number" id="generationMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" required>
-          </div>
-          <div class="generation-cycle-settings-field">
-            <label for="generationMinDealsPerCycle">Deals From</label>
-            <input class="form-control form-control-sm" type="number" id="generationMinDealsPerCycle" name="minDealsPerCycle" min="1" max="100" step="1" required>
-          </div>
-          <div class="generation-cycle-settings-field">
-            <label for="generationMaxDealsPerCycle">Deals To</label>
-            <input class="form-control form-control-sm" type="number" id="generationMaxDealsPerCycle" name="maxDealsPerCycle" min="1" max="100" step="1" required>
+          <div class="generation-cycle-settings-range" role="group" aria-labelledby="generationCycleDealsLabel">
+            <div class="generation-cycle-settings-range-label" id="generationCycleDealsLabel">
+              <span class="button-icon" aria-hidden="true">format_list_numbered</span>
+              <span>Deals per generation cycle</span>
+            </div>
+            <div class="generation-cycle-settings-range-control">
+              <label class="visually-hidden" for="generationMinDealsPerCycle">Minimum deals per cycle</label>
+              <input class="form-control form-control-sm" type="number" id="generationMinDealsPerCycle" name="minDealsPerCycle" min="1" max="100" step="1" required>
+              <span class="generation-cycle-settings-range-separator" aria-hidden="true">–</span>
+              <label class="visually-hidden" for="generationMaxDealsPerCycle">Maximum deals per cycle</label>
+              <input class="form-control form-control-sm" type="number" id="generationMaxDealsPerCycle" name="maxDealsPerCycle" min="1" max="100" step="1" required>
+              <span class="generation-cycle-settings-range-unit">deals</span>
+            </div>
           </div>
           <button class="btn btn-sm btn-outline-primary generation-cycle-settings-save" type="submit" id="clientDealGenerationProcessSettingsSave" disabled>Save</button>
         </form>
@@ -12784,7 +13353,7 @@
                 <th scope="col" class="text-end" data-column-kind="number">BUY %</th>
                 <th scope="col" class="text-end" data-column-kind="number">SELL %</th>
                 <th scope="col" class="text-center" data-column-kind="boolean">Active</th>
-                <th scope="col" aria-label="Actions" data-column-kind="actions"></th>
+                <th scope="col" class="text-center" data-column-kind="compactActions">Actions</th>
               </tr>
             </thead>
             <tbody id="clientDealGenerationSettingsRows"></tbody>
@@ -12920,6 +13489,7 @@
     const MANUAL_CLIENT_DEAL_ENTRY_CHANNEL_ID = "MANUAL_CLIENT_DEAL_ENTRY";
     const NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID = "NOT_APPLICABLE";
     const PRICING_TYPES = ["AUTO_PRICED", "DEALER_PRICED", "DEALER_APPROVED"];
+    const HEDGE_DEAL_PRICING_MODES = ["AUTO_PRICED", "DEALER_PRICED"];
     const PRICING_TYPE_PRESENTATION = Object.freeze({
       AUTO_PRICED: Object.freeze({
         label: "Auto Priced",
@@ -12980,6 +13550,7 @@
     let clientPricingRules = loadClientPricingRules();
     let clientDealEligiblePricingRules = loadClientDealEligiblePricingRules();
     let hedgeDealEligiblePricingRules = loadHedgeDealEligiblePricingRules();
+    let hedgeQuickModeSettings = loadHedgeQuickModeSettings();
     let clientFxDeals = loadClientFxDeals();
     let hedgeFxDeals = loadHedgeFxDeals();
     let fxBatchHistory = loadFxBatches();
@@ -13059,6 +13630,12 @@
         min: smartActionsColumnWidth,
         max: smartActionsColumnWidth,
         pad: 12,
+        ellipsize: false
+      },
+      compactActions: {
+        min: 72,
+        max: 72,
+        pad: 8,
         ellipsize: false
       },
       amount: { min: 118, max: 220, pad: 18, ellipsize: false },
@@ -13667,8 +14244,25 @@
     const batchDetailsTenor = document.getElementById("batchDetailsTenor");
     const batchDetailsBaseValueDate = document.getElementById("batchDetailsBaseValueDate");
     const batchDetailsQuoteValueDate = document.getElementById("batchDetailsQuoteValueDate");
+    const batchNeutralityMembersBase = document.getElementById("batchNeutralityMembersBase");
+    const batchNeutralityMembersQuote = document.getElementById("batchNeutralityMembersQuote");
+    const batchNeutralityCashQuote = document.getElementById("batchNeutralityCashQuote");
+    const batchNeutralityResult = document.getElementById("batchNeutralityResult");
+    const batchNeutralityPositionStatus =
+      document.getElementById("batchNeutralityPositionStatus");
+    const batchNeutralityCashStatus = document.getElementById("batchNeutralityCashStatus");
+    const batchNeutralityPositionOutput =
+      document.getElementById("batchNeutralityPositionOutput");
     const batchDetailsMembersCount = document.getElementById("batchDetailsMembersCount");
     const batchDetailsMembersGridEl = document.getElementById("batchDetailsMembersGrid");
+    const batchDetailsCashOutputCount =
+      document.getElementById("batchDetailsCashOutputCount");
+    const batchDetailsCashOutputEmpty =
+      document.getElementById("batchDetailsCashOutputEmpty");
+    const batchDetailsCashOutputGridShell =
+      document.getElementById("batchDetailsCashOutputGridShell");
+    const batchDetailsCashOutputGridEl =
+      document.getElementById("batchDetailsCashOutputGrid");
     const batchDetailsOutputsCount = document.getElementById("batchDetailsOutputsCount");
     const batchDetailsOutputsEmpty = document.getElementById("batchDetailsOutputsEmpty");
     const batchDetailsOutputsGridShell =
@@ -13809,6 +14403,7 @@
     const addClientDealAdditionalDetails = document.getElementById("addClientDealAdditionalDetails");
     const addHedgeDealDialog = document.getElementById("addHedgeDealDialog");
     const addHedgeDealForm = document.getElementById("addHedgeDealForm");
+    const addHedgeDealDialogTitle = document.getElementById("addHedgeDealDialogTitle");
     const addHedgeDealDialogClose = document.getElementById("addHedgeDealDialogClose");
     const addHedgeDealCancelButton = document.getElementById("addHedgeDealCancelButton");
     const addHedgeDealSubmitButton = document.getElementById("addHedgeDealSubmitButton");
@@ -13858,6 +14453,7 @@
     const marketSimulationCancelButton = document.getElementById("marketSimulationCancelButton");
     const databaseStatusEl = document.getElementById("databaseStatus");
     const databaseRefreshButton = document.getElementById("databaseRefreshButton");
+    const databaseTableSearchEl = document.getElementById("databaseTableSearch");
     const databaseTableListEl = document.getElementById("databaseTableList");
     const databaseTableTitleEl = document.getElementById("databaseTableTitle");
     const databaseSchemaRowsEl = document.getElementById("databaseSchemaRows");
@@ -13865,6 +14461,99 @@
     const databaseDataHeadEl = document.getElementById("databaseDataHead");
     const databaseDataRowsEl = document.getElementById("databaseDataRows");
     const databaseCreateSqlEl = document.getElementById("databaseCreateSql");
+    const DATABASE_TABLE_SECTIONS = Object.freeze([
+      {
+        id: "fx-trading",
+        label: "FX Trades",
+        icon: "currency_exchange",
+        tables: [
+          "client_fx_deals",
+          "fx_hedge_deals",
+          "fx_trade_exposure"
+        ]
+      },
+      {
+        id: "hedging-settings",
+        label: "Hedging Settings",
+        icon: "shield",
+        tables: [
+          "fx_hedge_quick_mode_settings"
+        ]
+      },
+      {
+        id: "fx-batching",
+        label: "FX Batching",
+        icon: "stacks",
+        tables: [
+          "fx_batches",
+          "fx_batch_members",
+          "fx_batch_position_output",
+          "fx_batch_quote_cash_output"
+        ]
+      },
+      {
+        id: "pricing",
+        label: "Pricing",
+        icon: "price_change",
+        tables: [
+          "pricing_rules",
+          "accounting_systems",
+          "execution_contexts",
+          "execution_systems",
+          "servicing_locations"
+        ]
+      },
+      {
+        id: "market-pulse",
+        label: "Market Pulse",
+        icon: "monitoring",
+        tables: [
+          "ccy_options",
+          "ccy_pair_options"
+        ]
+      },
+      {
+        id: "parties-users",
+        label: "Trading Parties & Users",
+        icon: "group",
+        tables: [
+          "trading_parties",
+          "users"
+        ]
+      },
+      {
+        id: "demo-generation",
+        label: "Demo & Generation",
+        icon: "science",
+        tables: [
+          "client_deal_generation_process_settings",
+          "client_deal_generation_settings",
+          "market_quote_simulation_settings"
+        ]
+      },
+      {
+        id: "audit",
+        label: "Audit",
+        icon: "policy",
+        tables: [
+          "fx_trade_market_snapshot"
+        ]
+      },
+      {
+        id: "other",
+        label: "Other",
+        icon: "more_horiz",
+        tables: []
+      }
+    ]);
+    const DATABASE_TABLE_SECTION_BY_ID = new Map(
+      DATABASE_TABLE_SECTIONS.map(section => [section.id, section])
+    );
+    const DATABASE_TABLE_SECTION_ID_BY_TABLE = new Map(
+      DATABASE_TABLE_SECTIONS.flatMap(section =>
+        section.tables.map(tableName => [tableName, section.id])
+      )
+    );
     const selectedDealIds = new Set();
     let clientFxDealsGrid = null;
     let clientFxDealsGridReady = false;
@@ -13873,6 +14562,7 @@
     let batchingHistoryGrid = null;
     let batchingHistoryGridReady = false;
     let batchDetailsMembersGrid = null;
+    let batchDetailsCashOutputGrid = null;
     let batchDetailsOutputsGrid = null;
     let batchDetailsRequestSequence = 0;
     let rollbackBatchId = null;
@@ -13898,10 +14588,18 @@
     let marketStreamEventSource = null;
     let selectedDatabaseTable = "";
     let databaseTables = [];
+    let databaseTableSearchQuery = "";
+    const expandedDatabaseTableSections = new Set();
     let addClientDealPricingRulesExpanded = false;
     let addClientDealManualTransferEdited = false;
     let addHedgeDealCounterpartyPickerExpanded = false;
     let addHedgeDealPricingRulesExpanded = false;
+    let addHedgeDealPricingMode = "DEALER_PRICED";
+    let addHedgeDealQuickModeSelection = null;
+    let hedgeQuickModeMenuSide = "";
+    let hedgeQuickModeSettingsLoading = false;
+    let hedgeQuickModeSettingsError = "";
+    let hedgeQuickModeSettingsRequestSequence = 0;
     let addClientDealSubmitWithControl = false;
     let clientDealDuplicateCheckGrid = null;
     let pendingClientDealCreation = null;
@@ -15564,6 +16262,105 @@
       return normalizedClientPricingRules(source, []);
     }
 
+    function normalizedHedgeQuickModePreset(value, baseCcyFractionDigits) {
+      const source = value && typeof value === "object" ? value : {};
+      const presetCode = String(source.presetCode || "").trim().toUpperCase();
+      const label = String(source.label || "").trim();
+      const baseCcyAmountMinor = String(source.baseCcyAmountMinor ?? "").trim();
+      let baseCcyAmount = String(source.baseCcyAmount ?? "").trim();
+
+      if (!baseCcyAmount && /^\d+$/.test(baseCcyAmountMinor)) {
+        baseCcyAmount = minorToMajorDecimal(baseCcyAmountMinor, baseCcyFractionDigits);
+      }
+
+      if (!presetCode
+        || !label
+        || !/^\d+$/.test(baseCcyAmountMinor)
+        || positiveDecimalInputText(baseCcyAmount) === null) {
+        return null;
+      }
+
+      return {
+        presetCode,
+        label,
+        baseCcyAmountMinor,
+        baseCcyAmount
+      };
+    }
+
+    function normalizedHedgeQuickModeSetting(value) {
+      const source = value && typeof value === "object" ? value : {};
+      const ccyPairCode = String(source.ccyPairCode || "").trim().toUpperCase();
+      const currencyPair = normalizedPricingRuleCurrencyPair(
+        source.currencyPair || ccyPairCode.replace("_", "/")
+      );
+      const baseCcyCode = String(
+        source.baseCcyCode || currenciesFromPair(currencyPair).base
+      ).trim().toUpperCase();
+      const baseCcyFractionDigits = Number(source.baseCcyFractionDigits);
+      const pricingRuleId = Number(source.pricingRuleId);
+      const partyId = Number(source.partyId);
+      const defaultTenor = String(source.defaultTenor || "TOD").trim().toUpperCase();
+      const presets = (Array.isArray(source.presets) ? source.presets : [])
+        .map(preset => normalizedHedgeQuickModePreset(preset, baseCcyFractionDigits))
+        .filter(Boolean);
+
+      if (!/^[A-Z]{3}_[A-Z]{3}$/.test(ccyPairCode)
+        || !/^[A-Z]{3}\/[A-Z]{3}$/.test(currencyPair)
+        || !/^[A-Z]{3}$/.test(baseCcyCode)
+        || !Number.isInteger(baseCcyFractionDigits)
+        || baseCcyFractionDigits < 0
+        || baseCcyFractionDigits > 10
+        || !Number.isInteger(pricingRuleId)
+        || pricingRuleId <= 0
+        || !Number.isInteger(partyId)
+        || partyId <= 0
+        || !["TOD", "TOM", "SPOT"].includes(defaultTenor)) {
+        return null;
+      }
+
+      return {
+        ccyPairCode,
+        currencyPair,
+        baseCcyCode,
+        baseCcyFractionDigits,
+        pricingRuleId,
+        partyId,
+        partyName: String(source.partyName || "").trim(),
+        executionContextId: String(source.executionContextId || "").trim(),
+        defaultTenor,
+        active: source.active === true || Number(source.active) === 1,
+        available: source.available === true || Number(source.available) === 1,
+        presets
+      };
+    }
+
+    function normalizedHedgeQuickModeSettings(source) {
+      return (Array.isArray(source) ? source : [])
+        .map(normalizedHedgeQuickModeSetting)
+        .filter(Boolean)
+        .sort((left, right) => left.ccyPairCode.localeCompare(right.ccyPairCode));
+    }
+
+    function loadHedgeQuickModeSettings() {
+      return normalizedHedgeQuickModeSettings(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.hedgeQuickModeSettings : []
+      );
+    }
+
+    async function reloadHedgeQuickModeSettingsFromApi() {
+      if (!DEMO_API_ENABLED) {
+        hedgeQuickModeSettings = [];
+        return hedgeQuickModeSettings;
+      }
+
+      const response = await demoApiRequest("/api/v1/hedge-quick-mode-settings");
+      hedgeQuickModeSettings = normalizedHedgeQuickModeSettings(
+        Array.isArray(response) ? response : response?.settings
+      );
+      return hedgeQuickModeSettings;
+    }
+
     function refreshClientDealEligiblePricingRules() {
       clientDealEligiblePricingRules = normalizedClientPricingRules(
         clientPricingRules.filter(isDealerPricedPricingRule),
@@ -15989,6 +16786,44 @@
       };
     }
 
+    function normalizedBatchCashOutput(value) {
+      const source = value && typeof value === "object" ? value : null;
+
+      if (!source) {
+        return null;
+      }
+
+      const batchId = Number(source.batchId);
+      const balanceContributionMinor = Number(source.balanceContributionMinor);
+      const fractionDigits = Number(source.fractionDigits);
+      const currencyCode = String(source.currencyCode || "").trim().toUpperCase();
+
+      if (
+        !Number.isInteger(batchId)
+        || batchId <= 0
+        || !Number.isSafeInteger(balanceContributionMinor)
+        || !Number.isInteger(fractionDigits)
+        || fractionDigits < 0
+        || fractionDigits > 10
+        || !/^[A-Z]{3}$/.test(currencyCode)
+      ) {
+        return null;
+      }
+
+      return {
+        batchContentKey: `CASH_OUTPUT:${batchId}`,
+        batchId,
+        outputType: String(
+          source.outputType || "BATCH_QUOTE_CASH_OUT"
+        ).trim().toUpperCase(),
+        currencyCode,
+        balanceContributionMinor,
+        fractionDigits,
+        valueDate: String(source.valueDate || "").trim(),
+        createdAt: String(source.createdAt || "").trim()
+      };
+    }
+
     function normalizedFxBatchDetails(value) {
       const source = value && typeof value === "object" ? value : {};
       const batch = normalizedFxBatch(source);
@@ -15998,13 +16833,11 @@
         : {};
       const members = (Array.isArray(source.members) ? source.members : [])
         .map(member => normalizedBatchDetailTrade(member, "memberRole"))
-        .filter(member =>
-          (Number.isInteger(member.tradeId) && member.tradeId > 0)
-          || member.tradeType === "BATCH_QUOTE_CASH_OUT"
-        );
+        .filter(member => Number.isInteger(member.tradeId) && member.tradeId > 0);
       const outputs = (Array.isArray(source.outputs) ? source.outputs : [])
         .map(output => normalizedBatchDetailTrade(output, "outputRole"))
         .filter(output => Number.isInteger(output.tradeId) && output.tradeId > 0);
+      const cashOutput = normalizedBatchCashOutput(source.cashOutput);
 
       return {
         ...batch,
@@ -16022,7 +16855,8 @@
           ).trim()
         },
         members,
-        outputs
+        outputs,
+        cashOutput
       };
     }
 
@@ -17208,12 +18042,17 @@
     }
 
     function clientDealGenerationSettingsSummary() {
-      const cycle = clientDealGenerationProcessSettings;
-      return `Cycle: ${cycle.minIntervalSeconds}–${cycle.maxIntervalSeconds} sec · `
-        + `${cycle.minDealsPerCycle}–${cycle.maxDealsPerCycle} deals. `
-        + `${clientDealGenerationSettings.length} AUTO_PRICED CLIENT Pricing Rule${
-          clientDealGenerationSettings.length === 1 ? "" : "s"
-        } configured.`;
+      const configuredPricingRuleIds = new Set(
+        clientDealGenerationSettings
+          .map(settings => Number(settings.pricingRuleId))
+          .filter(pricingRuleId => Number.isInteger(pricingRuleId) && pricingRuleId > 0)
+      );
+      const configuredPricingRuleCount = configuredPricingRuleIds.size;
+      const pricingRuleLabel = configuredPricingRuleCount === 1 ? "Pricing Rule" : "Pricing Rules";
+      const verb = configuredPricingRuleCount === 1 ? "is" : "are";
+
+      return `${configuredPricingRuleCount} ${pricingRuleLabel} linked to AUTO_PRICED `
+        + `${verb} configured for deal generation.`;
     }
 
     function renderClientDealGenerationSettings() {
@@ -21749,13 +22588,6 @@
       ).trim().toUpperCase();
 
       if (
-        formatterParams.emptyForQuoteCash === true
-        && currentRow.tradeType === "BATCH_QUOTE_CASH_OUT"
-      ) {
-        return "&mdash;";
-      }
-
-      if (
         !Number.isSafeInteger(contributionMinor)
         || !Number.isInteger(fractionDigits)
         || fractionDigits < 0
@@ -21778,13 +22610,11 @@
       field,
       fractionDigitsField,
       currencyField,
-      isMemberTable,
-      emptyForQuoteCash = false
+      isMemberTable
     }) {
       const formatterParams = {
         fractionDigitsField,
-        currencyField,
-        emptyForQuoteCash
+        currencyField
       };
 
       return tabulatorSizedColumn("positionAmount", {
@@ -21860,6 +22690,60 @@
       )}</span>`;
     }
 
+    function batchStructureSignedMinorLabel(
+      value,
+      fractionDigits,
+      currencyCode
+    ) {
+      const minorValue = Number(value);
+      const digits = Number(fractionDigits);
+      const code = String(currencyCode || "").trim().toUpperCase();
+
+      if (
+        !Number.isSafeInteger(minorValue)
+        || !Number.isInteger(digits)
+        || digits < 0
+        || digits > 10
+      ) {
+        return "—";
+      }
+
+      const sign = minorValue > 0 ? "+" : "";
+
+      return `${sign}${formattedMinorAmount(
+        minorValue.toString(),
+        digits
+      )}${code ? ` ${code}` : ""}`;
+    }
+
+    function batchStructureCashOutputColumns() {
+      return [
+        tabulatorSizedColumn("code", {
+          title: "Currency",
+          field: "currencyCode"
+        }),
+        tabulatorSizedColumn("positionAmount", {
+          title: "Cash Leg",
+          field: "balanceContributionMinor",
+          sorter: "number",
+          formatter: batchStructureLegFormatter,
+          formatterParams: {
+            fractionDigitsField: "fractionDigits",
+            currencyField: "currencyCode"
+          },
+          hozAlign: "right",
+          headerHozAlign: "right"
+        }),
+        tabulatorSizedColumn("valueDate", {
+          title: "Value Date",
+          field: "valueDate",
+          formatter: clientFxDealsDateFormatter,
+          hozAlign: "center",
+          headerHozAlign: "center"
+        })
+      ];
+    }
+
     function batchStructureTradeColumns(roleField) {
       const isMemberTable = roleField === "memberRole";
       const memberTextFilter = isMemberTable
@@ -21905,8 +22789,7 @@
           field: "baseBalanceContributionMinor",
           fractionDigitsField: "baseCcyFractionDigits",
           currencyField: "baseCcyCode",
-          isMemberTable,
-          emptyForQuoteCash: true
+          isMemberTable
         }),
         batchStructureLegColumn({
           title: "Quote Ccy Leg",
@@ -22017,6 +22900,73 @@
       batchDetailsPrompt.hidden = false;
     }
 
+    function renderBatchNeutrality(details) {
+      const members = Array.isArray(details.members) ? details.members : [];
+      const positionOutput = Array.isArray(details.outputs)
+        ? details.outputs[0] || null
+        : null;
+      const cashOutput = details.cashOutput || null;
+      const referenceTrade = members[0] || positionOutput || {};
+      const baseNetMinor = members.reduce(
+        (sum, trade) => sum + Number(trade.baseBalanceContributionMinor || 0),
+        0
+      );
+      const quoteNetMinor = members.reduce(
+        (sum, trade) => sum + Number(trade.quoteBalanceContributionMinor || 0),
+        0
+      );
+      const cashQuoteMinor = cashOutput
+        ? Number(cashOutput.balanceContributionMinor)
+        : 0;
+      const positionNeutral = Number.isSafeInteger(baseNetMinor)
+        && baseNetMinor === 0;
+      const cashNeutral = Boolean(cashOutput)
+        && Number.isSafeInteger(quoteNetMinor)
+        && Number.isSafeInteger(cashQuoteMinor)
+        && quoteNetMinor + cashQuoteMinor === 0;
+
+      batchNeutralityMembersBase.textContent = batchStructureSignedMinorLabel(
+        baseNetMinor,
+        referenceTrade.baseCcyFractionDigits,
+        referenceTrade.baseCcyCode
+      );
+      batchNeutralityMembersQuote.textContent = batchStructureSignedMinorLabel(
+        quoteNetMinor,
+        referenceTrade.quoteCcyFractionDigits,
+        referenceTrade.quoteCcyCode
+      );
+      batchNeutralityCashQuote.textContent = cashOutput
+        ? batchStructureSignedMinorLabel(
+            cashQuoteMinor,
+            cashOutput.fractionDigits,
+            cashOutput.currencyCode
+          )
+        : "Missing";
+      batchNeutralityPositionStatus.textContent = positionNeutral
+        ? "FX Position Neutral"
+        : "FX Position Imbalance";
+      batchNeutralityCashStatus.textContent = cashNeutral
+        ? "Cash Balance Neutral"
+        : "Cash Balance Imbalance";
+      batchNeutralityResult.classList.toggle(
+        "is-invalid",
+        !positionNeutral || !cashNeutral
+      );
+
+      if (positionOutput) {
+        batchNeutralityPositionOutput.textContent = `${
+          batchStructureSignedMinorLabel(
+            positionOutput.baseBalanceContributionMinor,
+            positionOutput.baseCcyFractionDigits,
+            positionOutput.baseCcyCode
+          )
+        } · carried forward outside the batch`;
+      } else {
+        batchNeutralityPositionOutput.textContent =
+          "No carry-forward trade · source position was already flat";
+      }
+    }
+
     function renderBatchDetailsGrids(details) {
       if (!batchDetailsMembersGrid) {
         batchDetailsMembersGrid = initializeBatchDetailsGrid(
@@ -22031,6 +22981,26 @@
         });
       }
 
+      const cashOutputs = details.cashOutput ? [details.cashOutput] : [];
+      const hasCashOutput = cashOutputs.length > 0;
+      batchDetailsCashOutputEmpty.hidden = hasCashOutput;
+      batchDetailsCashOutputGridShell.hidden = !hasCashOutput;
+
+      if (hasCashOutput && !batchDetailsCashOutputGrid) {
+        batchDetailsCashOutputGrid = initializeBatchDetailsGrid(
+          batchDetailsCashOutputGridEl,
+          cashOutputs,
+          batchStructureCashOutputColumns(),
+          "This FX Batch has no Cash Output."
+        );
+      } else if (batchDetailsCashOutputGrid) {
+        batchDetailsCashOutputGrid.replaceData(cashOutputs).then(() => {
+          if (hasCashOutput) {
+            batchDetailsCashOutputGrid.redraw(true);
+          }
+        });
+      }
+
       const hasOutputs = details.outputs.length > 0;
       batchDetailsOutputsEmpty.hidden = hasOutputs;
       batchDetailsOutputsGridShell.hidden = !hasOutputs;
@@ -22040,7 +23010,7 @@
           batchDetailsOutputsGridEl,
           details.outputs,
           batchStructureTradeColumns("outputRole"),
-          "This FX Batch did not create any outputs."
+          "This FX Batch has no Net Position Output."
         );
       } else if (batchDetailsOutputsGrid) {
         batchDetailsOutputsGrid.replaceData(details.outputs).then(() => {
@@ -22081,12 +23051,16 @@
         ? clientFxDealsDateLabel(settlement.quoteCcyValueDate)
         : "—";
       batchDetailsMembersCount.textContent =
-        `${details.members.length} ${details.members.length === 1 ? "member" : "members"}`;
+        `${details.members.length} ${details.members.length === 1 ? "trade" : "trades"}`;
+      batchDetailsCashOutputCount.textContent = details.cashOutput
+        ? "1 output"
+        : "0 outputs";
       batchDetailsOutputsCount.textContent =
-        `${details.outputs.length} ${details.outputs.length === 1 ? "output" : "outputs"}`;
+        `${details.outputs.length} ${details.outputs.length === 1 ? "trade" : "trades"}`;
       batchDetailsPrompt.hidden = true;
       batchDetailsContent.hidden = false;
       setBatchDetailsStatus("");
+      renderBatchNeutrality(details);
       renderBatchDetailsGrids(details);
     }
 
@@ -22094,7 +23068,7 @@
       const requestSequence = ++batchDetailsRequestSequence;
       showBatchDetailsPrompt(
         `Loading FX Batch #${batchId}`,
-        "Reading the exact members and outputs..."
+        "Reading FX Trade Members and batch outputs..."
       );
       setBatchDetailsStatus(`Loading FX Batch #${batchId}...`);
 
@@ -23171,7 +24145,11 @@
         || (!marketStreamRunning && !marketPairs.some(marketSimulationConfigured));
       syncDealMarketQuotes();
       syncAddClientDealMarketQuote();
-      syncAddHedgeDealMarketQuote();
+      if (addHedgeDealDialog.open) {
+        syncAddHedgeDealDerivedFields();
+      } else {
+        syncAddHedgeDealMarketQuote();
+      }
     }
 
     async function startMarketStream() {
@@ -23215,15 +24193,104 @@
       }
     }
 
+    function databaseTableSection(tableName) {
+      const sectionId = DATABASE_TABLE_SECTION_ID_BY_TABLE.get(tableName) || "other";
+      return DATABASE_TABLE_SECTION_BY_ID.get(sectionId);
+    }
+
+    function normalizedDatabaseTableSearch(value) {
+      return String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    }
+
+    function databaseTableGroups(query = "") {
+      const normalizedQuery = normalizedDatabaseTableSearch(query);
+      const tablesBySection = new Map(
+        DATABASE_TABLE_SECTIONS.map(section => [section.id, []])
+      );
+
+      databaseTables.forEach(table => {
+        tablesBySection.get(databaseTableSection(table.tableName).id).push(table);
+      });
+
+      return DATABASE_TABLE_SECTIONS.map(section => {
+        const sectionMatches = normalizedQuery
+          && normalizedDatabaseTableSearch(section.label).includes(normalizedQuery);
+        const tables = tablesBySection.get(section.id)
+          .sort((left, right) => left.tableName.localeCompare(right.tableName))
+          .filter(table => !normalizedQuery
+            || sectionMatches
+            || normalizedDatabaseTableSearch(table.tableName).includes(normalizedQuery));
+
+        return { section, tables };
+      }).filter(group => group.tables.length > 0);
+    }
+
+    function databaseTableCountLabel(count) {
+      return `${count} ${count === 1 ? "table" : "tables"}`;
+    }
+
+    function databaseRowCountLabel(count) {
+      return `${count} ${count === 1 ? "row" : "rows"}`;
+    }
+
+    function databaseTableButtonMarkup(table) {
+      const isActive = table.tableName === selectedDatabaseTable;
+
+      return `
+        <button
+          type="button"
+          class="database-table-button ${isActive ? "is-active" : ""}"
+          data-database-table="${escapeHtml(table.tableName)}"
+          ${isActive ? 'aria-current="true"' : ""}
+        >
+          <span class="database-table-name">${escapeHtml(table.tableName)}</span>
+          <span class="database-row-count">${escapeHtml(databaseRowCountLabel(table.rowCount))}</span>
+        </button>
+      `;
+    }
+
     function renderDatabaseTableList() {
-      databaseTableListEl.innerHTML = databaseTables.length > 0
-        ? databaseTables.map(table => `
-            <button type="button" class="database-table-button ${table.tableName === selectedDatabaseTable ? "is-active" : ""}" data-database-table="${escapeHtml(table.tableName)}">
-              <span>${escapeHtml(table.tableName)}</span>
-              <span class="database-row-count">${escapeHtml(String(table.rowCount))} rows</span>
-            </button>
-          `).join("")
-        : `<div class="database-empty-state">No SQLite tables found.</div>`;
+      if (databaseTables.length === 0) {
+        databaseTableListEl.innerHTML = `<div class="database-empty-state">No SQLite tables found.</div>`;
+        return;
+      }
+
+      const groups = databaseTableGroups(databaseTableSearchQuery);
+
+      if (groups.length === 0) {
+        databaseTableListEl.innerHTML = `
+          <div class="database-empty-state">
+            No tables match “${escapeHtml(databaseTableSearchQuery.trim())}”.
+          </div>
+        `;
+        return;
+      }
+
+      databaseTableListEl.innerHTML = groups.map(({ section, tables }) => {
+        const rowCount = tables.reduce((total, table) => total + Number(table.rowCount || 0), 0);
+        const isOpen = Boolean(databaseTableSearchQuery.trim())
+          || expandedDatabaseTableSections.has(section.id);
+
+        return `
+          <details
+            class="database-table-section"
+            data-database-section="${escapeHtml(section.id)}"
+            ${isOpen ? "open" : ""}
+          >
+            <summary class="database-table-section-summary">
+              <span class="button-icon database-table-section-icon" aria-hidden="true">${escapeHtml(section.icon)}</span>
+              <span class="database-table-section-name">${escapeHtml(section.label)}</span>
+              <span class="database-table-section-meta">
+                ${escapeHtml(databaseTableCountLabel(tables.length))} · ${escapeHtml(databaseRowCountLabel(rowCount))}
+              </span>
+              <span class="button-icon database-table-section-chevron" aria-hidden="true">chevron_right</span>
+            </summary>
+            <div class="database-table-section-tables">
+              ${tables.map(databaseTableButtonMarkup).join("")}
+            </div>
+          </details>
+        `;
+      }).join("");
     }
 
     function databaseCellValue(value) {
@@ -23297,9 +24364,12 @@
 
       try {
         databaseTables = await demoApiRequest("/api/database/tables");
+        const firstTableInDisplayOrder = databaseTableGroups()
+          .flatMap(group => group.tables)[0]?.tableName || "";
         selectedDatabaseTable = databaseTables.some(table => table.tableName === preferredTable)
           ? preferredTable
-          : databaseTables[0]?.tableName || "";
+          : firstTableInDisplayOrder;
+
         renderDatabaseTableList();
 
         if (selectedDatabaseTable) {
@@ -23309,7 +24379,8 @@
           clearDatabaseTableDetails("No tables found.");
         }
 
-        databaseStatusEl.textContent = "data/demo.sqlite";
+        databaseStatusEl.textContent =
+          `data/demo.sqlite · ${databaseTableCountLabel(databaseTables.length)}`;
       } catch (error) {
         databaseStatusEl.textContent = error.message;
         clearDatabaseTableDetails(error.message);
@@ -24060,10 +25131,6 @@
 
       if (type === "BATCH_BALANCE_TRADE") {
         return { type, label: "BATCH BALANCE TRADE", icon: "balance" };
-      }
-
-      if (type === "BATCH_QUOTE_CASH_OUT") {
-        return { type, label: "BATCH QUOTE CASH OUT", icon: "payments" };
       }
 
       return {
@@ -25024,8 +26091,14 @@
       return channel?.pricingType === "DEALER_PRICED";
     }
 
-    function isHedgeDealPricingRule(rule) {
-      return isDealerPricedPricingRule(rule);
+    function isHedgeDealPricingRule(rule, pricingMode = "") {
+      const rulePricingMode = pricingModeForRule(rule);
+      const requestedPricingMode = String(pricingMode || "").trim().toUpperCase();
+
+      return requestedPricingMode
+        ? HEDGE_DEAL_PRICING_MODES.includes(requestedPricingMode)
+          && rulePricingMode === requestedPricingMode
+        : HEDGE_DEAL_PRICING_MODES.includes(rulePricingMode);
     }
 
     function selectedAddClientDealProfile() {
@@ -25249,7 +26322,7 @@
       addClientDealPricingRulePicker.innerHTML = `
         <span class="form-label client-deal-context-picker-label" id="addClientDealPricingRuleLabel">Pricing Rule</span>
         <div class="input-group client-deal-pricing-rule-select${pickerAvailable ? "" : " is-disabled"}">
-          <div class="form-control client-deal-pricing-rule-select-value" aria-labelledby="addClientDealPricingRuleLabel">
+          <div class="form-control client-deal-pricing-rule-select-value" aria-labelledby="addClientDealPricingRuleLabel" aria-describedby="addClientDealPricingRuleHelp">
             ${selectedOption
               ? addClientDealPricingRuleContentMarkup(selectedOption.rule, selectedOption.context)
               : onboardingPricing && onboardingAvailable
@@ -25270,6 +26343,10 @@
           <button type="button" class="btn btn-outline-secondary client-deal-pricing-rule-select-toggle" data-add-client-deal-pricing-rule-toggle aria-label="Open Pricing Rule list" aria-haspopup="listbox" aria-controls="addClientDealPricingRuleOptions" aria-expanded="${addClientDealPricingRulesExpanded}"${pickerAvailable ? "" : " disabled"}>
             <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
           </button>
+        </div>
+        <div class="pricing-rule-availability-note" id="addClientDealPricingRuleHelp">
+          <span class="button-icon" aria-hidden="true">warning</span>
+          <span>Only Pricing Rules linked to DEALER_PRICED Execution Systems are available, or select Client Onboarding.</span>
         </div>
         <div class="client-deal-context-picker-viewport" id="addClientDealPricingRuleOptions" role="listbox" aria-labelledby="addClientDealPricingRuleLabel"${addClientDealPricingRulesExpanded && pickerAvailable ? "" : " hidden"}>
           ${options.map(({ rule, context }) => {
@@ -25731,7 +26808,7 @@
       return new Set(
         hedgeDealEligiblePricingRules
           .filter(rule => normalizedPartyType(rule.partyType) === "HEDGE_COUNTERPARTY")
-          .filter(isHedgeDealPricingRule)
+          .filter(rule => isHedgeDealPricingRule(rule, addHedgeDealPricingMode))
           .filter(rule => normalizedPricingRuleCurrencyPair(rule.currencyPair) === pair)
           .map(rule => String(rule.partyId))
       );
@@ -25806,7 +26883,9 @@
         : `<div class="client-deal-context-picker-empty">${
             profiles.length > 0
               ? "No Hedge Counterparties match the entered name."
-              : `No Hedge Counterparty with a Dealer Priced Pricing Rule is available for ${
+              : `No Hedge Counterparty with ${escapeHtml(
+                  addHedgeDealPricingMode
+                )} Pricing Rules is available for ${
                   escapeHtml(
                     normalizedPricingRuleCurrencyPair(
                       addHedgeDealForm.elements.currencyPair.value
@@ -25834,6 +26913,10 @@
     }
 
     function handleAddHedgeDealCounterpartyPicker(event) {
+      if (addHedgeDealQuickModeSelection) {
+        return;
+      }
+
       const option = event.target.closest("[data-add-hedge-deal-party-id]");
 
       if (option) {
@@ -25898,7 +26981,7 @@
 
       return hedgeDealEligiblePricingRules
         .filter(rule => rule.partyType === "HEDGE_COUNTERPARTY")
-        .filter(isHedgeDealPricingRule)
+        .filter(rule => isHedgeDealPricingRule(rule, addHedgeDealPricingMode))
         .filter(rule => Number(rule.partyId) === Number(counterparty.partyId))
         .filter(rule => normalizedPricingRuleCurrencyPair(rule.currencyPair) === pair)
         .sort((left, right) => Number(left.pricingRuleId) - Number(right.pricingRuleId));
@@ -25941,8 +27024,8 @@
       addHedgeDealForm.elements.pricingRuleId.value = selectedOption?.rule.pricingRuleId || "";
       addHedgeDealPricingRulePicker.innerHTML = `
         <span class="form-label client-deal-context-picker-label" id="addHedgeDealPricingRuleLabel">Pricing Rule</span>
-        <div class="input-group client-deal-pricing-rule-select${options.length === 0 ? " is-disabled" : ""}">
-          <div class="form-control client-deal-pricing-rule-select-value" aria-labelledby="addHedgeDealPricingRuleLabel">
+        <div class="input-group client-deal-pricing-rule-select${options.length === 0 || addHedgeDealQuickModeSelection ? " is-disabled" : ""}">
+          <div class="form-control client-deal-pricing-rule-select-value" aria-labelledby="addHedgeDealPricingRuleLabel" aria-describedby="addHedgeDealPricingRuleHelp">
             ${selectedOption
               ? addHedgeDealPricingRuleContentMarkup(selectedOption.rule, selectedOption.context)
               : `<span class="client-deal-pricing-rule-placeholder">${escapeHtml(
@@ -25951,9 +27034,13 @@
                     : emptyMessage
                 )}</span><span></span>`}
           </div>
-          <button type="button" class="btn btn-outline-secondary client-deal-pricing-rule-select-toggle" data-add-hedge-deal-pricing-rule-toggle aria-label="Open Pricing Rule list" aria-haspopup="listbox" aria-controls="addHedgeDealPricingRuleOptions" aria-expanded="${addHedgeDealPricingRulesExpanded}"${options.length === 0 ? " disabled" : ""}>
+          <button type="button" class="btn btn-outline-secondary client-deal-pricing-rule-select-toggle" data-add-hedge-deal-pricing-rule-toggle aria-label="Open Pricing Rule list" aria-haspopup="listbox" aria-controls="addHedgeDealPricingRuleOptions" aria-expanded="${addHedgeDealPricingRulesExpanded}"${options.length === 0 || addHedgeDealQuickModeSelection ? " disabled" : ""}>
             <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
           </button>
+        </div>
+        <div class="pricing-rule-availability-note" id="addHedgeDealPricingRuleHelp">
+          <span class="button-icon" aria-hidden="true">warning</span>
+          <span>Only Pricing Rules linked to ${escapeHtml(addHedgeDealPricingMode)} Execution Systems are available.</span>
         </div>
         <div class="client-deal-context-picker-viewport" id="addHedgeDealPricingRuleOptions" role="listbox" aria-labelledby="addHedgeDealPricingRuleLabel"${addHedgeDealPricingRulesExpanded && options.length > 0 ? "" : " hidden"}>
           ${options.map(({ rule, context }) => {
@@ -26005,6 +27092,33 @@
       statusIndicator.classList.toggle("is-active", status === "Active");
       statusIndicator.classList.toggle("is-stopped", status === "Stopped");
       marketPulseCard.classList.toggle("is-live", status === "Active" && Boolean(quote));
+    }
+
+    function syncAddHedgeDealTradeRate() {
+      const tradeRateInput = addHedgeDealForm.elements.tradeRate;
+      const autoPriced = addHedgeDealPricingMode === "AUTO_PRICED";
+
+      tradeRateInput.readOnly = autoPriced;
+      tradeRateInput.setCustomValidity("");
+
+      if (!autoPriced) {
+        return;
+      }
+
+      const ourSide = oppositeFxSide(addHedgeDealForm.elements.side.value);
+      const marketRate = ourSide === "SELL"
+        ? document.getElementById("addHedgeDealMarketBid").value
+        : ourSide === "BUY"
+          ? document.getElementById("addHedgeDealMarketOffer").value
+          : "";
+
+      tradeRateInput.value = marketRate;
+
+      if (!marketRate) {
+        tradeRateInput.setCustomValidity(
+          "A Market Pulse quote is required for an AUTO_PRICED Hedge FX Deal."
+        );
+      }
     }
 
     function oppositeFxSide(side) {
@@ -26139,6 +27253,10 @@
     }
 
     function selectAddHedgeDealAmountFixingCurrency(event) {
+      if (addHedgeDealQuickModeSelection) {
+        return;
+      }
+
       const control = event.target.closest("[data-add-hedge-deal-fixing-currency]");
 
       if (!control) {
@@ -26177,12 +27295,14 @@
       const pairValue = normalizedPricingRuleCurrencyPair(addHedgeDealForm.elements.currencyPair.value);
       const pair = marketPairs.find(item => item.currencyPair === pairValue);
       const side = addHedgeDealForm.elements.side.value;
-      const tradeRateText = positiveDecimalInputText(addHedgeDealForm.elements.tradeRate.value);
       const rule = selectedAddHedgeDealPricingRule();
 
       syncAddHedgeDealCurrencyLabels();
+      syncAddHedgeDealMarketQuote();
+      syncAddHedgeDealTradeRate();
       syncAddHedgeDealAmounts();
 
+      const tradeRateText = positiveDecimalInputText(addHedgeDealForm.elements.tradeRate.value);
       const amounts = addHedgeDealExactAmounts();
       const transferRateText = rule
         ? exactTransferRateTextFromPricingRule(
@@ -26206,10 +27326,13 @@
       document.getElementById("addHedgeDealAnalyticalPnl").value = analyticalPnlText !== null
         ? groupedDecimalText(analyticalPnlText)
         : "";
-      syncAddHedgeDealMarketQuote();
     }
 
     function handleAddHedgeDealPricingRulePicker(event) {
+      if (addHedgeDealQuickModeSelection) {
+        return;
+      }
+
       const toggle = event.target.closest("[data-add-hedge-deal-pricing-rule-toggle]");
 
       if (toggle) {
@@ -26235,27 +27358,105 @@
       syncAddHedgeDealDerivedFields();
       addHedgeDealPricingRulePicker
         .querySelector("[data-add-hedge-deal-pricing-rule-toggle]")
-        ?.focus();
+          ?.focus();
     }
 
-    function openAddHedgeDealDialog(ourSide) {
-      const normalizedOurSide = String(ourSide || "").toUpperCase();
+    function syncAddHedgeDealModeLocks() {
+      const quickMode = Boolean(addHedgeDealQuickModeSelection);
+      const currencyPairControl = addHedgeDealForm.elements.currencyPair;
+      const baseAmountInput = addHedgeDealForm.elements.baseCcyAmount;
+      const pricingRuleToggle = addHedgeDealPricingRulePicker
+        .querySelector("[data-add-hedge-deal-pricing-rule-toggle]");
 
-      if (!["BUY", "SELL"].includes(normalizedOurSide)) {
+      currencyPairControl.disabled = quickMode;
+      addHedgeDealCounterpartyPickerValue.readOnly = quickMode;
+      addHedgeDealCounterpartyPickerToggle.disabled = quickMode;
+      addHedgeDealCounterpartyPickerClear.hidden =
+        quickMode || addHedgeDealCounterpartyPickerValue.value.length === 0;
+      baseAmountInput.readOnly = quickMode;
+      addHedgeDealForm.querySelectorAll("[data-add-hedge-deal-fixing-currency]")
+        .forEach(control => {
+          control.disabled = quickMode;
+        });
+
+      if (pricingRuleToggle) {
+        pricingRuleToggle.disabled = quickMode || addHedgeDealPricingRuleOptions().length === 0;
+      }
+
+      addHedgeDealPricingRulePicker
+        .querySelector(".client-deal-pricing-rule-select")
+        ?.classList.toggle("is-disabled", quickMode);
+    }
+
+    function openQuickHedgeDealDialog(ourSide, presetCode) {
+      const setting = hedgeQuickModeSettingForPair();
+      const normalizedPresetCode = String(presetCode || "").trim().toUpperCase();
+      const preset = setting?.presets.find(
+        candidate => candidate.presetCode === normalizedPresetCode
+      );
+
+      if (!setting?.active || !setting.available || !preset) {
         return;
       }
 
+      closeHedgeQuickModeMenu();
+      openAddHedgeDealDialog(ourSide, "AUTO_PRICED", { setting, preset });
+    }
+
+    function openAddHedgeDealDialog(
+      ourSide,
+      pricingMode = "DEALER_PRICED",
+      quickModeSelection = null
+    ) {
+      const normalizedOurSide = String(ourSide || "").toUpperCase();
+      const normalizedPricingMode = String(pricingMode || "").toUpperCase();
+      const isQuickMode = Boolean(quickModeSelection);
+
+      if (!["BUY", "SELL"].includes(normalizedOurSide)
+        || !HEDGE_DEAL_PRICING_MODES.includes(normalizedPricingMode)
+        || (isQuickMode && normalizedPricingMode !== "AUTO_PRICED")) {
+        return;
+      }
+
+      addHedgeDealPricingMode = normalizedPricingMode;
+      addHedgeDealQuickModeSelection = isQuickMode ? quickModeSelection : null;
+      addHedgeDealDialogTitle.textContent = isQuickMode
+        ? "Hedge Deal - Quick Mode"
+        : normalizedPricingMode === "AUTO_PRICED"
+          ? "Hedge Deal - Auto Pricing"
+          : "Hedge Deal - Manual";
       addHedgeDealForm.reset();
-      renderAddHedgeDealCurrencyPairs(activeCurrencyPairOrDefault());
+      renderAddHedgeDealCurrencyPairs(
+        isQuickMode
+          ? quickModeSelection.setting.currencyPair
+          : activeCurrencyPairOrDefault()
+      );
+      if (isQuickMode) {
+        addHedgeDealForm.elements.currencyPair.value =
+          quickModeSelection.setting.currencyPair;
+      }
       addHedgeDealForm.elements.side.value = oppositeFxSide(normalizedOurSide);
-      addHedgeDealForm.elements.tenor.value = "TOD";
+      addHedgeDealForm.elements.tenor.value = isQuickMode
+        ? quickModeSelection.setting.defaultTenor
+        : "TOD";
       addHedgeDealCounterpartyPickerExpanded = false;
       addHedgeDealPricingRulesExpanded = false;
       addHedgeDealCounterpartyPicker.classList.remove("is-invalid");
       addHedgeDealPricingRulePicker.classList.remove("is-invalid");
-      renderAddHedgeDealCounterparties();
+      renderAddHedgeDealCounterparties(
+        isQuickMode ? quickModeSelection.setting.partyId : ""
+      );
+      if (isQuickMode) {
+        addHedgeDealForm.elements.pricingRuleId.value =
+          quickModeSelection.setting.pricingRuleId;
+        addHedgeDealForm.elements.amountFixingCurrency.value = "base";
+        addHedgeDealForm.elements.baseCcyAmount.value = groupedDecimalText(
+          quickModeSelection.preset.baseCcyAmount
+        );
+      }
       renderAddHedgeDealPricingRules();
       syncAddHedgeDealDerivedFields();
+      syncAddHedgeDealModeLocks();
 
       if (typeof addHedgeDealDialog.showModal === "function") {
         addHedgeDealDialog.showModal();
@@ -26263,7 +27464,11 @@
         addHedgeDealDialog.setAttribute("open", "");
       }
 
-      addHedgeDealCounterpartyPickerValue.focus();
+      if (isQuickMode) {
+        addHedgeDealForm.elements.tenor.focus();
+      } else {
+        addHedgeDealCounterpartyPickerValue.focus();
+      }
     }
 
     function closeAddHedgeDealDialog() {
@@ -26318,21 +27523,45 @@
         return;
       }
 
+      const autoPriced = addHedgeDealPricingMode === "AUTO_PRICED";
+      const quickModeSelection = addHedgeDealQuickModeSelection;
       addHedgeDealSubmitButton.disabled = true;
 
       try {
-        const currencies = currenciesFromPair(rule.ccyPairCode.replace("_", "/"));
-        const created = await demoApiRequest("/api/v1/hedge-fx-deals", {
-          method: "POST",
-          body: JSON.stringify({
+        let requestBody;
+        let endpoint;
+
+        if (quickModeSelection) {
+          requestBody = {
+            ccyPairCode: quickModeSelection.setting.ccyPairCode,
+            side: addHedgeDealForm.elements.side.value,
+            presetCode: quickModeSelection.preset.presetCode,
+            tenor: addHedgeDealForm.elements.tenor.value
+          };
+          endpoint = "/api/v1/hedge-fx-deals/quick-mode";
+        } else {
+          const currencies = currenciesFromPair(rule.ccyPairCode.replace("_", "/"));
+          requestBody = {
             pricingRuleId: Number(rule.pricingRuleId),
             ccyPairCode: rule.ccyPairCode,
             side: addHedgeDealForm.elements.side.value,
             dealtCcyCode: fixing === "quote" ? currencies.quote : currencies.base,
             dealtCcyAmount,
-            tradeRate,
             tenor: addHedgeDealForm.elements.tenor.value
-          })
+          };
+
+          if (!autoPriced) {
+            requestBody.tradeRate = tradeRate;
+          }
+
+          endpoint = autoPriced
+            ? "/api/v1/hedge-fx-deals/auto-priced"
+            : "/api/v1/hedge-fx-deals";
+        }
+
+        const created = await demoApiRequest(endpoint, {
+          method: "POST",
+          body: JSON.stringify(requestBody)
         });
 
         await refreshHedgeDealViewsFromApi();
@@ -27418,6 +28647,183 @@
       };
     }
 
+    function hedgeQuickModeSettingForPair(pairValue = activeCurrencyPairOrDefault()) {
+      const pair = normalizedPricingRuleCurrencyPair(pairValue);
+
+      return hedgeQuickModeSettings.find(setting => setting.currencyPair === pair) || null;
+    }
+
+    function hedgeQuickModePresetAmountLabel(setting, preset) {
+      const amountText = positiveDecimalInputText(preset?.baseCcyAmount);
+
+      return amountText === null
+        ? ""
+        : `${setting.baseCcyCode} ${groupedDecimalText(amountText)}`;
+    }
+
+    function hedgeQuickModeMenuContentMarkup(setting) {
+      const pairLabel = escapeHtml(
+        normalizedPricingRuleCurrencyPair(activeCurrencyPairOrDefault()) || "the selected Ccy Pair"
+      );
+
+      if (hedgeQuickModeSettingsLoading) {
+        return '<div class="hedge-deal-quick-menu-state" data-hedge-quick-menu-state role="status" tabindex="-1">Loading Quick Mode presets...</div>';
+      }
+
+      if (hedgeQuickModeSettingsError) {
+        return `<div class="hedge-deal-quick-menu-state" data-hedge-quick-menu-state role="status" tabindex="-1">${escapeHtml(
+          hedgeQuickModeSettingsError
+        )}</div>`;
+      }
+
+      if (!setting) {
+        return `<div class="hedge-deal-quick-menu-state" data-hedge-quick-menu-state role="status" tabindex="-1">Quick Mode is not configured for ${pairLabel}.</div>`;
+      }
+
+      if (!setting.active || !setting.available) {
+        return `<div class="hedge-deal-quick-menu-state" data-hedge-quick-menu-state role="status" tabindex="-1">Quick Mode is currently unavailable for ${pairLabel}.</div>`;
+      }
+
+      if (setting.presets.length === 0) {
+        return `<div class="hedge-deal-quick-menu-state" data-hedge-quick-menu-state role="status" tabindex="-1">No Quick Mode presets are configured for ${pairLabel}.</div>`;
+      }
+
+      return setting.presets.map(preset => {
+        const amountLabel = hedgeQuickModePresetAmountLabel(setting, preset);
+        const accessibleLabel = `${preset.label}: ${amountLabel}`;
+
+        return `
+          <button type="button" class="hedge-deal-quick-menu-item" role="menuitem"
+            data-hedge-quick-preset="${escapeHtml(preset.presetCode)}"
+            aria-label="${escapeHtml(accessibleLabel)}">
+            <span class="hedge-deal-quick-menu-label">${escapeHtml(preset.label)}</span>
+            <span class="hedge-deal-quick-menu-amount">${escapeHtml(amountLabel)}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function hedgeDealAutoSplitMarkup(ourSide, baseCcyCode) {
+      const normalizedSide = String(ourSide || "").trim().toUpperCase();
+      const sideLabel = `${normalizedSide} ${baseCcyCode}`;
+      const menuId = `hedgeQuickMode${normalizedSide === "BUY" ? "Buy" : "Sell"}Menu`;
+      const menuOpen = hedgeQuickModeMenuSide === normalizedSide;
+      const setting = hedgeQuickModeSettingForPair();
+
+      return `
+        <div class="hedge-deal-auto-split">
+          <button type="button" class="action-button btn btn-sm btn-outline-warning hedge-deal-button hedge-deal-${normalizedSide.toLowerCase()}-button"
+            id="addAutoHedge${normalizedSide === "BUY" ? "Buy" : "Sell"}DealButton"
+            data-hedge-side="${normalizedSide}"
+            data-hedge-pricing-mode="AUTO_PRICED"
+            aria-label="Add AUTO_PRICED Hedge Deal: ${escapeHtml(sideLabel)}"
+            title="AUTO_PRICED">
+            <span class="button-icon" aria-hidden="true">bolt</span>
+            <span>${escapeHtml(sideLabel)}</span>
+          </button>
+          <button type="button" class="hedge-deal-quick-menu-toggle"
+            data-hedge-quick-menu-toggle
+            data-hedge-quick-side="${normalizedSide}"
+            aria-label="Quick Mode presets for ${escapeHtml(sideLabel)}"
+            aria-haspopup="menu"
+            aria-controls="${menuId}"
+            aria-expanded="${menuOpen}"
+            data-tooltip="Quick Mode presets">
+            <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+          </button>
+          <div class="hedge-deal-quick-menu" id="${menuId}" data-hedge-quick-menu="${normalizedSide}"
+            role="menu" aria-label="Quick Mode presets for ${escapeHtml(sideLabel)}"${menuOpen ? "" : " hidden"}>
+            ${hedgeQuickModeMenuContentMarkup(setting)}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderHedgeQuickModeMenuState() {
+      renderBatchingSummary(currentDisplayRows());
+    }
+
+    function closeHedgeQuickModeMenu({ restoreFocus = false } = {}) {
+      const side = hedgeQuickModeMenuSide;
+
+      if (!side) {
+        return;
+      }
+
+      hedgeQuickModeSettingsRequestSequence += 1;
+      hedgeQuickModeMenuSide = "";
+      hedgeQuickModeSettingsLoading = false;
+      hedgeQuickModeSettingsError = "";
+      renderHedgeQuickModeMenuState();
+
+      if (restoreFocus) {
+        requestAnimationFrame(() => {
+          batchingSummaryRowsEl
+            .querySelector(`[data-hedge-quick-menu-toggle][data-hedge-quick-side="${side}"]`)
+            ?.focus();
+        });
+      }
+    }
+
+    async function openHedgeQuickModeMenu(ourSide, { focus = "first" } = {}) {
+      const normalizedSide = String(ourSide || "").trim().toUpperCase();
+
+      if (!["BUY", "SELL"].includes(normalizedSide)) {
+        return;
+      }
+
+      const requestSequence = ++hedgeQuickModeSettingsRequestSequence;
+      hedgeQuickModeMenuSide = normalizedSide;
+      hedgeQuickModeSettingsLoading = true;
+      hedgeQuickModeSettingsError = "";
+      renderHedgeQuickModeMenuState();
+      requestAnimationFrame(() => {
+        batchingSummaryRowsEl
+          .querySelector(
+            `[data-hedge-quick-menu="${normalizedSide}"] [data-hedge-quick-menu-state]`
+          )
+          ?.focus();
+      });
+
+      try {
+        await reloadHedgeQuickModeSettingsFromApi();
+      } catch (error) {
+        hedgeQuickModeSettingsError =
+          error.message || "Quick Mode settings could not be loaded.";
+      } finally {
+        if (requestSequence !== hedgeQuickModeSettingsRequestSequence) {
+          return;
+        }
+
+        hedgeQuickModeSettingsLoading = false;
+        renderHedgeQuickModeMenuState();
+        requestAnimationFrame(() => {
+          const items = Array.from(
+            batchingSummaryRowsEl.querySelectorAll(
+              `[data-hedge-quick-menu="${normalizedSide}"] [data-hedge-quick-preset]`
+            )
+          );
+          const target = items.length > 0
+            ? focus === "last" ? items.at(-1) : items[0]
+            : batchingSummaryRowsEl.querySelector(
+                `[data-hedge-quick-menu="${normalizedSide}"] [data-hedge-quick-menu-state]`
+              );
+          target?.focus();
+        });
+      }
+    }
+
+    async function toggleHedgeQuickModeMenu(ourSide) {
+      const normalizedSide = String(ourSide || "").trim().toUpperCase();
+
+      if (hedgeQuickModeMenuSide === normalizedSide) {
+        closeHedgeQuickModeMenu({ restoreFocus: true });
+        return;
+      }
+
+      await openHedgeQuickModeMenu(normalizedSide);
+    }
+
     function renderBatchingSummary(source) {
       const fractionDigits = batchingSummaryFractionDigits(source);
       const baseCcyCode = currenciesFromPair(activeCurrencyPairOrDefault()).base || "BASE";
@@ -27454,10 +28860,13 @@
           <td colspan="3"></td>
           <td class="gap wide-gap trade-divider"></td>
           <td class="hedge-deals-side hedge-deals-sell" colspan="3">
-            <button type="button" class="action-button btn btn-sm btn-outline-warning hedge-deal-button hedge-deal-sell-button" id="addHedgeSellDealButton">
-              <span class="button-icon" aria-hidden="true">shield</span>
-              <span>SELL ${escapeHtml(baseCcyCode)}</span>
-            </button>
+            <div class="hedge-deal-button-stack">
+              <button type="button" class="action-button btn btn-sm btn-outline-warning hedge-deal-button hedge-deal-sell-button" id="addHedgeSellDealButton" data-hedge-side="SELL" data-hedge-pricing-mode="DEALER_PRICED" aria-label="Add DEALER_PRICED Hedge Deal: SELL ${escapeHtml(baseCcyCode)}" title="DEALER_PRICED">
+                <span class="button-icon" aria-hidden="true">contact_phone</span>
+                <span>SELL ${escapeHtml(baseCcyCode)}</span>
+              </button>
+              ${hedgeDealAutoSplitMarkup("SELL", baseCcyCode)}
+            </div>
           </td>
           <td class="hedge-deals-center" colspan="4">
             <div class="hedge-deals-center-content">
@@ -27465,10 +28874,13 @@
             </div>
           </td>
           <td class="hedge-deals-side hedge-deals-buy" colspan="3">
-            <button type="button" class="action-button btn btn-sm btn-outline-warning hedge-deal-button hedge-deal-buy-button" id="addHedgeBuyDealButton">
-              <span class="button-icon" aria-hidden="true">shield</span>
-              <span>BUY ${escapeHtml(baseCcyCode)}</span>
-            </button>
+            <div class="hedge-deal-button-stack">
+              <button type="button" class="action-button btn btn-sm btn-outline-warning hedge-deal-button hedge-deal-buy-button" id="addHedgeBuyDealButton" data-hedge-side="BUY" data-hedge-pricing-mode="DEALER_PRICED" aria-label="Add DEALER_PRICED Hedge Deal: BUY ${escapeHtml(baseCcyCode)}" title="DEALER_PRICED">
+                <span class="button-icon" aria-hidden="true">contact_phone</span>
+                <span>BUY ${escapeHtml(baseCcyCode)}</span>
+              </button>
+              ${hedgeDealAutoSplitMarkup("BUY", baseCcyCode)}
+            </div>
           </td>
         </tr>
       `;
@@ -28413,12 +29825,77 @@
     });
 
     createDealButton.addEventListener("click", openAddClientDealDialog);
-    batchingSummaryRowsEl.addEventListener("click", event => {
-      if (event.target.closest("#addHedgeSellDealButton")) {
-        openAddHedgeDealDialog("SELL");
-      } else if (event.target.closest("#addHedgeBuyDealButton")) {
-        openAddHedgeDealDialog("BUY");
+    batchingSummaryRowsEl.addEventListener("click", async event => {
+      const quickPresetButton = event.target.closest("[data-hedge-quick-preset]");
+
+      if (quickPresetButton) {
+        const menu = quickPresetButton.closest("[data-hedge-quick-menu]");
+        openQuickHedgeDealDialog(
+          menu?.dataset.hedgeQuickMenu,
+          quickPresetButton.dataset.hedgeQuickPreset
+        );
+        return;
       }
+
+      const quickMenuToggle = event.target.closest("[data-hedge-quick-menu-toggle]");
+
+      if (quickMenuToggle) {
+        await toggleHedgeQuickModeMenu(quickMenuToggle.dataset.hedgeQuickSide);
+        return;
+      }
+
+      const button = event.target.closest("[data-hedge-side][data-hedge-pricing-mode]");
+
+      if (button) {
+        closeHedgeQuickModeMenu();
+        openAddHedgeDealDialog(
+          button.dataset.hedgeSide,
+          button.dataset.hedgePricingMode
+        );
+      }
+    });
+    batchingSummaryRowsEl.addEventListener("keydown", async event => {
+      const quickMenuToggle = event.target.closest("[data-hedge-quick-menu-toggle]");
+
+      if (quickMenuToggle && ["ArrowDown", "ArrowUp"].includes(event.key)) {
+        event.preventDefault();
+        await openHedgeQuickModeMenu(
+          quickMenuToggle.dataset.hedgeQuickSide,
+          { focus: event.key === "ArrowUp" ? "last" : "first" }
+        );
+        return;
+      }
+
+      const menu = event.target.closest("[data-hedge-quick-menu]");
+
+      if (menu && event.key === "Escape") {
+        event.preventDefault();
+        closeHedgeQuickModeMenu({ restoreFocus: true });
+        return;
+      }
+
+      const quickPresetButton = event.target.closest("[data-hedge-quick-preset]");
+
+      if (!quickPresetButton) {
+        return;
+      }
+
+      const items = Array.from(menu?.querySelectorAll("[data-hedge-quick-preset]") || []);
+      const currentIndex = items.indexOf(quickPresetButton);
+
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+      const nextIndex = event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? items.length - 1
+          : event.key === "ArrowDown"
+            ? (currentIndex + 1) % items.length
+            : (currentIndex - 1 + items.length) % items.length;
+      items[nextIndex]?.focus();
     });
     editDealButton.addEventListener("click", openSelectedEditDialog);
     resetDemoTradesButton.addEventListener("click", openResetDemoTradesDialog);
@@ -28484,9 +29961,14 @@
       addHedgeDealSubmitButton.disabled = false;
       addHedgeDealCounterpartyPickerExpanded = false;
       addHedgeDealPricingRulesExpanded = false;
+      addHedgeDealPricingMode = "DEALER_PRICED";
+      addHedgeDealQuickModeSelection = null;
       addHedgeDealCounterpartyPicker.classList.remove("is-invalid");
       addHedgeDealPricingRulePicker.classList.remove("is-invalid");
       addHedgeDealForm.reset();
+      addHedgeDealForm.elements.tradeRate.readOnly = false;
+      addHedgeDealForm.elements.tradeRate.setCustomValidity("");
+      syncAddHedgeDealModeLocks();
     });
     editForm.addEventListener("submit", saveEditedDeal);
     editDialogClose.addEventListener("click", closeEditDialog);
@@ -28595,6 +30077,38 @@
     });
     marketStreamToggleButton.addEventListener("click", toggleMarketStream);
     databaseRefreshButton.addEventListener("click", () => loadDatabaseExplorer());
+    databaseTableSearchEl.addEventListener("input", () => {
+      databaseTableSearchQuery = databaseTableSearchEl.value;
+      renderDatabaseTableList();
+    });
+    databaseTableSearchEl.addEventListener("keydown", event => {
+      if (event.key !== "Escape" || !databaseTableSearchEl.value) {
+        return;
+      }
+
+      databaseTableSearchEl.value = "";
+      databaseTableSearchQuery = "";
+      renderDatabaseTableList();
+    });
+    databaseTableListEl.addEventListener("toggle", event => {
+      const section = event.target;
+
+      if (
+        !(section instanceof HTMLDetailsElement)
+        || !section.matches("[data-database-section]")
+        || databaseTableSearchQuery.trim()
+      ) {
+        return;
+      }
+
+      const sectionId = section.dataset.databaseSection;
+
+      if (section.open) {
+        expandedDatabaseTableSections.add(sectionId);
+      } else {
+        expandedDatabaseTableSections.delete(sectionId);
+      }
+    }, true);
     databaseTableListEl.addEventListener("click", event => {
       const button = event.target.closest("[data-database-table]");
 
@@ -28603,6 +30117,7 @@
       }
 
       selectedDatabaseTable = button.dataset.databaseTable || "";
+      expandedDatabaseTableSections.add(databaseTableSection(selectedDatabaseTable).id);
       loadDatabaseExplorer(selectedDatabaseTable);
     });
     clientProfileForm.addEventListener("submit", saveClientProfileFromForm);
@@ -29161,6 +30676,10 @@
       addClientDealPricingRulePicker.querySelector("[data-add-client-deal-pricing-rule-toggle]")?.focus();
     });
     document.addEventListener("click", event => {
+      if (!event.target.closest(".hedge-deal-auto-split")) {
+        closeHedgeQuickModeMenu();
+      }
+
       if (!addClientDealClientPicker.contains(event.target)) {
         setAddClientDealClientPickerExpanded(false);
       }
@@ -29246,6 +30765,10 @@
     });
     addHedgeDealCounterpartyPicker.addEventListener("click", handleAddHedgeDealCounterpartyPicker);
     addHedgeDealCounterpartyPicker.addEventListener("keydown", event => {
+      if (addHedgeDealQuickModeSelection) {
+        return;
+      }
+
       if (event.key === "ArrowDown" && event.target === addHedgeDealCounterpartyPickerValue) {
         if (addHedgeDealCounterpartyOptions.hidden) {
           renderAddHedgeDealCounterpartyOptions(

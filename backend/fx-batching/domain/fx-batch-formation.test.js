@@ -70,8 +70,6 @@ test("creates the expected mirrored pair for Trade IDs 5 and 16", () => {
   );
   assert.equal(result.netQuoteCcyAmountMinorBeforeCash, -7000n);
   assert.deepEqual(result.quoteCashOut, {
-    tradeType: "BATCH_QUOTE_CASH_OUT",
-    memberRole: "BALANCE_QUOTE_CASH",
     quoteCcyCode: "USD",
     quoteBalanceContributionMinor: 7000n,
     quoteCcyFractionDigits: 2,
@@ -259,7 +257,8 @@ test("forms a flat Base batch regardless of its Quote cash imbalance", () => {
   assert.equal(result.balanceTrade, null);
   assert.equal(result.positionOut, null);
   assert.equal(result.netQuoteCcyAmountMinorBeforeCash, -100000n);
-  assert.equal(result.quoteCashOut.tradeType, "BATCH_QUOTE_CASH_OUT");
+  assert.equal("tradeType" in result.quoteCashOut, false);
+  assert.equal("memberRole" in result.quoteCashOut, false);
   assert.equal(result.quoteCashOut.quoteBalanceContributionMinor, 100000n);
 });
 

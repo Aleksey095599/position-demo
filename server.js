@@ -21,12 +21,19 @@ const {
   createHedgeFxDealTerms
 } = require("./backend/hedge-fx-deal/hedge-fx-deal-terms");
 const {
+  autoPricedHedgeTradeRate
+} = require("./backend/hedge-fx-deal/auto-priced-hedge-rate");
+const {
+  HEDGE_QUICK_MODE_PRESET_CODES,
+  hedgeQuickModeInstruction,
+  hedgeQuickModePresets
+} = require("./backend/hedge-fx-deal/hedge-quick-mode");
+const {
   FormFxBatchUseCase
 } = require("./backend/fx-batching/application/form-fx-batch-use-case");
 const {
   FX_BATCH_MEMBER_ROLE,
   FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES,
-  FX_BATCH_SPECIAL_MEMBER_TYPE,
   FX_BATCH_STATUS
 } = require("./backend/fx-batching/domain/fx-trade-batching-policy");
 const {
@@ -84,6 +91,7 @@ const FX_TRADE_TYPES = [
 const FX_BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS =
   FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES.map(() => "?").join(", ");
 const CLIENT_ONBOARDING_MANUAL_PRICING = "CLIENT_ONBOARDING";
+const HEDGE_DEAL_PRICING_MODES = new Set(["AUTO_PRICED", "DEALER_PRICED"]);
 
 fs.mkdirSync(path.dirname(DATABASE_PATH), { recursive: true });
 
@@ -136,6 +144,11 @@ const clientDealGenerationSettingsAlreadyInitialized = Boolean(database.prepare(
   FROM sqlite_master
   WHERE type = 'table' AND name = 'client_deal_generation_settings'
 `).get());
+const hedgeQuickModeSettingsAlreadyInitialized = Boolean(database.prepare(`
+  SELECT 1 AS present
+  FROM sqlite_master
+  WHERE type = 'table' AND name = 'fx_hedge_quick_mode_settings'
+`).get());
 const clientFxDealsAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
   FROM sqlite_master
@@ -148,6 +161,9 @@ const hedgeFxDealsAlreadyInitialized = Boolean(database.prepare(`
 `).get());
 migrateUnprefixedBatchTables(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
+ensureHedgeQuickModeSettingsDefaultTenor(database);
+dropBatchIntegrityTriggers(database);
+migrateLegacyFxBatchOutputTables(database);
 migrateLegacyBatchTables(database);
 assertFxBatchMembershipConsistency(database);
 dropBatchIntegrityTriggers(database);
@@ -159,6 +175,7 @@ dropFxTradeExposureDealtCurrencyTriggers(database);
 dropClientFxDealTriggers(database);
 dropHedgeFxDealTriggers(database);
 dropClientDealGenerationSettingsTriggers(database);
+dropHedgeQuickModeSettingsTriggers(database);
 dropLegacyTradingPartyExecutionContexts(database);
 migrateCcyOptionsConstraints(database);
 if (databaseAlreadyInitialized) {
@@ -181,7 +198,7 @@ migrateFxTradeExposureTradeSemantics(database);
 migrateFxBatchTradeSemantics(database);
 migrateFxBatchRollbackSemantics(database);
 migrateFxBatchMemberRoleSemantics(database);
-migrateFxBatchQuoteCashMembers(database);
+migrateFxBatchQuoteCashOutput(database);
 migrateFxDealAnalyticalPnlToMinorUnits(database);
 ensureFxTradeExposureDealtCurrencyTriggers(database);
 migrateFxTradeMarketSnapshot(database);
@@ -230,6 +247,10 @@ if (!databaseAlreadyInitialized) {
     seedInitialClientFxDeals(database);
   }
 
+}
+
+if (databaseAlreadyInitialized && !hedgeQuickModeSettingsAlreadyInitialized) {
+  seedInitialHedgeQuickModeSettings(database);
 }
 
 function tableColumnNames(sqlite, tableName) {
@@ -1019,7 +1040,7 @@ function migrateFxBatchTradeSemantics(sqlite) {
     sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count
   );
   const outputCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_outputs").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count
   );
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -1235,42 +1256,34 @@ function migrateFxBatchTradeSemantics(sqlite) {
       FROM fx_batch_members
       ORDER BY batch_id, trade_id;
 
-      CREATE TABLE fx_batch_outputs_batch_semantics
+      CREATE TABLE fx_batch_position_output_batch_semantics
       (
-          batch_id    INTEGER NOT NULL,
+          batch_id    INTEGER PRIMARY KEY,
           trade_id    INTEGER NOT NULL,
           trade_type  TEXT    NOT NULL,
-          output_role TEXT    NOT NULL,
 
-          CONSTRAINT pk_fx_batch_outputs
-              PRIMARY KEY (batch_id, trade_id),
-          CONSTRAINT fk_fx_batch_outputs_batch
+          CONSTRAINT fk_fx_batch_position_output_batch
               FOREIGN KEY (batch_id)
                   REFERENCES fx_batches_batch_semantics (batch_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_batch_outputs_trade
+          CONSTRAINT fk_fx_batch_position_output_trade
               FOREIGN KEY (trade_id, trade_type)
                   REFERENCES fx_trade_exposure_batch_semantics (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT uq_fx_batch_outputs_trade
+          CONSTRAINT uq_fx_batch_position_output_trade
               UNIQUE (trade_id),
-          CONSTRAINT uq_fx_batch_outputs_role
-              UNIQUE (batch_id, output_role),
-          CONSTRAINT chk_fx_batch_outputs_role
-              CHECK (
-                  output_role = 'POSITION_OUT'
-                  AND trade_type = 'BATCH_POSITION_OUT'
-              )
+          CONSTRAINT chk_fx_batch_position_output_trade_type
+              CHECK (trade_type = 'BATCH_POSITION_OUT')
       );
 
-      INSERT INTO fx_batch_outputs_batch_semantics
-      SELECT batch_id, trade_id, trade_type, output_role
-      FROM fx_batch_outputs
+      INSERT INTO fx_batch_position_output_batch_semantics
+      SELECT batch_id, trade_id, trade_type
+      FROM fx_batch_position_output
       ORDER BY batch_id, trade_id;
 
-      DROP TABLE fx_batch_outputs;
+      DROP TABLE fx_batch_position_output;
       DROP TABLE fx_batch_members;
       DROP TABLE fx_batches;
       DROP TABLE fx_trade_exposure;
@@ -1281,8 +1294,8 @@ function migrateFxBatchTradeSemantics(sqlite) {
           RENAME TO fx_batches;
       ALTER TABLE fx_batch_members_batch_semantics
           RENAME TO fx_batch_members;
-      ALTER TABLE fx_batch_outputs_batch_semantics
-          RENAME TO fx_batch_outputs;
+      ALTER TABLE fx_batch_position_output_batch_semantics
+          RENAME TO fx_batch_position_output;
     `);
 
     const migratedCounts = {
@@ -1296,7 +1309,7 @@ function migrateFxBatchTradeSemantics(sqlite) {
         sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count
       ),
       outputs: Number(
-        sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_outputs").get().count
+        sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count
       )
     };
 
@@ -1361,7 +1374,7 @@ function migrateFxBatchRollbackSemantics(sqlite) {
   const originalCounts = {
     batches: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count),
     members: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count),
-    outputs: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_outputs").get().count)
+    outputs: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count)
   };
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -1464,42 +1477,34 @@ function migrateFxBatchRollbackSemantics(sqlite) {
       FROM fx_batch_members
       ORDER BY batch_id, trade_id;
 
-      CREATE TABLE fx_batch_outputs_rollback_semantics
+      CREATE TABLE fx_batch_position_output_rollback_semantics
       (
-          batch_id    INTEGER NOT NULL,
+          batch_id    INTEGER PRIMARY KEY,
           trade_id    INTEGER NOT NULL,
           trade_type  TEXT    NOT NULL,
-          output_role TEXT    NOT NULL,
 
-          CONSTRAINT pk_fx_batch_outputs
-              PRIMARY KEY (batch_id, trade_id),
-          CONSTRAINT fk_fx_batch_outputs_batch
+          CONSTRAINT fk_fx_batch_position_output_batch
               FOREIGN KEY (batch_id)
                   REFERENCES fx_batches_rollback_semantics (batch_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_batch_outputs_trade
+          CONSTRAINT fk_fx_batch_position_output_trade
               FOREIGN KEY (trade_id, trade_type)
                   REFERENCES fx_trade_exposure (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT uq_fx_batch_outputs_trade
+          CONSTRAINT uq_fx_batch_position_output_trade
               UNIQUE (trade_id),
-          CONSTRAINT uq_fx_batch_outputs_role
-              UNIQUE (batch_id, output_role),
-          CONSTRAINT chk_fx_batch_outputs_role
-              CHECK (
-                  output_role = 'POSITION_OUT'
-                  AND trade_type = 'BATCH_POSITION_OUT'
-              )
+          CONSTRAINT chk_fx_batch_position_output_trade_type
+              CHECK (trade_type = 'BATCH_POSITION_OUT')
       );
 
-      INSERT INTO fx_batch_outputs_rollback_semantics
-      SELECT batch_id, trade_id, trade_type, output_role
-      FROM fx_batch_outputs
+      INSERT INTO fx_batch_position_output_rollback_semantics
+      SELECT batch_id, trade_id, trade_type
+      FROM fx_batch_position_output
       ORDER BY batch_id, trade_id;
 
-      DROP TABLE fx_batch_outputs;
+      DROP TABLE fx_batch_position_output;
       DROP TABLE fx_batch_members;
       DROP TABLE fx_batches;
 
@@ -1507,14 +1512,14 @@ function migrateFxBatchRollbackSemantics(sqlite) {
           RENAME TO fx_batches;
       ALTER TABLE fx_batch_members_rollback_semantics
           RENAME TO fx_batch_members;
-      ALTER TABLE fx_batch_outputs_rollback_semantics
-          RENAME TO fx_batch_outputs;
+      ALTER TABLE fx_batch_position_output_rollback_semantics
+          RENAME TO fx_batch_position_output;
     `);
 
     const migratedCounts = {
       batches: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count),
       members: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count),
-      outputs: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_outputs").get().count)
+      outputs: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count)
     };
 
     if (migratedCounts.batches !== originalCounts.batches
@@ -1651,51 +1656,22 @@ function migrateFxBatchMemberRoleSemantics(sqlite) {
   }
 }
 
-function migrateFxBatchQuoteCashMembers(sqlite) {
-  const legacyTableExists = Boolean(sqlite.prepare(`
-    SELECT 1 AS present
-    FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_batch_quote_cash_outputs'
-  `).get());
+function migrateFxBatchQuoteCashOutput(sqlite) {
   const targetTableExists = Boolean(sqlite.prepare(`
     SELECT 1 AS present
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_batch_quote_cash_members'
+    WHERE type = 'table' AND name = 'fx_batch_quote_cash_output'
   `).get());
 
   if (!targetTableExists) {
-    throw new Error("FX Batch Quote cash member table was not initialized.");
+    throw new Error("FX Batch Quote cash output table was not initialized.");
   }
 
   sqlite.exec("BEGIN IMMEDIATE");
 
   try {
-    if (legacyTableExists) {
-      sqlite.exec(`
-      INSERT OR IGNORE INTO fx_batch_quote_cash_members
-        (
-          batch_id,
-          quote_ccy_code,
-          quote_balance_contribution_minor,
-          quote_ccy_fraction_digits,
-          quote_ccy_value_date,
-          created_at
-        )
-      SELECT
-        batch_id,
-        quote_ccy_code,
-        quote_cash_amount_minor,
-        quote_ccy_fraction_digits,
-        quote_ccy_value_date,
-        created_at
-      FROM fx_batch_quote_cash_outputs;
-
-      DROP TABLE fx_batch_quote_cash_outputs;
-    `);
-    }
-
     sqlite.exec(`
-    INSERT INTO fx_batch_quote_cash_members
+    INSERT INTO fx_batch_quote_cash_output
       (
         batch_id,
         quote_ccy_code,
@@ -1724,7 +1700,7 @@ function migrateFxBatchQuoteCashMembers(sqlite) {
     INNER JOIN fx_trade_exposure exposure
       ON exposure.trade_id = member.trade_id
       AND exposure.trade_type = member.trade_type
-    LEFT JOIN fx_batch_quote_cash_members cash
+    LEFT JOIN fx_batch_quote_cash_output cash
       ON cash.batch_id = batch.batch_id
     WHERE batch.batch_status IN ('FORMED', 'ROLLED_BACK')
       AND cash.batch_id IS NULL
@@ -1733,29 +1709,29 @@ function migrateFxBatchQuoteCashMembers(sqlite) {
       AND COUNT(DISTINCT exposure.quote_ccy_value_date) = 1;
   `);
 
-    const missingCashMember = sqlite.prepare(`
+    const missingCashOutput = sqlite.prepare(`
     SELECT batch.batch_id AS batchId
     FROM fx_batches batch
-    LEFT JOIN fx_batch_quote_cash_members cash
+    LEFT JOIN fx_batch_quote_cash_output cash
       ON cash.batch_id = batch.batch_id
     WHERE batch.batch_status IN ('FORMED', 'ROLLED_BACK')
       AND cash.batch_id IS NULL
     LIMIT 1
   `).get();
 
-    if (missingCashMember) {
+    if (missingCashOutput) {
       throw new Error(
-        `Completed FX Batch ${missingCashMember.batchId} cannot be migrated to `
-          + "the Quote cash member model."
+        `Completed FX Batch ${missingCashOutput.batchId} cannot be migrated to `
+          + "the Quote cash output model."
       );
     }
 
-    const invalidCashMember = sqlite.prepare(`
+    const invalidCashOutput = sqlite.prepare(`
       SELECT batch.batch_id AS batchId
       FROM fx_batches batch
       INNER JOIN ccy_pair_options pair
         ON pair.ccy_pair_code = batch.ccy_pair_code
-      INNER JOIN fx_batch_quote_cash_members cash
+      INNER JOIN fx_batch_quote_cash_output cash
         ON cash.batch_id = batch.batch_id
       WHERE cash.quote_ccy_code <> pair.quote_ccy_code
         OR EXISTS
@@ -1791,9 +1767,9 @@ function migrateFxBatchQuoteCashMembers(sqlite) {
       LIMIT 1
     `).get();
 
-    if (invalidCashMember) {
+    if (invalidCashOutput) {
       throw new Error(
-        `FX Batch ${invalidCashMember.batchId} has an invalid Quote cash member.`
+        `FX Batch ${invalidCashOutput.batchId} has an invalid Quote cash output.`
       );
     }
 
@@ -1985,6 +1961,212 @@ function dropClientDealGenerationSettingsTriggers(sqlite) {
     DROP TRIGGER IF EXISTS trg_execution_contexts_preserve_auto_priced_client_generation_settings;
     DROP TRIGGER IF EXISTS trg_execution_systems_preserve_auto_priced_client_generation_settings;
   `);
+}
+
+function dropHedgeQuickModeSettingsTriggers(sqlite) {
+  sqlite.exec(`
+    DROP TRIGGER IF EXISTS trg_fx_hedge_quick_mode_settings_require_auto_priced_hedge_insert;
+    DROP TRIGGER IF EXISTS trg_fx_hedge_quick_mode_settings_require_auto_priced_hedge_update;
+    DROP TRIGGER IF EXISTS trg_fx_hedge_quick_mode_settings_require_base_precision_insert;
+    DROP TRIGGER IF EXISTS trg_fx_hedge_quick_mode_settings_require_base_precision_update;
+    DROP TRIGGER IF EXISTS trg_pricing_rules_preserve_fx_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_trading_parties_preserve_fx_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_execution_contexts_preserve_fx_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_execution_systems_preserve_fx_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_ccy_options_preserve_fx_hedge_quick_mode_settings_precision;
+  `);
+}
+
+function ensureHedgeQuickModeSettingsDefaultTenor(sqlite) {
+  if (tableColumnNames(sqlite, "fx_hedge_quick_mode_settings").has("default_tenor")) {
+    return;
+  }
+
+  sqlite.exec(`
+    ALTER TABLE fx_hedge_quick_mode_settings
+    ADD COLUMN default_tenor TEXT NOT NULL DEFAULT 'TOD'
+      CHECK (default_tenor IN ('TOD', 'TOM', 'SPOT'));
+  `);
+}
+
+function migrateLegacyFxBatchOutputTables(sqlite) {
+  const tableExists = tableName => Boolean(sqlite.prepare(`
+    SELECT 1
+    FROM sqlite_master
+    WHERE type = 'table' AND name = ?
+  `).get(tableName));
+  const legacyPositionTableExists = tableExists("fx_batch_outputs");
+  const legacyCashMemberTableExists = tableExists("fx_batch_quote_cash_members");
+  const legacyCashOutputTableExists = tableExists("fx_batch_quote_cash_outputs");
+
+  if (!legacyPositionTableExists
+    && !legacyCashMemberTableExists
+    && !legacyCashOutputTableExists) {
+    return;
+  }
+
+  sqlite.exec("BEGIN IMMEDIATE");
+
+  try {
+    if (legacyPositionTableExists) {
+      const invalidPositionOutput = sqlite.prepare(`
+        SELECT batch_id, trade_id, trade_type, output_role
+        FROM fx_batch_outputs
+        WHERE trade_type <> 'BATCH_POSITION_OUT'
+          OR output_role <> 'POSITION_OUT'
+        LIMIT 1
+      `).get();
+
+      if (invalidPositionOutput) {
+        throw new Error(
+          `Legacy FX Batch ${invalidPositionOutput.batch_id} has an unsupported `
+            + `position output ${invalidPositionOutput.trade_id}.`
+        );
+      }
+
+      sqlite.exec(`
+        INSERT OR IGNORE INTO fx_batch_position_output
+          (batch_id, trade_id, trade_type)
+        SELECT batch_id, trade_id, trade_type
+        FROM fx_batch_outputs;
+      `);
+
+      const missingPositionOutput = sqlite.prepare(`
+        SELECT legacy.batch_id, legacy.trade_id
+        FROM fx_batch_outputs legacy
+        LEFT JOIN fx_batch_position_output target
+          ON target.batch_id = legacy.batch_id
+          AND target.trade_id = legacy.trade_id
+          AND target.trade_type = legacy.trade_type
+        WHERE target.batch_id IS NULL
+        LIMIT 1
+      `).get();
+
+      if (missingPositionOutput) {
+        throw new Error(
+          `Legacy FX Batch ${missingPositionOutput.batch_id} position output `
+            + `${missingPositionOutput.trade_id} could not be migrated.`
+        );
+      }
+    }
+
+    if (legacyCashMemberTableExists) {
+      sqlite.exec(`
+        INSERT OR IGNORE INTO fx_batch_quote_cash_output
+          (
+            batch_id,
+            quote_ccy_code,
+            quote_balance_contribution_minor,
+            quote_ccy_fraction_digits,
+            quote_ccy_value_date,
+            created_at
+          )
+        SELECT
+          batch_id,
+          quote_ccy_code,
+          quote_balance_contribution_minor,
+          quote_ccy_fraction_digits,
+          quote_ccy_value_date,
+          created_at
+        FROM fx_batch_quote_cash_members;
+      `);
+
+      const missingCashOutput = sqlite.prepare(`
+        SELECT legacy.batch_id
+        FROM fx_batch_quote_cash_members legacy
+        LEFT JOIN fx_batch_quote_cash_output target
+          ON target.batch_id = legacy.batch_id
+          AND target.quote_ccy_code = legacy.quote_ccy_code
+          AND target.quote_balance_contribution_minor
+              = legacy.quote_balance_contribution_minor
+          AND target.quote_ccy_fraction_digits = legacy.quote_ccy_fraction_digits
+          AND target.quote_ccy_value_date = legacy.quote_ccy_value_date
+          AND target.created_at = legacy.created_at
+        WHERE target.batch_id IS NULL
+        LIMIT 1
+      `).get();
+
+      if (missingCashOutput) {
+        throw new Error(
+          `Legacy FX Batch ${missingCashOutput.batch_id} Quote cash output `
+            + "could not be migrated."
+        );
+      }
+    }
+
+    if (legacyCashOutputTableExists) {
+      sqlite.exec(`
+        INSERT OR IGNORE INTO fx_batch_quote_cash_output
+          (
+            batch_id,
+            quote_ccy_code,
+            quote_balance_contribution_minor,
+            quote_ccy_fraction_digits,
+            quote_ccy_value_date,
+            created_at
+          )
+        SELECT
+          batch_id,
+          quote_ccy_code,
+          quote_cash_amount_minor,
+          quote_ccy_fraction_digits,
+          quote_ccy_value_date,
+          created_at
+        FROM fx_batch_quote_cash_outputs;
+      `);
+
+      const missingLegacyCashOutput = sqlite.prepare(`
+        SELECT legacy.batch_id
+        FROM fx_batch_quote_cash_outputs legacy
+        LEFT JOIN fx_batch_quote_cash_output target
+          ON target.batch_id = legacy.batch_id
+          AND target.quote_ccy_code = legacy.quote_ccy_code
+          AND target.quote_balance_contribution_minor
+              = legacy.quote_cash_amount_minor
+          AND target.quote_ccy_fraction_digits = legacy.quote_ccy_fraction_digits
+          AND target.quote_ccy_value_date = legacy.quote_ccy_value_date
+          AND target.created_at = legacy.created_at
+        WHERE target.batch_id IS NULL
+        LIMIT 1
+      `).get();
+
+      if (missingLegacyCashOutput) {
+        throw new Error(
+          `Legacy FX Batch ${missingLegacyCashOutput.batch_id} Quote cash output `
+            + "could not be migrated."
+        );
+      }
+    }
+
+    const positionForeignKeyViolations =
+      sqlite.prepare("PRAGMA foreign_key_check(fx_batch_position_output)").all();
+    const cashForeignKeyViolations =
+      sqlite.prepare("PRAGMA foreign_key_check(fx_batch_quote_cash_output)").all();
+
+    if (positionForeignKeyViolations.length > 0 || cashForeignKeyViolations.length > 0) {
+      throw new Error("FX Batch output-table migration produced foreign key violations.");
+    }
+
+    if (legacyPositionTableExists) {
+      sqlite.exec("DROP TABLE fx_batch_outputs");
+    }
+
+    if (legacyCashMemberTableExists) {
+      sqlite.exec("DROP TABLE fx_batch_quote_cash_members");
+    }
+
+    if (legacyCashOutputTableExists) {
+      sqlite.exec("DROP TABLE fx_batch_quote_cash_outputs");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  }
 }
 
 function migrateLegacyBatchTables(sqlite) {
@@ -3822,6 +4004,8 @@ function migrateLegacyExecutionContextIds(sqlite) {
           ON pricing_rules (execution_context_id);
       CREATE INDEX idx_pricing_rules_ccy_pair
           ON pricing_rules (ccy_pair_code);
+      CREATE UNIQUE INDEX uq_pricing_rules_hedge_quick_mode_reference
+          ON pricing_rules (pricing_rule_id, ccy_pair_code);
 
       DROP TABLE execution_context_id_map;
     `);
@@ -4384,7 +4568,8 @@ function seedInitialPricingRules(sqlite) {
     ["7701234567", "002", "CTF3", "MANUAL_CLIENT_DEAL_ENTRY", "EUR_USD", 0.08],
     ["7812345678", "1234", "AFINA", "RFQ", "EUR_USD", 0.05],
     ["5409876543", "001", "CTF3", "CLICK_TRADE_EFX", "EUR_USD", 0.20],
-    ["7707000001", "002", "CTF3", "MANUAL_CLIENT_DEAL_ENTRY", "EUR_USD", 0.03]
+    ["7707000001", "002", "CTF3", "MANUAL_CLIENT_DEAL_ENTRY", "EUR_USD", 0.03],
+    ["7707000001", "002", "AFINA", "CLICK_TRADE_EFX", "EUR_USD", 0.03]
   ];
   const insert = sqlite.prepare(`
     INSERT OR IGNORE INTO pricing_rules
@@ -4420,6 +4605,65 @@ function seedInitialPricingRules(sqlite) {
 
 function seedInitialClientDealGenerationSettings(sqlite) {
   synchronizeClientDealGenerationSettings(sqlite);
+}
+
+function seedInitialHedgeQuickModeSettings(sqlite) {
+  const eligibleRules = sqlite.prepare(`
+    SELECT
+      rule.pricing_rule_id AS pricingRuleId,
+      rule.ccy_pair_code AS ccyPairCode,
+      base_ccy.fraction_digits AS baseCcyFractionDigits
+    FROM pricing_rules rule
+    INNER JOIN trading_parties party ON party.party_id = rule.party_id
+    INNER JOIN execution_contexts context
+      ON context.execution_context_id = rule.execution_context_id
+    INNER JOIN execution_systems execution
+      ON execution.execution_system_id = context.execution_system_id
+    INNER JOIN ccy_pair_options pair
+      ON pair.ccy_pair_code = rule.ccy_pair_code
+    INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
+    WHERE rule.ccy_pair_code = 'EUR_USD'
+      AND party.party_type = 'HEDGE_COUNTERPARTY'
+      AND party.is_active = 1
+      AND execution.pricing_mode = 'AUTO_PRICED'
+      AND execution.is_active = 1
+    ORDER BY rule.pricing_rule_id
+  `).all();
+
+  // Не выбираем правило неоднозначно: Quick Mode требует ровно одну явную ссылку.
+  if (eligibleRules.length !== 1) {
+    return;
+  }
+
+  const rule = eligibleRules[0];
+  const amountMinor = amount => minorToSafeInteger(
+    majorToMinorExact(amount, rule.baseCcyFractionDigits),
+    "Initial Hedge Quick Mode Base Ccy Amount Minor"
+  );
+
+  sqlite.prepare(`
+    INSERT INTO fx_hedge_quick_mode_settings
+      (
+        ccy_pair_code,
+        pricing_rule_id,
+        base_ccy_fraction_digits,
+        small_base_ccy_amount_minor,
+        medium_base_ccy_amount_minor,
+        large_base_ccy_amount_minor,
+        xlarge_base_ccy_amount_minor,
+        is_active,
+        default_tenor
+      )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'TOD')
+  `).run(
+    rule.ccyPairCode,
+    rule.pricingRuleId,
+    rule.baseCcyFractionDigits,
+    amountMinor("5000000"),
+    amountMinor("20000000"),
+    amountMinor("50000000"),
+    amountMinor("100000000")
+  );
 }
 
 function seedInitialClientFxDeals(sqlite) {
@@ -4699,7 +4943,7 @@ function fxBatchBalanceRow(row) {
   };
 }
 
-function fxBatchQuoteCashMember(batchId) {
+function fxBatchQuoteCashOutput(batchId) {
   const row = database.prepare(`
     SELECT
       cash.batch_id AS batchId,
@@ -4709,16 +4953,12 @@ function fxBatchQuoteCashMember(batchId) {
       cash.quote_ccy_value_date AS quoteCcyValueDate,
       cash.created_at AS createdAt,
       batch.ccy_pair_code AS ccyPairCode,
-      pair.base_ccy_code AS baseCcyCode,
-      pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
-      base_ccy.fraction_digits AS baseCcyFractionDigits
-    FROM fx_batch_quote_cash_members cash
+      pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair
+    FROM fx_batch_quote_cash_output cash
     INNER JOIN fx_batches batch
       ON batch.batch_id = cash.batch_id
     INNER JOIN ccy_pair_options pair
       ON pair.ccy_pair_code = batch.ccy_pair_code
-    INNER JOIN ccy_options base_ccy
-      ON base_ccy.ccy_code = pair.base_ccy_code
     WHERE cash.batch_id = ?
   `).get(batchId);
 
@@ -4726,50 +4966,27 @@ function fxBatchQuoteCashMember(batchId) {
     return null;
   }
 
-  const quoteCcyAmountMinor = Math.abs(row.quoteBalanceContributionMinor);
+  const amountMinor = Math.abs(row.quoteBalanceContributionMinor);
 
   return {
-    batchContentKey: `QUOTE_CASH:${row.batchId}`,
-    tradeId: null,
-    tradeType: FX_BATCH_SPECIAL_MEMBER_TYPE.QUOTE_CASH_OUT,
-    entryTimestamp: row.createdAt,
-    tradeDate: null,
+    outputType: "BATCH_QUOTE_CASH_OUT",
+    batchId: row.batchId,
+    createdAt: row.createdAt,
     ccyPairCode: row.ccyPairCode,
     currencyPair: row.currencyPair,
-    baseCcyCode: row.baseCcyCode,
-    quoteCcyCode: row.quoteCcyCode,
-    side: null,
-    dealtCcyCode: row.quoteCcyCode,
-    baseCcyAmountMinor: 0,
-    baseCcyFractionDigits: row.baseCcyFractionDigits,
-    quoteCcyAmountMinor,
-    quoteCcyFractionDigits: row.quoteCcyFractionDigits,
-    baseCcyAmount: 0,
-    quoteCcyAmount: Number(minorToMajor(
-      quoteCcyAmountMinor,
+    currencyCode: row.quoteCcyCode,
+    amountMinor,
+    fractionDigits: row.quoteCcyFractionDigits,
+    amount: Number(minorToMajor(
+      amountMinor,
       row.quoteCcyFractionDigits
     )),
-    baseBalanceContributionMinor: 0,
-    quoteBalanceContributionMinor: row.quoteBalanceContributionMinor,
-    baseBalanceContribution: 0,
-    quoteBalanceContribution: Number(minorToMajor(
+    balanceContributionMinor: row.quoteBalanceContributionMinor,
+    balanceContribution: Number(minorToMajor(
       row.quoteBalanceContributionMinor,
       row.quoteCcyFractionDigits
     )),
-    tradeRate: null,
-    transferRate: null,
-    analyticalPnl: null,
-    analyticalPnlQuoteMinor: null,
-    analyticalPnlQuoteFractionDigits: null,
-    tenor: null,
-    baseCcyValueDate: null,
-    quoteCcyValueDate: row.quoteCcyValueDate,
-    partyId: null,
-    partyCode: null,
-    partyCodeType: null,
-    partyName: null,
-    createdByBatchId: row.batchId,
-    memberRole: FX_BATCH_MEMBER_ROLE.BALANCE_QUOTE_CASH
+    valueDate: row.quoteCcyValueDate
   };
 }
 
@@ -4962,8 +5179,14 @@ function clientDealPricingRule(pricingRuleId) {
     .find(rule => rule.pricingRuleId === Number(pricingRuleId)) || null;
 }
 
-function hedgeDealPricingRules() {
-  return pricingRules("DEALER_PRICED").filter(rule => {
+function eligibleHedgeDealPricingRules(pricingMode) {
+  const normalizedPricingMode = normalizedText(pricingMode).toUpperCase();
+
+  if (!HEDGE_DEAL_PRICING_MODES.has(normalizedPricingMode)) {
+    return [];
+  }
+
+  return pricingRules(normalizedPricingMode).filter(rule => {
     const party = tradingParty(rule.partyId);
     const context = executionContext(rule.executionContextId);
     const system = context ? executionSystem(context.executionSystemId) : null;
@@ -4974,9 +5197,132 @@ function hedgeDealPricingRules() {
   });
 }
 
-function hedgeDealPricingRule(pricingRuleId) {
-  return hedgeDealPricingRules()
+function eligibleHedgeDealPricingRule(pricingRuleId, pricingMode) {
+  return eligibleHedgeDealPricingRules(pricingMode)
     .find(rule => rule.pricingRuleId === Number(pricingRuleId)) || null;
+}
+
+function hedgeDealPricingRules() {
+  return eligibleHedgeDealPricingRules("DEALER_PRICED");
+}
+
+function hedgeDealPricingRule(pricingRuleId) {
+  return eligibleHedgeDealPricingRule(pricingRuleId, "DEALER_PRICED");
+}
+
+function autoPricedHedgeDealPricingRules() {
+  return eligibleHedgeDealPricingRules("AUTO_PRICED");
+}
+
+function autoPricedHedgeDealPricingRule(pricingRuleId) {
+  return eligibleHedgeDealPricingRule(pricingRuleId, "AUTO_PRICED");
+}
+
+function hedgeQuickModeSettings() {
+  return database.prepare(`
+    SELECT
+      settings.ccy_pair_code AS ccyPairCode,
+      pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
+      pair.base_ccy_code AS baseCcyCode,
+      settings.pricing_rule_id AS pricingRuleId,
+      rule.party_id AS partyId,
+      party.party_type AS partyType,
+      party.party_name AS partyName,
+      party.is_active AS partyActive,
+      rule.execution_context_id AS executionContextId,
+      execution.execution_system_id AS executionSystemId,
+      execution.name AS executionSystemName,
+      execution.pricing_mode AS pricingMode,
+      execution.is_active AS executionSystemActive,
+      settings.base_ccy_fraction_digits AS baseCcyFractionDigits,
+      settings.small_base_ccy_amount_minor AS smallBaseCcyAmountMinor,
+      settings.medium_base_ccy_amount_minor AS mediumBaseCcyAmountMinor,
+      settings.large_base_ccy_amount_minor AS largeBaseCcyAmountMinor,
+      settings.xlarge_base_ccy_amount_minor AS xlargeBaseCcyAmountMinor,
+      settings.is_active AS active,
+      settings.default_tenor AS defaultTenor
+    FROM fx_hedge_quick_mode_settings settings
+    INNER JOIN ccy_pair_options pair
+      ON pair.ccy_pair_code = settings.ccy_pair_code
+    INNER JOIN pricing_rules rule
+      ON rule.pricing_rule_id = settings.pricing_rule_id
+      AND rule.ccy_pair_code = settings.ccy_pair_code
+    INNER JOIN trading_parties party ON party.party_id = rule.party_id
+    INNER JOIN execution_contexts context
+      ON context.execution_context_id = rule.execution_context_id
+    INNER JOIN execution_systems execution
+      ON execution.execution_system_id = context.execution_system_id
+    ORDER BY pair.base_ccy_code, pair.quote_ccy_code
+  `).all().map(row => {
+    const settings = {
+      ...row,
+      active: row.active === 1,
+      partyActive: row.partyActive === 1,
+      executionSystemActive: row.executionSystemActive === 1
+    };
+
+    return {
+      ...settings,
+      available: settings.active
+        && settings.partyActive
+        && settings.executionSystemActive
+        && settings.partyType === "HEDGE_COUNTERPARTY"
+        && settings.pricingMode === "AUTO_PRICED",
+      presets: hedgeQuickModePresets(settings)
+    };
+  });
+}
+
+function hedgeQuickModeSetting(ccyPairCode) {
+  const normalizedPairCode = normalizedText(ccyPairCode).toUpperCase();
+  return hedgeQuickModeSettings()
+    .find(settings => settings.ccyPairCode === normalizedPairCode) || null;
+}
+
+function replaceHedgeQuickModeSetting(payload) {
+  database.prepare(`
+    INSERT INTO fx_hedge_quick_mode_settings
+      (
+        ccy_pair_code,
+        pricing_rule_id,
+        base_ccy_fraction_digits,
+        small_base_ccy_amount_minor,
+        medium_base_ccy_amount_minor,
+        large_base_ccy_amount_minor,
+        xlarge_base_ccy_amount_minor,
+        is_active,
+        default_tenor
+      )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (ccy_pair_code) DO UPDATE SET
+      pricing_rule_id = excluded.pricing_rule_id,
+      base_ccy_fraction_digits = excluded.base_ccy_fraction_digits,
+      small_base_ccy_amount_minor = excluded.small_base_ccy_amount_minor,
+      medium_base_ccy_amount_minor = excluded.medium_base_ccy_amount_minor,
+      large_base_ccy_amount_minor = excluded.large_base_ccy_amount_minor,
+      xlarge_base_ccy_amount_minor = excluded.xlarge_base_ccy_amount_minor,
+      is_active = excluded.is_active,
+      default_tenor = excluded.default_tenor
+  `).run(
+    payload.ccyPairCode,
+    payload.pricingRuleId,
+    payload.baseCcyFractionDigits,
+    payload.smallBaseCcyAmountMinor,
+    payload.mediumBaseCcyAmountMinor,
+    payload.largeBaseCcyAmountMinor,
+    payload.xlargeBaseCcyAmountMinor,
+    payload.active ? 1 : 0,
+    payload.defaultTenor
+  );
+
+  return hedgeQuickModeSetting(payload.ccyPairCode);
+}
+
+function deleteHedgeQuickModeSetting(ccyPairCode) {
+  return database.prepare(`
+    DELETE FROM fx_hedge_quick_mode_settings
+    WHERE ccy_pair_code = ?
+  `).run(ccyPairCode).changes === 1;
 }
 
 function clientDealGenerationProcessSettings() {
@@ -5321,7 +5667,9 @@ function fxPositions() {
       a.market_pulse_offer AS marketPulseOffer,
       a.market_pulse_timestamp AS marketPulseTimestamp,
       COALESCE(output.batch_id, balance_member.batch_id) AS batchId,
-      output.output_role AS outputRole,
+      CASE
+        WHEN output.batch_id IS NOT NULL THEN 'POSITION_OUT'
+      END AS outputRole,
       EXISTS
       (
         SELECT 1
@@ -5344,7 +5692,7 @@ function fxPositions() {
       ON r.pricing_rule_id = COALESCE(c.pricing_rule_id, h.pricing_rule_id)
     LEFT JOIN fx_trade_market_snapshot a
       ON a.trade_id = e.trade_id AND a.trade_type = e.trade_type
-    LEFT JOIN fx_batch_outputs output
+    LEFT JOIN fx_batch_position_output output
       ON output.trade_id = e.trade_id AND output.trade_type = e.trade_type
     LEFT JOIN fx_batch_members balance_member
       ON balance_member.trade_id = e.trade_id
@@ -5403,8 +5751,8 @@ function fxBatchTrades() {
         o.batch_id,
         o.trade_id,
         o.trade_type,
-        o.output_role AS batch_role
-      FROM fx_batch_outputs o
+        'POSITION_OUT' AS batch_role
+      FROM fx_batch_position_output o
     )
     SELECT
       t.trade_id AS batchTradeId,
@@ -5515,10 +5863,10 @@ function fxBatchContent(batchId) {
       SELECT
         output.batch_id,
         'OUTPUT' AS relation_type,
-        output.output_role AS content_role,
+        'POSITION_OUT' AS content_role,
         output.trade_id,
         output.trade_type
-      FROM fx_batch_outputs output
+      FROM fx_batch_position_output output
       INNER JOIN selected_batch selected
         ON selected.batch_id = output.batch_id
     ),
@@ -5537,7 +5885,7 @@ function fxBatchContent(batchId) {
         output.trade_id,
         output.trade_type,
         output.batch_id
-      FROM fx_batch_outputs output
+      FROM fx_batch_position_output output
     ),
     technical_origins AS
     (
@@ -5611,13 +5959,12 @@ function fxBatchContent(batchId) {
       CASE content.content_role
         WHEN 'TRADE' THEN 1
         WHEN 'BALANCE_TRADE' THEN 2
-        WHEN 'BALANCE_QUOTE_CASH' THEN 3
-        ELSE 4
+        ELSE 3
       END,
       exposure.trade_id
   `).all(batchId).map(fxBatchBalanceRow);
 
-  const content = rows.reduce((result, row) => {
+  return rows.reduce((result, row) => {
     const { relationType, contentRole, ...trade } = row;
 
     if (relationType === "MEMBER") {
@@ -5628,13 +5975,6 @@ function fxBatchContent(batchId) {
 
     return result;
   }, { members: [], outputs: [] });
-  const quoteCashMember = fxBatchQuoteCashMember(batchId);
-
-  if (quoteCashMember) {
-    content.members.push(quoteCashMember);
-  }
-
-  return content;
 }
 
 function fxBatchSourceTrades(tradeIds) {
@@ -5686,12 +6026,11 @@ function fxBatchSourceTrades(tradeIds) {
               AND EXISTS
               (
                 SELECT 1
-                FROM fx_batch_outputs source_output
+                FROM fx_batch_position_output source_output
                 INNER JOIN fx_batches source_batch
                   ON source_batch.batch_id = source_output.batch_id
                 WHERE source_output.trade_id = e.trade_id
                   AND source_output.trade_type = e.trade_type
-                  AND source_output.output_role = 'POSITION_OUT'
                   AND source_batch.batch_status IN ('FORMED', 'ROLLED_BACK')
               )
             )
@@ -5797,11 +6136,11 @@ function saveFormedFxBatch({ idempotencyKey, sourceTrades, formation }) {
       VALUES (?, ?, ?, ?)
     `);
     const insertOutput = database.prepare(`
-      INSERT INTO fx_batch_outputs (batch_id, trade_id, trade_type, output_role)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO fx_batch_position_output (batch_id, trade_id, trade_type)
+      VALUES (?, ?, ?)
     `);
-    const insertQuoteCashMember = database.prepare(`
-      INSERT INTO fx_batch_quote_cash_members
+    const insertQuoteCashOutput = database.prepare(`
+      INSERT INTO fx_batch_quote_cash_output
         (
           batch_id,
           quote_ccy_code,
@@ -5850,11 +6189,11 @@ function saveFormedFxBatch({ idempotencyKey, sourceTrades, formation }) {
           FX_BATCH_MEMBER_ROLE.BALANCE_TRADE
         );
       } else {
-        insertOutput.run(batchId, tradeId, trade.tradeType, "POSITION_OUT");
+        insertOutput.run(batchId, tradeId, trade.tradeType);
       }
       return tradeId;
     });
-    insertQuoteCashMember.run(
+    insertQuoteCashOutput.run(
       batchId,
       formation.quoteCashOut.quoteCcyCode,
       minorToSafeInteger(
@@ -5933,7 +6272,7 @@ function completedBatchResult(batchId) {
     throw new Error(`Completed FX Batch ${batchId} was not found.`);
   }
 
-  const quoteCashOut = fxBatchQuoteCashMember(batchId);
+  const quoteCashOut = fxBatchQuoteCashOutput(batchId);
 
   return {
     ...batch,
@@ -5952,6 +6291,7 @@ function fxBatchDetails(batchId) {
   const batch = completedBatchResult(batchId);
   const content = fxBatchContent(batchId);
   const settlementTrade = content.members[0] || content.outputs[0] || null;
+  const cashOutput = fxBatchQuoteCashOutput(batchId);
 
   return {
     ...batch,
@@ -5967,7 +6307,8 @@ function fxBatchDetails(batchId) {
     memberCount: content.members.length,
     outputCount: content.outputs.length,
     members: content.members,
-    outputs: content.outputs
+    outputs: content.outputs,
+    cashOutput
   };
 }
 
@@ -6194,8 +6535,12 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
   });
 }
 
-function hedgeFxDealWithCalculatedTerms(payload, exposureAmounts) {
-  const rule = hedgeDealPricingRule(payload.pricingRuleId);
+function hedgeFxDealWithCalculatedTerms(
+  payload,
+  exposureAmounts,
+  rule = hedgeDealPricingRule(payload.pricingRuleId),
+  marketPulseSnapshot = marketPulseSimulator.snapshot()
+) {
   const pair = ccyPairOption(rule.ccyPairCode);
   const terms = createHedgeFxDealTerms({
     hedgeSide: payload.side,
@@ -6207,7 +6552,6 @@ function hedgeFxDealWithCalculatedTerms(payload, exposureAmounts) {
     baseFractionDigits: exposureAmounts.baseCcyFractionDigits,
     quoteFractionDigits: exposureAmounts.quoteCcyFractionDigits
   });
-  const marketPulseSnapshot = marketPulseSimulator.snapshot();
   const marketQuote = marketPulseSnapshot.quotes
     .find(quote => quote.pairCode === rule.ccyPairCode);
 
@@ -6230,6 +6574,43 @@ function hedgeFxDealWithCalculatedTerms(payload, exposureAmounts) {
     marketPulseBid: marketQuote?.bid ?? null,
     marketPulseOffer: marketQuote?.offer ?? null,
     marketPulseTimestamp: marketQuote ? marketPulseSnapshot.generatedAt : null
+  };
+}
+
+function autoPricedHedgeFxDealWithCalculatedTerms(payload) {
+  const rule = autoPricedHedgeDealPricingRule(payload.pricingRuleId);
+  const pair = ccyPairOption(rule.ccyPairCode);
+  const marketPulseSnapshot = marketPulseSimulator.snapshot();
+  const marketQuote = marketPulseSnapshot.quotes
+    .find(quote => quote.pairCode === rule.ccyPairCode);
+
+  if (!marketQuote) {
+    const error = new Error(
+      `Market Pulse quote for ${rule.currencyPair} is unavailable.`
+    );
+    error.code = "AUTO_PRICED_HEDGE_MARKET_QUOTE_UNAVAILABLE";
+    throw error;
+  }
+
+  const pricedPayload = {
+    ...payload,
+    tradeRate: String(autoPricedHedgeTradeRate({
+      counterpartySide: payload.side,
+      marketBid: marketQuote.bid,
+      marketOffer: marketQuote.offer,
+      rateFractionDigits: pair.defaultQuoteDecimals
+    }))
+  };
+  const exposureAmounts = fxTradeExposureAmounts(pricedPayload);
+
+  return {
+    deal: hedgeFxDealWithCalculatedTerms(
+      pricedPayload,
+      exposureAmounts,
+      rule,
+      marketPulseSnapshot
+    ),
+    exposureAmounts
   };
 }
 
@@ -6401,8 +6782,8 @@ const clientDealGenerationProcess = new ClientDealGenerationProcess({
 const DEMO_TRADE_RESET_CONFIRMATION = "RESET_ALL_TRADES";
 const DEMO_TRADE_RESET_DELETE_TRIGGERS = Object.freeze([
   "trg_fx_batch_members_immutable_delete",
-  "trg_fx_batch_outputs_immutable_delete",
-  "trg_fx_batch_quote_cash_members_immutable_delete",
+  "trg_fx_batch_position_output_immutable_delete",
+  "trg_fx_batch_quote_cash_output_immutable_delete",
   "trg_fx_batches_immutable_delete"
 ]);
 
@@ -6416,9 +6797,9 @@ function demoTradeTableCounts() {
     ),
     batches: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count),
     batchMembers: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count),
-    batchOutputs: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batch_outputs").get().count),
+    batchOutputs: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count),
     batchQuoteCashMembers: Number(
-      database.prepare("SELECT COUNT(*) AS count FROM fx_batch_quote_cash_members").get().count
+      database.prepare("SELECT COUNT(*) AS count FROM fx_batch_quote_cash_output").get().count
     )
   };
 }
@@ -6454,8 +6835,8 @@ function resetDemoTrades() {
     }
 
     database.exec(`
-      DELETE FROM fx_batch_quote_cash_members;
-      DELETE FROM fx_batch_outputs;
+      DELETE FROM fx_batch_quote_cash_output;
+      DELETE FROM fx_batch_position_output;
       DELETE FROM fx_batch_members;
       DELETE FROM fx_batches;
       DELETE FROM fx_trade_market_snapshot;
@@ -7168,13 +7549,12 @@ function validateClientFxDealPayload(body) {
   };
 }
 
-function validateHedgeFxDealPayload(body) {
+function validateHedgeFxDealBasePayload(body) {
   const pricingRuleId = optionalPositiveInteger(body.pricingRuleId);
   const ccyPairCode = normalizedText(body.ccyPairCode).toUpperCase();
   const side = normalizedText(body.side).toUpperCase();
   const dealtCcyCode = normalizedText(body.dealtCcyCode).toUpperCase();
   const dealtCcyAmount = normalizedPositiveDecimalText(body.dealtCcyAmount);
-  const tradeRate = normalizedPositiveDecimalText(body.tradeRate);
   const tenor = normalizedText(body.tenor).toUpperCase();
 
   if (Number.isNaN(pricingRuleId) || pricingRuleId === null) {
@@ -7197,10 +7577,6 @@ function validateHedgeFxDealPayload(body) {
     return { error: "Dealt Ccy Amount must be a positive decimal string." };
   }
 
-  if (tradeRate === null) {
-    return { error: "Trade Rate must be a positive decimal string." };
-  }
-
   if (!["TOD", "TOM", "SPOT"].includes(tenor)) {
     return { error: "Tenor must be TOD, TOM or SPOT." };
   }
@@ -7211,8 +7587,164 @@ function validateHedgeFxDealPayload(body) {
     side,
     dealtCcyCode,
     dealtCcyAmount,
-    tradeRate,
     tenor
+  };
+}
+
+function validateHedgeFxDealPayload(body) {
+  const payload = validateHedgeFxDealBasePayload(body);
+
+  if (payload.error) {
+    return payload;
+  }
+
+  const tradeRate = normalizedPositiveDecimalText(body.tradeRate);
+
+  if (tradeRate === null) {
+    return { error: "Trade Rate must be a positive decimal string." };
+  }
+
+  return {
+    ...payload,
+    tradeRate
+  };
+}
+
+function validateAutoPricedHedgeFxDealPayload(body) {
+  const payload = validateHedgeFxDealBasePayload(body);
+
+  if (payload.error) {
+    return payload;
+  }
+
+  if (body.tradeRate !== undefined
+    && body.tradeRate !== null
+    && String(body.tradeRate).trim() !== "") {
+    return {
+      error: "Trade Rate must not be provided for an AUTO_PRICED Hedge FX Deal."
+    };
+  }
+
+  return payload;
+}
+
+function validateHedgeQuickModeDealPayload(body) {
+  const allowedFields = new Set([
+    "ccyPairCode",
+    "side",
+    "presetCode",
+    "tenor"
+  ]);
+  const unexpectedFields = Object.keys(body).filter(field => !allowedFields.has(field));
+  const ccyPairCode = normalizedText(body.ccyPairCode).toUpperCase();
+  const side = normalizedText(body.side).toUpperCase();
+  const presetCode = normalizedText(body.presetCode).toUpperCase();
+  const tenor = normalizedText(body.tenor).toUpperCase();
+
+  if (unexpectedFields.length > 0) {
+    return {
+      error: `Only Ccy Pair Code, Side, Preset Code and Tenor may be provided. Unexpected fields: ${unexpectedFields.join(", ")}.`
+    };
+  }
+
+  if (!/^[A-Z]{3}_[A-Z]{3}$/.test(ccyPairCode)) {
+    return { error: "Ccy Pair Code must look like EUR_USD." };
+  }
+
+  if (!["BUY", "SELL"].includes(side)) {
+    return { error: "Hedge Side must be BUY or SELL." };
+  }
+
+  if (!HEDGE_QUICK_MODE_PRESET_CODES.includes(presetCode)) {
+    return {
+      error: `Preset Code must be ${HEDGE_QUICK_MODE_PRESET_CODES.join(", ")}.`
+    };
+  }
+
+  if (!["TOD", "TOM", "SPOT"].includes(tenor)) {
+    return { error: "Tenor must be TOD, TOM or SPOT." };
+  }
+
+  return { ccyPairCode, side, presetCode, tenor };
+}
+
+function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractionDigits) {
+  const allowedFields = new Set([
+    "pricingRuleId",
+    "smallBaseCcyAmount",
+    "mediumBaseCcyAmount",
+    "largeBaseCcyAmount",
+    "xlargeBaseCcyAmount",
+    "defaultTenor",
+    "active"
+  ]);
+  const unexpectedFields = Object.keys(body).filter(field => !allowedFields.has(field));
+  const pricingRuleId = optionalPositiveInteger(body.pricingRuleId);
+  const active = typeof body.active === "boolean" ? body.active : null;
+  const defaultTenor = normalizedText(body.defaultTenor).toUpperCase();
+  const amountFields = [
+    ["smallBaseCcyAmount", "Small"],
+    ["mediumBaseCcyAmount", "Medium"],
+    ["largeBaseCcyAmount", "Large"],
+    ["xlargeBaseCcyAmount", "Extra Large"]
+  ];
+
+  if (unexpectedFields.length > 0) {
+    return {
+      error: `Unexpected Hedge Quick Mode Settings fields: ${unexpectedFields.join(", ")}.`
+    };
+  }
+
+  if (Number.isNaN(pricingRuleId) || pricingRuleId === null) {
+    return { error: "Pricing Rule ID must be a positive integer." };
+  }
+
+  if (active === null) {
+    return { error: "Active must be a boolean value." };
+  }
+
+  if (!["TOD", "TOM", "SPOT"].includes(defaultTenor)) {
+    return { error: "Default Tenor must be TOD, TOM or SPOT." };
+  }
+
+  const amounts = {};
+
+  try {
+    for (const [field, label] of amountFields) {
+      const amount = normalizedPositiveDecimalText(body[field]);
+
+      if (amount === null) {
+        return { error: `${label} Base Ccy Amount must be a positive decimal string.` };
+      }
+
+      amounts[`${field}Minor`] = minorToSafeInteger(
+        majorToMinorExact(amount, baseCcyFractionDigits),
+        `${label} Base Ccy Amount Minor`
+      );
+    }
+  } catch (error) {
+    if (error instanceof TypeError || error instanceof RangeError) {
+      return { error: error.message };
+    }
+
+    throw error;
+  }
+
+  if (!(amounts.smallBaseCcyAmountMinor < amounts.mediumBaseCcyAmountMinor
+    && amounts.mediumBaseCcyAmountMinor < amounts.largeBaseCcyAmountMinor
+    && amounts.largeBaseCcyAmountMinor < amounts.xlargeBaseCcyAmountMinor)) {
+    return {
+      error: "Quick Mode amounts must be strictly increasing from Small through Extra Large."
+    };
+  }
+
+  return {
+    ccyPairCode,
+    pricingRuleId,
+    baseCcyFractionDigits,
+    ...amounts,
+    defaultTenor,
+    active
   };
 }
 
@@ -7305,7 +7837,7 @@ function clientFxDealReferenceError(payload) {
   return "";
 }
 
-function hedgeFxDealReferenceError(payload) {
+function hedgeFxDealReferenceErrorForPricingMode(payload, pricingMode) {
   const rule = pricingRule(payload.pricingRuleId);
 
   if (!rule) {
@@ -7316,8 +7848,8 @@ function hedgeFxDealReferenceError(payload) {
     return `Pricing Rule ${payload.pricingRuleId} must reference a HEDGE_COUNTERPARTY.`;
   }
 
-  if (!hedgeDealPricingRule(payload.pricingRuleId)) {
-    return `Pricing Rule ${payload.pricingRuleId} must reference an active HEDGE_COUNTERPARTY and use an active DEALER_PRICED Execution System.`;
+  if (!eligibleHedgeDealPricingRule(payload.pricingRuleId, pricingMode)) {
+    return `Pricing Rule ${payload.pricingRuleId} must reference an active HEDGE_COUNTERPARTY and use an active ${pricingMode} Execution System.`;
   }
 
   if (rule.ccyPairCode !== payload.ccyPairCode) {
@@ -7329,6 +7861,46 @@ function hedgeFxDealReferenceError(payload) {
   if (payload.dealtCcyCode
     && ![pair.baseCcy, pair.quoteCcy].includes(payload.dealtCcyCode)) {
     return `Dealt Ccy Code must be ${pair.baseCcy} or ${pair.quoteCcy}.`;
+  }
+
+  return "";
+}
+
+function hedgeFxDealReferenceError(payload) {
+  return hedgeFxDealReferenceErrorForPricingMode(payload, "DEALER_PRICED");
+}
+
+function autoPricedHedgeFxDealReferenceError(payload) {
+  return hedgeFxDealReferenceErrorForPricingMode(payload, "AUTO_PRICED");
+}
+
+function hedgeQuickModeSettingsReferenceError(payload) {
+  const pair = ccyPairOption(payload.ccyPairCode);
+
+  if (!pair) {
+    return `Ccy Pair ${payload.ccyPairCode} was not found.`;
+  }
+
+  const rule = pricingRule(payload.pricingRuleId);
+
+  if (!rule) {
+    return `Pricing Rule ${payload.pricingRuleId} was not found.`;
+  }
+
+  if (rule.partyType !== "HEDGE_COUNTERPARTY") {
+    return `Pricing Rule ${payload.pricingRuleId} must reference a HEDGE_COUNTERPARTY.`;
+  }
+
+  if (rule.pricingMode !== "AUTO_PRICED") {
+    return `Pricing Rule ${payload.pricingRuleId} must use an AUTO_PRICED Execution System.`;
+  }
+
+  if (rule.ccyPairCode !== payload.ccyPairCode) {
+    return `Pricing Rule ${payload.pricingRuleId} does not match Ccy Pair ${payload.ccyPairCode}.`;
+  }
+
+  if (pair.baseCurrencyFractionDigits !== payload.baseCcyFractionDigits) {
+    return `Base currency precision for ${payload.ccyPairCode} has changed.`;
   }
 
   return "";
@@ -7366,6 +7938,36 @@ function databaseConstraintMessage(error) {
       status: 400,
       code: "INVALID_HEDGE_FX_DEAL_PARTY",
       message: "A Hedge FX Deal must reference a Trading Party with type HEDGE_COUNTERPARTY."
+    };
+  }
+
+  if (message.includes("fx_hedge_quick_mode_settings must reference an AUTO_PRICED HEDGE_COUNTERPARTY")) {
+    return {
+      status: 400,
+      code: "INVALID_HEDGE_QUICK_MODE_SETTINGS_REFERENCE",
+      message: "Hedge Quick Mode Settings must reference an AUTO_PRICED HEDGE_COUNTERPARTY Pricing Rule for the same Ccy Pair."
+    };
+  }
+
+  if (message.includes("fx_hedge_quick_mode_settings.base_ccy_fraction_digits")) {
+    return {
+      status: 400,
+      code: "INVALID_HEDGE_QUICK_MODE_SETTINGS_PRECISION",
+      message: "Hedge Quick Mode Settings must use the configured base currency precision."
+    };
+  }
+
+  if ([
+    "a Pricing Rule used by fx_hedge_quick_mode_settings",
+    "a Trading Party used by fx_hedge_quick_mode_settings",
+    "an Execution Context used by fx_hedge_quick_mode_settings",
+    "an Execution System used by fx_hedge_quick_mode_settings",
+    "base currency precision used by fx_hedge_quick_mode_settings"
+  ].some(fragment => message.includes(fragment))) {
+    return {
+      status: 409,
+      code: "HEDGE_QUICK_MODE_SETTINGS_IN_USE",
+      message: "The record is used by Hedge Quick Mode Settings."
     };
   }
 
@@ -7497,7 +8099,10 @@ async function handleApi(request, response, url) {
       users: users(),
       pricingRules: pricingRules(),
       clientDealPricingRules: clientDealPricingRules(),
-      hedgeDealPricingRules: hedgeDealPricingRules(),
+      hedgeDealPricingRules: [
+        ...hedgeDealPricingRules(),
+        ...autoPricedHedgeDealPricingRules()
+      ],
       clientFxDeals: clientFxDeals(),
       hedgeFxDeals: hedgeFxDeals(),
       fxPositions: fxPositions(),
@@ -7743,12 +8348,238 @@ async function handleApi(request, response, url) {
   }
 
   if (pathname === "/api/v1/hedge-deal-pricing-rules" && method === "GET") {
-    sendJson(response, 200, hedgeDealPricingRules());
+    const requestedPricingMode = normalizedText(
+      url.searchParams.get("pricingMode")
+    ).toUpperCase() || "DEALER_PRICED";
+
+    if (!HEDGE_DEAL_PRICING_MODES.has(requestedPricingMode)) {
+      apiError(
+        response,
+        400,
+        "INVALID_HEDGE_DEAL_PRICING_MODE",
+        "Hedge Deal Pricing Mode must be AUTO_PRICED or DEALER_PRICED."
+      );
+      return true;
+    }
+
+    sendJson(response, 200, eligibleHedgeDealPricingRules(requestedPricingMode));
     return true;
   }
 
   if (pathname === "/api/v1/hedge-fx-deals" && method === "GET") {
     sendJson(response, 200, hedgeFxDeals());
+    return true;
+  }
+
+  if (pathname === "/api/v1/hedge-quick-mode-settings" && method === "GET") {
+    sendJson(response, 200, hedgeQuickModeSettings());
+    return true;
+  }
+
+  const hedgeQuickModeSettingsMatch =
+    /^\/api\/v1\/hedge-quick-mode-settings\/([A-Za-z]{3}_[A-Za-z]{3})$/.exec(pathname);
+
+  if (hedgeQuickModeSettingsMatch && method === "GET") {
+    const ccyPairCode = hedgeQuickModeSettingsMatch[1].toUpperCase();
+    const settings = hedgeQuickModeSetting(ccyPairCode);
+
+    if (!settings) {
+      apiError(
+        response,
+        404,
+        "HEDGE_QUICK_MODE_SETTINGS_NOT_FOUND",
+        `Hedge Quick Mode Settings for ${ccyPairCode} were not found.`
+      );
+    } else {
+      sendJson(response, 200, settings);
+    }
+
+    return true;
+  }
+
+  if (hedgeQuickModeSettingsMatch && method === "PUT") {
+    const ccyPairCode = hedgeQuickModeSettingsMatch[1].toUpperCase();
+    const pair = ccyPairOption(ccyPairCode);
+
+    if (!pair) {
+      apiError(
+        response,
+        404,
+        "CCY_PAIR_NOT_FOUND",
+        `Ccy Pair ${ccyPairCode} was not found.`
+      );
+      return true;
+    }
+
+    const body = await readJsonBody(request);
+    const payload = validateHedgeQuickModeSettingsPayload(
+      body,
+      ccyPairCode,
+      pair.baseCurrencyFractionDigits
+    );
+
+    if (payload.error) {
+      apiError(
+        response,
+        400,
+        "INVALID_HEDGE_QUICK_MODE_SETTINGS",
+        payload.error
+      );
+      return true;
+    }
+
+    const referenceError = hedgeQuickModeSettingsReferenceError(payload);
+
+    if (referenceError) {
+      apiError(
+        response,
+        400,
+        "INVALID_HEDGE_QUICK_MODE_SETTINGS_REFERENCE",
+        referenceError
+      );
+      return true;
+    }
+
+    const existed = Boolean(hedgeQuickModeSetting(ccyPairCode));
+
+    try {
+      const settings = replaceHedgeQuickModeSetting(payload);
+      sendJson(response, existed ? 200 : 201, settings);
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
+    return true;
+  }
+
+  if (hedgeQuickModeSettingsMatch && method === "DELETE") {
+    const ccyPairCode = hedgeQuickModeSettingsMatch[1].toUpperCase();
+
+    if (!deleteHedgeQuickModeSetting(ccyPairCode)) {
+      apiError(
+        response,
+        404,
+        "HEDGE_QUICK_MODE_SETTINGS_NOT_FOUND",
+        `Hedge Quick Mode Settings for ${ccyPairCode} were not found.`
+      );
+    } else {
+      sendJson(response, 200, { deleted: true, ccyPairCode });
+    }
+
+    return true;
+  }
+
+  if (pathname === "/api/v1/hedge-fx-deals/quick-mode" && method === "POST") {
+    const body = await readJsonBody(request);
+    const payload = validateHedgeQuickModeDealPayload(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_HEDGE_QUICK_MODE_DEAL", payload.error);
+      return true;
+    }
+
+    const settings = hedgeQuickModeSetting(payload.ccyPairCode);
+
+    if (!settings) {
+      apiError(
+        response,
+        404,
+        "HEDGE_QUICK_MODE_SETTINGS_NOT_FOUND",
+        `Hedge Quick Mode Settings for ${payload.ccyPairCode} were not found.`
+      );
+      return true;
+    }
+
+    if (!settings.active) {
+      apiError(
+        response,
+        409,
+        "HEDGE_QUICK_MODE_DISABLED",
+        `Hedge Quick Mode is disabled for ${payload.ccyPairCode}.`
+      );
+      return true;
+    }
+
+    if (!settings.partyActive || !settings.executionSystemActive) {
+      apiError(
+        response,
+        409,
+        "HEDGE_QUICK_MODE_REFERENCE_INACTIVE",
+        "The configured Hedge Counterparty and Execution System must be active."
+      );
+      return true;
+    }
+
+    try {
+      const instruction = hedgeQuickModeInstruction({
+        settings,
+        presetCode: payload.presetCode,
+        side: payload.side,
+        tenor: payload.tenor || settings.defaultTenor
+      });
+      const referenceError = autoPricedHedgeFxDealReferenceError(instruction);
+
+      if (referenceError) {
+        apiError(
+          response,
+          409,
+          "HEDGE_QUICK_MODE_REFERENCE_UNAVAILABLE",
+          referenceError
+        );
+        return true;
+      }
+
+      const priced = autoPricedHedgeFxDealWithCalculatedTerms(instruction);
+      const tradeId = createHedgeFxDeal(priced.deal, priced.exposureAmounts);
+      sendJson(response, 201, hedgeFxDeal(tradeId));
+    } catch (error) {
+      if (error?.code === "AUTO_PRICED_HEDGE_MARKET_QUOTE_UNAVAILABLE") {
+        apiError(response, 409, error.code, error.message);
+      } else if (error instanceof TypeError || error instanceof RangeError) {
+        apiError(response, 409, "INVALID_HEDGE_QUICK_MODE_CONFIGURATION", error.message);
+      } else {
+        handleDatabaseError(response, error);
+      }
+    }
+
+    return true;
+  }
+
+  if (pathname === "/api/v1/hedge-fx-deals/auto-priced" && method === "POST") {
+    const body = await readJsonBody(request);
+    const payload = validateAutoPricedHedgeFxDealPayload(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_AUTO_PRICED_HEDGE_FX_DEAL", payload.error);
+      return true;
+    }
+
+    const referenceError = autoPricedHedgeFxDealReferenceError(payload);
+
+    if (referenceError) {
+      apiError(
+        response,
+        400,
+        "INVALID_AUTO_PRICED_HEDGE_FX_DEAL_REFERENCE",
+        referenceError
+      );
+      return true;
+    }
+
+    try {
+      const priced = autoPricedHedgeFxDealWithCalculatedTerms(payload);
+      const tradeId = createHedgeFxDeal(priced.deal, priced.exposureAmounts);
+      sendJson(response, 201, hedgeFxDeal(tradeId));
+    } catch (error) {
+      if (error?.code === "AUTO_PRICED_HEDGE_MARKET_QUOTE_UNAVAILABLE") {
+        apiError(response, 409, error.code, error.message);
+      } else if (error instanceof TypeError || error instanceof RangeError) {
+        apiError(response, 400, "INVALID_AUTO_PRICED_HEDGE_FX_DEAL_AMOUNT", error.message);
+      } else {
+        handleDatabaseError(response, error);
+      }
+    }
+
     return true;
   }
 

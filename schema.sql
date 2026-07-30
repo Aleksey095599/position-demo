@@ -274,6 +274,56 @@ CREATE TABLE IF NOT EXISTS pricing_rules
         CHECK (margin_percent >= 0 AND margin_percent < 100)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_reference
+    ON pricing_rules (pricing_rule_id, ccy_pair_code);
+
+CREATE TABLE IF NOT EXISTS fx_hedge_quick_mode_settings
+(
+    ccy_pair_code                       TEXT    PRIMARY KEY,
+    pricing_rule_id                     INTEGER NOT NULL,
+    base_ccy_fraction_digits            INTEGER NOT NULL,
+    small_base_ccy_amount_minor         INTEGER NOT NULL,
+    medium_base_ccy_amount_minor        INTEGER NOT NULL,
+    large_base_ccy_amount_minor         INTEGER NOT NULL,
+    xlarge_base_ccy_amount_minor        INTEGER NOT NULL,
+    is_active                           INTEGER NOT NULL DEFAULT 1,
+    default_tenor                       TEXT    NOT NULL DEFAULT 'TOD',
+
+    CONSTRAINT fk_fx_hedge_quick_mode_settings_pair
+        FOREIGN KEY (ccy_pair_code)
+            REFERENCES ccy_pair_options (ccy_pair_code)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT fk_fx_hedge_quick_mode_settings_rule_pair
+        FOREIGN KEY (pricing_rule_id, ccy_pair_code)
+            REFERENCES pricing_rules (pricing_rule_id, ccy_pair_code)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT chk_fx_hedge_quick_mode_settings_fraction_digits
+        CHECK (
+            typeof(base_ccy_fraction_digits) = 'integer'
+            AND base_ccy_fraction_digits BETWEEN 0 AND 10
+        ),
+    CONSTRAINT chk_fx_hedge_quick_mode_settings_amounts
+        CHECK (
+            typeof(small_base_ccy_amount_minor) = 'integer'
+            AND small_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+            AND typeof(medium_base_ccy_amount_minor) = 'integer'
+            AND medium_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+            AND typeof(large_base_ccy_amount_minor) = 'integer'
+            AND large_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+            AND typeof(xlarge_base_ccy_amount_minor) = 'integer'
+            AND xlarge_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+            AND small_base_ccy_amount_minor < medium_base_ccy_amount_minor
+            AND medium_base_ccy_amount_minor < large_base_ccy_amount_minor
+            AND large_base_ccy_amount_minor < xlarge_base_ccy_amount_minor
+        ),
+    CONSTRAINT chk_fx_hedge_quick_mode_settings_active
+        CHECK (is_active IN (0, 1)),
+    CONSTRAINT chk_fx_hedge_quick_mode_settings_default_tenor
+        CHECK (default_tenor IN ('TOD', 'TOM', 'SPOT'))
+);
+
 CREATE TABLE IF NOT EXISTS client_deal_generation_process_settings
 (
     settings_id             INTEGER PRIMARY KEY,
@@ -680,37 +730,29 @@ CREATE TABLE IF NOT EXISTS fx_batch_members
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_batch_outputs
+CREATE TABLE IF NOT EXISTS fx_batch_position_output
 (
-    batch_id    INTEGER NOT NULL,
+    batch_id    INTEGER PRIMARY KEY,
     trade_id    INTEGER NOT NULL,
     trade_type  TEXT    NOT NULL,
-    output_role TEXT    NOT NULL,
 
-    CONSTRAINT pk_fx_batch_outputs
-        PRIMARY KEY (batch_id, trade_id),
-    CONSTRAINT fk_fx_batch_outputs_batch
+    CONSTRAINT fk_fx_batch_position_output_batch
         FOREIGN KEY (batch_id)
             REFERENCES fx_batches (batch_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_batch_outputs_trade
+    CONSTRAINT fk_fx_batch_position_output_trade
         FOREIGN KEY (trade_id, trade_type)
             REFERENCES fx_trade_exposure (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT uq_fx_batch_outputs_trade
+    CONSTRAINT uq_fx_batch_position_output_trade
         UNIQUE (trade_id),
-    CONSTRAINT uq_fx_batch_outputs_role
-        UNIQUE (batch_id, output_role),
-    CONSTRAINT chk_fx_batch_outputs_role
-        CHECK (
-            output_role = 'POSITION_OUT'
-            AND trade_type = 'BATCH_POSITION_OUT'
-        )
+    CONSTRAINT chk_fx_batch_position_output_trade_type
+        CHECK (trade_type = 'BATCH_POSITION_OUT')
 );
 
-CREATE TABLE IF NOT EXISTS fx_batch_quote_cash_members
+CREATE TABLE IF NOT EXISTS fx_batch_quote_cash_output
 (
     batch_id                        INTEGER PRIMARY KEY,
     quote_ccy_code                  TEXT    NOT NULL,
@@ -720,33 +762,33 @@ CREATE TABLE IF NOT EXISTS fx_batch_quote_cash_members
     created_at                      TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-    CONSTRAINT fk_fx_batch_quote_cash_members_batch
+    CONSTRAINT fk_fx_batch_quote_cash_output_batch
         FOREIGN KEY (batch_id)
             REFERENCES fx_batches (batch_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_batch_quote_cash_members_currency
+    CONSTRAINT fk_fx_batch_quote_cash_output_currency
         FOREIGN KEY (quote_ccy_code)
             REFERENCES ccy_options (ccy_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_batch_quote_cash_members_amount
+    CONSTRAINT chk_fx_batch_quote_cash_output_amount
         CHECK (
             typeof(quote_balance_contribution_minor) = 'integer'
             AND quote_balance_contribution_minor
                 BETWEEN -9007199254740991 AND 9007199254740991
         ),
-    CONSTRAINT chk_fx_batch_quote_cash_members_fraction_digits
+    CONSTRAINT chk_fx_batch_quote_cash_output_fraction_digits
         CHECK (
             typeof(quote_ccy_fraction_digits) = 'integer'
             AND quote_ccy_fraction_digits BETWEEN 0 AND 10
         ),
-    CONSTRAINT chk_fx_batch_quote_cash_members_value_date
+    CONSTRAINT chk_fx_batch_quote_cash_output_value_date
         CHECK (
             quote_ccy_value_date GLOB '????-??-??'
             AND strftime('%Y-%m-%d', quote_ccy_value_date) = quote_ccy_value_date
         ),
-    CONSTRAINT chk_fx_batch_quote_cash_members_created_at
+    CONSTRAINT chk_fx_batch_quote_cash_output_created_at
         CHECK (
             length(created_at) = 24
             AND created_at GLOB '????-??-??T??:??:??.???Z'
@@ -860,9 +902,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_batch_members_single_technical_origin
     ON fx_batch_members (trade_id)
     WHERE member_role = 'BALANCE_TRADE';
 
-CREATE INDEX IF NOT EXISTS idx_fx_batch_outputs_batch
-    ON fx_batch_outputs (batch_id, output_role);
-
 CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_validate_insert
 BEFORE INSERT ON fx_batch_members
 FOR EACH ROW
@@ -894,7 +933,7 @@ WHEN
               AND d.transfer_rate IS NOT NULL
             UNION ALL
             SELECT 1
-            FROM fx_batch_outputs o
+            FROM fx_batch_position_output o
             INNER JOIN fx_batches source_batch
                 ON source_batch.batch_id = o.batch_id
             INNER JOIN fx_trade_exposure e
@@ -902,7 +941,6 @@ WHEN
                 AND e.trade_type = o.trade_type
             WHERE o.trade_id = NEW.trade_id
               AND o.trade_type = NEW.trade_type
-              AND o.output_role = 'POSITION_OUT'
               AND source_batch.batch_status IN ('FORMED', 'ROLLED_BACK')
               AND e.trade_type = 'BATCH_POSITION_OUT'
               AND e.base_ccy_side IN ('BUY', 'SELL')
@@ -942,8 +980,8 @@ BEGIN
     );
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_outputs_validate_insert
-BEFORE INSERT ON fx_batch_outputs
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_position_output_validate_insert
+BEFORE INSERT ON fx_batch_position_output
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -956,11 +994,11 @@ WHEN NOT EXISTS
       AND e.ccy_pair_code = b.ccy_pair_code
 )
 BEGIN
-    SELECT RAISE(ABORT, 'batch output must match a BUILDING batch');
+    SELECT RAISE(ABORT, 'batch position output must match a BUILDING batch');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_members_validate_insert
-BEFORE INSERT ON fx_batch_quote_cash_members
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_output_validate_insert
+BEFORE INSERT ON fx_batch_quote_cash_output
 FOR EACH ROW
 WHEN
     NOT EXISTS
@@ -992,7 +1030,7 @@ WHEN
 BEGIN
     SELECT RAISE(
         ABORT,
-        'quote cash member must match the BUILDING batch quote currency and settlement'
+        'batch quote cash output must match the BUILDING batch quote currency and settlement'
     );
 END;
 
@@ -1013,7 +1051,7 @@ BEGIN
         OR EXISTS
         (
             SELECT 1
-            FROM fx_batch_outputs o
+            FROM fx_batch_position_output o
             INNER JOIN fx_trade_exposure e ON e.trade_id = o.trade_id
             WHERE o.batch_id = OLD.batch_id
               AND e.ccy_pair_code <> OLD.ccy_pair_code
@@ -1042,7 +1080,7 @@ BEGIN
                     e.tenor,
                     e.base_ccy_value_date,
                     e.quote_ccy_value_date
-                FROM fx_batch_outputs o
+                FROM fx_batch_position_output o
                 INNER JOIN fx_trade_exposure e ON e.trade_id = o.trade_id
                 WHERE o.batch_id = OLD.batch_id
             )
@@ -1071,7 +1109,7 @@ BEGIN
                 SELECT
                     e.base_ccy_fraction_digits,
                     e.quote_ccy_fraction_digits
-                FROM fx_batch_outputs o
+                FROM fx_batch_position_output o
                 INNER JOIN fx_trade_exposure e ON e.trade_id = o.trade_id
                 WHERE o.batch_id = OLD.batch_id
             )
@@ -1094,10 +1132,10 @@ BEGIN
         WHEN NOT EXISTS
         (
             SELECT 1
-            FROM fx_batch_quote_cash_members
+            FROM fx_batch_quote_cash_output
             WHERE batch_id = OLD.batch_id
         )
-        THEN RAISE(ABORT, 'formed batch must contain one quote cash member')
+        THEN RAISE(ABORT, 'formed batch must contain one quote cash output')
     END;
     SELECT CASE
         WHEN
@@ -1162,9 +1200,8 @@ BEGIN
         AND NOT EXISTS
         (
             SELECT 1
-            FROM fx_batch_outputs
+            FROM fx_batch_position_output
             WHERE batch_id = OLD.batch_id
-              AND output_role = 'POSITION_OUT'
         )
         THEN RAISE(ABORT, 'non-flat batch must contain a position output')
     END;
@@ -1185,9 +1222,8 @@ BEGIN
         AND EXISTS
         (
             SELECT 1
-            FROM fx_batch_outputs
+            FROM fx_batch_position_output
             WHERE batch_id = OLD.batch_id
-              AND output_role = 'POSITION_OUT'
         )
         THEN RAISE(ABORT, 'flat batch must not contain a position output')
     END;
@@ -1222,7 +1258,7 @@ BEGIN
         +
         (
             SELECT quote_balance_contribution_minor
-            FROM fx_batch_quote_cash_members
+            FROM fx_batch_quote_cash_output
             WHERE batch_id = OLD.batch_id
         ) <> 0
         THEN RAISE(ABORT, 'formed batch must have zero quote currency cash balance')
@@ -1249,10 +1285,9 @@ BEGIN
                     ELSE 0
                 END
             ), 0)
-            FROM fx_batch_outputs o
+            FROM fx_batch_position_output o
             INNER JOIN fx_trade_exposure e ON e.trade_id = o.trade_id
             WHERE o.batch_id = OLD.batch_id
-              AND o.output_role = 'POSITION_OUT'
         )
         THEN RAISE(ABORT, 'position output must equal the source Base Ccy position')
     END;
@@ -1324,8 +1359,8 @@ BEGIN
     SELECT RAISE(ABORT, 'completed batch members are immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_outputs_immutable_update
-BEFORE UPDATE ON fx_batch_outputs
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_position_output_immutable_update
+BEFORE UPDATE ON fx_batch_position_output
 FOR EACH ROW
 WHEN EXISTS
 (
@@ -1334,11 +1369,11 @@ WHEN EXISTS
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'completed batch outputs are immutable');
+    SELECT RAISE(ABORT, 'completed batch position output is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_outputs_immutable_delete
-BEFORE DELETE ON fx_batch_outputs
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_position_output_immutable_delete
+BEFORE DELETE ON fx_batch_position_output
 FOR EACH ROW
 WHEN EXISTS
 (
@@ -1347,11 +1382,11 @@ WHEN EXISTS
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'completed batch outputs are immutable');
+    SELECT RAISE(ABORT, 'completed batch position output is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_members_immutable_update
-BEFORE UPDATE ON fx_batch_quote_cash_members
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_output_immutable_update
+BEFORE UPDATE ON fx_batch_quote_cash_output
 FOR EACH ROW
 WHEN EXISTS
 (
@@ -1360,11 +1395,11 @@ WHEN EXISTS
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'completed batch quote cash members are immutable');
+    SELECT RAISE(ABORT, 'completed batch quote cash output is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_members_immutable_delete
-BEFORE DELETE ON fx_batch_quote_cash_members
+CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_output_immutable_delete
+BEFORE DELETE ON fx_batch_quote_cash_output
 FOR EACH ROW
 WHEN EXISTS
 (
@@ -1373,7 +1408,7 @@ WHEN EXISTS
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
 BEGIN
-    SELECT RAISE(ABORT, 'completed batch quote cash members are immutable');
+    SELECT RAISE(ABORT, 'completed batch quote cash output is immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_trade_immutable_update
@@ -1385,7 +1420,7 @@ WHEN EXISTS
     FROM fx_batches b
     LEFT JOIN fx_batch_members m
         ON m.batch_id = b.batch_id AND m.trade_id = OLD.trade_id
-    LEFT JOIN fx_batch_outputs o
+    LEFT JOIN fx_batch_position_output o
         ON o.batch_id = b.batch_id AND o.trade_id = OLD.trade_id
     WHERE b.batch_status IN ('FORMED', 'ROLLED_BACK')
       AND (m.trade_id IS NOT NULL OR o.trade_id IS NOT NULL)
@@ -1403,7 +1438,7 @@ WHEN EXISTS
     FROM fx_batches b
     LEFT JOIN fx_batch_members m
         ON m.batch_id = b.batch_id AND m.trade_id = OLD.trade_id
-    LEFT JOIN fx_batch_outputs o
+    LEFT JOIN fx_batch_position_output o
         ON o.batch_id = b.batch_id AND o.trade_id = OLD.trade_id
     WHERE b.batch_status IN ('FORMED', 'ROLLED_BACK')
       AND (m.trade_id IS NOT NULL OR o.trade_id IS NOT NULL)
@@ -1660,4 +1695,171 @@ WHEN NEW.pricing_mode <> 'AUTO_PRICED'
     )
 BEGIN
     SELECT RAISE(ABORT, 'an Execution System used by client_deal_generation_settings must remain AUTO_PRICED');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_quick_mode_settings_require_auto_priced_hedge_insert
+BEFORE INSERT ON fx_hedge_quick_mode_settings
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM pricing_rules r
+    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
+    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    WHERE r.pricing_rule_id = NEW.pricing_rule_id
+      AND r.ccy_pair_code = NEW.ccy_pair_code
+      AND p.party_type = 'HEDGE_COUNTERPARTY'
+      AND e.pricing_mode = 'AUTO_PRICED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'fx_hedge_quick_mode_settings must reference an AUTO_PRICED HEDGE_COUNTERPARTY Pricing Rule for the same Ccy Pair');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_quick_mode_settings_require_auto_priced_hedge_update
+BEFORE UPDATE OF pricing_rule_id, ccy_pair_code ON fx_hedge_quick_mode_settings
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM pricing_rules r
+    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
+    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    WHERE r.pricing_rule_id = NEW.pricing_rule_id
+      AND r.ccy_pair_code = NEW.ccy_pair_code
+      AND p.party_type = 'HEDGE_COUNTERPARTY'
+      AND e.pricing_mode = 'AUTO_PRICED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'fx_hedge_quick_mode_settings must reference an AUTO_PRICED HEDGE_COUNTERPARTY Pricing Rule for the same Ccy Pair');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_quick_mode_settings_require_base_precision_insert
+BEFORE INSERT ON fx_hedge_quick_mode_settings
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM ccy_pair_options pair
+    INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
+    WHERE pair.ccy_pair_code = NEW.ccy_pair_code
+      AND base_ccy.fraction_digits = NEW.base_ccy_fraction_digits
+)
+BEGIN
+    SELECT RAISE(ABORT, 'fx_hedge_quick_mode_settings.base_ccy_fraction_digits must match the configured base currency precision');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_quick_mode_settings_require_base_precision_update
+BEFORE UPDATE OF ccy_pair_code, base_ccy_fraction_digits ON fx_hedge_quick_mode_settings
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM ccy_pair_options pair
+    INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
+    WHERE pair.ccy_pair_code = NEW.ccy_pair_code
+      AND base_ccy.fraction_digits = NEW.base_ccy_fraction_digits
+)
+BEGIN
+    SELECT RAISE(ABORT, 'fx_hedge_quick_mode_settings.base_ccy_fraction_digits must match the configured base currency precision');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_preserve_fx_hedge_quick_mode_settings
+BEFORE UPDATE OF party_id, execution_context_id, ccy_pair_code ON pricing_rules
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM fx_hedge_quick_mode_settings settings
+    WHERE settings.pricing_rule_id = OLD.pricing_rule_id
+)
+AND NOT EXISTS
+(
+    SELECT 1
+    FROM trading_parties p
+    INNER JOIN execution_contexts c ON c.execution_context_id = NEW.execution_context_id
+    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    WHERE p.party_id = NEW.party_id
+      AND p.party_type = 'HEDGE_COUNTERPARTY'
+      AND e.pricing_mode = 'AUTO_PRICED'
+      AND NEW.ccy_pair_code = (
+          SELECT settings.ccy_pair_code
+          FROM fx_hedge_quick_mode_settings settings
+          WHERE settings.pricing_rule_id = OLD.pricing_rule_id
+      )
+)
+BEGIN
+    SELECT RAISE(ABORT, 'a Pricing Rule used by fx_hedge_quick_mode_settings must remain an AUTO_PRICED HEDGE_COUNTERPARTY rule for the configured Ccy Pair');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_trading_parties_preserve_fx_hedge_quick_mode_settings
+BEFORE UPDATE OF party_type ON trading_parties
+FOR EACH ROW
+WHEN NEW.party_type <> 'HEDGE_COUNTERPARTY'
+    AND EXISTS
+    (
+        SELECT 1
+        FROM pricing_rules r
+        INNER JOIN fx_hedge_quick_mode_settings settings
+            ON settings.pricing_rule_id = r.pricing_rule_id
+        WHERE r.party_id = OLD.party_id
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'a Trading Party used by fx_hedge_quick_mode_settings must remain a HEDGE_COUNTERPARTY');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_execution_contexts_preserve_fx_hedge_quick_mode_settings
+BEFORE UPDATE OF execution_system_id ON execution_contexts
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM pricing_rules r
+    INNER JOIN fx_hedge_quick_mode_settings settings
+        ON settings.pricing_rule_id = r.pricing_rule_id
+    WHERE r.execution_context_id = OLD.execution_context_id
+)
+AND NOT EXISTS
+(
+    SELECT 1
+    FROM execution_systems e
+    WHERE e.execution_system_id = NEW.execution_system_id
+      AND e.pricing_mode = 'AUTO_PRICED'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'an Execution Context used by fx_hedge_quick_mode_settings must remain AUTO_PRICED');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_execution_systems_preserve_fx_hedge_quick_mode_settings
+BEFORE UPDATE OF pricing_mode ON execution_systems
+FOR EACH ROW
+WHEN NEW.pricing_mode <> 'AUTO_PRICED'
+    AND EXISTS
+    (
+        SELECT 1
+        FROM execution_contexts c
+        INNER JOIN pricing_rules r ON r.execution_context_id = c.execution_context_id
+        INNER JOIN fx_hedge_quick_mode_settings settings
+            ON settings.pricing_rule_id = r.pricing_rule_id
+        WHERE c.execution_system_id = OLD.execution_system_id
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'an Execution System used by fx_hedge_quick_mode_settings must remain AUTO_PRICED');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_ccy_options_preserve_fx_hedge_quick_mode_settings_precision
+BEFORE UPDATE OF fraction_digits ON ccy_options
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM ccy_pair_options pair
+    INNER JOIN fx_hedge_quick_mode_settings settings
+        ON settings.ccy_pair_code = pair.ccy_pair_code
+    WHERE pair.base_ccy_code = OLD.ccy_code
+      AND settings.base_ccy_fraction_digits <> NEW.fraction_digits
+)
+BEGIN
+    SELECT RAISE(ABORT, 'base currency precision used by fx_hedge_quick_mode_settings cannot be changed');
 END;
