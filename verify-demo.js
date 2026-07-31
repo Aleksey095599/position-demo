@@ -1486,8 +1486,8 @@ function verifyFrontendStructure() {
   const addHedgeDealDialogMarkup = html.match(
     /<dialog class="client-deal-create-dialog hedge-deal-create-dialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
-  const hedgeQuickModeSettingsDialogMarkup = html.match(
-    /<dialog class="client-deal-create-dialog hedge-quick-settings-dialog"[\s\S]*?<\/dialog>/
+  const hedgingSettingsPageMarkup = html.match(
+    /<main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page hedging-settings-page" id="hedgingSettingsPage"[\s\S]*?<\/main>/
   )?.[0] || "";
   const editClientDealDialogMarkup = html.match(
     /<dialog class="client-deal-create-dialog" id="editDealDialog"[\s\S]*?<\/dialog>/
@@ -1499,6 +1499,15 @@ function verifyFrontendStructure() {
   const fxPositionDealToolbarMarkup = fxPositionPageMarkup.match(
     /<section class="deal-toolbar\b[^"]*"[\s\S]*?<\/section>/
   )?.[0] || "";
+  const batchingSummaryRendererSource = inlineScript.match(
+    /function renderBatchingSummary\(source\)[\s\S]*?function clientFxDealClientCode/
+  )?.[0] || "";
+  const fxPositionWorkspaceMainCss = html.match(
+    /#mainPage\.fx-position-bootstrap\.workbench-page \.batching-workspace-main \{([\s\S]*?)\}/
+  )?.[1] || "";
+  const fxPositionGridFrameCss = html.match(
+    /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid-frame \{([\s\S]*?)\}/
+  )?.[1] || "";
   const generationSettingsDialogMarkup = html.match(
     /<dialog class="deal-dialog generation-dialog" id="clientDealGenerationDialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
@@ -1570,8 +1579,15 @@ function verifyFrontendStructure() {
     usesDealerPricedClientDealRules: serverSource.includes('function clientDealPricingRules()')
       && serverSource.includes('pricingRules("DEALER_PRICED")')
       && serverSource.includes('pathname === "/api/v1/client-deal-pricing-rules"')
-      && inlineScript.includes("DEMO_API_BOOTSTRAP.clientDealPricingRules")
-      && inlineScript.includes("clientDealEligiblePricingRules"),
+      && addClientDealDialogMarkup.includes('id="addClientDealPricingMode" aria-readonly="true" disabled')
+      && addClientDealDialogMarkup.includes('<option value="DEALER_PRICED">DEALER_PRICED</option>')
+      && addClientDealDialogMarkup.includes('client-deal-pricing-mode-icon is-dealer-priced')
+      && addClientDealDialogMarkup.includes('aria-label="Dealer Priced"')
+      && addClientDealDialogMarkup.includes('aria-hidden="true">contact_phone</span>')
+      && inlineScript.includes("function selectedAddClientDealPricingMode()")
+      && inlineScript.includes("return clientPricingRules")
+      && inlineScript.includes('pricingModeForRule(rule) === pricingMode')
+      && !inlineScript.includes("clientDealEligiblePricingRules"),
     usesClientFxDealsEndpoint: serverSource.includes('pathname === "/api/v1/client-fx-deals"')
       && serverSource.includes('r.margin_percent AS pricingRuleMargin')
       && serverSource.includes('LEFT JOIN pricing_rules r ON r.pricing_rule_id = d.pricing_rule_id')
@@ -1590,6 +1606,7 @@ function verifyFrontendStructure() {
       && addHedgeDealDialogMarkup.includes('name="pricingRuleId"')
       && addHedgeDealDialogMarkup.includes('name="side"')
       && addHedgeDealDialogMarkup.includes('for="addHedgeDealSide">Our Side</label>')
+      && addHedgeDealDialogMarkup.includes('<select class="form-select" id="addHedgeDealSide" required>')
       && addHedgeDealDialogMarkup.includes('name="baseCcyAmount"')
       && addHedgeDealDialogMarkup.includes('name="quoteCcyAmount"')
       && addHedgeDealDialogMarkup.includes('name="tradeRate"')
@@ -1599,16 +1616,26 @@ function verifyFrontendStructure() {
       && addHedgeDealDialogMarkup.includes('name="amountFixingCurrency" value="base"')
       && (addHedgeDealDialogMarkup.match(/data-add-hedge-deal-fixing-currency=/g) || []).length === 2
       && !addHedgeDealDialogMarkup.includes("Net Difference")
+      && addHedgeDealDialogMarkup.includes('id="addHedgeDealPricingMode" required')
+      && addHedgeDealDialogMarkup.includes('<option value="DEALER_PRICED">DEALER_PRICED</option>')
+      && addHedgeDealDialogMarkup.includes('<option value="AUTO_PRICED">AUTO_PRICED</option>')
+      && !addHedgeDealDialogMarkup.includes("DEALER_APPROVED")
+      && addHedgeDealDialogMarkup.includes('id="addHedgeDealDialogTitle">Add Hedge Deal</h2>')
+      && !addHedgeDealDialogMarkup.includes("Hedge Deal - Manual")
+      && !addHedgeDealDialogMarkup.includes("Hedge Deal - Auto Pricing")
+      && addHedgeDealDialogMarkup.includes('id="addHedgeDealPricingModeIcon"')
+      && inlineScript.includes("function syncAddHedgeDealPricingModeIcon()")
+      && inlineScript.includes("presentation.icon")
       && inlineScript.includes("function openAddHedgeDealDialog(")
       && inlineScript.includes('pricingMode = "DEALER_PRICED"')
-      && inlineScript.includes("addHedgeDealPricingMode = normalizedPricingMode;")
-      && inlineScript.includes('event.target.closest("[data-hedge-side][data-hedge-pricing-mode]")')
+      && inlineScript.includes("addHedgeDealPricingModeControl.value = normalizedPricingMode;")
+      && inlineScript.includes("function selectedAddHedgeDealPricingMode()")
       && inlineScript.includes("const ourSide = oppositeFxSide(positionSide);")
       && inlineScript.includes("addHedgeDealForm.elements.side.value = oppositeFxSide(normalizedOurSide);")
-      && /ourSide === "BUY"\s*\?\s*"We Buy"\s*:\s*ourSide === "SELL"\s*\?\s*"We Sell"/.test(inlineScript)
+      && inlineScript.includes("oppositeFxSide(addHedgeDealSideControl.value)")
       && inlineScript.includes('"/api/v1/hedge-fx-deals/auto-priced"')
       && inlineScript.includes('"/api/v1/hedge-fx-deals"')
-      && inlineScript.includes('addHedgeDealPricingMode === "AUTO_PRICED"')
+      && inlineScript.includes('selectedAddHedgeDealPricingMode() === "AUTO_PRICED"')
       && inlineScript.includes("tradeRateInput.readOnly = autoPriced;")
       && inlineScript.includes('ourSide === "SELL"')
       && inlineScript.includes('document.getElementById("addHedgeDealMarketBid").value')
@@ -1626,8 +1653,39 @@ function verifyFrontendStructure() {
       serverSource.includes('pathname === "/api/v1/hedge-quick-mode-settings"')
       && serverSource.includes('pathname === "/api/v1/hedge-fx-deals/quick-mode"')
       && serverSource.includes("function validateHedgeQuickModeDealPayload(body)")
-      && inlineScript.includes("function hedgeDealAutoSplitMarkup(ourSide, baseCcyCode)")
+      && serverSource.includes("hedgeQuickModeSettings: hedgeQuickModeSettings(),")
+      && inlineScript.includes("DEMO_API_BOOTSTRAP.hedgeQuickModeSettings")
       && inlineScript.includes('demoApiRequest("/api/v1/hedge-quick-mode-settings")')
+      && fxPositionPageMarkup.includes('id="hedgeQuickModeToolbar"')
+      && /<section class="table-wrap fx-position-grid-frame"[\s\S]*?<\/section>\s*<section class="hedge-toolbar btn-toolbar"[\s\S]*?id="hedgeQuickModeToolbar"/.test(
+        fxPositionPageMarkup
+      )
+      && inlineScript.includes("function renderHedgeQuickModeToolbar()")
+      && inlineScript.includes("function syncHedgeQuickModeQuoteAlignment()")
+      && inlineScript.includes("scheduleHedgeQuickModeQuoteAlignment")
+      && inlineScript.includes('data-hedge-quick-preset')
+      && inlineScript.includes('class="btn btn-sm hedge-quick-preset')
+      && !inlineScript.includes('btn-outline-secondary hedge-quick-preset')
+      && html.includes('--bs-btn-hover-color: var(--bs-btn-color);')
+      && html.includes('--bs-btn-active-color: var(--bs-btn-color);')
+      && html.includes('transparent 80%')
+      && html.includes('var(--bs-btn-bg) 88%')
+      && html.includes('.hedge-quick-action-sell {')
+      && html.includes('--bs-btn-bg: rgba(var(--bs-danger-rgb), 0.055);')
+      && html.includes('.hedge-quick-action-buy {')
+      && html.includes('--bs-btn-bg: rgba(var(--bs-success-rgb), 0.055);')
+      && !/#mainPage\.fx-position-bootstrap\.workbench-page \.hedge-quick-action(?:-sell|-buy)? \{[^}]*\bbackground\s*:/.test(html)
+      && inlineScript.includes('data-hedge-quick-action')
+      && inlineScript.includes('class="hedge-quick-execution"')
+      && inlineScript.includes("configured price stream")
+      && inlineScript.includes('const tooltip = disabled ? "" : "Hold Ctrl and click";')
+      && !inlineScript.includes('data-tooltip="Configured price stream Bid"')
+      && !inlineScript.includes('data-tooltip="Configured price stream Offer"')
+      && !inlineScript.includes(' at ${marketSide} ${rate}')
+      && !html.includes("hedge-quick-quote-icon")
+      && !batchingSummaryRendererSource.includes('data-hedge-quick-')
+      && !inlineScript.includes('data-hedge-quick-menu')
+      && !html.includes(".hedge-deal-quick-menu")
       && inlineScript.includes("async function createQuickHedgeDeal(ourSide, presetCode)")
       && inlineScript.includes(
         'demoApiRequest("/api/v1/hedge-fx-deals/quick-mode"'
@@ -1635,42 +1693,62 @@ function verifyFrontendStructure() {
       && inlineScript.includes("side: oppositeFxSide(normalizedOurSide)")
       && inlineScript.includes("if (hedgeQuickModeDealCreating)")
       && inlineScript.includes("!event.ctrlKey")
-      && inlineScript.includes("Hold Ctrl while opening Quick Mode presets.")
-      && inlineScript.includes('data-hedge-quick-menu-toggle')
-      && inlineScript.includes(
-        '<span class="button-icon" aria-hidden="true">bolt_boost</span>'
-      )
-      && inlineScript.includes('data-hedge-quick-preset'),
+      && inlineScript.includes("Hold Ctrl")
+      && /event\.key\s*[!=]==?\s*"Enter"/.test(inlineScript)
+      && /hedgeQuickModeToolbar\.addEventListener\(\s*"click"/.test(inlineScript)
+      && /hedgeQuickModeToolbar\.addEventListener\(\s*"keydown"/.test(inlineScript),
     usesHedgeQuickModeSettingsEditor:
       fxPositionPageMarkup.includes('id="hedgeQuickModeSettingsButton"')
-      && fxPositionPageMarkup.includes('aria-label="Quick Mode Hedge Settings"')
-      && hedgeQuickModeSettingsDialogMarkup.includes(
-        'id="hedgeQuickModeSettingsDialogTitle">Quick Mode Hedge Settings</h2>'
+      && fxPositionPageMarkup.includes('aria-label="Hedging Settings"')
+      && fxPositionPageMarkup.includes('class="batch-control hedge-toolbar-settings"')
+      && hedgingSettingsPageMarkup.includes(
+        '<h1 class="settings-title">Hedging Settings</h1>'
       )
-      && hedgeQuickModeSettingsDialogMarkup.includes(
+      && hedgingSettingsPageMarkup.includes(
+        'id="hedgeQuickModeSettingsTitle">Quick Hedge Settings</h2>'
+      )
+      && hedgingSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsCurrencyPair" name="currencyPair"'
       )
-      && hedgeQuickModeSettingsDialogMarkup.includes(
+      && hedgingSettingsPageMarkup.includes(
+        'id="hedgeQuickModePricingMode" name="pricingMode" aria-readonly="true" disabled'
+      )
+      && hedgingSettingsPageMarkup.includes(
+        '<option value="AUTO_PRICED">AUTO_PRICED</option>'
+      )
+      && hedgingSettingsPageMarkup.includes(
+        'pricing-mode-indicator client-deal-pricing-mode-icon is-auto-priced'
+      )
+      && hedgingSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsOverview"'
       )
-      && hedgeQuickModeSettingsDialogMarkup.includes(
+      && hedgingSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsGrid"'
       )
-      && hedgeQuickModeSettingsDialogMarkup.includes(
+      && hedgingSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsNewButton"'
       )
-      && hedgeQuickModeSettingsDialogMarkup.includes(
+      && hedgingSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsEditor" hidden'
       )
-      && hedgeQuickModeSettingsDialogMarkup.includes(
+      && hedgingSettingsPageMarkup.includes(
         'id="hedgeQuickModePartyId" name="partyId"'
       )
-      && hedgeQuickModeSettingsDialogMarkup.includes('name="pricingRuleId"')
-      && (hedgeQuickModeSettingsDialogMarkup.match(/name="(?:small|medium|large|xlarge)BaseCcyAmount"/g) || []).length === 4
-      && hedgeQuickModeSettingsDialogMarkup.includes('name="defaultTenor"')
-      && hedgeQuickModeSettingsDialogMarkup.includes('name="active"')
+      && hedgingSettingsPageMarkup.includes('name="pricingRuleId"')
+      && (hedgingSettingsPageMarkup.match(/name="(?:small|medium|large|xlarge)BaseCcyAmount"/g) || []).length === 4
+      && hedgingSettingsPageMarkup.includes('name="defaultTenor"')
+      && hedgingSettingsPageMarkup.includes('name="active"')
+      && inlineScript.includes('function hedgingSettingsRoute()')
+      && inlineScript.includes('function isHedgingSettingsRoute()')
+      && inlineScript.includes('async function loadHedgingSettingsPage()')
+      && /function applyInitialPageMode\(\)[\s\S]*?if \(isHedgingSettingsRoute\(\)\)[\s\S]*?loadHedgingSettingsPage\(\)/.test(inlineScript)
+      && /hedgeQuickModeSettingsButton\.addEventListener\("click",[\s\S]*?location\.hash = hedgingSettingsRoute\(\)/.test(inlineScript)
       && inlineScript.includes("function hedgeQuickModeCounterpartyProfiles()")
-      && inlineScript.includes('isHedgeDealPricingRule(rule, "AUTO_PRICED")')
+      && inlineScript.includes("function selectedHedgeQuickModePricingMode()")
+      && inlineScript.includes('return pricingMode === "AUTO_PRICED" ? pricingMode : "";')
+      && inlineScript.includes("function hedgeQuickModeEligiblePricingRules()")
+      && inlineScript.includes("isHedgeDealPricingRule(rule, pricingMode)")
+      && inlineScript.includes("hedgeQuickModeEligiblePricingRules().map")
       && inlineScript.includes("function initializeHedgeQuickModeSettingsGrid(data)")
       && inlineScript.includes("function renderHedgeQuickModeSettingsOverview()")
       && inlineScript.includes("function openHedgeQuickModeSettingsEditor(setting = null)")
@@ -1683,6 +1761,29 @@ function verifyFrontendStructure() {
       && schemaSource.includes(
         "FOREIGN KEY (pricing_rule_id, party_id, ccy_pair_code)"
       ),
+    usesCompactHedgingSettingsLayout:
+      /#hedgingSettingsPage\.unified-bootstrap-workspace\.workbench-page \.hedging-settings-panel \{[\s\S]*?width: fit-content;[\s\S]*?max-width: 100%;/.test(html)
+      && html.includes(
+        "#hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator {"
+      )
+      && html.includes("width: fit-content;")
+      && html.includes("min-width: 0;")
+      && html.includes(
+        ".hedge-quick-settings-grid .tabulator-tableholder {"
+      )
+      && html.includes("height: auto !important;")
+      && html.includes(
+        "border: var(--data-grid-line-width) solid var(--data-grid-line-color);"
+      )
+      && html.includes(
+        "#hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-col-title {"
+      )
+      && inlineScript.includes("rowHeight: 36")
+      && /tabulatorSizedColumn\("contextPath",\s*\{\s*title: "Execution Context",\s*field: "contextPath",\s*formatter: hedgeQuickModeSettingsContextFormatter/.test(inlineScript)
+      && /tabulatorSizedColumn\("compactActions",\s*\{\s*title: "Actions"/.test(inlineScript)
+      && html.includes("#hedgeQuickModeSettingsNewButton:disabled {")
+      && html.includes(".app-status-token.is-active {")
+      && inlineScript.includes("applicationStatusTokenMarkup(cell.getValue())"),
     usesHedgeCounterpartyPricingRules: serverSource.includes("function eligibleHedgeDealPricingRules(pricingMode)")
       && serverSource.includes('new Set(["AUTO_PRICED", "DEALER_PRICED"])')
       && serverSource.includes('party?.partyType === "HEDGE_COUNTERPARTY"')
@@ -1692,19 +1793,18 @@ function verifyFrontendStructure() {
       && serverSource.includes("...autoPricedHedgeDealPricingRules()")
       && serverSource.includes("createHedgeFxDealTerms")
       && serverSource.includes("hedgeFxDealWithCalculatedTerms(payload, exposureAmounts)")
-      && inlineScript.includes("DEMO_API_BOOTSTRAP.hedgeDealPricingRules")
-      && inlineScript.includes('function isHedgeDealPricingRule(rule, pricingMode = "")')
+      && inlineScript.includes('function isHedgeDealPricingRule(rule, pricingMode)')
       && inlineScript.includes("rulePricingMode === requestedPricingMode")
       && inlineScript.includes("function eligibleHedgeDealPartyIds(")
-      && inlineScript.includes("isHedgeDealPricingRule(rule, addHedgeDealPricingMode)")
+      && inlineScript.includes("const pricingMode = selectedAddHedgeDealPricingMode();")
+      && inlineScript.includes("pricingModeForRule(rule) === pricingMode")
+      && !inlineScript.includes("hedgeDealEligiblePricingRules")
       && inlineScript.includes("eligiblePartyIds.has(String(profile.partyId))")
       && inlineScript.includes("profiles.length === 1 ? profiles[0] : null")
       && inlineScript.includes("No Hedge Counterparty with ${escapeHtml(")
       && inlineScript.includes("addHedgeDealPricingRuleContentMarkup")
       && inlineScript.includes('id="addHedgeDealPricingRuleLabel">Pricing Rule</span>')
-      && inlineScript.includes('class="pricing-rule-availability-note" id="addHedgeDealPricingRuleHelp"')
-      && inlineScript.includes("Only Pricing Rules linked to ${escapeHtml(addHedgeDealPricingMode)} Execution Systems are available.")
-      && inlineScript.includes('aria-hidden="true">warning</span>')
+      && !inlineScript.includes('id="addHedgeDealPricingRuleHelp"')
       && inlineScript.includes("Select Pricing Rule")
       && inlineScript.includes("Select a Pricing Rule.")
       && inlineScript.includes("return addClientDealPricingRuleContentMarkup(rule, context);")
@@ -1744,10 +1844,9 @@ function verifyFrontendStructure() {
       && html.includes('placeholder="Find table..."')
       && [
         "FX Trades",
-        "Hedging Settings",
         "FX Batching",
         "Pricing",
-        "Market Pulse",
+        "Settings",
         "Trading Parties & Users",
         "Demo & Generation",
         "Audit",
@@ -1755,9 +1854,6 @@ function verifyFrontendStructure() {
       ].every(label => databaseTableSectionsSource.includes(`label: "${label}"`))
       && databaseTableSectionsSource.includes('"fx_trade_exposure"')
       && /id: "fx-trading",[\s\S]*?label: "FX Trades",[\s\S]*?tables: \[\s*"client_fx_deals",\s*"fx_hedge_deals",\s*"fx_trade_exposure"\s*\]/.test(
-        databaseTableSectionsSource
-      )
-      && /id: "hedging-settings",[\s\S]*?label: "Hedging Settings",[\s\S]*?icon: "shield",[\s\S]*?tables: \[\s*"fx_hedge_quick_mode_settings"\s*\]/.test(
         databaseTableSectionsSource
       )
       && databaseTableSectionsSource.includes('"fx_batch_quote_cash_output"')
@@ -1770,9 +1866,11 @@ function verifyFrontendStructure() {
         databaseTableSectionsSource
       )
       && !databaseTableSectionsSource.includes('id: "execution-context"')
-      && /id: "market-pulse",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options"\s*\]/.test(
+      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"fx_hedge_quick_mode_settings"\s*\]/.test(
         databaseTableSectionsSource
       )
+      && !databaseTableSectionsSource.includes('id: "hedging-settings"')
+      && !databaseTableSectionsSource.includes('id: "market-pulse"')
       && /id: "demo-generation",[\s\S]*?tables: \[\s*"client_deal_generation_process_settings",\s*"client_deal_generation_settings",\s*"market_quote_simulation_settings"\s*\]/.test(
         databaseTableSectionsSource
       )
@@ -2162,7 +2260,13 @@ function verifyFrontendStructure() {
       && fxPositionPageMarkup.includes('class="batch-toolbar btn-toolbar"')
       && fxPositionPageMarkup.includes('class="position-toolbar-row"')
       && fxPositionPageMarkup.includes('class="hedge-toolbar btn-toolbar"')
-      && fxPositionPageMarkup.includes('aria-label="Hedge Toolbar"')
+      && fxPositionPageMarkup.includes('aria-label="Hedging Toolbar"')
+      && fxPositionPageMarkup.includes('class="batch-toolbar-title hedge-toolbar-title"')
+      && fxPositionPageMarkup.includes('data-tooltip="Hedging Toolbar"')
+      && fxPositionPageMarkup.includes('aria-hidden="true">shield</span>')
+      && html.includes('.action-button:not(.btn) {')
+      && html.includes('.action-button:not(.btn):hover:not(:disabled) {')
+      && !fxPositionPageMarkup.includes('>Hedge Toolbar</span>')
       && fxPositionPageMarkup.includes('class="form-check-input select-all-checkbox"')
       && fxPositionPageMarkup.includes('aria-label="Ccy pair selector"')
       && fxPositionPageMarkup.includes('id="runClientDealGenerationLabel">Auto Generate</span>')
@@ -2175,14 +2279,26 @@ function verifyFrontendStructure() {
       && !fxPositionPageMarkup.includes("header-filter")
       && html.includes("#mainPage.fx-position-bootstrap.workbench-page .fx-position-grid")
       && html.includes("grid-template-columns: 136px minmax(0, 1fr)")
-      && html.includes("grid-template-rows: minmax(0, 1fr) auto auto")
-      && html.includes("#mainPage.fx-position-bootstrap.workbench-page .fx-position-grid thead")
-      && html.includes("#mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tfoot")
+      && fxPositionWorkspaceMainCss.includes("display: flex;")
+      && fxPositionWorkspaceMainCss.includes("flex-direction: column;")
+      && !fxPositionWorkspaceMainCss.includes("grid-template-rows:")
+      && fxPositionGridFrameCss.includes("flex: 1 1 auto;")
+      && fxPositionGridFrameCss.includes("min-height: 0;")
+      && fxPositionGridFrameCss.includes("overflow: auto;")
+      && /#mainPage\.fx-position-bootstrap\.workbench-page \.hedge-toolbar \{[\s\S]*?flex: 0 0 auto;[\s\S]*?\}/.test(html)
+      && !fxPositionPageMarkup.includes('class="fx-position-toolbar-spacer"')
+      && inlineScript.includes("function fxPositionGridFillRow()")
+      && inlineScript.includes('class="fx-position-grid-fill"')
+      && inlineScript.includes("function syncFxPositionGridFillHeight()")
+      && inlineScript.includes("new ResizeObserver(scheduleFxPositionGridFillHeight).observe(fxPositionGridFrame)")
+      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid thead \{\s*position: static;\s*\}/.test(html)
+      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid tfoot \{[\s\S]*?position: sticky;[\s\S]*?bottom: 0;[\s\S]*?\}/.test(html)
+      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid \.batching-summary-total td \{[\s\S]*?border-top: var\(--data-grid-line-width\) solid var\(--bs-secondary-color\);/.test(html)
       && html.includes(".sell-check-zone .select-all-checkbox:is(:checked, :indeterminate)")
       && html.includes(".buy-check-zone .select-all-checkbox:is(:checked, :indeterminate)")
       && fxPositionPageMarkup.includes('title="Select all SELL deals · Shortcut: S"')
       && fxPositionPageMarkup.includes('title="Select all BUY deals · Shortcut: B"')
-      && html.includes(".deal-toolbar #createDealButton:is(")
+      && fxPositionPageMarkup.includes('class="action-button primary btn btn-sm btn-soft-primary with-icon" id="createDealButton"')
       && html.includes(".deal-toolbar #editDealButton:is(:hover, :focus-visible):not(:disabled)"),
     usesBootstrapDealGenerationSettings: generationSettingsDialogMarkup.includes(
       'class="generation-dialog-title-block"'
@@ -2200,6 +2316,9 @@ function verifyFrontendStructure() {
       && generationSettingsDialogMarkup.includes(
         "Only Pricing Rules linked to AUTO_PRICED Execution Systems are available."
       )
+      && generationSettingsDialogMarkup.indexOf(
+        "Only Pricing Rules linked to AUTO_PRICED Execution Systems are available."
+      ) > generationSettingsDialogMarkup.indexOf("</table>")
       && generationSettingsDialogMarkup.includes('aria-hidden="true">warning</span>')
       && !generationSettingsDialogMarkup.includes(">Margin %</th>")
       && !inlineScript.includes("editNumber(settings.marginPercent, 4)")
@@ -2233,7 +2352,19 @@ function verifyFrontendStructure() {
       && html.includes('>currency_exchange</span>')
       && html.includes('id="workspaceTradesMenu" role="menu" aria-label="Trades" data-workspace-nav-menu hidden')
       && html.includes('class="workspace-nav-menu-link" href="#client-fx-deals"')
-      && html.includes('class="workspace-nav-menu-link" href="#hedge-fx-deals"'),
+      && html.includes('class="workspace-nav-menu-link" href="#hedge-fx-deals"')
+      && !html.includes('class="workspace-nav-link" href="#hedging-settings" data-workspace-route="hedging-settings"'),
+    usesGroupedSettingsNavigation: html.includes('id="workspaceSettingsToggle"')
+      && html.includes('aria-controls="workspaceSettingsMenu"')
+      && html.includes('data-workspace-nav-menu-toggle="workspaceSettingsMenu"')
+      && html.includes('data-workspace-routes="settings-currencies settings-currency-pairs hedging-settings"')
+      && html.includes('id="workspaceSettingsMenu" role="menu" aria-label="Settings" data-workspace-nav-menu hidden')
+      && html.includes('href="#settings:currencies" data-workspace-route="settings-currencies"')
+      && html.includes('href="#settings:currency-pairs" data-workspace-route="settings-currency-pairs"')
+      && html.includes('href="#hedging-settings" data-workspace-route="hedging-settings"')
+      && html.includes('<span>Currency Settings</span>')
+      && html.includes('<span>Currency Pair Settings</span>')
+      && html.includes('<span>Hedging Settings</span>'),
     usesGroupedPricingWorkspace: html.includes(
       '<section class="home-navigation-group" aria-labelledby="homePricingTitle">'
     )
@@ -2252,6 +2383,14 @@ function verifyFrontendStructure() {
       && html.includes('<nav class="home-links" aria-label="Trades navigation">')
       && html.includes('<span class="home-link-title">Client FX Deals</span>')
       && html.includes('<span class="home-link-title">Hedge FX Deals</span>'),
+    usesGroupedSettingsWorkspace: html.includes(
+      '<section class="home-navigation-group" aria-labelledby="homeSettingsTitle">'
+    )
+      && html.includes('<h2 class="home-navigation-group-title" id="homeSettingsTitle">Settings</h2>')
+      && html.includes('<nav class="home-links" aria-label="Settings navigation">')
+      && html.includes('<span class="home-link-title">Currency Settings</span>')
+      && html.includes('<span class="home-link-title">Currency Pair Settings</span>')
+      && html.includes('<span class="home-link-title">Hedging Settings</span>'),
     usesImmutableClientFxDealEdit: editClientDealDialogMarkup.includes(">Edit Client Deal Comment</h2>")
       && editClientDealDialogMarkup.includes('class="modal-content"')
       && editClientDealDialogMarkup.includes(">Trade Context</div>")
@@ -2340,10 +2479,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("Manual Pricing")
       && inlineScript.includes('pricingModeIndicatorMarkup("MANUAL_PRICING")')
       && inlineScript.includes("data-add-client-deal-onboarding-pricing")
-      && inlineScript.includes('class="pricing-rule-availability-note" id="addClientDealPricingRuleHelp"')
-      && inlineScript.includes(
-        "Only Pricing Rules linked to DEALER_PRICED Execution Systems are available, or select Client Onboarding."
-      )
+      && !inlineScript.includes('id="addClientDealPricingRuleHelp"')
       && inlineScript.includes("Pricing Rule is pending. Transfer Rate must be entered manually.")
       && inlineScript.includes("addClientDealManualTransferEdited")
       && inlineScript.includes('pricingRuleControlStatus: onboardingPricing')
@@ -2382,9 +2518,10 @@ function verifyFrontendStructure() {
         < addClientDealDialogMarkup.indexOf('id="addClientDealPartyId"')
       && addClientDealDialogMarkup.includes('class="client-deal-currency-pair-field"')
       && html.includes("grid-template-columns: max-content minmax(0, 1fr);")
+      && html.includes("grid-template-columns: max-content max-content minmax(0, 1fr);")
       && html.includes(".client-deal-create-dialog .client-deal-currency-pair-field .form-select")
       && html.includes("width: calc(7ch + 4rem);")
-      && /:is\(#addClientDealDialog, #addHedgeDealDialog, #hedgeQuickModeSettingsDialog\)[\s\S]*?\.client-deal-currency-pair-field \.form-select \{[\s\S]*?height: 44px;[\s\S]*?font-size: 15px;[\s\S]*?font-weight: 600;/.test(html),
+      && /:is\(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage\)[\s\S]*?:is\(\.client-deal-currency-pair-field, \.client-deal-pricing-mode-field\) \.form-select \{[\s\S]*?height: 44px;[\s\S]*?font-size: 15px;[\s\S]*?font-weight: 600;/.test(html),
     usesWrappingClientPicker: addClientDealDialogMarkup.includes('id="addClientDealClientPicker"')
       && addClientDealDialogMarkup.includes('id="addClientDealClientPickerValue"')
       && addClientDealDialogMarkup.includes('id="addClientDealClientPickerToggle"')
@@ -2454,8 +2591,8 @@ function verifyFrontendStructure() {
       && inlineScript.includes('quoteDisplay.querySelector("[data-market-quote-bid]").textContent')
       && inlineScript.includes('quoteDisplay.querySelector("[data-market-quote-offer]").textContent'),
     usesUnifiedDialogCloseButtons:
-      (html.match(/<dialog\b/g) || []).length === 10
-      && (html.match(/class="[^"]*btn-close[^"]*"[^>]*aria-label="Close"/g) || []).length === 10
+      (html.match(/<dialog\b/g) || []).length === 9
+      && (html.match(/class="[^"]*btn-close[^"]*"[^>]*aria-label="Close"/g) || []).length === 9
       && html.includes("dialog .modal-header > .btn-close {")
       && /dialog \.modal-header > \.btn-close \{[\s\S]*?width: 32px;[\s\S]*?height: 32px;[\s\S]*?border-radius: var\(--bs-border-radius\);/.test(html)
       && html.includes("dialog .modal-header > .btn-close:hover,"),
@@ -2586,9 +2723,21 @@ function verifyFrontendStructure() {
       && html.includes('class="btn btn-sm btn-outline-primary reference-new-button" id="clientProfileNewButton"')
       && html.includes('class="client-profile-actions-col"')
       && html.includes('data-profile-action="edit"')
-      && html.includes('data-profile-action="remove"')
+      && !html.includes('data-profile-action="remove"')
+      && html.includes('id="clientProfileDeleteButton" hidden')
+      && inlineScript.includes("function updateClientProfileDeleteAvailability()")
+      && inlineScript.includes('clientProfileDeleteButton.addEventListener("click"')
       && !html.includes("Trading Party List")
       && !html.includes("clientProfileSearchInput"),
+    usesContextualDeletePlacement:
+      html.includes('id="clientPricingRuleDeleteButton" hidden')
+      && !html.includes('data-client-pricing-rule-action="remove"')
+      && inlineScript.includes("async function deleteClientPricingRuleFromDialog()")
+      && inlineScript.includes('clientPricingRuleDeleteButton.addEventListener("click"')
+      && inlineScript.includes('data-user-action="remove"')
+      && inlineScript.includes('data-pricing-context-action="remove"')
+      && inlineScript.includes('data-reference-action="remove"')
+      && inlineScript.includes('marketGridActionMarkup("delete"'),
     usesTradingPartyPricingContextBricks: inlineScript.includes("function pricingContextFacetsMarkup(contextOrId)")
       && html.includes(".client-pricing-rules-context-path")
       && inlineScript.includes('class="client-pricing-context-candidate-path client-pricing-rules-context-path"'),
@@ -2645,10 +2794,14 @@ function verifyFrontendStructure() {
     removesExecutionContextAssignments: !html.includes("clientExecutionContextAssignment")
       && !inlineScript.includes("executionContextIds")
       && !html.includes("Execution Context Assignment"),
-    pricingRulesUseDirectExecutionContexts: html.includes('<section class="deal-form-section pricing-rule-bootstrap-section" aria-label="Execution Context">')
+    pricingRulesUseDirectExecutionContexts: html.includes('<section class="deal-form-section pricing-rule-bootstrap-section" aria-label="Find Execution Context">')
       && inlineScript.includes("availablePricingRuleExecutionContextIds()")
       && inlineScript.includes("Select an existing Execution Context."),
     usesPricingRuleContextBuilder: html.includes('id="clientPricingContextBuilder"')
+      && html.includes('aria-label="Find Execution Context"')
+      && html.includes('<span class="button-icon" aria-hidden="true">filter_alt</span>')
+      && html.includes("Use the filters below to find an existing Execution Context.")
+      && (html.match(/placeholder="Filter by code or name"/g) || []).length === 3
       && html.includes('data-pricing-context-facet="servicingBranchCode"')
       && html.includes('data-pricing-context-facet="settlementSystemId"')
       && html.includes('data-pricing-context-facet="tradeCaptureChannelId"')
@@ -2699,7 +2852,11 @@ function verifyFrontendStructure() {
       && inlineScript.includes("initializeTooltips();")
       && inlineScript.includes("suppressNativeTooltips();")
       && inlineScript.includes('typeof appTooltipEl.showPopover === "function"')
-      && inlineScript.includes('target.closest("dialog") || document.body'),
+      && inlineScript.includes('target.closest("dialog") || document.body')
+      && !html.includes('cursor: help;'),
+    usesUnifiedIconCursor: html.includes('.button-icon,\n    [role="img"] {')
+      && html.includes(':is(button, a, [role="button"]) .button-icon,')
+      && html.includes('user-select: none;'),
     explicitTooltipCount: (html.match(/\bdata-tooltip=/g) || []).length,
     usesExplicitTradeIdCopy: html.includes('data-copy-trade-id="${safeTradeId}"')
       && inlineScript.includes("function fxPositionTradeId(deal)")
@@ -2810,7 +2967,8 @@ function verifyFrontendStructure() {
       && fs.existsSync(path.join(root, 'vendor', 'tabulator', 'tabulator_bootstrap5.min.css'))
       && fs.existsSync(path.join(root, 'vendor', 'tabulator', 'tabulator.min.js')),
     usesBootstrapMarketPulse: /<main class="[^"]*\bmarket-bootstrap\b[^"]*" id="marketPage"/.test(html)
-      && html.includes('class="nav nav-underline market-tabs reference-switcher"')
+      && !html.includes('class="nav nav-underline market-tabs reference-switcher"')
+      && html.includes('id="marketPageTitle">Market Pulse</h1>')
       && html.includes('class="btn btn-sm btn-primary" id="marketStreamToggleButton"')
       && html.includes('class="market-bootstrap-dialog market-simulation-dialog" id="marketSimulationDialog"'),
     usesTabulatorMarketPulseGrids: html.includes('id="marketCcyOptionRows"')
@@ -2832,11 +2990,16 @@ function verifyFrontendStructure() {
       && html.includes('#marketPage.market-bootstrap.workbench-page .market-tabulator {\n      width: max-content;')
       && !html.includes('[data-market-panel="streams"] .market-grid-frame {\n      width: min(426px'),
     usesMarketPulseRoute: html.includes('href="#market-pulse" data-workspace-route="market"')
-      && html.includes('href="#market-pulse:streams" data-market-route="streams"')
-      && inlineScript.includes('function marketRoute(kind = "streams")')
-      && inlineScript.includes('return "#market-pulse:streams";')
+      && inlineScript.includes('function marketRoute()')
+      && inlineScript.includes('return "#market-pulse";')
+      && inlineScript.includes('function settingsRoute(kind = "currencies")')
+      && inlineScript.includes('return kind === "pairs"')
+      && inlineScript.includes('function isCurrencySettingsRoute()')
+      && inlineScript.includes('location.hash === settingsRoute("currencies")')
+      && inlineScript.includes('location.hash === settingsRoute("pairs")')
       && inlineScript.includes('location.hash === "#market-pulse"')
-      && inlineScript.includes('location.hash.startsWith("#market:")'),
+      && !html.includes('href="#market-pulse:ccy-options"')
+      && !html.includes('href="#market-pulse:ccy-pair-options"'),
     usesCcyOptionLimits: serverSource.includes('CCY_OPTION_NAME_MAX_LENGTH = 20')
       && serverSource.includes('CCY_OPTION_COUNTRY_MAX_LENGTH = 30')
       && serverSource.includes('function migrateCcyOptionsConstraints(sqlite)')
@@ -2889,6 +3052,11 @@ function verifyFrontendStructure() {
       && inlineScript.includes('saveMarketPairOptionsFromRow')
       && inlineScript.includes('market-inline-edit-row')
       && inlineScript.includes('saveMarketSimulationSettingsFromForm'),
+    preservesMarketReferenceEditorsDuringQuoteUpdates:
+      inlineScript.includes('function renderMarketQuoteState()')
+      && /function applyMarketPulseSimulationSnapshot\(snapshot\)[\s\S]*?renderMarketQuoteState\(\);/.test(inlineScript)
+      && /function renderMarketPage\(\)[\s\S]*?renderMarketCcyOptionRows\(\);[\s\S]*?renderMarketPairOptionRows\(\);[\s\S]*?renderMarketQuoteState\(\);/.test(inlineScript)
+      && inlineScript.includes('setMarketStatus("Market Pulse Simulation connection lost. Reconnecting...");\n        renderMarketQuoteState();'),
     usesSemanticMarketCommands: html.includes('class="btn btn-sm btn-outline-primary" id="marketCcyOptionNewButton"')
       && html.includes('class="btn btn-sm btn-outline-primary" id="marketPairOptionNewButton"')
       && inlineScript.includes('marketStreamToggleButton.classList.toggle("btn-primary", !marketStreamRunning)')
@@ -3067,24 +3235,25 @@ function verifyFrontendStructure() {
       && !html.includes('Market Pulse rates captured when the trade was entered.')
       && inlineScript.includes('marketRate: { min: 70, max: 76, pad: 12, ellipsize: false }'),
     usesFxPositionHedgeDealTerminology:
-      inlineScript.includes('const baseCcyCode = currenciesFromPair(activeCurrencyPairOrDefault()).base || "BASE";')
-      && (inlineScript.match(/<span class="button-icon" aria-hidden="true">contact_phone<\/span>/g) || []).length >= 2
-      && (inlineScript.match(/<span class="button-icon" aria-hidden="true">bolt<\/span>/g) || []).length >= 1
-      && inlineScript.includes('<span>SELL ${escapeHtml(baseCcyCode)}</span>')
-      && inlineScript.includes('<span>BUY ${escapeHtml(baseCcyCode)}</span>')
-      && html.includes('<span class="hedge-deals-center-label">Hedge Deals</span>')
-      && html.includes('id="addHedgeSellDealButton"')
-      && html.includes('id="addHedgeBuyDealButton"')
-      && inlineScript.includes('id="addAutoHedge${normalizedSide === "BUY" ? "Buy" : "Sell"}DealButton"')
-      && (inlineScript.match(/data-hedge-pricing-mode="DEALER_PRICED"/g) || []).length === 2
-      && (inlineScript.match(/data-hedge-pricing-mode="AUTO_PRICED"/g) || []).length >= 1
-      && inlineScript.includes('aria-label="Add DEALER_PRICED Hedge Deal: SELL ${escapeHtml(baseCcyCode)}"')
-      && inlineScript.includes('aria-label="Add AUTO_PRICED Hedge Deal: ${escapeHtml(sideLabel)}"')
+      inlineScript.includes('hedgeQuickModeActionMarkup("SELL", setting.baseCcyCode')
+      && inlineScript.includes('hedgeQuickModeActionMarkup("BUY", setting.baseCcyCode')
+      && html.includes('class="action-button primary btn btn-sm btn-soft-primary with-icon" id="addHedgeDealButton">')
+      && html.includes('<span>Hedge Deal</span>')
+      && fxPositionPageMarkup.includes('id="hedgeQuickModeToolbar"')
+      && !html.includes('id="addHedgeSellDealButton"')
+      && !html.includes('id="addHedgeBuyDealButton"')
+      && !inlineScript.includes("addAutoHedge")
+      && !inlineScript.includes("data-hedge-pricing-mode")
+      && !inlineScript.includes("Add AUTO_PRICED Hedge Deal")
+      && !inlineScript.includes('class="hedge-deal-quick-control"')
+      && inlineScript.includes('data-hedge-quick-preset')
+      && inlineScript.includes('data-hedge-quick-action')
       && inlineScript.includes("function oppositeFxSide(side)")
       && inlineScript.includes("const positionSide = addHedgeDealForm.elements.side.value;")
       && inlineScript.includes("const ourSide = oppositeFxSide(positionSide);")
       && inlineScript.includes("addHedgeDealForm.elements.side.value = oppositeFxSide(normalizedOurSide);")
-      && /ourSide === "BUY"\s*\?\s*"We Buy"\s*:\s*ourSide === "SELL"\s*\?\s*"We Sell"/.test(inlineScript)
+      && inlineScript.includes("() => openAddHedgeDealDialog()")
+      && inlineScript.includes("oppositeFxSide(addHedgeDealSideControl.value)")
       && !html.includes('id="deleteHedgeDealDemoButton"')
       && !inlineScript.includes("function selectedDeletableHedgeDeals()")
       && !inlineScript.includes("async function deleteSelectedHedgeDealsForDemo()")
@@ -3101,8 +3270,12 @@ function verifyFrontendStructure() {
       && html.includes('id="autoBatchButton" aria-label="Auto Batch" disabled>Auto Batch</button>')
       && !html.includes("batch-control input-group")
       && !html.includes("batch-label input-group-text")
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.deal-toolbar #createDealButton:is\([\s\S]*?:hover,[\s\S]*?:focus-visible[\s\S]*?\):not\(:disabled\) \{[\s\S]*?background: #0b5ed7;[\s\S]*?color: #ffffff;/.test(html)
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.deal-generation-control :is\([\s\S]*?#generateClientDealButton,[\s\S]*?#runClientDealGenerationButton,[\s\S]*?#clientDealSettingsButton[\s\S]*?\):is\(:hover, :focus-visible\):not\(:disabled\):not\(\.is-running\) \{[\s\S]*?background: var\(--bs-tertiary-bg\);[\s\S]*?color: var\(--bs-emphasis-color\);/.test(html)
+      && html.includes('.btn-soft-primary {')
+      && html.includes('--bs-btn-bg: rgba(var(--bs-primary-rgb), 0.07);')
+      && html.includes('--bs-btn-hover-bg: rgba(var(--bs-primary-rgb), 0.14);')
+      && /#mainPage\.fx-position-bootstrap\.workbench-page \.deal-generation-control :is\([\s\S]*?#generateClientDealButton,[\s\S]*?#runClientDealGenerationButton,[\s\S]*?#clientDealSettingsButton[\s\S]*?\):is\(:hover, :focus-visible\):not\(:disabled\):not\(\.is-running\) \{[\s\S]*?background: var\(--bs-tertiary-bg\);/.test(html)
+      && html.includes('--bs-btn-hover-color: var(--bs-btn-color);')
+      && html.includes('--bs-btn-active-color: var(--bs-btn-color);')
       && inlineScript.includes('runClientDealGenerationLabel.textContent = running ? "Stop Generation" : "Auto Generate";'),
     keepsSpecialFxPositionTradesVisuallyNeutral:
       !html.includes('.position-amount-chip')
@@ -5925,6 +6098,7 @@ async function main() {
       || !frontend.usesDedicatedAddHedgeDealFlow
       || !frontend.usesQuickHedgeMode
       || !frontend.usesHedgeQuickModeSettingsEditor
+      || !frontend.usesCompactHedgingSettingsLayout
       || !frontend.usesHedgeCounterpartyPricingRules
       || !frontend.usesPricingModeIndicators
       || !frontend.usesUnifiedMarginIndicators
@@ -5951,8 +6125,10 @@ async function main() {
       || !frontend.usesNeutralMarketPulseNavigationIcon
       || !frontend.usesGroupedPricingNavigation
       || !frontend.usesGroupedTradesNavigation
+      || !frontend.usesGroupedSettingsNavigation
       || !frontend.usesGroupedPricingWorkspace
       || !frontend.usesGroupedTradesWorkspace
+      || !frontend.usesGroupedSettingsWorkspace
       || !frontend.usesImmutableClientFxDealEdit
       || !frontend.usesAuthoritativeClientDealRefresh
       || !frontend.usesHedgeFxDealsTabulator
@@ -5993,6 +6169,7 @@ async function main() {
       || !frontend.usesDomainNavigationIcons
       || !frontend.usesTradingPartyColumnFilters
       || !frontend.usesBootstrapTradingPartyGrid
+      || !frontend.usesContextualDeletePlacement
       || !frontend.usesTradingPartyPricingContextBricks
       || !frontend.usesTradingPartyDetailRoutes
       || !frontend.usesInlineTradingPartyCreate
@@ -6012,6 +6189,7 @@ async function main() {
       || !frontend.supportsRequiredPartyTypes
       || !frontend.supportsRequiredPartyCodeTypes
       || !frontend.usesExplicitTooltipLayer
+      || !frontend.usesUnifiedIconCursor
       || frontend.explicitTooltipCount < 1
       || !frontend.usesExplicitTradeIdCopy
       || !frontend.usesLocalTradeIdCopyFeedback
@@ -6043,6 +6221,7 @@ async function main() {
       || !frontend.disablesTabulatorColumnMoving
       || !frontend.disablesTabulatorColumnResizing
       || !frontend.usesInlineMarketPulseEditors
+      || !frontend.preservesMarketReferenceEditorsDuringQuoteUpdates
       || !frontend.usesSemanticMarketCommands
       || !frontend.usesSeparatedDialogActions
       || !frontend.avoidsDoubleTabbedPageDividers

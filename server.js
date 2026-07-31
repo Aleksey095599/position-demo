@@ -8294,6 +8294,7 @@ async function handleApi(request, response, url) {
         ...hedgeDealPricingRules(),
         ...autoPricedHedgeDealPricingRules()
       ],
+      hedgeQuickModeSettings: hedgeQuickModeSettings(),
       clientFxDeals: clientFxDeals(),
       hedgeFxDeals: hedgeFxDeals(),
       fxPositions: fxPositions(),
