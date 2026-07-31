@@ -189,6 +189,7 @@ migrateAccountingSystemsShape(database);
 migrateExecutionSystemsShape(database);
 migrateTradingPartiesConstraints(database);
 ensurePricingRuleClientDealReferenceIndex(database);
+migrateHedgeQuickModeSettingsPartyReference(database);
 migrateClientDealGenerationSettingsToMinorUnits(database);
 ensureClientDealGenerationProcessSettings(database);
 synchronizeClientDealGenerationSettings(database);
@@ -1987,6 +1988,176 @@ function ensureHedgeQuickModeSettingsDefaultTenor(sqlite) {
     ADD COLUMN default_tenor TEXT NOT NULL DEFAULT 'TOD'
       CHECK (default_tenor IN ('TOD', 'TOM', 'SPOT'));
   `);
+}
+
+function migrateHedgeQuickModeSettingsPartyReference(sqlite) {
+  const targetColumns = [
+    "ccy_pair_code",
+    "party_id",
+    "pricing_rule_id",
+    "base_ccy_fraction_digits",
+    "small_base_ccy_amount_minor",
+    "medium_base_ccy_amount_minor",
+    "large_base_ccy_amount_minor",
+    "xlarge_base_ccy_amount_minor",
+    "is_active",
+    "default_tenor"
+  ];
+  const legacyColumns = targetColumns.filter(column => column !== "party_id");
+  const columns = [...tableColumnNames(sqlite, "fx_hedge_quick_mode_settings")];
+
+  if (columns.join(",") === targetColumns.join(",")) {
+    return;
+  }
+
+  if (columns.join(",") !== legacyColumns.join(",")) {
+    throw new Error("Unsupported Hedge Quick Mode Settings party-reference schema.");
+  }
+
+  const sourceRows = sqlite.prepare(`
+    SELECT settings.*, rule.party_id
+    FROM fx_hedge_quick_mode_settings settings
+    INNER JOIN pricing_rules rule
+      ON rule.pricing_rule_id = settings.pricing_rule_id
+      AND rule.ccy_pair_code = settings.ccy_pair_code
+    ORDER BY settings.ccy_pair_code
+  `).all();
+  const originalRowCount = Number(sqlite.prepare(`
+    SELECT COUNT(*) AS count
+    FROM fx_hedge_quick_mode_settings
+  `).get().count);
+
+  if (sourceRows.length !== originalRowCount) {
+    throw new Error(
+      "Every Hedge Quick Mode Settings row must resolve its Trading Party."
+    );
+  }
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      CREATE TABLE fx_hedge_quick_mode_settings_migrated
+      (
+          ccy_pair_code                       TEXT    PRIMARY KEY,
+          party_id                            INTEGER NOT NULL,
+          pricing_rule_id                     INTEGER NOT NULL,
+          base_ccy_fraction_digits            INTEGER NOT NULL,
+          small_base_ccy_amount_minor         INTEGER NOT NULL,
+          medium_base_ccy_amount_minor        INTEGER NOT NULL,
+          large_base_ccy_amount_minor         INTEGER NOT NULL,
+          xlarge_base_ccy_amount_minor        INTEGER NOT NULL,
+          is_active                           INTEGER NOT NULL DEFAULT 1,
+          default_tenor                       TEXT    NOT NULL DEFAULT 'TOD',
+
+          CONSTRAINT fk_fx_hedge_quick_mode_settings_pair
+              FOREIGN KEY (ccy_pair_code)
+                  REFERENCES ccy_pair_options (ccy_pair_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_hedge_quick_mode_settings_party
+              FOREIGN KEY (party_id)
+                  REFERENCES trading_parties (party_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_hedge_quick_mode_settings_rule_party_pair
+              FOREIGN KEY (pricing_rule_id, party_id, ccy_pair_code)
+                  REFERENCES pricing_rules (pricing_rule_id, party_id, ccy_pair_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT chk_fx_hedge_quick_mode_settings_fraction_digits
+              CHECK (
+                  typeof(base_ccy_fraction_digits) = 'integer'
+                  AND base_ccy_fraction_digits BETWEEN 0 AND 10
+              ),
+          CONSTRAINT chk_fx_hedge_quick_mode_settings_amounts
+              CHECK (
+                  typeof(small_base_ccy_amount_minor) = 'integer'
+                  AND small_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                  AND typeof(medium_base_ccy_amount_minor) = 'integer'
+                  AND medium_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                  AND typeof(large_base_ccy_amount_minor) = 'integer'
+                  AND large_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                  AND typeof(xlarge_base_ccy_amount_minor) = 'integer'
+                  AND xlarge_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                  AND small_base_ccy_amount_minor < medium_base_ccy_amount_minor
+                  AND medium_base_ccy_amount_minor < large_base_ccy_amount_minor
+                  AND large_base_ccy_amount_minor < xlarge_base_ccy_amount_minor
+              ),
+          CONSTRAINT chk_fx_hedge_quick_mode_settings_active
+              CHECK (is_active IN (0, 1)),
+          CONSTRAINT chk_fx_hedge_quick_mode_settings_default_tenor
+              CHECK (default_tenor IN ('TOD', 'TOM', 'SPOT'))
+      );
+    `);
+
+    const insert = sqlite.prepare(`
+      INSERT INTO fx_hedge_quick_mode_settings_migrated
+        (
+          ccy_pair_code,
+          party_id,
+          pricing_rule_id,
+          base_ccy_fraction_digits,
+          small_base_ccy_amount_minor,
+          medium_base_ccy_amount_minor,
+          large_base_ccy_amount_minor,
+          xlarge_base_ccy_amount_minor,
+          is_active,
+          default_tenor
+        )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const row of sourceRows) {
+      insert.run(
+        row.ccy_pair_code,
+        row.party_id,
+        row.pricing_rule_id,
+        row.base_ccy_fraction_digits,
+        row.small_base_ccy_amount_minor,
+        row.medium_base_ccy_amount_minor,
+        row.large_base_ccy_amount_minor,
+        row.xlarge_base_ccy_amount_minor,
+        row.is_active,
+        row.default_tenor
+      );
+    }
+
+    sqlite.exec(`
+      DROP TABLE fx_hedge_quick_mode_settings;
+      ALTER TABLE fx_hedge_quick_mode_settings_migrated
+        RENAME TO fx_hedge_quick_mode_settings;
+    `);
+
+    const migratedRowCount = Number(sqlite.prepare(`
+      SELECT COUNT(*) AS count
+      FROM fx_hedge_quick_mode_settings
+    `).get().count);
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (migratedRowCount !== originalRowCount) {
+      throw new Error(
+        "Hedge Quick Mode Settings party-reference migration did not preserve every row."
+      );
+    }
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error(
+        "Hedge Quick Mode Settings party-reference migration produced foreign key violations."
+      );
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
 }
 
 function migrateLegacyFxBatchOutputTables(sqlite) {
@@ -4006,6 +4177,8 @@ function migrateLegacyExecutionContextIds(sqlite) {
           ON pricing_rules (ccy_pair_code);
       CREATE UNIQUE INDEX uq_pricing_rules_hedge_quick_mode_reference
           ON pricing_rules (pricing_rule_id, ccy_pair_code);
+      CREATE UNIQUE INDEX uq_pricing_rules_hedge_quick_mode_party_reference
+          ON pricing_rules (pricing_rule_id, party_id, ccy_pair_code);
 
       DROP TABLE execution_context_id_map;
     `);
@@ -4611,6 +4784,7 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
   const eligibleRules = sqlite.prepare(`
     SELECT
       rule.pricing_rule_id AS pricingRuleId,
+      rule.party_id AS partyId,
       rule.ccy_pair_code AS ccyPairCode,
       base_ccy.fraction_digits AS baseCcyFractionDigits
     FROM pricing_rules rule
@@ -4645,6 +4819,7 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
     INSERT INTO fx_hedge_quick_mode_settings
       (
         ccy_pair_code,
+        party_id,
         pricing_rule_id,
         base_ccy_fraction_digits,
         small_base_ccy_amount_minor,
@@ -4654,9 +4829,10 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
         is_active,
         default_tenor
       )
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'TOD')
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'TOD')
   `).run(
     rule.ccyPairCode,
+    rule.partyId,
     rule.pricingRuleId,
     rule.baseCcyFractionDigits,
     amountMinor("5000000"),
@@ -5224,8 +5400,8 @@ function hedgeQuickModeSettings() {
       settings.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
       pair.base_ccy_code AS baseCcyCode,
+      settings.party_id AS partyId,
       settings.pricing_rule_id AS pricingRuleId,
-      rule.party_id AS partyId,
       party.party_type AS partyType,
       party.party_name AS partyName,
       party.is_active AS partyActive,
@@ -5246,8 +5422,9 @@ function hedgeQuickModeSettings() {
       ON pair.ccy_pair_code = settings.ccy_pair_code
     INNER JOIN pricing_rules rule
       ON rule.pricing_rule_id = settings.pricing_rule_id
+      AND rule.party_id = settings.party_id
       AND rule.ccy_pair_code = settings.ccy_pair_code
-    INNER JOIN trading_parties party ON party.party_id = rule.party_id
+    INNER JOIN trading_parties party ON party.party_id = settings.party_id
     INNER JOIN execution_contexts context
       ON context.execution_context_id = rule.execution_context_id
     INNER JOIN execution_systems execution
@@ -5284,6 +5461,7 @@ function replaceHedgeQuickModeSetting(payload) {
     INSERT INTO fx_hedge_quick_mode_settings
       (
         ccy_pair_code,
+        party_id,
         pricing_rule_id,
         base_ccy_fraction_digits,
         small_base_ccy_amount_minor,
@@ -5293,8 +5471,9 @@ function replaceHedgeQuickModeSetting(payload) {
         is_active,
         default_tenor
       )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (ccy_pair_code) DO UPDATE SET
+      party_id = excluded.party_id,
       pricing_rule_id = excluded.pricing_rule_id,
       base_ccy_fraction_digits = excluded.base_ccy_fraction_digits,
       small_base_ccy_amount_minor = excluded.small_base_ccy_amount_minor,
@@ -5305,6 +5484,7 @@ function replaceHedgeQuickModeSetting(payload) {
       default_tenor = excluded.default_tenor
   `).run(
     payload.ccyPairCode,
+    payload.partyId,
     payload.pricingRuleId,
     payload.baseCcyFractionDigits,
     payload.smallBaseCcyAmountMinor,
@@ -7661,7 +7841,7 @@ function validateHedgeQuickModeDealPayload(body) {
     };
   }
 
-  if (!["TOD", "TOM", "SPOT"].includes(tenor)) {
+  if (tenor && !["TOD", "TOM", "SPOT"].includes(tenor)) {
     return { error: "Tenor must be TOD, TOM or SPOT." };
   }
 
@@ -7670,6 +7850,7 @@ function validateHedgeQuickModeDealPayload(body) {
 
 function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractionDigits) {
   const allowedFields = new Set([
+    "partyId",
     "pricingRuleId",
     "smallBaseCcyAmount",
     "mediumBaseCcyAmount",
@@ -7679,6 +7860,7 @@ function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractio
     "active"
   ]);
   const unexpectedFields = Object.keys(body).filter(field => !allowedFields.has(field));
+  const partyId = optionalPositiveInteger(body.partyId);
   const pricingRuleId = optionalPositiveInteger(body.pricingRuleId);
   const active = typeof body.active === "boolean" ? body.active : null;
   const defaultTenor = normalizedText(body.defaultTenor).toUpperCase();
@@ -7697,6 +7879,10 @@ function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractio
 
   if (Number.isNaN(pricingRuleId) || pricingRuleId === null) {
     return { error: "Pricing Rule ID must be a positive integer." };
+  }
+
+  if (Number.isNaN(partyId) || partyId === null) {
+    return { error: "Party ID must be a positive integer." };
   }
 
   if (active === null) {
@@ -7740,6 +7926,7 @@ function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractio
 
   return {
     ccyPairCode,
+    partyId,
     pricingRuleId,
     baseCcyFractionDigits,
     ...amounts,
@@ -7889,6 +8076,10 @@ function hedgeQuickModeSettingsReferenceError(payload) {
 
   if (rule.partyType !== "HEDGE_COUNTERPARTY") {
     return `Pricing Rule ${payload.pricingRuleId} must reference a HEDGE_COUNTERPARTY.`;
+  }
+
+  if (rule.partyId !== payload.partyId) {
+    return `Pricing Rule ${payload.pricingRuleId} does not belong to Trading Party ${payload.partyId}.`;
   }
 
   if (rule.pricingMode !== "AUTO_PRICED") {

@@ -277,9 +277,13 @@ CREATE TABLE IF NOT EXISTS pricing_rules
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_reference
     ON pricing_rules (pricing_rule_id, ccy_pair_code);
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_party_reference
+    ON pricing_rules (pricing_rule_id, party_id, ccy_pair_code);
+
 CREATE TABLE IF NOT EXISTS fx_hedge_quick_mode_settings
 (
     ccy_pair_code                       TEXT    PRIMARY KEY,
+    party_id                            INTEGER NOT NULL,
     pricing_rule_id                     INTEGER NOT NULL,
     base_ccy_fraction_digits            INTEGER NOT NULL,
     small_base_ccy_amount_minor         INTEGER NOT NULL,
@@ -294,9 +298,14 @@ CREATE TABLE IF NOT EXISTS fx_hedge_quick_mode_settings
             REFERENCES ccy_pair_options (ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_hedge_quick_mode_settings_rule_pair
-        FOREIGN KEY (pricing_rule_id, ccy_pair_code)
-            REFERENCES pricing_rules (pricing_rule_id, ccy_pair_code)
+    CONSTRAINT fk_fx_hedge_quick_mode_settings_party
+        FOREIGN KEY (party_id)
+            REFERENCES trading_parties (party_id)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT fk_fx_hedge_quick_mode_settings_rule_party_pair
+        FOREIGN KEY (pricing_rule_id, party_id, ccy_pair_code)
+            REFERENCES pricing_rules (pricing_rule_id, party_id, ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT chk_fx_hedge_quick_mode_settings_fraction_digits
@@ -1708,6 +1717,7 @@ WHEN NOT EXISTS
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
     WHERE r.pricing_rule_id = NEW.pricing_rule_id
+      AND r.party_id = NEW.party_id
       AND r.ccy_pair_code = NEW.ccy_pair_code
       AND p.party_type = 'HEDGE_COUNTERPARTY'
       AND e.pricing_mode = 'AUTO_PRICED'
@@ -1717,7 +1727,7 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_quick_mode_settings_require_auto_priced_hedge_update
-BEFORE UPDATE OF pricing_rule_id, ccy_pair_code ON fx_hedge_quick_mode_settings
+BEFORE UPDATE OF pricing_rule_id, party_id, ccy_pair_code ON fx_hedge_quick_mode_settings
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -1727,6 +1737,7 @@ WHEN NOT EXISTS
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
     WHERE r.pricing_rule_id = NEW.pricing_rule_id
+      AND r.party_id = NEW.party_id
       AND r.ccy_pair_code = NEW.ccy_pair_code
       AND p.party_type = 'HEDGE_COUNTERPARTY'
       AND e.pricing_mode = 'AUTO_PRICED'
@@ -1781,6 +1792,11 @@ AND NOT EXISTS
     INNER JOIN execution_contexts c ON c.execution_context_id = NEW.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
     WHERE p.party_id = NEW.party_id
+      AND NEW.party_id = (
+          SELECT settings.party_id
+          FROM fx_hedge_quick_mode_settings settings
+          WHERE settings.pricing_rule_id = OLD.pricing_rule_id
+      )
       AND p.party_type = 'HEDGE_COUNTERPARTY'
       AND e.pricing_mode = 'AUTO_PRICED'
       AND NEW.ccy_pair_code = (
@@ -1800,10 +1816,8 @@ WHEN NEW.party_type <> 'HEDGE_COUNTERPARTY'
     AND EXISTS
     (
         SELECT 1
-        FROM pricing_rules r
-        INNER JOIN fx_hedge_quick_mode_settings settings
-            ON settings.pricing_rule_id = r.pricing_rule_id
-        WHERE r.party_id = OLD.party_id
+        FROM fx_hedge_quick_mode_settings settings
+        WHERE settings.party_id = OLD.party_id
     )
 BEGIN
     SELECT RAISE(ABORT, 'a Trading Party used by fx_hedge_quick_mode_settings must remain a HEDGE_COUNTERPARTY');

@@ -62,6 +62,7 @@ const validSettingsSql = `
   INSERT INTO fx_hedge_quick_mode_settings
     (
       ccy_pair_code,
+      party_id,
       pricing_rule_id,
       base_ccy_fraction_digits,
       small_base_ccy_amount_minor,
@@ -70,7 +71,7 @@ const validSettingsSql = `
       xlarge_base_ccy_amount_minor,
       is_active
     )
-  VALUES ('EUR_USD', 1, 2, 500000000, 2000000000, 5000000000, 10000000000, 1)
+  VALUES ('EUR_USD', 1, 1, 2, 500000000, 2000000000, 5000000000, 10000000000, 1)
 `;
 
 test("Hedge Quick Mode Settings enforce the preset and pricing-rule invariants", () => {
@@ -105,13 +106,34 @@ test("Hedge Quick Mode Settings enforce the preset and pricing-rule invariants",
     try {
       assert.throws(
         () => invalidDatabase.exec(
-          validSettingsSql.replace("VALUES ('EUR_USD', 1,", `VALUES ('EUR_USD', ${invalidPricingRuleId},`)
+          validSettingsSql.replace(
+            "VALUES ('EUR_USD', 1, 1,",
+            `VALUES ('EUR_USD', ${invalidPricingRuleId === 3 ? 2 : 1}, ${invalidPricingRuleId},`
+          )
         ),
         /AUTO_PRICED HEDGE_COUNTERPARTY/
       );
     } finally {
       invalidDatabase.close();
     }
+  }
+});
+
+test("Hedge Quick Mode Settings keep the explicit party aligned with the Pricing Rule", () => {
+  const database = quickModeDatabase();
+
+  try {
+    assert.throws(
+      () => database.exec(
+        validSettingsSql.replace(
+          "VALUES ('EUR_USD', 1, 1,",
+          "VALUES ('EUR_USD', 2, 1,"
+        )
+      ),
+      /FOREIGN KEY constraint failed|AUTO_PRICED HEDGE_COUNTERPARTY/
+    );
+  } finally {
+    database.close();
   }
 });
 
@@ -166,7 +188,7 @@ test("Fresh demo seed configures the unambiguous EUR/USD Quick Mode defaults", (
       FROM fx_hedge_quick_mode_settings settings
       INNER JOIN pricing_rules rule
         ON rule.pricing_rule_id = settings.pricing_rule_id
-      INNER JOIN trading_parties party ON party.party_id = rule.party_id
+      INNER JOIN trading_parties party ON party.party_id = settings.party_id
       INNER JOIN execution_contexts context
         ON context.execution_context_id = rule.execution_context_id
       INNER JOIN execution_systems execution
@@ -184,6 +206,7 @@ test("Fresh demo seed configures the unambiguous EUR/USD Quick Mode defaults", (
           settings.xlarge_base_ccy_amount_minor
         ],
         defaultTenor: settings.default_tenor,
+        partyId: settings.party_id,
         partyType: settings.party_type,
         pricingMode: settings.pricing_mode,
         active: settings.is_active
@@ -192,6 +215,7 @@ test("Fresh demo seed configures the unambiguous EUR/USD Quick Mode defaults", (
         fractionDigits: 2,
         amounts: [500_000_000, 2_000_000_000, 5_000_000_000, 10_000_000_000],
         defaultTenor: "TOD",
+        partyId: 4,
         partyType: "HEDGE_COUNTERPARTY",
         pricingMode: "AUTO_PRICED",
         active: 1

@@ -536,7 +536,8 @@
     }
 
     .deal-toolbar,
-    .batch-toolbar {
+    .batch-toolbar,
+    .hedge-toolbar {
       width: max-content;
       display: flex;
       align-items: center;
@@ -553,7 +554,8 @@
       background: #f7fbfe;
     }
 
-    .batch-toolbar {
+    .batch-toolbar,
+    .hedge-toolbar {
       border-left: 4px solid #7b669f;
       background: #fbf9fe;
     }
@@ -3663,7 +3665,8 @@
     }
 
     .deal-toolbar,
-    .batch-toolbar {
+    .batch-toolbar,
+    .hedge-toolbar {
       min-height: 38px;
       padding: 5px 6px;
       border-color: var(--primary-grid-line);
@@ -3676,7 +3679,8 @@
       border-left-color: #4b789b;
     }
 
-    .batch-toolbar {
+    .batch-toolbar,
+    .hedge-toolbar {
       border-left-color: #7b669f;
     }
 
@@ -6435,13 +6439,220 @@
       width: calc(7ch + 4rem);
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgeQuickModeSettingsDialog)
       .client-deal-currency-pair-field .form-select {
       height: 44px;
       min-height: 44px;
       font-size: 15px;
       font-weight: 600;
       line-height: 1.2;
+    }
+
+    .hedge-quick-settings-dialog {
+      width: min(1180px, calc(100vw - 32px));
+    }
+
+    .hedge-quick-settings-heading {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hedge-quick-settings-back {
+      display: inline-flex;
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .hedge-quick-settings-back .button-icon {
+      font-size: 17px;
+    }
+
+    .hedge-quick-settings-overview {
+      display: grid;
+      min-width: 0;
+      gap: 12px;
+    }
+
+    .hedge-quick-settings-overview[hidden],
+    .hedge-quick-settings-editor[hidden] {
+      display: none;
+    }
+
+    .hedge-quick-settings-overview-toolbar {
+      display: flex;
+      min-height: 32px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .hedge-quick-settings-count {
+      color: var(--bs-secondary-color) !important;
+      font-weight: 500;
+    }
+
+    .hedge-quick-settings-grid {
+      width: 100%;
+      min-width: 0;
+      min-height: 116px;
+    }
+
+    .hedge-quick-settings-grid .tabulator {
+      width: 100%;
+      border-color: var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      overflow: hidden;
+    }
+
+    .hedge-quick-settings-grid .tabulator-cell {
+      white-space: nowrap;
+    }
+
+    .client-deal-create-dialog .hedge-quick-settings-grid .client-pricing-context-candidate-path {
+      display: flex;
+      min-width: 0;
+      flex-wrap: nowrap;
+      gap: 5px;
+      overflow: hidden;
+      padding-bottom: 0;
+    }
+
+    .client-deal-create-dialog .hedge-quick-settings-grid .client-pricing-context-candidate-facet {
+      flex: 0 1 auto;
+      min-width: 0;
+    }
+
+    .client-deal-create-dialog .hedge-quick-settings-grid .client-pricing-context-candidate-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hedge-quick-settings-presets-summary {
+      display: inline-flex;
+      max-width: 100%;
+      align-items: baseline;
+      gap: 6px;
+      color: var(--bs-body-color);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .hedge-quick-settings-presets-summary-currency {
+      color: var(--bs-secondary-color);
+      font-weight: 600;
+    }
+
+    .hedge-quick-settings-state {
+      display: inline-flex;
+      min-height: 22px;
+      align-items: center;
+      padding: 2px 7px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .hedge-quick-settings-state.is-active {
+      border-color: #b8daca;
+      background: #e8f4ed;
+      color: #226548;
+    }
+
+    .hedge-quick-settings-state.is-unavailable {
+      border-color: #e4d39b;
+      background: #fff7dc;
+      color: #715b16;
+    }
+
+    .hedge-quick-settings-grid-action {
+      display: inline-flex;
+      width: 30px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .hedge-quick-settings-grid-action .button-icon {
+      font-size: 16px;
+    }
+
+    .hedge-quick-settings-presets {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .hedge-quick-settings-preset {
+      min-width: 0;
+    }
+
+    .hedge-quick-settings-defaults {
+      display: grid;
+      grid-template-columns: minmax(150px, 180px) max-content;
+      gap: 18px;
+      align-items: end;
+    }
+
+    .hedge-quick-settings-active {
+      display: flex;
+      min-height: 36px;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+    }
+
+    .hedge-quick-settings-active .form-check-input {
+      flex: 0 0 auto;
+      margin: 0;
+    }
+
+    .hedge-quick-settings-active .form-check-label {
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .hedge-quick-settings-status {
+      min-height: 18px;
+      margin-right: auto;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .hedge-quick-settings-status:empty {
+      display: none;
+    }
+
+    .hedge-quick-settings-status.is-error {
+      color: var(--bs-danger-text-emphasis);
+    }
+
+    .hedge-quick-settings-status.is-success {
+      color: var(--bs-success-text-emphasis);
+    }
+
+    @media (max-width: 767.98px) {
+      .hedge-quick-settings-presets {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 479.98px) {
+      .hedge-quick-settings-presets,
+      .hedge-quick-settings-defaults {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
 
     .client-deal-client-picker {
@@ -10998,7 +11209,7 @@
       box-shadow: 0 0 0 3px var(--market-trade-focus-ring);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) {
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .hedge-toolbar) {
       display: flex;
       width: 100%;
       min-height: 48px;
@@ -11014,8 +11225,15 @@
       box-shadow: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar {
+    #mainPage.fx-position-bootstrap.workbench-page .position-toolbar-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
       margin-top: 8px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.batch-toolbar, .hedge-toolbar) {
+      margin-top: 0;
       background: var(--bs-tertiary-bg);
     }
 
@@ -11068,7 +11286,7 @@
       border-left: 1px solid var(--bs-border-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .action-button {
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .hedge-toolbar) .action-button {
       display: inline-flex;
       min-height: 30px;
       height: 30px;
@@ -11170,7 +11388,7 @@
       color: #ffffff;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .action-button:disabled {
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .hedge-toolbar) .action-button:disabled {
       border-color: var(--bs-border-color);
       background: var(--bs-tertiary-bg);
       color: var(--bs-secondary-color);
@@ -11186,6 +11404,10 @@
         padding-left: 0;
         border-top: 1px solid var(--bs-border-color);
         border-left: 0;
+      }
+
+      #mainPage.fx-position-bootstrap.workbench-page .position-toolbar-row {
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 
@@ -11753,16 +11975,26 @@
           </div>
         </section>
 
-        <section class="batch-toolbar btn-toolbar" aria-label="Batch Toolbar">
-          <span class="batch-toolbar-title">Batch Toolbar</span>
-          <div class="batch-control" aria-label="Batching actions">
-            <button type="button" class="action-button btn btn-sm btn-outline-primary batch-main" id="oneBatchButton" aria-label="One Batch" aria-keyshortcuts="G" title="One Batch · Shortcut: G" disabled>One Batch</button>
-            <button type="button" class="action-button btn btn-sm btn-outline-success batch-process" id="autoBatchButton" aria-label="Auto Batch" disabled>Auto Batch</button>
-            <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-settings-toggle" aria-label="Auto Batching settings" title="Auto Batching settings" disabled>
-              <span class="button-icon" aria-hidden="true">settings</span>
-            </button>
-          </div>
-        </section>
+        <div class="position-toolbar-row">
+          <section class="batch-toolbar btn-toolbar" aria-label="Batch Toolbar">
+            <span class="batch-toolbar-title">Batch Toolbar</span>
+            <div class="batch-control" aria-label="Batching actions">
+              <button type="button" class="action-button btn btn-sm btn-outline-primary batch-main" id="oneBatchButton" aria-label="One Batch" aria-keyshortcuts="G" title="One Batch · Shortcut: G" disabled>One Batch</button>
+              <button type="button" class="action-button btn btn-sm btn-outline-success batch-process" id="autoBatchButton" aria-label="Auto Batch" disabled>Auto Batch</button>
+              <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-settings-toggle" aria-label="Auto Batching settings" title="Auto Batching settings" disabled>
+                <span class="button-icon" aria-hidden="true">settings</span>
+              </button>
+            </div>
+          </section>
+          <section class="hedge-toolbar btn-toolbar" aria-label="Hedge Toolbar">
+            <span class="batch-toolbar-title">Hedge Toolbar</span>
+            <div class="batch-control" aria-label="Hedge Quick Mode actions">
+              <button type="button" class="action-button btn btn-sm btn-outline-secondary batch-settings-toggle" id="hedgeQuickModeSettingsButton" aria-label="Quick Mode Hedge Settings" title="Quick Mode Hedge Settings" aria-expanded="false">
+                <span class="button-icon" aria-hidden="true">settings</span>
+              </button>
+            </div>
+          </section>
+        </div>
       </div>
 
       <section class="fx-position-footer" aria-label="FX Position status and Demo actions">
@@ -13366,6 +13598,117 @@
     </div>
   </dialog>
 
+  <dialog class="client-deal-create-dialog hedge-quick-settings-dialog" id="hedgeQuickModeSettingsDialog" aria-labelledby="hedgeQuickModeSettingsDialogTitle">
+    <form class="modal-content" id="hedgeQuickModeSettingsForm" autocomplete="off">
+      <div class="modal-header">
+        <div class="hedge-quick-settings-heading">
+          <button type="button" class="btn btn-sm btn-outline-secondary hedge-quick-settings-back" id="hedgeQuickModeSettingsBackButton" aria-label="Back to Quick Mode Hedge Settings" hidden>
+            <span class="button-icon" aria-hidden="true">arrow_back</span>
+          </button>
+          <h2 class="modal-title" id="hedgeQuickModeSettingsDialogTitle">Quick Mode Hedge Settings</h2>
+        </div>
+        <button type="button" class="btn-close" id="hedgeQuickModeSettingsDialogClose" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <section class="hedge-quick-settings-overview" id="hedgeQuickModeSettingsOverview" aria-label="Configured Quick Mode settings">
+          <div class="hedge-quick-settings-overview-toolbar">
+            <span class="badge text-bg-light border hedge-quick-settings-count" id="hedgeQuickModeSettingsCount">0 settings</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="hedgeQuickModeSettingsNewButton">
+              <span class="button-icon" aria-hidden="true">add</span>
+              <span>New Setting</span>
+            </button>
+          </div>
+          <div class="hedge-quick-settings-grid" id="hedgeQuickModeSettingsGrid"></div>
+        </section>
+
+        <div class="hedge-quick-settings-editor" id="hedgeQuickModeSettingsEditor" hidden>
+          <section class="client-deal-create-section client-deal-create-context-section" aria-labelledby="hedgeQuickModeTradeContextTitle">
+            <div class="client-deal-create-section-title" id="hedgeQuickModeTradeContextTitle">Trade Context</div>
+            <div class="client-deal-create-section-body">
+              <div class="client-deal-context-fields">
+                <div class="client-deal-currency-pair-field">
+                  <label class="form-label" for="hedgeQuickModeSettingsCurrencyPair">Ccy Pair</label>
+                  <select class="form-select" id="hedgeQuickModeSettingsCurrencyPair" name="currencyPair" required></select>
+                </div>
+                <div class="client-deal-client-field">
+                  <span class="form-label" id="hedgeQuickModeCounterpartyLabel">Hedge Counterparty</span>
+                  <div class="client-deal-client-picker" id="hedgeQuickModeCounterpartyPicker">
+                    <input type="hidden" id="hedgeQuickModePartyId" name="partyId">
+                    <div class="input-group">
+                      <input class="form-control client-deal-client-picker-value" type="text" id="hedgeQuickModeCounterpartyPickerValue" placeholder="Type Hedge Counterparty name..." role="combobox" aria-labelledby="hedgeQuickModeCounterpartyLabel" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="hedgeQuickModeCounterpartyOptions" aria-expanded="false" autocomplete="off">
+                      <button type="button" class="btn btn-outline-secondary client-deal-client-picker-clear" id="hedgeQuickModeCounterpartyPickerClear" aria-label="Clear Hedge Counterparty" hidden>
+                        <span class="button-icon" aria-hidden="true">close</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary client-deal-client-picker-toggle" id="hedgeQuickModeCounterpartyPickerToggle" aria-label="Open Hedge Counterparty list" aria-haspopup="listbox" aria-controls="hedgeQuickModeCounterpartyOptions" aria-expanded="false">
+                        <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+                      </button>
+                    </div>
+                    <div class="client-deal-client-options" id="hedgeQuickModeCounterpartyOptions" role="listbox" aria-labelledby="hedgeQuickModeCounterpartyLabel" hidden></div>
+                  </div>
+                </div>
+              </div>
+              <div class="client-deal-context-picker" id="hedgeQuickModePricingRulePicker" aria-live="polite"></div>
+              <input type="hidden" name="pricingRuleId">
+            </div>
+          </section>
+
+          <section class="client-deal-create-section" aria-labelledby="hedgeQuickModePresetsTitle">
+            <div class="client-deal-create-section-title" id="hedgeQuickModePresetsTitle">Quick Amount Presets</div>
+            <div class="client-deal-create-section-body">
+              <div class="hedge-quick-settings-presets">
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeSmallAmount">Small Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeSmallAmount" name="smallBaseCcyAmount" inputmode="decimal" required>
+                </div>
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeMediumAmount">Medium Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeMediumAmount" name="mediumBaseCcyAmount" inputmode="decimal" required>
+                </div>
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeLargeAmount">Large Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeLargeAmount" name="largeBaseCcyAmount" inputmode="decimal" required>
+                </div>
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeXlargeAmount">Extra Large Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeXlargeAmount" name="xlargeBaseCcyAmount" inputmode="decimal" required>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="client-deal-create-section" aria-labelledby="hedgeQuickModeExecutionDefaultsTitle">
+            <div class="client-deal-create-section-title" id="hedgeQuickModeExecutionDefaultsTitle">Execution Defaults</div>
+            <div class="client-deal-create-section-body">
+              <div class="hedge-quick-settings-defaults">
+                <div>
+                  <label class="form-label" for="hedgeQuickModeDefaultTenor">Default Tenor</label>
+                  <select class="form-select" id="hedgeQuickModeDefaultTenor" name="defaultTenor" required>
+                    <option value="TOD">TOD</option>
+                    <option value="TOM">TOM</option>
+                    <option value="SPOT">SPOT</option>
+                  </select>
+                </div>
+                <div class="form-check form-switch hedge-quick-settings-active">
+                  <input class="form-check-input" type="checkbox" role="switch" id="hedgeQuickModeActive" name="active">
+                  <label class="form-check-label" for="hedgeQuickModeActive">Active</label>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="hedge-quick-settings-status" id="hedgeQuickModeSettingsStatus" role="status" aria-live="polite"></div>
+        <button type="button" class="btn btn-outline-danger btn-sm" id="hedgeQuickModeSettingsDeleteButton" hidden>Delete Setting</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="hedgeQuickModeSettingsCancelButton">Close</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="hedgeQuickModeSettingsSaveButton">
+          <span class="button-icon" aria-hidden="true">save</span>
+          <span>Save Settings</span>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog class="deal-dialog client-pricing-rule-dialog pricing-rule-bootstrap-dialog" id="clientPricingRuleDialog">
     <form class="deal-form modal-content" id="clientPricingRuleForm" autocomplete="off">
       <div class="dialog-head modal-header">
@@ -13649,6 +13992,7 @@
       name: { min: 140, max: 360, pad: 18, ellipsize: true },
       number: { min: 82, max: 160, pad: 18, ellipsize: false },
       pair: { min: 88, max: 132, pad: 18, ellipsize: false },
+      presetAmounts: { min: 220, max: 390, pad: 18, ellipsize: false },
       primaryId: { min: 64, max: 110, pad: 18, ellipsize: false },
       rate: { min: 82, max: 150, pad: 18, ellipsize: false },
       referenceId: { min: 92, max: 180, pad: 18, ellipsize: true },
@@ -14358,6 +14702,7 @@
     const runClientDealGenerationLabel = document.getElementById("runClientDealGenerationLabel");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
     const oneBatchButton = document.getElementById("oneBatchButton");
+    const hedgeQuickModeSettingsButton = document.getElementById("hedgeQuickModeSettingsButton");
     const clientProfileForm = document.getElementById("clientProfileForm");
     const clientProfileFormTitle = document.getElementById("clientProfileFormTitle");
     const clientProfileSubmitButton = document.getElementById("clientProfileSubmitButton");
@@ -14413,6 +14758,26 @@
     const addHedgeDealCounterpartyPickerToggle = document.getElementById("addHedgeDealCounterpartyPickerToggle");
     const addHedgeDealCounterpartyOptions = document.getElementById("addHedgeDealCounterpartyOptions");
     const addHedgeDealPricingRulePicker = document.getElementById("addHedgeDealPricingRulePicker");
+    const hedgeQuickModeSettingsDialog = document.getElementById("hedgeQuickModeSettingsDialog");
+    const hedgeQuickModeSettingsForm = document.getElementById("hedgeQuickModeSettingsForm");
+    const hedgeQuickModeSettingsDialogTitle = document.getElementById("hedgeQuickModeSettingsDialogTitle");
+    const hedgeQuickModeSettingsDialogClose = document.getElementById("hedgeQuickModeSettingsDialogClose");
+    const hedgeQuickModeSettingsBackButton = document.getElementById("hedgeQuickModeSettingsBackButton");
+    const hedgeQuickModeSettingsOverview = document.getElementById("hedgeQuickModeSettingsOverview");
+    const hedgeQuickModeSettingsEditor = document.getElementById("hedgeQuickModeSettingsEditor");
+    const hedgeQuickModeSettingsGridEl = document.getElementById("hedgeQuickModeSettingsGrid");
+    const hedgeQuickModeSettingsCount = document.getElementById("hedgeQuickModeSettingsCount");
+    const hedgeQuickModeSettingsNewButton = document.getElementById("hedgeQuickModeSettingsNewButton");
+    const hedgeQuickModeSettingsCancelButton = document.getElementById("hedgeQuickModeSettingsCancelButton");
+    const hedgeQuickModeSettingsSaveButton = document.getElementById("hedgeQuickModeSettingsSaveButton");
+    const hedgeQuickModeSettingsDeleteButton = document.getElementById("hedgeQuickModeSettingsDeleteButton");
+    const hedgeQuickModeSettingsStatus = document.getElementById("hedgeQuickModeSettingsStatus");
+    const hedgeQuickModeCounterpartyPicker = document.getElementById("hedgeQuickModeCounterpartyPicker");
+    const hedgeQuickModeCounterpartyPickerValue = document.getElementById("hedgeQuickModeCounterpartyPickerValue");
+    const hedgeQuickModeCounterpartyPickerClear = document.getElementById("hedgeQuickModeCounterpartyPickerClear");
+    const hedgeQuickModeCounterpartyPickerToggle = document.getElementById("hedgeQuickModeCounterpartyPickerToggle");
+    const hedgeQuickModeCounterpartyOptions = document.getElementById("hedgeQuickModeCounterpartyOptions");
+    const hedgeQuickModePricingRulePicker = document.getElementById("hedgeQuickModePricingRulePicker");
     const clientDealDuplicateCheckDialog = document.getElementById("clientDealDuplicateCheckDialog");
     const clientDealDuplicateCheckCloseButton = document.getElementById("clientDealDuplicateCheckCloseButton");
     const clientDealDuplicateCheckSummary = document.getElementById("clientDealDuplicateCheckSummary");
@@ -14597,9 +14962,16 @@
     let addHedgeDealPricingMode = "DEALER_PRICED";
     let addHedgeDealQuickModeSelection = null;
     let hedgeQuickModeMenuSide = "";
+    let hedgeQuickModeCounterpartyPickerExpanded = false;
+    let hedgeQuickModePricingRulesExpanded = false;
+    let hedgeQuickModeSettingsGrid = null;
+    let hedgeQuickModeSettingsGridReady = false;
+    let hedgeQuickModeSettingsView = "overview";
+    let hedgeQuickModeSettingsSaving = false;
     let hedgeQuickModeSettingsLoading = false;
     let hedgeQuickModeSettingsError = "";
     let hedgeQuickModeSettingsRequestSequence = 0;
+    let hedgeQuickModeDealCreating = false;
     let addClientDealSubmitWithControl = false;
     let clientDealDuplicateCheckGrid = null;
     let pendingClientDealCreation = null;
@@ -26779,6 +27151,851 @@
       }
     }
 
+    function setHedgeQuickModeSettingsStatus(message = "", tone = "") {
+      hedgeQuickModeSettingsStatus.textContent = message;
+      hedgeQuickModeSettingsStatus.classList.toggle("is-error", tone === "error");
+      hedgeQuickModeSettingsStatus.classList.toggle("is-success", tone === "success");
+    }
+
+    function hedgeQuickModeUnconfiguredPairs() {
+      const configuredPairs = new Set(
+        hedgeQuickModeSettings.map(setting => setting.currencyPair)
+      );
+
+      return marketCurrencyPairValues().filter(pair => !configuredPairs.has(pair));
+    }
+
+    function hedgeQuickModeSettingsOverviewRows() {
+      return hedgeQuickModeSettings.map(setting => {
+        const pricingRule = clientPricingRules.find(rule =>
+          Number(rule.pricingRuleId) === Number(setting.pricingRuleId)
+        ) || null;
+        const context = pricingContextById(
+          setting.executionContextId || pricingRule?.pricingContextId
+        );
+
+        return {
+          ...setting,
+          context,
+          contextPath: context
+            ? pricingContextDisplayPath(context)
+            : "Missing Execution Context",
+          presetsSummary: `${setting.baseCcyCode} ${setting.presets
+            .map(preset => groupedDecimalText(preset.baseCcyAmount))
+            .join(" / ")}`,
+          state: !setting.active
+            ? "INACTIVE"
+            : setting.available
+              ? "ACTIVE"
+              : "UNAVAILABLE"
+        };
+      });
+    }
+
+    function hedgeQuickModeSettingsContextFormatter(cell) {
+      const setting = cell.getRow().getData();
+
+      if (!setting.context) {
+        return '<span class="text-secondary">Missing Execution Context</span>';
+      }
+
+      return `
+        <span class="client-pricing-context-candidate-path"
+          data-tooltip="${escapeHtml(setting.contextPath)}">
+          ${pricingContextFacetsMarkup(setting.context)}
+        </span>
+      `;
+    }
+
+    function compactHedgeQuickModeAmount(value) {
+      try {
+        const amount = new Big(String(value));
+        const units = [
+          ["B", "1000000000"],
+          ["M", "1000000"],
+          ["K", "1000"]
+        ];
+
+        for (const [suffix, divisor] of units) {
+          if (amount.gte(divisor)) {
+            return `${amount.div(divisor).toFixed(2).replace(/\.?0+$/, "")}${suffix}`;
+          }
+        }
+      } catch {
+        return groupedDecimalText(value);
+      }
+
+      return groupedDecimalText(value);
+    }
+
+    function hedgeQuickModeSettingsPresetsFormatter(cell) {
+      const setting = cell.getRow().getData();
+      const amounts = setting.presets.map(preset =>
+        groupedDecimalText(preset.baseCcyAmount)
+      );
+      const compactAmounts = setting.presets.map(preset =>
+        compactHedgeQuickModeAmount(preset.baseCcyAmount)
+      );
+      const summary = `${setting.baseCcyCode} ${amounts.join(" / ")}`;
+
+      return `
+        <span class="hedge-quick-settings-presets-summary"
+          data-tooltip="${escapeHtml(summary)}">
+          <span class="hedge-quick-settings-presets-summary-currency">${escapeHtml(setting.baseCcyCode)}</span>
+          <span>${escapeHtml(compactAmounts.join(" / "))}</span>
+        </span>
+      `;
+    }
+
+    function hedgeQuickModeSettingsStateFormatter(cell) {
+      const state = cell.getValue();
+      const stateClass = state === "ACTIVE"
+        ? " is-active"
+        : state === "UNAVAILABLE"
+          ? " is-unavailable"
+          : "";
+
+      return `<span class="hedge-quick-settings-state${stateClass}">${escapeHtml(state)}</span>`;
+    }
+
+    function hedgeQuickModeSettingsActionFormatter(cell) {
+      const setting = cell.getRow().getData();
+
+      return `
+        <button type="button"
+          class="btn btn-sm btn-outline-secondary reference-grid-action hedge-quick-settings-grid-action"
+          data-hedge-quick-settings-action="edit"
+          aria-label="Edit Quick Mode settings for ${escapeHtml(setting.currencyPair)}"
+          data-tooltip="Edit">
+          <span class="button-icon" aria-hidden="true">edit</span>
+        </button>
+      `;
+    }
+
+    function initializeHedgeQuickModeSettingsGrid(data) {
+      hedgeQuickModeSettingsGrid = new Tabulator(hedgeQuickModeSettingsGridEl, {
+        data,
+        index: "ccyPairCode",
+        layout: "fitDataTable",
+        maxHeight: 420,
+        placeholder: "No Quick Mode Hedge Settings configured.",
+        movableColumns: false,
+        resizableColumns: false,
+        initialSort: [{ column: "currencyPair", dir: "asc" }],
+        columnDefaults: {
+          resizable: false,
+          vertAlign: "middle",
+          tooltip: false,
+          headerSort: false
+        },
+        columns: [
+          tabulatorSizedColumn("pair", {
+            title: "Ccy Pair",
+            field: "currencyPair",
+            width: 112,
+            headerSort: true
+          }),
+          tabulatorSizedColumn("name", {
+            title: "Hedge Counterparty",
+            field: "partyName",
+            width: 200
+          }),
+          tabulatorSizedColumn("contextPath", {
+            title: "Execution Context",
+            field: "contextPath",
+            width: 330,
+            formatter: hedgeQuickModeSettingsContextFormatter
+          }),
+          tabulatorSizedColumn("presetAmounts", {
+            title: "Quick Amounts",
+            field: "presetsSummary",
+            width: 230,
+            formatter: hedgeQuickModeSettingsPresetsFormatter
+          }),
+          tabulatorSizedColumn("tenor", {
+            title: "Tenor",
+            field: "defaultTenor",
+            width: 76,
+            hozAlign: "center",
+            headerHozAlign: "center"
+          }),
+          tabulatorSizedColumn("type", {
+            title: "Status",
+            field: "state",
+            width: 104,
+            formatter: hedgeQuickModeSettingsStateFormatter
+          }),
+          tabulatorSizedColumn("actions", {
+            title: "Actions",
+            field: "actions",
+            width: 92,
+            minWidth: 92,
+            maxWidth: 92,
+            hozAlign: "center",
+            headerHozAlign: "center",
+            formatter: hedgeQuickModeSettingsActionFormatter,
+            cellClick(event, cell) {
+              if (!event.target.closest("[data-hedge-quick-settings-action='edit']")) {
+                return;
+              }
+
+              openHedgeQuickModeSettingsEditor(cell.getRow().getData());
+            }
+          })
+        ]
+      });
+      hedgeQuickModeSettingsGrid.on("tableBuilt", () => {
+        hedgeQuickModeSettingsGridReady = true;
+
+        if (hedgeQuickModeSettingsView === "overview") {
+          hedgeQuickModeSettingsGrid.redraw(true);
+        }
+      });
+    }
+
+    function renderHedgeQuickModeSettingsOverview() {
+      const rows = hedgeQuickModeSettingsOverviewRows();
+      const availablePairs = hedgeQuickModeUnconfiguredPairs();
+      hedgeQuickModeSettingsCount.textContent =
+        `${rows.length} ${rows.length === 1 ? "setting" : "settings"}`;
+      hedgeQuickModeSettingsNewButton.disabled = availablePairs.length === 0;
+      hedgeQuickModeSettingsNewButton.setAttribute(
+        "data-tooltip",
+        availablePairs.length === 0
+          ? "Every configured Ccy Pair already has Quick Mode settings."
+          : "New Quick Mode setting"
+      );
+
+      if (!hedgeQuickModeSettingsGrid) {
+        initializeHedgeQuickModeSettingsGrid(rows);
+      } else {
+        hedgeQuickModeSettingsGrid.replaceData(rows);
+      }
+
+      if (hedgeQuickModeSettingsGridReady) {
+        requestAnimationFrame(() => {
+          if (hedgeQuickModeSettingsView === "overview") {
+            hedgeQuickModeSettingsGrid.redraw(true);
+          }
+        });
+      }
+    }
+
+    function setHedgeQuickModeSettingsView(view) {
+      const overview = view !== "editor";
+      hedgeQuickModeSettingsView = overview ? "overview" : "editor";
+      hedgeQuickModeSettingsOverview.hidden = !overview;
+      hedgeQuickModeSettingsEditor.hidden = overview;
+      hedgeQuickModeSettingsBackButton.hidden = overview;
+      hedgeQuickModeSettingsSaveButton.hidden = overview;
+      hedgeQuickModeSettingsDeleteButton.hidden =
+        overview || !currentHedgeQuickModeSetting();
+      hedgeQuickModeSettingsCancelButton.textContent = overview ? "Close" : "Cancel";
+      hedgeQuickModeSettingsDialogTitle.textContent = "Quick Mode Hedge Settings";
+
+      if (overview) {
+        hedgeQuickModeSettingsForm.elements.currencyPair.disabled = false;
+
+        if (hedgeQuickModeSettingsGridReady) {
+          requestAnimationFrame(() => hedgeQuickModeSettingsGrid.redraw(true));
+        }
+      }
+    }
+
+    function showHedgeQuickModeSettingsOverview(message = "", tone = "") {
+      hedgeQuickModeSettingsForm.reset();
+      hedgeQuickModeCounterpartyPickerExpanded = false;
+      hedgeQuickModePricingRulesExpanded = false;
+      hedgeQuickModeCounterpartyPicker.classList.remove("is-invalid");
+      hedgeQuickModePricingRulePicker.classList.remove("is-invalid");
+      setHedgeQuickModeSettingsView("overview");
+      renderHedgeQuickModeSettingsOverview();
+      setHedgeQuickModeSettingsStatus(message, tone);
+    }
+
+    function openHedgeQuickModeSettingsEditor(setting = null) {
+      const unconfiguredPairs = hedgeQuickModeUnconfiguredPairs();
+
+      if (!setting && unconfiguredPairs.length === 0) {
+        setHedgeQuickModeSettingsStatus(
+          "Every configured Ccy Pair already has Quick Mode settings."
+        );
+        return;
+      }
+
+      const activePair = activeCurrencyPairOrDefault();
+      const selectedPair = setting?.currencyPair
+        || (unconfiguredPairs.includes(activePair) ? activePair : unconfiguredPairs[0]);
+
+      hedgeQuickModeSettingsForm.reset();
+      hedgeQuickModeCounterpartyPickerExpanded = false;
+      hedgeQuickModePricingRulesExpanded = false;
+      renderHedgeQuickModeCurrencyPairs(selectedPair, {
+        unconfiguredOnly: !setting
+      });
+      hedgeQuickModeSettingsForm.elements.currencyPair.disabled = Boolean(setting);
+      populateHedgeQuickModeSetting(setting);
+      setHedgeQuickModeSettingsView("editor");
+
+      requestAnimationFrame(() => {
+        const focusTarget = setting
+          ? hedgeQuickModeCounterpartyPickerValue
+          : hedgeQuickModeSettingsForm.elements.currencyPair;
+        focusTarget.focus();
+      });
+    }
+
+    function hedgeQuickModeSettingsPair() {
+      return normalizedPricingRuleCurrencyPair(
+        hedgeQuickModeSettingsForm.elements.currencyPair.value
+      );
+    }
+
+    function hedgeQuickModeSettingsPairCode() {
+      return hedgeQuickModeSettingsPair().replace("/", "_");
+    }
+
+    function currentHedgeQuickModeSetting() {
+      const pair = hedgeQuickModeSettingsPair();
+
+      return hedgeQuickModeSettings
+        .find(setting => setting.currencyPair === pair) || null;
+    }
+
+    function hedgeQuickModeAutoPricedRules() {
+      const pair = hedgeQuickModeSettingsPair();
+
+      if (!pair) {
+        return [];
+      }
+
+      return hedgeDealEligiblePricingRules
+        .filter(rule => normalizedPartyType(rule.partyType) === "HEDGE_COUNTERPARTY")
+        .filter(rule => isHedgeDealPricingRule(rule, "AUTO_PRICED"))
+        .filter(rule => normalizedPricingRuleCurrencyPair(rule.currencyPair) === pair)
+        .sort((left, right) => Number(left.pricingRuleId) - Number(right.pricingRuleId));
+    }
+
+    function hedgeQuickModeEligiblePartyIds() {
+      return new Set(
+        hedgeQuickModeAutoPricedRules().map(rule => String(rule.partyId))
+      );
+    }
+
+    function hedgeQuickModeCounterpartyProfiles() {
+      const eligiblePartyIds = hedgeQuickModeEligiblePartyIds();
+
+      return clientProfiles
+        .filter(profile =>
+          normalizedPartyType(profile.partyType) === "HEDGE_COUNTERPARTY"
+          && profile.isActive
+          && eligiblePartyIds.has(String(profile.partyId))
+        )
+        .sort((left, right) =>
+          left.name.localeCompare(right.name) || String(left.inn).localeCompare(String(right.inn))
+        );
+    }
+
+    function selectedHedgeQuickModeCounterparty() {
+      const partyId = Number(hedgeQuickModeSettingsForm.elements.partyId.value);
+
+      return hedgeQuickModeCounterpartyProfiles()
+        .find(profile => Number(profile.partyId) === partyId) || null;
+    }
+
+    function setHedgeQuickModeCounterpartyPickerExpanded(expanded) {
+      const isExpanded = Boolean(expanded);
+      hedgeQuickModeCounterpartyPickerExpanded = isExpanded;
+      hedgeQuickModeCounterpartyPickerToggle.setAttribute("aria-expanded", String(isExpanded));
+      hedgeQuickModeCounterpartyPickerValue.setAttribute("aria-expanded", String(isExpanded));
+      hedgeQuickModeCounterpartyOptions.hidden = !isExpanded;
+    }
+
+    function syncHedgeQuickModeCounterpartyClearAvailability() {
+      hedgeQuickModeCounterpartyPickerClear.hidden =
+        hedgeQuickModeCounterpartyPickerValue.value.length === 0;
+    }
+
+    function renderHedgeQuickModeCounterpartyOptions(
+      searchText = "",
+      selectedPartyId = hedgeQuickModeSettingsForm.elements.partyId.value
+    ) {
+      const profiles = hedgeQuickModeCounterpartyProfiles();
+      const searchTerms = String(searchText || "")
+        .trim()
+        .toLocaleLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+      const matchingProfiles = profiles.filter(profile => {
+        const searchableText = [
+          profile.name,
+          profile.clientCodeType,
+          profile.inn
+        ].join(" ").toLocaleLowerCase();
+
+        return searchTerms.every(term => searchableText.includes(term));
+      });
+      const selectedId = String(selectedPartyId || "");
+
+      hedgeQuickModeCounterpartyOptions.innerHTML = matchingProfiles.length > 0
+        ? matchingProfiles.map(profile => {
+            const selected = String(profile.partyId) === selectedId;
+            return `
+              <button type="button" class="client-deal-client-option${selected ? " is-selected" : ""}" data-hedge-quick-mode-party-id="${escapeHtml(profile.partyId)}" role="option" aria-selected="${selected}">
+                ${addClientDealProfileIdentityMarkup(profile)}
+              </button>
+            `;
+          }).join("")
+        : `<div class="client-deal-context-picker-empty">${
+            profiles.length > 0
+              ? "No Hedge Counterparties match the entered name."
+              : `No active Hedge Counterparty with an AUTO_PRICED Pricing Rule is available for ${
+                  escapeHtml(hedgeQuickModeSettingsPair() || "the selected Ccy Pair")
+                }.`
+          }</div>`;
+    }
+
+    function renderHedgeQuickModeCounterparties(
+      selectedPartyId = hedgeQuickModeSettingsForm.elements.partyId.value
+    ) {
+      const control = hedgeQuickModeSettingsForm.elements.partyId;
+      const profiles = hedgeQuickModeCounterpartyProfiles();
+      const selectedId = String(selectedPartyId || "");
+      const selectedProfile = profiles
+        .find(profile => String(profile.partyId) === selectedId)
+        || (profiles.length === 1 ? profiles[0] : null);
+
+      control.value = selectedProfile?.partyId || "";
+      hedgeQuickModeCounterpartyPickerValue.value = selectedProfile?.name || "";
+      syncHedgeQuickModeCounterpartyClearAvailability();
+      renderHedgeQuickModeCounterpartyOptions("", control.value);
+      setHedgeQuickModeCounterpartyPickerExpanded(false);
+    }
+
+    function hedgeQuickModePricingRules() {
+      const counterparty = selectedHedgeQuickModeCounterparty();
+
+      if (!counterparty) {
+        return [];
+      }
+
+      return hedgeQuickModeAutoPricedRules()
+        .filter(rule => Number(rule.partyId) === Number(counterparty.partyId));
+    }
+
+    function hedgeQuickModePricingRuleOptions() {
+      return hedgeQuickModePricingRules()
+        .map(rule => ({
+          rule,
+          context: pricingContextById(rule.pricingContextId)
+        }))
+        .filter(option => option.context);
+    }
+
+    function selectedHedgeQuickModePricingRule() {
+      const pricingRuleId = String(
+        hedgeQuickModeSettingsForm.elements.pricingRuleId.value || ""
+      );
+
+      return hedgeQuickModePricingRules()
+        .find(rule => String(rule.pricingRuleId) === pricingRuleId) || null;
+    }
+
+    function renderHedgeQuickModePricingRules() {
+      const counterparty = selectedHedgeQuickModeCounterparty();
+      const pair = hedgeQuickModeSettingsPair();
+      const options = hedgeQuickModePricingRuleOptions();
+      const selectedRuleId = String(
+        hedgeQuickModeSettingsForm.elements.pricingRuleId.value || ""
+      );
+      const selectedOption = options.find(option =>
+        String(option.rule.pricingRuleId) === selectedRuleId
+      ) || (options.length === 1 ? options[0] : null);
+      const emptyMessage = !counterparty
+        ? "Select a Hedge Counterparty to see available Pricing Rules."
+        : !pair
+          ? "Select a currency pair to see available Pricing Rules."
+          : "No AUTO_PRICED Pricing Rule is configured for this Hedge Counterparty and currency pair.";
+
+      hedgeQuickModeSettingsForm.elements.pricingRuleId.value =
+        selectedOption?.rule.pricingRuleId || "";
+      hedgeQuickModePricingRulePicker.innerHTML = `
+        <span class="form-label client-deal-context-picker-label" id="hedgeQuickModePricingRuleLabel">Pricing Rule</span>
+        <div class="input-group client-deal-pricing-rule-select${options.length === 0 ? " is-disabled" : ""}">
+          <div class="form-control client-deal-pricing-rule-select-value" aria-labelledby="hedgeQuickModePricingRuleLabel" aria-describedby="hedgeQuickModePricingRuleHelp">
+            ${selectedOption
+              ? addHedgeDealPricingRuleContentMarkup(selectedOption.rule, selectedOption.context)
+              : `<span class="client-deal-pricing-rule-placeholder">${escapeHtml(
+                  options.length > 0
+                    ? `Select Pricing Rule (${options.length} available)`
+                    : emptyMessage
+                )}</span><span></span>`}
+          </div>
+          <button type="button" class="btn btn-outline-secondary client-deal-pricing-rule-select-toggle" data-hedge-quick-mode-pricing-rule-toggle aria-label="Open Pricing Rule list" aria-haspopup="listbox" aria-controls="hedgeQuickModePricingRuleOptions" aria-expanded="${hedgeQuickModePricingRulesExpanded}"${options.length === 0 ? " disabled" : ""}>
+            <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+          </button>
+        </div>
+        <div class="pricing-rule-availability-note" id="hedgeQuickModePricingRuleHelp">
+          <span class="button-icon" aria-hidden="true">warning</span>
+          <span>Only Pricing Rules linked to AUTO_PRICED Execution Systems are available.</span>
+        </div>
+        <div class="client-deal-context-picker-viewport" id="hedgeQuickModePricingRuleOptions" role="listbox" aria-labelledby="hedgeQuickModePricingRuleLabel"${hedgeQuickModePricingRulesExpanded && options.length > 0 ? "" : " hidden"}>
+          ${options.map(({ rule, context }) => {
+              const selected =
+                String(rule.pricingRuleId) === String(selectedOption?.rule.pricingRuleId || "");
+              return `
+                <button type="button" class="client-pricing-context-candidate${selected ? " is-selected" : ""}" data-hedge-quick-mode-pricing-rule-id="${escapeHtml(rule.pricingRuleId)}" role="option" aria-selected="${selected}">
+                  ${addHedgeDealPricingRuleContentMarkup(rule, context)}
+                </button>
+              `;
+            }).join("")}
+        </div>
+        ${hedgeQuickModePricingRulePicker.classList.contains("is-invalid")
+          ? '<div class="invalid-feedback d-block">Select a Pricing Rule.</div>'
+          : ""}
+      `;
+    }
+
+    function renderHedgeQuickModeCurrencyPairs(
+      selectedValue = "",
+      { unconfiguredOnly = false } = {}
+    ) {
+      const control = hedgeQuickModeSettingsForm.elements.currencyPair;
+      const pairs = unconfiguredOnly
+        ? hedgeQuickModeUnconfiguredPairs()
+        : marketCurrencyPairValues();
+      const selectedPair = normalizedPricingRuleCurrencyPair(selectedValue);
+      const defaultPair = pairs.includes(selectedPair)
+        ? selectedPair
+        : pairs.includes(activeCurrencyPairOrDefault())
+          ? activeCurrencyPairOrDefault()
+          : pairs[0] || "";
+
+      control.innerHTML = `
+        <option value="">${pairs.length === 0 ? "No Ccy Pairs configured" : "Select pair..."}</option>
+        ${pairs.map(pair => `<option value="${escapeHtml(pair)}">${escapeHtml(pair)}</option>`).join("")}
+      `;
+      control.value = defaultPair;
+    }
+
+    function hedgeQuickModePresetByCode(setting, presetCode) {
+      return setting?.presets.find(preset => preset.presetCode === presetCode) || null;
+    }
+
+    function populateHedgeQuickModeSetting(setting = currentHedgeQuickModeSetting()) {
+      const amountFields = [
+        ["smallBaseCcyAmount", "SMALL"],
+        ["mediumBaseCcyAmount", "MEDIUM"],
+        ["largeBaseCcyAmount", "LARGE"],
+        ["xlargeBaseCcyAmount", "XLARGE"]
+      ];
+
+      hedgeQuickModeCounterpartyPicker.classList.remove("is-invalid");
+      hedgeQuickModePricingRulePicker.classList.remove("is-invalid");
+      hedgeQuickModePricingRulesExpanded = false;
+      amountFields.forEach(([fieldName, presetCode]) => {
+        const preset = hedgeQuickModePresetByCode(setting, presetCode);
+        hedgeQuickModeSettingsForm.elements[fieldName].value =
+          preset ? groupedDecimalText(preset.baseCcyAmount) : "";
+        hedgeQuickModeSettingsForm.elements[fieldName].setCustomValidity("");
+      });
+      hedgeQuickModeSettingsForm.elements.defaultTenor.value =
+        setting?.defaultTenor || "TOD";
+      hedgeQuickModeSettingsForm.elements.active.checked = setting
+        ? setting.active
+        : true;
+      renderHedgeQuickModeCounterparties(setting?.partyId || "");
+      hedgeQuickModeSettingsForm.elements.pricingRuleId.value =
+        setting?.pricingRuleId || "";
+      renderHedgeQuickModePricingRules();
+      hedgeQuickModeSettingsDeleteButton.hidden = !setting;
+      setHedgeQuickModeSettingsStatus(
+        setting
+          ? `Settings loaded for ${setting.currencyPair}.`
+          : "No Quick Mode settings are configured for this Ccy Pair."
+      );
+    }
+
+    function handleHedgeQuickModeCounterpartyPicker(event) {
+      const option = event.target.closest("[data-hedge-quick-mode-party-id]");
+
+      if (option) {
+        hedgeQuickModeCounterpartyPicker.classList.remove("is-invalid");
+        hedgeQuickModePricingRulePicker.classList.remove("is-invalid");
+        hedgeQuickModeSettingsForm.elements.pricingRuleId.value = "";
+        renderHedgeQuickModeCounterparties(option.dataset.hedgeQuickModePartyId);
+        renderHedgeQuickModePricingRules();
+        hedgeQuickModeCounterpartyPickerValue.focus();
+        return;
+      }
+
+      if (event.target.closest("#hedgeQuickModeCounterpartyPickerClear")) {
+        hedgeQuickModeSettingsForm.elements.partyId.value = "";
+        hedgeQuickModeSettingsForm.elements.pricingRuleId.value = "";
+        hedgeQuickModeCounterpartyPickerValue.value = "";
+        hedgeQuickModeCounterpartyPicker.classList.remove("is-invalid");
+        hedgeQuickModePricingRulePicker.classList.remove("is-invalid");
+        syncHedgeQuickModeCounterpartyClearAvailability();
+        renderHedgeQuickModeCounterpartyOptions();
+        setHedgeQuickModeCounterpartyPickerExpanded(true);
+        renderHedgeQuickModePricingRules();
+        hedgeQuickModeCounterpartyPickerValue.focus();
+        return;
+      }
+
+      if (event.target.closest("#hedgeQuickModeCounterpartyPickerToggle")) {
+        const willExpand =
+          hedgeQuickModeCounterpartyPickerToggle.getAttribute("aria-expanded") !== "true";
+
+        if (willExpand) {
+          renderHedgeQuickModeCounterpartyOptions(
+            hedgeQuickModeSettingsForm.elements.partyId.value
+              ? ""
+              : hedgeQuickModeCounterpartyPickerValue.value
+          );
+        }
+
+        setHedgeQuickModeCounterpartyPickerExpanded(willExpand);
+        return;
+      }
+
+      if (event.target === hedgeQuickModeCounterpartyPickerValue) {
+        renderHedgeQuickModeCounterpartyOptions(
+          hedgeQuickModeSettingsForm.elements.partyId.value
+            ? ""
+            : hedgeQuickModeCounterpartyPickerValue.value
+        );
+        setHedgeQuickModeCounterpartyPickerExpanded(true);
+      }
+    }
+
+    function handleHedgeQuickModePricingRulePicker(event) {
+      const toggle = event.target.closest("[data-hedge-quick-mode-pricing-rule-toggle]");
+
+      if (toggle) {
+        hedgeQuickModePricingRulesExpanded = !hedgeQuickModePricingRulesExpanded;
+        renderHedgeQuickModePricingRules();
+        hedgeQuickModePricingRulePicker
+          .querySelector("[data-hedge-quick-mode-pricing-rule-toggle]")
+          ?.focus();
+        return;
+      }
+
+      const option = event.target.closest("[data-hedge-quick-mode-pricing-rule-id]");
+
+      if (!option) {
+        return;
+      }
+
+      hedgeQuickModeSettingsForm.elements.pricingRuleId.value =
+        option.dataset.hedgeQuickModePricingRuleId || "";
+      hedgeQuickModePricingRulesExpanded = false;
+      hedgeQuickModePricingRulePicker.classList.remove("is-invalid");
+      renderHedgeQuickModePricingRules();
+      hedgeQuickModePricingRulePicker
+        .querySelector("[data-hedge-quick-mode-pricing-rule-toggle]")
+        ?.focus();
+    }
+
+    function handleHedgeQuickModeCounterpartySearch() {
+      const selected = selectedHedgeQuickModeCounterparty();
+
+      if (selected && hedgeQuickModeCounterpartyPickerValue.value !== selected.name) {
+        hedgeQuickModeSettingsForm.elements.partyId.value = "";
+        hedgeQuickModeSettingsForm.elements.pricingRuleId.value = "";
+        hedgeQuickModePricingRulePicker.classList.remove("is-invalid");
+        renderHedgeQuickModePricingRules();
+      }
+
+      syncHedgeQuickModeCounterpartyClearAvailability();
+      renderHedgeQuickModeCounterpartyOptions(
+        hedgeQuickModeCounterpartyPickerValue.value,
+        hedgeQuickModeSettingsForm.elements.partyId.value
+      );
+      setHedgeQuickModeCounterpartyPickerExpanded(true);
+    }
+
+    function closeHedgeQuickModeSettingsDialog() {
+      if (typeof hedgeQuickModeSettingsDialog.close === "function") {
+        hedgeQuickModeSettingsDialog.close();
+      } else {
+        hedgeQuickModeSettingsDialog.removeAttribute("open");
+      }
+    }
+
+    async function openHedgeQuickModeSettingsDialog() {
+      hedgeQuickModeSettingsForm.reset();
+      hedgeQuickModeCounterpartyPickerExpanded = false;
+      hedgeQuickModePricingRulesExpanded = false;
+      setHedgeQuickModeSettingsView("overview");
+      hedgeQuickModeSettingsButton.setAttribute("aria-expanded", "true");
+
+      if (typeof hedgeQuickModeSettingsDialog.showModal === "function") {
+        hedgeQuickModeSettingsDialog.showModal();
+      } else {
+        hedgeQuickModeSettingsDialog.setAttribute("open", "");
+      }
+
+      renderHedgeQuickModeSettingsOverview();
+      hedgeQuickModeSettingsNewButton.disabled = true;
+      hedgeQuickModeSettingsSaveButton.disabled = true;
+      setHedgeQuickModeSettingsStatus("Loading Quick Mode settings...");
+
+      try {
+        await reloadHedgeQuickModeSettingsFromApi();
+        showHedgeQuickModeSettingsOverview();
+      } catch (error) {
+        renderHedgeQuickModeSettingsOverview();
+        setHedgeQuickModeSettingsStatus(
+          error.message || "Unable to load Quick Mode settings.",
+          "error"
+        );
+      } finally {
+        hedgeQuickModeSettingsSaveButton.disabled = false;
+      }
+    }
+
+    function validateHedgeQuickModeSettingsForm() {
+      const counterparty = selectedHedgeQuickModeCounterparty();
+      const rule = selectedHedgeQuickModePricingRule();
+      const amountInputs = [
+        hedgeQuickModeSettingsForm.elements.smallBaseCcyAmount,
+        hedgeQuickModeSettingsForm.elements.mediumBaseCcyAmount,
+        hedgeQuickModeSettingsForm.elements.largeBaseCcyAmount,
+        hedgeQuickModeSettingsForm.elements.xlargeBaseCcyAmount
+      ];
+      const amountTexts = amountInputs.map(input => positiveDecimalInputText(input.value));
+
+      hedgeQuickModeCounterpartyPicker.classList.toggle("is-invalid", !counterparty);
+      hedgeQuickModePricingRulePicker.classList.toggle("is-invalid", !rule);
+      amountInputs.forEach((input, index) => {
+        input.setCustomValidity(
+          amountTexts[index] === null ? "Enter a positive Base Ccy Amount." : ""
+        );
+      });
+
+      if (amountTexts.every(value => value !== null)) {
+        const increasing = amountTexts.every((value, index) =>
+          index === 0 || new Big(value).gt(amountTexts[index - 1])
+        );
+
+        amountInputs[amountInputs.length - 1].setCustomValidity(
+          increasing
+            ? ""
+            : "Quick Mode amounts must increase from Small through Extra Large."
+        );
+      }
+
+      if (!counterparty) {
+        hedgeQuickModeCounterpartyPickerValue.focus();
+        return null;
+      }
+
+      if (!rule) {
+        renderHedgeQuickModePricingRules();
+        hedgeQuickModePricingRulePicker
+          .querySelector("[data-hedge-quick-mode-pricing-rule-toggle]")
+          ?.focus();
+        return null;
+      }
+
+      if (!hedgeQuickModeSettingsForm.reportValidity()) {
+        return null;
+      }
+
+      return {
+        partyId: counterparty.partyId,
+        pricingRuleId: Number(rule.pricingRuleId),
+        smallBaseCcyAmount: amountTexts[0],
+        mediumBaseCcyAmount: amountTexts[1],
+        largeBaseCcyAmount: amountTexts[2],
+        xlargeBaseCcyAmount: amountTexts[3],
+        defaultTenor: hedgeQuickModeSettingsForm.elements.defaultTenor.value,
+        active: hedgeQuickModeSettingsForm.elements.active.checked
+      };
+    }
+
+    async function saveHedgeQuickModeSettings(event) {
+      event.preventDefault();
+
+      if (hedgeQuickModeSettingsSaving) {
+        return;
+      }
+
+      const payload = validateHedgeQuickModeSettingsForm();
+      const ccyPairCode = hedgeQuickModeSettingsPairCode();
+      const currencyPair = hedgeQuickModeSettingsPair();
+
+      if (!payload || !ccyPairCode) {
+        return;
+      }
+
+      hedgeQuickModeSettingsSaving = true;
+      hedgeQuickModeSettingsSaveButton.disabled = true;
+      hedgeQuickModeSettingsDeleteButton.disabled = true;
+      setHedgeQuickModeSettingsStatus("Saving Quick Mode settings...");
+
+      try {
+        await demoApiRequest(
+          `/api/v1/hedge-quick-mode-settings/${encodeURIComponent(ccyPairCode)}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(payload)
+          }
+        );
+        await reloadHedgeQuickModeSettingsFromApi();
+        showHedgeQuickModeSettingsOverview(
+          `Quick Mode settings saved for ${currencyPair}.`,
+          "success"
+        );
+        render(fxPositions);
+      } catch (error) {
+        setHedgeQuickModeSettingsStatus(
+          error.message || "Unable to save Quick Mode settings.",
+          "error"
+        );
+      } finally {
+        hedgeQuickModeSettingsSaving = false;
+        hedgeQuickModeSettingsSaveButton.disabled = false;
+        hedgeQuickModeSettingsDeleteButton.disabled = false;
+      }
+    }
+
+    async function deleteHedgeQuickModeSettings() {
+      const setting = currentHedgeQuickModeSetting();
+
+      if (!setting || hedgeQuickModeSettingsSaving) {
+        return;
+      }
+
+      hedgeQuickModeSettingsSaving = true;
+      hedgeQuickModeSettingsSaveButton.disabled = true;
+      hedgeQuickModeSettingsDeleteButton.disabled = true;
+      setHedgeQuickModeSettingsStatus("Deleting Quick Mode settings...");
+
+      try {
+        await demoApiRequest(
+          `/api/v1/hedge-quick-mode-settings/${encodeURIComponent(setting.ccyPairCode)}`,
+          { method: "DELETE" }
+        );
+        await reloadHedgeQuickModeSettingsFromApi();
+        showHedgeQuickModeSettingsOverview(
+          `Quick Mode settings deleted for ${setting.currencyPair}.`,
+          "success"
+        );
+        render(fxPositions);
+      } catch (error) {
+        setHedgeQuickModeSettingsStatus(
+          error.message || "Unable to delete Quick Mode settings.",
+          "error"
+        );
+      } finally {
+        hedgeQuickModeSettingsSaving = false;
+        hedgeQuickModeSettingsSaveButton.disabled = false;
+        hedgeQuickModeSettingsDeleteButton.disabled = false;
+      }
+    }
+
     function renderAddHedgeDealCurrencyPairs(selectedValue = "") {
       const control = addHedgeDealForm.elements.currencyPair;
       const pairs = marketCurrencyPairValues();
@@ -27388,19 +28605,58 @@
         ?.classList.toggle("is-disabled", quickMode);
     }
 
-    function openQuickHedgeDealDialog(ourSide, presetCode) {
+    async function createQuickHedgeDeal(ourSide, presetCode) {
+      const normalizedOurSide = String(ourSide || "").trim().toUpperCase();
       const setting = hedgeQuickModeSettingForPair();
       const normalizedPresetCode = String(presetCode || "").trim().toUpperCase();
       const preset = setting?.presets.find(
         candidate => candidate.presetCode === normalizedPresetCode
       );
 
-      if (!setting?.active || !setting.available || !preset) {
+      if (!["BUY", "SELL"].includes(normalizedOurSide)
+        || !setting?.active
+        || !setting.available
+        || !preset) {
+        setBatchStatus(
+          `Quick Mode is not available for ${activeCurrencyPairOrDefault()}.`,
+          "warning"
+        );
         return;
       }
 
+      if (hedgeQuickModeDealCreating) {
+        return;
+      }
+
+      hedgeQuickModeDealCreating = true;
       closeHedgeQuickModeMenu();
-      openAddHedgeDealDialog(ourSide, "AUTO_PRICED", { setting, preset });
+      setBatchStatus(
+        `Creating ${normalizedOurSide} ${setting.baseCcyCode} ${preset.label} Hedge Deal...`
+      );
+
+      try {
+        const created = await demoApiRequest("/api/v1/hedge-fx-deals/quick-mode", {
+          method: "POST",
+          body: JSON.stringify({
+            ccyPairCode: setting.ccyPairCode,
+            side: oppositeFxSide(normalizedOurSide),
+            presetCode: preset.presetCode
+          })
+        });
+
+        await refreshHedgeDealViewsFromApi();
+        selectedCurrencyPair = normalizedPricingRuleCurrencyPair(created.currencyPair);
+        saveSelectedCurrencyPair();
+        render(fxPositions);
+        setBatchStatus(`Created HEDGE_DEAL ${created.tradeId} in Quick Mode.`);
+      } catch (error) {
+        setBatchStatus(
+          error.message || "Unable to create the Quick Mode Hedge FX Deal.",
+          "error"
+        );
+      } finally {
+        hedgeQuickModeDealCreating = false;
+      }
     }
 
     function openAddHedgeDealDialog(
@@ -28724,12 +29980,12 @@
           <button type="button" class="hedge-deal-quick-menu-toggle"
             data-hedge-quick-menu-toggle
             data-hedge-quick-side="${normalizedSide}"
-            aria-label="Quick Mode presets for ${escapeHtml(sideLabel)}"
+            aria-label="Quick Mode presets for ${escapeHtml(sideLabel)}. Hold Control to open."
             aria-haspopup="menu"
             aria-controls="${menuId}"
             aria-expanded="${menuOpen}"
-            data-tooltip="Quick Mode presets">
-            <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+            data-tooltip="Quick Mode · Hold Ctrl and click">
+            <span class="button-icon" aria-hidden="true">bolt_boost</span>
           </button>
           <div class="hedge-deal-quick-menu" id="${menuId}" data-hedge-quick-menu="${normalizedSide}"
             role="menu" aria-label="Quick Mode presets for ${escapeHtml(sideLabel)}"${menuOpen ? "" : " hidden"}>
@@ -29830,7 +31086,7 @@
 
       if (quickPresetButton) {
         const menu = quickPresetButton.closest("[data-hedge-quick-menu]");
-        openQuickHedgeDealDialog(
+        await createQuickHedgeDeal(
           menu?.dataset.hedgeQuickMenu,
           quickPresetButton.dataset.hedgeQuickPreset
         );
@@ -29840,7 +31096,17 @@
       const quickMenuToggle = event.target.closest("[data-hedge-quick-menu-toggle]");
 
       if (quickMenuToggle) {
-        await toggleHedgeQuickModeMenu(quickMenuToggle.dataset.hedgeQuickSide);
+        const quickSide = quickMenuToggle.dataset.hedgeQuickSide;
+
+        if (hedgeQuickModeMenuSide !== quickSide && !event.ctrlKey) {
+          setBatchStatus(
+            "Hold Ctrl while opening Quick Mode presets.",
+            "warning"
+          );
+          return;
+        }
+
+        await toggleHedgeQuickModeMenu(quickSide);
         return;
       }
 
@@ -29859,6 +31125,15 @@
 
       if (quickMenuToggle && ["ArrowDown", "ArrowUp"].includes(event.key)) {
         event.preventDefault();
+
+        if (!event.ctrlKey) {
+          setBatchStatus(
+            "Hold Ctrl while opening Quick Mode presets.",
+            "warning"
+          );
+          return;
+        }
+
         await openHedgeQuickModeMenu(
           quickMenuToggle.dataset.hedgeQuickSide,
           { focus: event.key === "ArrowUp" ? "last" : "first" }
@@ -29920,6 +31195,10 @@
       event.stopPropagation();
       openClientDealGenerationDialog();
     });
+    hedgeQuickModeSettingsButton.addEventListener("click", event => {
+      event.stopPropagation();
+      openHedgeQuickModeSettingsDialog();
+    });
     addClientDealForm.addEventListener("submit", createClientDeal);
     addClientDealForm.addEventListener("click", selectAddClientDealAmountFixingCurrency);
     addClientDealForm.addEventListener("keydown", handleAddClientDealControlEnter);
@@ -29969,6 +31248,48 @@
       addHedgeDealForm.elements.tradeRate.readOnly = false;
       addHedgeDealForm.elements.tradeRate.setCustomValidity("");
       syncAddHedgeDealModeLocks();
+    });
+    hedgeQuickModeSettingsForm.addEventListener("submit", saveHedgeQuickModeSettings);
+    hedgeQuickModeSettingsNewButton.addEventListener(
+      "click",
+      () => openHedgeQuickModeSettingsEditor()
+    );
+    hedgeQuickModeSettingsBackButton.addEventListener(
+      "click",
+      () => showHedgeQuickModeSettingsOverview()
+    );
+    hedgeQuickModeSettingsDialogClose.addEventListener(
+      "click",
+      closeHedgeQuickModeSettingsDialog
+    );
+    hedgeQuickModeSettingsCancelButton.addEventListener(
+      "click",
+      () => {
+        if (hedgeQuickModeSettingsView === "editor") {
+          showHedgeQuickModeSettingsOverview();
+        } else {
+          closeHedgeQuickModeSettingsDialog();
+        }
+      }
+    );
+    hedgeQuickModeSettingsDeleteButton.addEventListener(
+      "click",
+      deleteHedgeQuickModeSettings
+    );
+    hedgeQuickModeSettingsDialog.addEventListener("cancel", event => {
+      event.preventDefault();
+      closeHedgeQuickModeSettingsDialog();
+    });
+    hedgeQuickModeSettingsDialog.addEventListener("close", () => {
+      hedgeQuickModeSettingsButton.setAttribute("aria-expanded", "false");
+      hedgeQuickModeCounterpartyPickerExpanded = false;
+      hedgeQuickModePricingRulesExpanded = false;
+      hedgeQuickModeCounterpartyPicker.classList.remove("is-invalid");
+      hedgeQuickModePricingRulePicker.classList.remove("is-invalid");
+      hedgeQuickModeSettingsView = "overview";
+      hedgeQuickModeSettingsForm.elements.currencyPair.disabled = false;
+      hedgeQuickModeSettingsForm.reset();
+      setHedgeQuickModeSettingsStatus("");
     });
     editForm.addEventListener("submit", saveEditedDeal);
     editDialogClose.addEventListener("click", closeEditDialog);
@@ -30697,6 +32018,16 @@
         addHedgeDealPricingRulesExpanded = false;
         renderAddHedgeDealPricingRules();
       }
+
+      if (!hedgeQuickModeCounterpartyPicker.contains(event.target)) {
+        setHedgeQuickModeCounterpartyPickerExpanded(false);
+      }
+
+      if (!hedgeQuickModePricingRulePicker.contains(event.target)
+        && hedgeQuickModePricingRulesExpanded) {
+        hedgeQuickModePricingRulesExpanded = false;
+        renderHedgeQuickModePricingRules();
+      }
     });
     addClientDealForm.elements.currencyPair.addEventListener("change", syncAddClientDealScope);
     addClientDealPricingRulePicker.addEventListener("click", handleAddClientDealPricingRulePicker);
@@ -30807,6 +32138,73 @@
       addHedgeDealPricingRulePicker
         .querySelector("[data-add-hedge-deal-pricing-rule-toggle]")
         ?.focus();
+    });
+    hedgeQuickModeSettingsForm.elements.currencyPair.addEventListener("change", () => {
+      populateHedgeQuickModeSetting();
+    });
+    hedgeQuickModeCounterpartyPickerValue.addEventListener(
+      "input",
+      handleHedgeQuickModeCounterpartySearch
+    );
+    hedgeQuickModeCounterpartyPicker.addEventListener(
+      "click",
+      handleHedgeQuickModeCounterpartyPicker
+    );
+    hedgeQuickModeCounterpartyPicker.addEventListener("keydown", event => {
+      if (event.key === "ArrowDown"
+        && event.target === hedgeQuickModeCounterpartyPickerValue) {
+        if (hedgeQuickModeCounterpartyOptions.hidden) {
+          renderHedgeQuickModeCounterpartyOptions(
+            hedgeQuickModeSettingsForm.elements.partyId.value
+              ? ""
+              : hedgeQuickModeCounterpartyPickerValue.value
+          );
+          setHedgeQuickModeCounterpartyPickerExpanded(true);
+        }
+
+        const firstOption = hedgeQuickModeCounterpartyOptions
+          .querySelector("[data-hedge-quick-mode-party-id]");
+
+        if (firstOption) {
+          event.preventDefault();
+          firstOption.focus();
+        }
+        return;
+      }
+
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      setHedgeQuickModeCounterpartyPickerExpanded(false);
+      hedgeQuickModeCounterpartyPickerValue.focus();
+    });
+    hedgeQuickModePricingRulePicker.addEventListener(
+      "click",
+      handleHedgeQuickModePricingRulePicker
+    );
+    hedgeQuickModePricingRulePicker.addEventListener("keydown", event => {
+      if (event.key !== "Escape" || !hedgeQuickModePricingRulesExpanded) {
+        return;
+      }
+
+      hedgeQuickModePricingRulesExpanded = false;
+      renderHedgeQuickModePricingRules();
+      hedgeQuickModePricingRulePicker
+        .querySelector("[data-hedge-quick-mode-pricing-rule-toggle]")
+        ?.focus();
+    });
+    [
+      hedgeQuickModeSettingsForm.elements.smallBaseCcyAmount,
+      hedgeQuickModeSettingsForm.elements.mediumBaseCcyAmount,
+      hedgeQuickModeSettingsForm.elements.largeBaseCcyAmount,
+      hedgeQuickModeSettingsForm.elements.xlargeBaseCcyAmount
+    ].forEach(input => {
+      input.addEventListener("input", () => {
+        input.setCustomValidity("");
+        groupDecimalInputValue(input);
+      });
+      input.addEventListener("blur", () => groupDecimalInputValue(input));
     });
     [
       editForm.elements.clientCode,

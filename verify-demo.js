@@ -1283,7 +1283,9 @@ function verifyFreshSchemaAndSeed() {
       FROM fx_hedge_quick_mode_settings settings
       INNER JOIN pricing_rules rule
         ON rule.pricing_rule_id = settings.pricing_rule_id
-      INNER JOIN trading_parties party ON party.party_id = rule.party_id
+        AND rule.party_id = settings.party_id
+        AND rule.ccy_pair_code = settings.ccy_pair_code
+      INNER JOIN trading_parties party ON party.party_id = settings.party_id
       INNER JOIN execution_contexts context
         ON context.execution_context_id = rule.execution_context_id
       INNER JOIN execution_systems execution
@@ -1484,6 +1486,9 @@ function verifyFrontendStructure() {
   const addHedgeDealDialogMarkup = html.match(
     /<dialog class="client-deal-create-dialog hedge-deal-create-dialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
+  const hedgeQuickModeSettingsDialogMarkup = html.match(
+    /<dialog class="client-deal-create-dialog hedge-quick-settings-dialog"[\s\S]*?<\/dialog>/
+  )?.[0] || "";
   const editClientDealDialogMarkup = html.match(
     /<dialog class="client-deal-create-dialog" id="editDealDialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
@@ -1623,14 +1628,61 @@ function verifyFrontendStructure() {
       && serverSource.includes("function validateHedgeQuickModeDealPayload(body)")
       && inlineScript.includes("function hedgeDealAutoSplitMarkup(ourSide, baseCcyCode)")
       && inlineScript.includes('demoApiRequest("/api/v1/hedge-quick-mode-settings")')
-      && inlineScript.includes('endpoint = "/api/v1/hedge-fx-deals/quick-mode";')
-      && inlineScript.includes("currencyPairControl.disabled = quickMode;")
-      && inlineScript.includes("addHedgeDealCounterpartyPickerValue.readOnly = quickMode;")
-      && inlineScript.includes("baseAmountInput.readOnly = quickMode;")
-      && inlineScript.includes("pricingRuleToggle.disabled = quickMode")
-      && inlineScript.includes('"Hedge Deal - Quick Mode"')
+      && inlineScript.includes("async function createQuickHedgeDeal(ourSide, presetCode)")
+      && inlineScript.includes(
+        'demoApiRequest("/api/v1/hedge-fx-deals/quick-mode"'
+      )
+      && inlineScript.includes("side: oppositeFxSide(normalizedOurSide)")
+      && inlineScript.includes("if (hedgeQuickModeDealCreating)")
+      && inlineScript.includes("!event.ctrlKey")
+      && inlineScript.includes("Hold Ctrl while opening Quick Mode presets.")
       && inlineScript.includes('data-hedge-quick-menu-toggle')
+      && inlineScript.includes(
+        '<span class="button-icon" aria-hidden="true">bolt_boost</span>'
+      )
       && inlineScript.includes('data-hedge-quick-preset'),
+    usesHedgeQuickModeSettingsEditor:
+      fxPositionPageMarkup.includes('id="hedgeQuickModeSettingsButton"')
+      && fxPositionPageMarkup.includes('aria-label="Quick Mode Hedge Settings"')
+      && hedgeQuickModeSettingsDialogMarkup.includes(
+        'id="hedgeQuickModeSettingsDialogTitle">Quick Mode Hedge Settings</h2>'
+      )
+      && hedgeQuickModeSettingsDialogMarkup.includes(
+        'id="hedgeQuickModeSettingsCurrencyPair" name="currencyPair"'
+      )
+      && hedgeQuickModeSettingsDialogMarkup.includes(
+        'id="hedgeQuickModeSettingsOverview"'
+      )
+      && hedgeQuickModeSettingsDialogMarkup.includes(
+        'id="hedgeQuickModeSettingsGrid"'
+      )
+      && hedgeQuickModeSettingsDialogMarkup.includes(
+        'id="hedgeQuickModeSettingsNewButton"'
+      )
+      && hedgeQuickModeSettingsDialogMarkup.includes(
+        'id="hedgeQuickModeSettingsEditor" hidden'
+      )
+      && hedgeQuickModeSettingsDialogMarkup.includes(
+        'id="hedgeQuickModePartyId" name="partyId"'
+      )
+      && hedgeQuickModeSettingsDialogMarkup.includes('name="pricingRuleId"')
+      && (hedgeQuickModeSettingsDialogMarkup.match(/name="(?:small|medium|large|xlarge)BaseCcyAmount"/g) || []).length === 4
+      && hedgeQuickModeSettingsDialogMarkup.includes('name="defaultTenor"')
+      && hedgeQuickModeSettingsDialogMarkup.includes('name="active"')
+      && inlineScript.includes("function hedgeQuickModeCounterpartyProfiles()")
+      && inlineScript.includes('isHedgeDealPricingRule(rule, "AUTO_PRICED")')
+      && inlineScript.includes("function initializeHedgeQuickModeSettingsGrid(data)")
+      && inlineScript.includes("function renderHedgeQuickModeSettingsOverview()")
+      && inlineScript.includes("function openHedgeQuickModeSettingsEditor(setting = null)")
+      && inlineScript.includes("function hedgeQuickModeUnconfiguredPairs()")
+      && inlineScript.includes("function renderHedgeQuickModePricingRules()")
+      && inlineScript.includes("async function saveHedgeQuickModeSettings(event)")
+      && inlineScript.includes("async function deleteHedgeQuickModeSettings()")
+      && inlineScript.includes("partyId: counterparty.partyId")
+      && serverSource.includes("rule.partyId !== payload.partyId")
+      && schemaSource.includes(
+        "FOREIGN KEY (pricing_rule_id, party_id, ccy_pair_code)"
+      ),
     usesHedgeCounterpartyPricingRules: serverSource.includes("function eligibleHedgeDealPricingRules(pricingMode)")
       && serverSource.includes('new Set(["AUTO_PRICED", "DEALER_PRICED"])')
       && serverSource.includes('party?.partyType === "HEDGE_COUNTERPARTY"')
@@ -2108,12 +2160,15 @@ function verifyFrontendStructure() {
     )
       && fxPositionPageMarkup.includes('class="deal-toolbar btn-toolbar"')
       && fxPositionPageMarkup.includes('class="batch-toolbar btn-toolbar"')
+      && fxPositionPageMarkup.includes('class="position-toolbar-row"')
+      && fxPositionPageMarkup.includes('class="hedge-toolbar btn-toolbar"')
+      && fxPositionPageMarkup.includes('aria-label="Hedge Toolbar"')
       && fxPositionPageMarkup.includes('class="form-check-input select-all-checkbox"')
       && fxPositionPageMarkup.includes('aria-label="Ccy pair selector"')
       && fxPositionPageMarkup.includes('id="runClientDealGenerationLabel">Auto Generate</span>')
       && fxPositionPageMarkup.includes('id="autoBatchButton" aria-label="Auto Batch" disabled>Auto Batch</button>')
       && !fxPositionPageMarkup.includes(">play_arrow</span>")
-      && (fxPositionPageMarkup.match(/>settings<\/span>/g) || []).length === 2
+      && (fxPositionPageMarkup.match(/>settings<\/span>/g) || []).length === 3
       && !fxPositionPageMarkup.includes("&#9654;")
       && !fxPositionPageMarkup.includes("&#9881;")
       && !fxPositionPageMarkup.includes('type="search"')
@@ -2329,7 +2384,7 @@ function verifyFrontendStructure() {
       && html.includes("grid-template-columns: max-content minmax(0, 1fr);")
       && html.includes(".client-deal-create-dialog .client-deal-currency-pair-field .form-select")
       && html.includes("width: calc(7ch + 4rem);")
-      && /:is\(#addClientDealDialog, #addHedgeDealDialog\)[\s\S]*?\.client-deal-currency-pair-field \.form-select \{[\s\S]*?height: 44px;[\s\S]*?font-size: 15px;[\s\S]*?font-weight: 600;/.test(html),
+      && /:is\(#addClientDealDialog, #addHedgeDealDialog, #hedgeQuickModeSettingsDialog\)[\s\S]*?\.client-deal-currency-pair-field \.form-select \{[\s\S]*?height: 44px;[\s\S]*?font-size: 15px;[\s\S]*?font-weight: 600;/.test(html),
     usesWrappingClientPicker: addClientDealDialogMarkup.includes('id="addClientDealClientPicker"')
       && addClientDealDialogMarkup.includes('id="addClientDealClientPickerValue"')
       && addClientDealDialogMarkup.includes('id="addClientDealClientPickerToggle"')
@@ -2358,7 +2413,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes('event.target.closest("#addHedgeDealCounterpartyPickerClear")')
       && inlineScript.includes('renderAddHedgeDealCounterpartyOptions(addHedgeDealCounterpartyPickerValue.value)'),
     usesUnifiedEmbeddedFieldClearButtons:
-      (html.match(/class="[^"]*client-deal-client-picker-clear[^"]*"/g) || []).length === 2
+      (html.match(/class="[^"]*client-deal-client-picker-clear[^"]*"/g) || []).length === 3
       && (html.match(/class="client-pricing-context-facet-clear"/g) || []).length === 3
       && /\.client-deal-client-picker-clear \{[\s\S]*?position: static;[\s\S]*?width: 40px;[\s\S]*?min-height: 44px;[\s\S]*?border-radius: 0 !important;/.test(html)
       && /\.client-deal-client-picker-clear:hover,[\s\S]*?border-color: var\(--bs-border-color\);[\s\S]*?background: var\(--bs-secondary-bg\);/.test(html)
@@ -2399,8 +2454,8 @@ function verifyFrontendStructure() {
       && inlineScript.includes('quoteDisplay.querySelector("[data-market-quote-bid]").textContent')
       && inlineScript.includes('quoteDisplay.querySelector("[data-market-quote-offer]").textContent'),
     usesUnifiedDialogCloseButtons:
-      (html.match(/<dialog\b/g) || []).length === 9
-      && (html.match(/class="[^"]*btn-close[^"]*"[^>]*aria-label="Close"/g) || []).length === 9
+      (html.match(/<dialog\b/g) || []).length === 10
+      && (html.match(/class="[^"]*btn-close[^"]*"[^>]*aria-label="Close"/g) || []).length === 10
       && html.includes("dialog .modal-header > .btn-close {")
       && /dialog \.modal-header > \.btn-close \{[\s\S]*?width: 32px;[\s\S]*?height: 32px;[\s\S]*?border-radius: var\(--bs-border-radius\);/.test(html)
       && html.includes("dialog .modal-header > .btn-close:hover,"),
@@ -3038,7 +3093,7 @@ function verifyFrontendStructure() {
     usesStandaloneToolbarCommands:
       /#mainPage\.fx-position-bootstrap\.workbench-page \.batch-control \{[\s\S]*?gap: 6px;[\s\S]*?border: 0;[\s\S]*?background: transparent;/.test(html)
       && /#mainPage\.fx-position-bootstrap\.workbench-page \.batch-control \.action-button \{[\s\S]*?border-width: 1px;[\s\S]*?border-radius: var\(--workbench-radius\);/.test(html)
-      && /#mainPage\.fx-position-bootstrap\.workbench-page :is\(\.deal-toolbar, \.batch-toolbar\) \.action-button:disabled \{[\s\S]*?opacity: 1;/.test(html)
+      && /#mainPage\.fx-position-bootstrap\.workbench-page :is\(\.deal-toolbar, \.batch-toolbar, \.hedge-toolbar\) \.action-button:disabled \{[\s\S]*?opacity: 1;/.test(html)
       && html.includes('class="batch-control client-deal-actions" aria-label="Client Deal actions"')
       && html.includes('class="batch-control deal-generation-control" aria-label="Demo Deal Generation actions"')
       && html.includes('<span class="batch-label">Demo Generation</span>')
@@ -4114,6 +4169,7 @@ async function verifyApiAndMigration() {
       "/api/v1/hedge-quick-mode-settings"
     );
     const hedgeQuickModeSettingsPayload = {
+      partyId: createHedgeCounterparty.body?.partyId,
       pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
       smallBaseCcyAmount: "5000000",
       mediumBaseCcyAmount: "20000000",
@@ -4177,8 +4233,7 @@ async function verifyApiAndMigration() {
       {
         ccyPairCode: "EUR_USD",
         side: "BUY",
-        presetCode: "MEDIUM",
-        tenor: "TOD"
+        presetCode: "MEDIUM"
       }
     );
     const createQuickModeBankBuyHedgeFxDeal = await request(
@@ -5743,14 +5798,15 @@ async function main() {
       || freshSchema.hedgeFxDealSeedRow?.analytical_pnl_quote_fraction_digits !== 2
       || freshSchema.hedgeQuickModeSettings !== 1
       || freshSchema.hedgeQuickModeSettingsColumns.join(",")
-        !== "ccy_pair_code,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
-      || freshSchema.hedgeQuickModeSettingsForeignKeys.length !== 3
+        !== "ccy_pair_code,party_id,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
+      || freshSchema.hedgeQuickModeSettingsForeignKeys.length !== 5
       || !freshSchema.hedgeQuickModeSettingsForeignKeys.every(foreignKey =>
-        ["ccy_pair_options", "pricing_rules"].includes(foreignKey.table)
+        ["ccy_pair_options", "trading_parties", "pricing_rules"].includes(foreignKey.table)
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "RESTRICT"
       )
       || freshSchema.hedgeQuickModeSettingsSeedRow?.ccy_pair_code !== "EUR_USD"
+      || freshSchema.hedgeQuickModeSettingsSeedRow?.party_id !== 4
       || freshSchema.hedgeQuickModeSettingsSeedRow
         ?.base_ccy_fraction_digits !== 2
       || freshSchema.hedgeQuickModeSettingsSeedRow
@@ -5868,6 +5924,7 @@ async function main() {
       || !frontend.usesHedgeFxDealsEndpoint
       || !frontend.usesDedicatedAddHedgeDealFlow
       || !frontend.usesQuickHedgeMode
+      || !frontend.usesHedgeQuickModeSettingsEditor
       || !frontend.usesHedgeCounterpartyPricingRules
       || !frontend.usesPricingModeIndicators
       || !frontend.usesUnifiedMarginIndicators
@@ -6192,12 +6249,12 @@ async function main() {
         apiAndMigration.hedgeFxDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
       || apiAndMigration.hedgeQuickModeSettingsColumns.join(",")
-        !== "ccy_pair_code,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
-      || apiAndMigration.hedgeQuickModeSettingsForeignKeys.length !== 3
+        !== "ccy_pair_code,party_id,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
+      || apiAndMigration.hedgeQuickModeSettingsForeignKeys.length !== 5
       || !apiAndMigration.hedgeQuickModeSettingsForeignKeys.every(foreignKey =>
         foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "RESTRICT"
-        && ["ccy_pair_options", "pricing_rules"].includes(
+        && ["ccy_pair_options", "trading_parties", "pricing_rules"].includes(
           foreignKey.referencedTable
         )
       )

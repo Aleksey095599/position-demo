@@ -101,6 +101,7 @@ WITH eligible_rule AS
 (
     SELECT
         MIN(r.pricing_rule_id) AS pricing_rule_id,
+        MIN(r.party_id) AS party_id,
         base_ccy.fraction_digits AS base_ccy_fraction_digits
     FROM pricing_rules r
     INNER JOIN trading_parties p ON p.party_id = r.party_id
@@ -123,6 +124,7 @@ WITH eligible_rule AS
 INSERT INTO fx_hedge_quick_mode_settings
     (
         ccy_pair_code,
+        party_id,
         pricing_rule_id,
         base_ccy_fraction_digits,
         small_base_ccy_amount_minor,
@@ -134,6 +136,7 @@ INSERT INTO fx_hedge_quick_mode_settings
     )
 SELECT
     'EUR_USD',
+    party_id,
     pricing_rule_id,
     base_ccy_fraction_digits,
     500000000,
