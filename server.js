@@ -47,8 +47,15 @@ const {
   minorToMajor,
   minorToSafeInteger
 } = require("./backend/money/money");
+const {
+  UI_TABLE_COLUMN_KEY_ALIASES,
+  UI_TABLE_COLUMN_WIDTH_MIN_PX,
+  UI_TABLE_COLUMN_WIDTH_MAX_PX,
+  UI_TABLE_LAYOUTS
+} = require("./backend/ui-table-layout/ui-table-layouts");
 
 const HOST = "127.0.0.1";
+const UI_TABLE_DEFAULT_CONFIRMATION = "SAVE_AS_DEFAULT";
 const configuredPort = Number(process.env.DEMO_PORT);
 const PORT = Number.isInteger(configuredPort) && configuredPort >= 1 && configuredPort <= 65535
   ? configuredPort
@@ -64,8 +71,17 @@ const MAX_BODY_BYTES = 1024 * 1024;
 const NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID = "NOT_APPLICABLE";
 const PRICING_MODES = ["AUTO_PRICED", "DEALER_PRICED", "DEALER_APPROVED"];
 const SERVICING_LOCATION_TYPES = ["BRANCH", "HEAD_OFFICE"];
-const PARTY_TYPES = ["CLIENT", "HEDGE_COUNTERPARTY"];
-const PARTY_CODE_TYPES = ["INN", "OTHER", "FRONT_SYSTEM_FOLDER_ID"];
+const COUNTERPARTY_ROLES = ["CLIENT", "HEDGE_COUNTERPARTY"];
+const COUNTERPARTY_SCOPES = ["EXTERNAL", "INTERNAL"];
+const EXTERNAL_COUNTERPARTY_CODE_TYPES = ["INN", "OTHER"];
+const EXTERNAL_COUNTERPARTY_KINDS = [
+  "CORPORATE",
+  "INDIVIDUAL",
+  "BANK",
+  "NON_BANK_FINANCIAL_INSTITUTION",
+  "OTHER"
+];
+const INTERNAL_UNIT_TYPES = ["DESK", "DEPARTMENT", "OTHER"];
 const SERVICING_LOCATION_ID_MAX_LENGTH = 10;
 const SERVICING_LOCATION_NAME_MAX_LENGTH = 50;
 const SERVICING_LOCATION_REGION_MAX_LENGTH = 50;
@@ -77,8 +93,8 @@ const EXECUTION_SYSTEM_NAME_MAX_LENGTH = 50;
 const EXECUTION_SYSTEM_PRICING_MODE_MAX_LENGTH = "DEALER_APPROVED".length;
 const CCY_OPTION_NAME_MAX_LENGTH = 20;
 const CCY_OPTION_COUNTRY_MAX_LENGTH = 30;
-const PARTY_CODE_MAX_LENGTH = 20;
-const PARTY_NAME_MAX_LENGTH = 200;
+const COUNTERPARTY_CODE_MAX_LENGTH = 20;
+const COUNTERPARTY_NAME_MAX_LENGTH = 200;
 const USER_CODE_MAX_LENGTH = 30;
 const USER_NAME_MAX_LENGTH = 50;
 const USER_ROLES = ["DEALER", "SUPERVISOR", "ADMIN"];
@@ -124,10 +140,10 @@ const executionContextsAlreadyInitialized = Boolean(database.prepare(`
   FROM sqlite_master
   WHERE type = 'table' AND name = 'execution_contexts'
 `).get());
-const tradingPartiesAlreadyInitialized = Boolean(database.prepare(`
+const tradingCounterpartiesAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
   FROM sqlite_master
-  WHERE type = 'table' AND name = 'trading_parties'
+  WHERE type = 'table' AND name IN ('trading_counterparties', 'trading_parties')
 `).get());
 const usersAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
@@ -160,6 +176,7 @@ const hedgeFxDealsAlreadyInitialized = Boolean(database.prepare(`
   WHERE type = 'table' AND name = 'fx_hedge_deals'
 `).get());
 migrateUnprefixedBatchTables(database);
+migrateTradingCounterpartyTerminology(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 ensureHedgeQuickModeSettingsDefaultTenor(database);
 dropBatchIntegrityTriggers(database);
@@ -176,7 +193,7 @@ dropClientFxDealTriggers(database);
 dropHedgeFxDealTriggers(database);
 dropClientDealGenerationSettingsTriggers(database);
 dropHedgeQuickModeSettingsTriggers(database);
-dropLegacyTradingPartyExecutionContexts(database);
+dropLegacyTradingCounterpartyExecutionContexts(database);
 migrateCcyOptionsConstraints(database);
 if (databaseAlreadyInitialized) {
   migrateLegacySimulationSettings(database);
@@ -187,9 +204,10 @@ migrateLegacyExecutionContextIds(database);
 migrateServicingLocationTextLimits(database);
 migrateAccountingSystemsShape(database);
 migrateExecutionSystemsShape(database);
-migrateTradingPartiesConstraints(database);
+migrateTradingCounterpartyModel(database);
+migrateExternalCounterpartyKinds(database);
 ensurePricingRuleClientDealReferenceIndex(database);
-migrateHedgeQuickModeSettingsPartyReference(database);
+migrateHedgeQuickModeSettingsCounterpartyReference(database);
 migrateClientDealGenerationSettingsToMinorUnits(database);
 ensureClientDealGenerationProcessSettings(database);
 synchronizeClientDealGenerationSettings(database);
@@ -206,6 +224,7 @@ migrateFxTradeMarketSnapshot(database);
 ensureClientFxDealIndexes(database);
 backfillInitialClientFxDealAttribution(database);
 ensureClientFxDealTriggers(database);
+rebuildLegacyCounterpartyConstraintNames(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 ensureHedgeFxDealTriggers(database);
 
@@ -228,8 +247,8 @@ if (!databaseAlreadyInitialized) {
     seedInitialExecutionContexts(database);
   }
 
-  if (!tradingPartiesAlreadyInitialized) {
-    seedInitialTradingParties(database);
+  if (!tradingCounterpartiesAlreadyInitialized) {
+    seedInitialTradingCounterparties(database);
   }
 
   if (!usersAlreadyInitialized) {
@@ -254,6 +273,8 @@ if (databaseAlreadyInitialized && !hedgeQuickModeSettingsAlreadyInitialized) {
   seedInitialHedgeQuickModeSettings(database);
 }
 
+ensureUiTableColumnSettings(database);
+
 function tableColumnNames(sqlite, tableName) {
   return new Set(sqlite.prepare(`PRAGMA table_info(${tableName})`).all().map(column => column.name));
 }
@@ -272,6 +293,177 @@ function runInImmediateTransaction(sqlite, operation) {
 
     throw error;
   }
+}
+
+function uiTableColumnDefinitions(tableKey) {
+  return UI_TABLE_LAYOUTS[tableKey]?.columns || null;
+}
+
+function ensureUiTableColumnSettings(sqlite) {
+  const existingSettings = sqlite.prepare(`
+    SELECT
+      table_key AS tableKey,
+      column_key AS columnKey,
+      default_width_px AS defaultWidthPx,
+      width_px AS widthPx,
+      updated_at AS updatedAt
+    FROM ui_table_column_settings
+  `).all();
+  const existingSettingsByKey = new Map(
+    existingSettings.map(setting => [
+      `${setting.tableKey}.${setting.columnKey}`,
+      setting
+    ])
+  );
+  const insert = sqlite.prepare(`
+    INSERT INTO ui_table_column_settings
+      (table_key, column_key, column_label, display_order, default_width_px, width_px, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))
+  `);
+
+  UI_TABLE_COLUMN_KEY_ALIASES.forEach(alias => {
+    const legacyKey = `${alias.tableKey}.${alias.legacyColumnKey}`;
+    const currentKey = `${alias.tableKey}.${alias.columnKey}`;
+
+    if (!existingSettingsByKey.has(currentKey)
+      && existingSettingsByKey.has(legacyKey)) {
+      existingSettingsByKey.set(currentKey, existingSettingsByKey.get(legacyKey));
+    }
+  });
+
+  runInImmediateTransaction(sqlite, () => {
+    sqlite.exec("DELETE FROM ui_table_column_settings");
+
+    Object.entries(UI_TABLE_LAYOUTS).forEach(([tableKey, tableLayout]) => {
+      tableLayout.columns.forEach((column, displayOrder) => {
+        const existingSetting = existingSettingsByKey.get(
+          `${tableKey}.${column.columnKey}`
+        );
+
+        insert.run(
+          tableKey,
+          column.columnKey,
+          column.columnLabel,
+          displayOrder,
+          existingSetting?.defaultWidthPx ?? column.defaultWidthPx,
+          existingSetting?.widthPx ?? column.defaultWidthPx,
+          existingSetting?.updatedAt ?? null
+        );
+      });
+    });
+  });
+}
+
+function uiTableColumnSettings(tableKey) {
+  return database.prepare(`
+    SELECT
+      table_key AS tableKey,
+      column_key AS columnKey,
+      column_label AS columnLabel,
+      display_order AS displayOrder,
+      default_width_px AS defaultWidthPx,
+      width_px AS widthPx,
+      updated_at AS updatedAt
+    FROM ui_table_column_settings
+    WHERE table_key = ?
+    ORDER BY display_order, column_key
+  `).all(tableKey);
+}
+
+function validateUiTableColumnSettingsPayload(tableKey, body) {
+  const definitions = uiTableColumnDefinitions(tableKey);
+
+  if (!definitions) {
+    return { error: `UI table layout ${tableKey} is not supported.` };
+  }
+
+  if (!Array.isArray(body?.columns)) {
+    return { error: "UI table layout must contain a columns array." };
+  }
+
+  const expectedKeys = new Set(definitions.map(column => column.columnKey));
+  const submittedKeys = new Set();
+  const columns = [];
+
+  for (const source of body.columns) {
+    const columnKey = normalizedText(source?.columnKey).toLowerCase();
+    const widthPx = Number(source?.widthPx);
+
+    if (!expectedKeys.has(columnKey)) {
+      return { error: `Unknown column ${columnKey || "(empty)"} for UI table layout ${tableKey}.` };
+    }
+
+    if (submittedKeys.has(columnKey)) {
+      return { error: `Column ${columnKey} is duplicated.` };
+    }
+
+    if (!Number.isInteger(widthPx)
+      || widthPx < UI_TABLE_COLUMN_WIDTH_MIN_PX
+      || widthPx > UI_TABLE_COLUMN_WIDTH_MAX_PX) {
+      return {
+        error: `Column ${columnKey} width must be an integer from ${UI_TABLE_COLUMN_WIDTH_MIN_PX} to ${UI_TABLE_COLUMN_WIDTH_MAX_PX} pixels.`
+      };
+    }
+
+    submittedKeys.add(columnKey);
+    columns.push({ columnKey, widthPx });
+  }
+
+  if (submittedKeys.size !== expectedKeys.size) {
+    return { error: `UI table layout ${tableKey} must contain every configured column.` };
+  }
+
+  return { tableKey, columns };
+}
+
+function updateUiTableColumnSettings(payload) {
+  const update = database.prepare(`
+    UPDATE ui_table_column_settings
+    SET width_px = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE table_key = ? AND column_key = ?
+  `);
+
+  runInImmediateTransaction(database, () => {
+    payload.columns.forEach(column => {
+      update.run(column.widthPx, payload.tableKey, column.columnKey);
+    });
+  });
+
+  return uiTableColumnSettings(payload.tableKey);
+}
+
+function updateUiTableColumnDefaults(payload) {
+  const update = database.prepare(`
+    UPDATE ui_table_column_settings
+    SET default_width_px = ?,
+        width_px = ?,
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE table_key = ? AND column_key = ?
+  `);
+
+  runInImmediateTransaction(database, () => {
+    payload.columns.forEach(column => {
+      update.run(
+        column.widthPx,
+        column.widthPx,
+        payload.tableKey,
+        column.columnKey
+      );
+    });
+  });
+
+  return uiTableColumnSettings(payload.tableKey);
+}
+
+function resetUiTableColumnSettings(tableKey) {
+  database.prepare(`
+    UPDATE ui_table_column_settings
+    SET width_px = default_width_px,
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE table_key = ?
+  `).run(tableKey);
+
+  return uiTableColumnSettings(tableKey);
 }
 
 function migrateFxTradeExposureTypes(sqlite) {
@@ -1929,15 +2121,19 @@ function migrateFxTradeMarketSnapshot(sqlite) {
   }
 }
 
-function dropLegacyTradingPartyExecutionContexts(sqlite) {
-  sqlite.exec("DROP TABLE IF EXISTS trading_party_execution_contexts");
+function dropLegacyTradingCounterpartyExecutionContexts(sqlite) {
+  sqlite.exec(`
+    DROP TABLE IF EXISTS trading_party_execution_contexts;
+    DROP TABLE IF EXISTS trading_counterparty_execution_contexts;
+  `);
 }
 
 function dropClientFxDealTriggers(sqlite) {
   sqlite.exec(`
     DROP TRIGGER IF EXISTS trg_client_fx_deals_require_client_insert;
     DROP TRIGGER IF EXISTS trg_client_fx_deals_require_client_update;
-    DROP TRIGGER IF EXISTS trg_trading_parties_preserve_client_deals;
+    DROP TRIGGER IF EXISTS trg_trading_counterparties_preserve_client_deals;
+    DROP TRIGGER IF EXISTS trg_trading_counterparty_roles_preserve_client_deals;
   `);
 }
 
@@ -1945,7 +2141,8 @@ function dropHedgeFxDealTriggers(sqlite) {
   sqlite.exec(`
     DROP TRIGGER IF EXISTS trg_fx_hedge_deals_require_hedge_counterparty_insert;
     DROP TRIGGER IF EXISTS trg_fx_hedge_deals_require_hedge_counterparty_update;
-    DROP TRIGGER IF EXISTS trg_trading_parties_preserve_hedge_deals;
+    DROP TRIGGER IF EXISTS trg_trading_counterparties_preserve_hedge_deals;
+    DROP TRIGGER IF EXISTS trg_trading_counterparty_roles_preserve_hedge_deals;
   `);
 }
 
@@ -1954,11 +2151,12 @@ function dropClientDealGenerationSettingsTriggers(sqlite) {
     DROP TRIGGER IF EXISTS trg_client_deal_generation_settings_require_client_insert;
     DROP TRIGGER IF EXISTS trg_client_deal_generation_settings_require_client_update;
     DROP TRIGGER IF EXISTS trg_pricing_rules_preserve_client_generation_settings;
-    DROP TRIGGER IF EXISTS trg_trading_parties_preserve_client_generation_settings;
+    DROP TRIGGER IF EXISTS trg_trading_counterparties_preserve_client_generation_settings;
     DROP TRIGGER IF EXISTS trg_client_deal_generation_settings_require_auto_priced_client_insert;
     DROP TRIGGER IF EXISTS trg_client_deal_generation_settings_require_auto_priced_client_update;
     DROP TRIGGER IF EXISTS trg_pricing_rules_preserve_auto_priced_client_generation_settings;
-    DROP TRIGGER IF EXISTS trg_trading_parties_preserve_auto_priced_client_generation_settings;
+    DROP TRIGGER IF EXISTS trg_trading_counterparties_preserve_auto_priced_client_generation_settings;
+    DROP TRIGGER IF EXISTS trg_trading_counterparty_roles_preserve_auto_priced_client_generation_settings;
     DROP TRIGGER IF EXISTS trg_execution_contexts_preserve_auto_priced_client_generation_settings;
     DROP TRIGGER IF EXISTS trg_execution_systems_preserve_auto_priced_client_generation_settings;
   `);
@@ -1971,7 +2169,8 @@ function dropHedgeQuickModeSettingsTriggers(sqlite) {
     DROP TRIGGER IF EXISTS trg_fx_hedge_quick_mode_settings_require_base_precision_insert;
     DROP TRIGGER IF EXISTS trg_fx_hedge_quick_mode_settings_require_base_precision_update;
     DROP TRIGGER IF EXISTS trg_pricing_rules_preserve_fx_hedge_quick_mode_settings;
-    DROP TRIGGER IF EXISTS trg_trading_parties_preserve_fx_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_trading_counterparties_preserve_fx_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_trading_counterparty_roles_preserve_fx_hedge_quick_mode_settings;
     DROP TRIGGER IF EXISTS trg_execution_contexts_preserve_fx_hedge_quick_mode_settings;
     DROP TRIGGER IF EXISTS trg_execution_systems_preserve_fx_hedge_quick_mode_settings;
     DROP TRIGGER IF EXISTS trg_ccy_options_preserve_fx_hedge_quick_mode_settings_precision;
@@ -1990,10 +2189,10 @@ function ensureHedgeQuickModeSettingsDefaultTenor(sqlite) {
   `);
 }
 
-function migrateHedgeQuickModeSettingsPartyReference(sqlite) {
+function migrateHedgeQuickModeSettingsCounterpartyReference(sqlite) {
   const targetColumns = [
     "ccy_pair_code",
-    "party_id",
+    "counterparty_id",
     "pricing_rule_id",
     "base_ccy_fraction_digits",
     "small_base_ccy_amount_minor",
@@ -2003,7 +2202,7 @@ function migrateHedgeQuickModeSettingsPartyReference(sqlite) {
     "is_active",
     "default_tenor"
   ];
-  const legacyColumns = targetColumns.filter(column => column !== "party_id");
+  const legacyColumns = targetColumns.filter(column => column !== "counterparty_id");
   const columns = [...tableColumnNames(sqlite, "fx_hedge_quick_mode_settings")];
 
   if (columns.join(",") === targetColumns.join(",")) {
@@ -2011,11 +2210,11 @@ function migrateHedgeQuickModeSettingsPartyReference(sqlite) {
   }
 
   if (columns.join(",") !== legacyColumns.join(",")) {
-    throw new Error("Unsupported Hedge Quick Mode Settings party-reference schema.");
+    throw new Error("Unsupported Hedge Quick Mode Settings counterparty-reference schema.");
   }
 
   const sourceRows = sqlite.prepare(`
-    SELECT settings.*, rule.party_id
+    SELECT settings.*, rule.counterparty_id
     FROM fx_hedge_quick_mode_settings settings
     INNER JOIN pricing_rules rule
       ON rule.pricing_rule_id = settings.pricing_rule_id
@@ -2029,7 +2228,7 @@ function migrateHedgeQuickModeSettingsPartyReference(sqlite) {
 
   if (sourceRows.length !== originalRowCount) {
     throw new Error(
-      "Every Hedge Quick Mode Settings row must resolve its Trading Party."
+      "Every Hedge Quick Mode Settings row must resolve its Trading Counterparty."
     );
   }
 
@@ -2041,7 +2240,7 @@ function migrateHedgeQuickModeSettingsPartyReference(sqlite) {
       CREATE TABLE fx_hedge_quick_mode_settings_migrated
       (
           ccy_pair_code                       TEXT    PRIMARY KEY,
-          party_id                            INTEGER NOT NULL,
+          counterparty_id                            INTEGER NOT NULL,
           pricing_rule_id                     INTEGER NOT NULL,
           base_ccy_fraction_digits            INTEGER NOT NULL,
           small_base_ccy_amount_minor         INTEGER NOT NULL,
@@ -2056,14 +2255,14 @@ function migrateHedgeQuickModeSettingsPartyReference(sqlite) {
                   REFERENCES ccy_pair_options (ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_quick_mode_settings_party
-              FOREIGN KEY (party_id)
-                  REFERENCES trading_parties (party_id)
+          CONSTRAINT fk_fx_hedge_quick_mode_settings_counterparty
+              FOREIGN KEY (counterparty_id)
+                  REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_quick_mode_settings_rule_party_pair
-              FOREIGN KEY (pricing_rule_id, party_id, ccy_pair_code)
-                  REFERENCES pricing_rules (pricing_rule_id, party_id, ccy_pair_code)
+          CONSTRAINT fk_fx_hedge_quick_mode_settings_rule_counterparty_pair
+              FOREIGN KEY (pricing_rule_id, counterparty_id, ccy_pair_code)
+                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT chk_fx_hedge_quick_mode_settings_fraction_digits
@@ -2096,7 +2295,7 @@ function migrateHedgeQuickModeSettingsPartyReference(sqlite) {
       INSERT INTO fx_hedge_quick_mode_settings_migrated
         (
           ccy_pair_code,
-          party_id,
+          counterparty_id,
           pricing_rule_id,
           base_ccy_fraction_digits,
           small_base_ccy_amount_minor,
@@ -2112,7 +2311,7 @@ function migrateHedgeQuickModeSettingsPartyReference(sqlite) {
     for (const row of sourceRows) {
       insert.run(
         row.ccy_pair_code,
-        row.party_id,
+        row.counterparty_id,
         row.pricing_rule_id,
         row.base_ccy_fraction_digits,
         row.small_base_ccy_amount_minor,
@@ -2138,13 +2337,13 @@ function migrateHedgeQuickModeSettingsPartyReference(sqlite) {
 
     if (migratedRowCount !== originalRowCount) {
       throw new Error(
-        "Hedge Quick Mode Settings party-reference migration did not preserve every row."
+        "Hedge Quick Mode Settings counterparty-reference migration did not preserve every row."
       );
     }
 
     if (foreignKeyViolations.length > 0) {
       throw new Error(
-        "Hedge Quick Mode Settings party-reference migration produced foreign key violations."
+        "Hedge Quick Mode Settings counterparty-reference migration produced foreign key violations."
       );
     }
 
@@ -2680,11 +2879,11 @@ function synchronizeClientDealGenerationSettings(sqlite) {
     (
       SELECT 1
       FROM pricing_rules r
-      INNER JOIN trading_parties p ON p.party_id = r.party_id
+      INNER JOIN trading_counterparty_roles role
+        ON role.counterparty_id = r.counterparty_id AND role.role_code = 'CLIENT'
       INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
       INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
       WHERE r.pricing_rule_id = client_deal_generation_settings.pricing_rule_id
-        AND p.party_type = 'CLIENT'
         AND e.pricing_mode = 'AUTO_PRICED'
     );
   `);
@@ -2694,13 +2893,13 @@ function synchronizeClientDealGenerationSettings(sqlite) {
       r.pricing_rule_id,
       base_ccy.fraction_digits AS base_ccy_fraction_digits
     FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN trading_counterparty_roles role
+      ON role.counterparty_id = r.counterparty_id AND role.role_code = 'CLIENT'
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
     INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
-    WHERE p.party_type = 'CLIENT'
-      AND e.pricing_mode = 'AUTO_PRICED'
+    WHERE e.pricing_mode = 'AUTO_PRICED'
   `).all();
   const insert = sqlite.prepare(`
     INSERT OR IGNORE INTO client_deal_generation_settings
@@ -2728,16 +2927,16 @@ function synchronizeClientDealGenerationSettings(sqlite) {
   }
 }
 
-function clientDealGenerationReferenceEligible(partyId, executionContextId) {
+function clientDealGenerationReferenceEligible(counterpartyId, executionContextId) {
   return Boolean(database.prepare(`
     SELECT 1 AS eligible
-    FROM trading_parties p
+    FROM trading_counterparty_roles role
     INNER JOIN execution_contexts c ON c.execution_context_id = ?
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
-    WHERE p.party_id = ?
-      AND p.party_type = 'CLIENT'
+    WHERE role.counterparty_id = ?
+      AND role.role_code = 'CLIENT'
       AND e.pricing_mode = 'AUTO_PRICED'
-  `).get(executionContextId, partyId));
+  `).get(executionContextId, counterpartyId));
 }
 
 function ensureClientFxDealTriggers(sqlite) {
@@ -2745,36 +2944,36 @@ function ensureClientFxDealTriggers(sqlite) {
     CREATE TRIGGER IF NOT EXISTS trg_client_fx_deals_require_client_insert
     BEFORE INSERT ON client_fx_deals
     FOR EACH ROW
-    WHEN EXISTS
+    WHEN NOT EXISTS
     (
         SELECT 1
-        FROM trading_parties
-        WHERE party_id = NEW.party_id AND party_type <> 'CLIENT'
+        FROM trading_counterparty_roles
+        WHERE counterparty_id = NEW.counterparty_id AND role_code = 'CLIENT'
     )
     BEGIN
-        SELECT RAISE(ABORT, 'client_fx_deals.party_id must reference a CLIENT trading party');
+        SELECT RAISE(ABORT, 'client_fx_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
     END;
 
     CREATE TRIGGER IF NOT EXISTS trg_client_fx_deals_require_client_update
-    BEFORE UPDATE OF party_id ON client_fx_deals
+    BEFORE UPDATE OF counterparty_id ON client_fx_deals
     FOR EACH ROW
-    WHEN EXISTS
+    WHEN NOT EXISTS
     (
         SELECT 1
-        FROM trading_parties
-        WHERE party_id = NEW.party_id AND party_type <> 'CLIENT'
+        FROM trading_counterparty_roles
+        WHERE counterparty_id = NEW.counterparty_id AND role_code = 'CLIENT'
     )
     BEGIN
-        SELECT RAISE(ABORT, 'client_fx_deals.party_id must reference a CLIENT trading party');
+        SELECT RAISE(ABORT, 'client_fx_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
     END;
 
-    CREATE TRIGGER IF NOT EXISTS trg_trading_parties_preserve_client_deals
-    BEFORE UPDATE OF party_type ON trading_parties
+    CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_client_deals
+    BEFORE DELETE ON trading_counterparty_roles
     FOR EACH ROW
-    WHEN NEW.party_type <> 'CLIENT'
-        AND EXISTS (SELECT 1 FROM client_fx_deals WHERE party_id = OLD.party_id)
+    WHEN OLD.role_code = 'CLIENT'
+        AND EXISTS (SELECT 1 FROM client_fx_deals WHERE counterparty_id = OLD.counterparty_id)
     BEGIN
-        SELECT RAISE(ABORT, 'a Trading Party used by client_fx_deals must remain a CLIENT');
+        SELECT RAISE(ABORT, 'a Trading Counterparty used by client_fx_deals must retain the CLIENT role');
     END;
   `);
 }
@@ -2784,36 +2983,36 @@ function ensureHedgeFxDealTriggers(sqlite) {
     CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_deals_require_hedge_counterparty_insert
     BEFORE INSERT ON fx_hedge_deals
     FOR EACH ROW
-    WHEN EXISTS
+    WHEN NOT EXISTS
     (
       SELECT 1
-      FROM trading_parties
-      WHERE party_id = NEW.party_id AND party_type <> 'HEDGE_COUNTERPARTY'
+      FROM trading_counterparty_roles
+      WHERE counterparty_id = NEW.counterparty_id AND role_code = 'HEDGE_COUNTERPARTY'
     )
     BEGIN
-      SELECT RAISE(ABORT, 'fx_hedge_deals.party_id must reference a HEDGE_COUNTERPARTY trading party');
+      SELECT RAISE(ABORT, 'fx_hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
     END;
 
     CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_deals_require_hedge_counterparty_update
-    BEFORE UPDATE OF party_id ON fx_hedge_deals
+    BEFORE UPDATE OF counterparty_id ON fx_hedge_deals
     FOR EACH ROW
-    WHEN EXISTS
+    WHEN NOT EXISTS
     (
       SELECT 1
-      FROM trading_parties
-      WHERE party_id = NEW.party_id AND party_type <> 'HEDGE_COUNTERPARTY'
+      FROM trading_counterparty_roles
+      WHERE counterparty_id = NEW.counterparty_id AND role_code = 'HEDGE_COUNTERPARTY'
     )
     BEGIN
-      SELECT RAISE(ABORT, 'fx_hedge_deals.party_id must reference a HEDGE_COUNTERPARTY trading party');
+      SELECT RAISE(ABORT, 'fx_hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
     END;
 
-    CREATE TRIGGER IF NOT EXISTS trg_trading_parties_preserve_hedge_deals
-    BEFORE UPDATE OF party_type ON trading_parties
+    CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_hedge_deals
+    BEFORE DELETE ON trading_counterparty_roles
     FOR EACH ROW
-    WHEN NEW.party_type <> 'HEDGE_COUNTERPARTY'
-      AND EXISTS (SELECT 1 FROM fx_hedge_deals WHERE party_id = OLD.party_id)
+    WHEN OLD.role_code = 'HEDGE_COUNTERPARTY'
+      AND EXISTS (SELECT 1 FROM fx_hedge_deals WHERE counterparty_id = OLD.counterparty_id)
     BEGIN
-      SELECT RAISE(ABORT, 'a Trading Party used by fx_hedge_deals must remain a HEDGE_COUNTERPARTY');
+      SELECT RAISE(ABORT, 'a Trading Counterparty used by fx_hedge_deals must retain the HEDGE_COUNTERPARTY role');
     END;
   `);
 }
@@ -2841,7 +3040,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   const targetColumns = [
     "trade_id",
     "trade_type",
-    "party_id",
+    "counterparty_id",
     "execution_context_id",
     "pricing_rule_id",
     "transfer_rate",
@@ -2852,7 +3051,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   const majorPnlTargetColumns = [
     "trade_id",
     "trade_type",
-    "party_id",
+    "counterparty_id",
     "execution_context_id",
     "pricing_rule_id",
     "transfer_rate",
@@ -2862,7 +3061,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   const preCommentTargetColumns = [
     "trade_id",
     "trade_type",
-    "party_id",
+    "counterparty_id",
     "execution_context_id",
     "pricing_rule_id",
     "transfer_rate",
@@ -2871,17 +3070,17 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   const previousTargetColumns = [
     "trade_id",
     "trade_type",
-    "party_id",
+    "counterparty_id",
     "execution_context_id",
     "pricing_rule_id",
     "transfer_rate",
     "analytical_pnl_quote_amount"
   ];
-  const sharedIdentityColumns = ["trade_id", "trade_type", "party_id"];
+  const sharedIdentityColumns = ["trade_id", "trade_type", "counterparty_id"];
   const legacyColumns = [
     "client_deal_id",
     "entry_timestamp",
-    "party_id",
+    "counterparty_id",
     "trade_date",
     "ccy_pair_code",
     "side",
@@ -2905,7 +3104,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
         && keys[index].from === mapping.from
         && keys[index].to === mapping.to);
   };
-  const partyForeignKeys = foreignKeys.filter(key => key.table === "trading_parties");
+  const counterpartyForeignKeys = foreignKeys.filter(key => key.table === "trading_counterparties");
   const executionContextForeignKeys = foreignKeys.filter(key => key.table === "execution_contexts");
   const hasSharedIdentityForeignKeys = foreignKeys.length === 3
     && foreignKeys.every(key => key.on_update === "RESTRICT" && key.on_delete === "RESTRICT")
@@ -2913,24 +3112,24 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
       { from: "trade_id", to: "trade_id" },
       { from: "trade_type", to: "trade_type" }
     ])
-    && partyForeignKeys.length === 1
-    && partyForeignKeys[0].from === "party_id"
-    && partyForeignKeys[0].to === "party_id";
+    && counterpartyForeignKeys.length === 1
+    && counterpartyForeignKeys[0].from === "counterparty_id"
+    && counterpartyForeignKeys[0].to === "counterparty_id";
   const hasTargetForeignKeys = foreignKeys.length === 7
     && foreignKeys.every(key => key.on_update === "RESTRICT" && key.on_delete === "RESTRICT")
     && hasCompositeForeignKey("fx_trade_exposure", [
       { from: "trade_id", to: "trade_id" },
       { from: "trade_type", to: "trade_type" }
     ])
-    && partyForeignKeys.length === 1
-    && partyForeignKeys[0].from === "party_id"
-    && partyForeignKeys[0].to === "party_id"
+    && counterpartyForeignKeys.length === 1
+    && counterpartyForeignKeys[0].from === "counterparty_id"
+    && counterpartyForeignKeys[0].to === "counterparty_id"
     && executionContextForeignKeys.length === 1
     && executionContextForeignKeys[0].from === "execution_context_id"
     && executionContextForeignKeys[0].to === "execution_context_id"
     && hasCompositeForeignKey("pricing_rules", [
       { from: "pricing_rule_id", to: "pricing_rule_id" },
-      { from: "party_id", to: "party_id" },
+      { from: "counterparty_id", to: "counterparty_id" },
       { from: "execution_context_id", to: "execution_context_id" }
     ]);
   const hasSharedIdentityColumnDefinitions = tableInfo[0]?.type === "INTEGER"
@@ -3008,7 +3207,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   }
 
   if (!pricingReferenceIndex
-    || pricingReferenceIndexColumns.join(",") !== "pricing_rule_id,party_id,execution_context_id") {
+    || pricingReferenceIndexColumns.join(",") !== "pricing_rule_id,counterparty_id,execution_context_id") {
     throw new Error("Pricing Rule Client FX Deal reference index is missing or invalid.");
   }
 
@@ -3074,16 +3273,18 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
       throw new Error(`Client FX Deal ${invalidTenor.client_deal_id} has an unsupported tenor.`);
     }
 
-    const invalidParty = sqlite.prepare(`
+    const invalidCounterparty = sqlite.prepare(`
       SELECT d.client_deal_id
       FROM client_fx_deals d
-      LEFT JOIN trading_parties p ON p.party_id = d.party_id
-      WHERE p.party_id IS NULL OR p.party_type <> 'CLIENT'
+      LEFT JOIN trading_counterparties p ON p.counterparty_id = d.counterparty_id
+      LEFT JOIN trading_counterparty_roles role
+        ON role.counterparty_id = d.counterparty_id AND role.role_code = 'CLIENT'
+      WHERE p.counterparty_id IS NULL OR role.counterparty_id IS NULL
       LIMIT 1
     `).get();
 
-    if (invalidParty) {
-      throw new Error(`Client FX Deal ${invalidParty.client_deal_id} does not reference a CLIENT Trading Party.`);
+    if (invalidCounterparty) {
+      throw new Error(`Client FX Deal ${invalidCounterparty.client_deal_id} does not reference a CLIENT Trading Counterparty.`);
     }
 
     const collidingExposure = sqlite.prepare(`
@@ -3239,7 +3440,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
       (
           trade_id                    INTEGER PRIMARY KEY,
           trade_type                  TEXT    NOT NULL DEFAULT 'CLIENT_DEAL',
-          party_id                    INTEGER NOT NULL,
+          counterparty_id                    INTEGER NOT NULL,
           execution_context_id        INTEGER,
           pricing_rule_id             INTEGER,
           transfer_rate               NUMERIC,
@@ -3251,9 +3452,9 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
                   REFERENCES fx_trade_exposure (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_client_fx_deals_party
-              FOREIGN KEY (party_id)
-                  REFERENCES trading_parties (party_id)
+          CONSTRAINT fk_client_fx_deals_counterparty
+              FOREIGN KEY (counterparty_id)
+                  REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT fk_client_fx_deals_execution_context
@@ -3262,8 +3463,8 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT fk_client_fx_deals_pricing_rule_scope
-              FOREIGN KEY (pricing_rule_id, party_id, execution_context_id)
-                  REFERENCES pricing_rules (pricing_rule_id, party_id, execution_context_id)
+              FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
+                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT chk_client_fx_deals_trade_type
@@ -3311,7 +3512,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
         (
           trade_id,
           trade_type,
-          party_id,
+          counterparty_id,
           execution_context_id,
           pricing_rule_id,
           transfer_rate,
@@ -3321,7 +3522,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
       SELECT
         ${sourceTradeIdColumn},
         ${sourceTradeTypeExpression},
-        party_id,
+        counterparty_id,
         ${sourceExecutionContextExpression},
         ${sourcePricingRuleExpression},
         ${sourceTransferRateExpression},
@@ -3333,8 +3534,8 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
       DROP TABLE client_fx_deals;
       ALTER TABLE client_fx_deals_migrated RENAME TO client_fx_deals;
 
-      CREATE INDEX idx_client_fx_deals_party
-          ON client_fx_deals (party_id);
+      CREATE INDEX idx_client_fx_deals_counterparty
+          ON client_fx_deals (counterparty_id);
       CREATE INDEX idx_client_fx_deals_execution_context
           ON client_fx_deals (execution_context_id);
       CREATE INDEX idx_client_fx_deals_pricing_rule
@@ -3453,7 +3654,7 @@ function migrateFxDealAnalyticalPnlTable(sqlite, {
     const insertColumns = [
       "trade_id",
       "trade_type",
-      "party_id",
+      "counterparty_id",
       "execution_context_id",
       "pricing_rule_id",
       "transfer_rate",
@@ -3488,7 +3689,7 @@ function migrateFxDealAnalyticalPnlTable(sqlite, {
       const values = [
         row.trade_id,
         row.trade_type,
-        row.party_id,
+        row.counterparty_id,
         row.execution_context_id,
         row.pricing_rule_id,
         row.transfer_rate,
@@ -3541,7 +3742,7 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
     targetColumns: [
       "trade_id",
       "trade_type",
-      "party_id",
+      "counterparty_id",
       "execution_context_id",
       "pricing_rule_id",
       "transfer_rate",
@@ -3552,7 +3753,7 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
     sourceColumns: [
       "trade_id",
       "trade_type",
-      "party_id",
+      "counterparty_id",
       "execution_context_id",
       "pricing_rule_id",
       "transfer_rate",
@@ -3566,7 +3767,7 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
       (
           trade_id                    INTEGER PRIMARY KEY,
           trade_type                  TEXT    NOT NULL DEFAULT 'CLIENT_DEAL',
-          party_id                    INTEGER NOT NULL,
+          counterparty_id                    INTEGER NOT NULL,
           execution_context_id        INTEGER,
           pricing_rule_id             INTEGER,
           transfer_rate               NUMERIC,
@@ -3579,9 +3780,9 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
                   REFERENCES fx_trade_exposure (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_client_fx_deals_party
-              FOREIGN KEY (party_id)
-                  REFERENCES trading_parties (party_id)
+          CONSTRAINT fk_client_fx_deals_counterparty
+              FOREIGN KEY (counterparty_id)
+                  REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT fk_client_fx_deals_execution_context
@@ -3590,8 +3791,8 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT fk_client_fx_deals_pricing_rule_scope
-              FOREIGN KEY (pricing_rule_id, party_id, execution_context_id)
-                  REFERENCES pricing_rules (pricing_rule_id, party_id, execution_context_id)
+              FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
+                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT chk_client_fx_deals_trade_type
@@ -3640,7 +3841,7 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
     targetColumns: [
       "trade_id",
       "trade_type",
-      "party_id",
+      "counterparty_id",
       "execution_context_id",
       "pricing_rule_id",
       "transfer_rate",
@@ -3650,7 +3851,7 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
     sourceColumns: [
       "trade_id",
       "trade_type",
-      "party_id",
+      "counterparty_id",
       "execution_context_id",
       "pricing_rule_id",
       "transfer_rate",
@@ -3663,7 +3864,7 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
       (
           trade_id                    INTEGER PRIMARY KEY,
           trade_type                  TEXT    NOT NULL DEFAULT 'HEDGE_DEAL',
-          party_id                    INTEGER NOT NULL,
+          counterparty_id                    INTEGER NOT NULL,
           execution_context_id        INTEGER,
           pricing_rule_id             INTEGER,
           transfer_rate               NUMERIC,
@@ -3675,9 +3876,9 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
                   REFERENCES fx_trade_exposure (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_deals_party
-              FOREIGN KEY (party_id)
-                  REFERENCES trading_parties (party_id)
+          CONSTRAINT fk_fx_hedge_deals_counterparty
+              FOREIGN KEY (counterparty_id)
+                  REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT fk_fx_hedge_deals_execution_context
@@ -3686,8 +3887,8 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT fk_fx_hedge_deals_pricing_rule_scope
-              FOREIGN KEY (pricing_rule_id, party_id, execution_context_id)
-                  REFERENCES pricing_rules (pricing_rule_id, party_id, execution_context_id)
+              FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
+                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT chk_fx_hedge_deals_trade_type
@@ -3723,8 +3924,8 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
 
 function ensureClientFxDealIndexes(sqlite) {
   sqlite.exec(`
-    CREATE INDEX IF NOT EXISTS idx_client_fx_deals_party
-        ON client_fx_deals (party_id);
+    CREATE INDEX IF NOT EXISTS idx_client_fx_deals_counterparty
+        ON client_fx_deals (counterparty_id);
     CREATE INDEX IF NOT EXISTS idx_client_fx_deals_execution_context
         ON client_fx_deals (execution_context_id);
     CREATE INDEX IF NOT EXISTS idx_client_fx_deals_pricing_rule
@@ -3735,7 +3936,7 @@ function ensureClientFxDealIndexes(sqlite) {
 function ensurePricingRuleClientDealReferenceIndex(sqlite) {
   sqlite.exec(`
     CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_client_deal_reference
-        ON pricing_rules (pricing_rule_id, party_id, execution_context_id);
+        ON pricing_rules (pricing_rule_id, counterparty_id, execution_context_id);
   `);
 }
 
@@ -3743,7 +3944,7 @@ function backfillInitialClientFxDealAttribution(sqlite) {
   const deal = sqlite.prepare(`
     SELECT
       d.trade_id,
-      d.party_id,
+      d.counterparty_id,
       e.trade_rate,
       e.base_ccy_amount_minor,
       e.base_ccy_fraction_digits,
@@ -3753,7 +3954,8 @@ function backfillInitialClientFxDealAttribution(sqlite) {
     FROM client_fx_deals d
     INNER JOIN fx_trade_exposure e
       ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
-    INNER JOIN trading_parties p ON p.party_id = d.party_id
+    INNER JOIN trading_counterparties p ON p.counterparty_id = d.counterparty_id
+    INNER JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = pair.quote_ccy_code
     WHERE d.execution_context_id IS NULL
@@ -3761,8 +3963,8 @@ function backfillInitialClientFxDealAttribution(sqlite) {
       AND d.transfer_rate IS NULL
       AND d.analytical_pnl_quote_minor IS NULL
       AND d.analytical_pnl_quote_fraction_digits IS NULL
-      AND p.party_code_type = 'INN'
-      AND p.party_code = '7701234567'
+      AND external.counterparty_code_type = 'INN'
+      AND external.counterparty_code = '7701234567'
       AND e.entry_timestamp = '2026-07-15T09:30:00.000Z'
       AND e.trade_date = '2026-07-15'
       AND e.ccy_pair_code = 'EUR_USD'
@@ -3784,10 +3986,10 @@ function backfillInitialClientFxDealAttribution(sqlite) {
     SELECT r.pricing_rule_id, r.execution_context_id
     FROM pricing_rules r
     WHERE r.pricing_rule_id = 3
-      AND r.party_id = ?
+      AND r.counterparty_id = ?
       AND r.ccy_pair_code = ?
     LIMIT 1
-  `).get(deal.party_id, deal.ccy_pair_code);
+  `).get(deal.counterparty_id, deal.ccy_pair_code);
 
   if (!pricingRule) {
     return;
@@ -4113,14 +4315,14 @@ function migrateLegacyExecutionContextIds(sqlite) {
       CREATE TABLE pricing_rules_migrated
       (
           pricing_rule_id      INTEGER PRIMARY KEY,
-          party_id             INTEGER NOT NULL,
+          counterparty_id             INTEGER NOT NULL,
           execution_context_id INTEGER NOT NULL,
           ccy_pair_code        TEXT    NOT NULL,
           margin_percent       REAL    NOT NULL,
 
-          CONSTRAINT fk_pricing_rules_party
-              FOREIGN KEY (party_id)
-                  REFERENCES trading_parties (party_id)
+          CONSTRAINT fk_pricing_rules_counterparty
+              FOREIGN KEY (counterparty_id)
+                  REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT fk_pricing_rules_execution_context
@@ -4134,16 +4336,16 @@ function migrateLegacyExecutionContextIds(sqlite) {
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT uq_pricing_rules_scope
-              UNIQUE (party_id, execution_context_id, ccy_pair_code),
+              UNIQUE (counterparty_id, execution_context_id, ccy_pair_code),
           CONSTRAINT chk_pricing_rules_margin
               CHECK (margin_percent >= 0 AND margin_percent < 100)
       );
 
       INSERT INTO pricing_rules_migrated
-        (pricing_rule_id, party_id, execution_context_id, ccy_pair_code, margin_percent)
+        (pricing_rule_id, counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
       SELECT
         rule.pricing_rule_id,
-        rule.party_id,
+        rule.counterparty_id,
         context_map.execution_context_id,
         rule.ccy_pair_code,
         rule.margin_percent
@@ -4169,16 +4371,16 @@ function migrateLegacyExecutionContextIds(sqlite) {
           ON execution_contexts (accounting_system_id);
       CREATE INDEX idx_execution_contexts_execution_system
           ON execution_contexts (execution_system_id);
-      CREATE INDEX idx_pricing_rules_party
-          ON pricing_rules (party_id);
+      CREATE INDEX idx_pricing_rules_counterparty
+          ON pricing_rules (counterparty_id);
       CREATE INDEX idx_pricing_rules_execution_context
           ON pricing_rules (execution_context_id);
       CREATE INDEX idx_pricing_rules_ccy_pair
           ON pricing_rules (ccy_pair_code);
       CREATE UNIQUE INDEX uq_pricing_rules_hedge_quick_mode_reference
           ON pricing_rules (pricing_rule_id, ccy_pair_code);
-      CREATE UNIQUE INDEX uq_pricing_rules_hedge_quick_mode_party_reference
-          ON pricing_rules (pricing_rule_id, party_id, ccy_pair_code);
+      CREATE UNIQUE INDEX uq_pricing_rules_hedge_quick_mode_counterparty_reference
+          ON pricing_rules (pricing_rule_id, counterparty_id, ccy_pair_code);
 
       DROP TABLE execution_context_id_map;
     `);
@@ -4458,51 +4660,39 @@ function migrateExecutionSystemsShape(sqlite) {
   }
 }
 
-function migrateTradingPartiesConstraints(sqlite) {
-  const tableDefinition = sqlite.prepare(`
-    SELECT sql
-    FROM sqlite_master
-    WHERE type = 'table' AND name = 'trading_parties'
-  `).get()?.sql || "";
+function migrateTradingCounterpartyModel(sqlite) {
+  const columns = tableColumnNames(sqlite, "trading_counterparties");
 
-  const requiresMigration = !tableDefinition.includes("length(party_code) <= 20")
-    || !tableDefinition.includes("length(party_name) BETWEEN 1 AND 200")
-    || !tableDefinition.includes("is_active IN (0, 1)")
-    || !tableDefinition.includes("'HEDGE_COUNTERPARTY'")
-    || !tableDefinition.includes("'FRONT_SYSTEM_FOLDER_ID'")
-    || tableDefinition.includes("'EXTERNAL_COUNTERPARTY'")
-    || tableDefinition.includes("'INTERNAL_DESK'");
-
-  if (!requiresMigration) {
+  if (!columns.has("counterparty_type") && !columns.has("counterparty_code") && !columns.has("counterparty_code_type")) {
     return;
   }
 
   const invalidRecord = sqlite.prepare(`
-    SELECT party_id
-    FROM trading_parties
-    WHERE party_type NOT IN ('CLIENT', 'HEDGE_COUNTERPARTY', 'EXTERNAL_COUNTERPARTY', 'INTERNAL_DESK')
-      OR party_code_type NOT IN ('INN', 'OTHER', 'FRONT_SYSTEM_FOLDER_ID')
-      OR length(party_code) > ?
+    SELECT counterparty_id
+    FROM trading_counterparties
+    WHERE counterparty_type NOT IN ('CLIENT', 'HEDGE_COUNTERPARTY', 'EXTERNAL_COUNTERPARTY', 'INTERNAL_DESK')
+      OR counterparty_code_type NOT IN ('INN', 'OTHER', 'FRONT_SYSTEM_FOLDER_ID')
+      OR length(counterparty_code) > ?
       OR (
-        party_code_type = 'INN'
-        AND (length(party_code) NOT BETWEEN 10 AND 12 OR party_code GLOB '*[^0-9]*')
+        counterparty_code_type = 'INN'
+        AND (length(counterparty_code) NOT BETWEEN 10 AND 12 OR counterparty_code GLOB '*[^0-9]*')
       )
       OR (
-        party_code_type IN ('OTHER', 'FRONT_SYSTEM_FOLDER_ID')
+        counterparty_code_type IN ('OTHER', 'FRONT_SYSTEM_FOLDER_ID')
         AND (
-          length(party_code) NOT BETWEEN 2 AND ?
-          OR party_code != upper(party_code)
-          OR party_code GLOB '*[^A-Z0-9_-]*'
+          length(counterparty_code) NOT BETWEEN 2 AND ?
+          OR counterparty_code != upper(counterparty_code)
+          OR counterparty_code GLOB '*[^A-Z0-9_-]*'
         )
       )
-      OR length(party_name) NOT BETWEEN 1 AND ?
-      OR length(trim(party_name)) = 0
+      OR length(counterparty_name) NOT BETWEEN 1 AND ?
+      OR length(trim(counterparty_name)) = 0
       OR is_active NOT IN (0, 1)
     LIMIT 1
-  `).get(PARTY_CODE_MAX_LENGTH, PARTY_CODE_MAX_LENGTH, PARTY_NAME_MAX_LENGTH);
+  `).get(COUNTERPARTY_CODE_MAX_LENGTH, COUNTERPARTY_CODE_MAX_LENGTH, COUNTERPARTY_NAME_MAX_LENGTH);
 
   if (invalidRecord) {
-    throw new Error(`Trading Party ${invalidRecord.party_id} violates the configured constraint.`);
+    throw new Error(`Trading Counterparty ${invalidRecord.counterparty_id} cannot be migrated to the profile model.`);
   }
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -4510,67 +4700,382 @@ function migrateTradingPartiesConstraints(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE trading_parties_migrated
-      (
-          party_id        INTEGER PRIMARY KEY,
-          party_type      TEXT    NOT NULL,
-          party_code      TEXT    NOT NULL,
-          party_code_type TEXT    NOT NULL,
-          party_name      TEXT    NOT NULL,
-          is_active       INTEGER NOT NULL DEFAULT 1,
+      DELETE FROM trading_counterparty_roles;
+      DELETE FROM external_counterparties;
+      DELETE FROM internal_units;
 
-          CONSTRAINT uq_trading_parties_code
-              UNIQUE (party_code_type, party_code),
-          CONSTRAINT chk_trading_parties_type
-              CHECK (party_type IN ('CLIENT', 'HEDGE_COUNTERPARTY')),
-          CONSTRAINT chk_trading_parties_code_type
-              CHECK (party_code_type IN ('INN', 'OTHER', 'FRONT_SYSTEM_FOLDER_ID')),
-          CONSTRAINT chk_trading_parties_code
-              CHECK (
-                  length(party_code) <= 20
-                  AND (
-                      (
-                          party_code_type = 'INN'
-                          AND length(party_code) BETWEEN 10 AND 12
-                          AND party_code NOT GLOB '*[^0-9]*'
-                      )
-                      OR
-                      (
-                          party_code_type IN ('OTHER', 'FRONT_SYSTEM_FOLDER_ID')
-                          AND length(party_code) BETWEEN 2 AND 20
-                          AND party_code = upper(party_code)
-                          AND party_code NOT GLOB '*[^A-Z0-9_-]*'
-                      )
-                  )
-              ),
-          CONSTRAINT chk_trading_parties_name
-              CHECK (length(party_name) BETWEEN 1 AND 200 AND length(trim(party_name)) > 0),
-          CONSTRAINT chk_trading_parties_active
+      CREATE TABLE trading_counterparties_migrated
+      (
+          counterparty_id   INTEGER PRIMARY KEY,
+          counterparty_name TEXT    NOT NULL,
+          is_active  INTEGER NOT NULL DEFAULT 1,
+
+          CONSTRAINT chk_trading_counterparties_name
+              CHECK (length(counterparty_name) BETWEEN 1 AND 200 AND length(trim(counterparty_name)) > 0),
+          CONSTRAINT chk_trading_counterparties_active
               CHECK (is_active IN (0, 1))
       );
 
-      INSERT INTO trading_parties_migrated
-        (party_id, party_type, party_code, party_code_type, party_name, is_active)
-      SELECT
-        party_id,
-        CASE
-          WHEN party_type = 'CLIENT' THEN 'CLIENT'
-          ELSE 'HEDGE_COUNTERPARTY'
-        END,
-        party_code,
-        party_code_type,
-        party_name,
-        is_active
-      FROM trading_parties;
+      INSERT INTO trading_counterparties_migrated (counterparty_id, counterparty_name, is_active)
+      SELECT counterparty_id, counterparty_name, is_active
+      FROM trading_counterparties;
 
-      DROP TABLE trading_parties;
-      ALTER TABLE trading_parties_migrated RENAME TO trading_parties;
+      INSERT INTO external_counterparties
+        (counterparty_id, counterparty_code, counterparty_code_type, external_counterparty_kind)
+      SELECT
+        counterparty_id,
+        counterparty_code,
+        CASE WHEN counterparty_code_type = 'INN' THEN 'INN' ELSE 'OTHER' END,
+        CASE
+          WHEN counterparty_code_type = 'INN' AND upper(counterparty_name) LIKE '%BANK%' THEN 'BANK'
+          ELSE 'CORPORATE'
+        END
+      FROM trading_counterparties
+      WHERE counterparty_type <> 'INTERNAL_DESK'
+        AND counterparty_code_type <> 'FRONT_SYSTEM_FOLDER_ID';
+
+      INSERT INTO internal_units (counterparty_id, unit_code, unit_type)
+      SELECT counterparty_id, counterparty_code, 'DESK'
+      FROM trading_counterparties
+      WHERE counterparty_type = 'INTERNAL_DESK'
+         OR counterparty_code_type = 'FRONT_SYSTEM_FOLDER_ID';
+
+      INSERT INTO trading_counterparty_roles (counterparty_id, role_code)
+      SELECT
+        counterparty_id,
+        CASE WHEN counterparty_type = 'CLIENT' THEN 'CLIENT' ELSE 'HEDGE_COUNTERPARTY' END
+      FROM trading_counterparties;
+
+      DROP TABLE trading_counterparties;
+      ALTER TABLE trading_counterparties_migrated RENAME TO trading_counterparties;
     `);
 
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("Trading Party constraint migration produced foreign key violations.");
+      throw new Error("Trading Counterparty profile migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function migrateTradingCounterpartyTerminology(sqlite) {
+  const tableExists = tableName => Boolean(sqlite.prepare(`
+    SELECT 1 AS present
+    FROM sqlite_master
+    WHERE type = 'table' AND name = ?
+  `).get(tableName));
+  const legacyParentExists = tableExists("trading_parties");
+  const currentParentExists = tableExists("trading_counterparties");
+
+  if (!legacyParentExists) {
+    return;
+  }
+
+  if (currentParentExists) {
+    throw new Error(
+      "Both legacy and current Trading Counterparty tables exist; automatic migration is ambiguous."
+    );
+  }
+
+  const renameTable = (legacyName, currentName) => {
+    if (tableExists(legacyName) && !tableExists(currentName)) {
+      sqlite.exec(`ALTER TABLE ${legacyName} RENAME TO ${currentName}`);
+    }
+  };
+  const renameColumn = (tableName, legacyName, currentName) => {
+    const columns = tableColumnNames(sqlite, tableName);
+
+    if (columns.has(legacyName) && !columns.has(currentName)) {
+      sqlite.exec(`ALTER TABLE ${tableName} RENAME COLUMN ${legacyName} TO ${currentName}`);
+    }
+  };
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+
+    const legacyTriggers = sqlite.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'trigger'
+        AND (lower(name) LIKE '%party%' OR lower(sql) LIKE '%party%')
+    `).all();
+    const legacyIndexes = sqlite.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'index'
+        AND sql IS NOT NULL
+        AND (lower(name) LIKE '%party%' OR lower(sql) LIKE '%party%')
+    `).all();
+
+    legacyTriggers.forEach(({ name }) => sqlite.exec(`DROP TRIGGER ${name}`));
+    legacyIndexes.forEach(({ name }) => sqlite.exec(`DROP INDEX ${name}`));
+
+    renameTable("trading_parties", "trading_counterparties");
+    renameTable("external_parties", "external_counterparties");
+    renameTable("trading_party_roles", "trading_counterparty_roles");
+
+    [
+      "trading_counterparties",
+      "external_counterparties",
+      "internal_units",
+      "trading_counterparty_roles",
+      "pricing_rules",
+      "fx_hedge_quick_mode_settings",
+      "client_fx_deals",
+      "fx_hedge_deals"
+    ].forEach(tableName => {
+      if (tableExists(tableName)) {
+        renameColumn(tableName, "party_id", "counterparty_id");
+      }
+    });
+
+    if (tableExists("trading_counterparties")) {
+      renameColumn("trading_counterparties", "party_name", "counterparty_name");
+      renameColumn("trading_counterparties", "party_type", "counterparty_type");
+      renameColumn("trading_counterparties", "party_code", "counterparty_code");
+      renameColumn("trading_counterparties", "party_code_type", "counterparty_code_type");
+    }
+
+    if (tableExists("external_counterparties")) {
+      renameColumn("external_counterparties", "party_code", "counterparty_code");
+      renameColumn("external_counterparties", "party_code_type", "counterparty_code_type");
+      renameColumn(
+        "external_counterparties",
+        "external_party_kind",
+        "external_counterparty_kind"
+      );
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function migrateExternalCounterpartyKinds(sqlite) {
+  const tableDefinition = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'external_counterparties'
+  `).get()?.sql || "";
+  const requiresMigration = tableDefinition.includes("'ORGANIZATION'")
+    || tableDefinition.includes("'FUND'")
+    || !tableDefinition.includes("'CORPORATE'")
+    || !tableDefinition.includes("'NON_BANK_FINANCIAL_INSTITUTION'");
+
+  if (!tableDefinition || !requiresMigration) {
+    return;
+  }
+
+  const invalidRecord = sqlite.prepare(`
+    SELECT counterparty_id
+    FROM external_counterparties
+    WHERE external_counterparty_kind NOT IN
+      (
+        'ORGANIZATION',
+        'FUND',
+        'CORPORATE',
+        'INDIVIDUAL',
+        'BANK',
+        'NON_BANK_FINANCIAL_INSTITUTION',
+        'OTHER'
+      )
+    LIMIT 1
+  `).get();
+
+  if (invalidRecord) {
+    throw new Error(`External Counterparty ${invalidRecord.counterparty_id} has an unsupported type.`);
+  }
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      DROP TRIGGER IF EXISTS trg_external_counterparties_exclusive_profile_insert;
+      DROP TRIGGER IF EXISTS trg_external_counterparties_exclusive_profile_update;
+      DROP TRIGGER IF EXISTS trg_internal_units_exclusive_profile_insert;
+      DROP TRIGGER IF EXISTS trg_internal_units_exclusive_profile_update;
+
+      CREATE TABLE external_counterparties_migrated
+      (
+          counterparty_id            INTEGER PRIMARY KEY,
+          counterparty_code          TEXT    NOT NULL,
+          counterparty_code_type     TEXT    NOT NULL,
+          external_counterparty_kind TEXT    NOT NULL DEFAULT 'CORPORATE',
+
+          CONSTRAINT fk_external_counterparties_counterparty
+              FOREIGN KEY (counterparty_id)
+                  REFERENCES trading_counterparties (counterparty_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE CASCADE,
+          CONSTRAINT uq_external_counterparties_code
+              UNIQUE (counterparty_code_type, counterparty_code),
+          CONSTRAINT chk_external_counterparties_code_type
+              CHECK (counterparty_code_type IN ('INN', 'OTHER')),
+          CONSTRAINT chk_external_counterparties_code
+              CHECK (
+                  (
+                      counterparty_code_type = 'INN'
+                      AND length(counterparty_code) BETWEEN 10 AND 12
+                      AND counterparty_code NOT GLOB '*[^0-9]*'
+                  )
+                  OR
+                  (
+                      counterparty_code_type = 'OTHER'
+                      AND length(counterparty_code) BETWEEN 2 AND 20
+                      AND counterparty_code = upper(counterparty_code)
+                      AND counterparty_code NOT GLOB '*[^A-Z0-9_-]*'
+                  )
+              ),
+          CONSTRAINT chk_external_counterparties_kind
+              CHECK (
+                  external_counterparty_kind IN
+                  (
+                      'CORPORATE',
+                      'INDIVIDUAL',
+                      'BANK',
+                      'NON_BANK_FINANCIAL_INSTITUTION',
+                      'OTHER'
+                  )
+              )
+      );
+
+      INSERT INTO external_counterparties_migrated
+        (counterparty_id, counterparty_code, counterparty_code_type, external_counterparty_kind)
+      SELECT
+        counterparty_id,
+        counterparty_code,
+        counterparty_code_type,
+        CASE external_counterparty_kind
+          WHEN 'ORGANIZATION' THEN 'CORPORATE'
+          WHEN 'FUND' THEN 'NON_BANK_FINANCIAL_INSTITUTION'
+          ELSE external_counterparty_kind
+        END
+      FROM external_counterparties;
+
+      DROP TABLE external_counterparties;
+      ALTER TABLE external_counterparties_migrated RENAME TO external_counterparties;
+    `);
+
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error("External Counterparty type migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function rebuildLegacyCounterpartyConstraintNames(sqlite) {
+  const targetTables = [
+    "trading_counterparties",
+    "external_counterparties",
+    "internal_units",
+    "trading_counterparty_roles",
+    "pricing_rules",
+    "fx_hedge_quick_mode_settings",
+    "client_fx_deals",
+    "fx_hedge_deals"
+  ];
+  const legacyTerm = /(?<!counter)part(?:y|ies)/i;
+  const tablesToRebuild = targetTables.filter(tableName => {
+    const definition = sqlite.prepare(`
+      SELECT sql
+      FROM sqlite_master
+      WHERE type = 'table' AND name = ?
+    `).get(tableName)?.sql || "";
+
+    return legacyTerm.test(definition);
+  });
+
+  if (tablesToRebuild.length === 0) {
+    return;
+  }
+
+  const schemaSource = fs.readFileSync(SCHEMA_PATH, "utf8");
+  const tableDefinition = tableName => {
+    const escapedName = tableName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = schemaSource.match(new RegExp(
+      `CREATE TABLE IF NOT EXISTS ${escapedName}\\s*\\([\\s\\S]*?\\r?\\n\\);`
+    ));
+
+    if (!match) {
+      throw new Error(`Schema definition for ${tableName} was not found.`);
+    }
+
+    return match[0];
+  };
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+
+    const relatedTriggers = sqlite.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'trigger'
+        AND (
+          lower(sql) LIKE '%trading_counterpart%'
+          OR lower(sql) LIKE '%counterparty_id%'
+        )
+    `).all();
+
+    relatedTriggers.forEach(({ name }) => sqlite.exec(`DROP TRIGGER ${name}`));
+
+    tablesToRebuild.forEach(tableName => {
+      const migratedTableName = `__counterparty_migrated_${tableName}`;
+      const columns = [...tableColumnNames(sqlite, tableName)];
+      const definition = tableDefinition(tableName).replace(
+        `CREATE TABLE IF NOT EXISTS ${tableName}`,
+        `CREATE TABLE ${migratedTableName}`
+      );
+      const columnList = columns.join(", ");
+
+      sqlite.exec(definition);
+      sqlite.exec(`
+        INSERT INTO ${migratedTableName} (${columnList})
+        SELECT ${columnList}
+        FROM ${tableName};
+        DROP TABLE ${tableName};
+        ALTER TABLE ${migratedTableName} RENAME TO ${tableName};
+      `);
+    });
+
+    sqlite.exec(schemaSource);
+
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error("Trading Counterparty constraint migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -4711,15 +5216,48 @@ function seedInitialExecutionContexts(sqlite) {
   `);
 }
 
-function seedInitialTradingParties(sqlite) {
+function seedInitialTradingCounterparties(sqlite) {
   sqlite.exec(`
-    INSERT INTO trading_parties
-      (party_type, party_code, party_code_type, party_name, is_active)
+    INSERT INTO trading_counterparties
+      (counterparty_name, is_active)
     VALUES
-      ('CLIENT', '7701234567', 'INN', 'Romashka Company', 1),
-      ('CLIENT', '7812345678', 'INN', 'Vasilek Company', 1),
-      ('CLIENT', '5409876543', 'INN', 'Gladiolus Company', 1),
-      ('HEDGE_COUNTERPARTY', '7707000001', 'INN', 'Aurora Bank', 1);
+      ('Romashka Company', 1),
+      ('Vasilek Company', 1),
+      ('Gladiolus Company', 1),
+      ('Aurora Bank', 1),
+      ('Treasury Trading Desk', 1);
+
+    WITH seed (counterparty_name, counterparty_code, counterparty_code_type, external_counterparty_kind, role_code) AS
+    (
+      VALUES
+        ('Romashka Company', '7701234567', 'INN', 'CORPORATE', 'CLIENT'),
+        ('Vasilek Company', '7812345678', 'INN', 'CORPORATE', 'CLIENT'),
+        ('Gladiolus Company', '5409876543', 'INN', 'CORPORATE', 'CLIENT'),
+        ('Aurora Bank', '7707000001', 'INN', 'BANK', 'HEDGE_COUNTERPARTY')
+    )
+    INSERT INTO external_counterparties (counterparty_id, counterparty_code, counterparty_code_type, external_counterparty_kind)
+    SELECT counterparty.counterparty_id, seed.counterparty_code, seed.counterparty_code_type, seed.external_counterparty_kind
+    FROM seed
+    INNER JOIN trading_counterparties counterparty ON counterparty.counterparty_name = seed.counterparty_name;
+
+    WITH seed (counterparty_name, role_code) AS
+    (
+      VALUES
+        ('Romashka Company', 'CLIENT'),
+        ('Vasilek Company', 'CLIENT'),
+        ('Gladiolus Company', 'CLIENT'),
+        ('Aurora Bank', 'HEDGE_COUNTERPARTY'),
+        ('Treasury Trading Desk', 'HEDGE_COUNTERPARTY')
+    )
+    INSERT INTO trading_counterparty_roles (counterparty_id, role_code)
+    SELECT counterparty.counterparty_id, seed.role_code
+    FROM seed
+    INNER JOIN trading_counterparties counterparty ON counterparty.counterparty_name = seed.counterparty_name;
+
+    INSERT INTO internal_units (counterparty_id, unit_code, unit_type)
+    SELECT counterparty_id, 'IB_FX', 'DESK'
+    FROM trading_counterparties
+    WHERE counterparty_name = 'Treasury Trading Desk';
   `);
 }
 
@@ -4746,19 +5284,20 @@ function seedInitialPricingRules(sqlite) {
   ];
   const insert = sqlite.prepare(`
     INSERT OR IGNORE INTO pricing_rules
-      (party_id, execution_context_id, ccy_pair_code, margin_percent)
-    SELECT p.party_id, e.execution_context_id, pair.ccy_pair_code, ?
-    FROM trading_parties p
+      (counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
+    SELECT p.counterparty_id, e.execution_context_id, pair.ccy_pair_code, ?
+    FROM trading_counterparties p
+    INNER JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
     INNER JOIN execution_contexts e
       ON e.servicing_location_id = ?
       AND COALESCE(e.accounting_system_id, 'NOT_APPLICABLE') = ?
       AND e.execution_system_id = ?
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = ?
-    WHERE p.party_code_type = 'INN' AND p.party_code = ?
+    WHERE external.counterparty_code_type = 'INN' AND external.counterparty_code = ?
   `);
 
   rules.forEach(([
-    partyCode,
+    counterpartyCode,
     servicingLocationId,
     accountingSystemId,
     executionSystemId,
@@ -4771,7 +5310,7 @@ function seedInitialPricingRules(sqlite) {
       accountingSystemId,
       executionSystemId,
       ccyPairCode,
-      partyCode
+      counterpartyCode
     );
   });
 }
@@ -4784,11 +5323,13 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
   const eligibleRules = sqlite.prepare(`
     SELECT
       rule.pricing_rule_id AS pricingRuleId,
-      rule.party_id AS partyId,
+      rule.counterparty_id AS counterpartyId,
       rule.ccy_pair_code AS ccyPairCode,
       base_ccy.fraction_digits AS baseCcyFractionDigits
     FROM pricing_rules rule
-    INNER JOIN trading_parties party ON party.party_id = rule.party_id
+    INNER JOIN trading_counterparties counterparty ON counterparty.counterparty_id = rule.counterparty_id
+    INNER JOIN trading_counterparty_roles role
+      ON role.counterparty_id = counterparty.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
     INNER JOIN execution_contexts context
       ON context.execution_context_id = rule.execution_context_id
     INNER JOIN execution_systems execution
@@ -4797,8 +5338,7 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
       ON pair.ccy_pair_code = rule.ccy_pair_code
     INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     WHERE rule.ccy_pair_code = 'EUR_USD'
-      AND party.party_type = 'HEDGE_COUNTERPARTY'
-      AND party.is_active = 1
+      AND counterparty.is_active = 1
       AND execution.pricing_mode = 'AUTO_PRICED'
       AND execution.is_active = 1
     ORDER BY rule.pricing_rule_id
@@ -4819,7 +5359,7 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
     INSERT INTO fx_hedge_quick_mode_settings
       (
         ccy_pair_code,
-        party_id,
+        counterparty_id,
         pricing_rule_id,
         base_ccy_fraction_digits,
         small_base_ccy_amount_minor,
@@ -4832,7 +5372,7 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'TOD')
   `).run(
     rule.ccyPairCode,
-    rule.partyId,
+    rule.counterpartyId,
     rule.pricingRuleId,
     rule.baseCcyFractionDigits,
     amountMinor("5000000"),
@@ -4845,12 +5385,13 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
 function seedInitialClientFxDeals(sqlite) {
   runInImmediateTransaction(sqlite, () => {
     const pricingRule = sqlite.prepare(`
-      SELECT r.pricing_rule_id, r.party_id, r.execution_context_id
+      SELECT r.pricing_rule_id, r.counterparty_id, r.execution_context_id
       FROM pricing_rules r
-      INNER JOIN trading_parties p ON p.party_id = r.party_id
+      INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
+      INNER JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
       INNER JOIN execution_contexts e ON e.execution_context_id = r.execution_context_id
-      WHERE p.party_code_type = 'INN'
-        AND p.party_code = '7701234567'
+      WHERE external.counterparty_code_type = 'INN'
+        AND external.counterparty_code = '7701234567'
         AND r.ccy_pair_code = 'EUR_USD'
         AND e.servicing_location_id = '002'
         AND e.accounting_system_id = 'CTF3'
@@ -4904,7 +5445,7 @@ function seedInitialClientFxDeals(sqlite) {
         (
           trade_id,
           trade_type,
-          party_id,
+          counterparty_id,
           execution_context_id,
           pricing_rule_id,
           transfer_rate,
@@ -4914,7 +5455,7 @@ function seedInitialClientFxDeals(sqlite) {
       VALUES (?, 'CLIENT_DEAL', ?, ?, ?, 1.1222, 2700000, 2)
     `).run(
       tradeId,
-      pricingRule.party_id,
+      pricingRule.counterparty_id,
       pricingRule.execution_context_id,
       pricingRule.pricing_rule_id
     );
@@ -5282,22 +5823,50 @@ function executionContext(executionContextId) {
   return executionContexts().find(context => context.executionContextId === Number(executionContextId)) || null;
 }
 
-function tradingParties() {
+function tradingCounterparties() {
   return database.prepare(`
     SELECT
-      party_id AS partyId,
-      party_type AS partyType,
-      party_code AS partyCode,
-      party_code_type AS partyCodeType,
-      party_name AS partyName,
-      is_active AS active
-    FROM trading_parties
-    ORDER BY party_name, party_code
-  `).all().map(party => ({ ...party, active: party.active === 1 }));
+      counterparty.counterparty_id AS counterpartyId,
+      counterparty.counterparty_name AS counterpartyName,
+      counterparty.is_active AS active,
+      CASE WHEN external.counterparty_id IS NOT NULL THEN 'EXTERNAL' ELSE 'INTERNAL' END AS counterpartyScope,
+      external.counterparty_code AS externalCounterpartyCode,
+      external.counterparty_code_type AS externalCounterpartyCodeType,
+      external.external_counterparty_kind AS externalCounterpartyKind,
+      internal.unit_code AS unitCode,
+      internal.unit_type AS unitType,
+      COALESCE(external.counterparty_code, internal.unit_code) AS counterpartyCode,
+      COALESCE(external.counterparty_code_type, 'INTERNAL_UNIT_CODE') AS counterpartyCodeType,
+      (
+        SELECT GROUP_CONCAT(role.role_code, '|')
+        FROM trading_counterparty_roles role
+        WHERE role.counterparty_id = counterparty.counterparty_id
+      ) AS counterpartyRoles
+    FROM trading_counterparties counterparty
+    LEFT JOIN external_counterparties external ON external.counterparty_id = counterparty.counterparty_id
+    LEFT JOIN internal_units internal ON internal.counterparty_id = counterparty.counterparty_id
+    ORDER BY counterparty.counterparty_name, COALESCE(external.counterparty_code, internal.unit_code)
+  `).all().map(counterparty => {
+    const counterpartyRoles = String(counterparty.counterpartyRoles || "")
+      .split("|")
+      .filter(role => COUNTERPARTY_ROLES.includes(role))
+      .sort((left, right) => COUNTERPARTY_ROLES.indexOf(left) - COUNTERPARTY_ROLES.indexOf(right));
+
+    return {
+      ...counterparty,
+      counterpartyRoles,
+      counterpartyType: counterpartyRoles[0] || "",
+      active: counterparty.active === 1
+    };
+  });
 }
 
-function tradingParty(partyId) {
-  return tradingParties().find(party => party.partyId === Number(partyId)) || null;
+function tradingCounterparty(counterpartyId) {
+  return tradingCounterparties().find(counterparty => counterparty.counterpartyId === Number(counterpartyId)) || null;
+}
+
+function tradingCounterpartyHasRole(counterparty, roleCode) {
+  return Array.isArray(counterparty?.counterpartyRoles) && counterparty.counterpartyRoles.includes(roleCode);
 }
 
 function users() {
@@ -5319,31 +5888,95 @@ function user(userId) {
 }
 
 function pricingRules(pricingMode = null) {
+  const counterpartiesById = new Map(tradingCounterparties().map(counterparty => [counterparty.counterpartyId, counterparty]));
+
   return database.prepare(`
     SELECT
       r.pricing_rule_id AS pricingRuleId,
-      r.party_id AS partyId,
-      p.party_type AS partyType,
-      p.party_code AS partyCode,
-      p.party_code_type AS partyCodeType,
-      p.party_name AS partyName,
+      r.counterparty_id AS counterpartyId,
+      p.counterparty_name AS counterpartyName,
       r.execution_context_id AS executionContextId,
       r.ccy_pair_code AS ccyPairCode,
       c.base_ccy_code || '/' || c.quote_ccy_code AS currencyPair,
       r.margin_percent AS marginPercent,
-      e.pricing_mode AS pricingMode
+      e.pricing_mode AS pricingMode,
+      (
+        SELECT COUNT(*)
+        FROM fx_hedge_quick_mode_settings settings
+        WHERE settings.pricing_rule_id = r.pricing_rule_id
+      ) AS quickHedgeSettingsCount
     FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
     INNER JOIN ccy_pair_options c ON c.ccy_pair_code = r.ccy_pair_code
     INNER JOIN execution_contexts x ON x.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = x.execution_system_id
     WHERE (? IS NULL OR e.pricing_mode = ?)
-    ORDER BY p.party_name, c.ccy_pair_code, r.execution_context_id
-  `).all(pricingMode, pricingMode);
+    ORDER BY p.counterparty_name, c.ccy_pair_code, r.execution_context_id
+  `).all(pricingMode, pricingMode).map(rule => {
+    const counterparty = counterpartiesById.get(rule.counterpartyId);
+
+    return {
+      ...rule,
+      counterpartyType: counterparty?.counterpartyType || "",
+      counterpartyRoles: counterparty?.counterpartyRoles || [],
+      counterpartyScope: counterparty?.counterpartyScope || "",
+      counterpartyCode: counterparty?.counterpartyCode || "",
+      counterpartyCodeType: counterparty?.counterpartyCodeType || ""
+    };
+  });
 }
 
 function pricingRule(pricingRuleId) {
   return pricingRules().find(rule => rule.pricingRuleId === Number(pricingRuleId)) || null;
+}
+
+function pricingRuleDeletionUsage(pricingRuleId) {
+  const quickHedgePairs = database.prepare(`
+    SELECT pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair
+    FROM fx_hedge_quick_mode_settings settings
+    INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = settings.ccy_pair_code
+    WHERE settings.pricing_rule_id = ?
+    ORDER BY settings.ccy_pair_code
+  `).all(pricingRuleId).map(item => item.currencyPair);
+  const clientDealCount = Number(database.prepare(`
+    SELECT COUNT(*) AS count
+    FROM client_fx_deals
+    WHERE pricing_rule_id = ?
+  `).get(pricingRuleId)?.count || 0);
+  const hedgeDealCount = Number(database.prepare(`
+    SELECT COUNT(*) AS count
+    FROM fx_hedge_deals
+    WHERE pricing_rule_id = ?
+  `).get(pricingRuleId)?.count || 0);
+
+  return { quickHedgePairs, clientDealCount, hedgeDealCount };
+}
+
+function pricingRuleDeletionConflictMessage(pricingRuleId, usage) {
+  const references = [];
+
+  if (usage.quickHedgePairs.length > 0) {
+    references.push(`Quick Hedge Settings for ${usage.quickHedgePairs.join(", ")}`);
+  }
+
+  if (usage.clientDealCount > 0) {
+    const label = usage.clientDealCount === 1 ? "Client FX Deal" : "Client FX Deals";
+    references.push(`${usage.clientDealCount} ${label}`);
+  }
+
+  if (usage.hedgeDealCount > 0) {
+    const label = usage.hedgeDealCount === 1 ? "Hedge FX Deal" : "Hedge FX Deals";
+    references.push(`${usage.hedgeDealCount} ${label}`);
+  }
+
+  if (references.length === 0) {
+    return "";
+  }
+
+  const referenceList = references.length === 1
+    ? references[0]
+    : `${references.slice(0, -1).join(", ")} and ${references.at(-1)}`;
+  return `Pricing Rule ${pricingRuleId} cannot be deleted because it is used by ${referenceList}. Remove or change those references first.`;
 }
 
 function clientDealPricingRules() {
@@ -5363,12 +5996,12 @@ function eligibleHedgeDealPricingRules(pricingMode) {
   }
 
   return pricingRules(normalizedPricingMode).filter(rule => {
-    const party = tradingParty(rule.partyId);
+    const counterparty = tradingCounterparty(rule.counterpartyId);
     const context = executionContext(rule.executionContextId);
     const system = context ? executionSystem(context.executionSystemId) : null;
 
-    return party?.partyType === "HEDGE_COUNTERPARTY"
-      && party.active
+    return tradingCounterpartyHasRole(counterparty, "HEDGE_COUNTERPARTY")
+      && counterparty.active
       && Boolean(system?.active);
   });
 }
@@ -5400,11 +6033,11 @@ function hedgeQuickModeSettings() {
       settings.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
       pair.base_ccy_code AS baseCcyCode,
-      settings.party_id AS partyId,
+      settings.counterparty_id AS counterpartyId,
       settings.pricing_rule_id AS pricingRuleId,
-      party.party_type AS partyType,
-      party.party_name AS partyName,
-      party.is_active AS partyActive,
+      'HEDGE_COUNTERPARTY' AS counterpartyType,
+      counterparty.counterparty_name AS counterpartyName,
+      counterparty.is_active AS counterpartyActive,
       rule.execution_context_id AS executionContextId,
       execution.execution_system_id AS executionSystemId,
       execution.name AS executionSystemName,
@@ -5422,9 +6055,11 @@ function hedgeQuickModeSettings() {
       ON pair.ccy_pair_code = settings.ccy_pair_code
     INNER JOIN pricing_rules rule
       ON rule.pricing_rule_id = settings.pricing_rule_id
-      AND rule.party_id = settings.party_id
+      AND rule.counterparty_id = settings.counterparty_id
       AND rule.ccy_pair_code = settings.ccy_pair_code
-    INNER JOIN trading_parties party ON party.party_id = settings.party_id
+    INNER JOIN trading_counterparties counterparty ON counterparty.counterparty_id = settings.counterparty_id
+    INNER JOIN trading_counterparty_roles role
+      ON role.counterparty_id = counterparty.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
     INNER JOIN execution_contexts context
       ON context.execution_context_id = rule.execution_context_id
     INNER JOIN execution_systems execution
@@ -5434,16 +6069,16 @@ function hedgeQuickModeSettings() {
     const settings = {
       ...row,
       active: row.active === 1,
-      partyActive: row.partyActive === 1,
+      counterpartyActive: row.counterpartyActive === 1,
       executionSystemActive: row.executionSystemActive === 1
     };
 
     return {
       ...settings,
       available: settings.active
-        && settings.partyActive
+        && settings.counterpartyActive
         && settings.executionSystemActive
-        && settings.partyType === "HEDGE_COUNTERPARTY"
+        && settings.counterpartyType === "HEDGE_COUNTERPARTY"
         && settings.pricingMode === "AUTO_PRICED",
       presets: hedgeQuickModePresets(settings)
     };
@@ -5461,7 +6096,7 @@ function replaceHedgeQuickModeSetting(payload) {
     INSERT INTO fx_hedge_quick_mode_settings
       (
         ccy_pair_code,
-        party_id,
+        counterparty_id,
         pricing_rule_id,
         base_ccy_fraction_digits,
         small_base_ccy_amount_minor,
@@ -5473,7 +6108,7 @@ function replaceHedgeQuickModeSetting(payload) {
       )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (ccy_pair_code) DO UPDATE SET
-      party_id = excluded.party_id,
+      counterparty_id = excluded.counterparty_id,
       pricing_rule_id = excluded.pricing_rule_id,
       base_ccy_fraction_digits = excluded.base_ccy_fraction_digits,
       small_base_ccy_amount_minor = excluded.small_base_ccy_amount_minor,
@@ -5484,7 +6119,7 @@ function replaceHedgeQuickModeSetting(payload) {
       default_tenor = excluded.default_tenor
   `).run(
     payload.ccyPairCode,
-    payload.partyId,
+    payload.counterpartyId,
     payload.pricingRuleId,
     payload.baseCcyFractionDigits,
     payload.smallBaseCcyAmountMinor,
@@ -5557,12 +6192,12 @@ function clientDealGenerationSettings() {
   return database.prepare(`
     SELECT
       s.pricing_rule_id AS pricingRuleId,
-      r.party_id AS partyId,
-      p.party_type AS partyType,
-      p.party_code AS partyCode,
-      p.party_code_type AS partyCodeType,
-      p.party_name AS partyName,
-      p.is_active AS partyActive,
+      r.counterparty_id AS counterpartyId,
+      'CLIENT' AS counterpartyType,
+      external.counterparty_code AS counterpartyCode,
+      external.counterparty_code_type AS counterpartyCodeType,
+      p.counterparty_name AS counterpartyName,
+      p.is_active AS counterpartyActive,
       r.execution_context_id AS executionContextId,
       r.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
@@ -5587,7 +6222,10 @@ function clientDealGenerationSettings() {
       s.is_active AS active
     FROM client_deal_generation_settings s
     INNER JOIN pricing_rules r ON r.pricing_rule_id = s.pricing_rule_id
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
+    INNER JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
+    INNER JOIN trading_counterparty_roles role
+      ON role.counterparty_id = p.counterparty_id AND role.role_code = 'CLIENT'
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
     INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = pair.quote_ccy_code
@@ -5598,9 +6236,8 @@ function clientDealGenerationSettings() {
       ON accounting.accounting_system_id = context.accounting_system_id
     INNER JOIN execution_systems execution
       ON execution.execution_system_id = context.execution_system_id
-    WHERE p.party_type = 'CLIENT'
-      AND execution.pricing_mode = 'AUTO_PRICED'
-    ORDER BY p.party_name, pair.ccy_pair_code, s.pricing_rule_id
+    WHERE execution.pricing_mode = 'AUTO_PRICED'
+    ORDER BY p.counterparty_name, pair.ccy_pair_code, s.pricing_rule_id
   `).all().map(settings => ({
     ...settings,
     minBaseCcyAmount: Number(minorToMajor(
@@ -5616,7 +6253,7 @@ function clientDealGenerationSettings() {
       settings.baseCcyFractionDigits
     )),
     active: settings.active === 1,
-    partyActive: settings.partyActive === 1,
+    counterpartyActive: settings.counterpartyActive === 1,
     executionSystemActive: settings.executionSystemActive === 1
   }));
 }
@@ -5630,7 +6267,7 @@ function eligibleClientDealGenerationSettings() {
   return clientDealGenerationSettings()
     .filter(settings =>
       settings.active
-      && settings.partyActive
+      && settings.counterpartyActive
       && settings.executionSystemActive
       && settings.pricingMode === "AUTO_PRICED"
     );
@@ -5664,13 +6301,13 @@ function ensureClientDealGenerationSettingsForPricingRule(pricingRuleId) {
       r.pricing_rule_id,
       base_ccy.fraction_digits AS base_ccy_fraction_digits
     FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN trading_counterparty_roles role
+      ON role.counterparty_id = r.counterparty_id AND role.role_code = 'CLIENT'
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
     INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     WHERE r.pricing_rule_id = ?
-      AND p.party_type = 'CLIENT'
       AND e.pricing_mode = 'AUTO_PRICED'
   `).get(pricingRuleId);
 
@@ -5706,7 +6343,7 @@ function clientFxDeals() {
       e.trade_id AS tradeId,
       e.trade_id AS clientDealId,
       e.entry_timestamp AS entryTimestamp,
-      d.party_id AS partyId,
+      d.counterparty_id AS counterpartyId,
       d.execution_context_id AS executionContextId,
       d.pricing_rule_id AS pricingRuleId,
       r.margin_percent AS pricingRuleMargin,
@@ -5718,9 +6355,9 @@ function clientFxDeals() {
       a.market_pulse_bid AS marketPulseBid,
       a.market_pulse_offer AS marketPulseOffer,
       a.market_pulse_timestamp AS marketPulseTimestamp,
-      p.party_code AS clientCode,
-      p.party_code_type AS clientCodeType,
-      p.party_name AS clientName,
+      COALESCE(external.counterparty_code, internal.unit_code) AS clientCode,
+      COALESCE(external.counterparty_code_type, 'INTERNAL_UNIT_CODE') AS clientCodeType,
+      p.counterparty_name AS clientName,
       e.trade_date AS tradeDate,
       e.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
@@ -5737,7 +6374,9 @@ function clientFxDeals() {
     FROM client_fx_deals d
     INNER JOIN fx_trade_exposure e
       ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
-    INNER JOIN trading_parties p ON p.party_id = d.party_id
+    INNER JOIN trading_counterparties p ON p.counterparty_id = d.counterparty_id
+    LEFT JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
+    LEFT JOIN internal_units internal ON internal.counterparty_id = p.counterparty_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     LEFT JOIN pricing_rules r ON r.pricing_rule_id = d.pricing_rule_id
     LEFT JOIN fx_trade_market_snapshot a
@@ -5756,7 +6395,7 @@ function hedgeFxDeals() {
       e.trade_id AS tradeId,
       e.trade_id AS hedgeDealId,
       e.entry_timestamp AS entryTimestamp,
-      d.party_id AS partyId,
+      d.counterparty_id AS counterpartyId,
       d.execution_context_id AS executionContextId,
       d.pricing_rule_id AS pricingRuleId,
       r.margin_percent AS pricingRuleMargin,
@@ -5767,9 +6406,9 @@ function hedgeFxDeals() {
       a.market_pulse_bid AS marketPulseBid,
       a.market_pulse_offer AS marketPulseOffer,
       a.market_pulse_timestamp AS marketPulseTimestamp,
-      p.party_code AS partyCode,
-      p.party_code_type AS partyCodeType,
-      p.party_name AS partyName,
+      COALESCE(external.counterparty_code, internal.unit_code) AS counterpartyCode,
+      COALESCE(external.counterparty_code_type, 'INTERNAL_UNIT_CODE') AS counterpartyCodeType,
+      p.counterparty_name AS counterpartyName,
       e.trade_date AS tradeDate,
       e.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
@@ -5786,7 +6425,9 @@ function hedgeFxDeals() {
     FROM fx_hedge_deals d
     INNER JOIN fx_trade_exposure e
       ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
-    INNER JOIN trading_parties p ON p.party_id = d.party_id
+    INNER JOIN trading_counterparties p ON p.counterparty_id = d.counterparty_id
+    LEFT JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
+    LEFT JOIN internal_units internal ON internal.counterparty_id = p.counterparty_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     LEFT JOIN pricing_rules r ON r.pricing_rule_id = d.pricing_rule_id
     LEFT JOIN fx_trade_market_snapshot a
@@ -5818,7 +6459,7 @@ function fxPositions() {
       e.tenor,
       e.base_ccy_value_date AS baseCcyValueDate,
       e.quote_ccy_value_date AS quoteCcyValueDate,
-      COALESCE(c.party_id, h.party_id) AS partyId,
+      COALESCE(c.counterparty_id, h.counterparty_id) AS counterpartyId,
       COALESCE(c.execution_context_id, h.execution_context_id) AS executionContextId,
       COALESCE(c.pricing_rule_id, h.pricing_rule_id) AS pricingRuleId,
       r.margin_percent AS pricingRuleMargin,
@@ -5839,9 +6480,9 @@ function fxPositions() {
         h.analytical_pnl_quote_fraction_digits
       ) AS analyticalPnlQuoteFractionDigits,
       c.comment,
-      p.party_code AS partyCode,
-      p.party_code_type AS partyCodeType,
-      p.party_name AS partyName,
+      COALESCE(external.counterparty_code, internal.unit_code) AS counterpartyCode,
+      COALESCE(external.counterparty_code_type, 'INTERNAL_UNIT_CODE') AS counterpartyCodeType,
+      p.counterparty_name AS counterpartyName,
       a.market_pulse_stream_status AS marketPulseStreamStatus,
       a.market_pulse_bid AS marketPulseBid,
       a.market_pulse_offer AS marketPulseOffer,
@@ -5866,8 +6507,10 @@ function fxPositions() {
       ON c.trade_id = e.trade_id AND c.trade_type = e.trade_type
     LEFT JOIN fx_hedge_deals h
       ON h.trade_id = e.trade_id AND h.trade_type = e.trade_type
-    LEFT JOIN trading_parties p
-      ON p.party_id = COALESCE(c.party_id, h.party_id)
+    LEFT JOIN trading_counterparties p
+      ON p.counterparty_id = COALESCE(c.counterparty_id, h.counterparty_id)
+    LEFT JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
+    LEFT JOIN internal_units internal ON internal.counterparty_id = p.counterparty_id
     LEFT JOIN pricing_rules r
       ON r.pricing_rule_id = COALESCE(c.pricing_rule_id, h.pricing_rule_id)
     LEFT JOIN fx_trade_market_snapshot a
@@ -5894,9 +6537,9 @@ function fxPositions() {
     ...fxTradeRowWithMajorAmounts(row),
     clientDealId: row.tradeType === "CLIENT_DEAL" ? row.tradeId : undefined,
     hedgeDealId: row.tradeType === "HEDGE_DEAL" ? row.tradeId : undefined,
-    clientCode: row.tradeType === "CLIENT_DEAL" ? row.partyCode : undefined,
-    clientCodeType: row.tradeType === "CLIENT_DEAL" ? row.partyCodeType : undefined,
-    clientName: row.tradeType === "CLIENT_DEAL" ? row.partyName : undefined
+    clientCode: row.tradeType === "CLIENT_DEAL" ? row.counterpartyCode : undefined,
+    clientCodeType: row.tradeType === "CLIENT_DEAL" ? row.counterpartyCodeType : undefined,
+    clientName: row.tradeType === "CLIENT_DEAL" ? row.counterpartyName : undefined
   }));
 }
 
@@ -6112,10 +6755,10 @@ function fxBatchContent(batchId) {
       exposure.tenor,
       exposure.base_ccy_value_date AS baseCcyValueDate,
       exposure.quote_ccy_value_date AS quoteCcyValueDate,
-      COALESCE(client.party_id, hedge.party_id) AS partyId,
-      party.party_code AS partyCode,
-      party.party_code_type AS partyCodeType,
-      party.party_name AS partyName,
+      COALESCE(client.counterparty_id, hedge.counterparty_id) AS counterpartyId,
+      COALESCE(external.counterparty_code, internal.unit_code) AS counterpartyCode,
+      COALESCE(external.counterparty_code_type, 'INTERNAL_UNIT_CODE') AS counterpartyCodeType,
+      counterparty.counterparty_name AS counterpartyName,
       origins.created_by_batch_id AS createdByBatchId
     FROM batch_content content
     INNER JOIN fx_trade_exposure exposure
@@ -6129,8 +6772,10 @@ function fxBatchContent(batchId) {
     LEFT JOIN fx_hedge_deals hedge
       ON hedge.trade_id = exposure.trade_id
       AND hedge.trade_type = exposure.trade_type
-    LEFT JOIN trading_parties party
-      ON party.party_id = COALESCE(client.party_id, hedge.party_id)
+    LEFT JOIN trading_counterparties counterparty
+      ON counterparty.counterparty_id = COALESCE(client.counterparty_id, hedge.counterparty_id)
+    LEFT JOIN external_counterparties external ON external.counterparty_id = counterparty.counterparty_id
+    LEFT JOIN internal_units internal ON internal.counterparty_id = counterparty.counterparty_id
     LEFT JOIN technical_origins origins
       ON origins.trade_id = exposure.trade_id
       AND origins.trade_type = exposure.trade_type
@@ -6672,7 +7317,7 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
         (
           trade_id,
           trade_type,
-          party_id,
+          counterparty_id,
           execution_context_id,
           pricing_rule_id,
           transfer_rate,
@@ -6683,7 +7328,7 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
       VALUES (?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?)
     `).run(
       tradeId,
-      payload.partyId,
+      payload.counterpartyId,
       payload.executionContextId,
       payload.pricingRuleId,
       payload.transferRate,
@@ -6741,7 +7386,7 @@ function hedgeFxDealWithCalculatedTerms(
       terms.analyticalPnlQuoteMinor,
       "Analytical PnL Quote Minor"
     ),
-    partyId: rule.partyId,
+    counterpartyId: rule.counterpartyId,
     executionContextId: rule.executionContextId,
     pricingRuleId: rule.pricingRuleId,
     ccyPairCode: rule.ccyPairCode,
@@ -6838,7 +7483,7 @@ function createHedgeFxDeal(payload, suppliedExposureAmounts = null) {
         (
           trade_id,
           trade_type,
-          party_id,
+          counterparty_id,
           execution_context_id,
           pricing_rule_id,
           transfer_rate,
@@ -6848,7 +7493,7 @@ function createHedgeFxDeal(payload, suppliedExposureAmounts = null) {
       VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?, ?)
     `).run(
       tradeId,
-      payload.partyId,
+      payload.counterpartyId,
       payload.executionContextId,
       payload.pricingRuleId,
       payload.transferRate,
@@ -7166,15 +7811,57 @@ function normalizedExecutionContextId(value) {
   return integerInRange(value, 1, Number.MAX_SAFE_INTEGER);
 }
 
-function normalizedPartyType(value) {
+function normalizedCounterpartyType(value) {
   return normalizedText(value).toUpperCase();
 }
 
-function normalizedPartyCodeType(value) {
+function normalizedCounterpartyCodeType(value) {
   return normalizedText(value).toUpperCase();
 }
 
-function normalizedPartyCode(value, codeType) {
+function normalizedCounterpartyScope(value) {
+  return normalizedText(value).toUpperCase();
+}
+
+function normalizedExternalCounterpartyKind(value) {
+  const normalized = normalizedText(value).toUpperCase();
+
+  if (normalized === "ORGANIZATION") {
+    return "CORPORATE";
+  }
+
+  if (normalized === "FUND") {
+    return "NON_BANK_FINANCIAL_INSTITUTION";
+  }
+
+  return normalized;
+}
+
+function normalizedInternalUnitType(value) {
+  return normalizedText(value).toUpperCase();
+}
+
+function normalizedCounterpartyRoles(value, legacyCounterpartyType = "") {
+  const source = Array.isArray(value) ? value : [];
+  const roles = source
+    .map(role => normalizedText(role).toUpperCase())
+    .filter(role => COUNTERPARTY_ROLES.includes(role));
+
+  if (roles.length === 0) {
+    const legacyRole = normalizedCounterpartyType(legacyCounterpartyType);
+
+    if (legacyRole === "CLIENT") {
+      roles.push("CLIENT");
+    } else if (["HEDGE_COUNTERPARTY", "EXTERNAL_COUNTERPARTY", "INTERNAL_DESK"].includes(legacyRole)) {
+      roles.push("HEDGE_COUNTERPARTY");
+    }
+  }
+
+  return [...new Set(roles)]
+    .sort((left, right) => COUNTERPARTY_ROLES.indexOf(left) - COUNTERPARTY_ROLES.indexOf(right));
+}
+
+function normalizedCounterpartyCode(value, codeType) {
   const code = normalizedText(value);
   return codeType === "INN" ? code : code.toUpperCase();
 }
@@ -7358,42 +8045,181 @@ function validateExecutionContextPayload(body) {
   };
 }
 
-function validateTradingPartyPayload(body) {
-  const partyType = normalizedPartyType(body.partyType);
-  const partyCodeType = normalizedPartyCodeType(body.partyCodeType);
-  const partyCode = normalizedPartyCode(body.partyCode, partyCodeType);
-  const partyName = normalizedText(body.partyName);
+function validateTradingCounterpartyPayload(body) {
+  const requestedScope = normalizedCounterpartyScope(body.counterpartyScope);
+  const legacyCodeType = normalizedCounterpartyCodeType(body.counterpartyCodeType);
+  const inferredScope = body.unitCode !== undefined
+    || legacyCodeType === "INTERNAL_UNIT_CODE"
+    || legacyCodeType === "FRONT_SYSTEM_FOLDER_ID"
+    || normalizedCounterpartyType(body.counterpartyType) === "INTERNAL_DESK"
+    ? "INTERNAL"
+    : "EXTERNAL";
+  const counterpartyScope = requestedScope || inferredScope;
+  const counterpartyRoles = normalizedCounterpartyRoles(body.counterpartyRoles, body.counterpartyType);
+  const requestedRoles = Array.isArray(body.counterpartyRoles)
+    ? body.counterpartyRoles.map(role => normalizedText(role).toUpperCase())
+    : [];
+  const counterpartyName = normalizedText(body.counterpartyName);
   const active = typeof body.active === "boolean" ? body.active : null;
 
-  if (!PARTY_TYPES.includes(partyType)) {
-    return { error: "Party Type must be CLIENT or HEDGE_COUNTERPARTY." };
+  if (!COUNTERPARTY_SCOPES.includes(counterpartyScope)) {
+    return { error: "Counterparty Scope must be EXTERNAL or INTERNAL." };
   }
 
-  if (!PARTY_CODE_TYPES.includes(partyCodeType)) {
-    return { error: "Party Code Type must be INN, OTHER or FRONT_SYSTEM_FOLDER_ID." };
+  if (counterpartyRoles.length === 0) {
+    return { error: "At least one Trading Counterparty role is required." };
   }
 
-  const validPartyCode = partyCodeType === "INN"
-    ? /^\d{10,12}$/.test(partyCode)
-    : new RegExp(`^[A-Z0-9_-]{2,${PARTY_CODE_MAX_LENGTH}}$`).test(partyCode);
-
-  if (!validPartyCode) {
-    return {
-      error: partyCodeType === "INN"
-        ? "Party Code with type INN must contain 10 to 12 digits."
-        : `Party Code with type ${partyCodeType} must contain from 2 to ${PARTY_CODE_MAX_LENGTH} uppercase letters, digits, underscores or hyphens.`
-    };
+  if (requestedRoles.some(role => !COUNTERPARTY_ROLES.includes(role))) {
+    return { error: "Trading Counterparty roles must be CLIENT or HEDGE_COUNTERPARTY." };
   }
 
-  if (!partyName || partyName.length > PARTY_NAME_MAX_LENGTH) {
-    return { error: `Party Name must contain from 1 to ${PARTY_NAME_MAX_LENGTH} characters.` };
+  if (!counterpartyName || counterpartyName.length > COUNTERPARTY_NAME_MAX_LENGTH) {
+    return { error: `Counterparty Name must contain from 1 to ${COUNTERPARTY_NAME_MAX_LENGTH} characters.` };
   }
 
   if (active === null) {
     return { error: "Active must be a boolean value." };
   }
 
-  return { partyType, partyCode, partyCodeType, partyName, active };
+  if (counterpartyScope === "EXTERNAL") {
+    if (legacyCodeType && !EXTERNAL_COUNTERPARTY_CODE_TYPES.includes(legacyCodeType)) {
+      return { error: "External Counterparty Code Type must be INN or OTHER." };
+    }
+
+    const counterpartyCodeType = EXTERNAL_COUNTERPARTY_CODE_TYPES.includes(legacyCodeType)
+      ? legacyCodeType
+      : "INN";
+    const counterpartyCode = normalizedCounterpartyCode(
+      body.externalCounterpartyCode ?? body.counterpartyCode,
+      counterpartyCodeType
+    );
+    const requestedKind = normalizedExternalCounterpartyKind(body.externalCounterpartyKind);
+    const externalCounterpartyKind = requestedKind || "CORPORATE";
+
+    if (!EXTERNAL_COUNTERPARTY_KINDS.includes(externalCounterpartyKind)) {
+      return { error: `External Counterparty Type must be ${EXTERNAL_COUNTERPARTY_KINDS.join(", ")}.` };
+    }
+
+    const validCounterpartyCode = counterpartyCodeType === "INN"
+      ? /^\d{10,12}$/.test(counterpartyCode)
+      : new RegExp(`^[A-Z0-9_-]{2,${COUNTERPARTY_CODE_MAX_LENGTH}}$`).test(counterpartyCode);
+
+    if (!validCounterpartyCode) {
+      return {
+        error: counterpartyCodeType === "INN"
+          ? "Counterparty Code with type INN must contain 10 to 12 digits."
+          : `Counterparty Code must contain from 2 to ${COUNTERPARTY_CODE_MAX_LENGTH} uppercase letters, digits, underscores or hyphens.`
+      };
+    }
+
+    return {
+      counterpartyScope,
+      counterpartyRoles,
+      counterpartyName,
+      active,
+      counterpartyCode,
+      counterpartyCodeType,
+      externalCounterpartyKind,
+      unitCode: null,
+      unitType: null
+    };
+  }
+
+  const unitCode = normalizedCounterpartyCode(body.unitCode ?? body.counterpartyCode, "OTHER");
+  const requestedUnitType = normalizedInternalUnitType(body.unitType);
+  const unitType = requestedUnitType || "DESK";
+
+  if (!new RegExp(`^[A-Z0-9_-]{2,${COUNTERPARTY_CODE_MAX_LENGTH}}$`).test(unitCode)) {
+    return {
+      error: `Unit Code must contain from 2 to ${COUNTERPARTY_CODE_MAX_LENGTH} uppercase letters, digits, underscores or hyphens.`
+    };
+  }
+
+  if (!INTERNAL_UNIT_TYPES.includes(unitType)) {
+    return { error: `Unit Type must be ${INTERNAL_UNIT_TYPES.join(", ")}.` };
+  }
+
+  return {
+    counterpartyScope,
+    counterpartyRoles,
+    counterpartyName,
+    active,
+    counterpartyCode: null,
+    counterpartyCodeType: null,
+    externalCounterpartyKind: null,
+    unitCode,
+    unitType
+  };
+}
+
+function saveTradingCounterpartyProfile(sqlite, counterpartyId, payload) {
+  if (payload.counterpartyScope === "EXTERNAL") {
+    sqlite.prepare("DELETE FROM internal_units WHERE counterparty_id = ?").run(counterpartyId);
+    sqlite.prepare(`
+      INSERT INTO external_counterparties
+        (counterparty_id, counterparty_code, counterparty_code_type, external_counterparty_kind)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT (counterparty_id) DO UPDATE SET
+        counterparty_code = excluded.counterparty_code,
+        counterparty_code_type = excluded.counterparty_code_type,
+        external_counterparty_kind = excluded.external_counterparty_kind
+    `).run(
+      counterpartyId,
+      payload.counterpartyCode,
+      payload.counterpartyCodeType,
+      payload.externalCounterpartyKind
+    );
+    return;
+  }
+
+  sqlite.prepare("DELETE FROM external_counterparties WHERE counterparty_id = ?").run(counterpartyId);
+  sqlite.prepare(`
+    INSERT INTO internal_units (counterparty_id, unit_code, unit_type)
+    VALUES (?, ?, ?)
+    ON CONFLICT (counterparty_id) DO UPDATE SET
+      unit_code = excluded.unit_code,
+      unit_type = excluded.unit_type
+  `).run(counterpartyId, payload.unitCode, payload.unitType);
+}
+
+function synchronizeTradingCounterpartyRoles(sqlite, counterpartyId, requestedRoles) {
+  const existingRoles = new Set(sqlite.prepare(`
+    SELECT role_code AS roleCode
+    FROM trading_counterparty_roles
+    WHERE counterparty_id = ?
+  `).all(counterpartyId).map(row => row.roleCode));
+  const requestedRoleSet = new Set(requestedRoles);
+
+  requestedRoles.forEach(roleCode => {
+    if (!existingRoles.has(roleCode)) {
+      sqlite.prepare(`
+        INSERT INTO trading_counterparty_roles (counterparty_id, role_code)
+        VALUES (?, ?)
+      `).run(counterpartyId, roleCode);
+    }
+  });
+
+  if (existingRoles.has("CLIENT") && !requestedRoleSet.has("CLIENT")) {
+    sqlite.prepare(`
+      DELETE FROM client_deal_generation_settings
+      WHERE pricing_rule_id IN
+      (
+        SELECT pricing_rule_id
+        FROM pricing_rules
+        WHERE counterparty_id = ?
+      )
+    `).run(counterpartyId);
+  }
+
+  existingRoles.forEach(roleCode => {
+    if (!requestedRoleSet.has(roleCode)) {
+      sqlite.prepare(`
+        DELETE FROM trading_counterparty_roles
+        WHERE counterparty_id = ? AND role_code = ?
+      `).run(counterpartyId, roleCode);
+    }
+  });
 }
 
 function validateUserPayload(body) {
@@ -7429,13 +8255,13 @@ function validateUserPayload(body) {
 }
 
 function validatePricingRulePayload(body) {
-  const partyId = integerInRange(body.partyId, 1, Number.MAX_SAFE_INTEGER);
+  const counterpartyId = integerInRange(body.counterpartyId, 1, Number.MAX_SAFE_INTEGER);
   const executionContextId = normalizedExecutionContextId(body.executionContextId);
   const ccyPairCode = normalizedText(body.ccyPairCode).toUpperCase();
   const marginPercent = Number(body.marginPercent);
 
-  if (partyId === null) {
-    return { error: "Party ID must be a positive integer." };
+  if (counterpartyId === null) {
+    return { error: "Counterparty ID must be a positive integer." };
   }
 
   if (!executionContextId) {
@@ -7450,7 +8276,45 @@ function validatePricingRulePayload(body) {
     return { error: "Margin Percent must be a number from 0 up to, but not including, 100." };
   }
 
-  return { partyId, executionContextId, ccyPairCode, marginPercent };
+  return { counterpartyId, executionContextId, ccyPairCode, marginPercent };
+}
+
+function validatePricingRuleMarginPayload(body) {
+  const rawMarginPercent = body?.marginPercent;
+  const marginPercent = rawMarginPercent === null
+    || rawMarginPercent === undefined
+    || String(rawMarginPercent).trim() === ""
+    ? NaN
+    : Number(rawMarginPercent);
+
+  if (!Number.isFinite(marginPercent) || marginPercent < 0 || marginPercent >= 100) {
+    return { error: "Margin Percent must be a number from 0 up to, but not including, 100." };
+  }
+
+  return { marginPercent };
+}
+
+function pricingRuleImmutableTermsChanged(body, current) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return false;
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(body, "counterpartyId")
+    && integerInRange(body.counterpartyId, 1, Number.MAX_SAFE_INTEGER) !== current.counterpartyId
+  ) {
+    return true;
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(body, "executionContextId")
+    && normalizedExecutionContextId(body.executionContextId) !== current.executionContextId
+  ) {
+    return true;
+  }
+
+  return Object.prototype.hasOwnProperty.call(body, "ccyPairCode")
+    && normalizedText(body.ccyPairCode).toUpperCase() !== current.ccyPairCode;
 }
 
 function isIsoCalendarDate(value) {
@@ -7575,7 +8439,7 @@ function validateClientDealGenerationSettingsPayload(body, baseCcyFractionDigits
 
 function validateClientFxDealPayload(body) {
   const entryTimestamp = normalizedText(body.entryTimestamp);
-  const partyId = integerInRange(body.partyId, 1, Number.MAX_SAFE_INTEGER);
+  const counterpartyId = integerInRange(body.counterpartyId, 1, Number.MAX_SAFE_INTEGER);
   const executionContextId = optionalPositiveInteger(body.executionContextId);
   const pricingRuleId = optionalPositiveInteger(body.pricingRuleId);
   const manualPricingReason = normalizedText(body.manualPricingReason).toUpperCase();
@@ -7609,8 +8473,8 @@ function validateClientFxDealPayload(body) {
     return { error: "Entry Timestamp must be an ISO UTC timestamp with milliseconds." };
   }
 
-  if (partyId === null) {
-    return { error: "Party ID must be a positive integer." };
+  if (counterpartyId === null) {
+    return { error: "Counterparty ID must be a positive integer." };
   }
 
   if (Number.isNaN(executionContextId)) {
@@ -7707,7 +8571,7 @@ function validateClientFxDealPayload(body) {
 
   return {
     entryTimestamp,
-    partyId,
+    counterpartyId,
     executionContextId,
     pricingRuleId,
     manualPricingReason: manualPricingReason || null,
@@ -7850,7 +8714,7 @@ function validateHedgeQuickModeDealPayload(body) {
 
 function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractionDigits) {
   const allowedFields = new Set([
-    "partyId",
+    "counterpartyId",
     "pricingRuleId",
     "smallBaseCcyAmount",
     "mediumBaseCcyAmount",
@@ -7860,7 +8724,7 @@ function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractio
     "active"
   ]);
   const unexpectedFields = Object.keys(body).filter(field => !allowedFields.has(field));
-  const partyId = optionalPositiveInteger(body.partyId);
+  const counterpartyId = optionalPositiveInteger(body.counterpartyId);
   const pricingRuleId = optionalPositiveInteger(body.pricingRuleId);
   const active = typeof body.active === "boolean" ? body.active : null;
   const defaultTenor = normalizedText(body.defaultTenor).toUpperCase();
@@ -7881,8 +8745,8 @@ function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractio
     return { error: "Pricing Rule ID must be a positive integer." };
   }
 
-  if (Number.isNaN(partyId) || partyId === null) {
-    return { error: "Party ID must be a positive integer." };
+  if (Number.isNaN(counterpartyId) || counterpartyId === null) {
+    return { error: "Counterparty ID must be a positive integer." };
   }
 
   if (active === null) {
@@ -7926,7 +8790,7 @@ function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractio
 
   return {
     ccyPairCode,
-    partyId,
+    counterpartyId,
     pricingRuleId,
     baseCcyFractionDigits,
     ...amounts,
@@ -7962,8 +8826,8 @@ function executionContextReferenceError(payload) {
 }
 
 function pricingRuleReferenceError(payload) {
-  if (!tradingParty(payload.partyId)) {
-    return `Trading Party ${payload.partyId} was not found.`;
+  if (!tradingCounterparty(payload.counterpartyId)) {
+    return `Trading Counterparty ${payload.counterpartyId} was not found.`;
   }
 
   if (!executionContext(payload.executionContextId)) {
@@ -7978,14 +8842,14 @@ function pricingRuleReferenceError(payload) {
 }
 
 function clientFxDealReferenceError(payload) {
-  const party = tradingParty(payload.partyId);
+  const counterparty = tradingCounterparty(payload.counterpartyId);
 
-  if (!party) {
-    return `Trading Party ${payload.partyId} was not found.`;
+  if (!counterparty) {
+    return `Trading Counterparty ${payload.counterpartyId} was not found.`;
   }
 
-  if (party.partyType !== "CLIENT") {
-    return `Trading Party ${payload.partyId} must have type CLIENT.`;
+  if (!tradingCounterpartyHasRole(counterparty, "CLIENT")) {
+    return `Trading Counterparty ${payload.counterpartyId} must have the CLIENT role.`;
   }
 
   const pair = ccyPairOption(payload.ccyPairCode);
@@ -8014,7 +8878,7 @@ function clientFxDealReferenceError(payload) {
       return `Pricing Rule ${payload.pricingRuleId} must use an Execution System with DEALER_PRICED pricing mode.`;
     }
 
-    if (rule.partyId !== payload.partyId
+    if (rule.counterpartyId !== payload.counterpartyId
       || rule.executionContextId !== payload.executionContextId
       || rule.ccyPairCode !== payload.ccyPairCode) {
       return `Pricing Rule ${payload.pricingRuleId} does not match the Client FX Deal scope.`;
@@ -8031,8 +8895,8 @@ function hedgeFxDealReferenceErrorForPricingMode(payload, pricingMode) {
     return `Pricing Rule ${payload.pricingRuleId} was not found.`;
   }
 
-  if (rule.partyType !== "HEDGE_COUNTERPARTY") {
-    return `Pricing Rule ${payload.pricingRuleId} must reference a HEDGE_COUNTERPARTY.`;
+  if (!rule.counterpartyRoles.includes("HEDGE_COUNTERPARTY")) {
+    return `Pricing Rule ${payload.pricingRuleId} must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role.`;
   }
 
   if (!eligibleHedgeDealPricingRule(payload.pricingRuleId, pricingMode)) {
@@ -8074,12 +8938,12 @@ function hedgeQuickModeSettingsReferenceError(payload) {
     return `Pricing Rule ${payload.pricingRuleId} was not found.`;
   }
 
-  if (rule.partyType !== "HEDGE_COUNTERPARTY") {
-    return `Pricing Rule ${payload.pricingRuleId} must reference a HEDGE_COUNTERPARTY.`;
+  if (!rule.counterpartyRoles.includes("HEDGE_COUNTERPARTY")) {
+    return `Pricing Rule ${payload.pricingRuleId} must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role.`;
   }
 
-  if (rule.partyId !== payload.partyId) {
-    return `Pricing Rule ${payload.pricingRuleId} does not belong to Trading Party ${payload.partyId}.`;
+  if (rule.counterpartyId !== payload.counterpartyId) {
+    return `Pricing Rule ${payload.pricingRuleId} does not belong to Trading Counterparty ${payload.counterpartyId}.`;
   }
 
   if (rule.pricingMode !== "AUTO_PRICED") {
@@ -8100,35 +8964,35 @@ function hedgeQuickModeSettingsReferenceError(payload) {
 function databaseConstraintMessage(error) {
   const message = error instanceof Error ? error.message : String(error);
 
-  if (message.includes("a Trading Party used by client_fx_deals must remain a CLIENT")) {
+  if (message.includes("a Trading Counterparty used by client_fx_deals must retain the CLIENT role")) {
     return {
       status: 409,
-      code: "TRADING_PARTY_HAS_CLIENT_FX_DEALS",
-      message: "A Trading Party used by Client FX Deals must remain a CLIENT."
+      code: "TRADING_COUNTERPARTY_HAS_CLIENT_FX_DEALS",
+      message: "A Trading Counterparty used by Client FX Deals must retain the CLIENT role."
     };
   }
 
-  if (message.includes("client_fx_deals.party_id must reference a CLIENT trading party")) {
+  if (message.includes("client_fx_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role")) {
     return {
       status: 400,
-      code: "INVALID_CLIENT_FX_DEAL_PARTY",
-      message: "A Client FX Deal must reference a Trading Party with type CLIENT."
+      code: "INVALID_CLIENT_FX_DEAL_COUNTERPARTY",
+      message: "A Client FX Deal must reference a Trading Counterparty with the CLIENT role."
     };
   }
 
-  if (message.includes("a Trading Party used by fx_hedge_deals must remain a HEDGE_COUNTERPARTY")) {
+  if (message.includes("a Trading Counterparty used by fx_hedge_deals must retain the HEDGE_COUNTERPARTY role")) {
     return {
       status: 409,
-      code: "TRADING_PARTY_HAS_HEDGE_FX_DEALS",
-      message: "A Trading Party used by Hedge FX Deals must remain a HEDGE_COUNTERPARTY."
+      code: "TRADING_COUNTERPARTY_HAS_HEDGE_FX_DEALS",
+      message: "A Trading Counterparty used by Hedge FX Deals must retain the HEDGE_COUNTERPARTY role."
     };
   }
 
-  if (message.includes("fx_hedge_deals.party_id must reference a HEDGE_COUNTERPARTY trading party")) {
+  if (message.includes("fx_hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role")) {
     return {
       status: 400,
-      code: "INVALID_HEDGE_FX_DEAL_PARTY",
-      message: "A Hedge FX Deal must reference a Trading Party with type HEDGE_COUNTERPARTY."
+      code: "INVALID_HEDGE_FX_DEAL_COUNTERPARTY",
+      message: "A Hedge FX Deal must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role."
     };
   }
 
@@ -8150,7 +9014,7 @@ function databaseConstraintMessage(error) {
 
   if ([
     "a Pricing Rule used by fx_hedge_quick_mode_settings",
-    "a Trading Party used by fx_hedge_quick_mode_settings",
+    "a Trading Counterparty used by fx_hedge_quick_mode_settings",
     "an Execution Context used by fx_hedge_quick_mode_settings",
     "an Execution System used by fx_hedge_quick_mode_settings",
     "base currency precision used by fx_hedge_quick_mode_settings"
@@ -8286,7 +9150,7 @@ async function handleApi(request, response, url) {
       accountingSystems: accountingSystems(),
       executionSystems: executionSystems(),
       executionContexts: executionContexts(),
-      tradingParties: tradingParties(),
+      tradingCounterparties: tradingCounterparties(),
       users: users(),
       pricingRules: pricingRules(),
       clientDealPricingRules: clientDealPricingRules(),
@@ -8298,7 +9162,12 @@ async function handleApi(request, response, url) {
       clientFxDeals: clientFxDeals(),
       hedgeFxDeals: hedgeFxDeals(),
       fxPositions: fxPositions(),
-      fxBatches: fxBatches()
+      fxBatches: fxBatches(),
+      uiTableLayouts: Object.entries(UI_TABLE_LAYOUTS).map(([tableKey, tableLayout]) => ({
+        tableKey,
+        tableLabel: tableLayout.tableLabel,
+        columns: uiTableColumnSettings(tableKey)
+      }))
     }).replace(/</g, "\\u003c");
     sendText(
       response,
@@ -8306,6 +9175,90 @@ async function handleApi(request, response, url) {
       `window.__DEMO_API_BOOTSTRAP__ = ${bootstrap};\n`,
       "text/javascript; charset=utf-8"
     );
+    return true;
+  }
+
+  const uiTableColumnSettingsMatch =
+    /^\/api\/v1\/ui-table-column-settings\/([a-z0-9_]+)$/.exec(pathname);
+  const uiTableColumnSettingsResetMatch =
+    /^\/api\/v1\/ui-table-column-settings\/([a-z0-9_]+)\/reset$/.exec(pathname);
+  const uiTableColumnSettingsDefaultsMatch =
+    /^\/api\/v1\/ui-table-column-settings\/([a-z0-9_]+)\/defaults$/.exec(pathname);
+
+  if (uiTableColumnSettingsMatch && method === "GET") {
+    const tableKey = uiTableColumnSettingsMatch[1];
+
+    if (!uiTableColumnDefinitions(tableKey)) {
+      apiError(response, 404, "UI_TABLE_LAYOUT_NOT_FOUND", `UI table layout ${tableKey} was not found.`);
+    } else {
+      sendJson(response, 200, uiTableColumnSettings(tableKey));
+    }
+
+    return true;
+  }
+
+  if (uiTableColumnSettingsMatch && method === "PUT") {
+    const tableKey = uiTableColumnSettingsMatch[1];
+    const body = await readJsonBody(request);
+    const payload = validateUiTableColumnSettingsPayload(tableKey, body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_UI_TABLE_COLUMN_SETTINGS", payload.error);
+      return true;
+    }
+
+    try {
+      sendJson(response, 200, updateUiTableColumnSettings(payload));
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
+    return true;
+  }
+
+  if (uiTableColumnSettingsResetMatch && method === "POST") {
+    const tableKey = uiTableColumnSettingsResetMatch[1];
+
+    if (!uiTableColumnDefinitions(tableKey)) {
+      apiError(response, 404, "UI_TABLE_LAYOUT_NOT_FOUND", `UI table layout ${tableKey} was not found.`);
+    } else {
+      try {
+        sendJson(response, 200, resetUiTableColumnSettings(tableKey));
+      } catch (error) {
+        handleDatabaseError(response, error);
+      }
+    }
+
+    return true;
+  }
+
+  if (uiTableColumnSettingsDefaultsMatch && method === "PUT") {
+    const tableKey = uiTableColumnSettingsDefaultsMatch[1];
+    const body = await readJsonBody(request);
+
+    if (body.confirmation !== UI_TABLE_DEFAULT_CONFIRMATION) {
+      apiError(
+        response,
+        400,
+        "INVALID_UI_TABLE_DEFAULT_CONFIRMATION",
+        `Saving default column widths requires confirmation ${UI_TABLE_DEFAULT_CONFIRMATION}.`
+      );
+      return true;
+    }
+
+    const payload = validateUiTableColumnSettingsPayload(tableKey, body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_UI_TABLE_COLUMN_SETTINGS", payload.error);
+      return true;
+    }
+
+    try {
+      sendJson(response, 200, updateUiTableColumnDefaults(payload));
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
     return true;
   }
 
@@ -8692,7 +9645,7 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    if (!settings.partyActive || !settings.executionSystemActive) {
+    if (!settings.counterpartyActive || !settings.executionSystemActive) {
       apiError(
         response,
         409,
@@ -8950,10 +9903,10 @@ async function handleApi(request, response, url) {
       const pricingRuleId = runInImmediateTransaction(database, () => {
         const result = database.prepare(`
           INSERT INTO pricing_rules
-            (party_id, execution_context_id, ccy_pair_code, margin_percent)
+            (counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
           VALUES (?, ?, ?, ?)
         `).run(
-          payload.partyId,
+          payload.counterpartyId,
           payload.executionContextId,
           payload.ccyPairCode,
           payload.marginPercent
@@ -8982,45 +9935,30 @@ async function handleApi(request, response, url) {
     }
 
     const body = await readJsonBody(request);
-    const payload = validatePricingRulePayload(body);
+
+    if (pricingRuleImmutableTermsChanged(body, current)) {
+      apiError(
+        response,
+        409,
+        "PRICING_RULE_TERMS_IMMUTABLE",
+        "Counterparty, Ccy Pair and Execution Context cannot be changed. Create a new Pricing Rule for different terms; only Margin Percent can be edited."
+      );
+      return true;
+    }
+
+    const payload = validatePricingRuleMarginPayload(body);
 
     if (payload.error) {
       apiError(response, 400, "INVALID_PRICING_RULE", payload.error);
       return true;
     }
 
-    const referenceError = pricingRuleReferenceError(payload);
-
-    if (referenceError) {
-      apiError(response, 400, "INVALID_PRICING_RULE_REFERENCE", referenceError);
-      return true;
-    }
-
     try {
-      runInImmediateTransaction(database, () => {
-        if (!clientDealGenerationReferenceEligible(
-          payload.partyId,
-          payload.executionContextId
-        )) {
-          database.prepare(`
-            DELETE FROM client_deal_generation_settings
-            WHERE pricing_rule_id = ?
-          `).run(pricingRuleId);
-        }
-
-        database.prepare(`
-          UPDATE pricing_rules
-          SET party_id = ?, execution_context_id = ?, ccy_pair_code = ?, margin_percent = ?
-          WHERE pricing_rule_id = ?
-        `).run(
-          payload.partyId,
-          payload.executionContextId,
-          payload.ccyPairCode,
-          payload.marginPercent,
-          pricingRuleId
-        );
-        ensureClientDealGenerationSettingsForPricingRule(pricingRuleId);
-      });
+      database.prepare(`
+        UPDATE pricing_rules
+        SET margin_percent = ?
+        WHERE pricing_rule_id = ?
+      `).run(payload.marginPercent, pricingRuleId);
       sendJson(response, 200, pricingRule(pricingRuleId));
     } catch (error) {
       handleDatabaseError(response, error);
@@ -9031,10 +9969,27 @@ async function handleApi(request, response, url) {
 
   if (pricingRuleMatch && method === "DELETE") {
     const pricingRuleId = Number(pricingRuleMatch[1]);
-    const result = database.prepare("DELETE FROM pricing_rules WHERE pricing_rule_id = ?").run(pricingRuleId);
+    const current = pricingRule(pricingRuleId);
 
-    if (result.changes === 0) {
+    if (!current) {
       apiError(response, 404, "PRICING_RULE_NOT_FOUND", `Pricing Rule ${pricingRuleId} was not found.`);
+      return true;
+    }
+
+    const conflictMessage = pricingRuleDeletionConflictMessage(
+      pricingRuleId,
+      pricingRuleDeletionUsage(pricingRuleId)
+    );
+
+    if (conflictMessage) {
+      apiError(response, 409, "PRICING_RULE_IN_USE", conflictMessage);
+      return true;
+    }
+
+    try {
+      database.prepare("DELETE FROM pricing_rules WHERE pricing_rule_id = ?").run(pricingRuleId);
+    } catch (error) {
+      handleDatabaseError(response, error);
       return true;
     }
 
@@ -9043,34 +9998,34 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/trading-parties" && method === "GET") {
-    sendJson(response, 200, tradingParties());
+  if (pathname === "/api/v1/trading-counterparties" && method === "GET") {
+    sendJson(response, 200, tradingCounterparties());
     return true;
   }
 
-  if (pathname === "/api/v1/trading-parties" && method === "POST") {
+  if (pathname === "/api/v1/trading-counterparties" && method === "POST") {
     const body = await readJsonBody(request);
-    const payload = validateTradingPartyPayload(body);
+    const payload = validateTradingCounterpartyPayload(body);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_TRADING_PARTY", payload.error);
+      apiError(response, 400, "INVALID_TRADING_COUNTERPARTY", payload.error);
       return true;
     }
 
     try {
-      const result = database.prepare(`
-        INSERT INTO trading_parties
-          (party_type, party_code, party_code_type, party_name, is_active)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(
-        payload.partyType,
-        payload.partyCode,
-        payload.partyCodeType,
-        payload.partyName,
-        payload.active ? 1 : 0
-      );
-      const partyId = Number(result.lastInsertRowid);
-      sendJson(response, 201, tradingParty(partyId));
+      let counterpartyId = null;
+
+      runInImmediateTransaction(database, () => {
+        const result = database.prepare(`
+          INSERT INTO trading_counterparties (counterparty_name, is_active)
+          VALUES (?, ?)
+        `).run(payload.counterpartyName, payload.active ? 1 : 0);
+        counterpartyId = Number(result.lastInsertRowid);
+        saveTradingCounterpartyProfile(database, counterpartyId, payload);
+        synchronizeTradingCounterpartyRoles(database, counterpartyId, payload.counterpartyRoles);
+        synchronizeClientDealGenerationSettings(database);
+      });
+      sendJson(response, 201, tradingCounterparty(counterpartyId));
     } catch (error) {
       handleDatabaseError(response, error);
     }
@@ -9078,54 +10033,41 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  const tradingPartyMatch = /^\/api\/v1\/trading-parties\/(\d+)$/.exec(pathname);
+  const tradingCounterpartyMatch = /^\/api\/v1\/trading-counterparties\/(\d+)$/.exec(pathname);
 
-  if (tradingPartyMatch && method === "PUT") {
-    const partyId = Number(tradingPartyMatch[1]);
-    const current = tradingParty(partyId);
+  if (tradingCounterpartyMatch && method === "PUT") {
+    const counterpartyId = Number(tradingCounterpartyMatch[1]);
+    const current = tradingCounterparty(counterpartyId);
 
     if (!current) {
-      apiError(response, 404, "TRADING_PARTY_NOT_FOUND", `Trading Party ${partyId} was not found.`);
+      apiError(response, 404, "TRADING_COUNTERPARTY_NOT_FOUND", `Trading Counterparty ${counterpartyId} was not found.`);
       return true;
     }
 
     const body = await readJsonBody(request);
-    const payload = validateTradingPartyPayload(body);
+    const payload = validateTradingCounterpartyPayload(body);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_TRADING_PARTY", payload.error);
+      apiError(response, 400, "INVALID_TRADING_COUNTERPARTY", payload.error);
       return true;
     }
 
     try {
       runInImmediateTransaction(database, () => {
-        if (payload.partyType !== "CLIENT") {
-          database.prepare(`
-            DELETE FROM client_deal_generation_settings
-            WHERE pricing_rule_id IN
-            (
-              SELECT pricing_rule_id
-              FROM pricing_rules
-              WHERE party_id = ?
-            )
-          `).run(partyId);
-        }
-
         database.prepare(`
-          UPDATE trading_parties
-          SET party_type = ?, party_code = ?, party_code_type = ?, party_name = ?, is_active = ?
-          WHERE party_id = ?
+          UPDATE trading_counterparties
+          SET counterparty_name = ?, is_active = ?
+          WHERE counterparty_id = ?
         `).run(
-          payload.partyType,
-          payload.partyCode,
-          payload.partyCodeType,
-          payload.partyName,
+          payload.counterpartyName,
           payload.active ? 1 : 0,
-          partyId
+          counterpartyId
         );
+        saveTradingCounterpartyProfile(database, counterpartyId, payload);
+        synchronizeTradingCounterpartyRoles(database, counterpartyId, payload.counterpartyRoles);
         synchronizeClientDealGenerationSettings(database);
       });
-      sendJson(response, 200, tradingParty(partyId));
+      sendJson(response, 200, tradingCounterparty(counterpartyId));
     } catch (error) {
       handleDatabaseError(response, error);
     }
@@ -9133,17 +10075,17 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (tradingPartyMatch && method === "DELETE") {
-    const partyId = Number(tradingPartyMatch[1]);
-    const current = tradingParty(partyId);
+  if (tradingCounterpartyMatch && method === "DELETE") {
+    const counterpartyId = Number(tradingCounterpartyMatch[1]);
+    const current = tradingCounterparty(counterpartyId);
 
     if (!current) {
-      apiError(response, 404, "TRADING_PARTY_NOT_FOUND", `Trading Party ${partyId} was not found.`);
+      apiError(response, 404, "TRADING_COUNTERPARTY_NOT_FOUND", `Trading Counterparty ${counterpartyId} was not found.`);
       return true;
     }
 
     try {
-      database.prepare("DELETE FROM trading_parties WHERE party_id = ?").run(partyId);
+      database.prepare("DELETE FROM trading_counterparties WHERE counterparty_id = ?").run(counterpartyId);
       response.writeHead(204);
       response.end();
     } catch (error) {

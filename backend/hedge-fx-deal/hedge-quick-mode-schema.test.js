@@ -42,14 +42,26 @@ function quickModeDatabase() {
       (1, 'HQ', NULL, 'AUTO'),
       (2, 'HQ', NULL, 'DEALER');
 
-    INSERT INTO trading_parties
-      (party_id, party_type, party_code, party_code_type, party_name, is_active)
+    INSERT INTO trading_counterparties
+      (counterparty_id, counterparty_name, is_active)
     VALUES
-      (1, 'HEDGE_COUNTERPARTY', 'HEDGE', 'OTHER', 'Hedge Party', 1),
-      (2, 'CLIENT', '1234567890', 'INN', 'Client Party', 1);
+      (1, 'Hedge Counterparty', 1),
+      (2, 'Client Counterparty', 1);
+
+    INSERT INTO external_counterparties
+      (counterparty_id, counterparty_code, counterparty_code_type, external_counterparty_kind)
+    VALUES
+      (1, 'HEDGE', 'OTHER', 'CORPORATE'),
+      (2, '1234567890', 'INN', 'CORPORATE');
+
+    INSERT INTO trading_counterparty_roles
+      (counterparty_id, role_code)
+    VALUES
+      (1, 'HEDGE_COUNTERPARTY'),
+      (2, 'CLIENT');
 
     INSERT INTO pricing_rules
-      (pricing_rule_id, party_id, execution_context_id, ccy_pair_code, margin_percent)
+      (pricing_rule_id, counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
     VALUES
       (1, 1, 1, 'EUR_USD', 0),
       (2, 1, 2, 'EUR_USD', 0),
@@ -62,7 +74,7 @@ const validSettingsSql = `
   INSERT INTO fx_hedge_quick_mode_settings
     (
       ccy_pair_code,
-      party_id,
+      counterparty_id,
       pricing_rule_id,
       base_ccy_fraction_digits,
       small_base_ccy_amount_minor,
@@ -119,7 +131,7 @@ test("Hedge Quick Mode Settings enforce the preset and pricing-rule invariants",
   }
 });
 
-test("Hedge Quick Mode Settings keep the explicit party aligned with the Pricing Rule", () => {
+test("Hedge Quick Mode Settings keep the explicit counterparty aligned with the Pricing Rule", () => {
   const database = quickModeDatabase();
 
   try {
@@ -144,11 +156,11 @@ test("Hedge Quick Mode Settings preserve eligibility across reverse mutations", 
     database.exec(validSettingsSql);
     assert.throws(
       () => database.exec(`
-        UPDATE trading_parties
-        SET party_type = 'CLIENT'
-        WHERE party_id = 1
+        DELETE FROM trading_counterparty_roles
+        WHERE counterparty_id = 1
+          AND role_code = 'HEDGE_COUNTERPARTY'
       `),
-      /must remain a HEDGE_COUNTERPARTY/
+      /must (?:remain|retain).*HEDGE_COUNTERPARTY/
     );
     assert.throws(
       () => database.exec(`
@@ -183,12 +195,15 @@ test("Fresh demo seed configures the unambiguous EUR/USD Quick Mode defaults", (
     const settings = database.prepare(`
       SELECT
         settings.*,
-        party.party_type AS party_type,
+        role.role_code AS counterparty_type,
         execution.pricing_mode AS pricing_mode
       FROM fx_hedge_quick_mode_settings settings
       INNER JOIN pricing_rules rule
         ON rule.pricing_rule_id = settings.pricing_rule_id
-      INNER JOIN trading_parties party ON party.party_id = settings.party_id
+      INNER JOIN trading_counterparties counterparty ON counterparty.counterparty_id = settings.counterparty_id
+      INNER JOIN trading_counterparty_roles role
+        ON role.counterparty_id = counterparty.counterparty_id
+       AND role.role_code = 'HEDGE_COUNTERPARTY'
       INNER JOIN execution_contexts context
         ON context.execution_context_id = rule.execution_context_id
       INNER JOIN execution_systems execution
@@ -206,8 +221,8 @@ test("Fresh demo seed configures the unambiguous EUR/USD Quick Mode defaults", (
           settings.xlarge_base_ccy_amount_minor
         ],
         defaultTenor: settings.default_tenor,
-        partyId: settings.party_id,
-        partyType: settings.party_type,
+        counterpartyId: settings.counterparty_id,
+        counterpartyType: settings.counterparty_type,
         pricingMode: settings.pricing_mode,
         active: settings.is_active
       },
@@ -215,8 +230,8 @@ test("Fresh demo seed configures the unambiguous EUR/USD Quick Mode defaults", (
         fractionDigits: 2,
         amounts: [500_000_000, 2_000_000_000, 5_000_000_000, 10_000_000_000],
         defaultTenor: "TOD",
-        partyId: 4,
-        partyType: "HEDGE_COUNTERPARTY",
+        counterpartyId: 4,
+        counterpartyType: "HEDGE_COUNTERPARTY",
         pricingMode: "AUTO_PRICED",
         active: 1
       }

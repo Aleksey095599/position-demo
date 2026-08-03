@@ -26,21 +26,21 @@ window.__DEMO_DB_STARTUP_DATA__ = {
   ],
   "clientProfiles": [
     {
-      "partyType": "CLIENT",
+      "counterpartyType": "CLIENT",
       "name": "Romashka Company",
       "inn": "7701234567",
       "clientCodeType": "INN",
       "isActive": true
     },
     {
-      "partyType": "CLIENT",
+      "counterpartyType": "CLIENT",
       "name": "Vasilek Company",
       "inn": "7812345678",
       "clientCodeType": "INN",
       "isActive": true
     },
     {
-      "partyType": "CLIENT",
+      "counterpartyType": "CLIENT",
       "name": "Gladiolus Company",
       "inn": "5409876543",
       "clientCodeType": "INN",
@@ -248,21 +248,21 @@ window.__DEMO_DB_STARTUP_DATA__ = {
     ],
     clientProfiles: [
       {
-        partyType: "CLIENT",
+        counterpartyType: "CLIENT",
         name: "Romashka Company",
         inn: "7701234567",
         clientCodeType: "INN",
         isActive: true
       },
       {
-        partyType: "CLIENT",
+        counterpartyType: "CLIENT",
         name: "Vasilek Company",
         inn: "7812345678",
         clientCodeType: "INN",
         isActive: true
       },
       {
-        partyType: "CLIENT",
+        counterpartyType: "CLIENT",
         name: "Gladiolus Company",
         inn: "5409876543",
         clientCodeType: "INN",

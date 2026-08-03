@@ -1,0 +1,212 @@
+"use strict";
+
+const UI_TABLE_COLUMN_WIDTH_MIN_PX = 48;
+const UI_TABLE_COLUMN_WIDTH_MAX_PX = 1600;
+const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
+  Object.freeze({ tableKey: "external_counterparties_grid", legacyColumnKey: "status", columnKey: "active" }),
+  Object.freeze({ tableKey: "internal_units_grid", legacyColumnKey: "status", columnKey: "active" }),
+  Object.freeze({ tableKey: "users_grid", legacyColumnKey: "status", columnKey: "active" })
+]);
+
+function layout(tableLabel, columns) {
+  return Object.freeze({
+    tableLabel,
+    columns: Object.freeze(columns.map(([columnKey, columnLabel, defaultWidthPx]) =>
+      Object.freeze({ columnKey, columnLabel, defaultWidthPx })
+    ))
+  });
+}
+
+const UI_TABLE_LAYOUTS = Object.freeze({
+  pricing_rules_grid: layout("Pricing Rules", [
+    ["id", "ID", 64],
+    ["counterparty_type", "Role", 147],
+    ["counterparty_code", "Counterparty Code", 122],
+    ["counterparty_name", "Counterparty Name", 158],
+    ["ccy_pair", "Ccy Pair", 88],
+    ["execution_context", "Execution Context", 596],
+    ["pricing_mode", "Pricing Mode", 156],
+    ["margin", "Margin", 82]
+  ]),
+  internal_pricing_rules_grid: layout("Internal Unit Pricing Rules", [
+    ["id", "ID", 64],
+    ["counterparty_type", "Role", 147],
+    ["counterparty_code", "Unit Code", 122],
+    ["counterparty_name", "Counterparty Name", 158],
+    ["ccy_pair", "Ccy Pair", 88],
+    ["execution_context", "Execution Context", 596],
+    ["pricing_mode", "Pricing Mode", 156],
+    ["margin", "Margin", 82],
+    ["quick_hedge", "Quick Hedge", 112]
+  ]),
+  market_stream_grid: layout("Market Pulse", [
+    ["currency_pair", "Ccy Pair", 94],
+    ["bid", "Bid", 83],
+    ["offer", "Offer", 83],
+    ["actions", "Actions", 80]
+  ]),
+  ccy_options_grid: layout("Ccy Options", [
+    ["code", "Code", 101],
+    ["name", "Name", 141],
+    ["country", "Country", 141],
+    ["fraction_digits", "Fraction Digits", 83],
+    ["pair_count", "Ccy Pairs", 74],
+    ["actions", "Actions", 80]
+  ]),
+  ccy_pair_options_grid: layout("Ccy Pair Options", [
+    ["base_ccy", "Base Ccy", 85],
+    ["quote_ccy", "Quote Ccy", 85],
+    ["currency_pair", "Ccy Pair", 94],
+    ["default_quote_decimals", "Default Quote Decimals", 83],
+    ["pricing_rules_count", "Pricing Rules Count", 65],
+    ["actions", "Actions", 80]
+  ]),
+  client_fx_deals_grid: layout("Client FX Deals", [
+    ["trade_id", "Trade ID", 96],
+    ["entry_timestamp", "Entry Timestamp", 157],
+    ["identifier", "Identifier", 221],
+    ["client_name", "Client Name", 141],
+    ["trade_date", "Trade Date", 109],
+    ["currency_pair", "Ccy Pair", 94],
+    ["side", "Side", 84],
+    ["base_ccy_amount", "Base Ccy Amount", 146],
+    ["quote_ccy_amount", "Quote Ccy Amount", 155],
+    ["trade_rate", "Trade Rate", 108],
+    ["tenor", "Tenor", 73],
+    ["base_ccy_value_date", "Base Ccy Value Date", 160],
+    ["quote_ccy_value_date", "Quote Ccy Value Date", 168],
+    ["execution_context_label", "Execution Context", 435],
+    ["pricing_rule_margin", "Margin", 102],
+    ["transfer_rate", "Transfer Rate", 122],
+    ["analytical_pnl", "Analytical PnL", 126]
+  ]),
+  hedge_fx_deals_grid: layout("Hedge FX Deals", [
+    ["trade_id", "Trade ID", 96],
+    ["entry_timestamp", "Entry Timestamp", 157],
+    ["counterparty_code_type", "Counterparty Code Type", 158],
+    ["counterparty_code", "Counterparty Code", 129],
+    ["counterparty_name", "Counterparty Name", 158],
+    ["trade_date", "Trade Date", 109],
+    ["currency_pair", "Ccy Pair", 94],
+    ["side", "Hedge Side", 88],
+    ["base_ccy_amount", "Base Ccy Amount", 146],
+    ["quote_ccy_amount", "Quote Ccy Amount", 155],
+    ["trade_rate", "Trade Rate", 108],
+    ["tenor", "Tenor", 73],
+    ["base_ccy_value_date", "Base Ccy Value Date", 160],
+    ["quote_ccy_value_date", "Quote Ccy Value Date", 168],
+    ["execution_context_label", "Execution Context", 435],
+    ["pricing_rule_margin", "Margin", 102],
+    ["transfer_rate", "Transfer Rate", 122],
+    ["analytical_pnl", "Analytical PnL", 126]
+  ]),
+  batching_history_grid: layout("Batching History", [
+    ["batch_id", "Batch ID", 96],
+    ["ccy_pair_code", "Ccy Pair Code", 100],
+    ["batch_status", "Batch Status", 101],
+    ["created_at", "Created At", 157],
+    ["actions", "Actions", 80]
+  ]),
+  batch_members_grid: layout("Batch Members", [
+    ["trade_id", "Trade ID", 96],
+    ["trade_type", "Trade", 281],
+    ["member_role", "Member Role", 124],
+    ["base_balance_contribution_minor", "Base Ccy Leg", 125],
+    ["quote_balance_contribution_minor", "Quote Ccy Leg", 130],
+    ["transfer_rate", "Transfer Rate", 122],
+    ["analytical_pnl_quote_minor", "Analytical PnL", 127],
+    ["base_ccy_value_date", "Base Value Date", 135],
+    ["quote_ccy_value_date", "Quote Value Date", 143]
+  ]),
+  batch_cash_output_grid: layout("Batch Cash Output", [
+    ["currency_code", "Currency", 85],
+    ["balance_contribution_minor", "Cash Amount", 119],
+    ["value_date", "Value Date", 105]
+  ]),
+  batch_position_output_grid: layout("Batch Position Output", [
+    ["trade_id", "Trade ID", 93],
+    ["trade_type", "Trade", 281],
+    ["output_role", "Output Role", 101],
+    ["base_balance_contribution_minor", "Base Ccy Leg", 121],
+    ["quote_balance_contribution_minor", "Quote Ccy Leg", 126],
+    ["transfer_rate", "Transfer Rate", 97],
+    ["analytical_pnl_quote_minor", "Analytical PnL", 119],
+    ["base_ccy_value_date", "Base Value Date", 135],
+    ["quote_ccy_value_date", "Quote Value Date", 143]
+  ]),
+  external_counterparties_grid: layout("External Counterparties", [
+    ["id", "ID", 71],
+    ["role", "Role", 163],
+    ["identifier", "Identifier", 221],
+    ["external_counterparty_type", "External Counterparty Type", 186],
+    ["counterparty_name", "Counterparty Name", 156],
+    ["active", "Active", 111],
+    ["actions", "Actions", 89]
+  ]),
+  internal_units_grid: layout("Internal Units", [
+    ["id", "ID", 77],
+    ["role", "Role", 177],
+    ["unit_code", "Unit Code", 217],
+    ["unit_type", "Unit Type", 121],
+    ["counterparty_name", "Counterparty Name", 169],
+    ["active", "Active", 121],
+    ["actions", "Actions", 97]
+  ]),
+  users_grid: layout("Users", [
+    ["id", "ID", 64],
+    ["user_code", "User Code", 107],
+    ["first_name", "First Name", 140],
+    ["last_name", "Last Name", 140],
+    ["role", "Role", 100],
+    ["active", "Active", 100],
+    ["actions", "Actions", 80]
+  ]),
+  execution_contexts_grid: layout("Execution Context", [
+    ["id", "ID", 64],
+    ["servicing_location", "Servicing Location", 153],
+    ["accounting_system", "Accounting System", 152],
+    ["execution_system", "Execution System", 149],
+    ["pricing_rules_count", "Pricing Rules Count", 64],
+    ["actions", "Actions", 80]
+  ]),
+  servicing_locations_grid: layout("Servicing Locations", [
+    ["id", "ID", 64],
+    ["name", "Name", 153],
+    ["region", "Region", 134],
+    ["type", "Type", 100],
+    ["active", "Active", 72],
+    ["execution_context_count", "Exec. Context Count", 64],
+    ["actions", "Actions", 80]
+  ]),
+  accounting_systems_grid: layout("Accounting Systems", [
+    ["id", "ID", 64],
+    ["name", "Name", 152],
+    ["active", "Active", 72],
+    ["execution_context_count", "Exec. Context Count", 64],
+    ["actions", "Actions", 80]
+  ]),
+  execution_systems_grid: layout("Execution Systems", [
+    ["id", "ID", 183],
+    ["name", "Name", 149],
+    ["pricing_mode", "Pricing Mode", 156],
+    ["active", "Active", 72],
+    ["execution_context_count", "Exec. Context Count", 64],
+    ["actions", "Actions", 80]
+  ]),
+  hedge_quick_mode_settings_grid: layout("Quick Hedge Settings", [
+    ["currency_pair", "Ccy Pair", 89],
+    ["counterparty_name", "Hedge Counterparty", 141],
+    ["context_path", "Execution Context", 469],
+    ["presets_summary", "Quick Amounts", 221],
+    ["default_tenor", "Tenor", 73],
+    ["state", "Status", 73],
+    ["actions", "Actions", 72]
+  ])
+});
+
+module.exports = {
+  UI_TABLE_COLUMN_KEY_ALIASES,
+  UI_TABLE_COLUMN_WIDTH_MIN_PX,
+  UI_TABLE_COLUMN_WIDTH_MAX_PX,
+  UI_TABLE_LAYOUTS
+};

@@ -179,44 +179,122 @@ CREATE TABLE IF NOT EXISTS execution_contexts
             ON DELETE RESTRICT
 );
 
-CREATE TABLE IF NOT EXISTS trading_parties
+CREATE TABLE IF NOT EXISTS trading_counterparties
 (
-    party_id        INTEGER PRIMARY KEY,
-    party_type      TEXT    NOT NULL,
-    party_code      TEXT    NOT NULL,
-    party_code_type TEXT    NOT NULL,
-    party_name      TEXT    NOT NULL,
-    is_active       INTEGER NOT NULL DEFAULT 1,
+    counterparty_id   INTEGER PRIMARY KEY,
+    counterparty_name TEXT    NOT NULL,
+    is_active  INTEGER NOT NULL DEFAULT 1,
 
-    CONSTRAINT uq_trading_parties_code
-        UNIQUE (party_code_type, party_code),
-    CONSTRAINT chk_trading_parties_type
-        CHECK (party_type IN ('CLIENT', 'HEDGE_COUNTERPARTY')),
-    CONSTRAINT chk_trading_parties_code_type
-        CHECK (party_code_type IN ('INN', 'OTHER', 'FRONT_SYSTEM_FOLDER_ID')),
-    CONSTRAINT chk_trading_parties_code
+    CONSTRAINT chk_trading_counterparties_name
+        CHECK (length(counterparty_name) BETWEEN 1 AND 200 AND length(trim(counterparty_name)) > 0),
+    CONSTRAINT chk_trading_counterparties_active
+        CHECK (is_active IN (0, 1))
+);
+
+CREATE TABLE IF NOT EXISTS external_counterparties
+(
+    counterparty_id            INTEGER PRIMARY KEY,
+    counterparty_code          TEXT    NOT NULL,
+    counterparty_code_type     TEXT    NOT NULL,
+    external_counterparty_kind TEXT    NOT NULL DEFAULT 'CORPORATE',
+
+    CONSTRAINT fk_external_counterparties_counterparty
+        FOREIGN KEY (counterparty_id)
+            REFERENCES trading_counterparties (counterparty_id)
+            ON UPDATE RESTRICT
+            ON DELETE CASCADE,
+    CONSTRAINT uq_external_counterparties_code
+        UNIQUE (counterparty_code_type, counterparty_code),
+    CONSTRAINT chk_external_counterparties_code_type
+        CHECK (counterparty_code_type IN ('INN', 'OTHER')),
+    CONSTRAINT chk_external_counterparties_code
         CHECK (
-            length(party_code) <= 20
+            length(counterparty_code) <= 20
             AND (
                 (
-                    party_code_type = 'INN'
-                    AND length(party_code) BETWEEN 10 AND 12
-                    AND party_code NOT GLOB '*[^0-9]*'
+                    counterparty_code_type = 'INN'
+                    AND length(counterparty_code) BETWEEN 10 AND 12
+                    AND counterparty_code NOT GLOB '*[^0-9]*'
                 )
                 OR
                 (
-                    party_code_type IN ('OTHER', 'FRONT_SYSTEM_FOLDER_ID')
-                    AND length(party_code) BETWEEN 2 AND 20
-                    AND party_code = upper(party_code)
-                    AND party_code NOT GLOB '*[^A-Z0-9_-]*'
+                    counterparty_code_type = 'OTHER'
+                    AND length(counterparty_code) BETWEEN 2 AND 20
+                    AND counterparty_code = upper(counterparty_code)
+                    AND counterparty_code NOT GLOB '*[^A-Z0-9_-]*'
                 )
             )
         ),
-    CONSTRAINT chk_trading_parties_name
-        CHECK (length(party_name) BETWEEN 1 AND 200 AND length(trim(party_name)) > 0),
-    CONSTRAINT chk_trading_parties_active
-        CHECK (is_active IN (0, 1))
+    CONSTRAINT chk_external_counterparties_kind
+        CHECK (
+            external_counterparty_kind IN
+            (
+                'CORPORATE',
+                'INDIVIDUAL',
+                'BANK',
+                'NON_BANK_FINANCIAL_INSTITUTION',
+                'OTHER'
+            )
+        )
 );
+
+CREATE TABLE IF NOT EXISTS internal_units
+(
+    counterparty_id  INTEGER PRIMARY KEY,
+    unit_code TEXT NOT NULL,
+    unit_type TEXT NOT NULL DEFAULT 'DESK',
+
+    CONSTRAINT fk_internal_units_counterparty
+        FOREIGN KEY (counterparty_id)
+            REFERENCES trading_counterparties (counterparty_id)
+            ON UPDATE RESTRICT
+            ON DELETE CASCADE,
+    CONSTRAINT uq_internal_units_code
+        UNIQUE (unit_code),
+    CONSTRAINT chk_internal_units_code
+        CHECK (
+            length(unit_code) BETWEEN 2 AND 20
+            AND unit_code = upper(unit_code)
+            AND unit_code NOT GLOB '*[^A-Z0-9_-]*'
+        ),
+    CONSTRAINT chk_internal_units_type
+        CHECK (unit_type IN ('DESK', 'DEPARTMENT', 'OTHER'))
+);
+
+CREATE TABLE IF NOT EXISTS trading_counterparty_roles
+(
+    counterparty_id INTEGER NOT NULL,
+    role_code TEXT    NOT NULL,
+
+    CONSTRAINT pk_trading_counterparty_roles
+        PRIMARY KEY (counterparty_id, role_code),
+    CONSTRAINT fk_trading_counterparty_roles_counterparty
+        FOREIGN KEY (counterparty_id)
+            REFERENCES trading_counterparties (counterparty_id)
+            ON UPDATE RESTRICT
+            ON DELETE CASCADE,
+    CONSTRAINT chk_trading_counterparty_roles_code
+        CHECK (role_code IN ('CLIENT', 'HEDGE_COUNTERPARTY'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_trading_counterparty_roles_role
+    ON trading_counterparty_roles (role_code, counterparty_id);
+
+CREATE TRIGGER IF NOT EXISTS trg_external_counterparties_exclusive_profile_insert
+BEFORE INSERT ON external_counterparties
+FOR EACH ROW
+WHEN EXISTS (SELECT 1 FROM internal_units WHERE counterparty_id = NEW.counterparty_id)
+BEGIN
+    SELECT RAISE(ABORT, 'a Trading Counterparty cannot have both external and internal profiles');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_internal_units_exclusive_profile_insert
+BEFORE INSERT ON internal_units
+FOR EACH ROW
+WHEN EXISTS (SELECT 1 FROM external_counterparties WHERE counterparty_id = NEW.counterparty_id)
+BEGIN
+    SELECT RAISE(ABORT, 'a Trading Counterparty cannot have both external and internal profiles');
+END;
 
 CREATE TABLE IF NOT EXISTS users
 (
@@ -245,17 +323,54 @@ CREATE TABLE IF NOT EXISTS users
         CHECK (is_active IN (0, 1))
 );
 
+CREATE TABLE IF NOT EXISTS ui_table_column_settings
+(
+    table_key        TEXT    NOT NULL,
+    column_key       TEXT    NOT NULL,
+    column_label     TEXT    NOT NULL,
+    display_order    INTEGER NOT NULL,
+    default_width_px INTEGER NOT NULL,
+    width_px         INTEGER NOT NULL,
+    updated_at       TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT pk_ui_table_column_settings
+        PRIMARY KEY (table_key, column_key),
+    CONSTRAINT uq_ui_table_column_settings_order
+        UNIQUE (table_key, display_order),
+    CONSTRAINT chk_ui_table_column_settings_table_key
+        CHECK (
+            length(table_key) BETWEEN 1 AND 64
+            AND table_key = lower(table_key)
+            AND table_key NOT GLOB '*[^a-z0-9_]*'
+        ),
+    CONSTRAINT chk_ui_table_column_settings_column_key
+        CHECK (
+            length(column_key) BETWEEN 1 AND 64
+            AND column_key = lower(column_key)
+            AND column_key NOT GLOB '*[^a-z0-9_]*'
+        ),
+    CONSTRAINT chk_ui_table_column_settings_label
+        CHECK (length(trim(column_label)) BETWEEN 1 AND 100),
+    CONSTRAINT chk_ui_table_column_settings_order
+        CHECK (display_order BETWEEN 0 AND 999),
+    CONSTRAINT chk_ui_table_column_settings_widths
+        CHECK (
+            default_width_px BETWEEN 48 AND 1600
+            AND width_px BETWEEN 48 AND 1600
+        )
+);
+
 CREATE TABLE IF NOT EXISTS pricing_rules
 (
     pricing_rule_id     INTEGER PRIMARY KEY,
-    party_id            INTEGER NOT NULL,
+    counterparty_id            INTEGER NOT NULL,
     execution_context_id INTEGER NOT NULL,
     ccy_pair_code       TEXT    NOT NULL,
     margin_percent      REAL    NOT NULL,
 
-    CONSTRAINT fk_pricing_rules_party
-        FOREIGN KEY (party_id)
-            REFERENCES trading_parties (party_id)
+    CONSTRAINT fk_pricing_rules_counterparty
+        FOREIGN KEY (counterparty_id)
+            REFERENCES trading_counterparties (counterparty_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT fk_pricing_rules_execution_context
@@ -269,7 +384,7 @@ CREATE TABLE IF NOT EXISTS pricing_rules
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT uq_pricing_rules_scope
-        UNIQUE (party_id, execution_context_id, ccy_pair_code),
+        UNIQUE (counterparty_id, execution_context_id, ccy_pair_code),
     CONSTRAINT chk_pricing_rules_margin
         CHECK (margin_percent >= 0 AND margin_percent < 100)
 );
@@ -277,13 +392,13 @@ CREATE TABLE IF NOT EXISTS pricing_rules
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_reference
     ON pricing_rules (pricing_rule_id, ccy_pair_code);
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_party_reference
-    ON pricing_rules (pricing_rule_id, party_id, ccy_pair_code);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_counterparty_reference
+    ON pricing_rules (pricing_rule_id, counterparty_id, ccy_pair_code);
 
 CREATE TABLE IF NOT EXISTS fx_hedge_quick_mode_settings
 (
     ccy_pair_code                       TEXT    PRIMARY KEY,
-    party_id                            INTEGER NOT NULL,
+    counterparty_id                            INTEGER NOT NULL,
     pricing_rule_id                     INTEGER NOT NULL,
     base_ccy_fraction_digits            INTEGER NOT NULL,
     small_base_ccy_amount_minor         INTEGER NOT NULL,
@@ -298,14 +413,14 @@ CREATE TABLE IF NOT EXISTS fx_hedge_quick_mode_settings
             REFERENCES ccy_pair_options (ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_hedge_quick_mode_settings_party
-        FOREIGN KEY (party_id)
-            REFERENCES trading_parties (party_id)
+    CONSTRAINT fk_fx_hedge_quick_mode_settings_counterparty
+        FOREIGN KEY (counterparty_id)
+            REFERENCES trading_counterparties (counterparty_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_hedge_quick_mode_settings_rule_party_pair
-        FOREIGN KEY (pricing_rule_id, party_id, ccy_pair_code)
-            REFERENCES pricing_rules (pricing_rule_id, party_id, ccy_pair_code)
+    CONSTRAINT fk_fx_hedge_quick_mode_settings_rule_counterparty_pair
+        FOREIGN KEY (pricing_rule_id, counterparty_id, ccy_pair_code)
+            REFERENCES pricing_rules (pricing_rule_id, counterparty_id, ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT chk_fx_hedge_quick_mode_settings_fraction_digits
@@ -539,7 +654,7 @@ CREATE TABLE IF NOT EXISTS client_fx_deals
 (
     trade_id                    INTEGER PRIMARY KEY,
     trade_type                  TEXT    NOT NULL DEFAULT 'CLIENT_DEAL',
-    party_id                    INTEGER NOT NULL,
+    counterparty_id                    INTEGER NOT NULL,
     execution_context_id        INTEGER,
     pricing_rule_id             INTEGER,
     transfer_rate               NUMERIC,
@@ -552,9 +667,9 @@ CREATE TABLE IF NOT EXISTS client_fx_deals
             REFERENCES fx_trade_exposure (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_client_fx_deals_party
-        FOREIGN KEY (party_id)
-            REFERENCES trading_parties (party_id)
+    CONSTRAINT fk_client_fx_deals_counterparty
+        FOREIGN KEY (counterparty_id)
+            REFERENCES trading_counterparties (counterparty_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT fk_client_fx_deals_execution_context
@@ -563,8 +678,8 @@ CREATE TABLE IF NOT EXISTS client_fx_deals
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT fk_client_fx_deals_pricing_rule_scope
-        FOREIGN KEY (pricing_rule_id, party_id, execution_context_id)
-            REFERENCES pricing_rules (pricing_rule_id, party_id, execution_context_id)
+        FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
+            REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT chk_client_fx_deals_trade_type
@@ -608,7 +723,7 @@ CREATE TABLE IF NOT EXISTS fx_hedge_deals
 (
     trade_id                    INTEGER PRIMARY KEY,
     trade_type                  TEXT    NOT NULL DEFAULT 'HEDGE_DEAL',
-    party_id                    INTEGER NOT NULL,
+    counterparty_id                    INTEGER NOT NULL,
     execution_context_id        INTEGER,
     pricing_rule_id             INTEGER,
     transfer_rate               NUMERIC,
@@ -620,9 +735,9 @@ CREATE TABLE IF NOT EXISTS fx_hedge_deals
             REFERENCES fx_trade_exposure (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_hedge_deals_party
-        FOREIGN KEY (party_id)
-            REFERENCES trading_parties (party_id)
+    CONSTRAINT fk_fx_hedge_deals_counterparty
+        FOREIGN KEY (counterparty_id)
+            REFERENCES trading_counterparties (counterparty_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT fk_fx_hedge_deals_execution_context
@@ -631,8 +746,8 @@ CREATE TABLE IF NOT EXISTS fx_hedge_deals
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT fk_fx_hedge_deals_pricing_rule_scope
-        FOREIGN KEY (pricing_rule_id, party_id, execution_context_id)
-            REFERENCES pricing_rules (pricing_rule_id, party_id, execution_context_id)
+        FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
+            REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT chk_fx_hedge_deals_trade_type
@@ -822,14 +937,14 @@ CREATE INDEX IF NOT EXISTS idx_execution_contexts_accounting_system
 CREATE INDEX IF NOT EXISTS idx_execution_contexts_execution_system
     ON execution_contexts (execution_system_id);
 
-CREATE INDEX IF NOT EXISTS idx_pricing_rules_party
-    ON pricing_rules (party_id);
+CREATE INDEX IF NOT EXISTS idx_pricing_rules_counterparty
+    ON pricing_rules (counterparty_id);
 
 CREATE INDEX IF NOT EXISTS idx_pricing_rules_execution_context
     ON pricing_rules (execution_context_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_client_deal_reference
-    ON pricing_rules (pricing_rule_id, party_id, execution_context_id);
+    ON pricing_rules (pricing_rule_id, counterparty_id, execution_context_id);
 
 CREATE INDEX IF NOT EXISTS idx_pricing_rules_ccy_pair
     ON pricing_rules (ccy_pair_code);
@@ -891,11 +1006,11 @@ BEGIN
     SELECT RAISE(ABORT, 'a Ccy Pair used by fx_trade_exposure must preserve its dealt currency');
 END;
 
-CREATE INDEX IF NOT EXISTS idx_client_fx_deals_party
-    ON client_fx_deals (party_id);
+CREATE INDEX IF NOT EXISTS idx_client_fx_deals_counterparty
+    ON client_fx_deals (counterparty_id);
 
-CREATE INDEX IF NOT EXISTS idx_fx_hedge_deals_party
-    ON fx_hedge_deals (party_id);
+CREATE INDEX IF NOT EXISTS idx_fx_hedge_deals_counterparty
+    ON fx_hedge_deals (counterparty_id);
 
 CREATE INDEX IF NOT EXISTS idx_fx_batches_status_pair
     ON fx_batches (batch_status, ccy_pair_code);
@@ -1525,71 +1640,71 @@ CREATE INDEX IF NOT EXISTS idx_ccy_pair_options_quote
 CREATE TRIGGER IF NOT EXISTS trg_client_fx_deals_require_client_insert
 BEFORE INSERT ON client_fx_deals
 FOR EACH ROW
-WHEN EXISTS
+WHEN NOT EXISTS
 (
     SELECT 1
-    FROM trading_parties
-    WHERE party_id = NEW.party_id AND party_type <> 'CLIENT'
+    FROM trading_counterparty_roles
+    WHERE counterparty_id = NEW.counterparty_id AND role_code = 'CLIENT'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'client_fx_deals.party_id must reference a CLIENT trading party');
+    SELECT RAISE(ABORT, 'client_fx_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_client_fx_deals_require_client_update
-BEFORE UPDATE OF party_id ON client_fx_deals
+BEFORE UPDATE OF counterparty_id ON client_fx_deals
 FOR EACH ROW
-WHEN EXISTS
+WHEN NOT EXISTS
 (
     SELECT 1
-    FROM trading_parties
-    WHERE party_id = NEW.party_id AND party_type <> 'CLIENT'
+    FROM trading_counterparty_roles
+    WHERE counterparty_id = NEW.counterparty_id AND role_code = 'CLIENT'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'client_fx_deals.party_id must reference a CLIENT trading party');
+    SELECT RAISE(ABORT, 'client_fx_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_trading_parties_preserve_client_deals
-BEFORE UPDATE OF party_type ON trading_parties
+CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_client_deals
+BEFORE DELETE ON trading_counterparty_roles
 FOR EACH ROW
-WHEN NEW.party_type <> 'CLIENT'
-    AND EXISTS (SELECT 1 FROM client_fx_deals WHERE party_id = OLD.party_id)
+WHEN OLD.role_code = 'CLIENT'
+    AND EXISTS (SELECT 1 FROM client_fx_deals WHERE counterparty_id = OLD.counterparty_id)
 BEGIN
-    SELECT RAISE(ABORT, 'a Trading Party used by client_fx_deals must remain a CLIENT');
+    SELECT RAISE(ABORT, 'a Trading Counterparty used by client_fx_deals must retain the CLIENT role');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_deals_require_hedge_counterparty_insert
 BEFORE INSERT ON fx_hedge_deals
 FOR EACH ROW
-WHEN EXISTS
+WHEN NOT EXISTS
 (
     SELECT 1
-    FROM trading_parties
-    WHERE party_id = NEW.party_id AND party_type <> 'HEDGE_COUNTERPARTY'
+    FROM trading_counterparty_roles
+    WHERE counterparty_id = NEW.counterparty_id AND role_code = 'HEDGE_COUNTERPARTY'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'fx_hedge_deals.party_id must reference a HEDGE_COUNTERPARTY trading party');
+    SELECT RAISE(ABORT, 'fx_hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_deals_require_hedge_counterparty_update
-BEFORE UPDATE OF party_id ON fx_hedge_deals
+BEFORE UPDATE OF counterparty_id ON fx_hedge_deals
 FOR EACH ROW
-WHEN EXISTS
+WHEN NOT EXISTS
 (
     SELECT 1
-    FROM trading_parties
-    WHERE party_id = NEW.party_id AND party_type <> 'HEDGE_COUNTERPARTY'
+    FROM trading_counterparty_roles
+    WHERE counterparty_id = NEW.counterparty_id AND role_code = 'HEDGE_COUNTERPARTY'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'fx_hedge_deals.party_id must reference a HEDGE_COUNTERPARTY trading party');
+    SELECT RAISE(ABORT, 'fx_hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_trading_parties_preserve_hedge_deals
-BEFORE UPDATE OF party_type ON trading_parties
+CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_hedge_deals
+BEFORE DELETE ON trading_counterparty_roles
 FOR EACH ROW
-WHEN NEW.party_type <> 'HEDGE_COUNTERPARTY'
-    AND EXISTS (SELECT 1 FROM fx_hedge_deals WHERE party_id = OLD.party_id)
+WHEN OLD.role_code = 'HEDGE_COUNTERPARTY'
+    AND EXISTS (SELECT 1 FROM fx_hedge_deals WHERE counterparty_id = OLD.counterparty_id)
 BEGIN
-    SELECT RAISE(ABORT, 'a Trading Party used by fx_hedge_deals must remain a HEDGE_COUNTERPARTY');
+    SELECT RAISE(ABORT, 'a Trading Counterparty used by fx_hedge_deals must retain the HEDGE_COUNTERPARTY role');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_client_deal_generation_settings_require_auto_priced_client_insert
@@ -1599,11 +1714,11 @@ WHEN NOT EXISTS
 (
     SELECT 1
     FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN trading_counterparty_roles role
+        ON role.counterparty_id = r.counterparty_id AND role.role_code = 'CLIENT'
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
     WHERE r.pricing_rule_id = NEW.pricing_rule_id
-      AND p.party_type = 'CLIENT'
       AND e.pricing_mode = 'AUTO_PRICED'
 )
 BEGIN
@@ -1617,11 +1732,11 @@ WHEN NOT EXISTS
 (
     SELECT 1
     FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN trading_counterparty_roles role
+        ON role.counterparty_id = r.counterparty_id AND role.role_code = 'CLIENT'
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
     WHERE r.pricing_rule_id = NEW.pricing_rule_id
-      AND p.party_type = 'CLIENT'
       AND e.pricing_mode = 'AUTO_PRICED'
 )
 BEGIN
@@ -1629,7 +1744,7 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_preserve_auto_priced_client_generation_settings
-BEFORE UPDATE OF party_id, execution_context_id ON pricing_rules
+BEFORE UPDATE OF counterparty_id, execution_context_id ON pricing_rules
 FOR EACH ROW
 WHEN EXISTS
 (
@@ -1640,31 +1755,31 @@ WHEN EXISTS
 AND NOT EXISTS
 (
     SELECT 1
-    FROM trading_parties p
+    FROM trading_counterparty_roles role
     INNER JOIN execution_contexts c ON c.execution_context_id = NEW.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
-    WHERE p.party_id = NEW.party_id
-      AND p.party_type = 'CLIENT'
+    WHERE role.counterparty_id = NEW.counterparty_id
+      AND role.role_code = 'CLIENT'
       AND e.pricing_mode = 'AUTO_PRICED'
 )
 BEGIN
     SELECT RAISE(ABORT, 'a Pricing Rule used by client_deal_generation_settings must remain an AUTO_PRICED CLIENT rule');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_trading_parties_preserve_auto_priced_client_generation_settings
-BEFORE UPDATE OF party_type ON trading_parties
+CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_auto_priced_client_generation_settings
+BEFORE DELETE ON trading_counterparty_roles
 FOR EACH ROW
-WHEN NEW.party_type <> 'CLIENT'
+WHEN OLD.role_code = 'CLIENT'
     AND EXISTS
     (
         SELECT 1
         FROM pricing_rules r
         INNER JOIN client_deal_generation_settings s
             ON s.pricing_rule_id = r.pricing_rule_id
-        WHERE r.party_id = OLD.party_id
+        WHERE r.counterparty_id = OLD.counterparty_id
     )
 BEGIN
-    SELECT RAISE(ABORT, 'a Trading Party used by client_deal_generation_settings must remain a CLIENT');
+    SELECT RAISE(ABORT, 'a Trading Counterparty used by client_deal_generation_settings must retain the CLIENT role');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_execution_contexts_preserve_auto_priced_client_generation_settings
@@ -1713,13 +1828,13 @@ WHEN NOT EXISTS
 (
     SELECT 1
     FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN trading_counterparty_roles role
+        ON role.counterparty_id = r.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
     WHERE r.pricing_rule_id = NEW.pricing_rule_id
-      AND r.party_id = NEW.party_id
+      AND r.counterparty_id = NEW.counterparty_id
       AND r.ccy_pair_code = NEW.ccy_pair_code
-      AND p.party_type = 'HEDGE_COUNTERPARTY'
       AND e.pricing_mode = 'AUTO_PRICED'
 )
 BEGIN
@@ -1727,19 +1842,19 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_quick_mode_settings_require_auto_priced_hedge_update
-BEFORE UPDATE OF pricing_rule_id, party_id, ccy_pair_code ON fx_hedge_quick_mode_settings
+BEFORE UPDATE OF pricing_rule_id, counterparty_id, ccy_pair_code ON fx_hedge_quick_mode_settings
 FOR EACH ROW
 WHEN NOT EXISTS
 (
     SELECT 1
     FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN trading_counterparty_roles role
+        ON role.counterparty_id = r.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
     WHERE r.pricing_rule_id = NEW.pricing_rule_id
-      AND r.party_id = NEW.party_id
+      AND r.counterparty_id = NEW.counterparty_id
       AND r.ccy_pair_code = NEW.ccy_pair_code
-      AND p.party_type = 'HEDGE_COUNTERPARTY'
       AND e.pricing_mode = 'AUTO_PRICED'
 )
 BEGIN
@@ -1777,7 +1892,7 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_preserve_fx_hedge_quick_mode_settings
-BEFORE UPDATE OF party_id, execution_context_id, ccy_pair_code ON pricing_rules
+BEFORE UPDATE OF counterparty_id, execution_context_id, ccy_pair_code ON pricing_rules
 FOR EACH ROW
 WHEN EXISTS
 (
@@ -1788,16 +1903,16 @@ WHEN EXISTS
 AND NOT EXISTS
 (
     SELECT 1
-    FROM trading_parties p
+    FROM trading_counterparty_roles role
     INNER JOIN execution_contexts c ON c.execution_context_id = NEW.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
-    WHERE p.party_id = NEW.party_id
-      AND NEW.party_id = (
-          SELECT settings.party_id
+    WHERE role.counterparty_id = NEW.counterparty_id
+      AND NEW.counterparty_id = (
+          SELECT settings.counterparty_id
           FROM fx_hedge_quick_mode_settings settings
           WHERE settings.pricing_rule_id = OLD.pricing_rule_id
       )
-      AND p.party_type = 'HEDGE_COUNTERPARTY'
+      AND role.role_code = 'HEDGE_COUNTERPARTY'
       AND e.pricing_mode = 'AUTO_PRICED'
       AND NEW.ccy_pair_code = (
           SELECT settings.ccy_pair_code
@@ -1809,18 +1924,18 @@ BEGIN
     SELECT RAISE(ABORT, 'a Pricing Rule used by fx_hedge_quick_mode_settings must remain an AUTO_PRICED HEDGE_COUNTERPARTY rule for the configured Ccy Pair');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_trading_parties_preserve_fx_hedge_quick_mode_settings
-BEFORE UPDATE OF party_type ON trading_parties
+CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_fx_hedge_quick_mode_settings
+BEFORE DELETE ON trading_counterparty_roles
 FOR EACH ROW
-WHEN NEW.party_type <> 'HEDGE_COUNTERPARTY'
+WHEN OLD.role_code = 'HEDGE_COUNTERPARTY'
     AND EXISTS
     (
         SELECT 1
         FROM fx_hedge_quick_mode_settings settings
-        WHERE settings.party_id = OLD.party_id
+        WHERE settings.counterparty_id = OLD.counterparty_id
     )
 BEGIN
-    SELECT RAISE(ABORT, 'a Trading Party used by fx_hedge_quick_mode_settings must remain a HEDGE_COUNTERPARTY');
+    SELECT RAISE(ABORT, 'a Trading Counterparty used by fx_hedge_quick_mode_settings must retain the HEDGE_COUNTERPARTY role');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_execution_contexts_preserve_fx_hedge_quick_mode_settings

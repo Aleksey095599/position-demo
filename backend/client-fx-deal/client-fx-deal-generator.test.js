@@ -26,7 +26,7 @@ test("builds a base-dealt AUTO_PRICED payload from the Market Pulse quote", () =
   const deal = generatedClientFxDeal({
     settings: {
       pricingRuleId: 5,
-      partyId: 3,
+      counterpartyId: 3,
       executionContextId: 5,
       ccyPairCode: "EUR_USD",
       pricingMode: "AUTO_PRICED",
@@ -79,7 +79,7 @@ test("uses stored Base Ccy precision when exposing a generated major amount", ()
   const deal = generatedClientFxDeal({
     settings: {
       pricingRuleId: 5,
-      partyId: 3,
+      counterpartyId: 3,
       executionContextId: 5,
       ccyPairCode: "EUR_USD",
       pricingMode: "AUTO_PRICED",

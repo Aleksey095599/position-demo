@@ -190,7 +190,7 @@ function generatedClientFxDeal({
 
   return {
     entryTimestamp: timestamp.toISOString(),
-    partyId: Number(settings.partyId),
+    counterpartyId: Number(settings.counterpartyId),
     executionContextId: Number(settings.executionContextId),
     pricingRuleId: Number(settings.pricingRuleId),
     tradeDate,

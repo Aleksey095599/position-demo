@@ -82,21 +82,21 @@ function createLegacyDatabase() {
       execution_system_id   TEXT NOT NULL REFERENCES execution_systems (execution_system_id)
     );
 
-    CREATE TABLE trading_parties
+    CREATE TABLE trading_counterparties
     (
-      party_id        INTEGER PRIMARY KEY,
-      party_type      TEXT NOT NULL,
-      party_code      TEXT NOT NULL,
-      party_code_type TEXT NOT NULL,
-      party_name      TEXT NOT NULL,
+      counterparty_id        INTEGER PRIMARY KEY,
+      counterparty_type      TEXT NOT NULL,
+      counterparty_code      TEXT NOT NULL,
+      counterparty_code_type TEXT NOT NULL,
+      counterparty_name      TEXT NOT NULL,
       is_active       INTEGER NOT NULL,
-      UNIQUE (party_code_type, party_code)
+      UNIQUE (counterparty_code_type, counterparty_code)
     );
 
     CREATE TABLE pricing_rules
     (
       pricing_rule_id      INTEGER PRIMARY KEY,
-      party_id             INTEGER NOT NULL REFERENCES trading_parties (party_id),
+      counterparty_id             INTEGER NOT NULL REFERENCES trading_counterparties (counterparty_id),
       execution_context_id TEXT NOT NULL REFERENCES execution_contexts (execution_context_id),
       ccy_pair_code        TEXT NOT NULL REFERENCES ccy_pair_options (ccy_pair_code),
       margin_percent       REAL NOT NULL
@@ -106,7 +106,7 @@ function createLegacyDatabase() {
     (
       client_deal_id       INTEGER PRIMARY KEY,
       entry_timestamp      TEXT    NOT NULL,
-      party_id             INTEGER NOT NULL REFERENCES trading_parties (party_id) ON UPDATE RESTRICT ON DELETE RESTRICT,
+      counterparty_id             INTEGER NOT NULL REFERENCES trading_counterparties (counterparty_id) ON UPDATE RESTRICT ON DELETE RESTRICT,
       trade_date           TEXT    NOT NULL,
       ccy_pair_code        TEXT    NOT NULL REFERENCES ccy_pair_options (ccy_pair_code) ON UPDATE RESTRICT ON DELETE RESTRICT,
       side                 TEXT    NOT NULL,
@@ -118,9 +118,9 @@ function createLegacyDatabase() {
       quote_ccy_value_date TEXT    NOT NULL
     );
 
-    CREATE TABLE trading_party_execution_contexts
+    CREATE TABLE trading_counterparty_execution_contexts
     (
-      party_id INTEGER NOT NULL,
+      counterparty_id INTEGER NOT NULL,
       execution_context_id TEXT NOT NULL
     );
 
@@ -202,8 +202,8 @@ function createLegacyDatabase() {
       ('1234:AFINA:RFQ', '1234', 'AFINA', 'RFQ'),
       ('001:CTF3:CLICK_TRADE_EFX', '001', 'CTF3', 'CLICK_TRADE_EFX');
 
-    INSERT INTO trading_parties
-      (party_id, party_type, party_code, party_code_type, party_name, is_active)
+    INSERT INTO trading_counterparties
+      (counterparty_id, counterparty_type, counterparty_code, counterparty_code_type, counterparty_name, is_active)
     VALUES
       (1, 'CLIENT', '7701234567', 'INN', 'Romashka Company', 1),
       (2, 'CLIENT', '7812345678', 'INN', 'Vasilek Company', 1),
@@ -212,7 +212,7 @@ function createLegacyDatabase() {
       (5, 'INTERNAL_DESK', 'LEGACY_INTERNAL', 'OTHER', 'Legacy Internal Desk', 1);
 
     INSERT INTO pricing_rules
-      (pricing_rule_id, party_id, execution_context_id, ccy_pair_code, margin_percent)
+      (pricing_rule_id, counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
     VALUES
       (1, 1, '002:AFINA:CLICK_TRADE_EFX', 'EUR_USD', 0.10),
       (2, 1, '002:AFINA:RFQ', 'EUR_USD', 0.12),
@@ -222,7 +222,7 @@ function createLegacyDatabase() {
 
     INSERT INTO client_fx_deals
       (
-        client_deal_id, entry_timestamp, party_id, trade_date, ccy_pair_code, side,
+        client_deal_id, entry_timestamp, counterparty_id, trade_date, ccy_pair_code, side,
         base_ccy_amount, quote_ccy_amount, trade_rate, tenor,
         base_ccy_value_date, quote_ccy_value_date
       )
@@ -245,22 +245,23 @@ function verifyFreshSchemaAndSeed() {
   let servicingLocationConstraintsEnforced = true;
   let accountingSystemTextLimitsEnforced = false;
   let executionSystemConstraintsEnforced = true;
-  let tradingPartyConstraintsEnforced = true;
+  let tradingCounterpartyConstraintsEnforced = true;
   let userConstraintsEnforced = true;
-  let frontSystemFolderIdCodeTypeSupported = false;
+  let uiTableColumnSettingsConstraintsEnforced = true;
+  let normalizedTradingCounterpartyProfilesSupported = false;
   let clientDealGenerationProcessSettingsConstraintsEnforced = true;
   let clientDealGenerationSettingsConstraintsEnforced = true;
-  let clientDealGenerationSettingsPartyTypeEnforced = true;
+  let clientDealGenerationSettingsCounterpartyTypeEnforced = true;
   let clientDealGenerationSettingsPricingModeEnforced = true;
   let clientDealGenerationSettingsCascadeDeleteEnforced = true;
   let fxTradeExposureConstraintsEnforced = true;
   let clientFxDealConstraintsEnforced = true;
   let clientFxDealParentRestrictionEnforced = true;
   let clientFxDealAttributionReferencesRestricted = true;
-  let clientFxDealPartyTypeEnforced = true;
+  let clientFxDealCounterpartyTypeEnforced = true;
   let hedgeFxDealConstraintsEnforced = true;
   let hedgeFxDealParentRestrictionEnforced = true;
-  let hedgeFxDealPartyTypeEnforced = true;
+  let hedgeFxDealCounterpartyTypeEnforced = true;
   let fxTradeBatchDefaultsSupported = false;
   let fxTradeBatchConstraintsEnforced = true;
   let batchTradeTypesSupported = false;
@@ -272,6 +273,22 @@ function verifyFreshSchemaAndSeed() {
   let batchQuoteCashMemberSinglePerBatchEnforced = false;
   let batchQuoteCashNeutralityEnforced = false;
   let completedBatchQuoteCashMemberImmutable = false;
+
+  [
+    ["width_px", 47],
+    ["width_px", 1601],
+    ["default_width_px", 47],
+    ["default_width_px", 1601]
+  ].forEach(([columnName, value]) => {
+    try {
+      database.prepare(`
+        UPDATE ui_table_column_settings
+        SET ${columnName} = ?
+        WHERE table_key = 'pricing_rules_grid' AND column_key = 'id'
+      `).run(value);
+      uiTableColumnSettingsConstraintsEnforced = false;
+    } catch {}
+  });
 
   [
     ["AA1", "Valid Name", "Valid Country", 2],
@@ -360,23 +377,71 @@ function verifyFreshSchemaAndSeed() {
   });
 
   [
-    ["EXTERNAL_COUNTERPARTY", "VERIFY_EXTERNAL", "OTHER", "Valid party name", 1],
-    ["INTERNAL_DESK", "VERIFY_INTERNAL", "OTHER", "Valid party name", 1],
-    ["UNKNOWN", "VERIFY_UNKNOWN", "OTHER", "Valid party name", 1],
-    ["CLIENT", "VERIFY_LEI", "LEI", "Valid party name", 1],
-    ["CLIENT", "X".repeat(21), "OTHER", "Valid party name", 1],
-    ["CLIENT", "VERIFY_NAME", "OTHER", "X".repeat(201), 1],
-    ["CLIENT", "VERIFY_ACTIVE", "OTHER", "Valid party name", 2]
-  ].forEach(([partyType, partyCode, partyCodeType, partyName, isActive]) => {
+    ["", 1],
+    ["X".repeat(201), 1],
+    ["Valid counterparty name", 2]
+  ].forEach(([counterpartyName, isActive]) => {
     try {
       database.prepare(`
-        INSERT INTO trading_parties
-          (party_type, party_code, party_code_type, party_name, is_active)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(partyType, partyCode, partyCodeType, partyName, isActive);
-      tradingPartyConstraintsEnforced = false;
+        INSERT INTO trading_counterparties (counterparty_name, is_active)
+        VALUES (?, ?)
+      `).run(counterpartyName, isActive);
+      tradingCounterpartyConstraintsEnforced = false;
     } catch {}
   });
+
+  [
+    ["VERIFY_LEI", "LEI", "CORPORATE"],
+    ["X".repeat(21), "OTHER", "CORPORATE"],
+    ["VERIFY_KIND", "OTHER", "UNKNOWN"],
+    ["123", "INN", "CORPORATE"]
+  ].forEach(([counterpartyCode, counterpartyCodeType, counterpartyKind]) => {
+    database.exec("SAVEPOINT verify_external_counterparty");
+
+    try {
+      const counterpartyId = database.prepare(`
+        INSERT INTO trading_counterparties (counterparty_name, is_active)
+        VALUES ('Verification External Counterparty', 1)
+      `).run().lastInsertRowid;
+      database.prepare(`
+        INSERT INTO external_counterparties
+          (counterparty_id, counterparty_code, counterparty_code_type, external_counterparty_kind)
+        VALUES (?, ?, ?, ?)
+      `).run(counterpartyId, counterpartyCode, counterpartyCodeType, counterpartyKind);
+      tradingCounterpartyConstraintsEnforced = false;
+    } catch {} finally {
+      database.exec("ROLLBACK TO verify_external_counterparty; RELEASE verify_external_counterparty;");
+    }
+  });
+
+  database.exec("SAVEPOINT verify_internal_counterparty");
+
+  try {
+    const counterpartyId = database.prepare(`
+      INSERT INTO trading_counterparties (counterparty_name, is_active)
+      VALUES ('Verification Internal Unit', 1)
+    `).run().lastInsertRowid;
+    database.prepare(`
+      INSERT INTO internal_units (counterparty_id, unit_code, unit_type)
+      VALUES (?, 'VERIFY_DESK', 'DESK')
+    `).run(counterpartyId);
+    database.prepare(`
+      INSERT INTO trading_counterparty_roles (counterparty_id, role_code)
+      VALUES (?, 'HEDGE_COUNTERPARTY')
+    `).run(counterpartyId);
+    normalizedTradingCounterpartyProfilesSupported = true;
+
+    try {
+      database.prepare(`
+        INSERT INTO external_counterparties
+          (counterparty_id, counterparty_code, counterparty_code_type, external_counterparty_kind)
+        VALUES (?, 'VERIFY_DUPLICATE_PROFILE', 'OTHER', 'CORPORATE')
+      `).run(counterpartyId);
+      tradingCounterpartyConstraintsEnforced = false;
+    } catch {}
+  } finally {
+    database.exec("ROLLBACK TO verify_internal_counterparty; RELEASE verify_internal_counterparty;");
+  }
 
   [
     ["A", "Valid", "User", "DEALER", 1],
@@ -396,24 +461,15 @@ function verifyFreshSchemaAndSeed() {
     } catch {}
   });
 
-  try {
-    const frontSystemPartyId = database.prepare(`
-      INSERT INTO trading_parties
-        (party_type, party_code, party_code_type, party_name, is_active)
-      VALUES ('CLIENT', 'FRONT_FOLDER_1', 'FRONT_SYSTEM_FOLDER_ID', 'Front System Client', 1)
-    `).run().lastInsertRowid;
-    frontSystemFolderIdCodeTypeSupported = true;
-    database.prepare("DELETE FROM trading_parties WHERE party_id = ?").run(frontSystemPartyId);
-  } catch {}
-
   const clientGenerationPricingRuleId = Number(database.prepare(`
     SELECT r.pricing_rule_id
     FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
+    INNER JOIN trading_counterparty_roles role
+      ON role.counterparty_id = p.counterparty_id AND role.role_code = 'CLIENT'
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
-    WHERE p.party_type = 'CLIENT'
-      AND e.pricing_mode = 'AUTO_PRICED'
+    WHERE e.pricing_mode = 'AUTO_PRICED'
     ORDER BY r.pricing_rule_id
     LIMIT 1
   `).get().pricing_rule_id);
@@ -428,19 +484,21 @@ function verifyFreshSchemaAndSeed() {
   const nonAutoClientGenerationPricingRuleId = Number(database.prepare(`
     SELECT r.pricing_rule_id
     FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
+    INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
+    INNER JOIN trading_counterparty_roles role
+      ON role.counterparty_id = p.counterparty_id AND role.role_code = 'CLIENT'
     INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
-    WHERE p.party_type = 'CLIENT'
-      AND e.pricing_mode <> 'AUTO_PRICED'
+    WHERE e.pricing_mode <> 'AUTO_PRICED'
     ORDER BY r.pricing_rule_id
     LIMIT 1
   `).get().pricing_rule_id);
   const hedgeGenerationPricingRuleId = Number(database.prepare(`
     SELECT r.pricing_rule_id
     FROM pricing_rules r
-    INNER JOIN trading_parties p ON p.party_id = r.party_id
-    WHERE p.party_type = 'HEDGE_COUNTERPARTY'
+    INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
+    INNER JOIN trading_counterparty_roles role
+      ON role.counterparty_id = p.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
     ORDER BY r.pricing_rule_id
     LIMIT 1
   `).get().pricing_rule_id);
@@ -543,7 +601,7 @@ function verifyFreshSchemaAndSeed() {
       100000 * clientGenerationMinorFactor,
       clientGenerationBaseFractionDigits
     );
-    clientDealGenerationSettingsPartyTypeEnforced = false;
+    clientDealGenerationSettingsCounterpartyTypeEnforced = false;
   } catch {}
 
   try {
@@ -595,56 +653,55 @@ function verifyFreshSchemaAndSeed() {
     clientDealGenerationSettingsPricingModeEnforced = false;
   } catch {}
 
-  const clientGenerationPartyId = Number(database.prepare(`
-    SELECT party_id
-    FROM trading_parties
-    WHERE party_code = '5409876543'
-  `).get().party_id);
-  const clientGenerationPartyRuleId = Number(database.prepare(`
+  const clientGenerationCounterpartyId = Number(database.prepare(`
+    SELECT counterparty_id
+    FROM external_counterparties
+    WHERE counterparty_code_type = 'INN' AND counterparty_code = '5409876543'
+  `).get().counterparty_id);
+  const clientGenerationCounterpartyRuleId = Number(database.prepare(`
     SELECT pricing_rule_id
     FROM pricing_rules
-    WHERE party_id = ?
+    WHERE counterparty_id = ?
     ORDER BY pricing_rule_id
     LIMIT 1
-  `).get(clientGenerationPartyId).pricing_rule_id);
-  const hedgeGenerationPartyId = Number(database.prepare(`
-    SELECT party_id
-    FROM trading_parties
-    WHERE party_type = 'HEDGE_COUNTERPARTY'
-    ORDER BY party_id
+  `).get(clientGenerationCounterpartyId).pricing_rule_id);
+  const hedgeGenerationCounterpartyId = Number(database.prepare(`
+    SELECT counterparty_id
+    FROM trading_counterparty_roles
+    WHERE role_code = 'HEDGE_COUNTERPARTY'
+    ORDER BY counterparty_id
     LIMIT 1
-  `).get().party_id);
+  `).get().counterparty_id);
 
   try {
     database.prepare(`
       UPDATE pricing_rules
-      SET party_id = ?
+      SET counterparty_id = ?
       WHERE pricing_rule_id = ?
-    `).run(hedgeGenerationPartyId, clientGenerationPartyRuleId);
-    clientDealGenerationSettingsPartyTypeEnforced = false;
+    `).run(hedgeGenerationCounterpartyId, clientGenerationCounterpartyRuleId);
+    clientDealGenerationSettingsCounterpartyTypeEnforced = false;
   } catch {}
 
   try {
     database.prepare(`
-      UPDATE trading_parties
-      SET party_type = 'HEDGE_COUNTERPARTY'
-      WHERE party_id = ?
-    `).run(clientGenerationPartyId);
-    clientDealGenerationSettingsPartyTypeEnforced = false;
+      DELETE FROM trading_counterparty_roles
+      WHERE counterparty_id = ? AND role_code = 'CLIENT'
+    `).run(clientGenerationCounterpartyId);
+    clientDealGenerationSettingsCounterpartyTypeEnforced = false;
   } catch {}
 
   const cascadePricingRuleId = Number(database.prepare(`
     INSERT INTO pricing_rules
-      (party_id, execution_context_id, ccy_pair_code, margin_percent)
+      (counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
     SELECT ?, c.execution_context_id, 'EUR_USD', 0.01
     FROM execution_contexts c
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
     WHERE c.execution_context_id NOT IN
-      (SELECT execution_context_id FROM pricing_rules WHERE party_id = ? AND ccy_pair_code = 'EUR_USD')
+      (SELECT execution_context_id FROM pricing_rules WHERE counterparty_id = ? AND ccy_pair_code = 'EUR_USD')
       AND e.pricing_mode = 'AUTO_PRICED'
     ORDER BY c.execution_context_id
     LIMIT 1
-  `).run(clientGenerationPartyId, clientGenerationPartyId).lastInsertRowid);
+  `).run(clientGenerationCounterpartyId, clientGenerationCounterpartyId).lastInsertRowid);
 
   database.prepare(`
     INSERT INTO client_deal_generation_settings
@@ -988,7 +1045,7 @@ function verifyFreshSchemaAndSeed() {
   ].forEach(values => {
     try {
       database.prepare(`
-        INSERT INTO client_fx_deals (trade_id, trade_type, party_id)
+        INSERT INTO client_fx_deals (trade_id, trade_type, counterparty_id)
         VALUES (?, ?, ?)
       `).run(...values);
       clientFxDealConstraintsEnforced = false;
@@ -1003,7 +1060,7 @@ function verifyFreshSchemaAndSeed() {
   ].forEach(values => {
     try {
       database.prepare(`
-        INSERT INTO fx_hedge_deals (trade_id, trade_type, party_id)
+        INSERT INTO fx_hedge_deals (trade_id, trade_type, counterparty_id)
         VALUES (?, ?, ?)
       `).run(...values);
       hedgeFxDealConstraintsEnforced = false;
@@ -1011,16 +1068,16 @@ function verifyFreshSchemaAndSeed() {
   });
 
   const hedgePricingRuleReference = database.prepare(`
-    SELECT pricing_rule_id, party_id, execution_context_id
+    SELECT pricing_rule_id, counterparty_id, execution_context_id
     FROM fx_hedge_deals
     WHERE trade_id = ?
   `).get(seededHedgeTradeId);
 
   [
-    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, null, 0, 0, 2],
-    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, null, 1.12, "INVALID", 2],
-    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, null, 1.12, 0, null],
-    [unlinkedHedgeTradeId, hedgePricingRuleReference.party_id, null, hedgePricingRuleReference.pricing_rule_id, 1.12, 0, 2],
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.counterparty_id, null, null, 0, 0, 2],
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.counterparty_id, null, null, 1.12, "INVALID", 2],
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.counterparty_id, null, null, 1.12, 0, null],
+    [unlinkedHedgeTradeId, hedgePricingRuleReference.counterparty_id, null, hedgePricingRuleReference.pricing_rule_id, 1.12, 0, 2],
     [unlinkedHedgeTradeId, 1, hedgePricingRuleReference.execution_context_id, hedgePricingRuleReference.pricing_rule_id, 1.12, 0, 2]
   ].forEach(values => {
     try {
@@ -1029,7 +1086,7 @@ function verifyFreshSchemaAndSeed() {
           (
             trade_id,
             trade_type,
-            party_id,
+            counterparty_id,
             execution_context_id,
             pricing_rule_id,
             transfer_rate,
@@ -1045,7 +1102,7 @@ function verifyFreshSchemaAndSeed() {
   const pricingRuleReference = database.prepare(`
     SELECT pricing_rule_id, execution_context_id
     FROM pricing_rules
-    WHERE party_id = 1
+    WHERE counterparty_id = 1
     ORDER BY pricing_rule_id
     LIMIT 1
   `).get();
@@ -1070,7 +1127,7 @@ function verifyFreshSchemaAndSeed() {
           (
             trade_id,
             trade_type,
-            party_id,
+            counterparty_id,
             execution_context_id,
             pricing_rule_id,
             transfer_rate,
@@ -1133,39 +1190,53 @@ function verifyFreshSchemaAndSeed() {
     clientFxDealAttributionReferencesRestricted = false;
   } catch {}
 
-  const nonClientPartyId = Number(database.prepare(`
-    INSERT INTO trading_parties
-      (party_type, party_code, party_code_type, party_name, is_active)
-    VALUES ('HEDGE_COUNTERPARTY', 'VERIFY_DEAL_CP', 'OTHER', 'Verification Deal Counterparty', 1)
+  const nonClientCounterpartyId = Number(database.prepare(`
+    INSERT INTO trading_counterparties (counterparty_name, is_active)
+    VALUES ('Verification Deal Counterparty', 1)
   `).run().lastInsertRowid);
+  database.prepare(`
+    INSERT INTO external_counterparties
+      (counterparty_id, counterparty_code, counterparty_code_type, external_counterparty_kind)
+    VALUES (?, 'VERIFY_DEAL_CP', 'OTHER', 'CORPORATE')
+  `).run(nonClientCounterpartyId);
+  database.prepare(`
+    INSERT INTO trading_counterparty_roles (counterparty_id, role_code)
+    VALUES (?, 'HEDGE_COUNTERPARTY')
+  `).run(nonClientCounterpartyId);
 
   try {
     database.prepare(`
-      INSERT INTO client_fx_deals (trade_id, trade_type, party_id)
+      INSERT INTO client_fx_deals (trade_id, trade_type, counterparty_id)
       VALUES (?, 'CLIENT_DEAL', ?)
-    `).run(unlinkedClientTradeId, nonClientPartyId);
-    clientFxDealPartyTypeEnforced = false;
-  } catch {}
-
-  try {
-    database.prepare("UPDATE trading_parties SET party_type = 'HEDGE_COUNTERPARTY' WHERE party_id = 1").run();
-    clientFxDealPartyTypeEnforced = false;
+    `).run(unlinkedClientTradeId, nonClientCounterpartyId);
+    clientFxDealCounterpartyTypeEnforced = false;
   } catch {}
 
   try {
     database.prepare(`
-      INSERT INTO fx_hedge_deals (trade_id, trade_type, party_id)
+      DELETE FROM trading_counterparty_roles
+      WHERE counterparty_id = 1 AND role_code = 'CLIENT'
+    `).run();
+    clientFxDealCounterpartyTypeEnforced = false;
+  } catch {}
+
+  try {
+    database.prepare(`
+      INSERT INTO fx_hedge_deals (trade_id, trade_type, counterparty_id)
       VALUES (?, 'HEDGE_DEAL', 1)
     `).run(unlinkedHedgeTradeId);
-    hedgeFxDealPartyTypeEnforced = false;
+    hedgeFxDealCounterpartyTypeEnforced = false;
   } catch {}
 
   try {
-    database.prepare("UPDATE trading_parties SET party_type = 'CLIENT' WHERE party_id = 4").run();
-    hedgeFxDealPartyTypeEnforced = false;
+    database.prepare(`
+      DELETE FROM trading_counterparty_roles
+      WHERE counterparty_id = 4 AND role_code = 'HEDGE_COUNTERPARTY'
+    `).run();
+    hedgeFxDealCounterpartyTypeEnforced = false;
   } catch {}
 
-  database.prepare("DELETE FROM trading_parties WHERE party_id = ?").run(nonClientPartyId);
+  database.prepare("DELETE FROM trading_counterparties WHERE counterparty_id = ?").run(nonClientCounterpartyId);
 
   const result = {
     currencies: database.prepare("SELECT COUNT(*) AS count FROM ccy_options").get().count,
@@ -1177,12 +1248,20 @@ function verifyFreshSchemaAndSeed() {
     executionContexts: database.prepare("SELECT COUNT(*) AS count FROM execution_contexts").get().count,
     executionContextIdType: database.prepare("PRAGMA table_info(execution_contexts)").all()
       .find(column => column.name === "execution_context_id")?.type,
-    tradingParties: database.prepare("SELECT COUNT(*) AS count FROM trading_parties").get().count,
-    tradingPartyTypes: database.prepare(`
-      SELECT DISTINCT party_type
-      FROM trading_parties
-      ORDER BY party_type
-    `).all().map(row => row.party_type),
+    tradingCounterparties: database.prepare("SELECT COUNT(*) AS count FROM trading_counterparties").get().count,
+    tradingCounterpartyRoles: database.prepare(`
+      SELECT DISTINCT role_code
+      FROM trading_counterparty_roles
+      ORDER BY role_code
+    `).all().map(row => row.role_code),
+    tradingCounterpartyColumns: database.prepare("PRAGMA table_info(trading_counterparties)").all()
+      .map(column => column.name),
+    externalCounterpartyColumns: database.prepare("PRAGMA table_info(external_counterparties)").all()
+      .map(column => column.name),
+    internalUnitColumns: database.prepare("PRAGMA table_info(internal_units)").all()
+      .map(column => column.name),
+    tradingCounterpartyRoleColumns: database.prepare("PRAGMA table_info(trading_counterparty_roles)").all()
+      .map(column => column.name),
     users: database.prepare("SELECT COUNT(*) AS count FROM users").get().count,
     userColumns: database.prepare("PRAGMA table_info(users)").all().map(column => column.name),
     userRoles: database.prepare(`
@@ -1190,6 +1269,31 @@ function verifyFreshSchemaAndSeed() {
       FROM users
       ORDER BY user_role
     `).all().map(row => row.user_role),
+    uiTableColumnSettings: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM ui_table_column_settings
+    `).get().count,
+    uiTableColumnLayoutKeys: database.prepare(`
+      SELECT table_key, COUNT(*) AS column_count
+      FROM ui_table_column_settings
+      GROUP BY table_key
+      ORDER BY table_key
+    `).all(),
+    uiTableColumnSettingColumns: database.prepare(`
+      PRAGMA table_info(ui_table_column_settings)
+    `).all().map(column => column.name),
+    uiTableColumnSettingRows: database.prepare(`
+      SELECT
+        table_key,
+        column_key,
+        column_label,
+        display_order,
+        default_width_px,
+        width_px
+      FROM ui_table_column_settings
+      WHERE table_key = 'pricing_rules_grid'
+      ORDER BY display_order
+    `).all(),
     pricingRules: database.prepare("SELECT COUNT(*) AS count FROM pricing_rules").get().count,
     legacyMonetaryColumns: database.prepare(`
       SELECT
@@ -1232,11 +1336,13 @@ function verifyFreshSchemaAndSeed() {
     clientDealGenerationSettingsRows: database.prepare(`
       SELECT
         s.*,
-        p.party_type,
+        role.role_code AS counterparty_type,
         e.pricing_mode
       FROM client_deal_generation_settings s
       INNER JOIN pricing_rules r ON r.pricing_rule_id = s.pricing_rule_id
-      INNER JOIN trading_parties p ON p.party_id = r.party_id
+      INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
+      INNER JOIN trading_counterparty_roles role
+        ON role.counterparty_id = p.counterparty_id AND role.role_code = 'CLIENT'
       INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
       INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
       ORDER BY s.pricing_rule_id
@@ -1278,14 +1384,16 @@ function verifyFreshSchemaAndSeed() {
     hedgeQuickModeSettingsSeedRow: database.prepare(`
       SELECT
         settings.*,
-        party.party_type,
+        role.role_code AS counterparty_type,
         execution.pricing_mode
       FROM fx_hedge_quick_mode_settings settings
       INNER JOIN pricing_rules rule
         ON rule.pricing_rule_id = settings.pricing_rule_id
-        AND rule.party_id = settings.party_id
+        AND rule.counterparty_id = settings.counterparty_id
         AND rule.ccy_pair_code = settings.ccy_pair_code
-      INNER JOIN trading_parties party ON party.party_id = settings.party_id
+      INNER JOIN trading_counterparties counterparty ON counterparty.counterparty_id = settings.counterparty_id
+      INNER JOIN trading_counterparty_roles role
+        ON role.counterparty_id = counterparty.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
       INNER JOIN execution_contexts context
         ON context.execution_context_id = rule.execution_context_id
       INNER JOIN execution_systems execution
@@ -1395,22 +1503,23 @@ function verifyFreshSchemaAndSeed() {
     servicingLocationConstraintsEnforced,
     accountingSystemTextLimitsEnforced,
     executionSystemConstraintsEnforced,
-    tradingPartyConstraintsEnforced,
+    tradingCounterpartyConstraintsEnforced,
     userConstraintsEnforced,
-    frontSystemFolderIdCodeTypeSupported,
+    uiTableColumnSettingsConstraintsEnforced,
+    normalizedTradingCounterpartyProfilesSupported,
     clientDealGenerationProcessSettingsConstraintsEnforced,
     clientDealGenerationSettingsConstraintsEnforced,
-    clientDealGenerationSettingsPartyTypeEnforced,
+    clientDealGenerationSettingsCounterpartyTypeEnforced,
     clientDealGenerationSettingsPricingModeEnforced,
     clientDealGenerationSettingsCascadeDeleteEnforced,
     fxTradeExposureConstraintsEnforced,
     clientFxDealConstraintsEnforced,
     clientFxDealParentRestrictionEnforced,
     clientFxDealAttributionReferencesRestricted,
-    clientFxDealPartyTypeEnforced,
+    clientFxDealCounterpartyTypeEnforced,
     hedgeFxDealConstraintsEnforced,
     hedgeFxDealParentRestrictionEnforced,
-    hedgeFxDealPartyTypeEnforced,
+    hedgeFxDealCounterpartyTypeEnforced,
     fxTradeBatchDefaultsSupported,
     fxTradeBatchConstraintsEnforced,
     batchTradeTypesSupported,
@@ -1425,7 +1534,7 @@ function verifyFreshSchemaAndSeed() {
     legacyAssignmentTablePresent: Boolean(database.prepare(`
       SELECT 1 AS present
       FROM sqlite_master
-      WHERE type = 'table' AND name = 'trading_party_execution_contexts'
+      WHERE type = 'table' AND name = 'trading_counterparty_execution_contexts'
     `).get()),
     foreignKeyViolations: database.prepare("PRAGMA foreign_key_check").all().length
   };
@@ -1440,6 +1549,9 @@ function verifyFrontendStructure() {
   const html = normalizedSource("index.html");
   const serverSource = normalizedSource("server.js");
   const schemaSource = normalizedSource("schema.sql");
+  const uiTableLayoutsSource = normalizedSource(
+    path.join("backend", "ui-table-layout", "ui-table-layouts.js")
+  );
   const demoDatabaseSource = normalizedSource("demo-db.js");
   const fxBatchFormationDomainSource = normalizedSource(
     path.join("backend", "fx-batching", "domain", "fx-batch-formation.js")
@@ -1463,6 +1575,10 @@ function verifyFrontendStructure() {
   const scripts = [...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/g)];
   const inlineScript = scripts.at(-1)?.[1] || "";
   const nativeTableOpenings = html.match(/<table\b[^>]*>/g) || [];
+  const dialogCount = (html.match(/<dialog\b/g) || []).length;
+  const dialogCloseButtonCount = (
+    html.match(/class="[^"]*btn-close[^"]*"[^>]*aria-label="Close"/g) || []
+  ).length;
   new Function(inlineScript);
   const batchStructureColumnsSource = inlineScript.match(
     /function batchStructureTradeTypeFormatter[\s\S]*?function initializeBatchDetailsGrid/
@@ -1545,7 +1661,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("collection.push(item);")
       && !inlineScript.includes("persistedItem"),
     usesExecutionContextsEndpoint: inlineScript.includes("/api/v1/execution-contexts"),
-    usesTradingPartiesEndpoint: inlineScript.includes("/api/v1/trading-parties"),
+    usesTradingCounterpartiesEndpoint: inlineScript.includes("/api/v1/trading-counterparties"),
     usesUsersWorkspace: inlineScript.includes("/api/v1/users")
       && html.includes('href="#users" data-workspace-route="users"')
       && html.includes('id="usersView"')
@@ -1565,12 +1681,36 @@ function verifyFrontendStructure() {
       && inlineScript.includes('<span class="button-icon" aria-hidden="true">delete</span>'),
     usesPricingRulesEndpoint: inlineScript.includes("/api/v1/pricing-rules"),
     usesPricingRulesBootstrap: inlineScript.includes("DEMO_API_BOOTSTRAP.pricingRules"),
-    displaysPricingRulePartyType: serverSource.includes("p.party_type AS partyType")
-      && html.includes('<span class="reference-column-title">Party Type</span>')
-      && html.includes('data-pricing-rule-header-filter="partyType"')
-      && inlineScript.includes("partyType: normalizedPartyType(")
-      && inlineScript.includes("data-pricing-rule-party-type")
-      && inlineScript.includes("partyTypeForInn(rule.inn)"),
+    usesDatabaseBackedUiTableColumnLayouts:
+      schemaSource.includes("CREATE TABLE IF NOT EXISTS ui_table_column_settings")
+      && uiTableLayoutsSource.includes("const UI_TABLE_LAYOUTS = Object.freeze({")
+      && uiTableLayoutsSource.includes('hedge_quick_mode_settings_grid: layout("Quick Hedge Settings"')
+      && serverSource.includes("function ensureUiTableColumnSettings(sqlite)")
+      && serverSource.includes("const uiTableColumnSettingsMatch =")
+      && serverSource.includes("uiTableLayouts: Object.entries(UI_TABLE_LAYOUTS)")
+      && inlineScript.includes("/api/v1/ui-table-column-settings/${encodeURIComponent")
+      && databaseTableSectionsSource.includes('"ui_table_column_settings"')
+      && html.includes('id="pricingRulesTableLayoutButton"')
+      && html.includes('data-ui-table-layout-host="client_fx_deals_grid"')
+      && html.includes('data-ui-table-layout-host="servicing_locations_grid"')
+      && html.includes('id="pricingRulesTable" data-ui-table-layout-key="pricing_rules_grid"')
+      && html.includes('data-ui-column-key="execution_context"')
+      && html.includes('id="pricingRulesTableLayoutDialog"')
+      && html.includes('id="pricingRulesTableLayoutSaveDefaultButton"')
+      && inlineScript.includes("function applyNativeUiTableLayout(tableKey, tableLayout)")
+      && inlineScript.includes("function saveUiTableLayoutAsDefault(event)")
+      && inlineScript.includes('confirmation: "SAVE_AS_DEFAULT"')
+      && serverSource.includes("function updateUiTableColumnDefaults(payload)")
+      && serverSource.includes("uiTableColumnSettingsDefaultsMatch")
+      && inlineScript.includes("function registerUiTableTabulator(tableKey, table)")
+      && inlineScript.includes("async function saveUiTableLayout(event)")
+      && inlineScript.includes("async function resetUiTableLayout()"),
+    displaysPricingRuleCounterpartyType: serverSource.includes("counterpartyRoles")
+      && html.includes('<span class="reference-column-title">Counterparty Type</span>')
+      && html.includes('data-pricing-rule-header-filter="counterpartyType"')
+      && inlineScript.includes("counterpartyRoles: normalizedCounterpartyRoles(")
+      && inlineScript.includes("data-pricing-rule-counterparty-type")
+      && inlineScript.includes("counterpartyTypeForInn(rule.inn)"),
     displaysPricingRulePricingMode: serverSource.includes("e.pricing_mode AS pricingMode")
       && html.includes('<span class="reference-column-title">Pricing Mode</span>')
       && html.includes('data-pricing-rule-header-filter="pricingMode"')
@@ -1661,6 +1801,11 @@ function verifyFrontendStructure() {
         fxPositionPageMarkup
       )
       && inlineScript.includes("function renderHedgeQuickModeToolbar()")
+      && inlineScript.includes("function hedgeQuickModeToolbarStructureSignature(")
+      && inlineScript.includes("function syncHedgeQuickModeToolbarQuote(")
+      && inlineScript.includes("hedgeQuickModeToolbarSignature === structureSignature")
+      && inlineScript.includes('data-hedge-quick-quote="bid"')
+      && inlineScript.includes('data-hedge-quick-quote="offer"')
       && inlineScript.includes("function syncHedgeQuickModeQuoteAlignment()")
       && inlineScript.includes("scheduleHedgeQuickModeQuoteAlignment")
       && inlineScript.includes('data-hedge-quick-preset')
@@ -1676,6 +1821,17 @@ function verifyFrontendStructure() {
       && html.includes('--bs-btn-bg: rgba(var(--bs-success-rgb), 0.055);')
       && !/#mainPage\.fx-position-bootstrap\.workbench-page \.hedge-quick-action(?:-sell|-buy)? \{[^}]*\bbackground\s*:/.test(html)
       && inlineScript.includes('data-hedge-quick-action')
+      && inlineScript.includes('hedgeQuickModeBoundaryMarkup("start")')
+      && inlineScript.includes('hedgeQuickModeBoundaryMarkup("end")')
+      && inlineScript.includes('hedgeQuickModeUnlocked ? "lock_open" : "lock"')
+      && inlineScript.includes("function setHedgeQuickModeUnlocked(")
+      && inlineScript.includes('document.addEventListener("keydown", event => {')
+      && inlineScript.includes('document.addEventListener("keyup", event => {')
+      && inlineScript.includes('window.addEventListener("blur", () => setHedgeQuickModeUnlocked(false))')
+      && inlineScript.includes("!controlConfirmed || !hedgeQuickModeUnlocked")
+      && html.includes(".hedge-quick-boundary-start")
+      && html.includes(".hedge-quick-boundary-end")
+      && html.includes(".hedge-quick-toolbar.is-unlocked")
       && inlineScript.includes('class="hedge-quick-execution"')
       && inlineScript.includes("configured price stream")
       && inlineScript.includes('const tooltip = disabled ? "" : "Hold Ctrl and click";')
@@ -1732,7 +1888,7 @@ function verifyFrontendStructure() {
         'id="hedgeQuickModeSettingsEditor" hidden'
       )
       && hedgingSettingsPageMarkup.includes(
-        'id="hedgeQuickModePartyId" name="partyId"'
+        'id="hedgeQuickModeCounterpartyId" name="counterpartyId"'
       )
       && hedgingSettingsPageMarkup.includes('name="pricingRuleId"')
       && (hedgingSettingsPageMarkup.match(/name="(?:small|medium|large|xlarge)BaseCcyAmount"/g) || []).length === 4
@@ -1756,10 +1912,10 @@ function verifyFrontendStructure() {
       && inlineScript.includes("function renderHedgeQuickModePricingRules()")
       && inlineScript.includes("async function saveHedgeQuickModeSettings(event)")
       && inlineScript.includes("async function deleteHedgeQuickModeSettings()")
-      && inlineScript.includes("partyId: counterparty.partyId")
-      && serverSource.includes("rule.partyId !== payload.partyId")
+      && inlineScript.includes("counterpartyId: counterparty.counterpartyId")
+      && serverSource.includes("rule.counterpartyId !== payload.counterpartyId")
       && schemaSource.includes(
-        "FOREIGN KEY (pricing_rule_id, party_id, ccy_pair_code)"
+        "FOREIGN KEY (pricing_rule_id, counterparty_id, ccy_pair_code)"
       ),
     usesCompactHedgingSettingsLayout:
       /#hedgingSettingsPage\.unified-bootstrap-workspace\.workbench-page \.hedging-settings-panel \{[\s\S]*?width: fit-content;[\s\S]*?max-width: 100%;/.test(html)
@@ -1786,7 +1942,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("applicationStatusTokenMarkup(cell.getValue())"),
     usesHedgeCounterpartyPricingRules: serverSource.includes("function eligibleHedgeDealPricingRules(pricingMode)")
       && serverSource.includes('new Set(["AUTO_PRICED", "DEALER_PRICED"])')
-      && serverSource.includes('party?.partyType === "HEDGE_COUNTERPARTY"')
+      && serverSource.includes('tradingCounterpartyHasRole(counterparty, "HEDGE_COUNTERPARTY")')
       && serverSource.includes("pricingRules(normalizedPricingMode).filter(rule =>")
       && serverSource.includes('pathname === "/api/v1/hedge-deal-pricing-rules"')
       && serverSource.includes('url.searchParams.get("pricingMode")')
@@ -1795,11 +1951,11 @@ function verifyFrontendStructure() {
       && serverSource.includes("hedgeFxDealWithCalculatedTerms(payload, exposureAmounts)")
       && inlineScript.includes('function isHedgeDealPricingRule(rule, pricingMode)')
       && inlineScript.includes("rulePricingMode === requestedPricingMode")
-      && inlineScript.includes("function eligibleHedgeDealPartyIds(")
+      && inlineScript.includes("function eligibleHedgeDealCounterpartyIds(")
       && inlineScript.includes("const pricingMode = selectedAddHedgeDealPricingMode();")
       && inlineScript.includes("pricingModeForRule(rule) === pricingMode")
       && !inlineScript.includes("hedgeDealEligiblePricingRules")
-      && inlineScript.includes("eligiblePartyIds.has(String(profile.partyId))")
+      && inlineScript.includes("eligibleCounterpartyIds.has(String(profile.counterpartyId))")
       && inlineScript.includes("profiles.length === 1 ? profiles[0] : null")
       && inlineScript.includes("No Hedge Counterparty with ${escapeHtml(")
       && inlineScript.includes("addHedgeDealPricingRuleContentMarkup")
@@ -1847,7 +2003,7 @@ function verifyFrontendStructure() {
         "FX Batching",
         "Pricing",
         "Settings",
-        "Trading Parties & Users",
+        "Trading Counterparties & Users",
         "Demo & Generation",
         "Audit",
         "Other"
@@ -1860,7 +2016,7 @@ function verifyFrontendStructure() {
       && databaseTableSectionsSource.includes('"pricing_rules"')
       && databaseTableSectionsSource.includes('"execution_contexts"')
       && databaseTableSectionsSource.includes('"ccy_pair_options"')
-      && databaseTableSectionsSource.includes('"trading_parties"')
+      && databaseTableSectionsSource.includes('"trading_counterparties"')
       && databaseTableSectionsSource.includes('"client_deal_generation_settings"')
       && /id: "pricing",[\s\S]*?label: "Pricing",[\s\S]*?icon: "price_change",[\s\S]*?tables: \[\s*"pricing_rules",\s*"accounting_systems",\s*"execution_contexts",\s*"execution_systems",\s*"servicing_locations"\s*\]/.test(
         databaseTableSectionsSource
@@ -1908,6 +2064,9 @@ function verifyFrontendStructure() {
       && editClientDealDialogMarkup.includes('id="editClientDealTenor" name="tenor" disabled')
       && editClientDealDialogMarkup.includes('id="editClientDealComment" name="comment" maxlength="500"')
       && editClientDealDialogMarkup.includes('id="dealSubmitButton">Save Comment</button>')
+      && !inlineScript.includes("isDealerPricedPricingRule")
+      && inlineScript.includes("dealIdentitySection.open = true;")
+      && inlineScript.includes("showDealDialog(editForm.elements.comment);")
       && saveEditedDealFunction.includes('method: "PATCH"')
       && saveEditedDealFunction.includes("JSON.stringify({ comment })")
       && serverSource.includes("function updateClientFxDealComment(tradeId, comment)")
@@ -2290,16 +2449,20 @@ function verifyFrontendStructure() {
       && inlineScript.includes("function fxPositionGridFillRow()")
       && inlineScript.includes('class="fx-position-grid-fill"')
       && inlineScript.includes("function syncFxPositionGridFillHeight()")
-      && inlineScript.includes("new ResizeObserver(scheduleFxPositionGridFillHeight).observe(fxPositionGridFrame)")
+      && inlineScript.includes("fxPositionLayoutObserver.observe(fxPositionGridFrame)")
+      && inlineScript.includes("fxPositionLayoutObserver.observe(fxPositionGrid)")
       && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid thead \{\s*position: static;\s*\}/.test(html)
       && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid tfoot \{[\s\S]*?position: sticky;[\s\S]*?bottom: 0;[\s\S]*?\}/.test(html)
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid \.batching-summary-total td \{[\s\S]*?border-top: var\(--data-grid-line-width\) solid var\(--bs-secondary-color\);/.test(html)
+      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid tfoot tr:last-child td \{[\s\S]*?border-bottom: 0;[\s\S]*?\}/.test(html)
+      && html.includes("--fx-position-section-rule-width: 2px;")
+      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid \.section-name::before \{[\s\S]*?position: absolute;[\s\S]*?top: 7px;[\s\S]*?height: var\(--fx-position-section-rule-width\);[\s\S]*?margin: 0;/.test(html)
+      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid \.batching-summary-total td \{[\s\S]*?border-top: var\(--fx-position-section-rule-width\) solid var\(--bs-emphasis-color\);[\s\S]*?border-bottom: 0;/.test(html)
       && html.includes(".sell-check-zone .select-all-checkbox:is(:checked, :indeterminate)")
       && html.includes(".buy-check-zone .select-all-checkbox:is(:checked, :indeterminate)")
       && fxPositionPageMarkup.includes('title="Select all SELL deals · Shortcut: S"')
       && fxPositionPageMarkup.includes('title="Select all BUY deals · Shortcut: B"')
       && fxPositionPageMarkup.includes('class="action-button primary btn btn-sm btn-soft-primary with-icon" id="createDealButton"')
-      && html.includes(".deal-toolbar #editDealButton:is(:hover, :focus-visible):not(:disabled)"),
+      && html.includes(".toolbar-secondary-action:is("),
     usesBootstrapDealGenerationSettings: generationSettingsDialogMarkup.includes(
       'class="generation-dialog-title-block"'
     )
@@ -2445,7 +2608,7 @@ function verifyFrontendStructure() {
     usesHedgeFxDealsTabulator: html.includes('id="hedgeFxDealsGrid"')
       && html.includes('id="hedgeFxDealsColumnMenu"')
       && inlineScript.includes("hedgeFxDealsGrid = new Tabulator")
-      && inlineScript.includes('title: "Trading Party Details"')
+      && inlineScript.includes('title: "Trading Counterparty Details"')
       && inlineScript.includes('title: "Trade Economics"')
       && inlineScript.includes('title: "Value Date Details"')
       && inlineScript.includes('title: "Pricing Details"')
@@ -2456,7 +2619,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("analyticalPnl,"),
     usesDedicatedAddClientDealFlow: addClientDealDialogMarkup.includes('id="addClientDealDialog"')
       && addClientDealDialogMarkup.includes('id="addClientDealForm"')
-      && addClientDealDialogMarkup.includes('name="partyId"')
+      && addClientDealDialogMarkup.includes('name="counterpartyId"')
       && addClientDealDialogMarkup.includes('name="executionContextId"')
       && addClientDealDialogMarkup.includes('name="pricingRuleId"')
       && addClientDealDialogMarkup.includes('id="addClientDealPricingRulePicker"')
@@ -2515,7 +2678,7 @@ function verifyFrontendStructure() {
       && html.includes("flex: 0 0 auto;")
       && html.includes("min-width: max-content;"),
     usesCompactCurrencyPairBeforeClient: addClientDealDialogMarkup.indexOf('id="addClientDealCurrencyPair"')
-        < addClientDealDialogMarkup.indexOf('id="addClientDealPartyId"')
+        < addClientDealDialogMarkup.indexOf('id="addClientDealCounterpartyId"')
       && addClientDealDialogMarkup.includes('class="client-deal-currency-pair-field"')
       && html.includes("grid-template-columns: max-content minmax(0, 1fr);")
       && html.includes("grid-template-columns: max-content max-content minmax(0, 1fr);")
@@ -2539,7 +2702,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes('addClientDealClientPickerValue.addEventListener("input"')
       && inlineScript.includes("searchTerms.every(term => searchableText.includes(term))")
       && inlineScript.includes('event.target.closest("#addClientDealClientPickerClear")')
-      && inlineScript.includes('addClientDealForm.elements.partyId.value = "";'),
+      && inlineScript.includes('addClientDealForm.elements.counterpartyId.value = "";'),
     usesSearchableAddHedgeDealCounterpartyPicker:
       addHedgeDealDialogMarkup.includes('id="addHedgeDealCounterpartyPickerValue" placeholder="Type Hedge Counterparty name..." role="combobox"')
       && addHedgeDealDialogMarkup.includes('aria-autocomplete="list"')
@@ -2591,8 +2754,8 @@ function verifyFrontendStructure() {
       && inlineScript.includes('quoteDisplay.querySelector("[data-market-quote-bid]").textContent')
       && inlineScript.includes('quoteDisplay.querySelector("[data-market-quote-offer]").textContent'),
     usesUnifiedDialogCloseButtons:
-      (html.match(/<dialog\b/g) || []).length === 9
-      && (html.match(/class="[^"]*btn-close[^"]*"[^>]*aria-label="Close"/g) || []).length === 9
+      dialogCount > 0
+      && dialogCloseButtonCount === dialogCount
       && html.includes("dialog .modal-header > .btn-close {")
       && /dialog \.modal-header > \.btn-close \{[\s\S]*?width: 32px;[\s\S]*?height: 32px;[\s\S]*?border-radius: var\(--bs-border-radius\);/.test(html)
       && html.includes("dialog .modal-header > .btn-close:hover,"),
@@ -2701,25 +2864,43 @@ function verifyFrontendStructure() {
       && inlineScript.includes('clientDealDuplicateCheckGrid = new Tabulator')
       && inlineScript.includes('openClientDealDuplicateCheck(targetDeal, duplicateCandidates)')
       && inlineScript.includes('clientDealDuplicateCheckConfirmButton.addEventListener("click", confirmClientDealDuplicateCheck)'),
-    usesTradingPartiesLanguage: html.includes(">Trading Parties<")
-      && html.includes(">Party Type<")
-      && html.includes('name="partyType"'),
+    usesTradingCounterpartiesLanguage: html.includes(">Trading Counterparties<")
+      && html.includes(">External Counterparties<")
+      && html.includes(">Internal Units<")
+      && html.includes('name="counterpartyRole"'),
     usesDomainNavigationIcons:
       html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>\n        <span>Batching</span>')
       && html.includes('<span class="button-icon home-navigation-group-icon" aria-hidden="true">stacks</span>')
-      && html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">badge</span>\n        <span>Trading Parties</span>')
-      && html.includes('<span class="home-icon" aria-hidden="true">badge</span>\n          <span>\n            <span class="home-link-title">Trading Parties</span>')
+      && html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">badge</span>\n        <span>Trading Counterparties</span>')
+      && html.includes('<span class="home-icon" aria-hidden="true">badge</span>\n          <span>\n            <span class="home-link-title">Trading Counterparties</span>')
       && html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">group</span>\n        <span>Users</span>')
       && html.includes('<span class="home-icon" aria-hidden="true">group</span>\n          <span>\n            <span class="home-link-title">Users</span>')
       && (html.match(/>badge<\/span>/g) || []).length === 3
       && !html.includes(">manage_accounts</span>"),
-    usesTradingPartyColumnFilters: html.includes('id="tradingPartyTypeFilter"')
-      && html.includes('id="tradingPartyCodeTypeFilter"')
-      && html.includes('id="tradingPartyStatusFilter"')
-      && (html.match(/data-trading-party-header-filter=/g) || []).length === 6
-      && inlineScript.includes("tradingPartyHeaderFilterValue")
-      && inlineScript.includes('tradingPartyIdSortDirection = "asc"'),
-    usesBootstrapTradingPartyGrid: html.includes('class="profile-table reference-table client-profile-table unified-data-table"')
+    usesTradingCounterpartyColumnFilters: html.includes('id="tradingCounterpartyTypeFilter"')
+      && html.includes('id="tradingCounterpartyCodeTypeFilter"')
+      && html.includes('id="tradingCounterpartyExternalKindFilter"')
+      && html.includes('id="tradingCounterpartyActiveFilter"')
+      && html.includes('data-trading-counterparty-header-filter="active"')
+      && html.includes('<option value="YES">Yes</option>')
+      && html.includes('<option value="NO">No</option>')
+      && (html.match(/data-trading-counterparty-header-filter=/g) || []).length === 7
+      && html.includes('<option value="NON_BANK_FINANCIAL_INSTITUTION">Financial Institution</option>')
+      && inlineScript.includes('normalizedExternalCounterpartyKind(field("externalCounterpartyKind")?.value)')
+      && inlineScript.includes("tradingCounterpartyHeaderFilterValue")
+      && inlineScript.includes('tradingCounterpartyIdSortDirection = "asc"'),
+    usesUnifiedBooleanActivityPresentation:
+      html.includes('data-trading-counterparty-header-filter="active"')
+      && html.includes('data-user-header-filter="active"')
+      && html.includes('data-reference-filter-field="isActive"')
+      && html.includes('<option value="true">Yes</option>')
+      && html.includes('<option value="false">No</option>')
+      && inlineScript.includes('function activeBooleanOptions(selectedValue)')
+      && inlineScript.includes('function activeBooleanTokenMarkup(isActive)')
+      && !html.includes('data-user-header-filter="status"')
+      && !html.includes('id="tradingCounterpartyStatusFilter"')
+      && !inlineScript.includes('function activeStatusTokenMarkup(isActive)'),
+    usesBootstrapTradingCounterpartyGrid: html.includes('class="profile-table reference-table client-profile-table unified-data-table"')
       && html.includes('class="btn btn-sm btn-outline-primary reference-new-button" id="clientProfileNewButton"')
       && html.includes('class="client-profile-actions-col"')
       && html.includes('data-profile-action="edit"')
@@ -2727,7 +2908,7 @@ function verifyFrontendStructure() {
       && html.includes('id="clientProfileDeleteButton" hidden')
       && inlineScript.includes("function updateClientProfileDeleteAvailability()")
       && inlineScript.includes('clientProfileDeleteButton.addEventListener("click"')
-      && !html.includes("Trading Party List")
+      && !html.includes("Trading Counterparty List")
       && !html.includes("clientProfileSearchInput"),
     usesContextualDeletePlacement:
       html.includes('id="clientPricingRuleDeleteButton" hidden')
@@ -2738,31 +2919,33 @@ function verifyFrontendStructure() {
       && inlineScript.includes('data-pricing-context-action="remove"')
       && inlineScript.includes('data-reference-action="remove"')
       && inlineScript.includes('marketGridActionMarkup("delete"'),
-    usesTradingPartyPricingContextBricks: inlineScript.includes("function pricingContextFacetsMarkup(contextOrId)")
+    usesTradingCounterpartyPricingContextBricks: inlineScript.includes("function pricingContextFacetsMarkup(contextOrId)")
       && html.includes(".client-pricing-rules-context-path")
       && inlineScript.includes('class="client-pricing-context-candidate-path client-pricing-rules-context-path"'),
-    usesTradingPartyDetailRoutes: html.includes('id="clientProfileListView"')
+    usesTradingCounterpartyDetailRoutes: html.includes('id="clientProfileListView"')
       && html.includes('id="clientProfileDetailView"')
       && html.includes('id="clientProfileBackButton"')
       && html.includes('client-profile-back-button workbench-detail-back-button" id="clientProfileBackButton"')
       && inlineScript.includes("function clientProfileRouteStateFromLocation()")
       && inlineScript.includes("function syncClientProfileRouteView()")
       && inlineScript.includes("navigateToClientProfileIndex(index)"),
-    usesInlineTradingPartyCreate: inlineScript.includes("function renderTradingPartyCreateRow(profile)")
-      && inlineScript.includes("function startTradingPartyRowCreate()")
-      && inlineScript.includes("function saveTradingPartyFromRow(row)")
-      && inlineScript.includes("data-trading-party-edit-row")
+    usesInlineTradingCounterpartyCreate: inlineScript.includes("function renderTradingCounterpartyCreateRow(profile)")
+      && inlineScript.includes("function startTradingCounterpartyRowCreate()")
+      && inlineScript.includes("function saveTradingCounterpartyFromRow(row)")
+      && inlineScript.includes("data-trading-counterparty-edit-row")
       && inlineScript.includes('data-profile-action="save"')
       && inlineScript.includes('data-profile-action="cancel"')
-      && inlineScript.includes('clientProfileNewButton.addEventListener("click", startTradingPartyRowCreate)')
+      && inlineScript.includes('clientProfileNewButton.addEventListener("click", startTradingCounterpartyRowCreate)')
       && inlineScript.includes("navigateToClientProfileIndex(actionIndex)")
-      && !inlineScript.includes("function startTradingPartyRowEdit("),
+      && !inlineScript.includes("function startTradingCounterpartyRowEdit("),
     usesUnifiedConstrainedTableSizing:
       inlineScript.includes("const TABLE_COLUMN_POLICIES = Object.freeze({")
       && inlineScript.includes("function tableColumnPolicy(type)")
       && inlineScript.includes("function applySmartTableSizing(table)")
       && inlineScript.includes('"[data-smart-width-content], "')
       && inlineScript.includes("smartElementOuterWidth(composite)")
+      && inlineScript.includes("executionSystemId: { min: 120, max: 360, pad: 18, ellipsize: false }")
+      && html.includes('id="tradeCaptureChannelIdHeader" data-column-kind="executionSystemId"')
       && inlineScript.includes("function syncSmartCellTooltip(cell, ellipsize)")
       && inlineScript.includes("cell.dataset.tooltip = text;")
       && !inlineScript.includes("cell.dataset.smartSizingTitle")
@@ -2775,7 +2958,7 @@ function verifyFrontendStructure() {
       && nativeTableOpenings.every(markup =>
         /\bclass="[^"]*\b(?:batching-table|blotter-table|profile-table|generation-settings-table)\b/.test(markup)
       )
-      && html.includes('class="form-field party-name-field"'),
+      && html.includes('class="form-field counterparty-name-field"'),
     usesBootstrapPricingRuleDialog: html.includes('class="deal-dialog client-pricing-rule-dialog pricing-rule-bootstrap-dialog"')
       && html.includes('class="deal-form modal-content" id="clientPricingRuleForm"')
       && html.includes('class="dialog-head modal-header"')
@@ -2783,6 +2966,18 @@ function verifyFrontendStructure() {
       && html.includes('class="dialog-actions modal-footer"')
       && html.includes(".pricing-rule-bootstrap-dialog .pricing-rule-bootstrap-section")
       && html.includes(".pricing-rule-bootstrap-dialog .modal-footer .btn"),
+    usesMarginOnlyPricingRuleEditing:
+      html.includes('id="clientPricingRuleContextSearchSection" aria-label="Find Execution Context"')
+      && html.includes('id="clientPricingRuleFixedTermsSection" aria-label="Pricing Rule fixed terms" hidden')
+      && html.includes('id="clientPricingRuleCurrencyPairField"')
+      && inlineScript.includes('clientPricingRuleContextSearchSection.hidden = editing;')
+      && inlineScript.includes('clientPricingRuleFixedTermsSection.hidden = !editing;')
+      && inlineScript.includes('clientPricingRuleCurrencyPairField.hidden = editing;')
+      && inlineScript.includes('? savedRule.currencyPair')
+      && serverSource.includes('function validatePricingRuleMarginPayload(body)')
+      && serverSource.includes('function pricingRuleImmutableTermsChanged(body, current)')
+      && serverSource.includes('"PRICING_RULE_TERMS_IMMUTABLE"')
+      && serverSource.includes('SET margin_percent = ?'),
     usesMutedUnavailablePricingContextOptions: inlineScript.includes('option.matchCount === 0 ? " is-unavailable" : ""')
       && html.includes(".pricing-rule-bootstrap-dialog .client-pricing-context-option.is-unavailable")
       && html.includes("color: var(--bs-tertiary-color, #6c757d)")
@@ -2794,7 +2989,7 @@ function verifyFrontendStructure() {
     removesExecutionContextAssignments: !html.includes("clientExecutionContextAssignment")
       && !inlineScript.includes("executionContextIds")
       && !html.includes("Execution Context Assignment"),
-    pricingRulesUseDirectExecutionContexts: html.includes('<section class="deal-form-section pricing-rule-bootstrap-section" aria-label="Find Execution Context">')
+    pricingRulesUseDirectExecutionContexts: html.includes('id="clientPricingRuleContextSearchSection" aria-label="Find Execution Context"')
       && inlineScript.includes("availablePricingRuleExecutionContextIds()")
       && inlineScript.includes("Select an existing Execution Context."),
     usesPricingRuleContextBuilder: html.includes('id="clientPricingContextBuilder"')
@@ -2836,18 +3031,22 @@ function verifyFrontendStructure() {
       && html.includes("background: #edf0ea")
       && html.includes("background: #efedf1")
       && !html.includes("client-pricing-context-candidate-separator"),
-    avoidsTradingPartyCodeAutoSelect: !inlineScript.includes("clientProfileForm.elements.inn.select()"),
+    avoidsTradingCounterpartyCodeAutoSelect: !inlineScript.includes("clientProfileForm.elements.inn.select()"),
     usesSynchronizedContextIcons: /data-reference-route="servicingBranch">\s*<span class="button-icon" aria-hidden="true">location_on<\/span>/.test(html)
       && /data-reference-route="tradeCaptureChannel">\s*<span class="button-icon" aria-hidden="true">terminal<\/span>/.test(html)
       && /client-pricing-context-facet-icon" aria-hidden="true">location_on<\/span>/.test(html)
       && /client-pricing-context-facet-icon" aria-hidden="true">terminal<\/span>/.test(html),
-    supportsRequiredPartyTypes: inlineScript.includes('["CLIENT", "HEDGE_COUNTERPARTY"]')
-      && !inlineScript.includes('"EXTERNAL_COUNTERPARTY"')
-      && !inlineScript.includes('"INTERNAL_DESK"'),
-    supportsRequiredPartyCodeTypes: inlineScript.includes('["INN", "OTHER", "FRONT_SYSTEM_FOLDER_ID"]')
-      && serverSource.includes('["INN", "OTHER", "FRONT_SYSTEM_FOLDER_ID"]')
-      && serverSource.includes("'FRONT_SYSTEM_FOLDER_ID'")
-      && html.includes('<option value="FRONT_SYSTEM_FOLDER_ID">FRONT_SYSTEM_FOLDER_ID</option>'),
+    supportsRequiredCounterpartyTypes: inlineScript.includes('const COUNTERPARTY_ROLES = ["CLIENT", "HEDGE_COUNTERPARTY"]')
+      && inlineScript.includes('const COUNTERPARTY_SCOPES = ["EXTERNAL", "INTERNAL"]')
+      && serverSource.includes('const COUNTERPARTY_ROLES = ["CLIENT", "HEDGE_COUNTERPARTY"]')
+      && serverSource.includes('const COUNTERPARTY_SCOPES = ["EXTERNAL", "INTERNAL"]'),
+    supportsRequiredCounterpartyCodeTypes: inlineScript.includes('const EXTERNAL_COUNTERPARTY_CODE_TYPES = ["INN", "OTHER"]')
+      && inlineScript.includes('const INTERNAL_UNIT_TYPES = ["DESK", "DEPARTMENT", "OTHER"]')
+      && serverSource.includes('const EXTERNAL_COUNTERPARTY_CODE_TYPES = ["INN", "OTHER"]')
+      && serverSource.includes('const INTERNAL_UNIT_TYPES = ["DESK", "DEPARTMENT", "OTHER"]')
+      && schemaSource.includes("CREATE TABLE IF NOT EXISTS external_counterparties")
+      && schemaSource.includes("CREATE TABLE IF NOT EXISTS internal_units")
+      && schemaSource.includes("CREATE TABLE IF NOT EXISTS trading_counterparty_roles"),
     usesExplicitTooltipLayer: html.includes('id="appTooltip" role="tooltip" aria-hidden="true" popover="manual"')
       && inlineScript.includes("initializeTooltips();")
       && inlineScript.includes("suppressNativeTooltips();")
@@ -2922,11 +3121,15 @@ function verifyFrontendStructure() {
       html.includes('data-tooltip="Pricing Rules using this Execution Context"')
       && !html.includes('id="pricingContextUsageInfo"'),
     usesExecutionContextColumnWidths:
-      html.includes('<table class="profile-table pricing-context-table unified-data-table">')
-      && inlineScript.includes('primaryId: { min: 64, max: 110')
-      && inlineScript.includes('contextPath: { min: 280, max: 620')
-      && inlineScript.includes('count: { min: 64, max: 80')
-      && inlineScript.includes("function applySmartTableSizing(table)")
+      html.includes('id="executionContextsTable" data-ui-table-layout-key="execution_contexts_grid"')
+      && html.includes('data-ui-column-key="servicing_location"')
+      && html.includes('data-ui-column-key="pricing_rules_count"')
+      && uiTableLayoutsSource.includes('execution_contexts_grid: layout("Execution Context", [')
+      && uiTableLayoutsSource.includes('["servicing_location", "Servicing Location", 153]')
+      && uiTableLayoutsSource.includes('["accounting_system", "Accounting System", 152]')
+      && uiTableLayoutsSource.includes('["execution_system", "Execution System", 149]')
+      && uiTableLayoutsSource.includes('["pricing_rules_count", "Pricing Rules Count", 64]')
+      && inlineScript.includes("function applyNativeUiTableLayout(tableKey, tableLayout)")
       && !html.includes("data-fixed-column-widths")
       && !html.includes(">Execution Context List<"),
     usesExecutionContextHeaderFiltersAndSort: html.includes('id="pricingContextIdSort"')
@@ -2934,8 +3137,9 @@ function verifyFrontendStructure() {
       && (html.match(/data-pricing-context-header-filter=/g) || []).length === 4
       && inlineScript.includes('pricingContextIdSortDirection = "asc"')
       && inlineScript.includes("pricingContextMatchesHeaderFilters"),
-    usesConciseIntegerIdHeaders: html.includes('<table class="profile-table pricing-context-table unified-data-table">')
-      && html.includes('<table class="profile-table pricing-rules-table unified-data-table">')
+    usesConciseIntegerIdHeaders: html.includes('class="profile-table pricing-context-table unified-data-table"')
+      && html.includes('data-ui-table-layout-key="execution_contexts_grid"')
+      && html.includes('<table class="profile-table pricing-rules-table unified-data-table" id="pricingRulesTable"')
       && html.includes('id="pricingRuleIdSort"')
       && html.includes('id="pricingRuleIdHeader" aria-sort="ascending"')
       && (html.match(/data-pricing-rule-header-filter=/g) || []).length === 7
@@ -3065,7 +3269,9 @@ function verifyFrontendStructure() {
       && /\.market-bootstrap-dialog \.modal-footer \{[\s\S]*?gap: 8px;/.test(html)
       && /\.dialog-actions \{[\s\S]*?gap: 8px;/.test(html)
       && /\.profile-form-actions \{[\s\S]*?gap: 8px;/.test(html),
-    avoidsDoubleTabbedPageDividers: /#marketPage\.market-bootstrap\.workbench-page \.settings-topbar,\s*#referenceDataPage\.unified-bootstrap-workspace\.workbench-page \.settings-topbar \{\s*padding-bottom: 0;\s*border-bottom: 0;/.test(html),
+    avoidsDoubleTabbedPageDividers: html.includes('class="settings-topbar workbench-page-header" id="marketPageHeader"')
+      && html.includes('class="settings-topbar workbench-page-header" aria-label="Reference Data header"')
+      && /\.workbench-page-header\s*\{\s*border-bottom:\s*0;/.test(html),
     usesLargeClientFxDealsTabulator: html.includes('id="clientFxDealsPage"')
       && html.includes('client-deals-bootstrap workbench-page')
       && html.includes('id="clientFxDealsGrid"')
@@ -3094,8 +3300,10 @@ function verifyFrontendStructure() {
       && inlineScript.includes('title: "FX Position Processing"')
       && inlineScript.includes('title: "Transfer Rate"')
       && inlineScript.includes('title: "Analytical PnL"')
-      && inlineScript.includes('title: "Client Code Type", field: "clientCodeType", headerSort: false')
-      && inlineScript.includes('title: "Client Code", field: "clientCode", headerSort: false')
+      && inlineScript.includes('title: "Identifier"')
+      && inlineScript.includes('field: "identifier"')
+      && inlineScript.includes('formatter: clientFxDealsIdentifierFormatter')
+      && inlineScript.includes('headerFilter: clientFxDealsIdentifierHeaderFilter')
       && inlineScript.includes('title: "Client Side", field: "side", headerSort: false')
       && inlineScript.includes('title: "Tenor", field: "tenor", headerSort: false')
       && inlineScript.includes('title: "Execution Context", field: "executionContextLabel", headerSort: false')
@@ -3259,21 +3467,42 @@ function verifyFrontendStructure() {
       && !inlineScript.includes("async function deleteSelectedHedgeDealsForDemo()")
       && !html.includes("Add Market Deal")
       && !html.includes("Market Deals"),
+    usesCompactClientDealToolbarTitle:
+      fxPositionPageMarkup.includes(
+        'class="deal-toolbar-title client-deal-toolbar-title" role="img" aria-label="Client Deal Toolbar"'
+      )
+      && fxPositionPageMarkup.includes(
+        '<span class="button-icon" aria-hidden="true">handshake</span>'
+      )
+      && html.includes(".client-deal-toolbar-title"),
+    usesCompactBatchToolbarTitle:
+      fxPositionPageMarkup.includes(
+        'class="batch-toolbar-title batch-toolbar-icon-title" role="img" aria-label="Batch Toolbar"'
+      )
+      && fxPositionPageMarkup.includes(
+        '<span class="button-icon" aria-hidden="true">stacks</span>'
+      )
+      && html.includes(".batch-toolbar-icon-title"),
     usesStandaloneToolbarCommands:
       /#mainPage\.fx-position-bootstrap\.workbench-page \.batch-control \{[\s\S]*?gap: 6px;[\s\S]*?border: 0;[\s\S]*?background: transparent;/.test(html)
       && /#mainPage\.fx-position-bootstrap\.workbench-page \.batch-control \.action-button \{[\s\S]*?border-width: 1px;[\s\S]*?border-radius: var\(--workbench-radius\);/.test(html)
       && /#mainPage\.fx-position-bootstrap\.workbench-page :is\(\.deal-toolbar, \.batch-toolbar, \.hedge-toolbar\) \.action-button:disabled \{[\s\S]*?opacity: 1;/.test(html)
+      && batchToolbarMarkup.includes('class="action-button primary btn btn-sm btn-soft-primary batch-main" id="oneBatchButton"')
+      && !html.includes(".batch-toolbar #oneBatchButton:is(")
       && html.includes('class="batch-control client-deal-actions" aria-label="Client Deal actions"')
       && html.includes('class="batch-control deal-generation-control" aria-label="Demo Deal Generation actions"')
       && html.includes('<span class="batch-label">Demo Generation</span>')
       && html.includes('id="runClientDealGenerationLabel">Auto Generate</span>')
       && html.includes('id="autoBatchButton" aria-label="Auto Batch" disabled>Auto Batch</button>')
+      && (fxPositionPageMarkup.match(/toolbar-secondary-action/g) || []).length === 7
+      && fxPositionPageMarkup.includes('class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-process" id="autoBatchButton"')
+      && !fxPositionPageMarkup.includes('btn-outline-success batch-process" id="autoBatchButton"')
       && !html.includes("batch-control input-group")
       && !html.includes("batch-label input-group-text")
       && html.includes('.btn-soft-primary {')
       && html.includes('--bs-btn-bg: rgba(var(--bs-primary-rgb), 0.07);')
       && html.includes('--bs-btn-hover-bg: rgba(var(--bs-primary-rgb), 0.14);')
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.deal-generation-control :is\([\s\S]*?#generateClientDealButton,[\s\S]*?#runClientDealGenerationButton,[\s\S]*?#clientDealSettingsButton[\s\S]*?\):is\(:hover, :focus-visible\):not\(:disabled\):not\(\.is-running\) \{[\s\S]*?background: var\(--bs-tertiary-bg\);/.test(html)
+      && /#mainPage\.fx-position-bootstrap\.workbench-page \.toolbar-secondary-action:is\([\s\S]*?:hover,[\s\S]*?:focus-visible,[\s\S]*?:active[\s\S]*?\):not\(:disabled\):not\(\.is-running\) \{[\s\S]*?border-color: var\(--bs-secondary\);[\s\S]*?background: var\(--bs-secondary-bg\);/.test(html)
       && html.includes('--bs-btn-hover-color: var(--bs-btn-color);')
       && html.includes('--bs-btn-active-color: var(--bs-btn-color);')
       && inlineScript.includes('runClientDealGenerationLabel.textContent = running ? "Stop Generation" : "Auto Generate";'),
@@ -3326,7 +3555,10 @@ function verifyFrontendStructure() {
     usesUniformReferenceDataGrid: html.includes('#referenceDataPage.unified-bootstrap-workspace .reference-table {')
       && html.includes('border-collapse: separate;')
       && html.includes('#referenceDataPage.unified-bootstrap-workspace .reference-table tbody tr:nth-child(even) td {')
-      && html.includes('class="nav nav-underline reference-switcher"'),
+      && html.includes('class="nav nav-tabs workbench-section-tabs reference-switcher"')
+      && html.includes('class="nav nav-tabs workbench-section-tabs trading-counterparty-scope-tabs"')
+      && html.includes('.workbench-section-tabs .nav-link:is(.active, .is-active) {'),
+    separatesUsersFromTradingCounterpartyTabs: inlineScript.includes('tradingCounterpartyScopeTabs.hidden = usersVisible;'),
     usesUnifiedDataGridLineSystem: html.includes('--data-grid-line-width: 1px;')
       && html.includes('--data-grid-line-color: var(--bs-border-color, #dee2e6);')
       && html.includes('#marketPage.market-bootstrap .market-tabulator,')
@@ -3345,6 +3577,12 @@ function verifyFrontendStructure() {
       && html.includes('class="shell blotter-shell client-deals-bootstrap workbench-page"')
       && html.includes('.workbench-grid-toolbar,')
       && html.includes('border: var(--data-grid-line-width) solid var(--data-grid-line-color);'),
+    usesUnifiedPageHeaderSeparation: (html.match(/class="[^"]*\bworkbench-page-header\b[^"]*"/g) || []).length === 13
+      && html.includes('class="workspace-nav bg-body-tertiary border-bottom"')
+      && html.includes('background: var(--bs-tertiary-bg);')
+      && html.includes('The global navigation owns the page boundary; page headings use whitespace, not a second rule.')
+      && /\.workbench-page-header\s*\{\s*border-bottom:\s*0;/.test(html)
+      && /#homePage\.workbench-home \.home-title\s*\{\s*margin:\s*0;\s*padding:\s*0;\s*border:\s*0;/.test(html),
     usesSingleMarketOuterEdge: /#marketPage\.market-bootstrap\.workbench-page \.market-tabulator \.tabulator-header \.tabulator-col\.market-grid-actions-cell,\s*#marketPage\.market-bootstrap\.workbench-page \.market-tabulator \.tabulator-row \.tabulator-cell\.market-grid-actions-cell \{\s*border-right: 0;\s*\}/.test(html),
     usesSingleClientDealsOuterEdge: html.includes('.tabulator-header .client-deals-group-position-processing .tabulator-col-group-cols > .tabulator-col:not([style*="display: none"]):not(:has(~ .tabulator-col:not([style*="display: none"])))')
       && html.includes('.tabulator-row .tabulator-cell:not([style*="display: none"]):not(:has(~ .tabulator-cell:not([style*="display: none"]))) {'),
@@ -3460,7 +3698,10 @@ async function verifyApiAndMigration() {
     const accountingSystemsTable = await request("GET", "/api/database/tables/accounting_systems");
     const executionSystemsTable = await request("GET", "/api/database/tables/execution_systems");
     const executionContextsTable = await request("GET", "/api/database/tables/execution_contexts");
-    const tradingPartiesTable = await request("GET", "/api/database/tables/trading_parties");
+    const tradingCounterpartiesTable = await request("GET", "/api/database/tables/trading_counterparties");
+    const externalCounterpartiesTable = await request("GET", "/api/database/tables/external_counterparties");
+    const internalUnitsTable = await request("GET", "/api/database/tables/internal_units");
+    const tradingCounterpartyRolesTable = await request("GET", "/api/database/tables/trading_counterparty_roles");
     const usersTable = await request("GET", "/api/database/tables/users");
     const pricingRulesTable = await request("GET", "/api/database/tables/pricing_rules");
     const clientDealGenerationProcessSettingsTable = await request(
@@ -3495,12 +3736,12 @@ async function verifyApiAndMigration() {
       "GET",
       "/api/database/tables/fx_batch_quote_cash_output"
     );
-    const legacyAssignmentTable = await request("GET", "/api/database/tables/trading_party_execution_contexts");
+    const legacyAssignmentTable = await request("GET", "/api/database/tables/trading_counterparty_execution_contexts");
     const servicingLocations = await request("GET", "/api/v1/servicing-locations");
     const accountingSystems = await request("GET", "/api/v1/accounting-systems");
     const executionSystems = await request("GET", "/api/v1/execution-systems");
     const executionContexts = await request("GET", "/api/v1/execution-contexts");
-    const tradingParties = await request("GET", "/api/v1/trading-parties");
+    const tradingCounterparties = await request("GET", "/api/v1/trading-counterparties");
     const users = await request("GET", "/api/v1/users");
     const pricingRules = await request("GET", "/api/v1/pricing-rules");
     const clientDealPricingRules = await request("GET", "/api/v1/client-deal-pricing-rules");
@@ -3614,7 +3855,7 @@ async function verifyApiAndMigration() {
       && context.executionSystemId === "MANUAL_CLIENT_DEAL_ENTRY"
     )?.executionContextId;
     const clientDealPricingRuleId = pricingRules.body?.find(rule =>
-      rule.partyId === 1
+      rule.counterpartyId === 1
       && rule.executionContextId === clientDealExecutionContextId
       && rule.ccyPairCode === "EUR_USD"
     )?.pricingRuleId;
@@ -3624,13 +3865,13 @@ async function verifyApiAndMigration() {
       && context.executionSystemId === "CLICK_TRADE_EFX"
     )?.executionContextId;
     const nonDealerPricedPricingRuleId = pricingRules.body?.find(rule =>
-      rule.partyId === 1
+      rule.counterpartyId === 1
       && rule.executionContextId === nonDealerPricedExecutionContextId
       && rule.ccyPairCode === "EUR_USD"
     )?.pricingRuleId;
     const clientFxDealPayload = {
       entryTimestamp: "2026-07-16T10:15:30.000Z",
-      partyId: 1,
+      counterpartyId: 1,
       executionContextId: clientDealExecutionContextId,
       pricingRuleId: clientDealPricingRuleId,
       tradeDate: "2026-07-16",
@@ -3708,9 +3949,9 @@ async function verifyApiAndMigration() {
       ...clientFxDealPayload,
       side: "HOLD"
     });
-    const invalidClientFxDealParty = await request("POST", "/api/v1/client-fx-deals", {
+    const invalidClientFxDealCounterparty = await request("POST", "/api/v1/client-fx-deals", {
       ...clientFxDealPayload,
-      partyId: 999999
+      counterpartyId: 999999
     });
     const invalidClientFxDealTransferRate = await request("POST", "/api/v1/client-fx-deals", {
       ...clientFxDealPayload,
@@ -3725,7 +3966,7 @@ async function verifyApiAndMigration() {
     });
     const invalidClientFxDealPricingScope = await request("POST", "/api/v1/client-fx-deals", {
       ...clientFxDealPayload,
-      partyId: 2
+      counterpartyId: 2
     });
     const invalidClientFxDealPricingMode = await request("POST", "/api/v1/client-fx-deals", {
       ...clientFxDealPayload,
@@ -4049,61 +4290,74 @@ async function verifyApiAndMigration() {
     const deleteExecutionContext = await request("DELETE", `/api/v1/execution-contexts/${contextId}`);
     const servicingLocationsAfterContextDelete = await request("GET", "/api/v1/servicing-locations");
     const deleteServicingLocation = await request("DELETE", "/api/v1/servicing-locations/SITE-998");
-    const createTradingParty = await request("POST", "/api/v1/trading-parties", {
-      partyType: "HEDGE_COUNTERPARTY",
-      partyCode: "FRONT_FOLDER_1",
-      partyCodeType: "FRONT_SYSTEM_FOLDER_ID",
-      partyName: "Verification FX Desk",
+    const createTradingCounterparty = await request("POST", "/api/v1/trading-counterparties", {
+      counterpartyScope: "INTERNAL",
+      counterpartyRoles: ["HEDGE_COUNTERPARTY"],
+      unitCode: "FRONT_FOLDER_1",
+      unitType: "DESK",
+      counterpartyName: "Verification FX Desk",
       active: true
     });
-    const tradingPartyId = encodeURIComponent(createTradingParty.body?.partyId ?? "");
-    const updateTradingParty = await request("PUT", `/api/v1/trading-parties/${tradingPartyId}`, {
-      partyType: "HEDGE_COUNTERPARTY",
-      partyCode: "VERIFY_FOLDER",
-      partyCodeType: "FRONT_SYSTEM_FOLDER_ID",
-      partyName: "Verification Counterparty",
+    const tradingCounterpartyId = encodeURIComponent(createTradingCounterparty.body?.counterpartyId ?? "");
+    const updateTradingCounterparty = await request("PUT", `/api/v1/trading-counterparties/${tradingCounterpartyId}`, {
+      counterpartyScope: "INTERNAL",
+      counterpartyRoles: ["HEDGE_COUNTERPARTY"],
+      unitCode: "VERIFY_FOLDER",
+      unitType: "DEPARTMENT",
+      counterpartyName: "Verification Counterparty",
       active: false
     });
-    const duplicateTradingParty = await request("POST", "/api/v1/trading-parties", {
-      partyType: "CLIENT",
-      partyCode: "7701234567",
-      partyCodeType: "INN",
-      partyName: "Duplicate Client",
+    const duplicateTradingCounterparty = await request("POST", "/api/v1/trading-counterparties", {
+      counterpartyScope: "EXTERNAL",
+      counterpartyRoles: ["CLIENT"],
+      counterpartyCode: "7701234567",
+      counterpartyCodeType: "INN",
+      externalCounterpartyKind: "CORPORATE",
+      counterpartyName: "Duplicate Client",
       active: true
     });
-    const invalidLegacyExternalPartyType = await request("POST", "/api/v1/trading-parties", {
-      partyType: "EXTERNAL_COUNTERPARTY",
-      partyCode: "VERIFY_EXTERNAL",
-      partyCodeType: "OTHER",
-      partyName: "Invalid Legacy External Counterparty",
+    const invalidLegacyExternalCounterpartyType = await request("POST", "/api/v1/trading-counterparties", {
+      counterpartyScope: "UNKNOWN",
+      counterpartyRoles: ["HEDGE_COUNTERPARTY"],
+      counterpartyCode: "VERIFY_EXTERNAL",
+      counterpartyCodeType: "OTHER",
+      externalCounterpartyKind: "CORPORATE",
+      counterpartyName: "Invalid Counterparty Scope",
       active: true
     });
-    const invalidLegacyInternalPartyType = await request("POST", "/api/v1/trading-parties", {
-      partyType: "INTERNAL_DESK",
-      partyCode: "VERIFY_INTERNAL",
-      partyCodeType: "OTHER",
-      partyName: "Invalid Legacy Internal Desk",
+    const invalidLegacyInternalCounterpartyType = await request("POST", "/api/v1/trading-counterparties", {
+      counterpartyScope: "INTERNAL",
+      counterpartyRoles: ["UNKNOWN"],
+      unitCode: "VERIFY_INTERNAL",
+      unitType: "DESK",
+      counterpartyName: "Invalid Trading Counterparty Role",
       active: true
     });
-    const invalidTradingPartyCodeType = await request("POST", "/api/v1/trading-parties", {
-      partyType: "CLIENT",
-      partyCode: "VERIFY_LEI",
-      partyCodeType: "LEI",
-      partyName: "Invalid Code Type",
+    const invalidTradingCounterpartyCodeType = await request("POST", "/api/v1/trading-counterparties", {
+      counterpartyScope: "EXTERNAL",
+      counterpartyRoles: ["CLIENT"],
+      counterpartyCode: "VERIFY_LEI",
+      counterpartyCodeType: "LEI",
+      externalCounterpartyKind: "CORPORATE",
+      counterpartyName: "Invalid Code Type",
       active: true
     });
-    const invalidTradingPartyCodeLength = await request("POST", "/api/v1/trading-parties", {
-      partyType: "CLIENT",
-      partyCode: "X".repeat(21),
-      partyCodeType: "OTHER",
-      partyName: "Invalid Code Length",
+    const invalidTradingCounterpartyCodeLength = await request("POST", "/api/v1/trading-counterparties", {
+      counterpartyScope: "EXTERNAL",
+      counterpartyRoles: ["CLIENT"],
+      counterpartyCode: "X".repeat(21),
+      counterpartyCodeType: "OTHER",
+      externalCounterpartyKind: "CORPORATE",
+      counterpartyName: "Invalid Code Length",
       active: true
     });
-    const invalidTradingPartyNameLength = await request("POST", "/api/v1/trading-parties", {
-      partyType: "CLIENT",
-      partyCode: "VERIFY_NAME_LIMIT",
-      partyCodeType: "OTHER",
-      partyName: "X".repeat(201),
+    const invalidTradingCounterpartyNameLength = await request("POST", "/api/v1/trading-counterparties", {
+      counterpartyScope: "EXTERNAL",
+      counterpartyRoles: ["CLIENT"],
+      counterpartyCode: "VERIFY_NAME_LIMIT",
+      counterpartyCodeType: "OTHER",
+      externalCounterpartyKind: "CORPORATE",
+      counterpartyName: "X".repeat(201),
       active: true
     });
     const createUser = await request("POST", "/api/v1/users", {
@@ -4145,61 +4399,67 @@ async function verifyApiAndMigration() {
     const deleteUser = await request("DELETE", `/api/v1/users/${userId}`);
     const usersAfterDelete = await request("GET", "/api/v1/users");
     const createPricingRule = await request("POST", "/api/v1/pricing-rules", {
-      partyId: createTradingParty.body?.partyId,
+      counterpartyId: createTradingCounterparty.body?.counterpartyId,
       executionContextId: emeraldClickContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0.25
     });
     const pricingRuleId = encodeURIComponent(createPricingRule.body?.pricingRuleId ?? "");
     const updatePricingRule = await request("PUT", `/api/v1/pricing-rules/${pricingRuleId}`, {
-      partyId: createTradingParty.body?.partyId,
-      executionContextId: wonderlandRfqContextId,
-      ccyPairCode: "EUR_USD",
       marginPercent: 0.3
     });
-    const duplicatePricingRule = await request("POST", "/api/v1/pricing-rules", {
-      partyId: createTradingParty.body?.partyId,
+    const immutablePricingRuleUpdate = await request("PUT", `/api/v1/pricing-rules/${pricingRuleId}`, {
       executionContextId: wonderlandRfqContextId,
+      marginPercent: 0.35
+    });
+    const pricingRulesAfterImmutableUpdate = await request("GET", "/api/v1/pricing-rules");
+    const pricingRuleAfterImmutableUpdate = pricingRulesAfterImmutableUpdate.body
+      ?.find(rule => rule.pricingRuleId === Number(pricingRuleId));
+    const duplicatePricingRule = await request("POST", "/api/v1/pricing-rules", {
+      counterpartyId: createTradingCounterparty.body?.counterpartyId,
+      executionContextId: emeraldClickContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0.4
     });
-    const invalidPricingRuleParty = await request("POST", "/api/v1/pricing-rules", {
-      partyId: 999999,
+    const invalidPricingRuleCounterparty = await request("POST", "/api/v1/pricing-rules", {
+      counterpartyId: 999999,
       executionContextId: wonderlandRfqContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0.4
     });
     const invalidPricingRuleMargin = await request("POST", "/api/v1/pricing-rules", {
-      partyId: createTradingParty.body?.partyId,
+      counterpartyId: createTradingCounterparty.body?.counterpartyId,
       executionContextId: neverlandRfqContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 100
     });
-    const blockedTradingPartyDelete = await request("DELETE", `/api/v1/trading-parties/${tradingPartyId}`);
+    const blockedTradingCounterpartyDelete = await request("DELETE", `/api/v1/trading-counterparties/${tradingCounterpartyId}`);
     const deletePricingRule = await request("DELETE", `/api/v1/pricing-rules/${pricingRuleId}`);
-    const deleteTradingParty = await request("DELETE", `/api/v1/trading-parties/${tradingPartyId}`);
-    const tradingPartiesAfterDelete = await request("GET", "/api/v1/trading-parties");
-    const createHedgeCounterparty = await request("POST", "/api/v1/trading-parties", {
-      partyType: "HEDGE_COUNTERPARTY",
-      partyCode: "VERIFY_HEDGE",
-      partyCodeType: "OTHER",
-      partyName: "Verification Hedge Counterparty",
+    const deleteTradingCounterparty = await request("DELETE", `/api/v1/trading-counterparties/${tradingCounterpartyId}`);
+    const tradingCounterpartiesAfterDelete = await request("GET", "/api/v1/trading-counterparties");
+    const createHedgeCounterparty = await request("POST", "/api/v1/trading-counterparties", {
+      counterpartyScope: "EXTERNAL",
+      counterpartyRoles: ["HEDGE_COUNTERPARTY"],
+      counterpartyCode: "VERIFY_HEDGE",
+      counterpartyCodeType: "OTHER",
+      externalCounterpartyKind: "BANK",
+      counterpartyName: "Verification Hedge Counterparty",
       active: true
     });
     const createDealerApprovedHedgePricingRule = await request("POST", "/api/v1/pricing-rules", {
-      partyId: createHedgeCounterparty.body?.partyId,
+      counterpartyId: createHedgeCounterparty.body?.counterpartyId,
       executionContextId: neverlandRfqContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0.12
     });
     const createHedgePricingRule = await request("POST", "/api/v1/pricing-rules", {
-      partyId: createHedgeCounterparty.body?.partyId,
+      counterpartyId: createHedgeCounterparty.body?.counterpartyId,
       executionContextId: clientDealExecutionContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0.15
     });
     const createAutoPricedHedgePricingRule = await request("POST", "/api/v1/pricing-rules", {
-      partyId: createHedgeCounterparty.body?.partyId,
+      counterpartyId: createHedgeCounterparty.body?.counterpartyId,
       executionContextId: nonDealerPricedExecutionContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0
@@ -4342,7 +4602,7 @@ async function verifyApiAndMigration() {
       "/api/v1/hedge-quick-mode-settings"
     );
     const hedgeQuickModeSettingsPayload = {
-      partyId: createHedgeCounterparty.body?.partyId,
+      counterpartyId: createHedgeCounterparty.body?.counterpartyId,
       pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
       smallBaseCcyAmount: "5000000",
       mediumBaseCcyAmount: "20000000",
@@ -4387,7 +4647,7 @@ async function verifyApiAndMigration() {
         side: "BUY",
         presetCode: "SMALL",
         tenor: "TOD",
-        partyId: createHedgeCounterparty.body?.partyId
+        counterpartyId: createHedgeCounterparty.body?.counterpartyId
       }
     );
     const invalidHedgeQuickModePreset = await request(
@@ -4566,7 +4826,7 @@ async function verifyApiAndMigration() {
         (
           trade_id,
           trade_type,
-          party_id,
+          counterparty_id,
           execution_context_id,
           pricing_rule_id,
           transfer_rate,
@@ -4735,7 +4995,7 @@ async function verifyApiAndMigration() {
       request("GET", "/api/v1/ccy-options"),
       request("GET", "/api/v1/ccy-pair-options"),
       request("GET", "/api/v1/execution-contexts"),
-      request("GET", "/api/v1/trading-parties"),
+      request("GET", "/api/v1/trading-counterparties"),
       request("GET", "/api/v1/pricing-rules"),
       request("GET", "/api/v1/client-deal-generation/settings"),
       request("GET", "/api/v1/hedge-quick-mode-settings")
@@ -4754,7 +5014,7 @@ async function verifyApiAndMigration() {
       request("GET", "/api/v1/ccy-options"),
       request("GET", "/api/v1/ccy-pair-options"),
       request("GET", "/api/v1/execution-contexts"),
-      request("GET", "/api/v1/trading-parties"),
+      request("GET", "/api/v1/trading-counterparties"),
       request("GET", "/api/v1/pricing-rules"),
       request("GET", "/api/v1/client-deal-generation/settings"),
       request("GET", "/api/v1/hedge-quick-mode-settings")
@@ -4815,13 +5075,13 @@ async function verifyApiAndMigration() {
       ccyOptionsConstraintMigrated: ccyOptionsTable.body?.createSql?.includes("chk_ccy_options_latin_text"),
       ccyPairOptionsConstraintMigrated: pairTable.body?.createSql?.includes("chk_ccy_pair_options_format"),
       executionSystemConstraintMigrated: executionSystemsTable.body?.createSql?.includes("length('DEALER_APPROVED')"),
-      tradingPartyConstraintsMigrated: tradingPartiesTable.body?.createSql?.includes("length(party_code) <= 20")
-        && tradingPartiesTable.body?.createSql?.includes("length(party_name) BETWEEN 1 AND 200")
-        && tradingPartiesTable.body?.createSql?.includes("is_active IN (0, 1)")
-        && tradingPartiesTable.body?.createSql?.includes("'HEDGE_COUNTERPARTY'")
-        && tradingPartiesTable.body?.createSql?.includes("'FRONT_SYSTEM_FOLDER_ID'")
-        && !tradingPartiesTable.body?.createSql?.includes("'EXTERNAL_COUNTERPARTY'")
-        && !tradingPartiesTable.body?.createSql?.includes("'INTERNAL_DESK'"),
+      tradingCounterpartyConstraintsMigrated: tradingCounterpartiesTable.body?.createSql?.includes("length(counterparty_name) BETWEEN 1 AND 200")
+        && tradingCounterpartiesTable.body?.createSql?.includes("is_active IN (0, 1)")
+        && externalCounterpartiesTable.body?.createSql?.includes("length(counterparty_code) <= 20")
+        && externalCounterpartiesTable.body?.createSql?.includes("'INN', 'OTHER'")
+        && internalUnitsTable.body?.createSql?.includes("length(unit_code) BETWEEN 2 AND 20")
+        && internalUnitsTable.body?.createSql?.includes("'DESK', 'DEPARTMENT', 'OTHER'")
+        && tradingCounterpartyRolesTable.body?.createSql?.includes("'CLIENT', 'HEDGE_COUNTERPARTY'"),
       userConstraintsMigrated: usersTable.body?.createSql?.includes("length(user_code) BETWEEN 2 AND 30")
         && usersTable.body?.createSql?.includes("length(trim(first_name)) BETWEEN 1 AND 50")
         && usersTable.body?.createSql?.includes("length(trim(last_name)) BETWEEN 1 AND 50")
@@ -4860,7 +5120,10 @@ async function verifyApiAndMigration() {
         usageAfterDelete: servicingLocationsAfterContextDelete.body
           ?.find(location => location.servicingLocationId === "SITE-998")?.executionContextCount
       },
-      tradingPartyColumns: tradingPartiesTable.body?.columns?.map(column => column.name) || [],
+      tradingCounterpartyColumns: tradingCounterpartiesTable.body?.columns?.map(column => column.name) || [],
+      externalCounterpartyColumns: externalCounterpartiesTable.body?.columns?.map(column => column.name) || [],
+      internalUnitColumns: internalUnitsTable.body?.columns?.map(column => column.name) || [],
+      tradingCounterpartyRoleColumns: tradingCounterpartyRolesTable.body?.columns?.map(column => column.name) || [],
       userColumns: usersTable.body?.columns?.map(column => column.name) || [],
       legacyAssignmentTableRemoved: legacyAssignmentTable.statusCode === 404,
       pricingRuleColumns: pricingRulesTable.body?.columns?.map(column => column.name) || [],
@@ -4878,11 +5141,11 @@ async function verifyApiAndMigration() {
       clientDealGenerationSettings: {
         count: clientDealGenerationSettingsTable.body?.rowCount ?? -1,
         allClientRules: clientDealGenerationSettingsTable.body?.rows?.every(row =>
-          tradingParties.body?.find(party =>
-            party.partyId === pricingRules.body?.find(rule =>
+          tradingCounterparties.body?.find(counterparty =>
+            counterparty.counterpartyId === pricingRules.body?.find(rule =>
               rule.pricingRuleId === row.pricing_rule_id
-            )?.partyId
-          )?.partyType === "CLIENT"
+            )?.counterpartyId
+          )?.counterpartyRoles?.includes("CLIENT")
         ) === true,
         allAutoPricedRules: clientDealGenerationSettingsTable.body?.rows?.every(row =>
           pricingRules.body?.find(rule =>
@@ -5016,7 +5279,7 @@ async function verifyApiAndMigration() {
           batchBalancingTradesAfterCreate.body?.members?.some(member =>
             member.tradeId === 41
             && member.tradeType === "CLIENT_DEAL"
-            && member.partyName === "Romashka Company"
+            && member.counterpartyName === "Romashka Company"
             && member.transferRate === 1.123
             && member.createdByBatchId === null
           ) === true,
@@ -5310,7 +5573,7 @@ async function verifyApiAndMigration() {
         eligiblePricingRulesStatus: hedgeDealPricingRules.statusCode,
         eligiblePricingRulesCount: hedgeDealPricingRules.body?.length ?? -1,
         allHedgeCounterpartyRules: hedgeDealPricingRules.body?.every(rule =>
-          rule.partyType === "HEDGE_COUNTERPARTY"
+          rule.counterpartyType === "HEDGE_COUNTERPARTY"
           && rule.pricingMode === "DEALER_PRICED"
         ) === true,
         excludesDealerApprovedRules: hedgeDealPricingRules.body?.every(rule =>
@@ -5324,7 +5587,7 @@ async function verifyApiAndMigration() {
             autoPricedHedgeDealPricingRules.body?.length ?? -1,
           allEligibleRulesAreAutoPricedHedgeRules:
             autoPricedHedgeDealPricingRules.body?.every(rule =>
-              rule.partyType === "HEDGE_COUNTERPARTY"
+              rule.counterpartyType === "HEDGE_COUNTERPARTY"
               && rule.pricingMode === "AUTO_PRICED"
             ) === true,
           includesCreatedPricingRule:
@@ -5501,8 +5764,8 @@ async function verifyApiAndMigration() {
         createdStatus: createHedgeFxDeal.statusCode,
         createdTradeId: createHedgeFxDeal.body?.tradeId,
         createdSide: createHedgeFxDeal.body?.side,
-        createdPartyId: createHedgeFxDeal.body?.partyId,
-        expectedPartyId: createHedgeCounterparty.body?.partyId,
+        createdCounterpartyId: createHedgeFxDeal.body?.counterpartyId,
+        expectedCounterpartyId: createHedgeCounterparty.body?.counterpartyId,
         createdPricingRuleId: createHedgeFxDeal.body?.pricingRuleId,
         expectedPricingRuleId: createHedgePricingRule.body?.pricingRuleId,
         createdTransferRate: createHedgeFxDeal.body?.transferRate,
@@ -5544,7 +5807,7 @@ async function verifyApiAndMigration() {
           && createdHedgeExposureRow?.quote_ccy_fraction_digits === 2
           && createdHedgeDealRow?.trade_id === createdHedgeTradeId
           && createdHedgeDealRow?.trade_type === "HEDGE_DEAL"
-          && createdHedgeDealRow?.party_id === createHedgeCounterparty.body?.partyId
+          && createdHedgeDealRow?.counterparty_id === createHedgeCounterparty.body?.counterpartyId
           && createdHedgeDealRow?.pricing_rule_id === createHedgePricingRule.body?.pricingRuleId
           && createdHedgeDealRow?.transfer_rate === createHedgeFxDeal.body?.transferRate
           && createdHedgeDealRow?.analytical_pnl_quote_minor
@@ -5619,7 +5882,7 @@ async function verifyApiAndMigration() {
           && updatedExposureRow?.quote_ccy_fraction_digits === 2
           && updatedExposureRow?.trade_rate === 1.1231
           && updatedClientRow?.trade_id === createdTradeId
-          && updatedClientRow?.party_id === 1
+          && updatedClientRow?.counterparty_id === 1
           && updatedClientRow?.execution_context_id === clientDealExecutionContextId
           && updatedClientRow?.pricing_rule_id === clientDealPricingRuleId
           && updatedClientRow?.transfer_rate === 1.124
@@ -5648,7 +5911,7 @@ async function verifyApiAndMigration() {
           updateClientFxDealComment.statusCode,
           invalidClientFxDealComment.statusCode,
           invalidClientFxDealSide.statusCode,
-          invalidClientFxDealParty.statusCode,
+          invalidClientFxDealCounterparty.statusCode,
           invalidClientFxDealTransferRate.statusCode,
           invalidClientFxDealSubMinorAmount.statusCode,
           invalidClientFxDealPricingScope.statusCode,
@@ -5658,55 +5921,64 @@ async function verifyApiAndMigration() {
       },
       pricingRules: {
         count: pricingRules.body?.length ?? -1,
-        migratedPartyTypes: [...new Set((pricingRules.body || []).map(rule => rule.partyType))].sort(),
+        migratedCounterpartyTypes: [...new Set((pricingRules.body || []).map(rule => rule.counterpartyType))].sort(),
         allPricingModesResolved: pricingRules.body?.every(rule =>
           ["AUTO_PRICED", "DEALER_PRICED", "DEALER_APPROVED"].includes(rule.pricingMode)
         ) === true,
         migratedIdsPreserved: pricingRules.body?.map(rule => rule.pricingRuleId).sort((left, right) => left - right).join(",") === "1,2,3,4,5",
         migratedContextIdsAreIntegers: pricingRules.body?.every(rule => Number.isInteger(rule.executionContextId)),
         createdId: createPricingRule.body?.pricingRuleId,
-        createdPartyId: createPricingRule.body?.partyId,
-        createdPartyType: createPricingRule.body?.partyType,
+        createdCounterpartyId: createPricingRule.body?.counterpartyId,
+        createdCounterpartyType: createPricingRule.body?.counterpartyType,
         createdPairCode: createPricingRule.body?.ccyPairCode,
         createdCurrencyPair: createPricingRule.body?.currencyPair,
         updatedId: updatePricingRule.body?.pricingRuleId,
         updatedContextId: updatePricingRule.body?.executionContextId,
-        expectedUpdatedContextId: wonderlandRfqContextId,
+        expectedUpdatedContextId: emeraldClickContextId,
         updatedMargin: updatePricingRule.body?.marginPercent,
+        immutableUpdateStatus: immutablePricingRuleUpdate.statusCode,
+        immutableUpdateCode: immutablePricingRuleUpdate.body?.code,
+        immutableUpdateContextId: pricingRuleAfterImmutableUpdate?.executionContextId,
+        immutableUpdateMargin: pricingRuleAfterImmutableUpdate?.marginPercent,
         lifecycle: [
           createPricingRule.statusCode,
           updatePricingRule.statusCode,
+          immutablePricingRuleUpdate.statusCode,
           duplicatePricingRule.statusCode,
-          invalidPricingRuleParty.statusCode,
+          invalidPricingRuleCounterparty.statusCode,
           invalidPricingRuleMargin.statusCode,
-          blockedTradingPartyDelete.statusCode,
+          blockedTradingCounterpartyDelete.statusCode,
           deletePricingRule.statusCode
         ]
       },
-      tradingParties: {
-        count: tradingParties.body?.length ?? -1,
-        migratedTypes: [...new Set((tradingParties.body || []).map(party => party.partyType))].sort(),
-        legacyExternalType: tradingParties.body
-          ?.find(party => party.partyCode === "LEGACY_EXTERNAL")?.partyType,
-        legacyInternalType: tradingParties.body
-          ?.find(party => party.partyCode === "LEGACY_INTERNAL")?.partyType,
-        createdId: createTradingParty.body?.partyId,
-        createdType: createTradingParty.body?.partyType,
-        createdCodeType: createTradingParty.body?.partyCodeType,
-        updatedType: updateTradingParty.body?.partyType,
-        updatedCode: updateTradingParty.body?.partyCode,
-        updatedActive: updateTradingParty.body?.active,
-        countAfterDelete: tradingPartiesAfterDelete.body?.length ?? -1,
+      tradingCounterparties: {
+        count: tradingCounterparties.body?.length ?? -1,
+        migratedScopes: [...new Set((tradingCounterparties.body || []).map(counterparty => counterparty.counterpartyScope))].sort(),
+        migratedRoles: [...new Set((tradingCounterparties.body || [])
+          .flatMap(counterparty => counterparty.counterpartyRoles || []))].sort(),
+        legacyExternalProfile: tradingCounterparties.body
+          ?.find(counterparty => counterparty.counterpartyCode === "LEGACY_EXTERNAL") || null,
+        legacyInternalProfile: tradingCounterparties.body
+          ?.find(counterparty => counterparty.counterpartyCode === "LEGACY_INTERNAL") || null,
+        createdId: createTradingCounterparty.body?.counterpartyId,
+        createdScope: createTradingCounterparty.body?.counterpartyScope,
+        createdRoles: createTradingCounterparty.body?.counterpartyRoles,
+        createdUnitType: createTradingCounterparty.body?.unitType,
+        updatedScope: updateTradingCounterparty.body?.counterpartyScope,
+        updatedCode: updateTradingCounterparty.body?.counterpartyCode,
+        updatedUnitType: updateTradingCounterparty.body?.unitType,
+        updatedActive: updateTradingCounterparty.body?.active,
+        countAfterDelete: tradingCounterpartiesAfterDelete.body?.length ?? -1,
         lifecycle: [
-          createTradingParty.statusCode,
-          updateTradingParty.statusCode,
-          duplicateTradingParty.statusCode,
-          invalidLegacyExternalPartyType.statusCode,
-          invalidLegacyInternalPartyType.statusCode,
-          invalidTradingPartyCodeType.statusCode,
-          invalidTradingPartyCodeLength.statusCode,
-          invalidTradingPartyNameLength.statusCode,
-          deleteTradingParty.statusCode
+          createTradingCounterparty.statusCode,
+          updateTradingCounterparty.statusCode,
+          duplicateTradingCounterparty.statusCode,
+          invalidLegacyExternalCounterpartyType.statusCode,
+          invalidLegacyInternalCounterpartyType.statusCode,
+          invalidTradingCounterpartyCodeType.statusCode,
+          invalidTradingCounterpartyCodeLength.statusCode,
+          invalidTradingCounterpartyNameLength.statusCode,
+          deleteTradingCounterparty.statusCode
         ]
       },
       users: {
@@ -5728,7 +6000,7 @@ async function verifyApiAndMigration() {
         settingsStatus: generationSettingsBefore.statusCode,
         settingsCount: generationSettingsBefore.body?.length ?? -1,
         allClientRules: generationSettingsBefore.body
-          ?.every(settings => settings.partyType === "CLIENT") === true,
+          ?.every(settings => settings.counterpartyType === "CLIENT") === true,
         allAutoPricedRules: generationSettingsBefore.body
           ?.every(settings => settings.pricingMode === "AUTO_PRICED") === true,
         allAmountsUseStoredMinorUnits: generationSettingsBefore.body
@@ -5871,6 +6143,7 @@ async function main() {
       "client_fx_deals",
       "execution_contexts",
       "execution_systems",
+      "external_counterparties",
       "fx_batch_members",
       "fx_batch_position_output",
       "fx_batch_quote_cash_output",
@@ -5879,10 +6152,13 @@ async function main() {
       "fx_hedge_quick_mode_settings",
       "fx_trade_exposure",
       "fx_trade_market_snapshot",
+      "internal_units",
       "market_quote_simulation_settings",
       "pricing_rules",
       "servicing_locations",
-      "trading_parties",
+      "trading_counterparties",
+      "trading_counterparty_roles",
+      "ui_table_column_settings",
       "users"
     ];
     const simulationForeignKey = apiAndMigration.settingsForeignKeys[0];
@@ -5894,11 +6170,26 @@ async function main() {
       || freshSchema.executionSystems !== 3
       || freshSchema.executionContexts !== 5
       || freshSchema.executionContextIdType !== "INTEGER"
-      || freshSchema.tradingParties !== 4
-      || freshSchema.tradingPartyTypes.join(",") !== "CLIENT,HEDGE_COUNTERPARTY"
+      || freshSchema.tradingCounterparties !== 5
+      || freshSchema.tradingCounterpartyRoles.join(",") !== "CLIENT,HEDGE_COUNTERPARTY"
+      || freshSchema.tradingCounterpartyColumns.join(",") !== "counterparty_id,counterparty_name,is_active"
+      || freshSchema.externalCounterpartyColumns.join(",")
+        !== "counterparty_id,counterparty_code,counterparty_code_type,external_counterparty_kind"
+      || freshSchema.internalUnitColumns.join(",") !== "counterparty_id,unit_code,unit_type"
+      || freshSchema.tradingCounterpartyRoleColumns.join(",") !== "counterparty_id,role_code"
       || freshSchema.users !== 3
       || freshSchema.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
       || freshSchema.userRoles.join(",") !== "ADMIN,DEALER,SUPERVISOR"
+      || freshSchema.uiTableColumnSettings !== 137
+      || freshSchema.uiTableColumnLayoutKeys.map(row =>
+        `${row.table_key}:${row.column_count}`
+      ).join(",") !== "accounting_systems_grid:5,batch_cash_output_grid:3,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:5,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:17,execution_contexts_grid:6,execution_systems_grid:6,external_counterparties_grid:7,hedge_fx_deals_grid:18,hedge_quick_mode_settings_grid:7,internal_units_grid:7,market_stream_grid:4,pricing_rules_grid:8,servicing_locations_grid:7,users_grid:7"
+      || freshSchema.uiTableColumnSettingColumns.join(",")
+        !== "table_key,column_key,column_label,display_order,default_width_px,width_px,updated_at"
+      || freshSchema.uiTableColumnSettingRows.map(row =>
+        `${row.column_key}:${row.default_width_px}:${row.width_px}`
+      ).join(",") !== "id:64:64,counterparty_type:147:147,counterparty_code:122:122,counterparty_name:158:158,ccy_pair:88:88,execution_context:596:596,pricing_mode:156:156,margin:82:82"
+      || !freshSchema.uiTableColumnSettingsConstraintsEnforced
       || freshSchema.pricingRules !== 7
       || freshSchema.legacyMonetaryColumns.length !== 0
       || freshSchema.clientDealGenerationProcessSettingsColumns.join(",")
@@ -5915,7 +6206,7 @@ async function main() {
       || freshSchema.clientDealGenerationSettingsForeignKeys[0]?.on_update !== "RESTRICT"
       || freshSchema.clientDealGenerationSettingsForeignKeys[0]?.on_delete !== "CASCADE"
       || !freshSchema.clientDealGenerationSettingsRows.every(row =>
-        row.party_type === "CLIENT"
+        row.counterparty_type === "CLIENT"
         && row.pricing_mode === "AUTO_PRICED"
         && row.min_base_ccy_amount_minor === 500000 * (10 ** row.base_ccy_fraction_digits)
         && row.max_base_ccy_amount_minor === 1500000 * (10 ** row.base_ccy_fraction_digits)
@@ -5943,12 +6234,12 @@ async function main() {
       || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_stream_status !== "RUNNING"
       || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_timestamp !== "2026-07-15T09:30:00.000Z"
       || freshSchema.clientFxDeals !== 1
-      || freshSchema.clientFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits,comment"
+      || freshSchema.clientFxDealColumns.join(",") !== "trade_id,trade_type,counterparty_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits,comment"
       || freshSchema.clientFxDealForeignKeys.length !== 7
       || !freshSchema.clientFxDealForeignKeys.every(foreignKey =>
         foreignKey.on_update === "RESTRICT" && foreignKey.on_delete === "RESTRICT"
       )
-      || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
+      || !["trading_counterparties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
         freshSchema.clientFxDealForeignKeys.some(foreignKey => foreignKey.table === referencedTable)
       )
       || freshSchema.clientFxDealSeedRow?.execution_context_id !== 3
@@ -5957,12 +6248,12 @@ async function main() {
       || freshSchema.clientFxDealSeedRow?.analytical_pnl_quote_minor !== 2700000
       || freshSchema.clientFxDealSeedRow?.analytical_pnl_quote_fraction_digits !== 2
       || freshSchema.hedgeFxDeals !== 1
-      || freshSchema.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits"
+      || freshSchema.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,counterparty_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits"
       || freshSchema.hedgeFxDealForeignKeys.length !== 7
       || !freshSchema.hedgeFxDealForeignKeys.every(foreignKey =>
         foreignKey.on_update === "RESTRICT" && foreignKey.on_delete === "RESTRICT"
       )
-      || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
+      || !["trading_counterparties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
         freshSchema.hedgeFxDealForeignKeys.some(foreignKey => foreignKey.table === referencedTable)
       )
       || freshSchema.hedgeFxDealSeedRow?.trade_type !== "HEDGE_DEAL"
@@ -5971,15 +6262,15 @@ async function main() {
       || freshSchema.hedgeFxDealSeedRow?.analytical_pnl_quote_fraction_digits !== 2
       || freshSchema.hedgeQuickModeSettings !== 1
       || freshSchema.hedgeQuickModeSettingsColumns.join(",")
-        !== "ccy_pair_code,party_id,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
+        !== "ccy_pair_code,counterparty_id,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
       || freshSchema.hedgeQuickModeSettingsForeignKeys.length !== 5
       || !freshSchema.hedgeQuickModeSettingsForeignKeys.every(foreignKey =>
-        ["ccy_pair_options", "trading_parties", "pricing_rules"].includes(foreignKey.table)
+        ["ccy_pair_options", "trading_counterparties", "pricing_rules"].includes(foreignKey.table)
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "RESTRICT"
       )
       || freshSchema.hedgeQuickModeSettingsSeedRow?.ccy_pair_code !== "EUR_USD"
-      || freshSchema.hedgeQuickModeSettingsSeedRow?.party_id !== 4
+      || freshSchema.hedgeQuickModeSettingsSeedRow?.counterparty_id !== 4
       || freshSchema.hedgeQuickModeSettingsSeedRow
         ?.base_ccy_fraction_digits !== 2
       || freshSchema.hedgeQuickModeSettingsSeedRow
@@ -5993,7 +6284,7 @@ async function main() {
       || freshSchema.hedgeQuickModeSettingsSeedRow?.is_active !== 1
       || freshSchema.hedgeQuickModeSettingsSeedRow?.default_tenor !== "TOD"
       || freshSchema.hedgeQuickModeSettingsSeedRow
-        ?.party_type !== "HEDGE_COUNTERPARTY"
+        ?.counterparty_type !== "HEDGE_COUNTERPARTY"
       || freshSchema.hedgeQuickModeSettingsSeedRow
         ?.pricing_mode !== "AUTO_PRICED"
       || !freshSchema.hedgeQuickModeSettingsReferenceIndex
@@ -6064,29 +6355,29 @@ async function main() {
       || !freshSchema.batchBalancingTradeConstraintsEnforced
       || !freshSchema.batchBalancingTradeParentRestrictionEnforced
       || !freshSchema.pricingRuleReferenceIndex
-      || freshSchema.pricingRuleReferenceIndexColumns.join(",") !== "pricing_rule_id,party_id,execution_context_id"
+      || freshSchema.pricingRuleReferenceIndexColumns.join(",") !== "pricing_rule_id,counterparty_id,execution_context_id"
       || freshSchema.pricingRuleExecutionContextIdType !== "INTEGER"
       || !freshSchema.ccyOptionsConstraintsEnforced
       || !freshSchema.ccyPairOptionsConstraintsEnforced
       || !freshSchema.servicingLocationConstraintsEnforced
       || !freshSchema.accountingSystemTextLimitsEnforced
       || !freshSchema.executionSystemConstraintsEnforced
-      || !freshSchema.tradingPartyConstraintsEnforced
+      || !freshSchema.tradingCounterpartyConstraintsEnforced
       || !freshSchema.userConstraintsEnforced
-      || !freshSchema.frontSystemFolderIdCodeTypeSupported
+      || !freshSchema.normalizedTradingCounterpartyProfilesSupported
       || !freshSchema.clientDealGenerationProcessSettingsConstraintsEnforced
       || !freshSchema.clientDealGenerationSettingsConstraintsEnforced
-      || !freshSchema.clientDealGenerationSettingsPartyTypeEnforced
+      || !freshSchema.clientDealGenerationSettingsCounterpartyTypeEnforced
       || !freshSchema.clientDealGenerationSettingsPricingModeEnforced
       || !freshSchema.clientDealGenerationSettingsCascadeDeleteEnforced
       || !freshSchema.fxTradeExposureConstraintsEnforced
       || !freshSchema.clientFxDealConstraintsEnforced
       || !freshSchema.clientFxDealParentRestrictionEnforced
       || !freshSchema.clientFxDealAttributionReferencesRestricted
-      || !freshSchema.clientFxDealPartyTypeEnforced
+      || !freshSchema.clientFxDealCounterpartyTypeEnforced
       || !freshSchema.hedgeFxDealConstraintsEnforced
       || !freshSchema.hedgeFxDealParentRestrictionEnforced
-      || !freshSchema.hedgeFxDealPartyTypeEnforced
+      || !freshSchema.hedgeFxDealCounterpartyTypeEnforced
       || freshSchema.legacyAssignmentTablePresent
       || freshSchema.foreignKeyViolations !== 0
       || frontend.duplicateIds.length > 0
@@ -6136,12 +6427,13 @@ async function main() {
       || !frontend.usesExecutionSystemsEndpoint
       || !frontend.persistsReferenceDataItemsWithoutUndefinedAlias
       || !frontend.usesExecutionContextsEndpoint
-      || !frontend.usesTradingPartiesEndpoint
+      || !frontend.usesTradingCounterpartiesEndpoint
       || !frontend.usesUsersWorkspace
       || !frontend.usesInlineUsersEditor
       || !frontend.usesPricingRulesEndpoint
       || !frontend.usesPricingRulesBootstrap
-      || !frontend.displaysPricingRulePartyType
+      || !frontend.usesDatabaseBackedUiTableColumnLayouts
+      || !frontend.displaysPricingRuleCounterpartyType
       || !frontend.displaysPricingRulePricingMode
       || !frontend.usesDealerPricedClientDealRules
       || !frontend.usesClientFxDealsEndpoint
@@ -6165,16 +6457,18 @@ async function main() {
       || !frontend.usesInlineFixedAmountCurrencySelection
       || !frontend.usesCollapsibleAdditionalAttributes
       || !frontend.usesClientDealDuplicateCheck
-      || !frontend.usesTradingPartiesLanguage
+      || !frontend.usesTradingCounterpartiesLanguage
       || !frontend.usesDomainNavigationIcons
-      || !frontend.usesTradingPartyColumnFilters
-      || !frontend.usesBootstrapTradingPartyGrid
+      || !frontend.usesTradingCounterpartyColumnFilters
+      || !frontend.usesUnifiedBooleanActivityPresentation
+      || !frontend.usesBootstrapTradingCounterpartyGrid
       || !frontend.usesContextualDeletePlacement
-      || !frontend.usesTradingPartyPricingContextBricks
-      || !frontend.usesTradingPartyDetailRoutes
-      || !frontend.usesInlineTradingPartyCreate
+      || !frontend.usesTradingCounterpartyPricingContextBricks
+      || !frontend.usesTradingCounterpartyDetailRoutes
+      || !frontend.usesInlineTradingCounterpartyCreate
       || !frontend.usesUnifiedConstrainedTableSizing
       || !frontend.usesBootstrapPricingRuleDialog
+      || !frontend.usesMarginOnlyPricingRuleEditing
       || !frontend.usesMutedUnavailablePricingContextOptions
       || !frontend.usesFilterAwareSmartSizing
       || !frontend.removesExecutionContextAssignments
@@ -6184,10 +6478,10 @@ async function main() {
       || !frontend.suppressesDuplicatePricingContextClear
       || !frontend.usesHumanReadablePricingContextCandidates
       || !frontend.usesMutedPricingContextBricks
-      || !frontend.avoidsTradingPartyCodeAutoSelect
+      || !frontend.avoidsTradingCounterpartyCodeAutoSelect
       || !frontend.usesSynchronizedContextIcons
-      || !frontend.supportsRequiredPartyTypes
-      || !frontend.supportsRequiredPartyCodeTypes
+      || !frontend.supportsRequiredCounterpartyTypes
+      || !frontend.supportsRequiredCounterpartyCodeTypes
       || !frontend.usesExplicitTooltipLayer
       || !frontend.usesUnifiedIconCursor
       || frontend.explicitTooltipCount < 1
@@ -6252,9 +6546,11 @@ async function main() {
       || !frontend.usesExecutionContextRoute
       || !frontend.usesBootstrapReferenceDataControls
       || !frontend.usesUniformReferenceDataGrid
+      || !frontend.separatesUsersFromTradingCounterpartyTabs
       || !frontend.usesUnifiedDataGridLineSystem
       || !frontend.usesOwnedRoundedTableFrames
       || !frontend.usesCentralWorkbenchDesignContract
+      || !frontend.usesUnifiedPageHeaderSeparation
       || !frontend.usesSingleMarketOuterEdge
       || !frontend.usesSingleClientDealsOuterEdge
       || !frontend.avoidsMarketScrollbarGutter
@@ -6285,7 +6581,7 @@ async function main() {
       || !apiAndMigration.ccyOptionsConstraintMigrated
       || !apiAndMigration.ccyPairOptionsConstraintMigrated
       || !apiAndMigration.executionSystemConstraintMigrated
-      || !apiAndMigration.tradingPartyConstraintsMigrated
+      || !apiAndMigration.tradingCounterpartyConstraintsMigrated
       || !apiAndMigration.userConstraintsMigrated
       || apiAndMigration.pairColumns.some(column => ["bid_min", "spread", "bid_max"].includes(column))
       || apiAndMigration.pairForeignKeys !== 2
@@ -6313,14 +6609,18 @@ async function main() {
       || apiAndMigration.executionContexts.updatedId !== apiAndMigration.executionContexts.createdId
       || apiAndMigration.executionContexts.usageAfterCreate !== 1
       || apiAndMigration.executionContexts.usageAfterDelete !== 0
-      || apiAndMigration.tradingPartyColumns.join(",") !== "party_id,party_type,party_code,party_code_type,party_name,is_active"
+      || apiAndMigration.tradingCounterpartyColumns.join(",") !== "counterparty_id,counterparty_name,is_active"
+      || apiAndMigration.externalCounterpartyColumns.join(",")
+        !== "counterparty_id,counterparty_code,counterparty_code_type,external_counterparty_kind"
+      || apiAndMigration.internalUnitColumns.join(",") !== "counterparty_id,unit_code,unit_type"
+      || apiAndMigration.tradingCounterpartyRoleColumns.join(",") !== "counterparty_id,role_code"
       || apiAndMigration.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
       || !apiAndMigration.legacyAssignmentTableRemoved
-      || apiAndMigration.pricingRuleColumns.join(",") !== "pricing_rule_id,party_id,execution_context_id,ccy_pair_code,margin_percent"
+      || apiAndMigration.pricingRuleColumns.join(",") !== "pricing_rule_id,counterparty_id,execution_context_id,ccy_pair_code,margin_percent"
       || apiAndMigration.pricingRuleExecutionContextIdType !== "INTEGER"
       || apiAndMigration.pricingRuleForeignKeys.length !== 3
       || !apiAndMigration.pricingRuleForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
-      || !["trading_parties", "execution_contexts", "ccy_pair_options"].every(referencedTable =>
+      || !["trading_counterparties", "execution_contexts", "ccy_pair_options"].every(referencedTable =>
         apiAndMigration.pricingRuleForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
       || apiAndMigration.clientDealGenerationProcessSettingsColumns.join(",")
@@ -6415,25 +6715,25 @@ async function main() {
         && foreignKey.referencedTable === "fx_trade_exposure"
       )
       || apiAndMigration.fxTradeMarketSnapshots.count !== 0
-      || apiAndMigration.clientFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits,comment"
+      || apiAndMigration.clientFxDealColumns.join(",") !== "trade_id,trade_type,counterparty_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits,comment"
       || apiAndMigration.clientFxDealForeignKeys.length !== 7
       || !apiAndMigration.clientFxDealForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
-      || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
+      || !["trading_counterparties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
         apiAndMigration.clientFxDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
-      || apiAndMigration.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,party_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits"
+      || apiAndMigration.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,counterparty_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits"
       || apiAndMigration.hedgeFxDealForeignKeys.length !== 7
       || !apiAndMigration.hedgeFxDealForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
-      || !["trading_parties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
+      || !["trading_counterparties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
         apiAndMigration.hedgeFxDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
       || apiAndMigration.hedgeQuickModeSettingsColumns.join(",")
-        !== "ccy_pair_code,party_id,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
+        !== "ccy_pair_code,counterparty_id,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
       || apiAndMigration.hedgeQuickModeSettingsForeignKeys.length !== 5
       || !apiAndMigration.hedgeQuickModeSettingsForeignKeys.every(foreignKey =>
         foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "RESTRICT"
-        && ["ccy_pair_options", "trading_parties", "pricing_rules"].includes(
+        && ["ccy_pair_options", "trading_counterparties", "pricing_rules"].includes(
           foreignKey.referencedTable
         )
       )
@@ -6754,8 +7054,8 @@ async function main() {
       || apiAndMigration.hedgeFxDeals.createdStatus !== 201
       || !Number.isInteger(apiAndMigration.hedgeFxDeals.createdTradeId)
       || apiAndMigration.hedgeFxDeals.createdSide !== "BUY"
-      || apiAndMigration.hedgeFxDeals.createdPartyId
-        !== apiAndMigration.hedgeFxDeals.expectedPartyId
+      || apiAndMigration.hedgeFxDeals.createdCounterpartyId
+        !== apiAndMigration.hedgeFxDeals.expectedCounterpartyId
       || apiAndMigration.hedgeFxDeals.createdPricingRuleId
         !== apiAndMigration.hedgeFxDeals.expectedPricingRuleId
       || !Number.isFinite(apiAndMigration.hedgeFxDeals.createdTransferRate)
@@ -6791,7 +7091,7 @@ async function main() {
       || apiAndMigration.clientFxDeals.first?.entryTimestamp !== "2026-07-15T11:45:00.000Z"
       || apiAndMigration.clientFxDeals.migratedRow?.trade_id !== 41
       || apiAndMigration.clientFxDeals.migratedRow?.trade_type !== "CLIENT_DEAL"
-      || apiAndMigration.clientFxDeals.migratedRow?.party_id !== 1
+      || apiAndMigration.clientFxDeals.migratedRow?.counterparty_id !== 1
       || apiAndMigration.clientFxDeals.migratedRow?.execution_context_id !== null
       || apiAndMigration.clientFxDeals.migratedRow?.pricing_rule_id !== null
       || apiAndMigration.clientFxDeals.migratedRow?.transfer_rate !== null
@@ -6837,31 +7137,40 @@ async function main() {
       || !apiAndMigration.clientFxDeals.nonDealerPricingRuleMessage?.includes("DEALER_PRICED")
       || apiAndMigration.clientFxDeals.lifecycle.join(",") !== "201,405,200,400,400,400,400,400,400,400,405"
       || apiAndMigration.pricingRules.count !== 5
-      || apiAndMigration.pricingRules.migratedPartyTypes.join(",") !== "CLIENT"
+      || apiAndMigration.pricingRules.migratedCounterpartyTypes.join(",") !== "CLIENT"
       || !apiAndMigration.pricingRules.allPricingModesResolved
       || !apiAndMigration.pricingRules.migratedIdsPreserved
       || !apiAndMigration.pricingRules.migratedContextIdsAreIntegers
       || !Number.isInteger(apiAndMigration.pricingRules.createdId)
       || apiAndMigration.pricingRules.createdId <= 0
-      || apiAndMigration.pricingRules.createdPartyId !== apiAndMigration.tradingParties.createdId
-      || apiAndMigration.pricingRules.createdPartyType !== "HEDGE_COUNTERPARTY"
+      || apiAndMigration.pricingRules.createdCounterpartyId !== apiAndMigration.tradingCounterparties.createdId
+      || apiAndMigration.pricingRules.createdCounterpartyType !== "HEDGE_COUNTERPARTY"
       || apiAndMigration.pricingRules.createdPairCode !== "EUR_USD"
       || apiAndMigration.pricingRules.createdCurrencyPair !== "EUR/USD"
       || apiAndMigration.pricingRules.updatedId !== apiAndMigration.pricingRules.createdId
       || apiAndMigration.pricingRules.updatedContextId !== apiAndMigration.pricingRules.expectedUpdatedContextId
       || apiAndMigration.pricingRules.updatedMargin !== 0.3
-      || apiAndMigration.pricingRules.lifecycle.join(",") !== "201,200,409,400,400,409,204"
-      || apiAndMigration.tradingParties.count !== 5
-      || apiAndMigration.tradingParties.migratedTypes.join(",") !== "CLIENT,HEDGE_COUNTERPARTY"
-      || apiAndMigration.tradingParties.legacyExternalType !== "HEDGE_COUNTERPARTY"
-      || apiAndMigration.tradingParties.legacyInternalType !== "HEDGE_COUNTERPARTY"
-      || apiAndMigration.tradingParties.createdType !== "HEDGE_COUNTERPARTY"
-      || apiAndMigration.tradingParties.createdCodeType !== "FRONT_SYSTEM_FOLDER_ID"
-      || apiAndMigration.tradingParties.updatedType !== "HEDGE_COUNTERPARTY"
-      || apiAndMigration.tradingParties.updatedCode !== "VERIFY_FOLDER"
-      || apiAndMigration.tradingParties.updatedActive !== false
-      || apiAndMigration.tradingParties.countAfterDelete !== 5
-      || apiAndMigration.tradingParties.lifecycle.join(",") !== "201,200,409,400,400,400,400,400,204"
+      || apiAndMigration.pricingRules.immutableUpdateStatus !== 409
+      || apiAndMigration.pricingRules.immutableUpdateCode !== "PRICING_RULE_TERMS_IMMUTABLE"
+      || apiAndMigration.pricingRules.immutableUpdateContextId !== apiAndMigration.pricingRules.expectedUpdatedContextId
+      || apiAndMigration.pricingRules.immutableUpdateMargin !== 0.3
+      || apiAndMigration.pricingRules.lifecycle.join(",") !== "201,200,409,409,400,400,409,204"
+      || apiAndMigration.tradingCounterparties.count !== 5
+      || apiAndMigration.tradingCounterparties.migratedScopes.join(",") !== "EXTERNAL,INTERNAL"
+      || apiAndMigration.tradingCounterparties.migratedRoles.join(",") !== "CLIENT,HEDGE_COUNTERPARTY"
+      || apiAndMigration.tradingCounterparties.legacyExternalProfile?.counterpartyScope !== "EXTERNAL"
+      || !apiAndMigration.tradingCounterparties.legacyExternalProfile?.counterpartyRoles?.includes("HEDGE_COUNTERPARTY")
+      || apiAndMigration.tradingCounterparties.legacyInternalProfile?.counterpartyScope !== "INTERNAL"
+      || !apiAndMigration.tradingCounterparties.legacyInternalProfile?.counterpartyRoles?.includes("HEDGE_COUNTERPARTY")
+      || apiAndMigration.tradingCounterparties.createdScope !== "INTERNAL"
+      || !apiAndMigration.tradingCounterparties.createdRoles?.includes("HEDGE_COUNTERPARTY")
+      || apiAndMigration.tradingCounterparties.createdUnitType !== "DESK"
+      || apiAndMigration.tradingCounterparties.updatedScope !== "INTERNAL"
+      || apiAndMigration.tradingCounterparties.updatedCode !== "VERIFY_FOLDER"
+      || apiAndMigration.tradingCounterparties.updatedUnitType !== "DEPARTMENT"
+      || apiAndMigration.tradingCounterparties.updatedActive !== false
+      || apiAndMigration.tradingCounterparties.countAfterDelete !== 5
+      || apiAndMigration.tradingCounterparties.lifecycle.join(",") !== "201,200,409,400,400,400,400,400,204"
       || apiAndMigration.users.count !== 3
       || !Number.isInteger(apiAndMigration.users.createdId)
       || apiAndMigration.users.updatedRole !== "SUPERVISOR"
