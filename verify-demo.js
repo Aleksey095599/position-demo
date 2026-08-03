@@ -211,6 +211,11 @@ function createLegacyDatabase() {
       (4, 'EXTERNAL_COUNTERPARTY', 'LEGACY_EXTERNAL', 'OTHER', 'Legacy External Counterparty', 1),
       (5, 'INTERNAL_DESK', 'LEGACY_INTERNAL', 'OTHER', 'Legacy Internal Desk', 1);
 
+    INSERT INTO trading_counterparty_execution_contexts
+      (counterparty_id, execution_context_id)
+    VALUES
+      (2, '002:AFINA:CLICK_TRADE_EFX');
+
     INSERT INTO pricing_rules
       (pricing_rule_id, counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
     VALUES
@@ -246,6 +251,7 @@ function verifyFreshSchemaAndSeed() {
   let accountingSystemTextLimitsEnforced = false;
   let executionSystemConstraintsEnforced = true;
   let tradingCounterpartyConstraintsEnforced = true;
+  let counterpartyExecutionContextConstraintsEnforced = true;
   let userConstraintsEnforced = true;
   let uiTableColumnSettingsConstraintsEnforced = true;
   let normalizedTradingCounterpartyProfilesSupported = false;
@@ -273,6 +279,39 @@ function verifyFreshSchemaAndSeed() {
   let batchQuoteCashMemberSinglePerBatchEnforced = false;
   let batchQuoteCashNeutralityEnforced = false;
   let completedBatchQuoteCashMemberImmutable = false;
+
+  const seededCounterpartyExecutionContext = database.prepare(`
+    SELECT counterparty_id, execution_context_id
+    FROM trading_counterparty_execution_contexts
+    ORDER BY counterparty_id, execution_context_id
+    LIMIT 1
+  `).get();
+  const counterpartyExecutionContextProbes = [
+    [
+      seededCounterpartyExecutionContext.counterparty_id,
+      seededCounterpartyExecutionContext.execution_context_id
+    ],
+    [999999, seededCounterpartyExecutionContext.execution_context_id],
+    [seededCounterpartyExecutionContext.counterparty_id, 999999]
+  ];
+
+  counterpartyExecutionContextProbes.forEach(([counterpartyId, executionContextId], index) => {
+    database.exec(`SAVEPOINT verify_counterparty_execution_context_${index}`);
+
+    try {
+      database.prepare(`
+        INSERT INTO trading_counterparty_execution_contexts
+          (counterparty_id, execution_context_id)
+        VALUES (?, ?)
+      `).run(counterpartyId, executionContextId);
+      counterpartyExecutionContextConstraintsEnforced = false;
+    } catch {} finally {
+      database.exec(`
+        ROLLBACK TO verify_counterparty_execution_context_${index};
+        RELEASE verify_counterparty_execution_context_${index};
+      `);
+    }
+  });
 
   [
     ["width_px", 47],
@@ -1262,6 +1301,19 @@ function verifyFreshSchemaAndSeed() {
       .map(column => column.name),
     tradingCounterpartyRoleColumns: database.prepare("PRAGMA table_info(trading_counterparty_roles)").all()
       .map(column => column.name),
+    counterpartyExecutionContexts: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM trading_counterparty_execution_contexts
+    `).get().count,
+    counterpartyExecutionContextColumns: database.prepare(`
+      PRAGMA table_info(trading_counterparty_execution_contexts)
+    `).all().map(column => column.name),
+    counterpartyExecutionContextForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(trading_counterparty_execution_contexts)
+    `).all(),
+    counterpartyExecutionContextIndexColumns: database.prepare(`
+      PRAGMA index_info(idx_trading_counterparty_execution_contexts_context)
+    `).all().map(column => column.name),
     users: database.prepare("SELECT COUNT(*) AS count FROM users").get().count,
     userColumns: database.prepare("PRAGMA table_info(users)").all().map(column => column.name),
     userRoles: database.prepare(`
@@ -1504,6 +1556,7 @@ function verifyFreshSchemaAndSeed() {
     accountingSystemTextLimitsEnforced,
     executionSystemConstraintsEnforced,
     tradingCounterpartyConstraintsEnforced,
+    counterpartyExecutionContextConstraintsEnforced,
     userConstraintsEnforced,
     uiTableColumnSettingsConstraintsEnforced,
     normalizedTradingCounterpartyProfilesSupported,
@@ -1531,7 +1584,7 @@ function verifyFreshSchemaAndSeed() {
     batchQuoteCashMemberSinglePerBatchEnforced,
     batchQuoteCashNeutralityEnforced,
     completedBatchQuoteCashMemberImmutable,
-    legacyAssignmentTablePresent: Boolean(database.prepare(`
+    counterpartyExecutionContextTablePresent: Boolean(database.prepare(`
       SELECT 1 AS present
       FROM sqlite_master
       WHERE type = 'table' AND name = 'trading_counterparty_execution_contexts'
@@ -2986,9 +3039,21 @@ function verifyFrontendStructure() {
       && inlineScript.includes('headerCell.querySelector(".reference-filterable-head")')
       && inlineScript.includes("smartElementOuterWidth(filterTrigger)")
       && inlineScript.includes("const headerWidth = smartHeaderMinimumWidth(headerCell, policy)"),
-    removesExecutionContextAssignments: !html.includes("clientExecutionContextAssignment")
-      && !inlineScript.includes("executionContextIds")
-      && !html.includes("Execution Context Assignment"),
+    usesTradingCounterpartyExecutionContextAssignments:
+      html.includes('id="clientExecutionContextsPanel"')
+      && html.includes('id="clientExecutionContextsAttachButton"')
+      && html.includes('<span>Attach Context</span>')
+      && html.includes('id="clientExecutionContextAttachDialogTitle">Attach Execution Contexts</h2>')
+      && (html.match(/data-client-context-attach-filter=/g) || []).length === 5
+      && html.includes('id="clientExecutionContextAttachSelectAll"')
+      && html.includes('id="clientExecutionContextAttachSubmitButton" disabled')
+      && inlineScript.includes("async function refreshTradingCounterpartyExecutionContexts(profile, options = {})")
+      && inlineScript.includes("function availableExecutionContextsForProfile(profile)")
+      && inlineScript.includes("async function attachSelectedExecutionContexts(event)")
+      && inlineScript.includes("JSON.stringify({ executionContextIds: executionContextIds.map(Number) })")
+      && inlineScript.includes("async function detachClientExecutionContext(profile, contextId)")
+      && inlineScript.includes("data-client-execution-context-action=\"detach\"")
+      && inlineScript.includes("pricingRuleCount > 0"),
     pricingRulesUseDirectExecutionContexts: html.includes('id="clientPricingRuleContextSearchSection" aria-label="Find Execution Context"')
       && inlineScript.includes("availablePricingRuleExecutionContextIds()")
       && inlineScript.includes("Select an existing Execution Context."),
@@ -3118,17 +3183,21 @@ function verifyFrontendStructure() {
       && html.includes(">Accounting System</span>")
       && html.includes(">Execution System</span>"),
     usesExecutionContextUsage:
-      html.includes('data-tooltip="Pricing Rules using this Execution Context"')
+      html.includes('data-tooltip="Trading Counterparties using this Execution Context"')
       && !html.includes('id="pricingContextUsageInfo"'),
     usesExecutionContextColumnWidths:
       html.includes('id="executionContextsTable" data-ui-table-layout-key="execution_contexts_grid"')
       && html.includes('data-ui-column-key="servicing_location"')
-      && html.includes('data-ui-column-key="pricing_rules_count"')
+      && html.includes('data-ui-column-key="counterparties_count"')
       && uiTableLayoutsSource.includes('execution_contexts_grid: layout("Execution Context", [')
       && uiTableLayoutsSource.includes('["servicing_location", "Servicing Location", 153]')
       && uiTableLayoutsSource.includes('["accounting_system", "Accounting System", 152]')
       && uiTableLayoutsSource.includes('["execution_system", "Execution System", 149]')
-      && uiTableLayoutsSource.includes('["pricing_rules_count", "Pricing Rules Count", 64]')
+      && uiTableLayoutsSource.includes(
+        '["counterparties_count", "Trading Counterparties Count", 64]'
+      )
+      && uiTableLayoutsSource.includes('legacyColumnKey: "pricing_rules_count"')
+      && uiTableLayoutsSource.includes('columnKey: "counterparties_count"')
       && inlineScript.includes("function applyNativeUiTableLayout(tableKey, tableLayout)")
       && !html.includes("data-fixed-column-widths")
       && !html.includes(">Execution Context List<"),
@@ -3736,7 +3805,10 @@ async function verifyApiAndMigration() {
       "GET",
       "/api/database/tables/fx_batch_quote_cash_output"
     );
-    const legacyAssignmentTable = await request("GET", "/api/database/tables/trading_counterparty_execution_contexts");
+    const counterpartyExecutionContextsTable = await request(
+      "GET",
+      "/api/database/tables/trading_counterparty_execution_contexts"
+    );
     const servicingLocations = await request("GET", "/api/v1/servicing-locations");
     const accountingSystems = await request("GET", "/api/v1/accounting-systems");
     const executionSystems = await request("GET", "/api/v1/execution-systems");
@@ -3744,6 +3816,18 @@ async function verifyApiAndMigration() {
     const tradingCounterparties = await request("GET", "/api/v1/trading-counterparties");
     const users = await request("GET", "/api/v1/users");
     const pricingRules = await request("GET", "/api/v1/pricing-rules");
+    const migratedClient1ExecutionContexts = await request(
+      "GET",
+      "/api/v1/trading-counterparties/1/execution-contexts"
+    );
+    const migratedClient2ExecutionContexts = await request(
+      "GET",
+      "/api/v1/trading-counterparties/2/execution-contexts"
+    );
+    const missingCounterpartyExecutionContexts = await request(
+      "GET",
+      "/api/v1/trading-counterparties/999999/execution-contexts"
+    );
     const clientDealPricingRules = await request("GET", "/api/v1/client-deal-pricing-rules");
     const clientFxDeals = await request("GET", "/api/v1/client-fx-deals");
     const hedgeFxDeals = await request("GET", "/api/v1/hedge-fx-deals");
@@ -4307,6 +4391,48 @@ async function verifyApiAndMigration() {
       counterpartyName: "Verification Counterparty",
       active: false
     });
+    const counterpartyExecutionContextsPath =
+      `/api/v1/trading-counterparties/${tradingCounterpartyId}/execution-contexts`;
+    const attachCounterpartyExecutionContexts = await request(
+      "PUT",
+      counterpartyExecutionContextsPath,
+      { executionContextIds: [emeraldClickContextId, wonderlandRfqContextId] }
+    );
+    const idempotentCounterpartyExecutionContextAttach = await request(
+      "PUT",
+      counterpartyExecutionContextsPath,
+      { executionContextIds: [emeraldClickContextId] }
+    );
+    const invalidCounterpartyExecutionContextAssignments = await request(
+      "PUT",
+      counterpartyExecutionContextsPath,
+      { executionContextIds: [] }
+    );
+    const atomicCounterpartyExecutionContextAttach = await request(
+      "PUT",
+      counterpartyExecutionContextsPath,
+      { executionContextIds: [neverlandRfqContextId, 999999] }
+    );
+    const counterpartyExecutionContextsAfterAtomicFailure = await request(
+      "GET",
+      counterpartyExecutionContextsPath
+    );
+    const attachSingleCounterpartyExecutionContext = await request(
+      "PUT",
+      `${counterpartyExecutionContextsPath}/${neverlandRfqContextId}`
+    );
+    const detachSingleCounterpartyExecutionContext = await request(
+      "DELETE",
+      `${counterpartyExecutionContextsPath}/${neverlandRfqContextId}`
+    );
+    const idempotentCounterpartyExecutionContextDetach = await request(
+      "DELETE",
+      `${counterpartyExecutionContextsPath}/${neverlandRfqContextId}`
+    );
+    const counterpartyExecutionContextsAfterDetach = await request(
+      "GET",
+      counterpartyExecutionContextsPath
+    );
     const duplicateTradingCounterparty = await request("POST", "/api/v1/trading-counterparties", {
       counterpartyScope: "EXTERNAL",
       counterpartyRoles: ["CLIENT"],
@@ -4433,8 +4559,16 @@ async function verifyApiAndMigration() {
       ccyPairCode: "EUR_USD",
       marginPercent: 100
     });
+    const blockedCounterpartyExecutionContextDetach = await request(
+      "DELETE",
+      `${counterpartyExecutionContextsPath}/${emeraldClickContextId}`
+    );
     const blockedTradingCounterpartyDelete = await request("DELETE", `/api/v1/trading-counterparties/${tradingCounterpartyId}`);
     const deletePricingRule = await request("DELETE", `/api/v1/pricing-rules/${pricingRuleId}`);
+    const detachCounterpartyExecutionContextAfterPricingRuleDelete = await request(
+      "DELETE",
+      `${counterpartyExecutionContextsPath}/${emeraldClickContextId}`
+    );
     const deleteTradingCounterparty = await request("DELETE", `/api/v1/trading-counterparties/${tradingCounterpartyId}`);
     const tradingCounterpartiesAfterDelete = await request("GET", "/api/v1/trading-counterparties");
     const createHedgeCounterparty = await request("POST", "/api/v1/trading-counterparties", {
@@ -5112,6 +5246,13 @@ async function verifyApiAndMigration() {
       executionContexts: {
         count: executionContexts.body?.length ?? -1,
         migratedIdsAreIntegers: executionContexts.body?.every(context => Number.isInteger(context.executionContextId)),
+        assignedCounterpartyCounts: (executionContexts.body || []).map(context => ({
+          executionContextId: context.executionContextId,
+          servicingLocationId: context.servicingLocationId,
+          accountingSystemId: context.accountingSystemId,
+          executionSystemId: context.executionSystemId,
+          assignedCounterpartyCount: context.assignedCounterpartyCount
+        })),
         createdId: createExecutionContext.body?.executionContextId,
         createdAccountingSystemId: createExecutionContext.body?.accountingSystemId,
         updatedId: updateExecutionContext.body?.executionContextId,
@@ -5125,7 +5266,41 @@ async function verifyApiAndMigration() {
       internalUnitColumns: internalUnitsTable.body?.columns?.map(column => column.name) || [],
       tradingCounterpartyRoleColumns: tradingCounterpartyRolesTable.body?.columns?.map(column => column.name) || [],
       userColumns: usersTable.body?.columns?.map(column => column.name) || [],
-      legacyAssignmentTableRemoved: legacyAssignmentTable.statusCode === 404,
+      counterpartyExecutionContextTable: {
+        status: counterpartyExecutionContextsTable.statusCode,
+        columns: counterpartyExecutionContextsTable.body?.columns?.map(column => column.name) || [],
+        foreignKeys: counterpartyExecutionContextsTable.body?.foreignKeys || [],
+        createSql: counterpartyExecutionContextsTable.body?.createSql || "",
+        rowCount: counterpartyExecutionContextsTable.body?.rowCount ?? -1
+      },
+      counterpartyExecutionContextMigration: {
+        client1Status: migratedClient1ExecutionContexts.statusCode,
+        client1Assignments: migratedClient1ExecutionContexts.body || [],
+        client2Status: migratedClient2ExecutionContexts.statusCode,
+        client2Assignments: migratedClient2ExecutionContexts.body || [],
+        missingCounterpartyStatus: missingCounterpartyExecutionContexts.statusCode,
+        missingCounterpartyCode: missingCounterpartyExecutionContexts.body?.code
+      },
+      counterpartyExecutionContextLifecycle: {
+        attachStatus: attachCounterpartyExecutionContexts.statusCode,
+        attached: attachCounterpartyExecutionContexts.body || [],
+        idempotentAttachStatus: idempotentCounterpartyExecutionContextAttach.statusCode,
+        idempotentAttached: idempotentCounterpartyExecutionContextAttach.body || [],
+        invalidBodyStatus: invalidCounterpartyExecutionContextAssignments.statusCode,
+        invalidBodyCode: invalidCounterpartyExecutionContextAssignments.body?.code,
+        atomicFailureStatus: atomicCounterpartyExecutionContextAttach.statusCode,
+        atomicFailureCode: atomicCounterpartyExecutionContextAttach.body?.code,
+        assignmentsAfterAtomicFailure: counterpartyExecutionContextsAfterAtomicFailure.body || [],
+        singleAttachStatus: attachSingleCounterpartyExecutionContext.statusCode,
+        singleAttached: attachSingleCounterpartyExecutionContext.body,
+        singleDetachStatus: detachSingleCounterpartyExecutionContext.statusCode,
+        idempotentDetachStatus: idempotentCounterpartyExecutionContextDetach.statusCode,
+        assignmentsAfterDetach: counterpartyExecutionContextsAfterDetach.body || [],
+        blockedDetachStatus: blockedCounterpartyExecutionContextDetach.statusCode,
+        blockedDetachCode: blockedCounterpartyExecutionContextDetach.body?.code,
+        detachAfterRuleDeleteStatus:
+          detachCounterpartyExecutionContextAfterPricingRuleDelete.statusCode
+      },
       pricingRuleColumns: pricingRulesTable.body?.columns?.map(column => column.name) || [],
       pricingRuleExecutionContextIdType: pricingRulesTable.body?.columns
         ?.find(column => column.name === "execution_context_id")?.type,
@@ -6157,6 +6332,7 @@ async function main() {
       "pricing_rules",
       "servicing_locations",
       "trading_counterparties",
+      "trading_counterparty_execution_contexts",
       "trading_counterparty_roles",
       "ui_table_column_settings",
       "users"
@@ -6177,13 +6353,29 @@ async function main() {
         !== "counterparty_id,counterparty_code,counterparty_code_type,external_counterparty_kind"
       || freshSchema.internalUnitColumns.join(",") !== "counterparty_id,unit_code,unit_type"
       || freshSchema.tradingCounterpartyRoleColumns.join(",") !== "counterparty_id,role_code"
+      || freshSchema.counterpartyExecutionContexts !== 7
+      || freshSchema.counterpartyExecutionContextColumns.join(",")
+        !== "counterparty_id,execution_context_id"
+      || freshSchema.counterpartyExecutionContextForeignKeys.length !== 2
+      || !freshSchema.counterpartyExecutionContextForeignKeys.some(foreignKey =>
+        foreignKey.table === "trading_counterparties"
+        && foreignKey.on_update === "RESTRICT"
+        && foreignKey.on_delete === "CASCADE"
+      )
+      || !freshSchema.counterpartyExecutionContextForeignKeys.some(foreignKey =>
+        foreignKey.table === "execution_contexts"
+        && foreignKey.on_update === "RESTRICT"
+        && foreignKey.on_delete === "RESTRICT"
+      )
+      || freshSchema.counterpartyExecutionContextIndexColumns.join(",")
+        !== "execution_context_id,counterparty_id"
       || freshSchema.users !== 3
       || freshSchema.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
       || freshSchema.userRoles.join(",") !== "ADMIN,DEALER,SUPERVISOR"
       || freshSchema.uiTableColumnSettings !== 137
       || freshSchema.uiTableColumnLayoutKeys.map(row =>
         `${row.table_key}:${row.column_count}`
-      ).join(",") !== "accounting_systems_grid:5,batch_cash_output_grid:3,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:5,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:17,execution_contexts_grid:6,execution_systems_grid:6,external_counterparties_grid:7,hedge_fx_deals_grid:18,hedge_quick_mode_settings_grid:7,internal_units_grid:7,market_stream_grid:4,pricing_rules_grid:8,servicing_locations_grid:7,users_grid:7"
+      ).join(",") !== "accounting_systems_grid:5,batch_cash_output_grid:3,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:5,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:17,execution_contexts_grid:6,execution_systems_grid:6,external_counterparties_grid:8,hedge_fx_deals_grid:18,hedge_quick_mode_settings_grid:7,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:8,servicing_locations_grid:7,users_grid:7"
       || freshSchema.uiTableColumnSettingColumns.join(",")
         !== "table_key,column_key,column_label,display_order,default_width_px,width_px,updated_at"
       || freshSchema.uiTableColumnSettingRows.map(row =>
@@ -6363,6 +6555,7 @@ async function main() {
       || !freshSchema.accountingSystemTextLimitsEnforced
       || !freshSchema.executionSystemConstraintsEnforced
       || !freshSchema.tradingCounterpartyConstraintsEnforced
+      || !freshSchema.counterpartyExecutionContextConstraintsEnforced
       || !freshSchema.userConstraintsEnforced
       || !freshSchema.normalizedTradingCounterpartyProfilesSupported
       || !freshSchema.clientDealGenerationProcessSettingsConstraintsEnforced
@@ -6378,7 +6571,7 @@ async function main() {
       || !freshSchema.hedgeFxDealConstraintsEnforced
       || !freshSchema.hedgeFxDealParentRestrictionEnforced
       || !freshSchema.hedgeFxDealCounterpartyTypeEnforced
-      || freshSchema.legacyAssignmentTablePresent
+      || !freshSchema.counterpartyExecutionContextTablePresent
       || freshSchema.foreignKeyViolations !== 0
       || frontend.duplicateIds.length > 0
       || frontend.missingDomIds.length > 0
@@ -6471,7 +6664,7 @@ async function main() {
       || !frontend.usesMarginOnlyPricingRuleEditing
       || !frontend.usesMutedUnavailablePricingContextOptions
       || !frontend.usesFilterAwareSmartSizing
-      || !frontend.removesExecutionContextAssignments
+      || !frontend.usesTradingCounterpartyExecutionContextAssignments
       || !frontend.pricingRulesUseDirectExecutionContexts
       || !frontend.usesPricingRuleContextBuilder
       || !frontend.usesVerticalPricingRuleContextLayout
@@ -6615,7 +6808,75 @@ async function main() {
       || apiAndMigration.internalUnitColumns.join(",") !== "counterparty_id,unit_code,unit_type"
       || apiAndMigration.tradingCounterpartyRoleColumns.join(",") !== "counterparty_id,role_code"
       || apiAndMigration.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
-      || !apiAndMigration.legacyAssignmentTableRemoved
+      || apiAndMigration.counterpartyExecutionContextTable.status !== 200
+      || apiAndMigration.counterpartyExecutionContextTable.columns.join(",")
+        !== "counterparty_id,execution_context_id"
+      || apiAndMigration.counterpartyExecutionContextTable.foreignKeys.length !== 2
+      || !apiAndMigration.counterpartyExecutionContextTable.foreignKeys.some(foreignKey =>
+        foreignKey.referencedTable === "trading_counterparties"
+        && foreignKey.onUpdate === "RESTRICT"
+        && foreignKey.onDelete === "CASCADE"
+      )
+      || !apiAndMigration.counterpartyExecutionContextTable.foreignKeys.some(foreignKey =>
+        foreignKey.referencedTable === "execution_contexts"
+        && foreignKey.onUpdate === "RESTRICT"
+        && foreignKey.onDelete === "RESTRICT"
+      )
+      || !apiAndMigration.counterpartyExecutionContextTable.createSql
+        .includes("PRIMARY KEY (counterparty_id, execution_context_id)")
+      || apiAndMigration.counterpartyExecutionContextTable.rowCount !== 6
+      || apiAndMigration.counterpartyExecutionContextMigration.client1Status !== 200
+      || apiAndMigration.counterpartyExecutionContextMigration.client1Assignments.length !== 3
+      || !apiAndMigration.counterpartyExecutionContextMigration.client1Assignments.every(context =>
+        context.pricingRulesCount === 1
+      )
+      || apiAndMigration.counterpartyExecutionContextMigration.client2Status !== 200
+      || apiAndMigration.counterpartyExecutionContextMigration.client2Assignments.length !== 2
+      || !apiAndMigration.counterpartyExecutionContextMigration.client2Assignments.some(context =>
+        context.servicingLocationId === "002"
+        && context.accountingSystemId === "AFINA"
+        && context.executionSystemId === "CLICK_TRADE_EFX"
+        && context.pricingRulesCount === 0
+      )
+      || !apiAndMigration.counterpartyExecutionContextMigration.client2Assignments.some(context =>
+        context.servicingLocationId === "1234"
+        && context.accountingSystemId === "AFINA"
+        && context.executionSystemId === "RFQ"
+        && context.pricingRulesCount === 1
+      )
+      || apiAndMigration.counterpartyExecutionContextMigration.missingCounterpartyStatus !== 404
+      || apiAndMigration.counterpartyExecutionContextMigration.missingCounterpartyCode
+        !== "TRADING_COUNTERPARTY_NOT_FOUND"
+      || apiAndMigration.executionContexts.assignedCounterpartyCounts
+        .reduce((total, context) => total + context.assignedCounterpartyCount, 0) !== 6
+      || !apiAndMigration.executionContexts.assignedCounterpartyCounts.every(context =>
+        Number.isInteger(context.assignedCounterpartyCount)
+        && context.assignedCounterpartyCount >= 0
+      )
+      || apiAndMigration.counterpartyExecutionContextLifecycle.attachStatus !== 200
+      || apiAndMigration.counterpartyExecutionContextLifecycle.attached.length !== 2
+      || apiAndMigration.counterpartyExecutionContextLifecycle.idempotentAttachStatus !== 200
+      || apiAndMigration.counterpartyExecutionContextLifecycle.idempotentAttached.length !== 2
+      || apiAndMigration.counterpartyExecutionContextLifecycle.invalidBodyStatus !== 400
+      || apiAndMigration.counterpartyExecutionContextLifecycle.invalidBodyCode
+        !== "INVALID_EXECUTION_CONTEXT_ASSIGNMENTS"
+      || apiAndMigration.counterpartyExecutionContextLifecycle.atomicFailureStatus !== 404
+      || apiAndMigration.counterpartyExecutionContextLifecycle.atomicFailureCode
+        !== "EXECUTION_CONTEXT_NOT_FOUND"
+      || apiAndMigration.counterpartyExecutionContextLifecycle.assignmentsAfterAtomicFailure.length !== 2
+      || apiAndMigration.counterpartyExecutionContextLifecycle.assignmentsAfterAtomicFailure.some(context =>
+        context.executionContextId === apiAndMigration.counterpartyExecutionContextLifecycle
+          .singleAttached?.executionContextId
+      )
+      || apiAndMigration.counterpartyExecutionContextLifecycle.singleAttachStatus !== 200
+      || apiAndMigration.counterpartyExecutionContextLifecycle.singleAttached?.pricingRulesCount !== 0
+      || apiAndMigration.counterpartyExecutionContextLifecycle.singleDetachStatus !== 204
+      || apiAndMigration.counterpartyExecutionContextLifecycle.idempotentDetachStatus !== 204
+      || apiAndMigration.counterpartyExecutionContextLifecycle.assignmentsAfterDetach.length !== 2
+      || apiAndMigration.counterpartyExecutionContextLifecycle.blockedDetachStatus !== 409
+      || apiAndMigration.counterpartyExecutionContextLifecycle.blockedDetachCode
+        !== "COUNTERPARTY_EXECUTION_CONTEXT_IN_USE"
+      || apiAndMigration.counterpartyExecutionContextLifecycle.detachAfterRuleDeleteStatus !== 204
       || apiAndMigration.pricingRuleColumns.join(",") !== "pricing_rule_id,counterparty_id,execution_context_id,ccy_pair_code,margin_percent"
       || apiAndMigration.pricingRuleExecutionContextIdType !== "INTEGER"
       || apiAndMigration.pricingRuleForeignKeys.length !== 3

@@ -4,8 +4,17 @@ const UI_TABLE_COLUMN_WIDTH_MIN_PX = 48;
 const UI_TABLE_COLUMN_WIDTH_MAX_PX = 1600;
 const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
   Object.freeze({ tableKey: "external_counterparties_grid", legacyColumnKey: "status", columnKey: "active" }),
+  Object.freeze({ tableKey: "external_counterparties_grid", legacyColumnKey: "identifier", columnKey: "business_id" }),
+  Object.freeze({ tableKey: "external_counterparties_grid", legacyColumnKey: "external_counterparty_type", columnKey: "counterparty_type" }),
   Object.freeze({ tableKey: "internal_units_grid", legacyColumnKey: "status", columnKey: "active" }),
-  Object.freeze({ tableKey: "users_grid", legacyColumnKey: "status", columnKey: "active" })
+  Object.freeze({ tableKey: "internal_units_grid", legacyColumnKey: "unit_code", columnKey: "business_id" }),
+  Object.freeze({ tableKey: "internal_units_grid", legacyColumnKey: "counterparty_name", columnKey: "unit_name" }),
+  Object.freeze({ tableKey: "users_grid", legacyColumnKey: "status", columnKey: "active" }),
+  Object.freeze({
+    tableKey: "execution_contexts_grid",
+    legacyColumnKey: "pricing_rules_count",
+    columnKey: "counterparties_count"
+  })
 ]);
 
 function layout(tableLabel, columns) {
@@ -135,22 +144,24 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["quote_ccy_value_date", "Quote Value Date", 143]
   ]),
   external_counterparties_grid: layout("External Counterparties", [
-    ["id", "ID", 71],
-    ["role", "Role", 163],
-    ["identifier", "Identifier", 221],
-    ["external_counterparty_type", "External Counterparty Type", 186],
-    ["counterparty_name", "Counterparty Name", 156],
-    ["active", "Active", 111],
-    ["actions", "Actions", 89]
+    ["id", "ID", 70],
+    ["counterparty_type", "Counterparty Type", 176],
+    ["business_id_type", "Business ID Type", 150],
+    ["business_id", "Business ID", 170],
+    ["counterparty_name", "Counterparty Name", 180],
+    ["role", "Role", 174],
+    ["active", "Active", 100],
+    ["actions", "Actions", 90]
   ]),
   internal_units_grid: layout("Internal Units", [
-    ["id", "ID", 77],
-    ["role", "Role", 177],
-    ["unit_code", "Unit Code", 217],
-    ["unit_type", "Unit Type", 121],
-    ["counterparty_name", "Counterparty Name", 169],
-    ["active", "Active", 121],
-    ["actions", "Actions", 97]
+    ["id", "ID", 70],
+    ["unit_type", "Unit Type", 130],
+    ["business_id_type", "Business ID Type", 178],
+    ["business_id", "Business ID", 170],
+    ["unit_name", "Unit Name", 180],
+    ["role", "Role", 174],
+    ["active", "Active", 100],
+    ["actions", "Actions", 90]
   ]),
   users_grid: layout("Users", [
     ["id", "ID", 64],
@@ -166,7 +177,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["servicing_location", "Servicing Location", 153],
     ["accounting_system", "Accounting System", 152],
     ["execution_system", "Execution System", 149],
-    ["pricing_rules_count", "Pricing Rules Count", 64],
+    ["counterparties_count", "Trading Counterparties Count", 64],
     ["actions", "Actions", 80]
   ]),
   servicing_locations_grid: layout("Servicing Locations", [

@@ -195,20 +195,22 @@ VALUES
     ('batch_position_output_grid', 'analytical_pnl_quote_minor', 'Analytical PnL', 6, 119, 119),
     ('batch_position_output_grid', 'base_ccy_value_date', 'Base Value Date', 7, 135, 135),
     ('batch_position_output_grid', 'quote_ccy_value_date', 'Quote Value Date', 8, 143, 143),
-    ('external_counterparties_grid', 'id', 'ID', 0, 71, 71),
-    ('external_counterparties_grid', 'role', 'Role', 1, 163, 163),
-    ('external_counterparties_grid', 'identifier', 'Identifier', 2, 221, 221),
-    ('external_counterparties_grid', 'external_counterparty_type', 'External Counterparty Type', 3, 186, 186),
-    ('external_counterparties_grid', 'counterparty_name', 'Counterparty Name', 4, 156, 156),
-    ('external_counterparties_grid', 'active', 'Active', 5, 111, 111),
-    ('external_counterparties_grid', 'actions', 'Actions', 6, 89, 89),
-    ('internal_units_grid', 'id', 'ID', 0, 77, 77),
-    ('internal_units_grid', 'role', 'Role', 1, 177, 177),
-    ('internal_units_grid', 'unit_code', 'Unit Code', 2, 217, 217),
-    ('internal_units_grid', 'unit_type', 'Unit Type', 3, 121, 121),
-    ('internal_units_grid', 'counterparty_name', 'Counterparty Name', 4, 169, 169),
-    ('internal_units_grid', 'active', 'Active', 5, 121, 121),
-    ('internal_units_grid', 'actions', 'Actions', 6, 97, 97),
+    ('external_counterparties_grid', 'id', 'ID', 0, 70, 70),
+    ('external_counterparties_grid', 'counterparty_type', 'Counterparty Type', 1, 176, 176),
+    ('external_counterparties_grid', 'business_id_type', 'Business ID Type', 2, 150, 150),
+    ('external_counterparties_grid', 'business_id', 'Business ID', 3, 170, 170),
+    ('external_counterparties_grid', 'counterparty_name', 'Counterparty Name', 4, 180, 180),
+    ('external_counterparties_grid', 'role', 'Role', 5, 174, 174),
+    ('external_counterparties_grid', 'active', 'Active', 6, 100, 100),
+    ('external_counterparties_grid', 'actions', 'Actions', 7, 90, 90),
+    ('internal_units_grid', 'id', 'ID', 0, 70, 70),
+    ('internal_units_grid', 'unit_type', 'Unit Type', 1, 130, 130),
+    ('internal_units_grid', 'business_id_type', 'Business ID Type', 2, 178, 178),
+    ('internal_units_grid', 'business_id', 'Business ID', 3, 170, 170),
+    ('internal_units_grid', 'unit_name', 'Unit Name', 4, 180, 180),
+    ('internal_units_grid', 'role', 'Role', 5, 174, 174),
+    ('internal_units_grid', 'active', 'Active', 6, 100, 100),
+    ('internal_units_grid', 'actions', 'Actions', 7, 90, 90),
     ('users_grid', 'id', 'ID', 0, 64, 64),
     ('users_grid', 'user_code', 'User Code', 1, 107, 107),
     ('users_grid', 'first_name', 'First Name', 2, 140, 140),
@@ -220,7 +222,7 @@ VALUES
     ('execution_contexts_grid', 'servicing_location', 'Servicing Location', 1, 153, 153),
     ('execution_contexts_grid', 'accounting_system', 'Accounting System', 2, 152, 152),
     ('execution_contexts_grid', 'execution_system', 'Execution System', 3, 149, 149),
-    ('execution_contexts_grid', 'pricing_rules_count', 'Pricing Rules Count', 4, 64, 64),
+    ('execution_contexts_grid', 'counterparties_count', 'Trading Counterparties Count', 4, 64, 64),
     ('execution_contexts_grid', 'actions', 'Actions', 5, 80, 80),
     ('servicing_locations_grid', 'id', 'ID', 0, 64, 64),
     ('servicing_locations_grid', 'name', 'Name', 1, 153, 153),
@@ -247,6 +249,35 @@ VALUES
     ('hedge_quick_mode_settings_grid', 'default_tenor', 'Tenor', 4, 73, 73),
     ('hedge_quick_mode_settings_grid', 'state', 'Status', 5, 73, 73),
     ('hedge_quick_mode_settings_grid', 'actions', 'Actions', 6, 72, 72);
+
+WITH counterparty_execution_context_seed
+    (counterparty_code, servicing_location_id, accounting_system_id, execution_system_id)
+AS
+(
+    VALUES
+        ('7701234567', '002', 'AFINA', 'CLICK_TRADE_EFX'),
+        ('7701234567', '002', 'AFINA', 'RFQ'),
+        ('7701234567', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY'),
+        ('7812345678', '1234', 'AFINA', 'RFQ'),
+        ('5409876543', '001', 'CTF3', 'CLICK_TRADE_EFX'),
+        ('7707000001', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY'),
+        ('7707000001', '002', 'AFINA', 'CLICK_TRADE_EFX')
+)
+INSERT INTO trading_counterparty_execution_contexts
+    (counterparty_id, execution_context_id)
+SELECT
+    counterparty.counterparty_id,
+    context.execution_context_id
+FROM counterparty_execution_context_seed seed
+INNER JOIN external_counterparties external
+    ON external.counterparty_code_type = 'INN'
+    AND external.counterparty_code = seed.counterparty_code
+INNER JOIN trading_counterparties counterparty
+    ON counterparty.counterparty_id = external.counterparty_id
+INNER JOIN execution_contexts context
+    ON context.servicing_location_id = seed.servicing_location_id
+    AND context.accounting_system_id = seed.accounting_system_id
+    AND context.execution_system_id = seed.execution_system_id;
 
 WITH pricing_rule_seed
     (counterparty_code, servicing_location_id, accounting_system_id, execution_system_id, ccy_pair_code, margin_percent)

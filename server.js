@@ -177,7 +177,9 @@ const hedgeFxDealsAlreadyInitialized = Boolean(database.prepare(`
 `).get());
 migrateUnprefixedBatchTables(database);
 migrateTradingCounterpartyTerminology(database);
+prepareTradingCounterpartyExecutionContextSchema(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
+dropTradingCounterpartyExecutionContextIntegrityTriggers(database);
 ensureHedgeQuickModeSettingsDefaultTenor(database);
 dropBatchIntegrityTriggers(database);
 migrateLegacyFxBatchOutputTables(database);
@@ -193,7 +195,6 @@ dropClientFxDealTriggers(database);
 dropHedgeFxDealTriggers(database);
 dropClientDealGenerationSettingsTriggers(database);
 dropHedgeQuickModeSettingsTriggers(database);
-dropLegacyTradingCounterpartyExecutionContexts(database);
 migrateCcyOptionsConstraints(database);
 if (databaseAlreadyInitialized) {
   migrateLegacySimulationSettings(database);
@@ -273,6 +274,10 @@ if (databaseAlreadyInitialized && !hedgeQuickModeSettingsAlreadyInitialized) {
   seedInitialHedgeQuickModeSettings(database);
 }
 
+// Финальная миграция может перестроить частично созданную relation-таблицу уже
+// после schema.sql, поэтому integrity-триггеры восстанавливаются явно.
+migrateTradingCounterpartyExecutionContexts(database);
+ensureTradingCounterpartyExecutionContextIntegrityTriggers(database);
 ensureUiTableColumnSettings(database);
 
 function tableColumnNames(sqlite, tableName) {
@@ -292,6 +297,29 @@ function runInImmediateTransaction(sqlite, operation) {
     } catch {}
 
     throw error;
+  }
+}
+
+function sqliteTableExists(sqlite, tableName) {
+  return Boolean(sqlite.prepare(`
+    SELECT 1 AS present
+    FROM sqlite_master
+    WHERE type = 'table' AND name = ?
+  `).get(tableName));
+}
+
+function prepareTradingCounterpartyExecutionContextSchema(sqlite) {
+  const tableName = "trading_counterparty_execution_contexts";
+
+  if (!sqliteTableExists(sqlite, tableName)) {
+    return;
+  }
+
+  const columns = tableColumnNames(sqlite, tableName);
+
+  // A legacy party_id column would make schema.sql fail while creating the reverse index.
+  if (!columns.has("counterparty_id") || !columns.has("execution_context_id")) {
+    migrateTradingCounterpartyExecutionContexts(sqlite);
   }
 }
 
@@ -2121,10 +2149,183 @@ function migrateFxTradeMarketSnapshot(sqlite) {
   }
 }
 
-function dropLegacyTradingCounterpartyExecutionContexts(sqlite) {
+function migrateTradingCounterpartyExecutionContexts(sqlite) {
+  const tableName = "trading_counterparty_execution_contexts";
+  const migratedTableName = "trading_counterparty_execution_contexts_migrated";
+  const tableInfo = sqlite.prepare(`PRAGMA table_info(${tableName})`).all();
+  const foreignKeys = sqlite.prepare(`PRAGMA foreign_key_list(${tableName})`).all();
+  const columns = tableInfo.map(column => column.name);
+  const hasCounterpartyForeignKey = foreignKeys.some(key =>
+    key.from === "counterparty_id"
+      && key.table === "trading_counterparties"
+      && key.to === "counterparty_id"
+      && key.on_update === "RESTRICT"
+      && key.on_delete === "CASCADE"
+  );
+  const hasExecutionContextForeignKey = foreignKeys.some(key =>
+    key.from === "execution_context_id"
+      && key.table === "execution_contexts"
+      && key.to === "execution_context_id"
+      && key.on_update === "RESTRICT"
+      && key.on_delete === "RESTRICT"
+  );
+  const schemaIsCurrent = columns.join(",") === "counterparty_id,execution_context_id"
+    && String(tableInfo[0]?.type || "").toUpperCase() === "INTEGER"
+    && tableInfo[0]?.notnull === 1
+    && tableInfo[0]?.pk === 1
+    && String(tableInfo[1]?.type || "").toUpperCase() === "INTEGER"
+    && tableInfo[1]?.notnull === 1
+    && tableInfo[1]?.pk === 2
+    && hasCounterpartyForeignKey
+    && hasExecutionContextForeignKey;
+
+  runInImmediateTransaction(sqlite, () => {
+    sqlite.exec("DROP TABLE IF EXISTS trading_party_execution_contexts");
+
+    if (!schemaIsCurrent) {
+      // Триггеры Pricing Rule ссылаются на эту таблицу по имени. Удаляем их только
+      // на время перестройки legacy-таблицы; следующий проход schema.sql восстановит их.
+      sqlite.exec(`
+        DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_execution_context_insert;
+        DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_execution_context_update;
+      `);
+
+      const sourceCounterpartyColumn = columns.includes("counterparty_id")
+        ? "counterparty_id"
+        : columns.includes("party_id")
+          ? "party_id"
+          : null;
+      const canPreserveRows = sourceCounterpartyColumn && columns.includes("execution_context_id");
+
+      sqlite.exec(`
+        DROP TABLE IF EXISTS ${migratedTableName};
+
+        CREATE TABLE ${migratedTableName}
+        (
+            counterparty_id      INTEGER NOT NULL,
+            execution_context_id INTEGER NOT NULL,
+
+            CONSTRAINT pk_trading_counterparty_execution_contexts
+                PRIMARY KEY (counterparty_id, execution_context_id),
+            CONSTRAINT fk_trading_counterparty_execution_contexts_counterparty
+                FOREIGN KEY (counterparty_id)
+                    REFERENCES trading_counterparties (counterparty_id)
+                    ON UPDATE RESTRICT
+                    ON DELETE CASCADE,
+            CONSTRAINT fk_trading_counterparty_execution_contexts_execution_context
+                FOREIGN KEY (execution_context_id)
+                    REFERENCES execution_contexts (execution_context_id)
+                    ON UPDATE RESTRICT
+                    ON DELETE RESTRICT
+        );
+      `);
+
+      if (canPreserveRows) {
+        sqlite.exec(`
+          INSERT OR IGNORE INTO ${migratedTableName}
+            (counterparty_id, execution_context_id)
+          SELECT source.${sourceCounterpartyColumn}, source.execution_context_id
+          FROM ${tableName} source
+          INNER JOIN trading_counterparties counterparty
+            ON counterparty.counterparty_id = source.${sourceCounterpartyColumn}
+          INNER JOIN execution_contexts context
+            ON context.execution_context_id = source.execution_context_id;
+        `);
+      }
+
+      sqlite.exec(`
+        DROP TABLE IF EXISTS ${tableName};
+        ALTER TABLE ${migratedTableName} RENAME TO ${tableName};
+      `);
+    }
+
+    if (sqliteTableExists(sqlite, "pricing_rules")) {
+      sqlite.exec(`
+        INSERT OR IGNORE INTO ${tableName}
+          (counterparty_id, execution_context_id)
+        SELECT DISTINCT counterparty_id, execution_context_id
+        FROM pricing_rules;
+      `);
+    }
+
+    sqlite.exec(`
+      CREATE INDEX IF NOT EXISTS idx_trading_counterparty_execution_contexts_context
+        ON ${tableName} (execution_context_id, counterparty_id);
+    `);
+
+    const foreignKeyViolations = sqlite
+      .prepare(`PRAGMA foreign_key_check(${tableName})`)
+      .all();
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error(
+        `${tableName} contains ${foreignKeyViolations.length} invalid foreign-key reference(s).`
+      );
+    }
+  });
+}
+
+function dropTradingCounterpartyExecutionContextIntegrityTriggers(sqlite) {
   sqlite.exec(`
-    DROP TABLE IF EXISTS trading_party_execution_contexts;
-    DROP TABLE IF EXISTS trading_counterparty_execution_contexts;
+    DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_execution_context_insert;
+    DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_execution_context_update;
+    DROP TRIGGER IF EXISTS trg_trading_counterparty_execution_contexts_preserve_pricing_rules_delete;
+    DROP TRIGGER IF EXISTS trg_trading_counterparty_execution_contexts_immutable_update;
+  `);
+}
+
+function ensureTradingCounterpartyExecutionContextIntegrityTriggers(sqlite) {
+  sqlite.exec(`
+    CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_execution_context_insert
+    BEFORE INSERT ON pricing_rules
+    FOR EACH ROW
+    WHEN NOT EXISTS
+    (
+        SELECT 1
+        FROM trading_counterparty_execution_contexts assignment
+        WHERE assignment.counterparty_id = NEW.counterparty_id
+          AND assignment.execution_context_id = NEW.execution_context_id
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'Pricing Rule Execution Context must be attached to its Trading Counterparty');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_execution_context_update
+    BEFORE UPDATE OF counterparty_id, execution_context_id ON pricing_rules
+    FOR EACH ROW
+    WHEN NOT EXISTS
+    (
+        SELECT 1
+        FROM trading_counterparty_execution_contexts assignment
+        WHERE assignment.counterparty_id = NEW.counterparty_id
+          AND assignment.execution_context_id = NEW.execution_context_id
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'Pricing Rule Execution Context must be attached to its Trading Counterparty');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_execution_contexts_preserve_pricing_rules_delete
+    BEFORE DELETE ON trading_counterparty_execution_contexts
+    FOR EACH ROW
+    WHEN EXISTS
+    (
+        SELECT 1
+        FROM pricing_rules rule
+        WHERE rule.counterparty_id = OLD.counterparty_id
+          AND rule.execution_context_id = OLD.execution_context_id
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'an Execution Context assignment used by Pricing Rules cannot be detached from its Trading Counterparty');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_execution_contexts_immutable_update
+    BEFORE UPDATE OF counterparty_id, execution_context_id ON trading_counterparty_execution_contexts
+    FOR EACH ROW
+    WHEN NEW.counterparty_id <> OLD.counterparty_id
+      OR NEW.execution_context_id <> OLD.execution_context_id
+    BEGIN
+        SELECT RAISE(ABORT, 'an Execution Context assignment identity cannot be changed; attach a new Context and detach the old one');
+    END;
   `);
 }
 
@@ -4312,6 +4513,22 @@ function migrateLegacyExecutionContextIds(sqlite) {
         AND migrated.accounting_system_id IS legacy.accounting_system_id
         AND migrated.execution_system_id = legacy.execution_system_id;
 
+      UPDATE trading_counterparty_execution_contexts
+      SET execution_context_id =
+      (
+        SELECT context_map.execution_context_id
+        FROM execution_context_id_map context_map
+        WHERE context_map.legacy_execution_context_id =
+          trading_counterparty_execution_contexts.execution_context_id
+      )
+      WHERE EXISTS
+      (
+        SELECT 1
+        FROM execution_context_id_map context_map
+        WHERE context_map.legacy_execution_context_id =
+          trading_counterparty_execution_contexts.execution_context_id
+      );
+
       CREATE TABLE pricing_rules_migrated
       (
           pricing_rule_id      INTEGER PRIMARY KEY,
@@ -5282,10 +5499,11 @@ function seedInitialPricingRules(sqlite) {
     ["7707000001", "002", "CTF3", "MANUAL_CLIENT_DEAL_ENTRY", "EUR_USD", 0.03],
     ["7707000001", "002", "AFINA", "CLICK_TRADE_EFX", "EUR_USD", 0.03]
   ];
-  const insert = sqlite.prepare(`
-    INSERT OR IGNORE INTO pricing_rules
-      (counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
-    SELECT p.counterparty_id, e.execution_context_id, pair.ccy_pair_code, ?
+  const resolveScope = sqlite.prepare(`
+    SELECT
+      p.counterparty_id AS counterpartyId,
+      e.execution_context_id AS executionContextId,
+      pair.ccy_pair_code AS ccyPairCode
     FROM trading_counterparties p
     INNER JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
     INNER JOIN execution_contexts e
@@ -5295,23 +5513,46 @@ function seedInitialPricingRules(sqlite) {
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = ?
     WHERE external.counterparty_code_type = 'INN' AND external.counterparty_code = ?
   `);
+  const attachContext = sqlite.prepare(`
+    INSERT OR IGNORE INTO trading_counterparty_execution_contexts
+      (counterparty_id, execution_context_id)
+    VALUES (?, ?)
+  `);
+  const insertRule = sqlite.prepare(`
+    INSERT OR IGNORE INTO pricing_rules
+      (counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
+    VALUES (?, ?, ?, ?)
+  `);
 
-  rules.forEach(([
-    counterpartyCode,
-    servicingLocationId,
-    accountingSystemId,
-    executionSystemId,
-    ccyPairCode,
-    marginPercent
-  ]) => {
-    insert.run(
-      marginPercent,
+  runInImmediateTransaction(sqlite, () => {
+    rules.forEach(([
+      counterpartyCode,
       servicingLocationId,
       accountingSystemId,
       executionSystemId,
       ccyPairCode,
-      counterpartyCode
-    );
+      marginPercent
+    ]) => {
+      const scope = resolveScope.get(
+        servicingLocationId,
+        accountingSystemId,
+        executionSystemId,
+        ccyPairCode,
+        counterpartyCode
+      );
+
+      if (!scope) {
+        return;
+      }
+
+      attachContext.run(scope.counterpartyId, scope.executionContextId);
+      insertRule.run(
+        scope.counterpartyId,
+        scope.executionContextId,
+        scope.ccyPairCode,
+        marginPercent
+      );
+    });
   });
 }
 
@@ -5810,12 +6051,17 @@ function executionSystem(executionSystemId) {
 function executionContexts() {
   return database.prepare(`
     SELECT
-      execution_context_id AS executionContextId,
-      servicing_location_id AS servicingLocationId,
-      COALESCE(accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
-      execution_system_id AS executionSystemId
-    FROM execution_contexts
-    ORDER BY execution_context_id
+      context.execution_context_id AS executionContextId,
+      context.servicing_location_id AS servicingLocationId,
+      COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
+      context.execution_system_id AS executionSystemId,
+      (
+        SELECT COUNT(*)
+        FROM trading_counterparty_execution_contexts assignment
+        WHERE assignment.execution_context_id = context.execution_context_id
+      ) AS assignedCounterpartyCount
+    FROM execution_contexts context
+    ORDER BY context.execution_context_id
   `).all();
 }
 
@@ -5863,6 +6109,45 @@ function tradingCounterparties() {
 
 function tradingCounterparty(counterpartyId) {
   return tradingCounterparties().find(counterparty => counterparty.counterpartyId === Number(counterpartyId)) || null;
+}
+
+function tradingCounterpartyExecutionContexts(counterpartyId) {
+  return database.prepare(`
+    SELECT
+      context.execution_context_id AS executionContextId,
+      context.servicing_location_id AS servicingLocationId,
+      COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
+      context.execution_system_id AS executionSystemId,
+      (
+        SELECT COUNT(*)
+        FROM trading_counterparty_execution_contexts context_assignment
+        WHERE context_assignment.execution_context_id = context.execution_context_id
+      ) AS assignedCounterpartyCount,
+      (
+        SELECT COUNT(*)
+        FROM pricing_rules rule
+        WHERE rule.counterparty_id = assignment.counterparty_id
+          AND rule.execution_context_id = assignment.execution_context_id
+      ) AS pricingRulesCount
+    FROM trading_counterparty_execution_contexts assignment
+    INNER JOIN execution_contexts context
+      ON context.execution_context_id = assignment.execution_context_id
+    WHERE assignment.counterparty_id = ?
+    ORDER BY context.execution_context_id
+  `).all(Number(counterpartyId));
+}
+
+function tradingCounterpartyExecutionContext(counterpartyId, executionContextId) {
+  return tradingCounterpartyExecutionContexts(counterpartyId)
+    .find(context => context.executionContextId === Number(executionContextId)) || null;
+}
+
+function tradingCounterpartyExecutionContextPricingRulesCount(counterpartyId, executionContextId) {
+  return Number(database.prepare(`
+    SELECT COUNT(*) AS count
+    FROM pricing_rules
+    WHERE counterparty_id = ? AND execution_context_id = ?
+  `).get(Number(counterpartyId), Number(executionContextId)).count);
 }
 
 function tradingCounterpartyHasRole(counterparty, roleCode) {
@@ -8045,6 +8330,21 @@ function validateExecutionContextPayload(body) {
   };
 }
 
+function validateTradingCounterpartyExecutionContextsPayload(body) {
+  if (!Array.isArray(body?.executionContextIds) || body.executionContextIds.length === 0) {
+    return { error: "Execution Context IDs must contain at least one item." };
+  }
+
+  const executionContextIds = body.executionContextIds
+    .map(normalizedExecutionContextId);
+
+  if (executionContextIds.some(executionContextId => executionContextId === null)) {
+    return { error: "Every Execution Context ID must be a positive integer." };
+  }
+
+  return { executionContextIds: [...new Set(executionContextIds)] };
+}
+
 function validateTradingCounterpartyPayload(body) {
   const requestedScope = normalizedCounterpartyScope(body.counterpartyScope);
   const legacyCodeType = normalizedCounterpartyCodeType(body.counterpartyCodeType);
@@ -8841,6 +9141,17 @@ function pricingRuleReferenceError(payload) {
   return "";
 }
 
+function pricingRuleExecutionContextAssignmentError(payload) {
+  if (tradingCounterpartyExecutionContext(
+    payload.counterpartyId,
+    payload.executionContextId
+  )) {
+    return "";
+  }
+
+  return `Execution Context ${payload.executionContextId} is not attached to Trading Counterparty ${payload.counterpartyId}.`;
+}
+
 function clientFxDealReferenceError(payload) {
   const counterparty = tradingCounterparty(payload.counterpartyId);
 
@@ -8963,6 +9274,30 @@ function hedgeQuickModeSettingsReferenceError(payload) {
 
 function databaseConstraintMessage(error) {
   const message = error instanceof Error ? error.message : String(error);
+
+  if (message.includes("Pricing Rule Execution Context must be attached to its Trading Counterparty")) {
+    return {
+      status: 409,
+      code: "PRICING_RULE_EXECUTION_CONTEXT_NOT_ATTACHED",
+      message: "A Pricing Rule can use only an Execution Context attached to its Trading Counterparty."
+    };
+  }
+
+  if (message.includes("an Execution Context assignment used by Pricing Rules cannot be detached")) {
+    return {
+      status: 409,
+      code: "COUNTERPARTY_EXECUTION_CONTEXT_IN_USE",
+      message: "The Execution Context cannot be detached while Pricing Rules use this assignment."
+    };
+  }
+
+  if (message.includes("an Execution Context assignment identity cannot be changed")) {
+    return {
+      status: 409,
+      code: "COUNTERPARTY_EXECUTION_CONTEXT_IMMUTABLE",
+      message: "An Execution Context assignment cannot be changed. Attach a new Context and detach the old one."
+    };
+  }
 
   if (message.includes("a Trading Counterparty used by client_fx_deals must retain the CLIENT role")) {
     return {
@@ -9899,6 +10234,18 @@ async function handleApi(request, response, url) {
       return true;
     }
 
+    const assignmentError = pricingRuleExecutionContextAssignmentError(payload);
+
+    if (assignmentError) {
+      apiError(
+        response,
+        409,
+        "PRICING_RULE_EXECUTION_CONTEXT_NOT_ATTACHED",
+        assignmentError
+      );
+      return true;
+    }
+
     try {
       const pricingRuleId = runInImmediateTransaction(database, () => {
         const result = database.prepare(`
@@ -10026,6 +10373,184 @@ async function handleApi(request, response, url) {
         synchronizeClientDealGenerationSettings(database);
       });
       sendJson(response, 201, tradingCounterparty(counterpartyId));
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
+    return true;
+  }
+
+  const tradingCounterpartyExecutionContextsMatch =
+    /^\/api\/v1\/trading-counterparties\/(\d+)\/execution-contexts$/.exec(pathname);
+  const tradingCounterpartyExecutionContextMatch =
+    /^\/api\/v1\/trading-counterparties\/(\d+)\/execution-contexts\/(\d+)$/.exec(pathname);
+
+  if (tradingCounterpartyExecutionContextsMatch && method === "GET") {
+    const counterpartyId = Number(tradingCounterpartyExecutionContextsMatch[1]);
+
+    if (!tradingCounterparty(counterpartyId)) {
+      apiError(
+        response,
+        404,
+        "TRADING_COUNTERPARTY_NOT_FOUND",
+        `Trading Counterparty ${counterpartyId} was not found.`
+      );
+      return true;
+    }
+
+    sendJson(response, 200, tradingCounterpartyExecutionContexts(counterpartyId));
+    return true;
+  }
+
+  if (tradingCounterpartyExecutionContextsMatch && method === "PUT") {
+    const counterpartyId = Number(tradingCounterpartyExecutionContextsMatch[1]);
+
+    if (!tradingCounterparty(counterpartyId)) {
+      apiError(
+        response,
+        404,
+        "TRADING_COUNTERPARTY_NOT_FOUND",
+        `Trading Counterparty ${counterpartyId} was not found.`
+      );
+      return true;
+    }
+
+    const body = await readJsonBody(request);
+    const payload = validateTradingCounterpartyExecutionContextsPayload(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_EXECUTION_CONTEXT_ASSIGNMENTS", payload.error);
+      return true;
+    }
+
+    const missingExecutionContextId = payload.executionContextIds
+      .find(executionContextId => !executionContext(executionContextId));
+
+    if (missingExecutionContextId !== undefined) {
+      apiError(
+        response,
+        404,
+        "EXECUTION_CONTEXT_NOT_FOUND",
+        `Execution Context ${missingExecutionContextId} was not found.`
+      );
+      return true;
+    }
+
+    try {
+      runInImmediateTransaction(database, () => {
+        const attach = database.prepare(`
+          INSERT OR IGNORE INTO trading_counterparty_execution_contexts
+            (counterparty_id, execution_context_id)
+          VALUES (?, ?)
+        `);
+
+        payload.executionContextIds.forEach(executionContextId => {
+          attach.run(counterpartyId, executionContextId);
+        });
+      });
+      sendJson(response, 200, tradingCounterpartyExecutionContexts(counterpartyId));
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
+    return true;
+  }
+
+  if (tradingCounterpartyExecutionContextMatch && method === "PUT") {
+    const counterpartyId = Number(tradingCounterpartyExecutionContextMatch[1]);
+    const executionContextId = Number(tradingCounterpartyExecutionContextMatch[2]);
+
+    if (!tradingCounterparty(counterpartyId)) {
+      apiError(
+        response,
+        404,
+        "TRADING_COUNTERPARTY_NOT_FOUND",
+        `Trading Counterparty ${counterpartyId} was not found.`
+      );
+      return true;
+    }
+
+    if (!executionContext(executionContextId)) {
+      apiError(
+        response,
+        404,
+        "EXECUTION_CONTEXT_NOT_FOUND",
+        `Execution Context ${executionContextId} was not found.`
+      );
+      return true;
+    }
+
+    try {
+      database.prepare(`
+        INSERT OR IGNORE INTO trading_counterparty_execution_contexts
+          (counterparty_id, execution_context_id)
+        VALUES (?, ?)
+      `).run(counterpartyId, executionContextId);
+      sendJson(
+        response,
+        200,
+        tradingCounterpartyExecutionContext(counterpartyId, executionContextId)
+      );
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
+    return true;
+  }
+
+  if (tradingCounterpartyExecutionContextMatch && method === "DELETE") {
+    const counterpartyId = Number(tradingCounterpartyExecutionContextMatch[1]);
+    const executionContextId = Number(tradingCounterpartyExecutionContextMatch[2]);
+
+    if (!tradingCounterparty(counterpartyId)) {
+      apiError(
+        response,
+        404,
+        "TRADING_COUNTERPARTY_NOT_FOUND",
+        `Trading Counterparty ${counterpartyId} was not found.`
+      );
+      return true;
+    }
+
+    if (!executionContext(executionContextId)) {
+      apiError(
+        response,
+        404,
+        "EXECUTION_CONTEXT_NOT_FOUND",
+        `Execution Context ${executionContextId} was not found.`
+      );
+      return true;
+    }
+
+    try {
+      let assignmentInUse = false;
+
+      runInImmediateTransaction(database, () => {
+        assignmentInUse = tradingCounterpartyExecutionContextPricingRulesCount(
+          counterpartyId,
+          executionContextId
+        ) > 0;
+
+        if (!assignmentInUse) {
+          database.prepare(`
+            DELETE FROM trading_counterparty_execution_contexts
+            WHERE counterparty_id = ? AND execution_context_id = ?
+          `).run(counterpartyId, executionContextId);
+        }
+      });
+
+      if (assignmentInUse) {
+        apiError(
+          response,
+          409,
+          "COUNTERPARTY_EXECUTION_CONTEXT_IN_USE",
+          `Execution Context ${executionContextId} cannot be detached from Trading Counterparty ${counterpartyId} while Pricing Rules use this assignment.`
+        );
+        return true;
+      }
+
+      response.writeHead(204);
+      response.end();
     } catch (error) {
       handleDatabaseError(response, error);
     }
@@ -10629,6 +11154,16 @@ async function handleApi(request, response, url) {
 
     if (!current) {
       apiError(response, 404, "EXECUTION_CONTEXT_NOT_FOUND", "Execution Context was not found.");
+      return true;
+    }
+
+    if (current.assignedCounterpartyCount > 0) {
+      apiError(
+        response,
+        409,
+        "EXECUTION_CONTEXT_IN_USE",
+        `Execution Context ${currentExecutionContextId} cannot be deleted while it is assigned to Trading Counterparties.`
+      );
       return true;
     }
 

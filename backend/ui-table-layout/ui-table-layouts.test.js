@@ -24,8 +24,8 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   batch_members_grid: 9,
   batch_cash_output_grid: 3,
   batch_position_output_grid: 9,
-  external_counterparties_grid: 7,
-  internal_units_grid: 7,
+  external_counterparties_grid: 8,
+  internal_units_grid: 8,
   users_grid: 7,
   execution_contexts_grid: 6,
   servicing_locations_grid: 7,
@@ -64,7 +64,7 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 146);
+  assert.equal(fullyQualifiedColumnKeys.size, 148);
 });
 
 test("keeps fresh-database defaults aligned with the UI layout registry", () => {

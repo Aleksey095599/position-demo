@@ -2295,6 +2295,22 @@
       outline: none;
     }
 
+    .pricing-rule-context-control {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .pricing-rule-context-help {
+      color: var(--control-text-muted);
+      font-size: 10px;
+      line-height: 1.25;
+    }
+
+    .pricing-rule-context-help[hidden] {
+      display: none;
+    }
+
     .pricing-context-id-preview {
       color: var(--control-text-muted);
       font-weight: 700;
@@ -6103,6 +6119,10 @@
 
     .pricing-rule-bootstrap-dialog.is-margin-only .client-pricing-rule-terms-grid {
       grid-template-columns: 140px;
+    }
+
+    .pricing-rule-bootstrap-dialog.is-context-fixed .client-pricing-rule-fixed-grid {
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .pricing-rule-bootstrap-dialog .client-pricing-rule-terms-grid .form-field .form-control,
@@ -10556,18 +10576,6 @@
       table-layout: fixed;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-external-kind-col {
-      width: 190px;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table.is-internal-scope .trading-counterparty-external-kind-column {
-      display: none;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table:not(.is-internal-scope) .trading-counterparty-profile-type-column {
-      display: none;
-    }
-
     #clientProfilePage .counterparty-identifier-editor,
     #clientProfilePage .counterparty-identifier-form-control,
     .counterparty-identifier-display {
@@ -10871,6 +10879,54 @@
       text-transform: none;
     }
 
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page #clientProfileDetailView {
+      overflow: visible;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page #clientProfileDetailView .profile-form {
+      gap: 12px;
+      padding: 0;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .counterparty-card-section {
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .counterparty-card-section-head {
+      display: flex;
+      min-height: 38px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--bs-border-color);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .counterparty-card-section-title {
+      margin: 0;
+      color: var(--bs-emphasis-color);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .counterparty-general-details-body,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-body {
+      padding: 12px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-body {
+      display: grid;
+      gap: 10px;
+    }
+
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-detail-hint {
       min-height: 132px;
       color: var(--bs-secondary-color);
@@ -10883,7 +10939,7 @@
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .trading-counterparty-fields {
       display: grid;
-      grid-template-columns: minmax(180px, 220px) minmax(205px, 230px) minmax(180px, 240px) minmax(260px, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px 12px;
     }
 
@@ -10895,7 +10951,6 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .trading-counterparty-role-field {
-      grid-column: span 2;
       margin: 0;
       padding: 0;
       border: 0;
@@ -11043,6 +11098,513 @@
       background: var(--workbench-grid-hover-bg);
     }
 
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-panel {
+      display: grid;
+      gap: 0;
+      padding: 0;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-head,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-heading {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-head {
+      justify-content: space-between;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-title {
+      margin: 0;
+      color: var(--bs-emphasis-color);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page #clientProfileDetailView .profile-form-actions {
+      margin: 0;
+      padding: 10px 12px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page #clientExecutionContextsAttachButton {
+      display: inline-flex;
+      min-height: 30px;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 5px;
+      border-radius: var(--workbench-radius);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-table-head,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(128px, 154px) minmax(74px, 92px) minmax(58px, 68px);
+      gap: 8px;
+      align-items: center;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-table-head {
+      min-height: 30px;
+      margin-bottom: -8px;
+      padding: 5px 7px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius) var(--workbench-radius) 0 0;
+      background: var(--workbench-grid-header-bg);
+      color: var(--bs-emphasis-color);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-table-head span:nth-child(n + 3) {
+      text-align: center;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list {
+      display: grid;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-top: 0;
+      border-radius: 0 0 var(--workbench-radius) var(--workbench-radius);
+      background: var(--bs-body-bg);
+      list-style: none;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list li {
+      min-height: var(--workbench-grid-row-height);
+      padding: 6px 7px;
+      border-bottom: 1px solid var(--bs-border-color);
+      background: var(--bs-body-bg);
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list li:last-child {
+      border-bottom: 0;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list li:hover {
+      background: var(--workbench-grid-hover-bg);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-context-path {
+      min-width: 0;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-context-path .client-pricing-context-candidate-path {
+      flex-wrap: wrap;
+      gap: 4px;
+      overflow: visible;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-context-rule-count,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-context-actions {
+      justify-self: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-empty {
+      display: block;
+      grid-column: 1 / -1;
+      color: var(--bs-secondary-color);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-panel {
+      gap: 10px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-tree {
+      display: grid;
+      gap: 9px;
+      overflow: visible;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-tree > .client-pricing-configuration-context {
+      display: block;
+      min-height: 0;
+      overflow: hidden;
+      padding: 0;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      font-size: 12px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-tree > .client-pricing-configuration-context:hover {
+      background: var(--bs-body-bg);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      min-height: 42px;
+      align-items: center;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--bs-border-color);
+      background: var(--workbench-grid-header-bg);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context.is-collapsed .client-pricing-configuration-context-head {
+      border-bottom: 0;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-toggle {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      color: var(--bs-emphasis-color);
+      text-align: left;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-toggle:hover,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-toggle:focus-visible {
+      background: transparent;
+      color: var(--bs-emphasis-color);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-toggle:focus-visible {
+      border-radius: var(--workbench-radius);
+      outline: 2px solid rgba(var(--bs-primary-rgb), 0.22);
+      outline-offset: 2px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-toggle > .button-icon {
+      flex: 0 0 auto;
+      color: var(--bs-secondary-color);
+      font-size: 19px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-toggle .client-pricing-context-candidate-path {
+      min-width: 0;
+      flex-wrap: wrap;
+      gap: 4px;
+      overflow: visible;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-label,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-relation {
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-meta {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-left: 2px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-mode {
+      white-space: nowrap;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-actions {
+      justify-content: center;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-branch {
+      position: relative;
+      display: grid;
+      gap: 2px;
+      margin: 0 10px 8px 30px;
+      padding: 7px 0 0 18px;
+      border-left: 1px solid var(--bs-border-color);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-branch[hidden] {
+      display: none;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rules {
+      display: grid;
+      gap: 2px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-rule,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-empty,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(90px, 118px) minmax(110px, 1fr) auto;
+      gap: 10px;
+      min-height: 34px;
+      align-items: center;
+      padding: 5px 7px;
+      border: 0;
+      background: transparent;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-rule:hover {
+      border-radius: var(--workbench-radius);
+      background: var(--workbench-grid-hover-bg);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule::before,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-empty::before,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-add-row::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: -18px;
+      width: 14px;
+      border-top: 1px solid var(--bs-border-color);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-pair {
+      color: var(--bs-emphasis-color);
+      font-weight: 500;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-margin {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      color: var(--bs-body-color);
+      font-variant-numeric: tabular-nums;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-margin-label {
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-actions {
+      display: inline-flex;
+      justify-content: flex-end;
+      gap: 5px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-empty {
+      display: block;
+      color: var(--bs-secondary-color);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row.is-editing {
+      display: grid;
+      grid-template-columns: minmax(130px, 180px) minmax(150px, 210px) auto;
+      justify-content: start;
+      gap: 8px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-field,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin {
+      min-width: 0;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-field .form-select,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin .form-control,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin .input-group-text {
+      min-height: 30px;
+      font-size: 11px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-add-rule {
+      min-height: 28px;
+      gap: 5px;
+      border-radius: var(--workbench-radius);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    @media (max-width: 860px) {
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-head {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-meta {
+        margin-left: 26px;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-actions {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row.is-editing {
+        grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) auto;
+      }
+    }
+
+    .client-context-attach-dialog {
+      width: min(1120px, calc(100vw - 32px));
+      max-height: calc(100vh - 32px);
+    }
+
+    .client-context-attach-dialog .modal-content {
+      max-height: calc(100vh - 32px);
+      overflow: hidden;
+    }
+
+    .client-context-attach-dialog .modal-header > div {
+      min-width: 0;
+    }
+
+    .client-context-attach-dialog .client-context-attach-subtitle {
+      margin: 2px 0 0;
+      overflow: hidden;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .client-context-attach-dialog .modal-body {
+      min-height: 260px;
+      overflow: auto;
+    }
+
+    .client-context-attach-table-wrap {
+      width: 100%;
+      max-height: min(58vh, 560px);
+      overflow: auto;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    .client-context-attach-table {
+      width: 100%;
+      min-width: 880px;
+      margin: 0;
+      border: 0;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+      color: var(--bs-body-color);
+      font-size: 12px;
+    }
+
+    .client-context-attach-table th,
+    .client-context-attach-table td {
+      padding: 6px 8px;
+      border-right: 1px solid var(--bs-border-color);
+      border-bottom: 1px solid var(--bs-border-color);
+      vertical-align: middle;
+    }
+
+    .client-context-attach-table th:last-child,
+    .client-context-attach-table td:last-child {
+      border-right: 0;
+    }
+
+    .client-context-attach-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .client-context-attach-table thead {
+      position: sticky;
+      z-index: 1;
+      top: 0;
+      background: var(--workbench-grid-header-bg);
+    }
+
+    .client-context-attach-table tbody tr:hover {
+      background: var(--workbench-grid-hover-bg);
+    }
+
+    .client-context-attach-table tbody tr.is-selected {
+      background: var(--bs-primary-bg-subtle);
+    }
+
+    .client-context-attach-table .reference-column-head {
+      min-height: 58px;
+    }
+
+    .client-context-attach-table .reference-header-filter {
+      min-height: 30px;
+      height: 30px;
+      font-size: 12px;
+    }
+
+    .client-context-attach-select-col {
+      width: 46px;
+    }
+
+    .client-context-attach-id-col {
+      width: 82px;
+    }
+
+    .client-context-attach-location-col {
+      width: 210px;
+    }
+
+    .client-context-attach-accounting-col,
+    .client-context-attach-execution-col {
+      width: 230px;
+    }
+
+    .client-context-attach-mode-col {
+      width: 172px;
+    }
+
+    .client-context-attach-select-cell {
+      text-align: center;
+    }
+
+    .client-context-attach-select-cell .form-check-input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .client-context-attach-table .profile-empty {
+      height: 86px;
+      color: var(--bs-secondary-color);
+      text-align: center;
+    }
+
+    .client-context-attach-status {
+      min-height: 18px;
+      margin: 0;
+      font-size: 12px;
+    }
+
+    .client-context-attach-selection {
+      margin-right: auto;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+    }
+
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-form-actions {
       display: flex;
       align-items: center;
@@ -11052,8 +11614,7 @@
       border-top: 1px solid var(--bs-border-color);
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-form-actions .btn,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #clientPricingRulesAddButton {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-form-actions .btn {
       display: inline-flex;
       min-height: 30px;
       align-items: center;
@@ -13196,7 +13757,6 @@
         </button>
         <div class="settings-title-block workbench-detail-title-block">
           <h1 class="settings-title" id="clientProfilePageTitle">Trading Counterparties</h1>
-          <span class="client-profile-page-subtitle" id="clientProfilePageSubtitle" hidden></span>
         </div>
       </div>
       <div class="profile-status workbench-page-status" id="clientProfileStatus" role="status" aria-live="polite"></div>
@@ -13228,11 +13788,11 @@
           <table class="profile-table reference-table client-profile-table unified-data-table" id="tradingCounterpartiesTable" data-ui-table-layout-key="external_counterparties_grid">
             <colgroup>
               <col class="client-profile-id-col" data-ui-column-key="id">
-              <col class="client-profile-counterparty-type-col" data-ui-column-key="role">
-              <col class="client-profile-inn-col" data-ui-column-key="identifier">
-              <col class="client-profile-code-type-col trading-counterparty-profile-type-column" data-ui-column-key="unit_type">
-              <col class="client-profile-external-kind-col trading-counterparty-external-kind-column" data-ui-column-key="external_counterparty_type">
+              <col class="client-profile-party-type-col" data-ui-column-key="counterparty_type">
+              <col class="client-profile-business-id-type-col" data-ui-column-key="business_id_type">
+              <col class="client-profile-business-id-col" data-ui-column-key="business_id">
               <col class="client-profile-name-col" data-ui-column-key="counterparty_name">
+              <col class="client-profile-counterparty-role-col" data-ui-column-key="role">
               <col class="client-profile-status-col" data-ui-column-key="active">
               <col class="client-profile-actions-col" data-ui-column-key="actions">
             </colgroup>
@@ -13249,37 +13809,8 @@
                 </th>
                 <th>
                   <div class="reference-column-head">
-                    <span class="reference-column-title">Role</span>
-                    <select class="reference-header-filter form-select" id="tradingCounterpartyTypeFilter" data-trading-counterparty-header-filter="counterpartyType" aria-label="Filter trading counterparties by role">
-                      <option value="">All</option>
-                      <option value="CLIENT">CLIENT</option>
-                      <option value="HEDGE_COUNTERPARTY">HEDGE_COUNTERPARTY</option>
-                    </select>
-                  </div>
-                </th>
-                <th data-smart-min-text="OTHER 00000000000000000000" data-smart-extra-width="24">
-                  <div class="reference-column-head">
-                    <span class="reference-column-title" id="tradingCounterpartyCodeHeaderLabel">Identifier</span>
-                    <span class="counterparty-identifier-filter" id="tradingCounterpartyIdentifierFilterControls">
-                      <input class="reference-header-filter" id="tradingCounterpartyCodeFilter" type="text" autocomplete="off" data-trading-counterparty-header-filter="counterpartyCode" aria-label="Filter external counterparties by identifier">
-                    </span>
-                  </div>
-                </th>
-                <th class="trading-counterparty-profile-type-column">
-                  <div class="reference-column-head" id="tradingCounterpartyProfileTypeHeaderControls">
-                    <span class="reference-column-title" id="tradingCounterpartyProfileTypeHeaderLabel">Unit Type</span>
-                    <select class="reference-header-filter form-select" id="tradingCounterpartyCodeTypeFilter" data-trading-counterparty-header-filter="clientCodeType" aria-label="Filter trading counterparties by profile type">
-                      <option value="">All</option>
-                      <option value="INN">INN</option>
-                      <option value="OTHER">OTHER</option>
-                      <option value="FRONT_SYSTEM_FOLDER_ID">FRONT_SYSTEM_FOLDER_ID</option>
-                    </select>
-                  </div>
-                </th>
-                <th class="trading-counterparty-external-kind-column">
-                  <div class="reference-column-head">
-                    <span class="reference-column-title">External Counterparty Type</span>
-                    <select class="reference-header-filter form-select" id="tradingCounterpartyExternalKindFilter" data-trading-counterparty-header-filter="externalCounterpartyKind" aria-label="Filter external counterparties by type">
+                    <span class="reference-column-title" id="tradingCounterpartyProfileTypeHeaderLabel">Counterparty Type</span>
+                    <select class="reference-header-filter form-select" id="tradingCounterpartyExternalKindFilter" data-trading-counterparty-header-filter="partyType" aria-label="Filter external counterparties by counterparty type">
                       <option value="">All</option>
                       <option value="CORPORATE">Corporate</option>
                       <option value="INDIVIDUAL">Individual</option>
@@ -13291,8 +13822,34 @@
                 </th>
                 <th>
                   <div class="reference-column-head">
-                    <span class="reference-column-title">Counterparty Name</span>
+                    <span class="reference-column-title">Business ID Type</span>
+                    <select class="reference-header-filter form-select" id="tradingCounterpartyCodeTypeFilter" data-trading-counterparty-header-filter="clientCodeType" aria-label="Filter trading counterparties by Business ID Type">
+                      <option value="">All</option>
+                      <option value="INN">INN</option>
+                      <option value="OTHER">OTHER</option>
+                    </select>
+                  </div>
+                </th>
+                <th data-smart-min-text="00000000000000000000" data-smart-extra-width="24">
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Business ID</span>
+                    <input class="reference-header-filter" id="tradingCounterpartyCodeFilter" type="text" autocomplete="off" data-trading-counterparty-header-filter="counterpartyCode" aria-label="Filter trading counterparties by Business ID">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title" id="tradingCounterpartyNameHeaderLabel">Counterparty Name</span>
                     <input class="reference-header-filter" id="tradingCounterpartyNameFilter" type="text" autocomplete="off" data-trading-counterparty-header-filter="counterpartyName" aria-label="Filter trading counterparties by counterparty name">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Role</span>
+                    <select class="reference-header-filter form-select" id="tradingCounterpartyTypeFilter" data-trading-counterparty-header-filter="counterpartyType" aria-label="Filter trading counterparties by role">
+                      <option value="">All</option>
+                      <option value="CLIENT">CLIENT</option>
+                      <option value="HEDGE_COUNTERPARTY">HEDGE_COUNTERPARTY</option>
+                    </select>
                   </div>
                 </th>
                 <th>
@@ -13318,9 +13875,6 @@
       </section>
 
       <section class="profile-panel profile-detail-panel" id="clientProfileDetailView" aria-label="Trading counterparty card" hidden>
-        <div class="profile-panel-head">
-          <h2 class="profile-panel-title" id="clientProfileFormTitle">Trading Counterparty</h2>
-        </div>
         <div class="profile-detail-hint" id="clientProfileDetailHint" hidden>
           <div>
             <span class="button-icon" aria-hidden="true">badge</span>
@@ -13328,60 +13882,64 @@
           </div>
         </div>
         <form class="profile-form" id="clientProfileForm" autocomplete="off" hidden>
-          <div class="trading-counterparty-fields">
-            <label class="form-field">
-              Counterparty Scope
-              <select name="counterpartyScope" required>
-                <option value="EXTERNAL">EXTERNAL</option>
-                <option value="INTERNAL">INTERNAL</option>
-              </select>
-            </label>
-            <fieldset class="form-field trading-counterparty-role-field">
-              <legend>Roles</legend>
-              <span class="trading-counterparty-role-options">
-                <label><input type="checkbox" name="counterpartyRole" value="CLIENT"> CLIENT</label>
-                <label><input type="checkbox" name="counterpartyRole" value="HEDGE_COUNTERPARTY"> HEDGE_COUNTERPARTY</label>
+          <section class="counterparty-card-section" aria-labelledby="clientProfileFormTitle">
+            <div class="counterparty-card-section-head">
+              <h2 class="counterparty-card-section-title" id="clientProfileFormTitle">General Details</h2>
+            </div>
+            <div class="counterparty-general-details-body">
+              <div class="trading-counterparty-fields">
+                <label class="form-field">
+                  Counterparty Scope
+                  <select name="counterpartyScope" required>
+                    <option value="EXTERNAL">EXTERNAL</option>
+                    <option value="INTERNAL">INTERNAL</option>
+                  </select>
+                </label>
+                <label class="form-field" id="clientProfileKindField">
+                  <span id="clientProfileKindLabel">External Counterparty Type</span>
+                  <select name="profileKind" required></select>
+                </label>
+                <fieldset class="form-field trading-counterparty-role-field">
+                  <legend>Role</legend>
+                  <span class="trading-counterparty-role-options">
+                    <label><input type="checkbox" name="counterpartyRole" value="CLIENT"> CLIENT</label>
+                    <label><input type="checkbox" name="counterpartyRole" value="HEDGE_COUNTERPARTY"> HEDGE_COUNTERPARTY</label>
+                  </span>
+                </fieldset>
+                <label class="form-field" id="clientProfileCodeTypeField">
+                  <span id="clientProfileCodeLabel">Business ID Type</span>
+                  <select name="clientCodeType" aria-label="Business ID Type" required></select>
+                </label>
+                <label class="form-field">
+                  Business ID
+                  <input type="text" name="inn" aria-label="Business ID" maxlength="20" required>
+                </label>
+                <label class="form-field counterparty-name-field">
+                  <span id="clientProfileNameLabel">Counterparty Name</span>
+                  <input type="text" name="clientName" maxlength="200" required>
+                </label>
+                <label class="form-field counterparty-active-field">
+                  <input type="checkbox" name="isActive" checked>
+                  <span>Active</span>
+                </label>
+              </div>
+            </div>
+          </section>
+          <section class="client-execution-contexts-panel client-pricing-configuration-panel counterparty-card-section" id="clientExecutionContextsPanel" aria-label="Trading counterparty pricing configuration" hidden>
+            <div class="client-execution-contexts-head counterparty-card-section-head">
+              <span class="client-execution-contexts-heading">
+                <h2 class="client-execution-contexts-title">Pricing Configuration</h2>
+                <span class="pricing-filter-chip" id="clientExecutionContextsCount">0 contexts · 0 rules</span>
               </span>
-            </fieldset>
-            <fieldset class="form-field" id="clientProfileCodeTypeField">
-              <legend id="clientProfileCodeLabel">Identifier</legend>
-              <span class="counterparty-identifier-form-control">
-                <select name="clientCodeType" aria-label="Identifier scheme" required></select>
-                <input type="text" name="inn" aria-label="Identifier value" maxlength="20" required>
-              </span>
-            </fieldset>
-            <label class="form-field" id="clientProfileKindField">
-              <span id="clientProfileKindLabel">External Counterparty Type</span>
-              <select name="profileKind" required></select>
-            </label>
-            <label class="form-field counterparty-name-field">
-              Counterparty Name
-              <input type="text" name="clientName" maxlength="200" required>
-            </label>
-            <label class="form-field counterparty-active-field">
-              <input type="checkbox" name="isActive" checked>
-              <span>Active</span>
-            </label>
-          </div>
-          <section class="client-pricing-rules-panel" id="clientPricingRulesPanel" aria-label="Trading counterparty pricing rules" hidden>
-            <div class="client-pricing-rules-head">
-              <span class="client-pricing-rules-heading">
-                <span class="client-pricing-rules-title">Pricing Rules</span>
-                <span class="pricing-filter-chip" id="clientPricingRulesCount">0 rules</span>
-              </span>
-              <button type="button" class="btn btn-sm btn-outline-primary with-icon" id="clientPricingRulesAddButton">
-                <span class="button-icon" aria-hidden="true">add</span>
-                <span>Add rule</span>
+              <button type="button" class="btn btn-sm btn-outline-primary with-icon" id="clientExecutionContextsAttachButton">
+                <span class="button-icon" id="clientExecutionContextsAttachButtonIcon" aria-hidden="true">add_link</span>
+                <span id="clientExecutionContextsAttachButtonLabel">Attach Context</span>
               </button>
             </div>
-            <div class="client-pricing-rules-table-head">
-              <span>Ccy Pair</span>
-              <span>Execution Context</span>
-              <span>Margin %</span>
-              <span>Actions</span>
+            <div class="client-pricing-configuration-body">
+              <ul class="client-execution-contexts-list client-pricing-configuration-tree" id="clientExecutionContextsList" aria-label="Attached Execution Contexts and Pricing Rules"></ul>
+              <div class="client-pricing-rule-editor" id="clientPricingRuleEditor" hidden></div>
             </div>
-            <ul class="client-pricing-rules-list" id="clientPricingRulesList"></ul>
-            <div class="client-pricing-rule-editor" id="clientPricingRuleEditor" hidden></div>
           </section>
           <div class="profile-form-actions profile-detail-actions">
             <button type="button" class="btn btn-sm btn-outline-danger with-icon profile-danger-action" id="clientProfileDeleteButton" hidden>
@@ -13586,7 +14144,7 @@
               <col class="pricing-context-location-col" data-ui-column-key="servicing_location">
               <col class="pricing-context-accounting-col" data-ui-column-key="accounting_system">
               <col class="pricing-context-execution-col" data-ui-column-key="execution_system">
-              <col class="pricing-context-count-col" data-ui-column-key="pricing_rules_count">
+              <col class="pricing-context-count-col" data-ui-column-key="counterparties_count">
               <col class="pricing-context-actions-col" data-ui-column-key="actions">
             </colgroup>
             <thead>
@@ -13624,10 +14182,10 @@
                       class="button-icon"
                       role="img"
                       tabindex="0"
-                      aria-label="Pricing Rules using this Execution Context"
-                      data-tooltip="Pricing Rules using this Execution Context"
+                      aria-label="Attached Trading Counterparties"
+                      data-tooltip="Attached Trading Counterparties"
                     >
-                      rule
+                      badge
                     </span>
                   </div>
                 </th>
@@ -13729,8 +14287,8 @@
                       class="button-icon"
                       role="img"
                       tabindex="0"
-                      aria-label="Execution Contexts using this location"
-                      data-tooltip="Execution Contexts using this location"
+                      aria-label="Attached Execution Contexts"
+                      data-tooltip="Attached Execution Contexts"
                     >
                       hub
                     </span>
@@ -13798,8 +14356,8 @@
                       class="button-icon"
                       role="img"
                       tabindex="0"
-                      aria-label="Execution Contexts using this accounting system"
-                      data-tooltip="Execution Contexts using this accounting system"
+                      aria-label="Attached Execution Contexts"
+                      data-tooltip="Attached Execution Contexts"
                     >
                       hub
                     </span>
@@ -13874,8 +14432,8 @@
                       class="button-icon"
                       role="img"
                       tabindex="0"
-                      aria-label="Execution Contexts using this execution system"
-                      data-tooltip="Execution Contexts using this execution system"
+                      aria-label="Attached Execution Contexts"
+                      data-tooltip="Attached Execution Contexts"
                     >
                       hub
                     </span>
@@ -14776,6 +15334,90 @@
     </section>
   </main>
 
+  <dialog class="deal-dialog pricing-rule-bootstrap-dialog client-context-attach-dialog" id="clientExecutionContextAttachDialog" aria-labelledby="clientExecutionContextAttachDialogTitle">
+    <form class="deal-form modal-content" id="clientExecutionContextAttachForm" autocomplete="off">
+      <div class="dialog-head modal-header">
+        <div>
+          <h2 class="dialog-title modal-title" id="clientExecutionContextAttachDialogTitle">Attach Execution Contexts</h2>
+          <p class="client-context-attach-subtitle" id="clientExecutionContextAttachDialogSubtitle"></p>
+        </div>
+        <button type="button" class="dialog-close btn-close" id="clientExecutionContextAttachDialogClose" aria-label="Close"></button>
+      </div>
+      <div class="deal-form-body modal-body">
+        <div class="client-context-attach-table-wrap">
+          <table class="profile-table pricing-context-table unified-data-table client-context-attach-table">
+            <colgroup>
+              <col class="client-context-attach-select-col">
+              <col class="client-context-attach-id-col">
+              <col class="client-context-attach-location-col">
+              <col class="client-context-attach-accounting-col">
+              <col class="client-context-attach-execution-col">
+              <col class="client-context-attach-mode-col">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="client-context-attach-select-cell">
+                  <input type="checkbox" class="form-check-input" id="clientExecutionContextAttachSelectAll" aria-label="Select all visible Execution Contexts">
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <button type="button" class="reference-column-title reference-sort-control" id="clientExecutionContextAttachIdSort" aria-label="Sort available execution contexts by ID ascending" aria-pressed="true">
+                      <span>ID</span>
+                      <span class="reference-sort-indicator" aria-hidden="true"></span>
+                    </button>
+                    <input class="reference-header-filter" type="text" id="clientExecutionContextAttachIdFilter" autocomplete="off" data-client-context-attach-filter="pricingContextId" aria-label="Filter available execution contexts by ID">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Servicing Location</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="servicingBranchCode" aria-label="Filter available execution contexts by servicing location">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Accounting System</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="settlementSystemId" aria-label="Filter available execution contexts by accounting system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Execution System</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="tradeCaptureChannelId" aria-label="Filter available execution contexts by execution system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Pricing Mode</span>
+                    <select class="reference-header-filter form-select" data-client-context-attach-filter="pricingMode" aria-label="Filter available execution contexts by pricing mode">
+                      <option value="">All</option>
+                      <option value="AUTO_PRICED">AUTO_PRICED</option>
+                      <option value="DEALER_PRICED">DEALER_PRICED</option>
+                      <option value="DEALER_APPROVED">DEALER_APPROVED</option>
+                    </select>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="clientExecutionContextAttachRows"></tbody>
+          </table>
+        </div>
+        <div class="profile-status client-context-attach-status" id="clientExecutionContextAttachStatus" role="status" aria-live="polite"></div>
+      </div>
+      <div class="dialog-actions modal-footer">
+        <span class="client-context-attach-selection" id="clientExecutionContextAttachSelection">0 selected</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary with-icon" id="clientExecutionContextAttachCancelButton">
+          <span class="button-icon" aria-hidden="true">close</span>
+          <span>Cancel</span>
+        </button>
+        <button type="submit" class="btn btn-sm btn-primary with-icon" id="clientExecutionContextAttachSubmitButton" disabled>
+          <span class="button-icon" aria-hidden="true">add_link</span>
+          <span id="clientExecutionContextAttachSubmitLabel">Attach</span>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog class="deal-dialog client-pricing-rule-dialog pricing-rule-bootstrap-dialog" id="clientPricingRuleDialog">
     <form class="deal-form modal-content" id="clientPricingRuleForm" autocomplete="off">
       <div class="dialog-head modal-header">
@@ -14848,11 +15490,11 @@
         <section class="deal-form-section pricing-rule-bootstrap-section" id="clientPricingRuleFixedTermsSection" aria-label="Pricing Rule fixed terms" hidden>
           <div class="deal-form-section-title pricing-rule-bootstrap-section-title">Fixed Terms</div>
           <div class="client-pricing-rule-fixed-grid">
-            <span class="client-pricing-rule-fixed-term">
+            <span class="client-pricing-rule-fixed-term" id="clientPricingRuleFixedPairTerm">
               <span>Ccy Pair</span>
               <span class="client-pricing-rule-fixed-value" id="clientPricingRuleFixedPair"></span>
             </span>
-            <span class="client-pricing-rule-fixed-term">
+            <span class="client-pricing-rule-fixed-term" id="clientPricingRuleFixedContextTerm">
               <span>Execution Context</span>
               <span class="client-pricing-rule-fixed-value client-pricing-rule-fixed-context" id="clientPricingRuleFixedContext"></span>
             </span>
@@ -15759,7 +16401,6 @@
     const clientProfileDetailView = document.getElementById("clientProfileDetailView");
     const clientProfileBackButton = document.getElementById("clientProfileBackButton");
     const clientProfilePageTitle = document.getElementById("clientProfilePageTitle");
-    const clientProfilePageSubtitle = document.getElementById("clientProfilePageSubtitle");
     const tradingCounterpartyScopeTabs = document.getElementById("tradingCounterpartyScopeTabs");
     const tradingCounterpartyScopeButtons = Array.from(document.querySelectorAll("[data-trading-counterparty-scope]"));
     const tradingCounterpartiesTable = document.getElementById("tradingCounterpartiesTable");
@@ -15792,10 +16433,8 @@
     const clientProfileRowsEl = document.getElementById("clientProfileRows");
     const clientProfileNewButton = document.getElementById("clientProfileNewButton");
     const clientProfileNewButtonLabel = document.getElementById("clientProfileNewButtonLabel");
-    const tradingCounterpartyCodeHeaderLabel = document.getElementById("tradingCounterpartyCodeHeaderLabel");
     const tradingCounterpartyProfileTypeHeaderLabel = document.getElementById("tradingCounterpartyProfileTypeHeaderLabel");
-    const tradingCounterpartyIdentifierFilterControls = document.getElementById("tradingCounterpartyIdentifierFilterControls");
-    const tradingCounterpartyProfileTypeHeaderControls = document.getElementById("tradingCounterpartyProfileTypeHeaderControls");
+    const tradingCounterpartyNameHeaderLabel = document.getElementById("tradingCounterpartyNameHeaderLabel");
     const tradingCounterpartyCodeFilter = document.getElementById("tradingCounterpartyCodeFilter");
     const tradingCounterpartyIdSortButton = document.getElementById("tradingCounterpartyIdSort");
     const tradingCounterpartyIdHeader = document.getElementById("tradingCounterpartyIdHeader");
@@ -15864,6 +16503,7 @@
     const clientProfileKindField = document.getElementById("clientProfileKindField");
     const clientProfileKindLabel = document.getElementById("clientProfileKindLabel");
     const clientProfileCodeLabel = document.getElementById("clientProfileCodeLabel");
+    const clientProfileNameLabel = document.getElementById("clientProfileNameLabel");
     const clientProfileSubmitButton = document.getElementById("clientProfileSubmitButton");
     const clientProfileDeleteButton = document.getElementById("clientProfileDeleteButton");
     const clientProfileResetButton = document.getElementById("clientProfileResetButton");
@@ -15876,17 +16516,33 @@
     const usersDeleteButton = document.getElementById("usersDeleteButton");
     const usersDetailHint = document.getElementById("usersDetailHint");
     const usersStatusEl = document.getElementById("usersStatus");
-    const clientPricingRulesPanel = document.getElementById("clientPricingRulesPanel");
-    const clientPricingRulesList = document.getElementById("clientPricingRulesList");
+    const clientExecutionContextsPanel = document.getElementById("clientExecutionContextsPanel");
+    const clientExecutionContextsList = document.getElementById("clientExecutionContextsList");
+    const clientExecutionContextsCount = document.getElementById("clientExecutionContextsCount");
+    const clientExecutionContextsAttachButton = document.getElementById("clientExecutionContextsAttachButton");
+    const clientExecutionContextsAttachButtonIcon = document.getElementById("clientExecutionContextsAttachButtonIcon");
+    const clientExecutionContextsAttachButtonLabel = document.getElementById("clientExecutionContextsAttachButtonLabel");
+    const clientExecutionContextAttachDialog = document.getElementById("clientExecutionContextAttachDialog");
+    const clientExecutionContextAttachForm = document.getElementById("clientExecutionContextAttachForm");
+    const clientExecutionContextAttachDialogClose = document.getElementById("clientExecutionContextAttachDialogClose");
+    const clientExecutionContextAttachDialogSubtitle = document.getElementById("clientExecutionContextAttachDialogSubtitle");
+    const clientExecutionContextAttachCancelButton = document.getElementById("clientExecutionContextAttachCancelButton");
+    const clientExecutionContextAttachSubmitButton = document.getElementById("clientExecutionContextAttachSubmitButton");
+    const clientExecutionContextAttachSubmitLabel = document.getElementById("clientExecutionContextAttachSubmitLabel");
+    const clientExecutionContextAttachSelectAll = document.getElementById("clientExecutionContextAttachSelectAll");
+    const clientExecutionContextAttachSelection = document.getElementById("clientExecutionContextAttachSelection");
+    const clientExecutionContextAttachStatus = document.getElementById("clientExecutionContextAttachStatus");
+    const clientExecutionContextAttachRows = document.getElementById("clientExecutionContextAttachRows");
+    const clientExecutionContextAttachIdSort = document.getElementById("clientExecutionContextAttachIdSort");
+    const clientExecutionContextAttachFilterControls = Array.from(document.querySelectorAll("[data-client-context-attach-filter]"));
     const clientPricingRuleEditor = document.getElementById("clientPricingRuleEditor");
-    const clientPricingRulesCount = document.getElementById("clientPricingRulesCount");
-    const clientPricingRulesAddButton = document.getElementById("clientPricingRulesAddButton");
     const clientPricingRuleDialog = document.getElementById("clientPricingRuleDialog");
     const clientPricingRuleForm = document.getElementById("clientPricingRuleForm");
     const clientPricingRuleDialogTitle = document.getElementById("clientPricingRuleDialogTitle");
     const clientPricingRuleDialogClose = document.getElementById("clientPricingRuleDialogClose");
     const clientPricingRuleContextSearchSection = document.getElementById("clientPricingRuleContextSearchSection");
     const clientPricingRuleFixedTermsSection = document.getElementById("clientPricingRuleFixedTermsSection");
+    const clientPricingRuleFixedPairTerm = document.getElementById("clientPricingRuleFixedPairTerm");
     const clientPricingRuleFixedPair = document.getElementById("clientPricingRuleFixedPair");
     const clientPricingRuleFixedContext = document.getElementById("clientPricingRuleFixedContext");
     const clientPricingRuleCurrencyPairField = document.getElementById("clientPricingRuleCurrencyPairField");
@@ -16052,6 +16708,7 @@
         icon: "group",
         tables: [
           "trading_counterparties",
+          "trading_counterparty_execution_contexts",
           "external_counterparties",
           "internal_units",
           "trading_counterparty_roles",
@@ -16149,6 +16806,14 @@
     let clientDealDuplicateCheckGrid = null;
     let pendingClientDealCreation = null;
     let editingClientProfileIndex = null;
+    const tradingCounterpartyExecutionContexts = new Map();
+    const tradingCounterpartyExecutionContextLoadStates = new Map();
+    let clientExecutionContextRequestSequence = 0;
+    let clientExecutionContextAttachCounterpartyId = "";
+    let clientExecutionContextAttachSortDirection = "asc";
+    let clientExecutionContextAttachSaving = false;
+    const selectedClientExecutionContextIds = new Set();
+    const pendingClientExecutionContextDetaches = new Set();
     let activeTradingCounterpartyScope = "EXTERNAL";
     let editingUserIndex = null;
     let tradingCounterpartyRowEditState = null;
@@ -16161,13 +16826,15 @@
     let servicingBranchIdSortDirection = "asc";
     let settlementSystemIdSortDirection = "asc";
     let tradeCaptureChannelIdSortDirection = "asc";
-    const tradingCounterpartyFilterFields = ["counterpartyType", "clientCodeType", "active"];
+    const tradingCounterpartyFilterFields = ["partyType", "clientCodeType", "counterpartyType", "active"];
     const tradingCounterpartyFilterState = {
+      partyType: new Set(),
       counterpartyType: new Set(),
       clientCodeType: new Set(),
       active: new Set()
     };
     const tradingCounterpartyFilterKnownValues = {
+      partyType: [],
       counterpartyType: [],
       clientCodeType: [],
       active: []
@@ -16177,6 +16844,8 @@
     let pricingRuleEditState = null;
     let activePricingRulesScope = "EXTERNAL";
     let clientPricingRuleEditState = null;
+    let clientPricingRuleInlineCreateState = null;
+    const clientPricingConfigurationCollapsedContexts = new Map();
     let clientPricingContextBuilderState = {
       servicingBranchCode: "",
       settlementSystemId: "",
@@ -16857,9 +17526,21 @@
       return normalizedCounterpartyRoles(profile?.counterpartyRoles, profile?.counterpartyType).join(", ");
     }
 
-    function tradingCounterpartyProfileType(profile) {
+    function tradingCounterpartyPartyType(profile) {
       return normalizedCounterpartyScope(profile?.counterpartyScope) === "INTERNAL"
         ? normalizedInternalUnitType(profile?.unitType)
+        : normalizedExternalCounterpartyKind(profile?.externalCounterpartyKind);
+    }
+
+    function tradingCounterpartyPartyTypeLabel(profile) {
+      return normalizedCounterpartyScope(profile?.counterpartyScope) === "INTERNAL"
+        ? tradingCounterpartyPartyType(profile)
+        : externalCounterpartyKindLabel(tradingCounterpartyPartyType(profile));
+    }
+
+    function tradingCounterpartyBusinessIdType(profile) {
+      return normalizedCounterpartyScope(profile?.counterpartyScope) === "INTERNAL"
+        ? "INTERNAL_UNIT_CODE"
         : normalizedClientCodeType(profile?.clientCodeType);
     }
 
@@ -16881,8 +17562,8 @@
 
       input.value = value;
       input.setCustomValidity(valid ? "" : type === "INN"
-        ? "Counterparty Code with type INN must contain 10 to 12 digits."
-        : "Counterparty Code must contain 2 to 20 letters, digits, '_' or '-'.");
+        ? "Business ID with type INN must contain 10 to 12 digits."
+        : "Business ID must contain 2 to 20 letters, digits, '_' or '-'.");
 
       if (!valid) {
         input.reportValidity();
@@ -17737,6 +18418,20 @@
           let pricingContextIdValue = normalizedIntegerId(
             item?.executionContextId ?? item?.execution_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
           );
+          const rawAssignedCounterpartyCount =
+            item?.assignedCounterpartyCount ??
+            item?.assigned_counterparty_count ??
+            item?.assignedCounterpartiesCount ??
+            item?.assigned_counterparties_count ??
+            item?.counterpartyCount ??
+            item?.counterparty_count;
+          const assignedCounterpartyCount = rawAssignedCounterpartyCount === null || rawAssignedCounterpartyCount === undefined
+            ? null
+            : Math.max(0, Number(rawAssignedCounterpartyCount) || 0);
+          const pricingRulesCount = Math.max(
+            0,
+            Number(item?.pricingRulesCount ?? item?.pricing_rules_count) || 0
+          );
 
           if (!pricingContextIdValue) {
             while (reservedIds.has(String(generatedId))) {
@@ -17748,7 +18443,14 @@
             generatedId += 1;
           }
 
-          return { pricingContextId: pricingContextIdValue, servicingBranchCode, settlementSystemId, tradeCaptureChannelId };
+          return {
+            pricingContextId: pricingContextIdValue,
+            servicingBranchCode,
+            settlementSystemId,
+            tradeCaptureChannelId,
+            assignedCounterpartyCount,
+            pricingRulesCount
+          };
         })
         .filter(item => {
           const naturalKey = pricingContextNaturalKey(
@@ -18931,12 +19633,24 @@
     }
 
     function pricingContextUsageCount(pricingContextIdValue) {
-      return pricingRulesForContext(pricingContextIdValue).length;
+      const context = pricingContextById(pricingContextIdValue);
+
+      if (Number.isFinite(context?.assignedCounterpartyCount)) {
+        return context.assignedCounterpartyCount;
+      }
+
+      return new Set(
+        pricingRulesForContext(pricingContextIdValue)
+          .map(rule => String(rule.counterpartyId ?? rule.inn ?? ""))
+          .filter(Boolean)
+      ).size;
     }
 
     function executionContextDependencyDescription(pricingContextIdValue) {
-      const ruleCount = pricingContextUsageCount(pricingContextIdValue);
-      return ruleCount > 0 ? `${ruleCount} pricing ${ruleCount === 1 ? "rule" : "rules"}` : "";
+      const counterpartyCount = pricingContextUsageCount(pricingContextIdValue);
+      return counterpartyCount > 0
+        ? `${counterpartyCount} trading ${counterpartyCount === 1 ? "counterparty" : "counterparties"}`
+        : "";
     }
 
     function pricingContextsForServicingBranch(code) {
@@ -19085,15 +19799,41 @@
         .join("");
     }
 
-    function availablePricingRuleExecutionContextIds() {
-      return pricingContexts
+    function pricingRuleCounterpartyExecutionContextState(inn = "") {
+      const profile = clientProfileByInn(inn);
+      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+
+      if (!profile || !counterpartyId) {
+        return { status: "missing-counterparty", profile: null, contexts: [] };
+      }
+
+      if (!DEMO_API_ENABLED || tradingCounterpartyExecutionContexts.has(counterpartyId)) {
+        return {
+          status: "loaded",
+          profile,
+          contexts: assignedExecutionContextsForProfile(profile)
+        };
+      }
+
+      const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+
+      return {
+        status: loadState?.status || "unloaded",
+        profile,
+        contexts: [],
+        message: loadState?.message || ""
+      };
+    }
+
+    function availablePricingRuleExecutionContextIds(inn = "") {
+      return pricingRuleCounterpartyExecutionContextState(inn).contexts
         .map(context => context.pricingContextId)
         .filter(Boolean)
         .sort((left, right) => left.localeCompare(right, "en", { numeric: true, sensitivity: "base" }));
     }
 
-    function resolvedPricingRuleExecutionContextId(selectedPricingContextId = "") {
-      const availableContextIds = availablePricingRuleExecutionContextIds();
+    function resolvedPricingRuleExecutionContextId(selectedPricingContextId = "", inn = "") {
+      const availableContextIds = availablePricingRuleExecutionContextIds(inn);
 
       if (availableContextIds.includes(selectedPricingContextId)) {
         return selectedPricingContextId;
@@ -19102,17 +19842,70 @@
       return availableContextIds.length === 1 ? availableContextIds[0] : "";
     }
 
-    function pricingRuleContextOptions(selectedPricingContextId = "") {
-      const availableContextIds = availablePricingRuleExecutionContextIds();
-      const resolvedContextId = resolvedPricingRuleExecutionContextId(selectedPricingContextId);
+    function pricingRuleContextOptions(selectedPricingContextId = "", inn = "") {
+      const state = pricingRuleCounterpartyExecutionContextState(inn);
+      const availableContextIds = availablePricingRuleExecutionContextIds(inn);
+      const resolvedContextId = resolvedPricingRuleExecutionContextId(selectedPricingContextId, inn);
+
+      if (state.status === "missing-counterparty") {
+        return '<option value="">Select a Trading Counterparty first</option>';
+      }
+
+      if (state.status === "loading" || state.status === "unloaded") {
+        return '<option value="">Loading attached Execution Contexts...</option>';
+      }
+
+      if (state.status === "error") {
+        return '<option value="">Attached Execution Contexts unavailable</option>';
+      }
 
       if (availableContextIds.length === 0) {
-        return `<option value="">No Execution Contexts available</option>`;
+        return '<option value="">No attached Execution Contexts</option>';
       }
 
       return `${availableContextIds.length > 1 ? `<option value=""></option>` : ""}${availableContextIds
         .map(pricingContextIdValue => `<option value="${escapeHtml(pricingContextIdValue)}" ${pricingContextIdValue === resolvedContextId ? "selected" : ""}>${escapeHtml(pricingContextDisplayPath(pricingContextIdValue))}</option>`)
         .join("")}`;
+    }
+
+    function pricingRuleContextHelp(state) {
+      if (state.status === "loading" || state.status === "unloaded") {
+        return "Loading contexts attached to this Trading Counterparty.";
+      }
+
+      if (state.status === "error") {
+        return state.message || "Attached Execution Contexts could not be loaded.";
+      }
+
+      if (state.status === "loaded" && state.contexts.length === 0) {
+        return "Attach an Execution Context to this Trading Counterparty before adding a Pricing Rule.";
+      }
+
+      return "";
+    }
+
+    function ensurePricingRuleCounterpartyExecutionContexts(row, inn) {
+      const state = pricingRuleCounterpartyExecutionContextState(inn);
+
+      if (state.status !== "unloaded" || !state.profile) {
+        return;
+      }
+
+      const expectedCounterpartyId = state.profile.counterpartyId;
+
+      refreshTradingCounterpartyExecutionContexts(state.profile, { render: false }).then(() => {
+        if (!row.isConnected) {
+          return;
+        }
+
+        const selectedProfile = clientProfileByInn(
+          row.querySelector("[data-pricing-rule-field='inn']")?.value.trim() || ""
+        );
+
+        if (selectedProfile?.counterpartyId === expectedCounterpartyId) {
+          syncPricingRuleRowPreview(row);
+        }
+      });
     }
 
     function pricingRulePreview(inn, currencyPairValue, pricingContextIdValue, existingPricingRuleId = "") {
@@ -19130,13 +19923,33 @@
         return;
       }
 
-      const selectedContextId = contextSelect.value.trim().toUpperCase();
-      const availableContextIds = availablePricingRuleExecutionContextIds();
+      const inn = row.querySelector("[data-pricing-rule-field='inn']")?.value.trim() || "";
+      const selectedContextId = (
+        contextSelect.value || contextSelect.dataset.pricingRuleContextPreferred || ""
+      ).trim().toUpperCase();
+      const initialState = pricingRuleCounterpartyExecutionContextState(inn);
 
-      contextSelect.innerHTML = pricingRuleContextOptions(selectedContextId);
-      contextSelect.value = resolvedPricingRuleExecutionContextId(selectedContextId);
-      contextSelect.disabled = availableContextIds.length === 0;
+      ensurePricingRuleCounterpartyExecutionContexts(row, inn);
+
+      const state = initialState.status === "unloaded"
+        ? pricingRuleCounterpartyExecutionContextState(inn)
+        : initialState;
+      const availableContextIds = availablePricingRuleExecutionContextIds(inn);
+      const help = row.querySelector("[data-pricing-rule-context-help]");
+
+      contextSelect.innerHTML = pricingRuleContextOptions(selectedContextId, inn);
+      contextSelect.value = resolvedPricingRuleExecutionContextId(selectedContextId, inn);
+      contextSelect.disabled = state.status !== "loaded" || availableContextIds.length === 0;
+      if (state.status === "loaded") {
+        contextSelect.dataset.pricingRuleContextPreferred = contextSelect.value;
+      }
+      row.dataset.pricingRuleContextStatus = state.status;
       contextSelect.setCustomValidity("");
+
+      if (help) {
+        help.textContent = pricingRuleContextHelp(state);
+        help.hidden = !help.textContent;
+      }
     }
 
     function syncPricingRuleRowPreview(row) {
@@ -19174,11 +19987,14 @@
       const pricingContextIdValue = row.querySelector("[data-pricing-rule-field='pricingContextId']")?.value.trim().toUpperCase() || "";
       const marginPercent = normalizeNumber(row.querySelector("[data-pricing-rule-field='marginPercent']")?.value);
       const profile = clientProfileByInn(inn);
+      const contextState = pricingRuleCounterpartyExecutionContextState(inn);
+      const contextAttached = availablePricingRuleExecutionContextIds(inn).includes(pricingContextIdValue);
 
       if (
         !isValidClientCodeForProfile(inn) ||
         !currencyPair ||
-        !pricingContextById(pricingContextIdValue) ||
+        contextState.status !== "loaded" ||
+        !contextAttached ||
         marginPercent === null ||
         !Number.isFinite(marginPercent) ||
         marginPercent < 0 ||
@@ -19219,6 +20035,18 @@
 
     function updatePricingRuleRowSaveAvailability(row) {
       const button = row.querySelector("[data-pricing-rule-action='save']");
+      const contextStatus = row.dataset.pricingRuleContextStatus;
+
+      if (contextStatus === "loading" || contextStatus === "unloaded") {
+        setSaveButtonAvailability(button, false, "Wait until attached Execution Contexts are loaded");
+        return;
+      }
+
+      if (contextStatus === "error") {
+        setSaveButtonAvailability(button, false, "Attached Execution Contexts could not be loaded");
+        return;
+      }
+
       const rule = pricingRuleDraftFromRow(row);
 
       if (!rule) {
@@ -19262,7 +20090,7 @@
 
     function pricingRuleDefaultDraft(inn = pricingRulesClientInnFilter) {
       const profile = clientProfileByInn(inn) || clientProfiles[0] || null;
-      const pricingContextIdValue = resolvedPricingRuleExecutionContextId();
+      const pricingContextIdValue = resolvedPricingRuleExecutionContextId("", profile?.inn || "");
 
       return {
         pricingRuleId: "",
@@ -19288,15 +20116,24 @@
       const profile = clientProfileByInn(inn);
 
       innSelect.setCustomValidity(isValidClientCodeForProfile(inn) ? "" : "Counterparty Code is required.");
-      const contextExists = Boolean(pricingContextById(pricingContextIdValue));
-      contextSelect.setCustomValidity(contextExists ? "" : "Select an existing Execution Context.");
+      const contextState = pricingRuleCounterpartyExecutionContextState(inn);
+      const contextAttached = contextState.status === "loaded"
+        && availablePricingRuleExecutionContextIds(inn).includes(pricingContextIdValue);
+      const contextMessage = contextState.status === "loading" || contextState.status === "unloaded"
+        ? "Wait until attached Execution Contexts are loaded."
+        : contextState.status === "error"
+          ? "Attached Execution Contexts could not be loaded."
+          : contextState.status === "loaded" && contextState.contexts.length === 0
+            ? "Attach an Execution Context to this Trading Counterparty first."
+            : "Select an Execution Context attached to this Trading Counterparty.";
+      contextSelect.setCustomValidity(contextAttached ? "" : contextMessage);
 
       if (innSelect.validationMessage) {
         innSelect.reportValidity();
         return null;
       }
 
-      if (!contextExists) {
+      if (!contextAttached) {
         contextSelect.reportValidity();
         return null;
       }
@@ -19375,10 +20212,16 @@
       const pricingRuleIdAttribute = rule.pricingRuleId
         ? ` data-pricing-rule-id="${escapeHtml(rule.pricingRuleId)}"`
         : "";
-      const contextDisabled = availablePricingRuleExecutionContextIds().length === 0 ? " disabled" : "";
+      const contextState = pricingRuleCounterpartyExecutionContextState(rule.inn);
+      const availableContextIds = availablePricingRuleExecutionContextIds(rule.inn);
+      const contextDisabled = contextState.status !== "loaded" || availableContextIds.length === 0
+        ? " disabled"
+        : "";
+      const contextHelpId = `pricing-rule-context-help-${rule.pricingRuleId || "new"}`;
+      const contextHelp = pricingRuleContextHelp(contextState);
 
       return `
-        <tr class="is-selected is-editing"${indexAttribute}${pricingRuleIdAttribute} data-pricing-rule-edit-row>
+        <tr class="is-selected is-editing"${indexAttribute}${pricingRuleIdAttribute} data-pricing-rule-edit-row data-pricing-rule-context-status="${escapeHtml(contextState.status)}">
           <td class="pricing-rule-id-preview" data-pricing-rule-preview>${escapeHtml(preview)}</td>
           <td data-pricing-rule-counterparty-type>${escapeHtml(tradingCounterpartyRolesLabel(rule) || counterpartyTypeForInn(rule.inn))}</td>
           <td>
@@ -19391,9 +20234,12 @@
             <input class="inline-edit-control" type="text" data-pricing-rule-field="currencyPair" value="${escapeHtml(rule.currencyPair)}" maxlength="7" required>
           </td>
           <td>
-            <select class="inline-edit-control" data-pricing-rule-field="pricingContextId" required${contextDisabled}>
-              ${pricingRuleContextOptions(rule.pricingContextId)}
-            </select>
+            <span class="pricing-rule-context-control">
+              <select class="inline-edit-control" data-pricing-rule-field="pricingContextId" data-pricing-rule-context-preferred="${escapeHtml(rule.pricingContextId)}" aria-describedby="${escapeHtml(contextHelpId)}" required${contextDisabled}>
+                ${pricingRuleContextOptions(rule.pricingContextId, rule.inn)}
+              </select>
+              <span class="pricing-rule-context-help" id="${escapeHtml(contextHelpId)}" data-pricing-rule-context-help role="status"${contextHelp ? "" : " hidden"}>${escapeHtml(contextHelp)}</span>
+            </span>
           </td>
           <td>${pricingModeIndicatorMarkup(
             pricingModeForRule(rule),
@@ -19560,18 +20406,23 @@
       const settingsByKey = new Map(
         tableLayout.columns.map(setting => [setting.columnKey, setting])
       );
+      const headerCells = Array.from(table.querySelectorAll("thead tr:first-child > th"));
       let totalWidth = 0;
 
-      table.querySelectorAll("col[data-ui-column-key]").forEach(column => {
+      table.querySelectorAll("col[data-ui-column-key]").forEach((column, index) => {
         const setting = settingsByKey.get(column.dataset.uiColumnKey);
         column.style.removeProperty("width");
+        const fallbackWidth = Math.min(
+          240,
+          Math.max(
+            120,
+            Math.ceil(headerCells[index]?.scrollWidth || 0) + 24
+          )
+        );
+        const width = setting?.widthPx || fallbackWidth;
 
-        if (!setting) {
-          return;
-        }
-
-        column.style.setProperty("width", `${setting.widthPx}px`, "important");
-        totalWidth += setting.widthPx;
+        column.style.setProperty("width", `${width}px`, "important");
+        totalWidth += width;
       });
 
       if (totalWidth > 0) {
@@ -19992,7 +20843,12 @@
       pricingRuleEditState = { mode: "create", inn };
       setPricingRuleStatus("");
       renderPricingRules();
-      pricingRuleRowsEl.querySelector("[data-pricing-rule-field='currencyPair']")?.focus();
+      const row = pricingRuleRowsEl.querySelector("[data-pricing-rule-edit-row]");
+
+      if (row) {
+        syncPricingRuleRowPreview(row);
+        row.querySelector("[data-pricing-rule-field='currencyPair']")?.focus();
+      }
     }
 
     function startPricingRuleEdit(index) {
@@ -20005,7 +20861,12 @@
       pricingRuleEditState = { mode: "edit", index };
       setPricingRuleStatus("");
       renderPricingRules();
-      pricingRuleRowsEl.querySelector("[data-pricing-rule-field='currencyPair']")?.focus();
+      const row = pricingRuleRowsEl.querySelector("[data-pricing-rule-edit-row]");
+
+      if (row) {
+        syncPricingRuleRowPreview(row);
+        row.querySelector("[data-pricing-rule-field='currencyPair']")?.focus();
+      }
     }
 
     function cancelPricingRuleForm() {
@@ -20528,9 +21389,9 @@
       const kindControl = clientProfileForm.elements.profileKind;
 
       scopeControl.value = scope;
-      codeTypeControl.hidden = scope === "INTERNAL";
       clientProfileKindLabel.textContent = scope === "INTERNAL" ? "Unit Type" : "External Counterparty Type";
-      clientProfileCodeLabel.textContent = scope === "INTERNAL" ? "Unit Code" : "Identifier";
+      clientProfileCodeLabel.textContent = "Business ID Type";
+      clientProfileNameLabel.textContent = scope === "INTERNAL" ? "Unit Name" : "Counterparty Name";
 
       if (scope === "INTERNAL") {
         setClientProfileCodeTypeOptions("INTERNAL_UNIT_CODE");
@@ -20585,9 +21446,12 @@
         : "external_counterparties_grid";
       tradingCounterpartiesTable.classList.toggle("is-internal-scope", internal);
       tradingCounterpartiesTable.dataset.uiTableLayoutKey = tableLayoutKey;
-      tradingCounterpartiesTable.querySelector(".client-profile-inn-col").dataset.uiColumnKey = internal
-        ? "unit_code"
-        : "identifier";
+      tradingCounterpartiesTable.querySelector(".client-profile-party-type-col").dataset.uiColumnKey = internal
+        ? "unit_type"
+        : "counterparty_type";
+      tradingCounterpartiesTable.querySelector(".client-profile-name-col").dataset.uiColumnKey = internal
+        ? "unit_name"
+        : "counterparty_name";
       const tableLayoutHost = clientProfileListView.querySelector("[data-ui-table-layout-host]");
       const tableLayoutButton = tableLayoutHost?.querySelector("[data-ui-table-layout]");
 
@@ -20602,34 +21466,38 @@
           `${uiTableLayout(tableLayoutKey)?.tableLabel || "Trading Counterparties"} table layout`
         );
       }
-      tradingCounterpartyExternalKindFilter.disabled = internal;
-      if (internal) {
-        tradingCounterpartyExternalKindFilter.value = "";
-      }
-      tradingCounterpartyCodeHeaderLabel.textContent = internal ? "Unit Code" : "Identifier";
-      tradingCounterpartyProfileTypeHeaderLabel.textContent = "Unit Type";
-      if (internal) {
-        tradingCounterpartyProfileTypeHeaderControls.append(tradingCounterpartyCodeTypeFilter);
-      } else {
-        tradingCounterpartyIdentifierFilterControls.prepend(tradingCounterpartyCodeTypeFilter);
-      }
+      tradingCounterpartyProfileTypeHeaderLabel.textContent = internal ? "Unit Type" : "Counterparty Type";
+      tradingCounterpartyNameHeaderLabel.textContent = internal ? "Unit Name" : "Counterparty Name";
       tradingCounterpartyCodeFilter.setAttribute("aria-label", internal
-        ? "Filter internal units by unit code"
-        : "Filter external counterparties by identifier");
+        ? "Filter internal units by Business ID"
+        : "Filter external counterparties by Business ID");
       tradingCounterpartyCodeTypeFilter.setAttribute("aria-label", internal
-        ? "Filter internal units by unit type"
-        : "Filter external counterparties by identifier scheme");
+        ? "Filter internal units by Business ID Type"
+        : "Filter external counterparties by Business ID Type");
+      tradingCounterpartyExternalKindFilter.setAttribute("aria-label", internal
+        ? "Filter internal units by Unit Type"
+        : "Filter external counterparties by Counterparty Type");
       clientProfileNewButtonLabel.textContent = internal ? "New internal unit" : "New external counterparty";
 
-      const profileTypes = internal ? INTERNAL_UNIT_TYPES : EXTERNAL_COUNTERPARTY_CODE_TYPES;
-      const selectedProfileType = profileTypes.includes(tradingCounterpartyCodeTypeFilter.value)
+      const partyTypes = internal ? INTERNAL_UNIT_TYPES : EXTERNAL_COUNTERPARTY_KINDS;
+      const selectedPartyType = partyTypes.includes(tradingCounterpartyExternalKindFilter.value)
+        ? tradingCounterpartyExternalKindFilter.value
+        : "";
+      tradingCounterpartyExternalKindFilter.innerHTML = [
+        '<option value="">All</option>',
+        ...partyTypes.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(internal ? value : externalCounterpartyKindLabel(value))}</option>`)
+      ].join("");
+      tradingCounterpartyExternalKindFilter.value = selectedPartyType;
+
+      const businessIdTypes = internal ? ["INTERNAL_UNIT_CODE"] : EXTERNAL_COUNTERPARTY_CODE_TYPES;
+      const selectedBusinessIdType = businessIdTypes.includes(tradingCounterpartyCodeTypeFilter.value)
         ? tradingCounterpartyCodeTypeFilter.value
         : "";
       tradingCounterpartyCodeTypeFilter.innerHTML = [
         '<option value="">All</option>',
-        ...profileTypes.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+        ...businessIdTypes.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
       ].join("");
-      tradingCounterpartyCodeTypeFilter.value = selectedProfileType;
+      tradingCounterpartyCodeTypeFilter.value = selectedBusinessIdType;
       applyUiTableLayout(tableLayoutKey);
     }
 
@@ -20690,6 +21558,16 @@
       return pairs.includes(activePair) ? activePair : pairs[0] || activePair || "EUR/USD";
     }
 
+    function availableClientPricingRuleCurrencyPairs(profile, pricingContextIdValue) {
+      const configuredPairs = new Set(
+        clientPricingRulesForInn(profile?.inn)
+          .filter(rule => String(rule.pricingContextId) === String(pricingContextIdValue))
+          .map(rule => rule.currencyPair)
+      );
+
+      return marketCurrencyPairValues().filter(pair => !configuredPairs.has(pair));
+    }
+
     function clientPricingRuleDraft(profile) {
       const currencyPair = defaultPricingRuleCurrencyPair();
 
@@ -20699,7 +21577,7 @@
         inn: profile?.inn || "",
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
-        pricingContextId: resolvedPricingRuleExecutionContextId(),
+        pricingContextId: resolvedPricingRuleExecutionContextId("", profile?.inn || ""),
         marginPercent: 0
       };
     }
@@ -21138,8 +22016,13 @@
       const pricingContextControl = clientPricingRuleForm.elements.pricingContextId;
       const selectedCurrencyPair = currencyPairOverride || currencyPairControl.value;
       const selectedPricingContextId = pricingContextIdOverride;
-      const pairValues = marketCurrencyPairValues();
-      const optionPairValues = selectedCurrencyPair && !pairValues.includes(selectedCurrencyPair)
+      const profile = selectedClientProfile();
+      const fixedContextCreate = clientPricingRuleEditState?.mode === "create"
+        && Boolean(clientPricingRuleEditState.pricingContextId);
+      const pairValues = fixedContextCreate
+        ? availableClientPricingRuleCurrencyPairs(profile, selectedPricingContextId)
+        : marketCurrencyPairValues();
+      const optionPairValues = !fixedContextCreate && selectedCurrencyPair && !pairValues.includes(selectedCurrencyPair)
         ? [selectedCurrencyPair, ...pairValues]
         : pairValues;
 
@@ -21149,6 +22032,7 @@
       currencyPairControl.value = selectedCurrencyPair && optionPairValues.includes(selectedCurrencyPair)
         ? selectedCurrencyPair
         : optionPairValues[0] || "";
+      currencyPairControl.disabled = optionPairValues.length === 0;
       pricingContextControl.setCustomValidity("");
       resetClientPricingContextBuilder(selectedPricingContextId);
     }
@@ -21222,22 +22106,28 @@
       clientPricingRuleForm.reset();
       clearClientPricingRuleDialogValidity();
       const editing = clientPricingRuleEditState?.mode === "edit";
+      const fixedPricingContextId = editing
+        ? rule.pricingContextId || ""
+        : clientPricingRuleEditState?.pricingContextId || rule.pricingContextId || "";
+      const contextFixed = Boolean(fixedPricingContextId);
       clientPricingRuleDialogTitle.textContent = editing
         ? "Edit Pricing Rule"
         : "Add Pricing Rule";
       clientPricingRuleDialog.classList.toggle("is-margin-only", editing);
-      clientPricingRuleContextSearchSection.hidden = editing;
-      clientPricingRuleFixedTermsSection.hidden = !editing;
+      clientPricingRuleDialog.classList.toggle("is-context-fixed", contextFixed && !editing);
+      clientPricingRuleContextSearchSection.hidden = contextFixed;
+      clientPricingRuleFixedTermsSection.hidden = !contextFixed;
+      clientPricingRuleFixedPairTerm.hidden = !editing;
       clientPricingRuleCurrencyPairField.hidden = editing;
       clientPricingRuleDeleteButton.hidden = !editing;
       clientPricingRuleDeleteButton.disabled = false;
       clientPricingRuleForm.elements.marginPercent.value = editNumber(rule.marginPercent ?? 0, 4);
       renderClientPricingRuleOptions(
         rule.currencyPair || defaultPricingRuleCurrencyPair(),
-        rule.pricingContextId || ""
+        fixedPricingContextId
       );
       clientPricingRuleFixedPair.textContent = rule.currencyPair || "";
-      clientPricingRuleFixedContext.innerHTML = pricingContextFacetsMarkup(rule.pricingContextId);
+      clientPricingRuleFixedContext.innerHTML = pricingContextFacetsMarkup(fixedPricingContextId);
       updateClientPricingRuleSubmitAvailability();
     }
 
@@ -21252,9 +22142,11 @@
 
       const focusControl = clientPricingRuleEditState?.mode === "edit"
         ? clientPricingRuleForm.elements.marginPercent
-        : PRICING_CONTEXT_FACETS
-          .map(({ field }) => pricingContextFacetInput(field))
-          .find(input => input && !input.value) || clientPricingRuleForm.elements.currencyPair;
+        : clientPricingRuleEditState?.pricingContextId
+          ? clientPricingRuleForm.elements.currencyPair
+          : PRICING_CONTEXT_FACETS
+            .map(({ field }) => pricingContextFacetInput(field))
+            .find(input => input && !input.value) || clientPricingRuleForm.elements.currencyPair;
 
       focusControl.focus();
     }
@@ -21278,7 +22170,160 @@
       clientPricingRuleEditor.innerHTML = "";
     }
 
-    function startClientPricingRuleCreate() {
+    function clientPricingRuleInlineCreateMatches(profile, pricingContextIdValue) {
+      return Boolean(
+        profile &&
+        clientPricingRuleInlineCreateState &&
+        clientPricingRuleInlineCreateState.inn === profile.inn &&
+        String(clientPricingRuleInlineCreateState.pricingContextId) === String(pricingContextIdValue)
+      );
+    }
+
+    function updateClientPricingRuleInlineCreateAvailability(row) {
+      const saveButton = row?.querySelector('[data-client-pricing-rule-inline-action="save"]');
+      const currencyPairControl = row?.querySelector('[data-client-pricing-rule-inline-field="currencyPair"]');
+      const marginControl = row?.querySelector('[data-client-pricing-rule-inline-field="marginPercent"]');
+
+      if (!saveButton || !currencyPairControl || !marginControl || !clientPricingRuleInlineCreateState) {
+        return;
+      }
+
+      clientPricingRuleInlineCreateState.currencyPair = currencyPairControl.value;
+      clientPricingRuleInlineCreateState.marginPercent = marginControl.value;
+      const margin = normalizeNumber(marginControl.value);
+      const canSave = Boolean(currencyPairControl.value) && margin !== null && margin >= 0 && margin < 100;
+
+      saveButton.disabled = clientPricingRuleInlineCreateState.saving || !canSave;
+      saveButton.title = canSave ? "" : "Enter a margin from 0 up to, but not including, 100";
+    }
+
+    function clientPricingRuleFromInlineCreateRow(row) {
+      const profile = selectedClientProfile();
+      const pricingContextIdValue = normalizedIntegerId(row?.dataset.clientPricingRuleInlineCreate);
+      const currencyPairControl = row?.querySelector('[data-client-pricing-rule-inline-field="currencyPair"]');
+      const marginControl = row?.querySelector('[data-client-pricing-rule-inline-field="marginPercent"]');
+      const context = assignedExecutionContextsForProfile(profile).find(item =>
+        String(item.pricingContextId) === String(pricingContextIdValue)
+      );
+
+      if (
+        !profile ||
+        !context ||
+        !currencyPairControl ||
+        !marginControl ||
+        !clientPricingRuleInlineCreateMatches(profile, pricingContextIdValue)
+      ) {
+        return null;
+      }
+
+      const currencyPair = normalizedPricingRuleCurrencyPair(currencyPairControl.value);
+      const availableCurrencyPairs = availableClientPricingRuleCurrencyPairs(profile, pricingContextIdValue);
+      const pairIsAvailable = Boolean(currencyPair) && availableCurrencyPairs.includes(currencyPair);
+
+      currencyPairControl.setCustomValidity(pairIsAvailable ? "" : "Select an available Ccy Pair.");
+
+      if (!pairIsAvailable) {
+        currencyPairControl.reportValidity();
+        return null;
+      }
+
+      const marginPercent = parsePercentInput(marginControl, "Margin", 100);
+
+      if (marginPercent === null) {
+        return null;
+      }
+
+      const rule = {
+        pricingRuleId: nextPricingRuleId(),
+        counterpartyId: profile.counterpartyId,
+        inn: profile.inn,
+        currencyPair,
+        ccyPairCode: currencyPair.replace("/", "_"),
+        pricingContextId: pricingContextIdValue,
+        marginPercent
+      };
+      const duplicateExists = clientPricingRules.some(item => samePricingRuleIdentity(item, rule));
+
+      currencyPairControl.setCustomValidity(duplicateExists ? "Pricing Rule already exists." : "");
+
+      if (duplicateExists) {
+        currencyPairControl.reportValidity();
+        return null;
+      }
+
+      return rule;
+    }
+
+    async function saveClientPricingRuleInlineCreate(pricingContextIdValue) {
+      const profile = selectedClientProfile();
+      const row = clientExecutionContextsPanel.querySelector(
+        `[data-client-pricing-rule-inline-create="${pricingContextIdValue}"]`
+      );
+
+      if (
+        !profile ||
+        !row ||
+        !clientPricingRuleInlineCreateMatches(profile, pricingContextIdValue) ||
+        clientPricingRuleInlineCreateState.saving
+      ) {
+        return;
+      }
+
+      const rule = clientPricingRuleFromInlineCreateRow(row);
+
+      if (!rule) {
+        return;
+      }
+
+      clientPricingRuleInlineCreateState.saving = true;
+      row.querySelectorAll("input, select, button").forEach(control => {
+        control.disabled = true;
+      });
+
+      try {
+        const savedRule = await persistPricingRuleRecord(rule);
+
+        if (!savedRule) {
+          throw new Error("Pricing Rule response is invalid.");
+        }
+
+        clientPricingRules.push(savedRule);
+        saveClientPricingRules();
+        clientPricingRuleInlineCreateState = null;
+        setClientProfileStatus(
+          completedActionMessage(`Pricing Rule ${savedRule.pricingRuleId}`, "added"),
+          "success"
+        );
+        renderClientPricingRulesPanel(profile);
+        renderPricingRules();
+      } catch (error) {
+        clientPricingRuleInlineCreateState.saving = false;
+        row.querySelectorAll("input, select, button").forEach(control => {
+          control.disabled = false;
+        });
+        updateClientPricingRuleInlineCreateAvailability(row);
+        setClientProfileStatus(error.message || "Pricing Rule could not be saved.", "error");
+      }
+    }
+
+    function cancelClientPricingRuleInlineCreate(pricingContextIdValue) {
+      const profile = selectedClientProfile();
+
+      if (
+        !clientPricingRuleInlineCreateMatches(profile, pricingContextIdValue) ||
+        clientPricingRuleInlineCreateState.saving
+      ) {
+        return;
+      }
+
+      clientPricingRuleInlineCreateState = null;
+      renderClientExecutionContextsPanel(profile);
+      clientExecutionContextsPanel
+        .querySelector(`[data-client-execution-context-action="add-rule"][data-client-execution-context-id="${pricingContextIdValue}"]`)
+        ?.focus();
+    }
+
+    function startClientPricingRuleCreate(pricingContextIdValue = "") {
       const profile = selectedClientProfile();
 
       if (!profile) {
@@ -21286,17 +22331,47 @@
         return;
       }
 
-      if (availablePricingRuleExecutionContextIds().length === 0) {
+      const context = assignedExecutionContextsForProfile(profile).find(item =>
+        String(item.pricingContextId) === String(pricingContextIdValue)
+      );
+
+      if (!context) {
         setClientProfileStatus(
-          "Create an Execution Context before adding a Pricing Rule.",
+          "Attach an Execution Context before adding a Pricing Rule.",
           "error"
         );
         return;
       }
 
-      clientPricingRuleEditState = { mode: "create", inn: profile.inn };
+      const availableCurrencyPairs = availableClientPricingRuleCurrencyPairs(
+        profile,
+        context.pricingContextId
+      );
+
+      if (availableCurrencyPairs.length === 0) {
+        setClientProfileStatus(
+          "All available Ccy Pairs already have Pricing Rules for this Execution Context.",
+          "error"
+        );
+        return;
+      }
+
+      clientPricingRuleInlineCreateState = {
+        inn: profile.inn,
+        counterpartyId: profile.counterpartyId,
+        pricingContextId: context.pricingContextId,
+        currencyPair: availableCurrencyPairs[0],
+        marginPercent: editNumber(0, 4),
+        saving: false
+      };
+      clientPricingConfigurationCollapsedSet(profile).delete(String(context.pricingContextId));
       setClientProfileStatus("");
-      openClientPricingRuleDialog(clientPricingRuleDraft(profile));
+      renderClientExecutionContextsPanel(profile);
+      requestAnimationFrame(() => {
+        clientExecutionContextsPanel
+          .querySelector(`[data-client-pricing-rule-inline-create="${context.pricingContextId}"] select`)
+          ?.focus();
+      });
     }
 
     function startClientPricingRuleEdit(index) {
@@ -21307,9 +22382,15 @@
         return;
       }
 
+      clientPricingRuleInlineCreateState = null;
       clientPricingRuleEditState = { mode: "edit", index, inn: profile.inn };
       setClientProfileStatus("");
       openClientPricingRuleDialog(rule);
+    }
+
+    function startClientPricingRuleDelete(index) {
+      startClientPricingRuleEdit(index);
+      requestAnimationFrame(() => clientPricingRuleDeleteButton.focus());
     }
 
     function cancelClientPricingRuleEdit() {
@@ -21333,9 +22414,11 @@
       const pricingContextInput = clientPricingRuleForm.elements.pricingContextId;
       const pricingContextIdValue = editing ? savedRule.pricingContextId : pricingContextInput.value;
       const contextExists = Boolean(pricingContextById(pricingContextIdValue));
-      const contextValidationInput = pricingContextFacetInput(
-        clientPricingContextBuilderState.lastChangedFacet || PRICING_CONTEXT_FACETS[0].field
-      );
+      const contextValidationInput = clientPricingRuleEditState?.pricingContextId
+        ? clientPricingRuleForm.elements.currencyPair
+        : pricingContextFacetInput(
+          clientPricingContextBuilderState.lastChangedFacet || PRICING_CONTEXT_FACETS[0].field
+        );
 
       PRICING_CONTEXT_FACETS.forEach(({ field }) => pricingContextFacetInput(field).setCustomValidity(""));
       contextValidationInput.setCustomValidity(!editing && !contextExists ? "Select an existing Execution Context." : "");
@@ -21463,67 +22546,719 @@
       renderPricingRules();
     }
 
-    function updateClientPricingRulesAddAvailability(profile) {
-      const canAddRule = Boolean(profile) && availablePricingRuleExecutionContextIds().length > 0;
+    function tradingCounterpartyExecutionContextKey(profileOrId) {
+      const value = typeof profileOrId === "object" && profileOrId
+        ? profileOrId.counterpartyId
+        : profileOrId;
 
-      clientPricingRulesAddButton.disabled = !canAddRule;
-      clientPricingRulesAddButton.title = canAddRule
-        ? "Add Pricing Rule"
-        : "Create an Execution Context before adding a Pricing Rule";
+      return normalizedIntegerId(value);
     }
 
-    function renderClientPricingRulesPanel(profile) {
-      if (!clientPricingRulesPanel) {
+    function clientExecutionContextDetachKey(counterpartyId, contextId) {
+      return `${counterpartyId}:${contextId}`;
+    }
+
+    function isSelectedTradingCounterparty(counterpartyId) {
+      return tradingCounterpartyExecutionContextKey(selectedClientProfile()) === counterpartyId;
+    }
+
+    function inferredExecutionContextsForProfile(profile) {
+      const contextIds = new Set(clientPricingRulesForInn(profile?.inn).map(rule => rule.pricingContextId));
+
+      return pricingContexts.filter(context => contextIds.has(context.pricingContextId));
+    }
+
+    function assignedExecutionContextsForProfile(profile) {
+      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+
+      if (!counterpartyId) {
+        return [];
+      }
+
+      if (tradingCounterpartyExecutionContexts.has(counterpartyId)) {
+        return tradingCounterpartyExecutionContexts.get(counterpartyId);
+      }
+
+      return DEMO_API_ENABLED ? [] : inferredExecutionContextsForProfile(profile);
+    }
+
+    function mergeExecutionContextAssignmentCounts(contexts) {
+      const countsById = new Map(
+        contexts
+          .filter(context => Number.isFinite(context.assignedCounterpartyCount))
+          .map(context => [context.pricingContextId, context.assignedCounterpartyCount])
+      );
+
+      if (countsById.size === 0) {
+        return;
+      }
+
+      pricingContexts = pricingContexts.map(context => countsById.has(context.pricingContextId)
+        ? { ...context, assignedCounterpartyCount: countsById.get(context.pricingContextId) }
+        : context
+      );
+    }
+
+    function decrementExecutionContextAssignmentCount(contextId) {
+      pricingContexts = pricingContexts.map(context => {
+        if (context.pricingContextId !== contextId || !Number.isFinite(context.assignedCounterpartyCount)) {
+          return context;
+        }
+
+        return {
+          ...context,
+          assignedCounterpartyCount: Math.max(0, context.assignedCounterpartyCount - 1)
+        };
+      });
+    }
+
+    function normalizedAssignedExecutionContexts(payload) {
+      const source = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.executionContexts)
+          ? payload.executionContexts
+          : [];
+
+      return normalizedPricingContexts(source, []);
+    }
+
+    async function refreshTradingCounterpartyExecutionContexts(profile, options = {}) {
+      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+
+      if (!counterpartyId) {
+        return [];
+      }
+
+      if (!DEMO_API_ENABLED) {
+        const inferred = inferredExecutionContextsForProfile(profile);
+        tradingCounterpartyExecutionContexts.set(counterpartyId, inferred);
+        tradingCounterpartyExecutionContextLoadStates.set(counterpartyId, { status: "loaded" });
+        renderClientExecutionContextsPanel(selectedClientProfile());
+        return inferred;
+      }
+
+      const requestId = ++clientExecutionContextRequestSequence;
+      tradingCounterpartyExecutionContextLoadStates.set(counterpartyId, { status: "loading", requestId });
+
+      if (options.render !== false && selectedClientProfile()?.counterpartyId === profile.counterpartyId) {
+        renderClientExecutionContextsPanel(profile);
+      }
+
+      try {
+        const payload = await demoApiRequest(
+          `/api/v1/trading-counterparties/${encodeURIComponent(counterpartyId)}/execution-contexts`
+        );
+        const currentState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+
+        if (currentState?.requestId !== requestId) {
+          return tradingCounterpartyExecutionContexts.get(counterpartyId) || [];
+        }
+
+        const contexts = normalizedAssignedExecutionContexts(payload);
+        tradingCounterpartyExecutionContexts.set(counterpartyId, contexts);
+        tradingCounterpartyExecutionContextLoadStates.set(counterpartyId, { status: "loaded" });
+        mergeExecutionContextAssignmentCounts(contexts);
+
+        if (selectedClientProfile()?.counterpartyId === profile.counterpartyId) {
+          renderClientExecutionContextsPanel(profile);
+        }
+
+        return contexts;
+      } catch (error) {
+        const currentState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+
+        if (currentState?.requestId === requestId) {
+          tradingCounterpartyExecutionContextLoadStates.set(counterpartyId, {
+            status: "error",
+            message: error.message || "Execution Context assignments could not be loaded."
+          });
+
+          if (selectedClientProfile()?.counterpartyId === profile.counterpartyId) {
+            renderClientExecutionContextsPanel(profile);
+          }
+        }
+
+        return [];
+      }
+    }
+
+    function clientExecutionContextPricingRuleCount(profile, context) {
+      const localRuleCount = clientPricingRulesForInn(profile?.inn)
+        .filter(rule => rule.pricingContextId === context.pricingContextId)
+        .length;
+
+      return Math.max(localRuleCount, Number(context?.pricingRulesCount) || 0);
+    }
+
+    function executionContextPricingMode(context) {
+      return normalizedPricingType(tradeCaptureChannelById(context?.tradeCaptureChannelId)?.pricingType);
+    }
+
+    function availableExecutionContextsForProfile(profile) {
+      const assignedIds = new Set(
+        assignedExecutionContextsForProfile(profile).map(context => context.pricingContextId)
+      );
+
+      return pricingContexts.filter(context => !assignedIds.has(context.pricingContextId));
+    }
+
+    function clientPricingConfigurationCollapsedSet(profile) {
+      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+
+      if (!clientPricingConfigurationCollapsedContexts.has(counterpartyId)) {
+        clientPricingConfigurationCollapsedContexts.set(counterpartyId, new Set());
+      }
+
+      return clientPricingConfigurationCollapsedContexts.get(counterpartyId);
+    }
+
+    function clientPricingRuleEntriesForContext(profile, contextId) {
+      return clientPricingRuleEntriesForInn(profile?.inn).filter(({ rule }) =>
+        String(rule.pricingContextId) === String(contextId)
+      );
+    }
+
+    function renderClientExecutionContextsPanel(profile) {
+      if (!clientExecutionContextsPanel) {
         return;
       }
 
       if (!profile) {
-        updateClientPricingRulesAddAvailability(null);
-        clientPricingRulesPanel.hidden = true;
-        clientPricingRulesList.innerHTML = "";
-        clientPricingRulesCount.textContent = "0 rules";
-        renderClientPricingRuleEditor(null);
+        clientPricingRuleInlineCreateState = null;
+        clientExecutionContextsPanel.hidden = true;
+        clientExecutionContextsList.innerHTML = "";
+        clientExecutionContextsCount.textContent = "0 contexts · 0 rules";
+        clientExecutionContextsAttachButton.disabled = true;
+        clientExecutionContextsAttachButton.title = "Save the Trading Counterparty before attaching an Execution Context";
+        clientExecutionContextsAttachButtonIcon.textContent = "add_link";
+        clientExecutionContextsAttachButtonLabel.textContent = "Attach Context";
         return;
       }
 
-      const entries = clientPricingRuleEntriesForInn(profile.inn);
-      updateClientPricingRulesAddAvailability(profile);
-      clientPricingRulesPanel.hidden = false;
-      clientPricingRulesCount.textContent = `${entries.length} ${entries.length === 1 ? "rule" : "rules"}`;
+      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+      const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+      const contexts = assignedExecutionContextsForProfile(profile);
+      const loading = DEMO_API_ENABLED && (!loadState || loadState.status === "loading");
+      const loadFailed = loadState?.status === "error";
+      const availableCount = availableExecutionContextsForProfile(profile).length;
+      const pricingRuleEntries = clientPricingRuleEntriesForInn(profile.inn);
+      const collapsedContexts = clientPricingConfigurationCollapsedSet(profile);
+      const contextIds = new Set(contexts.map(context => String(context.pricingContextId)));
 
-      if (entries.length === 0) {
-        clientPricingRulesList.innerHTML = `
-          <li class="client-pricing-rules-empty">No Pricing Rules for this Trading Counterparty yet.</li>
-        `;
-      } else {
-        clientPricingRulesList.innerHTML = entries
-          .map(({ rule, index }) => `
-          <li title="${escapeHtml(pricingContextDisplayPath(rule.pricingContextId))}" data-client-pricing-rule-index="${index}">
-            <strong>${escapeHtml(rule.currencyPair)}</strong>
-            <span class="client-pricing-rules-context">
-              <span class="client-pricing-context-candidate-path client-pricing-rules-context-path">
-                ${pricingContextFacetsMarkup(rule.pricingContextId)}
-              </span>
-            </span>
-            ${marginIndicatorMarkup(rule.marginPercent, "client-pricing-rules-margin", false)}
-            <span class="profile-row-actions">
-              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-pricing-rule-action="edit" data-client-pricing-rule-index="${index}" aria-label="Edit ${escapeHtml(rule.pricingRuleId)}" title="Edit">
-                <span class="button-icon" aria-hidden="true">edit</span>
-              </button>
-            </span>
-          </li>
-        `)
-          .join("");
+      if (
+        clientPricingRuleInlineCreateState &&
+        (
+          clientPricingRuleInlineCreateState.inn !== profile.inn ||
+          !contextIds.has(String(clientPricingRuleInlineCreateState.pricingContextId))
+        )
+      ) {
+        clientPricingRuleInlineCreateState = null;
       }
 
+      Array.from(collapsedContexts).forEach(contextId => {
+        if (!contextIds.has(contextId)) {
+          collapsedContexts.delete(contextId);
+        }
+      });
+
+      clientExecutionContextsPanel.hidden = false;
+      clientExecutionContextsCount.textContent = `${contexts.length} ${contexts.length === 1 ? "context" : "contexts"} · ${pricingRuleEntries.length} ${pricingRuleEntries.length === 1 ? "rule" : "rules"}`;
+      clientExecutionContextsAttachButton.disabled = loading || (!loadFailed && availableCount === 0);
+      clientExecutionContextsAttachButtonIcon.textContent = loadFailed ? "refresh" : "add_link";
+      clientExecutionContextsAttachButtonLabel.textContent = loadFailed ? "Retry" : "Attach Context";
+      clientExecutionContextsAttachButton.title = loading
+        ? "Loading Execution Context assignments"
+        : loadFailed
+          ? "Retry loading Execution Context assignments"
+          : availableCount === 0
+            ? "All available Execution Contexts are already attached"
+            : "Attach one or more existing Execution Contexts";
+
+      if (loading) {
+        clientExecutionContextsList.innerHTML = '<li class="client-execution-contexts-empty">Loading Execution Context assignments...</li>';
+        return;
+      }
+
+      if (loadFailed) {
+        clientExecutionContextsList.innerHTML = `
+          <li class="client-execution-contexts-empty">${escapeHtml(loadState.message)}</li>
+        `;
+        return;
+      }
+
+      if (contexts.length === 0) {
+        clientExecutionContextsList.innerHTML = `
+          <li class="client-execution-contexts-empty">No Execution Contexts are attached to this Trading Counterparty yet.</li>
+        `;
+        return;
+      }
+
+      clientExecutionContextsList.innerHTML = contexts
+        .slice()
+        .sort((left, right) => String(left.pricingContextId).localeCompare(
+          String(right.pricingContextId),
+          "en",
+          { numeric: true, sensitivity: "base" }
+        ))
+        .map(context => {
+          const ruleEntries = clientPricingRuleEntriesForContext(profile, context.pricingContextId);
+          const availableCurrencyPairs = availableClientPricingRuleCurrencyPairs(
+            profile,
+            context.pricingContextId
+          );
+          const pricingRuleCount = Math.max(
+            ruleEntries.length,
+            clientExecutionContextPricingRuleCount(profile, context)
+          );
+          const detachLocked = pricingRuleCount > 0;
+          const detachPending = pendingClientExecutionContextDetaches.has(
+            clientExecutionContextDetachKey(counterpartyId, context.pricingContextId)
+          );
+          const detachTitle = detachPending
+            ? "Detaching Execution Context"
+            : detachLocked
+              ? `Detach unavailable while used by ${pricingRuleCount} ${pricingRuleCount === 1 ? "Pricing Rule" : "Pricing Rules"}`
+              : "Detach Execution Context";
+          const pricingMode = executionContextPricingMode(context);
+          const contextKey = String(context.pricingContextId);
+          const expanded = !collapsedContexts.has(contextKey);
+          const branchId = `client-pricing-context-${counterpartyId}-${contextKey}`;
+          const rulesMarkup = ruleEntries.length === 0
+            ? '<li class="client-pricing-configuration-empty">No Pricing Rules configured</li>'
+            : ruleEntries.map(({ rule, index }) => `
+                <li class="client-pricing-configuration-rule" data-client-pricing-rule-index="${index}">
+                  <strong class="client-pricing-configuration-rule-pair">${escapeHtml(rule.currencyPair)}</strong>
+                  <span class="client-pricing-configuration-margin">
+                    <span class="client-pricing-configuration-margin-label">Margin</span>
+                    <span>${escapeHtml(editNumber(rule.marginPercent, 4))}%</span>
+                  </span>
+                  <span class="client-pricing-configuration-rule-actions">
+                    <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-pricing-rule-action="edit" data-client-pricing-rule-index="${index}" aria-label="Edit Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Edit Pricing Rule">
+                      <span class="button-icon" aria-hidden="true">edit</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action profile-danger-action" data-client-pricing-rule-action="delete" data-client-pricing-rule-index="${index}" aria-label="Delete Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Delete Pricing Rule">
+                      <span class="button-icon" aria-hidden="true">delete</span>
+                    </button>
+                  </span>
+                </li>
+              `).join("");
+          const inlineCreateActive = clientPricingRuleInlineCreateMatches(profile, context.pricingContextId);
+          const inlineCurrencyPair = inlineCreateActive && availableCurrencyPairs.includes(
+            clientPricingRuleInlineCreateState.currencyPair
+          )
+            ? clientPricingRuleInlineCreateState.currencyPair
+            : availableCurrencyPairs[0] || "";
+          const inlineMarginValue = inlineCreateActive
+            ? clientPricingRuleInlineCreateState.marginPercent
+            : editNumber(0, 4);
+          const inlineMarginNumber = normalizeNumber(inlineMarginValue);
+          const inlineCanSave = Boolean(inlineCurrencyPair) && inlineMarginNumber !== null
+            && inlineMarginNumber >= 0 && inlineMarginNumber < 100;
+          const inlineSaving = inlineCreateActive && clientPricingRuleInlineCreateState.saving;
+          const addRuleRowMarkup = inlineCreateActive
+            ? `
+                <li class="client-pricing-configuration-add-row is-editing" data-client-pricing-rule-inline-create="${escapeHtml(context.pricingContextId)}">
+                  <label class="client-pricing-configuration-inline-field">
+                    <span class="visually-hidden">Ccy Pair</span>
+                    <select class="form-select form-select-sm" data-client-pricing-rule-inline-field="currencyPair" aria-label="Ccy Pair"${inlineSaving ? " disabled" : ""}>
+                      ${availableCurrencyPairs.map(currencyPair => `
+                        <option value="${escapeHtml(currencyPair)}"${currencyPair === inlineCurrencyPair ? " selected" : ""}>${escapeHtml(currencyPair)}</option>
+                      `).join("")}
+                    </select>
+                  </label>
+                  <label class="client-pricing-configuration-inline-margin">
+                    <span class="visually-hidden">Margin percent</span>
+                    <span class="input-group input-group-sm">
+                      <input class="form-control form-control-sm" type="text" inputmode="decimal" value="${escapeHtml(inlineMarginValue)}" data-client-pricing-rule-inline-field="marginPercent" aria-label="Margin percent"${inlineSaving ? " disabled" : ""}>
+                      <span class="input-group-text">%</span>
+                    </span>
+                  </label>
+                  <span class="client-pricing-configuration-inline-actions">
+                    <button type="button" class="btn btn-sm btn-outline-primary reference-grid-action" data-client-pricing-rule-inline-action="save" data-client-pricing-rule-inline-context-id="${escapeHtml(context.pricingContextId)}" aria-label="Save Pricing Rule" data-tooltip="Save Pricing Rule"${inlineSaving || !inlineCanSave ? " disabled" : ""}>
+                      <span class="button-icon" aria-hidden="true">${inlineSaving ? "hourglass_top" : "save"}</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-pricing-rule-inline-action="cancel" data-client-pricing-rule-inline-context-id="${escapeHtml(context.pricingContextId)}" aria-label="Cancel adding Pricing Rule" data-tooltip="Cancel"${inlineSaving ? " disabled" : ""}>
+                      <span class="button-icon" aria-hidden="true">close</span>
+                    </button>
+                  </span>
+                </li>
+              `
+            : availableCurrencyPairs.length > 0
+              ? `
+                  <li class="client-pricing-configuration-add-row">
+                    <button type="button" class="btn btn-sm btn-outline-primary with-icon client-pricing-configuration-add-rule" data-client-execution-context-action="add-rule" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}">
+                      <span class="button-icon" aria-hidden="true">add</span>
+                      <span>Pricing Rule</span>
+                    </button>
+                  </li>
+                `
+              : "";
+
+          return `
+            <li class="client-pricing-configuration-context${expanded ? "" : " is-collapsed"}" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}">
+              <div class="client-pricing-configuration-context-head">
+                <button type="button" class="client-pricing-configuration-context-toggle" data-client-execution-context-action="toggle" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}" aria-expanded="${String(expanded)}" aria-controls="${escapeHtml(branchId)}" aria-label="${expanded ? "Collapse" : "Expand"} ${escapeHtml(pricingContextDisplayPath(context))}">
+                  <span class="button-icon" aria-hidden="true">${expanded ? "expand_more" : "chevron_right"}</span>
+                  <span class="client-pricing-configuration-context-label">Pricing Context</span>
+                  <span class="client-pricing-context-candidate-path" title="${escapeHtml(pricingContextDisplayPath(context))}">${pricingContextFacetsMarkup(context)}</span>
+                  <span class="client-pricing-configuration-context-meta">
+                    <span class="client-pricing-configuration-context-relation">· Execution System Pricing Mode:</span>
+                    <span class="client-pricing-configuration-mode">${pricingModeIndicatorMarkup(pricingMode, escapeHtml(pricingMode))}</span>
+                  </span>
+                </button>
+                <span class="client-pricing-configuration-context-actions profile-row-actions">
+                  <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-execution-context-action="detach" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}" aria-label="${escapeHtml(detachTitle)}" aria-disabled="${String(detachLocked || detachPending)}" data-tooltip="${escapeHtml(detachTitle)}"${detachPending ? " disabled" : ""}>
+                    <span class="button-icon" aria-hidden="true">${detachPending ? "hourglass_top" : "link_off"}</span>
+                  </button>
+                </span>
+              </div>
+              <div class="client-pricing-configuration-branch" id="${escapeHtml(branchId)}"${expanded ? "" : " hidden"}>
+                <ul class="client-pricing-configuration-rules" aria-label="Pricing Rules for ${escapeHtml(pricingContextDisplayPath(context))}">
+                  ${rulesMarkup}
+                  ${addRuleRowMarkup}
+                </ul>
+              </div>
+            </li>
+          `;
+        })
+        .join("");
+    }
+
+    function executionContextMatchesAttachFilters(context) {
+      return clientExecutionContextAttachFilterControls.every(control => {
+        const field = control.dataset.clientContextAttachFilter;
+        const query = control.value.trim().toLowerCase();
+
+        if (!query) {
+          return true;
+        }
+
+        if (field === "pricingMode") {
+          return executionContextPricingMode(context).toLowerCase() === query;
+        }
+
+        return pricingContextSearchValues(context, field)
+          .some(value => String(value || "").toLowerCase().includes(query));
+      });
+    }
+
+    function filteredAvailableExecutionContextsForAttach() {
+      const profile = selectedClientProfile();
+
+      if (!profile || tradingCounterpartyExecutionContextKey(profile) !== clientExecutionContextAttachCounterpartyId) {
+        return [];
+      }
+
+      return availableExecutionContextsForProfile(profile)
+        .filter(executionContextMatchesAttachFilters)
+        .sort((left, right) => {
+          const order = String(left.pricingContextId).localeCompare(
+            String(right.pricingContextId),
+            "en",
+            { numeric: true, sensitivity: "base" }
+          );
+
+          return clientExecutionContextAttachSortDirection === "desc" ? -order : order;
+        });
+    }
+
+    function updateClientExecutionContextAttachSelectionControls(visibleContexts) {
+      const visibleIds = visibleContexts.map(context => context.pricingContextId);
+      const selectedVisibleCount = visibleIds.filter(id => selectedClientExecutionContextIds.has(id)).length;
+      const selectedCount = selectedClientExecutionContextIds.size;
+      const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+
+      clientExecutionContextAttachSelectAll.checked = allVisibleSelected;
+      clientExecutionContextAttachSelectAll.indeterminate = selectedVisibleCount > 0 && !allVisibleSelected;
+      clientExecutionContextAttachSelectAll.disabled = clientExecutionContextAttachSaving || visibleIds.length === 0;
+      clientExecutionContextAttachSubmitButton.disabled = clientExecutionContextAttachSaving || selectedCount === 0;
+      clientExecutionContextAttachSubmitLabel.textContent = clientExecutionContextAttachSaving
+        ? "Attaching..."
+        : selectedCount > 0
+          ? `Attach (${selectedCount})`
+          : "Attach";
+      clientExecutionContextAttachSelection.textContent = `${selectedCount} selected`;
+      clientExecutionContextAttachDialogClose.disabled = clientExecutionContextAttachSaving;
+      clientExecutionContextAttachCancelButton.disabled = clientExecutionContextAttachSaving;
+      clientExecutionContextAttachIdSort.disabled = clientExecutionContextAttachSaving;
+      clientExecutionContextAttachFilterControls.forEach(control => {
+        control.disabled = clientExecutionContextAttachSaving;
+      });
+      clientExecutionContextAttachDialog.setAttribute("aria-busy", String(clientExecutionContextAttachSaving));
+      clientExecutionContextAttachIdSort.setAttribute(
+        "aria-label",
+        `Sort available execution contexts by ID ${clientExecutionContextAttachSortDirection === "asc" ? "ascending" : "descending"}`
+      );
+      clientExecutionContextAttachIdSort.setAttribute(
+        "aria-pressed",
+        String(clientExecutionContextAttachSortDirection === "asc")
+      );
+      clientExecutionContextAttachIdSort.closest("th")?.setAttribute(
+        "aria-sort",
+        clientExecutionContextAttachSortDirection === "asc" ? "ascending" : "descending"
+      );
+    }
+
+    function renderClientExecutionContextAttachTable() {
+      const contexts = filteredAvailableExecutionContextsForAttach();
+
+      if (contexts.length === 0) {
+        const hasAvailableContexts = availableExecutionContextsForProfile(selectedClientProfile()).length > 0;
+        clientExecutionContextAttachRows.innerHTML = `
+          <tr>
+            <td class="profile-empty" colspan="6">${hasAvailableContexts
+              ? "No available Execution Contexts match the current filters."
+              : "All available Execution Contexts are already attached."}</td>
+          </tr>
+        `;
+      } else {
+        clientExecutionContextAttachRows.innerHTML = contexts.map(context => {
+          const selected = selectedClientExecutionContextIds.has(context.pricingContextId);
+          const pricingMode = executionContextPricingMode(context);
+
+          return `
+            <tr${selected ? ' class="is-selected"' : ""} data-client-context-attach-id="${escapeHtml(context.pricingContextId)}">
+              <td class="client-context-attach-select-cell">
+                <input type="checkbox" class="form-check-input" data-client-context-attach-select="${escapeHtml(context.pricingContextId)}" aria-label="Select Execution Context ${escapeHtml(context.pricingContextId)}"${selected ? " checked" : ""}${clientExecutionContextAttachSaving ? " disabled" : ""}>
+              </td>
+              <td>${escapeHtml(context.pricingContextId)}</td>
+              <td>${escapeHtml(servicingBranchDisplayName(context.servicingBranchCode))}</td>
+              <td>${escapeHtml(context.settlementSystemId === NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID
+                ? "Not Applicable"
+                : settlementSystemDisplayName(context.settlementSystemId))}</td>
+              <td>${escapeHtml(tradeCaptureChannelDisplayName(context.tradeCaptureChannelId))}</td>
+              <td>${pricingModeIndicatorMarkup(pricingMode, escapeHtml(pricingMode))}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      updateClientExecutionContextAttachSelectionControls(contexts);
+    }
+
+    function focusClientExecutionContextAttachCheckbox(contextId) {
+      clientExecutionContextAttachRows
+        .querySelector(`[data-client-context-attach-select="${contextId}"]`)
+        ?.focus();
+    }
+
+    function setClientExecutionContextAttachStatus(message = "", tone = "") {
+      setWorkbenchPageStatus(clientExecutionContextAttachStatus, message, tone);
+    }
+
+    function openClientExecutionContextAttachDialog() {
+      const profile = selectedClientProfile();
+      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+
+      if (!profile || !counterpartyId) {
+        setClientProfileStatus("Save the Trading Counterparty before attaching an Execution Context.", "error");
+        return;
+      }
+
+      clientExecutionContextAttachCounterpartyId = counterpartyId;
+      clientExecutionContextAttachSortDirection = "asc";
+      clientExecutionContextAttachSaving = false;
+      selectedClientExecutionContextIds.clear();
+      clientExecutionContextAttachFilterControls.forEach(control => {
+        control.value = "";
+      });
+      clientExecutionContextAttachDialogSubtitle.textContent = profile.name;
+      setClientExecutionContextAttachStatus("");
+      renderClientExecutionContextAttachTable();
+
+      if (typeof clientExecutionContextAttachDialog.showModal === "function") {
+        clientExecutionContextAttachDialog.showModal();
+      } else {
+        clientExecutionContextAttachDialog.setAttribute("open", "");
+      }
+
+      document.getElementById("clientExecutionContextAttachIdFilter")?.focus();
+    }
+
+    function closeClientExecutionContextAttachDialog() {
+      if (clientExecutionContextAttachSaving) {
+        return;
+      }
+
+      if (typeof clientExecutionContextAttachDialog.close === "function") {
+        clientExecutionContextAttachDialog.close();
+      } else {
+        clientExecutionContextAttachDialog.removeAttribute("open");
+      }
+    }
+
+    async function attachSelectedExecutionContexts(event) {
+      event.preventDefault();
+      const profile = selectedClientProfile();
+      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+      const executionContextIds = Array.from(selectedClientExecutionContextIds);
+
+      if (!profile || counterpartyId !== clientExecutionContextAttachCounterpartyId || executionContextIds.length === 0) {
+        return;
+      }
+
+      clientExecutionContextAttachSaving = true;
+      setClientExecutionContextAttachStatus("Attaching Execution Contexts...");
+      renderClientExecutionContextAttachTable();
+
+      let contexts;
+
+      try {
+        if (DEMO_API_ENABLED) {
+          const payload = await demoApiRequest(
+            `/api/v1/trading-counterparties/${encodeURIComponent(counterpartyId)}/execution-contexts`,
+            {
+              method: "PUT",
+              body: JSON.stringify({ executionContextIds: executionContextIds.map(Number) })
+            }
+          );
+          contexts = normalizedAssignedExecutionContexts(payload);
+        } else {
+          const existing = assignedExecutionContextsForProfile(profile);
+          const requestedIds = new Set(executionContextIds);
+          contexts = normalizedPricingContexts([
+            ...existing,
+            ...pricingContexts.filter(context => requestedIds.has(context.pricingContextId))
+          ], []);
+        }
+      } catch (error) {
+        clientExecutionContextAttachSaving = false;
+        setClientExecutionContextAttachStatus(error.message || "Execution Contexts could not be attached.", "error");
+        renderClientExecutionContextAttachTable();
+        return;
+      }
+
+      tradingCounterpartyExecutionContexts.set(counterpartyId, contexts);
+      tradingCounterpartyExecutionContextLoadStates.set(counterpartyId, { status: "loaded" });
+      mergeExecutionContextAssignmentCounts(contexts);
+      const attachedCount = executionContextIds.length;
+      clientExecutionContextAttachSaving = false;
+      selectedClientExecutionContextIds.clear();
+      const profileStillSelected = isSelectedTradingCounterparty(counterpartyId);
+
+      if (profileStillSelected) {
+        renderClientExecutionContextsPanel(profile);
+      }
+
+      closeClientExecutionContextAttachDialog();
+
+      if (profileStillSelected) {
+        setClientProfileStatus(
+          `${attachedCount} Execution ${attachedCount === 1 ? "Context was" : "Contexts were"} attached successfully.`,
+          "success"
+        );
+      }
+
+      if (DEMO_API_ENABLED) {
+        try {
+          await refreshExecutionContextsFromApi();
+          renderPricingContexts();
+        } catch (refreshError) {
+          console.warn("Execution Context usage counts could not be refreshed.", refreshError);
+        }
+      }
+    }
+
+    async function detachClientExecutionContext(profile, contextId) {
+      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+      const context = assignedExecutionContextsForProfile(profile)
+        .find(item => item.pricingContextId === contextId);
+      const detachKey = clientExecutionContextDetachKey(counterpartyId, contextId);
+
+      if (!counterpartyId || !context || pendingClientExecutionContextDetaches.has(detachKey)) {
+        return;
+      }
+
+      const pricingRuleCount = clientExecutionContextPricingRuleCount(profile, context);
+
+      if (pricingRuleCount > 0) {
+        if (isSelectedTradingCounterparty(counterpartyId)) {
+          setClientProfileStatus(
+            `Execution Context ${contextId} cannot be detached while it is used by ${pricingRuleCount} ${pricingRuleCount === 1 ? "Pricing Rule" : "Pricing Rules"}.`,
+            "error"
+          );
+        }
+        return;
+      }
+
+      pendingClientExecutionContextDetaches.add(detachKey);
+
+      if (isSelectedTradingCounterparty(counterpartyId)) {
+        renderClientExecutionContextsPanel(profile);
+      }
+
+      try {
+        if (DEMO_API_ENABLED) {
+          await demoApiRequest(
+            `/api/v1/trading-counterparties/${encodeURIComponent(counterpartyId)}/execution-contexts/${encodeURIComponent(contextId)}`,
+            { method: "DELETE" }
+          );
+        }
+      } catch (error) {
+        pendingClientExecutionContextDetaches.delete(detachKey);
+
+        if (isSelectedTradingCounterparty(counterpartyId)) {
+          renderClientExecutionContextsPanel(profile);
+          setClientProfileStatus(error.message || `Execution Context ${contextId} could not be detached.`, "error");
+        }
+        return;
+      }
+
+      tradingCounterpartyExecutionContexts.set(
+        counterpartyId,
+        assignedExecutionContextsForProfile(profile).filter(item => item.pricingContextId !== contextId)
+      );
+      decrementExecutionContextAssignmentCount(contextId);
+      pendingClientExecutionContextDetaches.delete(detachKey);
+
+      if (isSelectedTradingCounterparty(counterpartyId)) {
+        renderClientExecutionContextsPanel(profile);
+        setClientProfileStatus(`Execution Context ${contextId} was detached successfully.`, "success");
+      }
+
+      if (DEMO_API_ENABLED) {
+        try {
+          await refreshExecutionContextsFromApi();
+          renderPricingContexts();
+        } catch (refreshError) {
+          console.warn("Execution Context usage counts could not be refreshed.", refreshError);
+        }
+      }
+    }
+
+    function updateClientPricingRulesAddAvailability(profile) {
+      return Boolean(profile) && assignedExecutionContextsForProfile(profile).length > 0;
+    }
+
+    function syncClientExecutionContextPricingRuleCounts(profile) {
+      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+
+      if (!counterpartyId || !tradingCounterpartyExecutionContexts.has(counterpartyId)) {
+        return;
+      }
+
+      const ruleEntries = clientPricingRuleEntriesForInn(profile.inn);
+      tradingCounterpartyExecutionContexts.set(
+        counterpartyId,
+        assignedExecutionContextsForProfile(profile).map(context => ({
+          ...context,
+          pricingRulesCount: ruleEntries.filter(({ rule }) =>
+            String(rule.pricingContextId) === String(context.pricingContextId)
+          ).length
+        }))
+      );
+    }
+
+    function renderClientPricingRulesPanel(profile) {
+      updateClientPricingRulesAddAvailability(profile);
+      syncClientExecutionContextPricingRuleCounts(profile);
       renderClientPricingRuleEditor(profile);
+      renderClientExecutionContextsPanel(profile);
       updateClientProfileDeleteAvailability();
     }
 
-    function setClientProfilePageHeading(title, subtitle = "") {
+    function setClientProfilePageHeading(title) {
       clientProfilePageTitle.textContent = title;
-      clientProfilePageSubtitle.textContent = subtitle;
-      clientProfilePageSubtitle.hidden = !subtitle;
       document.title = title === "Trading Counterparties" ? title : `${title} - Trading Counterparties`;
     }
 
@@ -21630,6 +23365,7 @@
       clientProfileResetButton.querySelector("span:last-child").textContent = "Back";
       clientProfileResetButton.querySelector(".button-icon").textContent = "arrow_back";
       showClientProfileCard(false);
+      renderClientExecutionContextsPanel(null);
       renderClientPricingRulesPanel(null);
     }
 
@@ -21674,6 +23410,10 @@
     }
 
     function tradingCounterpartyFilterContainer(field) {
+      if (field === "partyType") {
+        return tradingCounterpartyExternalKindFilter;
+      }
+
       if (field === "counterpartyType") {
         return tradingCounterpartyTypeFilter;
       }
@@ -21686,12 +23426,16 @@
     }
 
     function tradingCounterpartyFilterValue(profile, field) {
+      if (field === "partyType") {
+        return tradingCounterpartyPartyType(profile);
+      }
+
       if (field === "counterpartyType") {
         return tradingCounterpartyRolesLabel(profile);
       }
 
       if (field === "clientCodeType") {
-        return tradingCounterpartyProfileType(profile);
+        return tradingCounterpartyBusinessIdType(profile);
       }
 
       return profile.isActive ? "YES" : "NO";
@@ -21740,7 +23484,7 @@
       const counterpartyTypeFilter = tradingCounterpartyHeaderFilterValue("counterpartyType");
       const counterpartyCodeFilter = tradingCounterpartyHeaderFilterValue("counterpartyCode").toLowerCase();
       const clientCodeTypeFilter = tradingCounterpartyHeaderFilterValue("clientCodeType");
-      const externalCounterpartyKindFilter = tradingCounterpartyHeaderFilterValue("externalCounterpartyKind");
+      const partyTypeFilter = tradingCounterpartyHeaderFilterValue("partyType");
       const counterpartyNameFilter = tradingCounterpartyHeaderFilterValue("counterpartyName").toLowerCase();
       const activeFilter = tradingCounterpartyHeaderFilterValue("active");
       const direction = tradingCounterpartyIdSortDirection === "desc" ? -1 : 1;
@@ -21753,16 +23497,15 @@
           }
 
           const counterpartyId = String(profile.counterpartyId ?? "");
-          const clientCodeType = tradingCounterpartyProfileType(profile);
+          const clientCodeType = tradingCounterpartyBusinessIdType(profile);
+          const partyType = tradingCounterpartyPartyType(profile);
           const active = profile.isActive ? "YES" : "NO";
 
           return (!counterpartyIdFilter || counterpartyId.includes(counterpartyIdFilter))
             && (!counterpartyTypeFilter || tradingCounterpartyHasRole(profile, counterpartyTypeFilter))
             && (!counterpartyCodeFilter || profile.inn.toLowerCase().includes(counterpartyCodeFilter))
             && (!clientCodeTypeFilter || clientCodeType === clientCodeTypeFilter)
-            && (activeTradingCounterpartyScope === "INTERNAL"
-              || !externalCounterpartyKindFilter
-              || normalizedExternalCounterpartyKind(profile.externalCounterpartyKind) === externalCounterpartyKindFilter)
+            && (!partyTypeFilter || partyType === partyTypeFilter)
             && (!counterpartyNameFilter || profile.name.toLowerCase().includes(counterpartyNameFilter))
             && (!activeFilter || active === activeFilter);
         })
@@ -21851,30 +23594,21 @@
 
     function renderTradingCounterpartyCreateRow(profile) {
       const internal = normalizedCounterpartyScope(profile.counterpartyScope) === "INTERNAL";
-      const profileTypeOptions = internal
+      const partyTypeOptions = internal
         ? internalUnitTypeOptions(profile.unitType)
-        : clientCodeTypeOptions(profile.clientCodeType);
-      const identifierControl = internal
-        ? `<input class="inline-edit-control" type="text" data-trading-counterparty-field="counterpartyCode" value="${escapeHtml(profile.inn)}" maxlength="20" required>`
-        : `<span class="counterparty-identifier-editor" data-smart-width-content>
-            <select class="inline-edit-control" data-trading-counterparty-field="profileType" aria-label="Identifier scheme" required>${profileTypeOptions}</select>
-            <input class="inline-edit-control" type="text" data-trading-counterparty-field="counterpartyCode" aria-label="Identifier value" value="${escapeHtml(profile.inn)}" maxlength="20" required>
-          </span>`;
-      const profileTypeControl = internal
-        ? `<select class="inline-edit-control" data-trading-counterparty-field="profileType" required>${profileTypeOptions}</select>`
-        : "";
-      const externalKindControl = internal
-        ? ""
-        : `<select class="inline-edit-control" data-trading-counterparty-field="externalCounterpartyKind" required>${externalCounterpartyKindOptions(profile.externalCounterpartyKind)}</select>`;
+        : externalCounterpartyKindOptions(profile.externalCounterpartyKind);
+      const businessIdTypeControl = internal
+        ? `<span class="app-status-token">INTERNAL_UNIT_CODE</span>`
+        : `<select class="inline-edit-control" data-trading-counterparty-field="businessIdType" aria-label="Business ID Type" required>${clientCodeTypeOptions(profile.clientCodeType)}</select>`;
 
       return `
         <tr class="is-selected is-editing" data-trading-counterparty-edit-row>
           <td>${escapeHtml(profile.counterpartyId ?? "")}</td>
-          <td><select class="inline-edit-control" data-trading-counterparty-field="counterpartyType" required>${counterpartyTypeOptions(profile.counterpartyType)}</select></td>
-          <td>${identifierControl}</td>
-          <td class="trading-counterparty-profile-type-column">${profileTypeControl}</td>
-          <td class="trading-counterparty-external-kind-column">${externalKindControl}</td>
+          <td><select class="inline-edit-control" data-trading-counterparty-field="partyType" required>${partyTypeOptions}</select></td>
+          <td>${businessIdTypeControl}</td>
+          <td><input class="inline-edit-control" type="text" data-trading-counterparty-field="counterpartyCode" aria-label="Business ID" value="${escapeHtml(profile.inn)}" maxlength="20" required></td>
           <td><input class="inline-edit-control" type="text" data-trading-counterparty-field="counterpartyName" value="${escapeHtml(profile.name)}" maxlength="200" required></td>
+          <td><select class="inline-edit-control" data-trading-counterparty-field="counterpartyType" required>${counterpartyTypeOptions(profile.counterpartyType)}</select></td>
           <td><select class="inline-edit-control" data-trading-counterparty-field="isActive">${activeBooleanOptions(profile.isActive)}</select></td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
@@ -21891,16 +23625,14 @@
     }
 
     function renderTradingCounterpartyViewRow(profile, index) {
-      const internal = normalizedCounterpartyScope(profile.counterpartyScope) === "INTERNAL";
-
       return `
         <tr${index === editingClientProfileIndex ? " class=\"is-selected\"" : ""} data-profile-index="${index}" tabindex="0">
           <td>${escapeHtml(profile.counterpartyId ?? "")}</td>
-          <td>${escapeHtml(tradingCounterpartyRolesLabel(profile))}</td>
-          <td>${internal ? escapeHtml(profile.inn) : tradingCounterpartyIdentifierMarkup(profile)}</td>
-          <td class="trading-counterparty-profile-type-column">${internal ? escapeHtml(tradingCounterpartyProfileType(profile)) : ""}</td>
-          <td class="trading-counterparty-external-kind-column">${internal ? "" : escapeHtml(externalCounterpartyKindLabel(profile.externalCounterpartyKind))}</td>
+          <td>${escapeHtml(tradingCounterpartyPartyTypeLabel(profile))}</td>
+          <td>${escapeHtml(tradingCounterpartyBusinessIdType(profile))}</td>
+          <td>${escapeHtml(profile.inn)}</td>
           <td>${escapeHtml(profile.name)}</td>
+          <td>${escapeHtml(tradingCounterpartyRolesLabel(profile))}</td>
           <td>${activeBooleanTokenMarkup(profile.isActive)}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
@@ -21918,8 +23650,8 @@
       const counterpartyType = normalizedCounterpartyType(field("counterpartyType")?.value);
       const counterpartyScope = activeTradingCounterpartyScope;
       const internal = counterpartyScope === "INTERNAL";
-      const profileType = field("profileType")?.value;
-      const clientCodeType = internal ? "INTERNAL_UNIT_CODE" : normalizedClientCodeType(profileType);
+      const partyType = field("partyType")?.value;
+      const clientCodeType = internal ? "INTERNAL_UNIT_CODE" : normalizedClientCodeType(field("businessIdType")?.value);
       const inn = normalizedClientCode(field("counterpartyCode")?.value, clientCodeType, "");
       const name = field("counterpartyName")?.value.trim() || "";
 
@@ -21934,8 +23666,8 @@
         counterpartyType,
         inn,
         clientCodeType,
-        externalCounterpartyKind: internal ? null : normalizedExternalCounterpartyKind(field("externalCounterpartyKind")?.value),
-        unitType: internal ? normalizedInternalUnitType(profileType) : null,
+        externalCounterpartyKind: internal ? null : normalizedExternalCounterpartyKind(partyType),
+        unitType: internal ? normalizedInternalUnitType(partyType) : null,
         name,
         isActive: field("isActive")?.value !== "false"
       };
@@ -21947,8 +23679,8 @@
       const nameInput = field("counterpartyName");
       const counterpartyScope = activeTradingCounterpartyScope;
       const internal = counterpartyScope === "INTERNAL";
-      const profileType = field("profileType")?.value;
-      const clientCodeType = internal ? "INTERNAL_UNIT_CODE" : normalizedClientCodeType(profileType);
+      const partyType = field("partyType")?.value;
+      const clientCodeType = internal ? "INTERNAL_UNIT_CODE" : normalizedClientCodeType(field("businessIdType")?.value);
       const inn = clientCodeType === "INN"
         ? codeInput.value.trim()
         : normalizedContextCode(codeInput.value);
@@ -21958,8 +23690,8 @@
       codeInput.setCustomValidity(isValidClientCodeForType(inn, clientCodeType)
         ? ""
         : clientCodeType === "INN"
-          ? "Counterparty Code with type INN must contain 10 to 12 digits."
-          : "Counterparty Code must contain 2 to 20 letters, digits, '_' or '-'.");
+          ? "Business ID with type INN must contain 10 to 12 digits."
+          : "Business ID must contain 2 to 20 letters, digits, '_' or '-'.");
       nameInput.setCustomValidity(name.length >= 1 && name.length <= 200
         ? ""
         : "Counterparty Name must contain from 1 to 200 characters.");
@@ -21980,8 +23712,8 @@
         counterpartyType: normalizedCounterpartyType(field("counterpartyType")?.value),
         inn,
         clientCodeType,
-        externalCounterpartyKind: internal ? null : normalizedExternalCounterpartyKind(field("externalCounterpartyKind")?.value),
-        unitType: internal ? normalizedInternalUnitType(profileType) : null,
+        externalCounterpartyKind: internal ? null : normalizedExternalCounterpartyKind(partyType),
+        unitType: internal ? normalizedInternalUnitType(partyType) : null,
         name,
         isActive: field("isActive")?.value !== "false"
       };
@@ -22016,7 +23748,7 @@
       const duplicateIndex = tradingCounterpartyDuplicateIndex(profile);
 
       if (duplicateIndex !== -1) {
-        setSaveButtonAvailability(button, false, "Counterparty Code already exists for this Code Type");
+        setSaveButtonAvailability(button, false, "Business ID already exists for this Business ID Type");
         return;
       }
 
@@ -22051,7 +23783,7 @@
 
       if (duplicateIndex !== -1) {
         const codeInput = row.querySelector("[data-trading-counterparty-field='counterpartyCode']");
-        codeInput.setCustomValidity("Counterparty Code already exists for this Code Type.");
+        codeInput.setCustomValidity("Business ID already exists for this Business ID Type.");
         codeInput.reportValidity();
         return;
       }
@@ -22101,7 +23833,7 @@
       const createRow = tradingCounterpartyRowEditState?.mode === "create"
         ? renderTradingCounterpartyCreateRow(tradingCounterpartyDefaultDraft())
         : "";
-      const columnCount = 7;
+      const columnCount = 8;
 
       if (scopedProfiles.length === 0 && !createRow) {
         clientProfileRowsEl.innerHTML = `
@@ -22150,6 +23882,7 @@
       clientProfileSubmitButton.querySelector(".button-icon").textContent = "add";
       updateClientProfileDeleteAvailability();
       showClientProfileCard(true);
+      renderClientExecutionContextsPanel(null);
       renderClientPricingRulesPanel(null);
       setClientProfileStatus("");
       renderClientProfiles();
@@ -22182,16 +23915,15 @@
       clientProfileForm.elements.inn.value = profile.inn;
       clientProfileForm.elements.isActive.checked = profile.isActive;
       clientProfileFormTitle.textContent = "General Details";
-      setClientProfilePageHeading(
-        profile.name,
-        `${tradingCounterpartyRolesLabel(profile)} / ${tradingCounterpartyProfileType(profile)} ${profile.inn}`
-      );
+      setClientProfilePageHeading(profile.name);
       clientProfileSubmitButton.querySelector("span:last-child").textContent = "Save changes";
       clientProfileSubmitButton.querySelector(".button-icon").textContent = "save";
       updateClientProfileSubmitAvailability();
       updateClientProfileDeleteAvailability();
       showClientProfileCard(true);
+      renderClientExecutionContextsPanel(profile);
       renderClientPricingRulesPanel(profile);
+      refreshTradingCounterpartyExecutionContexts(profile);
       setClientProfileStatus("");
       renderClientProfiles();
     }
@@ -26868,11 +28600,56 @@
       return typeof value === "object" ? JSON.stringify(value) : String(value);
     }
 
+    const DATABASE_DATA_COLUMN_PRESENTATION = Object.freeze({
+      external_counterparties: Object.freeze({
+        order: Object.freeze([
+          "counterparty_id",
+          "external_counterparty_kind",
+          "counterparty_code_type",
+          "counterparty_code"
+        ]),
+        labels: Object.freeze({
+          counterparty_id: "ID",
+          external_counterparty_kind: "Counterparty Type",
+          counterparty_code_type: "Business ID Type",
+          counterparty_code: "Business ID"
+        })
+      }),
+      internal_units: Object.freeze({
+        order: Object.freeze(["counterparty_id", "unit_type", "unit_code"]),
+        labels: Object.freeze({
+          counterparty_id: "ID",
+          unit_type: "Unit Type",
+          unit_code: "Business ID"
+        })
+      })
+    });
+
+    function databaseDataColumnNames(tableName, columns) {
+      const names = columns.map(column => column.name);
+      const preferredOrder = DATABASE_DATA_COLUMN_PRESENTATION[tableName]?.order || [];
+
+      return [
+        ...preferredOrder.filter(columnName => names.includes(columnName)),
+        ...names.filter(columnName => !preferredOrder.includes(columnName))
+      ];
+    }
+
+    function databaseDataColumnHeader(tableName, columnName) {
+      const label = DATABASE_DATA_COLUMN_PRESENTATION[tableName]?.labels?.[columnName] || columnName;
+
+      if (label === columnName) {
+        return escapeHtml(columnName);
+      }
+
+      return `<span data-tooltip="SQLite column: ${escapeHtml(columnName)}">${escapeHtml(label)}</span>`;
+    }
+
     function renderDatabaseTableDetails(details) {
       const columns = Array.isArray(details?.columns) ? details.columns : [];
       const foreignKeys = Array.isArray(details?.foreignKeys) ? details.foreignKeys : [];
       const rows = Array.isArray(details?.rows) ? details.rows : [];
-      const dataColumns = columns.map(column => column.name);
+      const dataColumns = databaseDataColumnNames(details.tableName, columns);
 
       databaseTableTitleEl.textContent = `${details.tableName} · ${details.rowCount} rows`;
       databaseSchemaRowsEl.innerHTML = columns.length > 0
@@ -26898,7 +28675,7 @@
           `).join("")
         : `<tr><td class="profile-empty" colspan="5">No foreign keys.</td></tr>`;
       databaseDataHeadEl.innerHTML = dataColumns.length > 0
-        ? `<tr>${dataColumns.map(column => `<th>${escapeHtml(column)}</th>`).join("")}</tr>`
+        ? `<tr>${dataColumns.map(column => `<th>${databaseDataColumnHeader(details.tableName, column)}</th>`).join("")}</tr>`
         : "";
       databaseDataRowsEl.innerHTML = rows.length > 0
         ? rows.map(row => `<tr>${dataColumns.map(column => `<td>${escapeHtml(databaseCellValue(row[column]))}</td>`).join("")}</tr>`).join("")
@@ -33388,6 +35165,7 @@
       renderReferenceData();
       renderPricingContexts();
       renderPricingRules();
+      renderClientExecutionContextsPanel(selectedClientProfile());
       renderClientPricingRulesPanel(selectedClientProfile());
       renderMarketPage();
       scheduleSmartColumnSizing();
@@ -34113,7 +35891,7 @@
         const codeType = activeTradingCounterpartyScope === "INTERNAL"
           ? "INTERNAL_UNIT_CODE"
           : normalizedClientCodeType(
-              row.querySelector("[data-trading-counterparty-field='profileType']")?.value
+              row.querySelector("[data-trading-counterparty-field='businessIdType']")?.value
             );
 
         if (codeType !== "INN") {
@@ -34232,35 +36010,181 @@
         updateUserRowSaveAvailability(row);
       }
     });
-    clientPricingRulesAddButton.addEventListener("click", startClientPricingRuleCreate);
-    clientPricingRulesPanel.addEventListener("click", event => {
-      const button = event.target.closest("[data-client-pricing-rule-action]");
+    clientExecutionContextsAttachButton.addEventListener("click", () => {
+      const profile = selectedClientProfile();
+      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+      const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
 
-      if (!button) {
+      if (profile && loadState?.status === "error") {
+        refreshTradingCounterpartyExecutionContexts(profile);
         return;
       }
 
-      if (button.dataset.clientPricingRuleAction === "save") {
-        saveClientPricingRuleFromCard();
+      openClientExecutionContextAttachDialog();
+    });
+    clientExecutionContextsPanel.addEventListener("click", event => {
+      const inlineCreateButton = event.target.closest("[data-client-pricing-rule-inline-action]");
+      const contextButton = event.target.closest("[data-client-execution-context-action]");
+      const pricingRuleButton = event.target.closest("[data-client-pricing-rule-action]");
+
+      if (inlineCreateButton) {
+        const contextId = normalizedIntegerId(inlineCreateButton.dataset.clientPricingRuleInlineContextId);
+
+        if (!contextId || inlineCreateButton.disabled) {
+          return;
+        }
+
+        if (inlineCreateButton.dataset.clientPricingRuleInlineAction === "save") {
+          saveClientPricingRuleInlineCreate(contextId);
+        } else if (inlineCreateButton.dataset.clientPricingRuleInlineAction === "cancel") {
+          cancelClientPricingRuleInlineCreate(contextId);
+        }
         return;
       }
 
-      if (button.dataset.clientPricingRuleAction === "cancel") {
-        cancelClientPricingRuleEdit();
+      if (pricingRuleButton) {
+        const index = Number(pricingRuleButton.dataset.clientPricingRuleIndex);
+
+        if (!Number.isInteger(index)) {
+          return;
+        }
+
+        if (pricingRuleButton.dataset.clientPricingRuleAction === "edit") {
+          startClientPricingRuleEdit(index);
+        } else if (pricingRuleButton.dataset.clientPricingRuleAction === "delete") {
+          startClientPricingRuleDelete(index);
+        }
         return;
       }
 
-      const index = Number(button.dataset.clientPricingRuleIndex);
-
-      if (!Number.isInteger(index)) {
+      if (!contextButton || contextButton.disabled) {
         return;
       }
 
-      if (button.dataset.clientPricingRuleAction === "edit") {
-        startClientPricingRuleEdit(index);
+      const profile = selectedClientProfile();
+      const contextId = normalizedIntegerId(contextButton.dataset.clientExecutionContextId);
+
+      if (!profile || !contextId) {
         return;
       }
 
+      if (contextButton.dataset.clientExecutionContextAction === "toggle") {
+        const collapsedContexts = clientPricingConfigurationCollapsedSet(profile);
+        const contextKey = String(contextId);
+
+        if (collapsedContexts.has(contextKey)) {
+          collapsedContexts.delete(contextKey);
+        } else {
+          collapsedContexts.add(contextKey);
+        }
+
+        renderClientExecutionContextsPanel(profile);
+        clientExecutionContextsPanel
+          .querySelector(`[data-client-execution-context-action="toggle"][data-client-execution-context-id="${contextId}"]`)
+          ?.focus();
+        return;
+      }
+
+      if (contextButton.dataset.clientExecutionContextAction === "add-rule") {
+        startClientPricingRuleCreate(contextId);
+        return;
+      }
+
+      if (contextButton.dataset.clientExecutionContextAction === "detach") {
+        detachClientExecutionContext(profile, contextId);
+      }
+    });
+    ["input", "change"].forEach(eventName => {
+      clientExecutionContextsPanel.addEventListener(eventName, event => {
+        const row = event.target.closest("[data-client-pricing-rule-inline-create]");
+
+        if (row) {
+          updateClientPricingRuleInlineCreateAvailability(row);
+        }
+      });
+    });
+    clientExecutionContextsPanel.addEventListener("keydown", event => {
+      const row = event.target.closest("[data-client-pricing-rule-inline-create]");
+      const contextId = normalizedIntegerId(row?.dataset.clientPricingRuleInlineCreate);
+
+      if (!row || !contextId) {
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveClientPricingRuleInlineCreate(contextId);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        cancelClientPricingRuleInlineCreate(contextId);
+      }
+    });
+    clientExecutionContextAttachForm.addEventListener("submit", attachSelectedExecutionContexts);
+    clientExecutionContextAttachDialogClose.addEventListener("click", closeClientExecutionContextAttachDialog);
+    clientExecutionContextAttachCancelButton.addEventListener("click", closeClientExecutionContextAttachDialog);
+    clientExecutionContextAttachDialog.addEventListener("cancel", event => {
+      if (clientExecutionContextAttachSaving) {
+        event.preventDefault();
+      }
+    });
+    clientExecutionContextAttachDialog.addEventListener("close", () => {
+      clientExecutionContextAttachCounterpartyId = "";
+      selectedClientExecutionContextIds.clear();
+      setClientExecutionContextAttachStatus("");
+    });
+    clientExecutionContextAttachFilterControls.forEach(control => {
+      control.addEventListener("input", renderClientExecutionContextAttachTable);
+      control.addEventListener("change", renderClientExecutionContextAttachTable);
+    });
+    clientExecutionContextAttachIdSort.addEventListener("click", () => {
+      clientExecutionContextAttachSortDirection = clientExecutionContextAttachSortDirection === "asc" ? "desc" : "asc";
+      renderClientExecutionContextAttachTable();
+    });
+    clientExecutionContextAttachSelectAll.addEventListener("change", () => {
+      filteredAvailableExecutionContextsForAttach().forEach(context => {
+        if (clientExecutionContextAttachSelectAll.checked) {
+          selectedClientExecutionContextIds.add(context.pricingContextId);
+        } else {
+          selectedClientExecutionContextIds.delete(context.pricingContextId);
+        }
+      });
+      renderClientExecutionContextAttachTable();
+    });
+    clientExecutionContextAttachRows.addEventListener("change", event => {
+      const checkbox = event.target.closest("[data-client-context-attach-select]");
+
+      if (!checkbox) {
+        return;
+      }
+
+      const contextId = normalizedIntegerId(checkbox.dataset.clientContextAttachSelect);
+
+      if (checkbox.checked) {
+        selectedClientExecutionContextIds.add(contextId);
+      } else {
+        selectedClientExecutionContextIds.delete(contextId);
+      }
+      renderClientExecutionContextAttachTable();
+      focusClientExecutionContextAttachCheckbox(contextId);
+    });
+    clientExecutionContextAttachRows.addEventListener("click", event => {
+      if (event.target.closest("input, button, a, select")) {
+        return;
+      }
+
+      const row = event.target.closest("[data-client-context-attach-id]");
+      const contextId = normalizedIntegerId(row?.dataset.clientContextAttachId);
+
+      if (!contextId || clientExecutionContextAttachSaving) {
+        return;
+      }
+
+      if (selectedClientExecutionContextIds.has(contextId)) {
+        selectedClientExecutionContextIds.delete(contextId);
+      } else {
+        selectedClientExecutionContextIds.add(contextId);
+      }
+      renderClientExecutionContextAttachTable();
     });
     clientPricingRuleForm.addEventListener("submit", event => {
       event.preventDefault();
@@ -34471,6 +36395,27 @@
     });
     pricingRuleHeaderFilterControls.forEach(control => {
       control.addEventListener("input", renderPricingRules);
+    });
+    ["input", "change"].forEach(eventName => {
+      pricingRuleRowsEl.addEventListener(eventName, event => {
+        const row = event.target.closest("[data-pricing-rule-edit-row]");
+
+        if (!row) {
+          return;
+        }
+
+        if (event.target.matches("[data-pricing-rule-field='inn']")) {
+          const profile = clientProfileByInn(event.target.value.trim());
+          const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+          const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+
+          if (loadState?.status === "error") {
+            tradingCounterpartyExecutionContextLoadStates.delete(counterpartyId);
+          }
+        }
+
+        syncPricingRuleRowPreview(row);
+      });
     });
     installUiTableLayoutButtons();
     applyAllUiTableLayouts();

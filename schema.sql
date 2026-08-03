@@ -191,6 +191,25 @@ CREATE TABLE IF NOT EXISTS trading_counterparties
         CHECK (is_active IN (0, 1))
 );
 
+CREATE TABLE IF NOT EXISTS trading_counterparty_execution_contexts
+(
+    counterparty_id      INTEGER NOT NULL,
+    execution_context_id INTEGER NOT NULL,
+
+    CONSTRAINT pk_trading_counterparty_execution_contexts
+        PRIMARY KEY (counterparty_id, execution_context_id),
+    CONSTRAINT fk_trading_counterparty_execution_contexts_counterparty
+        FOREIGN KEY (counterparty_id)
+            REFERENCES trading_counterparties (counterparty_id)
+            ON UPDATE RESTRICT
+            ON DELETE CASCADE,
+    CONSTRAINT fk_trading_counterparty_execution_contexts_execution_context
+        FOREIGN KEY (execution_context_id)
+            REFERENCES execution_contexts (execution_context_id)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT
+);
+
 CREATE TABLE IF NOT EXISTS external_counterparties
 (
     counterparty_id            INTEGER PRIMARY KEY,
@@ -394,6 +413,57 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_reference
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_counterparty_reference
     ON pricing_rules (pricing_rule_id, counterparty_id, ccy_pair_code);
+
+CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_execution_context_insert
+BEFORE INSERT ON pricing_rules
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM trading_counterparty_execution_contexts assignment
+    WHERE assignment.counterparty_id = NEW.counterparty_id
+      AND assignment.execution_context_id = NEW.execution_context_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'Pricing Rule Execution Context must be attached to its Trading Counterparty');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_execution_context_update
+BEFORE UPDATE OF counterparty_id, execution_context_id ON pricing_rules
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM trading_counterparty_execution_contexts assignment
+    WHERE assignment.counterparty_id = NEW.counterparty_id
+      AND assignment.execution_context_id = NEW.execution_context_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'Pricing Rule Execution Context must be attached to its Trading Counterparty');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_execution_contexts_preserve_pricing_rules_delete
+BEFORE DELETE ON trading_counterparty_execution_contexts
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM pricing_rules rule
+    WHERE rule.counterparty_id = OLD.counterparty_id
+      AND rule.execution_context_id = OLD.execution_context_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'an Execution Context assignment used by Pricing Rules cannot be detached from its Trading Counterparty');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_execution_contexts_immutable_update
+BEFORE UPDATE OF counterparty_id, execution_context_id ON trading_counterparty_execution_contexts
+FOR EACH ROW
+WHEN NEW.counterparty_id <> OLD.counterparty_id
+  OR NEW.execution_context_id <> OLD.execution_context_id
+BEGIN
+    SELECT RAISE(ABORT, 'an Execution Context assignment identity cannot be changed; attach a new Context and detach the old one');
+END;
 
 CREATE TABLE IF NOT EXISTS fx_hedge_quick_mode_settings
 (
@@ -936,6 +1006,9 @@ CREATE INDEX IF NOT EXISTS idx_execution_contexts_accounting_system
 
 CREATE INDEX IF NOT EXISTS idx_execution_contexts_execution_system
     ON execution_contexts (execution_system_id);
+
+CREATE INDEX IF NOT EXISTS idx_trading_counterparty_execution_contexts_context
+    ON trading_counterparty_execution_contexts (execution_context_id, counterparty_id);
 
 CREATE INDEX IF NOT EXISTS idx_pricing_rules_counterparty
     ON pricing_rules (counterparty_id);
