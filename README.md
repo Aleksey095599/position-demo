@@ -24,6 +24,7 @@ SQLite separates the reference data from the simulation configuration:
 - `trading_counterparty_roles`
 - `users`
 - `pricing_rules`
+- `fx_auto_batching_settings`
 
 `trading_counterparties` is the stable parent identity. External legal/person profiles,
 internal organizational units and business roles are stored separately in
@@ -88,6 +89,8 @@ Opening `index.html` directly remains supported as a fallback, but that mode can
 - `POST /api/v1/pricing-rules`
 - `PUT /api/v1/pricing-rules/{pricingRuleId}`
 - `DELETE /api/v1/pricing-rules/{pricingRuleId}`
+- `GET /api/v1/fx-auto-batching-settings`
+- `PUT /api/v1/fx-auto-batching-settings`
 - `GET /api/database/tables`
 - `GET /api/database/tables/{tableName}`
 

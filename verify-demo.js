@@ -732,15 +732,29 @@ function verifyFreshSchemaAndSeed() {
   const cascadePricingRuleId = Number(database.prepare(`
     INSERT INTO pricing_rules
       (counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
-    SELECT ?, c.execution_context_id, 'EUR_USD', 0.01
+    SELECT ?, c.execution_context_id, pair.ccy_pair_code, 0.01
     FROM execution_contexts c
+    INNER JOIN trading_counterparty_execution_contexts assignment
+      ON assignment.execution_context_id = c.execution_context_id
+      AND assignment.counterparty_id = ?
     INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
-    WHERE c.execution_context_id NOT IN
-      (SELECT execution_context_id FROM pricing_rules WHERE counterparty_id = ? AND ccy_pair_code = 'EUR_USD')
-      AND e.pricing_mode = 'AUTO_PRICED'
-    ORDER BY c.execution_context_id
+    CROSS JOIN ccy_pair_options pair
+    WHERE e.pricing_mode = 'AUTO_PRICED'
+      AND NOT EXISTS
+      (
+        SELECT 1
+        FROM pricing_rules existing_rule
+        WHERE existing_rule.counterparty_id = ?
+          AND existing_rule.execution_context_id = c.execution_context_id
+          AND existing_rule.ccy_pair_code = pair.ccy_pair_code
+      )
+    ORDER BY c.execution_context_id, pair.ccy_pair_code
     LIMIT 1
-  `).run(clientGenerationCounterpartyId, clientGenerationCounterpartyId).lastInsertRowid);
+  `).run(
+    clientGenerationCounterpartyId,
+    clientGenerationCounterpartyId,
+    clientGenerationCounterpartyId
+  ).lastInsertRowid);
 
   database.prepare(`
     INSERT INTO client_deal_generation_settings
@@ -1379,6 +1393,14 @@ function verifyFreshSchemaAndSeed() {
     clientDealGenerationProcessSettingsColumns: database.prepare(`
       PRAGMA table_info(client_deal_generation_process_settings)
     `).all().map(column => column.name),
+    fxAutoBatchingSettings: database.prepare(`
+      SELECT *
+      FROM fx_auto_batching_settings
+      WHERE settings_id = 1
+    `).get(),
+    fxAutoBatchingSettingsColumns: database.prepare(`
+      PRAGMA table_info(fx_auto_batching_settings)
+    `).all().map(column => column.name),
     clientDealGenerationSettingsColumns: database.prepare(`
       PRAGMA table_info(client_deal_generation_settings)
     `).all().map(column => column.name),
@@ -1615,6 +1637,12 @@ function verifyFrontendStructure() {
   const fxBatchFormationApplicationSource = normalizedSource(
     path.join("backend", "fx-batching", "application", "form-fx-batch-use-case.js")
   );
+  const fxAutoBatchingProcessSource = normalizedSource(
+    path.join("backend", "fx-batching", "application", "fx-auto-batching-process.js")
+  );
+  const fxAutoBatchSelectionSource = normalizedSource(
+    path.join("backend", "fx-batching", "domain", "fx-auto-batch-selection.js")
+  );
   const clientDealGeneratorSource = normalizedSource(
     path.join("backend", "client-fx-deal", "client-fx-deal-generator.js")
   );
@@ -1657,6 +1685,9 @@ function verifyFrontendStructure() {
   )?.[0] || "";
   const hedgingSettingsPageMarkup = html.match(
     /<main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page hedging-settings-page" id="hedgingSettingsPage"[\s\S]*?<\/main>/
+  )?.[0] || "";
+  const batchingSettingsPageMarkup = html.match(
+    /<main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page batching-settings-page" id="batchingSettingsPage"[\s\S]*?<\/main>/
   )?.[0] || "";
   const editClientDealDialogMarkup = html.match(
     /<dialog class="client-deal-create-dialog" id="editDealDialog"[\s\S]*?<\/dialog>/
@@ -1970,6 +2001,41 @@ function verifyFrontendStructure() {
       && schemaSource.includes(
         "FOREIGN KEY (pricing_rule_id, counterparty_id, ccy_pair_code)"
       ),
+    usesFxAutoBatchingSettings:
+      schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_auto_batching_settings")
+      && serverSource.includes("function ensureFxAutoBatchingSettings(sqlite)")
+      && serverSource.includes("function fxAutoBatchingSettings()")
+      && serverSource.includes('pathname === "/api/v1/fx-auto-batching-settings"')
+      && serverSource.includes("fxAutoBatchingSettings: fxAutoBatchingSettings()")
+      && batchingSettingsPageMarkup.includes(">Batching Settings</h1>")
+      && batchingSettingsPageMarkup.includes(">Auto Batching</h2>")
+      && batchingSettingsPageMarkup.includes('name="maxIntervalSeconds"')
+      && batchingSettingsPageMarkup.includes('id="autoBatchingSettingsSaveButton"')
+      && inlineScript.includes("function batchingSettingsRoute()")
+      && inlineScript.includes("function isBatchingSettingsRoute()")
+      && inlineScript.includes("async function loadBatchingSettingsPage()")
+      && inlineScript.includes("async function saveAutoBatchingSettings(event)")
+      && fxPositionPageMarkup.includes('id="autoBatchingSettingsButton"')
+      && /autoBatchingSettingsButton\.addEventListener\("click",[\s\S]*?location\.hash = batchingSettingsRoute\(\)/.test(inlineScript)
+      && /class="batch-control batch-toolbar-settings"[\s\S]*?id="autoBatchingSettingsButton"/.test(batchToolbarMarkup),
+    usesFxAutoBatchingProcess:
+      fxAutoBatchingProcessSource.includes("class FxAutoBatchingProcess")
+      && fxAutoBatchingProcessSource.includes("scheduleNextCycle()")
+      && fxAutoBatchingProcessSource.includes("batchingInProgress")
+      && !fxAutoBatchingProcessSource.includes("setIntervalFn")
+      && fxAutoBatchSelectionSource.includes("selectNextAutoBatchTradeIds")
+      && fxAutoBatchSelectionSource.includes("settlementBucketKey")
+      && serverSource.includes("new FxAutoBatchingProcess")
+      && serverSource.includes("selectNextAutoBatchTradeIds(fxPositions())")
+      && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process"')
+      && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process/start"')
+      && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process/stop"')
+      && serverSource.includes("fxAutoBatchingProcess: fxAutoBatchingProcess.status()")
+      && inlineScript.includes("async function toggleFxAutoBatchingProcess()")
+      && inlineScript.includes("async function refreshFxAutoBatchingProcess()")
+      && inlineScript.includes(
+        'autoBatchButton.addEventListener("click", toggleFxAutoBatchingProcess)'
+      ),
     usesCompactHedgingSettingsLayout:
       /#hedgingSettingsPage\.unified-bootstrap-workspace\.workbench-page \.hedging-settings-panel \{[\s\S]*?width: fit-content;[\s\S]*?max-width: 100%;/.test(html)
       && html.includes(
@@ -2075,7 +2141,7 @@ function verifyFrontendStructure() {
         databaseTableSectionsSource
       )
       && !databaseTableSectionsSource.includes('id: "execution-context"')
-      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"fx_hedge_quick_mode_settings"\s*\]/.test(
+      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"fx_hedge_quick_mode_settings",\s*"fx_auto_batching_settings"\s*\]/.test(
         databaseTableSectionsSource
       )
       && !databaseTableSectionsSource.includes('id: "hedging-settings"')
@@ -2208,11 +2274,13 @@ function verifyFrontendStructure() {
       && inlineScript.includes("let fxPositionsRequestSequence = 0;")
       && inlineScript.includes("requestSequence !== fxPositionsRequestSequence"),
     usesBatchingHistory:
-      html.includes('id="workspaceBatchingToggle"')
+      html.includes('id="workspaceBatchesLink"')
       && html.includes('href="#batching:history"')
+      && html.includes('>Batches</span>')
+      && !html.includes('id="workspaceBatchingMenu"')
       && html.includes('id="batchingHistoryPage"')
       && html.includes('id="batchingHistoryGrid"')
-      && html.includes(">Batching History</span>")
+      && html.includes('<h1 class="page-title">Batching History</h1>')
       && inlineScript.includes("function initializeBatchingHistoryGrid(data)")
       && inlineScript.includes('demoApiRequest("/api/v1/fx-batches")')
       && inlineScript.includes('title: "Batch ID"')
@@ -2482,7 +2550,8 @@ function verifyFrontendStructure() {
       && fxPositionPageMarkup.includes('class="form-check-input select-all-checkbox"')
       && fxPositionPageMarkup.includes('aria-label="Ccy pair selector"')
       && fxPositionPageMarkup.includes('id="runClientDealGenerationLabel">Auto Generate</span>')
-      && fxPositionPageMarkup.includes('id="autoBatchButton" aria-label="Auto Batch" disabled>Auto Batch</button>')
+      && fxPositionPageMarkup.includes('id="autoBatchButton" aria-label="Start Auto Batching"')
+      && fxPositionPageMarkup.includes('id="autoBatchLabel">Auto Batch</span>')
       && !fxPositionPageMarkup.includes(">play_arrow</span>")
       && (fxPositionPageMarkup.match(/>settings<\/span>/g) || []).length === 3
       && !fxPositionPageMarkup.includes("&#9654;")
@@ -2559,16 +2628,18 @@ function verifyFrontendStructure() {
       && html.includes('class="workspace-nav-menu-link" href="#pricing-rules"')
       && inlineScript.includes("function setWorkspaceNavMenuOpen")
       && inlineScript.includes("workspaceNavMenuEntries.forEach(entry =>"),
-    usesGroupedTradesNavigation: html.includes('id="workspaceTradesToggle"')
-      && html.includes('aria-controls="workspaceTradesMenu"')
-      && html.includes('data-workspace-nav-menu-toggle="workspaceTradesMenu"')
-      && html.includes(
-        'data-workspace-routes="client-fx-deals hedge-fx-deals"'
-      )
+    usesTabbedTradesWorkspace: html.includes('id="workspaceTradesLink"')
+      && html.includes('href="#client-fx-deals"')
+      && html.includes('data-workspace-routes="client-fx-deals hedge-fx-deals"')
       && html.includes('>currency_exchange</span>')
-      && html.includes('id="workspaceTradesMenu" role="menu" aria-label="Trades" data-workspace-nav-menu hidden')
-      && html.includes('class="workspace-nav-menu-link" href="#client-fx-deals"')
-      && html.includes('class="workspace-nav-menu-link" href="#hedge-fx-deals"')
+      && !html.includes('id="workspaceTradesMenu"')
+      && html.includes('id="fxDealsPage"')
+      && html.includes('<h1 class="page-title">Trades</h1>')
+      && html.includes('id="clientFxDealsTab" href="#client-fx-deals"')
+      && html.includes('id="hedgeFxDealsTab" href="#hedge-fx-deals"')
+      && html.includes('role="tabpanel" aria-labelledby="clientFxDealsTab"')
+      && html.includes('role="tabpanel" aria-labelledby="hedgeFxDealsTab"')
+      && inlineScript.includes("function setFxDealsActiveTab(activeRoute)")
       && !html.includes('class="workspace-nav-link" href="#hedging-settings" data-workspace-route="hedging-settings"'),
     usesGroupedSettingsNavigation: html.includes('id="workspaceSettingsToggle"')
       && html.includes('aria-controls="workspaceSettingsMenu"')
@@ -2581,32 +2652,12 @@ function verifyFrontendStructure() {
       && html.includes('<span>Currency Settings</span>')
       && html.includes('<span>Currency Pair Settings</span>')
       && html.includes('<span>Hedging Settings</span>'),
-    usesGroupedPricingWorkspace: html.includes(
-      '<section class="home-navigation-group" aria-labelledby="homePricingTitle">'
-    )
-      && html.includes(
-        '<h2 class="home-navigation-group-title" id="homePricingTitle">Pricing</h2>'
-      )
-      && html.includes('<nav class="home-links" aria-label="Pricing navigation">')
-      && html.includes("#homePage.workbench-home .home-navigation-group {")
-      && html.includes("grid-template-columns: repeat(3, minmax(220px, 1fr));"),
-    usesGroupedTradesWorkspace: html.includes(
-      '<section class="home-navigation-group" aria-labelledby="homeTradesTitle">'
-    )
-      && html.includes(
-        '<h2 class="home-navigation-group-title" id="homeTradesTitle">Trades</h2>'
-      )
-      && html.includes('<nav class="home-links" aria-label="Trades navigation">')
-      && html.includes('<span class="home-link-title">Client FX Deals</span>')
-      && html.includes('<span class="home-link-title">Hedge FX Deals</span>'),
-    usesGroupedSettingsWorkspace: html.includes(
-      '<section class="home-navigation-group" aria-labelledby="homeSettingsTitle">'
-    )
-      && html.includes('<h2 class="home-navigation-group-title" id="homeSettingsTitle">Settings</h2>')
-      && html.includes('<nav class="home-links" aria-label="Settings navigation">')
-      && html.includes('<span class="home-link-title">Currency Settings</span>')
-      && html.includes('<span class="home-link-title">Currency Pair Settings</span>')
-      && html.includes('<span class="home-link-title">Hedging Settings</span>'),
+    usesFxPositionAsDefaultWorkspace: !html.includes('id="homePage"')
+      && !html.includes('data-workspace-route="home"')
+      && html.includes('<title>FX Position</title>')
+      && inlineScript.includes('function batchingBlotterRoute()')
+      && inlineScript.includes('return "#fx-position";')
+      && inlineScript.includes('location.hash = batchingBlotterRoute();'),
     usesImmutableClientFxDealEdit: editClientDealDialogMarkup.includes(">Edit Client Deal Comment</h2>")
       && editClientDealDialogMarkup.includes('class="modal-content"')
       && editClientDealDialogMarkup.includes(">Trade Context</div>")
@@ -2665,6 +2716,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes('title: "Trade Economics"')
       && inlineScript.includes('title: "Value Date Details"')
       && inlineScript.includes('title: "Pricing Details"')
+      && inlineScript.includes('formatter: fxDealsExecutionContextFormatter')
       && !html.includes('id="hedgeFxDealsTable"'),
     persistsClientFxDealAttribution: inlineScript.includes("executionContextId:")
       && inlineScript.includes("pricingRuleId:")
@@ -2737,7 +2789,9 @@ function verifyFrontendStructure() {
       && html.includes("grid-template-columns: max-content max-content minmax(0, 1fr);")
       && html.includes(".client-deal-create-dialog .client-deal-currency-pair-field .form-select")
       && html.includes("width: calc(7ch + 4rem);")
-      && /:is\(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage\)[\s\S]*?:is\(\.client-deal-currency-pair-field, \.client-deal-pricing-mode-field\) \.form-select \{[\s\S]*?height: 44px;[\s\S]*?font-size: 15px;[\s\S]*?font-weight: 600;/.test(html),
+      && /:is\(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage\)[\s\S]*?:is\(\.client-deal-currency-pair-field, \.client-deal-pricing-mode-field\) \.form-select \{[\s\S]*?height: 44px;[\s\S]*?min-height: 44px;/.test(html)
+      && /:is\(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage\)[\s\S]*?\.client-deal-currency-pair-field \.form-select,[\s\S]*?#hedgingSettingsPage \.client-deal-pricing-mode-field \.form-select \{[\s\S]*?font-size: var\(--app-font-size-control-emphasis\);[\s\S]*?font-weight: var\(--app-font-weight-semibold\);/.test(html)
+      && /:is\(#addClientDealDialog, #addHedgeDealDialog\)[\s\S]*?\.client-deal-pricing-mode-field \.form-select \{[\s\S]*?font-size: var\(--app-font-size-control\);[\s\S]*?font-weight: var\(--app-font-weight-medium\);/.test(html),
     usesWrappingClientPicker: addClientDealDialogMarkup.includes('id="addClientDealClientPicker"')
       && addClientDealDialogMarkup.includes('id="addClientDealClientPickerValue"')
       && addClientDealDialogMarkup.includes('id="addClientDealClientPickerToggle"')
@@ -2922,13 +2976,10 @@ function verifyFrontendStructure() {
       && html.includes(">Internal Units<")
       && html.includes('name="counterpartyRole"'),
     usesDomainNavigationIcons:
-      html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>\n        <span>Batching</span>')
-      && html.includes('<span class="button-icon home-navigation-group-icon" aria-hidden="true">stacks</span>')
+      html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>\n        <span>Batches</span>')
       && html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">badge</span>\n        <span>Trading Counterparties</span>')
-      && html.includes('<span class="home-icon" aria-hidden="true">badge</span>\n          <span>\n            <span class="home-link-title">Trading Counterparties</span>')
       && html.includes('<span class="button-icon workspace-nav-icon" aria-hidden="true">group</span>\n        <span>Users</span>')
-      && html.includes('<span class="home-icon" aria-hidden="true">group</span>\n          <span>\n            <span class="home-link-title">Users</span>')
-      && (html.match(/>badge<\/span>/g) || []).length === 3
+      && (html.match(/>badge<\/span>/g) || []).length === 2
       && !html.includes(">manage_accounts</span>"),
     usesTradingCounterpartyColumnFilters: html.includes('id="tradingCounterpartyTypeFilter"')
       && html.includes('id="tradingCounterpartyCodeTypeFilter"')
@@ -3342,7 +3393,7 @@ function verifyFrontendStructure() {
       && html.includes('class="settings-topbar workbench-page-header" aria-label="Reference Data header"')
       && /\.workbench-page-header\s*\{\s*border-bottom:\s*0;/.test(html),
     usesLargeClientFxDealsTabulator: html.includes('id="clientFxDealsPage"')
-      && html.includes('client-deals-bootstrap workbench-page')
+      && html.includes('client-deals-bootstrap unified-bootstrap-workspace workbench-page')
       && html.includes('id="clientFxDealsGrid"')
       && !html.includes('id="clientFxDealsTable"')
       && !html.includes('id="clientFxDealRows"')
@@ -3375,7 +3426,14 @@ function verifyFrontendStructure() {
       && inlineScript.includes('headerFilter: clientFxDealsIdentifierHeaderFilter')
       && inlineScript.includes('title: "Client Side", field: "side", headerSort: false')
       && inlineScript.includes('title: "Tenor", field: "tenor", headerSort: false')
-      && inlineScript.includes('title: "Execution Context", field: "executionContextLabel", headerSort: false')
+      && inlineScript.includes('title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter')
+      && inlineScript.includes('class="client-pricing-context-candidate-path fx-deals-execution-context-path"')
+      && inlineScript.includes('pricingContextFacetsMarkup(context)')
+      && html.includes('.client-deals-bootstrap .fx-deals-execution-context-path {')
+      && html.includes('.client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-sorter {')
+      && html.includes('transition: opacity 120ms ease;')
+      && html.includes('.tabulator-col.tabulator-sortable[aria-sort="none"]:hover .tabulator-col-sorter {')
+      && html.includes('.tabulator-col.tabulator-sortable:is([aria-sort="ascending"], [aria-sort="descending"]) .tabulator-col-sorter {')
       && inlineScript.includes('initialSort: [{ column: "tradeId", dir: "asc" }]')
       && !html.includes('id="clientFxDealsPinMode"')
       && !inlineScript.includes('applyClientFxDealsPinMode'),
@@ -3562,7 +3620,8 @@ function verifyFrontendStructure() {
       && html.includes('class="batch-control deal-generation-control" aria-label="Demo Deal Generation actions"')
       && html.includes('<span class="batch-label">Demo Generation</span>')
       && html.includes('id="runClientDealGenerationLabel">Auto Generate</span>')
-      && html.includes('id="autoBatchButton" aria-label="Auto Batch" disabled>Auto Batch</button>')
+      && html.includes('id="autoBatchButton" aria-label="Start Auto Batching"')
+      && html.includes('id="autoBatchLabel">Auto Batch</span>')
       && (fxPositionPageMarkup.match(/toolbar-secondary-action/g) || []).length === 7
       && fxPositionPageMarkup.includes('class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-process" id="autoBatchButton"')
       && !fxPositionPageMarkup.includes('btn-outline-success batch-process" id="autoBatchButton"')
@@ -3637,21 +3696,26 @@ function verifyFrontendStructure() {
       && html.includes(':is(#pricingPage, #pricingRulesPage, #databasePage).unified-bootstrap-workspace.workbench-page .profile-table-wrap')
       && html.includes('#pricingRulesPage.unified-bootstrap-workspace.workbench-page .profile-table-wrap,')
       && html.includes('width: fit-content;'),
-    usesCentralWorkbenchDesignContract: html.includes('--workbench-title-size: 22px;')
-      && html.includes('--workbench-grid-size: 12px;')
+    usesCentralWorkbenchDesignContract: html.includes('--app-font-size-page-title: 22px;')
+      && html.includes('--app-font-size-dialog-title: 18px;')
+      && html.includes('--app-font-size-section-title: 15px;')
+      && html.includes('--app-font-size-body: 13px;')
+      && html.includes('--app-font-size-table: 12px;')
+      && html.includes('--app-font-size-label: 12px;')
+      && html.includes('--app-font-size-caption: 11px;')
+      && html.includes('--workbench-title-size: var(--app-font-size-page-title);')
+      && html.includes('--workbench-grid-size: var(--app-font-size-table);')
       && html.includes('--workbench-grid-row-height: 36px;')
       && html.includes('--workbench-grid-header-bg: var(--bs-tertiary-bg, #f8f9fa);')
-      && html.includes('class="home-shell workbench-page workbench-home"')
       && html.includes('class="settings-shell profile-shell market-shell market-bootstrap workbench-page"')
-      && html.includes('class="shell blotter-shell client-deals-bootstrap workbench-page"')
+      && html.includes('class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace workbench-page"')
       && html.includes('.workbench-grid-toolbar,')
       && html.includes('border: var(--data-grid-line-width) solid var(--data-grid-line-color);'),
     usesUnifiedPageHeaderSeparation: (html.match(/class="[^"]*\bworkbench-page-header\b[^"]*"/g) || []).length === 13
       && html.includes('class="workspace-nav bg-body-tertiary border-bottom"')
       && html.includes('background: var(--bs-tertiary-bg);')
       && html.includes('The global navigation owns the page boundary; page headings use whitespace, not a second rule.')
-      && /\.workbench-page-header\s*\{\s*border-bottom:\s*0;/.test(html)
-      && /#homePage\.workbench-home \.home-title\s*\{\s*margin:\s*0;\s*padding:\s*0;\s*border:\s*0;/.test(html),
+      && /\.workbench-page-header\s*\{\s*border-bottom:\s*0;/.test(html),
     usesSingleMarketOuterEdge: /#marketPage\.market-bootstrap\.workbench-page \.market-tabulator \.tabulator-header \.tabulator-col\.market-grid-actions-cell,\s*#marketPage\.market-bootstrap\.workbench-page \.market-tabulator \.tabulator-row \.tabulator-cell\.market-grid-actions-cell \{\s*border-right: 0;\s*\}/.test(html),
     usesSingleClientDealsOuterEdge: html.includes('.tabulator-header .client-deals-group-position-processing .tabulator-col-group-cols > .tabulator-col:not([style*="display: none"]):not(:has(~ .tabulator-col:not([style*="display: none"])))')
       && html.includes('.tabulator-row .tabulator-cell:not([style*="display: none"]):not(:has(~ .tabulator-cell:not([style*="display: none"]))) {'),
@@ -6319,6 +6383,7 @@ async function main() {
       "execution_contexts",
       "execution_systems",
       "external_counterparties",
+      "fx_auto_batching_settings",
       "fx_batch_members",
       "fx_batch_position_output",
       "fx_batch_quote_cash_output",
@@ -6391,6 +6456,10 @@ async function main() {
       || freshSchema.clientDealGenerationProcessSettings?.max_interval_seconds !== 3
       || freshSchema.clientDealGenerationProcessSettings?.min_deals_per_cycle !== 3
       || freshSchema.clientDealGenerationProcessSettings?.max_deals_per_cycle !== 7
+      || freshSchema.fxAutoBatchingSettingsColumns.join(",")
+        !== "settings_id,max_interval_seconds,updated_at"
+      || freshSchema.fxAutoBatchingSettings?.settings_id !== 1
+      || freshSchema.fxAutoBatchingSettings?.max_interval_seconds !== 60
       || freshSchema.clientDealGenerationSettings !== 2
       || freshSchema.clientDealGenerationSettingsColumns.join(",") !== "pricing_rule_id,min_base_ccy_amount_minor,max_base_ccy_amount_minor,base_ccy_amount_step_minor,base_ccy_fraction_digits,buy_probability_percent,is_active"
       || freshSchema.clientDealGenerationSettingsForeignKeys.length !== 1
@@ -6582,6 +6651,7 @@ async function main() {
       || !frontend.usesDedicatedAddHedgeDealFlow
       || !frontend.usesQuickHedgeMode
       || !frontend.usesHedgeQuickModeSettingsEditor
+      || !frontend.usesFxAutoBatchingSettings
       || !frontend.usesCompactHedgingSettingsLayout
       || !frontend.usesHedgeCounterpartyPricingRules
       || !frontend.usesPricingModeIndicators
@@ -6608,11 +6678,9 @@ async function main() {
       || !frontend.showsAutoPricedClientDealGenerationMode
       || !frontend.usesNeutralMarketPulseNavigationIcon
       || !frontend.usesGroupedPricingNavigation
-      || !frontend.usesGroupedTradesNavigation
+      || !frontend.usesTabbedTradesWorkspace
       || !frontend.usesGroupedSettingsNavigation
-      || !frontend.usesGroupedPricingWorkspace
-      || !frontend.usesGroupedTradesWorkspace
-      || !frontend.usesGroupedSettingsWorkspace
+      || !frontend.usesFxPositionAsDefaultWorkspace
       || !frontend.usesImmutableClientFxDealEdit
       || !frontend.usesAuthoritativeClientDealRefresh
       || !frontend.usesHedgeFxDealsTabulator

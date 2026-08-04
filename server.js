@@ -3,6 +3,7 @@
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
+const { randomUUID } = require("node:crypto");
 const { URL } = require("node:url");
 const { DatabaseSync } = require("node:sqlite");
 const { MarketPulseSimulator } = require("./backend/market-pulse-simulation/market-pulse-simulator");
@@ -31,6 +32,16 @@ const {
 const {
   FormFxBatchUseCase
 } = require("./backend/fx-batching/application/form-fx-batch-use-case");
+const {
+  FxAutoBatchingProcess
+} = require("./backend/fx-batching/application/fx-auto-batching-process");
+const {
+  selectNextAutoBatchTradeIds
+} = require("./backend/fx-batching/domain/fx-auto-batch-selection");
+const {
+  FX_AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT,
+  fxAutoBatchingSettings: validatedFxAutoBatchingSettings
+} = require("./backend/fx-batching/domain/fx-auto-batching-settings");
 const {
   FX_BATCH_MEMBER_ROLE,
   FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES,
@@ -279,6 +290,7 @@ if (databaseAlreadyInitialized && !hedgeQuickModeSettingsAlreadyInitialized) {
 migrateTradingCounterpartyExecutionContexts(database);
 ensureTradingCounterpartyExecutionContextIntegrityTriggers(database);
 ensureUiTableColumnSettings(database);
+ensureFxAutoBatchingSettings(database);
 
 function tableColumnNames(sqlite, tableName) {
   return new Set(sqlite.prepare(`PRAGMA table_info(${tableName})`).all().map(column => column.name));
@@ -298,6 +310,14 @@ function runInImmediateTransaction(sqlite, operation) {
 
     throw error;
   }
+}
+
+function ensureFxAutoBatchingSettings(sqlite) {
+  sqlite.prepare(`
+    INSERT OR IGNORE INTO fx_auto_batching_settings
+      (settings_id, max_interval_seconds)
+    VALUES (1, ?)
+  `).run(FX_AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT);
 }
 
 function sqliteTableExists(sqlite, tableName) {
@@ -6425,6 +6445,40 @@ function deleteHedgeQuickModeSetting(ccyPairCode) {
   `).run(ccyPairCode).changes === 1;
 }
 
+function fxAutoBatchingSettings() {
+  const settings = database.prepare(`
+    SELECT
+      max_interval_seconds AS maxIntervalSeconds,
+      updated_at AS updatedAt
+    FROM fx_auto_batching_settings
+    WHERE settings_id = 1
+  `).get();
+
+  if (!settings) {
+    throw new Error("FX Auto Batching Settings are not configured.");
+  }
+
+  return {
+    ...validatedFxAutoBatchingSettings(settings),
+    updatedAt: settings.updatedAt
+  };
+}
+
+function updateFxAutoBatchingSettings(payload) {
+  const result = database.prepare(`
+    UPDATE fx_auto_batching_settings
+    SET max_interval_seconds = ?,
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE settings_id = 1
+  `).run(payload.maxIntervalSeconds);
+
+  if (result.changes !== 1) {
+    throw new Error("FX Auto Batching Settings are not configured.");
+  }
+
+  return fxAutoBatchingSettings();
+}
+
 function clientDealGenerationProcessSettings() {
   const settings = database.prepare(`
     SELECT
@@ -7503,6 +7557,17 @@ const formFxBatchUseCase = new FormFxBatchUseCase({
   }
 });
 
+function nextFxAutoBatchTradeIds() {
+  return selectNextAutoBatchTradeIds(fxPositions());
+}
+
+const fxAutoBatchingProcess = new FxAutoBatchingProcess({
+  selectNextTradeIds: nextFxAutoBatchTradeIds,
+  formBatch: command => formFxBatchUseCase.execute(command),
+  getIntervalMs: () => fxAutoBatchingSettings().maxIntervalSeconds * 1000,
+  createIdempotencyKey: () => `auto-batch:${randomUUID()}`
+});
+
 function clientFxDealWithCalculatedEconomics(payload, exposureAmounts) {
   const pair = ccyPairOption(payload.ccyPairCode);
   const baseCcyAmount = exposureAmounts.baseCcyAmount;
@@ -7916,6 +7981,7 @@ function demoTradeTableCounts() {
 
 function resetDemoTrades() {
   clientDealGenerationProcess.stop();
+  fxAutoBatchingProcess.stop();
 
   const triggerPlaceholders = DEMO_TRADE_RESET_DELETE_TRIGGERS.map(() => "?").join(", ");
   const triggerDefinitions = database.prepare(`
@@ -7976,6 +8042,7 @@ function resetDemoTrades() {
   return {
     removed,
     generationProcess: clientDealGenerationProcess.reset(),
+    autoBatchingProcess: fxAutoBatchingProcess.reset(),
     resetAt: new Date().toISOString()
   };
 }
@@ -9141,6 +9208,18 @@ function pricingRuleReferenceError(payload) {
   return "";
 }
 
+function validateFxAutoBatchingSettingsPayload(body) {
+  try {
+    return validatedFxAutoBatchingSettings(body);
+  } catch (error) {
+    return {
+      error: error?.code === "INVALID_FX_AUTO_BATCHING_SETTINGS"
+        ? error.message
+        : "FX Auto Batching Settings are invalid."
+    };
+  }
+}
+
 function pricingRuleExecutionContextAssignmentError(payload) {
   if (tradingCounterpartyExecutionContext(
     payload.counterpartyId,
@@ -9494,6 +9573,8 @@ async function handleApi(request, response, url) {
         ...autoPricedHedgeDealPricingRules()
       ],
       hedgeQuickModeSettings: hedgeQuickModeSettings(),
+      fxAutoBatchingSettings: fxAutoBatchingSettings(),
+      fxAutoBatchingProcess: fxAutoBatchingProcess.status(),
       clientFxDeals: clientFxDeals(),
       hedgeFxDeals: hedgeFxDeals(),
       fxPositions: fxPositions(),
@@ -9745,6 +9826,50 @@ async function handleApi(request, response, url) {
 
   if (pathname === "/api/v1/fx-positions" && method === "GET") {
     sendJson(response, 200, fxPositions());
+    return true;
+  }
+
+  if (pathname === "/api/v1/fx-auto-batching-settings" && method === "GET") {
+    sendJson(response, 200, fxAutoBatchingSettings());
+    return true;
+  }
+
+  if (pathname === "/api/v1/fx-auto-batching-settings" && method === "PUT") {
+    const body = await readJsonBody(request);
+    const payload = validateFxAutoBatchingSettingsPayload(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_FX_AUTO_BATCHING_SETTINGS", payload.error);
+      return true;
+    }
+
+    try {
+      const settings = updateFxAutoBatchingSettings(payload);
+      fxAutoBatchingProcess.reschedule();
+      sendJson(response, 200, settings);
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
+    return true;
+  }
+
+  if (pathname === "/api/v1/fx-auto-batching/process" && method === "GET") {
+    sendJson(response, 200, fxAutoBatchingProcess.status());
+    return true;
+  }
+
+  if (pathname === "/api/v1/fx-auto-batching/process/start" && method === "POST") {
+    try {
+      sendJson(response, 200, fxAutoBatchingProcess.start());
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+    return true;
+  }
+
+  if (pathname === "/api/v1/fx-auto-batching/process/stop" && method === "POST") {
+    sendJson(response, 200, fxAutoBatchingProcess.stop());
     return true;
   }
 
@@ -11520,6 +11645,7 @@ server.on("error", error => {
   }
 
   clientDealGenerationProcess.dispose();
+  fxAutoBatchingProcess.dispose();
   marketPulseSimulator.dispose();
   database.close();
   process.exitCode = 1;
@@ -11535,6 +11661,7 @@ function closeServer() {
   shutdownStarted = true;
   server.close(() => {
     clientDealGenerationProcess.dispose();
+    fxAutoBatchingProcess.dispose();
     marketPulseSimulator.dispose();
     database.close();
     process.exit(0);
@@ -11551,6 +11678,7 @@ if (require.main === module) {
 
   if (process.argv.includes("--init-only")) {
     clientDealGenerationProcess.dispose();
+    fxAutoBatchingProcess.dispose();
     database.close();
     console.log(`SQLite initialized: ${DATABASE_PATH}`);
   } else {
@@ -11566,6 +11694,7 @@ module.exports = {
   handleApi,
   closeDatabase: () => {
     clientDealGenerationProcess.dispose();
+    fxAutoBatchingProcess.dispose();
     marketPulseSimulator.dispose();
     database.close();
   }

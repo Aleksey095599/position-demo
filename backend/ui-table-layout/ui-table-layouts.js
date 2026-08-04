@@ -29,7 +29,6 @@ function layout(tableLabel, columns) {
 const UI_TABLE_LAYOUTS = Object.freeze({
   pricing_rules_grid: layout("Pricing Rules", [
     ["id", "ID", 64],
-    ["counterparty_type", "Role", 147],
     ["counterparty_code", "Counterparty Code", 122],
     ["counterparty_name", "Counterparty Name", 158],
     ["ccy_pair", "Ccy Pair", 88],
@@ -39,7 +38,6 @@ const UI_TABLE_LAYOUTS = Object.freeze({
   ]),
   internal_pricing_rules_grid: layout("Internal Unit Pricing Rules", [
     ["id", "ID", 64],
-    ["counterparty_type", "Role", 147],
     ["counterparty_code", "Unit Code", 122],
     ["counterparty_name", "Counterparty Name", 158],
     ["ccy_pair", "Ccy Pair", 88],
@@ -73,7 +71,8 @@ const UI_TABLE_LAYOUTS = Object.freeze({
   client_fx_deals_grid: layout("Client FX Deals", [
     ["trade_id", "Trade ID", 96],
     ["entry_timestamp", "Entry Timestamp", 157],
-    ["identifier", "Identifier", 221],
+    ["client_code_type", "Business ID Type", 150],
+    ["client_code", "Business ID", 170],
     ["client_name", "Client Name", 141],
     ["trade_date", "Trade Date", 109],
     ["currency_pair", "Ccy Pair", 94],
@@ -92,8 +91,8 @@ const UI_TABLE_LAYOUTS = Object.freeze({
   hedge_fx_deals_grid: layout("Hedge FX Deals", [
     ["trade_id", "Trade ID", 96],
     ["entry_timestamp", "Entry Timestamp", 157],
-    ["counterparty_code_type", "Counterparty Code Type", 158],
-    ["counterparty_code", "Counterparty Code", 129],
+    ["counterparty_code_type", "Business ID Type", 150],
+    ["counterparty_code", "Business ID", 170],
     ["counterparty_name", "Counterparty Name", 158],
     ["trade_date", "Trade Date", 109],
     ["currency_pair", "Ccy Pair", 94],
@@ -116,32 +115,32 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["created_at", "Created At", 157],
     ["actions", "Actions", 80]
   ]),
-  batch_members_grid: layout("Batch Members", [
+  batch_members_grid: layout("FX Trade Members", [
     ["trade_id", "Trade ID", 96],
-    ["trade_type", "Trade", 281],
+    ["trade_type", "Trade Type", 281],
     ["member_role", "Member Role", 124],
     ["base_balance_contribution_minor", "Base Ccy Leg", 125],
     ["quote_balance_contribution_minor", "Quote Ccy Leg", 130],
     ["transfer_rate", "Transfer Rate", 122],
     ["analytical_pnl_quote_minor", "Analytical PnL", 127],
-    ["base_ccy_value_date", "Base Value Date", 135],
-    ["quote_ccy_value_date", "Quote Value Date", 143]
+    ["base_ccy_value_date", "Base Ccy Value Date", 135],
+    ["quote_ccy_value_date", "Quote Ccy Value Date", 143]
   ]),
-  batch_cash_output_grid: layout("Batch Cash Output", [
+  batch_cash_output_grid: layout("Cash Output", [
     ["currency_code", "Currency", 85],
-    ["balance_contribution_minor", "Cash Amount", 119],
+    ["balance_contribution_minor", "Cash Leg", 119],
     ["value_date", "Value Date", 105]
   ]),
-  batch_position_output_grid: layout("Batch Position Output", [
+  batch_position_output_grid: layout("Net Position Output", [
     ["trade_id", "Trade ID", 93],
-    ["trade_type", "Trade", 281],
+    ["trade_type", "Trade Type", 281],
     ["output_role", "Output Role", 101],
     ["base_balance_contribution_minor", "Base Ccy Leg", 121],
     ["quote_balance_contribution_minor", "Quote Ccy Leg", 126],
     ["transfer_rate", "Transfer Rate", 97],
     ["analytical_pnl_quote_minor", "Analytical PnL", 119],
-    ["base_ccy_value_date", "Base Value Date", 135],
-    ["quote_ccy_value_date", "Quote Value Date", 143]
+    ["base_ccy_value_date", "Base Ccy Value Date", 135],
+    ["quote_ccy_value_date", "Quote Ccy Value Date", 143]
   ]),
   external_counterparties_grid: layout("External Counterparties", [
     ["id", "ID", 70],

@@ -544,6 +544,28 @@ CREATE TABLE IF NOT EXISTS client_deal_generation_process_settings
         )
 );
 
+CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
+(
+    settings_id             INTEGER PRIMARY KEY,
+    max_interval_seconds    INTEGER NOT NULL DEFAULT 60,
+    updated_at              TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT chk_fx_auto_batching_settings_singleton
+        CHECK (settings_id = 1),
+    CONSTRAINT chk_fx_auto_batching_settings_max_interval
+        CHECK (
+            typeof(max_interval_seconds) = 'integer'
+            AND max_interval_seconds BETWEEN 1 AND 3600
+        ),
+    CONSTRAINT chk_fx_auto_batching_settings_updated_at
+        CHECK (
+            length(updated_at) = 24
+            AND updated_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
+        )
+);
+
 CREATE TABLE IF NOT EXISTS client_deal_generation_settings
 (
     pricing_rule_id                   INTEGER PRIMARY KEY,

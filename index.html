@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Demo Workspace</title>
+  <title>FX Position</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,500,0,0">
   <link rel="stylesheet" href="./vendor/bootstrap/bootstrap.min.css">
   <link rel="stylesheet" href="./vendor/tabulator/tabulator_bootstrap5.min.css">
@@ -92,10 +92,26 @@
       --workbench-page-padding-x: 18px;
       --workbench-page-inline-total: 36px;
       --workbench-page-padding-bottom: 24px;
-      --workbench-title-size: 22px;
-      --workbench-title-weight: 500;
-      --workbench-body-size: 13px;
-      --workbench-grid-size: 12px;
+      --app-font-size-page-title: 22px;
+      --app-font-size-dialog-title: 18px;
+      --app-font-size-section-title: 15px;
+      --app-font-size-body: 13px;
+      --app-font-size-control: 13px;
+      --app-font-size-control-emphasis: 15px;
+      --app-font-size-table: 12px;
+      --app-font-size-label: 12px;
+      --app-font-size-caption: 11px;
+      --app-font-size-micro: 10px;
+      --app-font-weight-regular: 400;
+      --app-font-weight-medium: 500;
+      --app-font-weight-semibold: 600;
+      --app-icon-size-sm: 16px;
+      --app-icon-size-md: 18px;
+      --app-icon-size-lg: 20px;
+      --workbench-title-size: var(--app-font-size-page-title);
+      --workbench-title-weight: var(--app-font-weight-medium);
+      --workbench-body-size: var(--app-font-size-body);
+      --workbench-grid-size: var(--app-font-size-table);
       --workbench-grid-row-height: 36px;
       --workbench-grid-header-bg: var(--bs-tertiary-bg, #f8f9fa);
       --workbench-grid-stripe-bg: #f8f9fa;
@@ -119,104 +135,12 @@
       min-width: 970px;
       color: var(--text);
       background: var(--bg);
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 12px;
+      font-family: var(--bs-body-font-family);
+      font-size: var(--app-font-size-body);
     }
 
     .shell {
       padding: 8px 6px;
-    }
-
-    .home-shell {
-      min-height: 100vh;
-      padding: 34px 42px;
-      background:
-        linear-gradient(180deg, var(--surface-page) 0%, var(--surface-card) 42%),
-        var(--bg);
-    }
-
-    .home-panel {
-      max-width: 860px;
-    }
-
-    .home-title {
-      margin: 0;
-      color: var(--text-strong);
-      font-size: 28px;
-      line-height: 1.15;
-      letter-spacing: 0;
-    }
-
-    .home-subtitle {
-      margin: 7px 0 0;
-      color: var(--text-subtle);
-      font-size: 13px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .home-links {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(190px, 1fr));
-      gap: 14px;
-      margin-top: 26px;
-    }
-
-    .home-link {
-      display: grid;
-      grid-template-columns: 54px minmax(0, 1fr);
-      gap: 14px;
-      align-items: center;
-      min-height: 98px;
-      border: 1px solid var(--control-border);
-      border-radius: 6px;
-      background: var(--surface-card);
-      color: var(--text);
-      text-decoration: none;
-      padding: 18px;
-      box-shadow: var(--surface-shadow-raised);
-    }
-
-    .home-link:hover {
-      border-color: var(--selection-accent);
-      background: var(--surface-hover);
-    }
-
-    .home-link:focus-visible {
-      outline: 2px solid var(--selection-accent);
-      outline-offset: 2px;
-    }
-
-    .home-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 54px;
-      height: 54px;
-      border: 1px solid var(--control-border);
-      border-radius: 6px;
-      background: var(--control-icon-bg);
-      color: var(--control-icon-text);
-      font-family: "Material Symbols Outlined";
-      font-size: 30px;
-      font-weight: normal;
-      line-height: 1;
-      font-style: normal;
-      letter-spacing: normal;
-      text-transform: none;
-      white-space: nowrap;
-      direction: ltr;
-      -webkit-font-feature-settings: "liga";
-      -webkit-font-smoothing: antialiased;
-      font-feature-settings: "liga";
-    }
-
-    .home-link-title {
-      display: block;
-      color: var(--text-strong);
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1.2;
     }
 
     .workspace-nav {
@@ -306,9 +230,9 @@
     .page-title {
       margin: 0 8px 0 0;
       color: var(--page-title-text);
-      font-size: 15px;
-      font-weight: 700;
-      line-height: 28px;
+      font-size: var(--app-font-size-page-title);
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.2;
       text-transform: uppercase;
       white-space: nowrap;
     }
@@ -614,7 +538,8 @@
     .settings-title {
       margin: 0;
       color: var(--text-strong);
-      font-size: 22px;
+      font-size: var(--app-font-size-page-title);
+      font-weight: var(--app-font-weight-medium);
       line-height: 1.2;
     }
 
@@ -696,7 +621,8 @@
     .profile-panel-title {
       margin: 0;
       color: var(--text-strong);
-      font-size: 14px;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
       line-height: 1.2;
     }
 
@@ -1153,7 +1079,7 @@
       background: #fbfdff;
     }
 
-    .pricing-rules-table td:nth-child(8) {
+    .pricing-rules-table td:nth-child(7) {
       text-align: right;
     }
 
@@ -2303,7 +2229,7 @@
 
     .pricing-rule-context-help {
       color: var(--control-text-muted);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       line-height: 1.25;
     }
 
@@ -2940,7 +2866,7 @@
       margin-left: 4px;
       border: 1px solid currentColor;
       border-radius: 50%;
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-style: normal;
       font-weight: 700;
       line-height: 1;
@@ -3428,10 +3354,10 @@
 
     .page-title {
       color: var(--page-title-text);
-      font-size: 12px;
-      font-weight: 800;
-      line-height: 24px;
-      text-transform: uppercase;
+      font-size: var(--app-font-size-page-title);
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.2;
+      text-transform: none;
     }
 
     .action-button {
@@ -3564,7 +3490,7 @@
       display: inline-block;
       width: 8px;
       color: #48505a;
-      font-size: 10px;
+      font-size: var(--app-font-size-micro);
       line-height: 1;
       text-align: center;
     }
@@ -3727,7 +3653,7 @@
       color: var(--text);
       background: #ffffff;
       box-shadow: 0 18px 42px rgba(21, 25, 31, 0.22);
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: var(--bs-body-font-family);
     }
 
     .deal-dialog::backdrop {
@@ -3769,7 +3695,8 @@
 
     .dialog-title {
       margin: 0;
-      font-size: 17px;
+      font-size: var(--app-font-size-dialog-title);
+      font-weight: var(--app-font-weight-medium);
       line-height: 1.2;
     }
 
@@ -4149,8 +4076,8 @@
 
     .client-pricing-rule-dialog .dialog-title {
       color: #233646;
-      font-size: 15px;
-      font-weight: 700;
+      font-size: var(--app-font-size-dialog-title);
+      font-weight: var(--app-font-weight-medium);
       letter-spacing: 0;
     }
 
@@ -4214,7 +4141,7 @@
 
     .client-pricing-context-facet-count {
       color: var(--text-muted);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       white-space: nowrap;
     }
@@ -4382,7 +4309,7 @@
 
     .client-pricing-context-option-count {
       color: var(--text-muted);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       white-space: nowrap;
     }
@@ -4507,8 +4434,8 @@
 
     .deal-dialog .dialog-title {
       color: #233646;
-      font-size: 15px;
-      font-weight: 700;
+      font-size: var(--app-font-size-dialog-title);
+      font-weight: var(--app-font-weight-medium);
       letter-spacing: 0;
     }
 
@@ -4692,8 +4619,8 @@
 
     .execution-context-dialog .dialog-title {
       color: var(--bs-body-color, #212529);
-      font-size: 20px;
-      font-weight: 500;
+      font-size: var(--app-font-size-dialog-title);
+      font-weight: var(--app-font-weight-medium);
     }
 
     .execution-context-dialog .dialog-close {
@@ -4732,8 +4659,8 @@
 
     .execution-context-dialog .form-field {
       color: var(--bs-body-color, #212529);
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--app-font-size-label);
+      font-weight: var(--app-font-weight-medium);
     }
 
     .execution-context-dialog .form-field input,
@@ -4743,7 +4670,7 @@
       border-color: var(--bs-border-color, #dee2e6);
       border-radius: var(--bs-border-radius, 6px);
       color: var(--bs-body-color, #212529);
-      font-size: 14px;
+      font-size: var(--app-font-size-control);
     }
 
     .execution-context-dialog .form-field input:focus,
@@ -4764,8 +4691,8 @@
       min-height: 38px;
       border-radius: var(--bs-border-radius, 6px);
       box-shadow: none;
-      font-size: 14px;
-      font-weight: 400;
+      font-size: var(--app-font-size-table);
+      font-weight: var(--app-font-weight-medium);
       padding: 0 12px;
     }
 
@@ -4829,8 +4756,8 @@
     .generation-dialog .modal-title {
       margin: 0;
       color: var(--bs-emphasis-color, #212529);
-      font-size: 20px;
-      font-weight: 500;
+      font-size: var(--app-font-size-dialog-title);
+      font-weight: var(--app-font-weight-medium);
       line-height: 1.2;
     }
 
@@ -4919,7 +4846,7 @@
       align-items: center;
       gap: 5px;
       color: var(--bs-secondary-color, #6c757d);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       line-height: 1.2;
       text-transform: uppercase;
@@ -5127,7 +5054,7 @@
       margin-top: 2px;
       overflow: hidden;
       color: var(--bs-secondary-color, #6c757d);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       text-overflow: ellipsis;
       white-space: nowrap;
     }
@@ -5220,40 +5147,22 @@
       font-weight: 500;
     }
 
-    .deal-toolbar .batch-process {
+    :is(.deal-toolbar, .batch-toolbar) .batch-process {
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
 
-    .deal-toolbar .batch-process .button-icon {
+    :is(.deal-toolbar, .batch-toolbar) .batch-process .button-icon {
       width: auto;
       font-size: 19px;
       line-height: 1;
     }
 
-    .deal-toolbar .batch-process.is-running {
+    :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running {
       border-color: var(--bs-danger, #dc3545);
       background: var(--bs-danger, #dc3545);
       color: #ffffff;
-    }
-
-    .home-link {
-      border-color: var(--large-table-line);
-      border-radius: 0;
-      box-shadow: none;
-    }
-
-    .home-link:hover {
-      border-color: var(--large-table-line-strong);
-      background: var(--large-table-row-hover);
-    }
-
-    .home-icon {
-      border-color: var(--large-table-line);
-      border-radius: 0;
-      background: var(--large-table-header-bg);
-      color: var(--page-title-text);
     }
 
     .workspace-nav-link {
@@ -5341,7 +5250,6 @@
     .action-button:focus-visible,
     .icon-action:focus-visible,
     .dialog-close:focus-visible,
-    .home-link:focus-visible,
     .workspace-nav-link:focus-visible,
     .currency-pair-button:focus-visible,
     .sort-button:focus-visible,
@@ -5573,8 +5481,8 @@
 
     #marketPage.market-bootstrap .settings-title {
       color: var(--bs-emphasis-color);
-      font-size: 24px;
-      font-weight: 600;
+      font-size: var(--app-font-size-page-title);
+      font-weight: var(--app-font-weight-medium);
     }
 
     #marketPage.market-bootstrap .profile-status {
@@ -5842,8 +5750,8 @@
     .pricing-rule-bootstrap-dialog .modal-title {
       margin: 0;
       color: var(--bs-emphasis-color);
-      font-size: 16px;
-      font-weight: 500;
+      font-size: var(--app-font-size-dialog-title);
+      font-weight: var(--app-font-weight-medium);
       line-height: 1.4;
       letter-spacing: 0;
     }
@@ -6215,8 +6123,8 @@
     .client-deal-create-dialog .modal-title {
       margin: 0;
       color: var(--bs-emphasis-color);
-      font-size: 16px;
-      font-weight: 500;
+      font-size: var(--app-font-size-dialog-title);
+      font-weight: var(--app-font-weight-medium);
     }
 
     .client-deal-create-dialog .modal-body {
@@ -6297,8 +6205,8 @@
       border-bottom: var(--data-grid-line-width) solid var(--data-grid-line-color);
       background: var(--bs-tertiary-bg);
       color: var(--bs-emphasis-color);
-      font-size: 12px;
-      font-weight: 600;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
     }
 
     .client-deal-create-section-body {
@@ -6386,12 +6294,23 @@
     }
 
     :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
-      :is(.client-deal-currency-pair-field, .client-deal-pricing-mode-field) .form-select {
+    :is(.client-deal-currency-pair-field, .client-deal-pricing-mode-field) .form-select {
       height: 44px;
       min-height: 44px;
-      font-size: 15px;
-      font-weight: 600;
       line-height: 1.2;
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    .client-deal-currency-pair-field .form-select,
+    #hedgingSettingsPage .client-deal-pricing-mode-field .form-select {
+      font-size: var(--app-font-size-control-emphasis);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog)
+    .client-deal-pricing-mode-field .form-select {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-medium);
     }
 
     .hedge-quick-settings-dialog {
@@ -6545,7 +6464,7 @@
       border-radius: var(--bs-border-radius-sm);
       background: var(--bs-tertiary-bg);
       color: var(--bs-secondary-color);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       line-height: 16px;
       white-space: nowrap;
@@ -7249,7 +7168,7 @@
       border-right: 1px solid var(--bs-border-color);
       padding-right: 10px;
       color: var(--bs-body-color);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       white-space: nowrap;
     }
@@ -7410,7 +7329,7 @@
       background: var(--bs-warning-bg-subtle);
       padding: 2px 6px;
       color: var(--bs-warning-text-emphasis);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       white-space: nowrap;
     }
@@ -7467,7 +7386,7 @@
     .client-deal-manual-pricing-badge {
       margin-left: 4px;
       vertical-align: text-top;
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 500;
     }
 
@@ -7755,8 +7674,8 @@
     }
 
     .client-deals-bootstrap .page-title {
-      font-size: 22px;
-      font-weight: 500;
+      font-size: var(--app-font-size-page-title);
+      font-weight: var(--app-font-weight-medium);
       text-transform: none;
     }
 
@@ -7866,6 +7785,25 @@
       width: 100%;
       height: max(360px, calc(100vh - 178px));
       max-height: 760px;
+    }
+
+    .client-deals-bootstrap .fx-deals-execution-context-path {
+      width: max-content;
+      min-width: max-content;
+      flex-wrap: nowrap;
+      gap: 4px;
+      overflow: visible;
+    }
+
+    .client-deals-bootstrap .fx-deals-execution-context-path .client-pricing-context-candidate-facet {
+      min-width: max-content;
+      flex: 0 0 auto;
+      overflow: visible;
+    }
+
+    .client-deals-bootstrap .fx-deals-execution-context-path .client-pricing-context-candidate-name {
+      overflow: visible;
+      text-overflow: clip;
     }
 
     #batchingHistoryPage .batching-history-content,
@@ -8036,7 +7974,7 @@
     #batchDetailsPage .batch-details-meta dt {
       margin: 0 0 3px;
       color: var(--bs-secondary-color);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -8059,8 +7997,8 @@
 
     #batchDetailsPage .batch-neutrality-title {
       margin: 0 0 10px;
-      font-size: 15px;
-      font-weight: 600;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
     }
 
     #batchDetailsPage .batch-neutrality-equation {
@@ -8180,12 +8118,14 @@
     }
 
     #batchDetailsPage .batch-details-section {
+      width: fit-content;
+      max-width: 100%;
       min-width: 0;
     }
 
     #batchDetailsPage .batch-details-section-header {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 8px;
       margin-bottom: 8px;
     }
@@ -8194,10 +8134,14 @@
       margin-left: 0;
     }
 
+    #batchDetailsPage .batch-details-section-header .ui-table-layout-button {
+      margin-left: auto;
+    }
+
     #batchDetailsPage .batch-details-section-title {
       margin: 0;
-      font-size: 15px;
-      font-weight: 600;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
     }
 
     #batchDetailsPage .batch-details-grid {
@@ -8300,6 +8244,50 @@
       text-transform: uppercase;
     }
 
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-title {
+      padding-right: 10px;
+    }
+
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-sorter {
+      top: 4px;
+      right: 2px;
+      bottom: auto;
+      width: 8px;
+      height: 8px;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 120ms ease;
+    }
+
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+      border-right-width: 3px;
+      border-left-width: 3px;
+    }
+
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort="none"]:hover .tabulator-col-sorter {
+      opacity: 0.55;
+    }
+
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-sortable:is([aria-sort="ascending"], [aria-sort="descending"]) .tabulator-col-sorter {
+      opacity: 1;
+    }
+
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort="none"] .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+      border-top: 0;
+      border-bottom: 4px solid var(--bs-tertiary-color);
+    }
+
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort="ascending"] .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+      border-top: 0;
+      border-bottom: 4px solid var(--bs-secondary-color);
+    }
+
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort="descending"] .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+      border-top: 4px solid var(--bs-secondary-color);
+      border-bottom: 0;
+    }
+
     .client-deals-bootstrap .tabulator .tabulator-header-filter input {
       min-height: 27px;
       padding: 3px 7px;
@@ -8342,7 +8330,7 @@
       min-width: 38px;
       padding: 2px 6px;
       border-radius: var(--bs-border-radius-sm);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       line-height: 1.2;
       text-align: center;
       text-transform: uppercase;
@@ -8362,8 +8350,8 @@
     }
 
     .unified-bootstrap-workspace .settings-title {
-      font-size: 22px;
-      font-weight: 500;
+      font-size: var(--app-font-size-page-title);
+      font-weight: var(--app-font-weight-medium);
       letter-spacing: 0;
       text-transform: none;
     }
@@ -9100,6 +9088,16 @@
       flex: 0 0 auto;
     }
 
+    .workspace-nav-demo-area {
+      display: inline-flex;
+      min-height: 32px;
+      flex: 0 0 auto;
+      align-items: center;
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--bs-border-color);
+    }
+
     .workspace-nav-link {
       height: 32px;
       gap: 5px;
@@ -9226,109 +9224,6 @@
       line-height: 1.2;
       letter-spacing: 0;
       text-transform: none;
-    }
-
-    #homePage.workbench-home {
-      min-height: 100vh;
-      padding: 18px var(--workbench-page-padding-x) var(--workbench-page-padding-bottom);
-      background: var(--bs-body-bg);
-    }
-
-    #homePage.workbench-home .home-panel {
-      width: min(1120px, 100%);
-      max-width: none;
-    }
-
-    #homePage.workbench-home .home-title {
-      margin: 0;
-      padding: 0;
-      border: 0;
-      color: var(--bs-emphasis-color);
-      font-size: var(--workbench-title-size);
-      font-weight: var(--workbench-title-weight);
-      line-height: 1.2;
-    }
-
-    #homePage.workbench-home .home-links {
-      grid-template-columns: repeat(3, minmax(220px, 1fr));
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    #homePage.workbench-home .home-primary-links {
-      grid-template-columns: repeat(4, minmax(200px, 1fr));
-    }
-
-    #homePage.workbench-home .home-navigation-group {
-      margin-top: 16px;
-      padding: 12px;
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--workbench-radius);
-      background: var(--bs-tertiary-bg);
-    }
-
-    #homePage.workbench-home .home-navigation-group-header {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 0 0 10px;
-      border-bottom: 1px solid var(--bs-border-color);
-    }
-
-    #homePage.workbench-home .home-navigation-group-icon {
-      color: var(--bs-secondary-color);
-      font-size: 19px;
-    }
-
-    #homePage.workbench-home .home-navigation-group-title {
-      margin: 0;
-      color: var(--bs-emphasis-color);
-      font-size: 13px;
-      font-weight: 600;
-      line-height: 1.25;
-    }
-
-    #homePage.workbench-home .home-navigation-group .home-links {
-      margin-top: 10px;
-    }
-
-    #homePage.workbench-home .home-link {
-      grid-template-columns: 36px minmax(0, 1fr);
-      gap: 10px;
-      min-height: 64px;
-      padding: 10px 12px;
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--workbench-radius);
-      background: var(--bs-body-bg);
-      color: var(--bs-body-color);
-      box-shadow: none;
-    }
-
-    #homePage.workbench-home .home-link:hover {
-      border-color: var(--bs-primary-border-subtle);
-      background: var(--bs-tertiary-bg);
-    }
-
-    #homePage.workbench-home .home-link:focus-visible {
-      outline: 2px solid rgba(var(--bs-primary-rgb), 0.45);
-      outline-offset: 2px;
-    }
-
-    #homePage.workbench-home .home-icon {
-      width: 36px;
-      height: 36px;
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--workbench-radius);
-      background: var(--bs-tertiary-bg);
-      color: var(--bs-secondary-color);
-      font-size: 21px;
-    }
-
-    #homePage.workbench-home .home-link-title {
-      color: var(--bs-emphasis-color);
-      font-size: 13px;
-      font-weight: 500;
-      line-height: 1.25;
     }
 
     #marketPage.market-bootstrap.workbench-page .market-tabs,
@@ -9637,6 +9532,55 @@
       margin-top: 12px;
     }
 
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-layout {
+      margin-top: 12px;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel {
+      width: min(560px, 100%);
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel .modal-content {
+      border: 0;
+      border-radius: var(--workbench-radius);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel .modal-header {
+      min-height: 42px;
+      padding: 9px 12px;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel .modal-body {
+      padding: 12px;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel .modal-footer {
+      padding: 10px 12px;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field {
+      width: min(360px, 100%);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field .input-group {
+      width: min(220px, 100%);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field .form-text {
+      margin: 4px 0 8px;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field .form-control {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel {
       width: fit-content;
       max-width: 100%;
@@ -9659,8 +9603,8 @@
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel .modal-title {
-      font-size: 14px;
-      font-weight: 600;
+      font-size: var(--app-font-size-dialog-title);
+      font-weight: var(--app-font-weight-medium);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel .modal-body {
@@ -10092,7 +10036,7 @@
       vertical-align: middle;
     }
 
-    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage).unified-bootstrap-workspace.workbench-page .unified-data-table tr > :last-child {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage).unified-bootstrap-workspace.workbench-page .unified-data-table tr > :not([hidden]):not(:has(~ :not([hidden]))) {
       border-right: 0;
     }
 
@@ -10266,7 +10210,7 @@
 
     #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-meta {
       color: var(--bs-secondary-color);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       line-height: 14px;
       white-space: nowrap;
     }
@@ -10407,7 +10351,7 @@
       text-transform: none;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs {
       display: flex;
       width: max-content;
       max-width: 100%;
@@ -10419,7 +10363,7 @@
       gap: 2px;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link {
       display: inline-flex;
       min-height: 34px;
       margin-bottom: -1px;
@@ -10437,24 +10381,32 @@
       box-shadow: none;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:hover {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:hover {
       border-color: var(--bs-nav-tabs-link-hover-border-color);
       color: var(--bs-primary);
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:is(.active, .is-active) {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:is(.active, .is-active) {
       border-color: var(--bs-border-color) var(--bs-border-color) var(--bs-body-bg);
       background: var(--bs-body-bg);
       color: var(--bs-primary);
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link::after {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link::after {
       display: none;
       content: none;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .button-icon {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .button-icon {
       font-size: 17px;
+    }
+
+    #fxDealsPage.workbench-page .trades-tab-panel {
+      min-width: 0;
+    }
+
+    #fxDealsPage.workbench-page .fx-deals-grid {
+      height: max(320px, calc(100vh - 225px));
     }
 
     #referenceDataPage.unified-bootstrap-workspace.workbench-page .reference-layout {
@@ -10462,15 +10414,51 @@
     }
 
     #pricingRulesPage.unified-bootstrap-workspace.workbench-page .pricing-layout {
+      display: grid;
+      min-height: 0;
+      flex: 1 1 auto;
+      grid-template-rows: minmax(0, 1fr);
       margin-top: 12px;
+    }
+
+    #pricingRulesPage.unified-bootstrap-workspace.workbench-page {
+      display: flex;
+      height: calc(100vh - var(--workspace-nav-height));
+      min-height: 0;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #pricingRulesPage.unified-bootstrap-workspace.workbench-page > :is(.settings-topbar, .workbench-section-tabs) {
+      flex: 0 0 auto;
+    }
+
+    #pricingRulesPage.unified-bootstrap-workspace.workbench-page .pricing-layout .profile-table-panel {
+      display: flex;
+      height: 100%;
+      min-height: 0;
+      flex-direction: column;
     }
 
     #pricingRulesPage.unified-bootstrap-workspace.workbench-page .pricing-rules-table-toolbar {
       display: flex;
       width: 100%;
+      flex: 0 0 auto;
       align-items: center;
       justify-content: flex-end;
       margin-bottom: 8px;
+    }
+
+    #pricingRulesPage.unified-bootstrap-workspace.workbench-page .profile-table-wrap {
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow: auto;
+    }
+
+    #pricingRulesPage.unified-bootstrap-workspace.workbench-page .pricing-rules-table thead {
+      position: sticky;
+      z-index: 20;
+      top: 0;
     }
 
     .pricing-rule-quick-hedge-marker {
@@ -10912,9 +10900,9 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .counterparty-card-section-title {
       margin: 0;
       color: var(--bs-emphasis-color);
-      font-size: 13px;
-      font-weight: 500;
-      line-height: 1.2;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.3;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .counterparty-general-details-body,
@@ -11122,9 +11110,9 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-title {
       margin: 0;
       color: var(--bs-emphasis-color);
-      font-size: 13px;
-      font-weight: 500;
-      line-height: 1.2;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.3;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page #clientProfileDetailView .profile-form-actions {
@@ -11142,7 +11130,7 @@
       align-items: center;
       gap: 5px;
       border-radius: var(--workbench-radius);
-      font-size: 12px;
+      font-size: var(--app-font-size-table);
       font-weight: 500;
     }
 
@@ -11315,7 +11303,9 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 6px;
-      margin-left: 2px;
+      margin-left: 5px;
+      padding-left: 12px;
+      border-left: 1px solid var(--bs-border-color);
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-mode {
@@ -11408,7 +11398,7 @@
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row {
       display: flex;
-      justify-content: flex-end;
+      justify-content: flex-start;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row.is-editing {
@@ -11451,6 +11441,8 @@
 
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-meta {
         margin-left: 26px;
+        padding-left: 0;
+        border-left: 0;
       }
 
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-actions {
@@ -11464,7 +11456,10 @@
     }
 
     .client-context-attach-dialog {
-      width: min(1120px, calc(100vw - 32px));
+      width: min(
+        calc(var(--client-context-attach-table-width, 996px) + 36px),
+        calc(100vw - 32px)
+      );
       max-height: calc(100vh - 32px);
     }
 
@@ -11475,6 +11470,36 @@
 
     .client-context-attach-dialog .modal-header > div {
       min-width: 0;
+    }
+
+    .client-context-attach-dialog .client-context-attach-header-actions {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .client-context-attach-dialog .client-context-attach-header-actions > .btn-close {
+      box-sizing: border-box;
+      width: 32px;
+      height: 32px;
+      flex: 0 0 32px;
+      margin: 0;
+      padding: 8px;
+      border: 0;
+      border-radius: var(--bs-border-radius);
+      background: transparent var(--bs-btn-close-bg) center / 1em auto no-repeat;
+      box-shadow: none;
+      opacity: 0.55;
+    }
+
+    .client-context-attach-dialog .client-context-attach-header-actions > .btn-close:hover,
+    .client-context-attach-dialog .client-context-attach-header-actions > .btn-close:focus-visible {
+      border: 0;
+      background: var(--bs-tertiary-bg) var(--bs-btn-close-bg) center / 1em auto no-repeat;
+      outline: 0;
+      box-shadow: none;
+      opacity: 0.85;
     }
 
     .client-context-attach-dialog .client-context-attach-subtitle {
@@ -11503,7 +11528,7 @@
 
     .client-context-attach-table {
       width: 100%;
-      min-width: 880px;
+      min-width: 996px;
       margin: 0;
       border: 0;
       border-collapse: separate;
@@ -11537,6 +11562,44 @@
       background: var(--workbench-grid-header-bg);
     }
 
+    .client-context-attach-table thead th {
+      background: var(--workbench-grid-header-bg);
+      color: var(--bs-body-color);
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .client-context-attach-table .client-context-attach-heading-row th {
+      height: 34px;
+      padding: 6px 8px;
+      white-space: nowrap;
+    }
+
+    .client-context-attach-table .client-context-attach-filter-row th {
+      height: 44px;
+      padding: 6px;
+      background: var(--bs-body-bg);
+    }
+
+    .client-context-attach-table .client-context-attach-filter-row .reference-header-filter {
+      width: 100%;
+      min-width: 0;
+      min-height: 30px;
+      height: 30px;
+      margin: 0;
+      font-size: 12px;
+    }
+
+    .client-context-attach-table .reference-sort-control {
+      width: auto;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+    }
+
     .client-context-attach-table tbody tr:hover {
       background: var(--workbench-grid-hover-bg);
     }
@@ -11545,14 +11608,10 @@
       background: var(--bs-primary-bg-subtle);
     }
 
-    .client-context-attach-table .reference-column-head {
-      min-height: 58px;
-    }
-
-    .client-context-attach-table .reference-header-filter {
-      min-height: 30px;
-      height: 30px;
-      font-size: 12px;
+    .client-context-attach-table tbody td:not(.client-context-attach-select-cell) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .client-context-attach-select-col {
@@ -11560,20 +11619,23 @@
     }
 
     .client-context-attach-id-col {
-      width: 82px;
+      width: 72px;
     }
 
     .client-context-attach-location-col {
-      width: 210px;
+      width: 220px;
     }
 
-    .client-context-attach-accounting-col,
+    .client-context-attach-accounting-col {
+      width: 244px;
+    }
+
     .client-context-attach-execution-col {
       width: 230px;
     }
 
     .client-context-attach-mode-col {
-      width: 172px;
+      width: 184px;
     }
 
     .client-context-attach-select-cell {
@@ -11806,7 +11868,7 @@
       padding: 0 6px;
       background: var(--bs-tertiary-bg);
       color: var(--bs-secondary-color);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       line-height: 20px;
     }
@@ -11926,7 +11988,7 @@
       padding: 3px 8px;
       border-color: var(--data-grid-line-color);
       color: var(--bs-secondary-color);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       letter-spacing: 0;
       text-transform: uppercase;
@@ -12210,7 +12272,7 @@
     #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-row .summary-label {
       background: var(--workbench-grid-header-bg);
       color: var(--bs-secondary-color);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       letter-spacing: 0;
       text-transform: uppercase;
@@ -12301,6 +12363,25 @@
       min-width: max-content;
       align-items: center;
       gap: 8px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto;
+      flex-wrap: nowrap;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar-primary {
+      display: flex;
+      min-width: max-content;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar-settings {
+      display: flex;
+      align-items: center;
+      justify-self: end;
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar-settings {
@@ -12477,7 +12558,7 @@
     #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset-unit {
       min-width: 52px;
       color: var(--bs-secondary-color);
-      font-size: 10px;
+      font-size: var(--app-font-size-caption);
       font-weight: 600;
       white-space: nowrap;
     }
@@ -12653,13 +12734,13 @@
       background: var(--bs-secondary-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .deal-toolbar .batch-process.is-running {
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running {
       border-color: var(--bs-danger);
       background: var(--bs-danger);
       color: #ffffff;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .deal-toolbar .batch-process.is-running:hover:not(:disabled) {
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running:hover:not(:disabled) {
       border-color: #b02a37;
       background: #bb2d3b;
     }
@@ -12740,6 +12821,137 @@
       min-height: 32px;
       align-items: center;
       margin: 0;
+    }
+
+    :is(.workbench-page, .modal, dialog[class]) {
+      font-family: var(--bs-body-font-family);
+      font-size: var(--app-font-size-body);
+      font-weight: var(--app-font-weight-regular);
+    }
+
+    :is(.workbench-page, .modal, dialog) :is(.modal-title, .dialog-title) {
+      font-size: var(--app-font-size-dialog-title);
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.2;
+    }
+
+    .workbench-page :is(.page-title, .settings-title) {
+      font-size: var(--app-font-size-page-title);
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.2;
+    }
+
+    .workbench-page :is(
+      .batch-details-section-title,
+      .batch-neutrality-title,
+      .batch-details-prompt-title,
+      .counterparty-card-section-title,
+      .client-execution-contexts-title,
+      .client-deal-create-section-title,
+      .profile-detail-panel .profile-panel-title
+    ) {
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.3;
+    }
+
+    :is(.workbench-page, .modal, dialog) :is(.form-label, .form-field, .settings-field-title) {
+      font-size: var(--app-font-size-label);
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    :is(.workbench-page, .modal, dialog) :is(
+      .form-control,
+      .form-select,
+      .input-group-text,
+      .inline-edit-control
+    ),
+    :is(.workbench-page, .modal, dialog) .form-field > :is(input, select, textarea) {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-regular);
+    }
+
+    .client-deal-currency-pair-field .form-select,
+    #hedgingSettingsPage .client-deal-pricing-mode-field .form-select {
+      font-size: var(--app-font-size-control-emphasis);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog)
+    .client-deal-pricing-mode-field .form-select {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    :is(.workbench-page, .modal, dialog) :is(.btn:not(.btn-close), .action-button) {
+      font-size: var(--app-font-size-table);
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    .workbench-page :is(
+      .profile-table,
+      .reference-table,
+      .unified-data-table,
+      .batching-table,
+      .blotter-table,
+      .tabulator
+    ) {
+      font-size: var(--app-font-size-table);
+    }
+
+    .workbench-page :is(.profile-table, .reference-table, .unified-data-table) th,
+    .workbench-page .tabulator .tabulator-col-title {
+      font-size: var(--app-font-size-table);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    :is(.workbench-page, .modal, dialog) :is(
+      .deal-form-section-title,
+      .profile-panel-title,
+      .database-section-title,
+      .client-pricing-rules-table-head,
+      .client-execution-contexts-table-head
+    ) {
+      font-size: var(--app-font-size-label);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    :is(
+      .pricing-rule-context-help,
+      .reference-usage-info,
+      .client-pricing-context-facet-count,
+      .client-pricing-context-option-count,
+      .generation-cycle-settings-range-label,
+      .generation-settings-client-code,
+      .app-status-token,
+      .client-deal-market-pulse-brand,
+      .client-deal-custom-date-badge,
+      .client-deal-manual-pricing-badge,
+      #batchDetailsPage .batch-details-meta dt,
+      .client-deals-bootstrap .side-token,
+      #databasePage .database-table-section-meta,
+      #mainPage .currency-pair-count,
+      #mainPage .fx-position-grid .rate-title-row th,
+      #mainPage .fx-position-grid .batching-summary-row .summary-label,
+      #mainPage .hedge-quick-preset-unit
+    ) {
+      font-size: var(--app-font-size-caption);
+    }
+
+    .button-icon {
+      font-size: var(--app-icon-size-sm);
+    }
+
+    :is(.workspace-nav-icon, .ui-table-layout-button .button-icon) {
+      font-size: var(--app-icon-size-md);
+    }
+
+    #mainPage :is(
+      .hedge-toolbar-title,
+      .client-deal-toolbar-title,
+      .batch-toolbar-icon-title
+    ) .button-icon {
+      font-size: var(--app-icon-size-lg);
     }
 
     @media (max-width: 1040px) {
@@ -12883,18 +13095,6 @@
       --bs-btn-active-border-color: var(--bs-primary);
     }
 
-    @media (max-width: 1120px) {
-      #homePage.workbench-home .home-links {
-        grid-template-columns: repeat(3, minmax(220px, 1fr));
-      }
-    }
-
-    @media (max-width: 900px) {
-      #homePage.workbench-home .home-links {
-        grid-template-columns: repeat(2, minmax(220px, 1fr));
-      }
-    }
-
     @media (max-width: 720px) {
       .workbench-grid-toolbar,
       .client-deals-toolbar {
@@ -12907,10 +13107,6 @@
 
       .workbench-toolbar-actions {
         width: 100%;
-      }
-
-      #homePage.workbench-home .home-links {
-        grid-template-columns: 1fr;
       }
 
       .fx-deals-grid {
@@ -12931,29 +13127,23 @@
 </head>
 <body>
   <header class="workspace-nav bg-body-tertiary border-bottom" id="workspaceNav" hidden>
-    <a class="workspace-nav-link" href="#" data-workspace-route="home" aria-label="Home">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">home</span>
-      <span>Home</span>
-    </a>
     <nav class="workspace-nav-links" aria-label="Workspace navigation">
       <a class="workspace-nav-link" href="#fx-position" data-workspace-route="batching">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">table_chart</span>
         <span>FX Position</span>
       </a>
-      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceBatchingToggle" aria-haspopup="menu" aria-controls="workspaceBatchingMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceBatchingMenu" data-workspace-routes="batching-history batch-details">
+      <a class="workspace-nav-link" id="workspaceBatchesLink" href="#batching:history" data-workspace-route="batching-history" data-workspace-routes="batching-history batch-details">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
-        <span>Batching</span>
-        <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
-      </button>
+        <span>Batches</span>
+      </a>
       <a class="workspace-nav-link" href="#market-pulse" data-workspace-route="market">
         <span class="button-icon workspace-nav-icon market-pulse-icon" aria-hidden="true">monitoring</span>
         <span>Market Pulse</span>
       </a>
-      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceTradesToggle" aria-haspopup="menu" aria-controls="workspaceTradesMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceTradesMenu" data-workspace-routes="client-fx-deals hedge-fx-deals">
+      <a class="workspace-nav-link" id="workspaceTradesLink" href="#client-fx-deals" data-workspace-route="client-fx-deals" data-workspace-routes="client-fx-deals hedge-fx-deals">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">currency_exchange</span>
         <span>Trades</span>
-        <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
-      </button>
+      </a>
       <a class="workspace-nav-link" href="#trading-counterparties" data-workspace-route="profile">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">badge</span>
         <span>Trading Counterparties</span>
@@ -12967,33 +13157,19 @@
         <span>Pricing</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
-      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceSettingsToggle" aria-haspopup="menu" aria-controls="workspaceSettingsMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceSettingsMenu" data-workspace-routes="settings-currencies settings-currency-pairs hedging-settings">
+      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceSettingsToggle" aria-haspopup="menu" aria-controls="workspaceSettingsMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceSettingsMenu" data-workspace-routes="settings-currencies settings-currency-pairs batching-settings hedging-settings">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">settings</span>
         <span>Settings</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
+    </nav>
+    <div class="workspace-nav-demo-area" aria-label="Demo tools">
       <a class="workspace-nav-link" href="#database" data-workspace-route="database">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">database</span>
         <span>Database</span>
       </a>
-    </nav>
+    </div>
   </header>
-  <div class="workspace-nav-menu" id="workspaceTradesMenu" role="menu" aria-label="Trades" data-workspace-nav-menu hidden>
-    <a class="workspace-nav-menu-link" href="#client-fx-deals" data-workspace-route="client-fx-deals" role="menuitem">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">handshake</span>
-      <span>Client FX Deals</span>
-    </a>
-    <a class="workspace-nav-menu-link" href="#hedge-fx-deals" data-workspace-route="hedge-fx-deals" role="menuitem">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">shield</span>
-      <span>Hedge FX Deals</span>
-    </a>
-  </div>
-  <div class="workspace-nav-menu" id="workspaceBatchingMenu" role="menu" aria-label="Batching" data-workspace-nav-menu hidden>
-    <a class="workspace-nav-menu-link" href="#batching:history" data-workspace-route="batching-history" role="menuitem">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">history</span>
-      <span>Batching History</span>
-    </a>
-  </div>
   <div class="workspace-nav-menu" id="workspacePricingMenu" role="menu" aria-label="Pricing" data-workspace-nav-menu hidden>
     <a class="workspace-nav-menu-link" href="#reference-data" data-workspace-route="reference" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">dataset</span>
@@ -13017,135 +13193,15 @@
       <span class="button-icon workspace-nav-icon" aria-hidden="true">swap_horiz</span>
       <span>Currency Pair Settings</span>
     </a>
+    <a class="workspace-nav-menu-link" href="#batching-settings" data-workspace-route="batching-settings" role="menuitem">
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
+      <span>Batching Settings</span>
+    </a>
     <a class="workspace-nav-menu-link" href="#hedging-settings" data-workspace-route="hedging-settings" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">shield</span>
       <span>Hedging Settings</span>
     </a>
   </div>
-
-  <main class="home-shell workbench-page workbench-home" id="homePage">
-    <section class="home-panel" aria-label="Demo Workspace pages">
-      <h1 class="home-title">Demo Workspace</h1>
-      <nav class="home-links home-primary-links" aria-label="Main navigation">
-        <a class="home-link" href="#fx-position">
-          <span class="home-icon" aria-hidden="true">table_chart</span>
-          <span>
-            <span class="home-link-title">FX Position</span>
-          </span>
-        </a>
-        <a class="home-link" href="#market-pulse">
-          <span class="home-icon market-pulse-icon" aria-hidden="true">monitoring</span>
-          <span>
-            <span class="home-link-title">Market Pulse</span>
-          </span>
-        </a>
-        <a class="home-link" href="#trading-counterparties">
-          <span class="home-icon" aria-hidden="true">badge</span>
-          <span>
-            <span class="home-link-title">Trading Counterparties</span>
-          </span>
-        </a>
-        <a class="home-link" href="#users">
-          <span class="home-icon" aria-hidden="true">group</span>
-          <span>
-            <span class="home-link-title">Users</span>
-          </span>
-        </a>
-        <a class="home-link" href="#database">
-          <span class="home-icon" aria-hidden="true">database</span>
-          <span>
-            <span class="home-link-title">Database</span>
-          </span>
-        </a>
-      </nav>
-      <section class="home-navigation-group" aria-labelledby="homeTradesTitle">
-        <div class="home-navigation-group-header">
-          <span class="button-icon home-navigation-group-icon" aria-hidden="true">currency_exchange</span>
-          <h2 class="home-navigation-group-title" id="homeTradesTitle">Trades</h2>
-        </div>
-        <nav class="home-links" aria-label="Trades navigation">
-          <a class="home-link" href="#client-fx-deals">
-            <span class="home-icon" aria-hidden="true">handshake</span>
-            <span>
-              <span class="home-link-title">Client FX Deals</span>
-            </span>
-          </a>
-          <a class="home-link" href="#hedge-fx-deals">
-            <span class="home-icon" aria-hidden="true">shield</span>
-            <span>
-              <span class="home-link-title">Hedge FX Deals</span>
-            </span>
-          </a>
-        </nav>
-      </section>
-      <section class="home-navigation-group" aria-labelledby="homeBatchingTitle">
-        <div class="home-navigation-group-header">
-          <span class="button-icon home-navigation-group-icon" aria-hidden="true">stacks</span>
-          <h2 class="home-navigation-group-title" id="homeBatchingTitle">Batching</h2>
-        </div>
-        <nav class="home-links" aria-label="Batching navigation">
-          <a class="home-link" href="#batching:history">
-            <span class="home-icon" aria-hidden="true">history</span>
-            <span>
-              <span class="home-link-title">Batching History</span>
-            </span>
-          </a>
-        </nav>
-      </section>
-      <section class="home-navigation-group" aria-labelledby="homePricingTitle">
-        <div class="home-navigation-group-header">
-          <span class="button-icon home-navigation-group-icon" aria-hidden="true">price_change</span>
-          <h2 class="home-navigation-group-title" id="homePricingTitle">Pricing</h2>
-        </div>
-        <nav class="home-links" aria-label="Pricing navigation">
-          <a class="home-link" href="#reference-data">
-            <span class="home-icon" aria-hidden="true">dataset</span>
-            <span>
-              <span class="home-link-title">Reference Data</span>
-            </span>
-          </a>
-          <a class="home-link" href="#execution-context">
-            <span class="home-icon" aria-hidden="true">hub</span>
-            <span>
-              <span class="home-link-title">Execution Context</span>
-            </span>
-          </a>
-          <a class="home-link" href="#pricing-rules">
-            <span class="home-icon" aria-hidden="true">rule</span>
-            <span>
-              <span class="home-link-title">Pricing Rules</span>
-            </span>
-          </a>
-        </nav>
-      </section>
-      <section class="home-navigation-group" aria-labelledby="homeSettingsTitle">
-        <div class="home-navigation-group-header">
-          <span class="button-icon home-navigation-group-icon" aria-hidden="true">settings</span>
-          <h2 class="home-navigation-group-title" id="homeSettingsTitle">Settings</h2>
-        </div>
-        <nav class="home-links" aria-label="Settings navigation">
-          <a class="home-link" href="#settings:currencies">
-            <span class="home-icon" aria-hidden="true">payments</span>
-            <span>
-              <span class="home-link-title">Currency Settings</span>
-            </span>
-          </a>
-          <a class="home-link" href="#settings:currency-pairs">
-            <span class="home-icon" aria-hidden="true">swap_horiz</span>
-            <span>
-              <span class="home-link-title">Currency Pair Settings</span>
-            </span>
-          </a>
-          <a class="home-link" href="#hedging-settings">
-            <span class="home-icon" aria-hidden="true">shield</span>
-            <span>
-              <span class="home-link-title">Hedging Settings</span>
-            </span>
-          </a>
-        </nav>
-      </section>
-    </section>
-  </main>
 
   <main class="settings-shell profile-shell market-shell market-bootstrap workbench-page" id="marketPage" hidden>
     <section class="settings-topbar workbench-page-header" id="marketPageHeader" aria-label="Market Pulse header">
@@ -13201,7 +13257,7 @@
     <form id="marketSimulationForm" autocomplete="off">
       <div class="modal-content">
         <div class="modal-header">
-          <h2 class="modal-title fs-6" id="marketSimulationDialogTitle">Simulation Settings</h2>
+          <h2 class="modal-title" id="marketSimulationDialogTitle">Simulation Settings</h2>
           <button type="button" class="btn-close" id="marketSimulationDialogClose" aria-label="Close"></button>
         </div>
         <div class="modal-body" aria-label="Quote Simulation Parameters">
@@ -13465,13 +13521,19 @@
 
         <div class="position-toolbar-row">
           <section class="batch-toolbar btn-toolbar" aria-label="Batch Toolbar">
-            <span class="batch-toolbar-title batch-toolbar-icon-title" role="img" aria-label="Batch Toolbar" tabindex="0" data-tooltip="Batch Toolbar">
-              <span class="button-icon" aria-hidden="true">stacks</span>
-            </span>
-            <div class="batch-control" aria-label="Batching actions">
-              <button type="button" class="action-button primary btn btn-sm btn-soft-primary batch-main" id="oneBatchButton" aria-label="One Batch" aria-keyshortcuts="G" title="One Batch · Shortcut: G" disabled>One Batch</button>
-              <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-process" id="autoBatchButton" aria-label="Auto Batch" disabled>Auto Batch</button>
-              <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-settings-toggle" aria-label="Auto Batching settings" title="Auto Batching settings" disabled>
+            <div class="batch-toolbar-primary">
+              <span class="batch-toolbar-title batch-toolbar-icon-title" role="img" aria-label="Batch Toolbar" tabindex="0" data-tooltip="Batch Toolbar">
+                <span class="button-icon" aria-hidden="true">stacks</span>
+              </span>
+              <div class="batch-control" aria-label="Batching actions">
+                <button type="button" class="action-button primary btn btn-sm btn-soft-primary batch-main" id="oneBatchButton" aria-label="One Batch" aria-keyshortcuts="G" title="One Batch · Shortcut: G" disabled>One Batch</button>
+                <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-process" id="autoBatchButton" aria-label="Start Auto Batching" title="Start Auto Batching" aria-pressed="false" disabled>
+                  <span id="autoBatchLabel">Auto Batch</span>
+                </button>
+              </div>
+            </div>
+            <div class="batch-control batch-toolbar-settings" aria-label="Batching settings">
+              <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-settings-toggle" id="autoBatchingSettingsButton" aria-label="Batching Settings" data-tooltip="Batching Settings">
                 <span class="button-icon" aria-hidden="true">settings</span>
               </button>
             </div>
@@ -13665,7 +13727,7 @@
   <dialog class="market-bootstrap-dialog batch-rollback-dialog" id="batchRollbackDialog" aria-labelledby="batchRollbackDialogTitle">
     <div class="modal-content">
       <header class="modal-header">
-        <h2 class="modal-title fs-6" id="batchRollbackDialogTitle">Rollback FX Batch</h2>
+          <h2 class="modal-title" id="batchRollbackDialogTitle">Rollback FX Batch</h2>
         <button type="button" class="btn-close" id="batchRollbackDialogClose" aria-label="Close"></button>
       </header>
       <div class="modal-body">
@@ -13685,7 +13747,7 @@
   <dialog class="market-bootstrap-dialog batch-rollback-dialog demo-trade-reset-dialog" id="resetDemoTradesDialog" aria-labelledby="resetDemoTradesDialogTitle">
     <div class="modal-content">
       <header class="modal-header">
-        <h2 class="modal-title fs-6" id="resetDemoTradesDialogTitle">Reset Trading Demo</h2>
+          <h2 class="modal-title" id="resetDemoTradesDialogTitle">Reset Trading Demo</h2>
         <button type="button" class="btn-close" id="resetDemoTradesDialogClose" aria-label="Close"></button>
       </header>
       <div class="modal-body">
@@ -13706,45 +13768,38 @@
     </div>
   </dialog>
 
-  <main class="shell blotter-shell client-deals-bootstrap workbench-page" id="clientFxDealsPage" hidden>
-    <section class="action-bar workbench-page-header" aria-label="Client FX Deals header">
-      <h1 class="page-title">Client FX Deals</h1>
-      <span class="client-deals-count" id="clientFxDealsCount">0 deals</span>
+  <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace workbench-page" id="fxDealsPage" hidden>
+    <section class="action-bar workbench-page-header" aria-label="Trades header">
+      <h1 class="page-title">Trades</h1>
     </section>
 
-    <section class="client-deals-toolbar" data-ui-table-layout-host="client_fx_deals_grid" aria-label="Client FX Deals tools">
-      <details class="client-deals-column-picker" id="clientFxDealsColumnPicker">
-        <summary class="btn btn-sm btn-outline-secondary">
-          <span class="button-icon" aria-hidden="true">view_column</span>
-          <span>Columns</span>
-        </summary>
-        <div class="client-deals-column-menu" id="clientFxDealsColumnMenu"></div>
-      </details>
+    <nav class="nav nav-tabs workbench-section-tabs trades-scope-tabs" aria-label="Trade types" role="tablist">
+      <a class="nav-link" id="clientFxDealsTab" href="#client-fx-deals" data-fx-deals-route="client-fx-deals" role="tab" aria-controls="clientFxDealsPage" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">handshake</span>
+        <span>Client FX Deals</span>
+      </a>
+      <a class="nav-link" id="hedgeFxDealsTab" href="#hedge-fx-deals" data-fx-deals-route="hedge-fx-deals" role="tab" aria-controls="hedgeFxDealsPage" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">shield</span>
+        <span>Hedge FX Deals</span>
+      </a>
+    </nav>
+
+    <section class="trades-tab-panel" id="clientFxDealsPage" role="tabpanel" aria-labelledby="clientFxDealsTab" hidden>
+      <section class="client-deals-toolbar" data-ui-table-layout-host="client_fx_deals_grid" aria-label="Client FX Deals table layout">
+        <span class="client-deals-count" id="clientFxDealsCount">0 deals</span>
+      </section>
+      <section class="client-deals-grid-shell" aria-label="client_fx_deals">
+        <div class="fx-deals-grid" id="clientFxDealsGrid" aria-label="Client FX Deals table"></div>
+      </section>
     </section>
 
-    <section class="client-deals-grid-shell" aria-label="client_fx_deals">
-      <div class="fx-deals-grid" id="clientFxDealsGrid" aria-label="Client FX Deals table"></div>
-    </section>
-  </main>
-
-  <main class="shell blotter-shell client-deals-bootstrap workbench-page" id="hedgeFxDealsPage" hidden>
-    <section class="action-bar workbench-page-header" aria-label="Hedge FX Deals header">
-      <h1 class="page-title">Hedge FX Deals</h1>
-      <span class="client-deals-count" id="hedgeFxDealsCount">0 deals</span>
-    </section>
-
-    <section class="client-deals-toolbar" data-ui-table-layout-host="hedge_fx_deals_grid" aria-label="Hedge FX Deals tools">
-      <details class="client-deals-column-picker" id="hedgeFxDealsColumnPicker">
-        <summary class="btn btn-sm btn-outline-secondary">
-          <span class="button-icon" aria-hidden="true">view_column</span>
-          <span>Columns</span>
-        </summary>
-        <div class="client-deals-column-menu" id="hedgeFxDealsColumnMenu"></div>
-      </details>
-    </section>
-
-    <section class="client-deals-grid-shell" aria-label="fx_hedge_deals">
-      <div class="fx-deals-grid" id="hedgeFxDealsGrid" aria-label="Hedge FX Deals table"></div>
+    <section class="trades-tab-panel" id="hedgeFxDealsPage" role="tabpanel" aria-labelledby="hedgeFxDealsTab" hidden>
+      <section class="client-deals-toolbar" data-ui-table-layout-host="hedge_fx_deals_grid" aria-label="Hedge FX Deals table layout">
+        <span class="client-deals-count" id="hedgeFxDealsCount">0 deals</span>
+      </section>
+      <section class="client-deals-grid-shell" aria-label="fx_hedge_deals">
+        <div class="fx-deals-grid" id="hedgeFxDealsGrid" aria-label="Hedge FX Deals table"></div>
+      </section>
     </section>
   </main>
 
@@ -14483,7 +14538,6 @@
           <table class="profile-table pricing-rules-table unified-data-table" id="pricingRulesTable" data-ui-table-layout-key="pricing_rules_grid">
             <colgroup>
               <col data-ui-column-key="id">
-              <col data-ui-column-key="counterparty_type">
               <col data-ui-column-key="counterparty_code">
               <col data-ui-column-key="counterparty_name">
               <col data-ui-column-key="ccy_pair">
@@ -14501,12 +14555,6 @@
                       <span class="reference-sort-indicator" aria-hidden="true"></span>
                     </button>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="pricingRuleId" aria-label="Filter pricing rules by ID">
-                  </div>
-                </th>
-                <th>
-                  <div class="reference-column-head">
-                    <span class="reference-column-title">Role</span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="counterpartyType" aria-label="Filter pricing rules by role">
                   </div>
                 </th>
                 <th>
@@ -15198,6 +15246,43 @@
     </div>
   </dialog>
 
+  <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page batching-settings-page" id="batchingSettingsPage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Batching Settings header">
+      <div class="workbench-detail-heading">
+        <div class="settings-title-block workbench-detail-title-block">
+          <h1 class="settings-title">Batching Settings</h1>
+        </div>
+      </div>
+      <div class="workbench-page-status" id="autoBatchingSettingsStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="batching-settings-layout" aria-label="Batching Settings">
+      <section class="profile-panel batching-settings-panel" aria-labelledby="autoBatchingSettingsTitle">
+        <form class="modal-content" id="autoBatchingSettingsForm" autocomplete="off">
+          <div class="modal-header">
+            <h2 class="modal-title" id="autoBatchingSettingsTitle">Auto Batching</h2>
+          </div>
+          <div class="modal-body">
+            <div class="auto-batching-settings-field">
+              <label class="form-label" for="autoBatchingMaxIntervalSeconds">Maximum Batching Interval</label>
+              <p class="form-text">Maximum time trades may wait before automatic batching.</p>
+              <div class="input-group">
+                <input class="form-control" type="number" id="autoBatchingMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" inputmode="numeric" required>
+                <span class="input-group-text">sec</span>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary btn-sm" id="autoBatchingSettingsSaveButton">
+              <span class="button-icon" aria-hidden="true">save</span>
+              <span>Save Settings</span>
+            </button>
+          </div>
+        </form>
+      </section>
+    </section>
+  </main>
+
   <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page hedging-settings-page" id="hedgingSettingsPage" hidden>
     <section class="settings-topbar workbench-page-header" aria-label="Hedging Settings header">
       <div class="workbench-detail-heading">
@@ -15341,61 +15426,69 @@
           <h2 class="dialog-title modal-title" id="clientExecutionContextAttachDialogTitle">Attach Execution Contexts</h2>
           <p class="client-context-attach-subtitle" id="clientExecutionContextAttachDialogSubtitle"></p>
         </div>
-        <button type="button" class="dialog-close btn-close" id="clientExecutionContextAttachDialogClose" aria-label="Close"></button>
+        <div class="client-context-attach-header-actions">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary ui-table-layout-button"
+            data-ui-table-layout="execution_contexts_grid"
+            data-ui-table-layout-columns="id servicing_location accounting_system execution_system"
+            data-ui-table-layout-title="Attach Execution Contexts Table Layout"
+            aria-label="Attach Execution Contexts table layout"
+            data-tooltip="Column widths"
+          >
+            <span class="button-icon" aria-hidden="true">view_column</span>
+          </button>
+          <button type="button" class="dialog-close btn-close" id="clientExecutionContextAttachDialogClose" aria-label="Close"></button>
+        </div>
       </div>
       <div class="deal-form-body modal-body">
         <div class="client-context-attach-table-wrap">
-          <table class="profile-table pricing-context-table unified-data-table client-context-attach-table">
+          <table class="profile-table unified-data-table client-context-attach-table" data-column-sizing="managed">
             <colgroup>
-              <col class="client-context-attach-select-col">
-              <col class="client-context-attach-id-col">
-              <col class="client-context-attach-location-col">
-              <col class="client-context-attach-accounting-col">
-              <col class="client-context-attach-execution-col">
-              <col class="client-context-attach-mode-col">
+              <col class="client-context-attach-select-col" data-client-context-attach-fixed-width="46">
+              <col class="client-context-attach-id-col" data-client-context-attach-layout-column="id">
+              <col class="client-context-attach-location-col" data-client-context-attach-layout-column="servicing_location">
+              <col class="client-context-attach-accounting-col" data-client-context-attach-layout-column="accounting_system">
+              <col class="client-context-attach-execution-col" data-client-context-attach-layout-column="execution_system">
+              <col class="client-context-attach-mode-col" data-client-context-attach-fixed-width="184">
             </colgroup>
             <thead>
-              <tr>
+              <tr class="client-context-attach-heading-row">
+                <th class="client-context-attach-select-cell"><span class="visually-hidden">Selection</span></th>
+                <th>
+                  <button type="button" class="reference-column-title reference-sort-control" id="clientExecutionContextAttachIdSort" aria-label="Sort available execution contexts by ID ascending" aria-pressed="true">
+                    <span>ID</span>
+                    <span class="reference-sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th><span class="reference-column-title">Servicing Location</span></th>
+                <th><span class="reference-column-title">Accounting System</span></th>
+                <th><span class="reference-column-title">Execution System</span></th>
+                <th><span class="reference-column-title">Pricing Mode</span></th>
+              </tr>
+              <tr class="client-context-attach-filter-row">
                 <th class="client-context-attach-select-cell">
                   <input type="checkbox" class="form-check-input" id="clientExecutionContextAttachSelectAll" aria-label="Select all visible Execution Contexts">
                 </th>
                 <th>
-                  <div class="reference-column-head">
-                    <button type="button" class="reference-column-title reference-sort-control" id="clientExecutionContextAttachIdSort" aria-label="Sort available execution contexts by ID ascending" aria-pressed="true">
-                      <span>ID</span>
-                      <span class="reference-sort-indicator" aria-hidden="true"></span>
-                    </button>
-                    <input class="reference-header-filter" type="text" id="clientExecutionContextAttachIdFilter" autocomplete="off" data-client-context-attach-filter="pricingContextId" aria-label="Filter available execution contexts by ID">
-                  </div>
+                  <input class="reference-header-filter" type="text" id="clientExecutionContextAttachIdFilter" autocomplete="off" data-client-context-attach-filter="pricingContextId" aria-label="Filter available execution contexts by ID">
                 </th>
                 <th>
-                  <div class="reference-column-head">
-                    <span class="reference-column-title">Servicing Location</span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="servicingBranchCode" aria-label="Filter available execution contexts by servicing location">
-                  </div>
+                  <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="servicingBranchCode" aria-label="Filter available execution contexts by servicing location">
                 </th>
                 <th>
-                  <div class="reference-column-head">
-                    <span class="reference-column-title">Accounting System</span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="settlementSystemId" aria-label="Filter available execution contexts by accounting system">
-                  </div>
+                  <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="settlementSystemId" aria-label="Filter available execution contexts by accounting system">
                 </th>
                 <th>
-                  <div class="reference-column-head">
-                    <span class="reference-column-title">Execution System</span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="tradeCaptureChannelId" aria-label="Filter available execution contexts by execution system">
-                  </div>
+                  <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="tradeCaptureChannelId" aria-label="Filter available execution contexts by execution system">
                 </th>
                 <th>
-                  <div class="reference-column-head">
-                    <span class="reference-column-title">Pricing Mode</span>
-                    <select class="reference-header-filter form-select" data-client-context-attach-filter="pricingMode" aria-label="Filter available execution contexts by pricing mode">
-                      <option value="">All</option>
-                      <option value="AUTO_PRICED">AUTO_PRICED</option>
-                      <option value="DEALER_PRICED">DEALER_PRICED</option>
-                      <option value="DEALER_APPROVED">DEALER_APPROVED</option>
-                    </select>
-                  </div>
+                  <select class="reference-header-filter form-select" data-client-context-attach-filter="pricingMode" aria-label="Filter available execution contexts by pricing mode">
+                    <option value="">All</option>
+                    <option value="AUTO_PRICED">AUTO_PRICED</option>
+                    <option value="DEALER_PRICED">DEALER_PRICED</option>
+                    <option value="DEALER_APPROVED">DEALER_APPROVED</option>
+                  </select>
                 </th>
               </tr>
             </thead>
@@ -15553,6 +15646,7 @@
       ? DEMO_API_BOOTSTRAP.uiTableLayouts
       : [];
     const CLIENT_DEAL_GENERATION_REFRESH_INTERVAL_MS = 1000;
+    const FX_AUTO_BATCHING_REFRESH_INTERVAL_MS = 1000;
     const DEFAULT_MARKET_PAIRS = DemoDb.defaults.marketPairs;
     const DEFAULT_CCY_OPTIONS = DemoDb.defaults.ccyOptions;
     const DEFAULT_QUOTE_DECIMALS = 4;
@@ -15649,6 +15743,7 @@
     let pricingContexts = loadPricingContexts();
     let clientPricingRules = loadClientPricingRules();
     let hedgeQuickModeSettings = loadHedgeQuickModeSettings();
+    let autoBatchingSettings = loadFxAutoBatchingSettings();
     let clientFxDeals = loadClientFxDeals();
     let hedgeFxDeals = loadHedgeFxDeals();
     let fxBatchHistory = loadFxBatches();
@@ -15680,6 +15775,26 @@
     };
     let clientDealGenerationRefreshTimer = null;
     let clientDealGenerationRefreshInFlight = false;
+    let fxAutoBatchingProcessState = {
+      running: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.running === true,
+      status: String(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.status || "STOPPED"),
+      intervalMs: Number(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.intervalMs) || 60000,
+      batchingInProgress: false,
+      formedBatchCount: Number(
+        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.formedBatchCount
+      ) || 0,
+      lastCandidateTradeCount: 0,
+      lastFormedBatchId: Number(
+        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedBatchId
+      ) || null,
+      lastFormedAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedAt || null,
+      lastCycleAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCycleAt || null,
+      nextCycleAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.nextCycleAt || null,
+      lastError: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastError || null
+    };
+    let fxAutoBatchingRefreshTimer = null;
+    let fxAutoBatchingRefreshInFlight = false;
+    let fxAutoBatchingToggleInFlight = false;
     let fxPositionsRequestSequence = 0;
     let oneBatchInFlight = false;
     let pendingOneBatchRequest = null;
@@ -16328,12 +16443,12 @@
     });
     const ccyOptionTextLimits = Object.freeze({ code: 3, name: 20, country: 30 });
     const workspaceNavLinks = Array.from(document.querySelectorAll("[data-workspace-route]"));
-    const homePage = document.getElementById("homePage");
     const marketPage = document.getElementById("marketPage");
     const marketPageHeader = document.getElementById("marketPageHeader");
     const marketPageTitle = document.getElementById("marketPageTitle");
     const databasePage = document.getElementById("databasePage");
     const mainPage = document.getElementById("mainPage");
+    const batchingSettingsPage = document.getElementById("batchingSettingsPage");
     const hedgingSettingsPage = document.getElementById("hedgingSettingsPage");
     const batchingHistoryPage = document.getElementById("batchingHistoryPage");
     const batchingHistoryGridEl = document.getElementById("batchingHistoryGrid");
@@ -16384,16 +16499,14 @@
     const batchRollbackStatus = document.getElementById("batchRollbackStatus");
     const batchRollbackCancelButton = document.getElementById("batchRollbackCancelButton");
     const batchRollbackConfirmButton = document.getElementById("batchRollbackConfirmButton");
+    const fxDealsPage = document.getElementById("fxDealsPage");
+    const fxDealsTabs = Array.from(document.querySelectorAll("[data-fx-deals-route]"));
     const clientFxDealsPage = document.getElementById("clientFxDealsPage");
     const clientFxDealsGridEl = document.getElementById("clientFxDealsGrid");
     const clientFxDealsCountEl = document.getElementById("clientFxDealsCount");
-    const clientFxDealsColumnPicker = document.getElementById("clientFxDealsColumnPicker");
-    const clientFxDealsColumnMenu = document.getElementById("clientFxDealsColumnMenu");
     const hedgeFxDealsPage = document.getElementById("hedgeFxDealsPage");
     const hedgeFxDealsGridEl = document.getElementById("hedgeFxDealsGrid");
     const hedgeFxDealsCountEl = document.getElementById("hedgeFxDealsCount");
-    const hedgeFxDealsColumnPicker = document.getElementById("hedgeFxDealsColumnPicker");
-    const hedgeFxDealsColumnMenu = document.getElementById("hedgeFxDealsColumnMenu");
     const clientProfilePage = document.getElementById("clientProfilePage");
     const clientProfileTopbar = document.getElementById("clientProfileTopbar");
     const clientProfileLayout = document.getElementById("clientProfileLayout");
@@ -16491,6 +16604,9 @@
     const runClientDealGenerationLabel = document.getElementById("runClientDealGenerationLabel");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
     const oneBatchButton = document.getElementById("oneBatchButton");
+    const autoBatchButton = document.getElementById("autoBatchButton");
+    const autoBatchLabel = document.getElementById("autoBatchLabel");
+    const autoBatchingSettingsButton = document.getElementById("autoBatchingSettingsButton");
     const addHedgeDealButton = document.getElementById("addHedgeDealButton");
     const hedgeQuickModeSettingsButton = document.getElementById("hedgeQuickModeSettingsButton");
     const hedgeQuickModeToolbar = document.getElementById("hedgeQuickModeToolbar");
@@ -16603,6 +16719,9 @@
     const hedgeQuickModeCounterpartyPickerToggle = document.getElementById("hedgeQuickModeCounterpartyPickerToggle");
     const hedgeQuickModeCounterpartyOptions = document.getElementById("hedgeQuickModeCounterpartyOptions");
     const hedgeQuickModePricingRulePicker = document.getElementById("hedgeQuickModePricingRulePicker");
+    const autoBatchingSettingsForm = document.getElementById("autoBatchingSettingsForm");
+    const autoBatchingSettingsSaveButton = document.getElementById("autoBatchingSettingsSaveButton");
+    const autoBatchingSettingsStatus = document.getElementById("autoBatchingSettingsStatus");
     const clientDealDuplicateCheckDialog = document.getElementById("clientDealDuplicateCheckDialog");
     const clientDealDuplicateCheckCloseButton = document.getElementById("clientDealDuplicateCheckCloseButton");
     const clientDealDuplicateCheckSummary = document.getElementById("clientDealDuplicateCheckSummary");
@@ -16691,7 +16810,8 @@
         tables: [
           "ccy_options",
           "ccy_pair_options",
-          "fx_hedge_quick_mode_settings"
+          "fx_hedge_quick_mode_settings",
+          "fx_auto_batching_settings"
         ]
       },
       {
@@ -16844,7 +16964,7 @@
     let pricingRuleEditState = null;
     let activePricingRulesScope = "EXTERNAL";
     let clientPricingRuleEditState = null;
-    let clientPricingRuleInlineCreateState = null;
+    let clientPricingRuleInlineEditorState = null;
     const clientPricingConfigurationCollapsedContexts = new Map();
     let clientPricingContextBuilderState = {
       servicingBranchCode: "",
@@ -16863,6 +16983,8 @@
     );
     const uiTableTabulatorInstances = new Map();
     let activeUiTableLayoutKey = "";
+    let activeUiTableLayoutColumnKeys = null;
+    let activeUiTableLayoutTitle = "";
     const sortState = {
       key: "tradeRate",
       direction: "asc"
@@ -18701,6 +18823,25 @@
       );
     }
 
+    function normalizedFxAutoBatchingSettings(source) {
+      const maxIntervalSeconds = Number(source?.maxIntervalSeconds);
+
+      return {
+        maxIntervalSeconds: Number.isInteger(maxIntervalSeconds)
+          && maxIntervalSeconds >= 1
+          && maxIntervalSeconds <= 3600
+          ? maxIntervalSeconds
+          : 60,
+        updatedAt: String(source?.updatedAt || "")
+      };
+    }
+
+    function loadFxAutoBatchingSettings() {
+      return normalizedFxAutoBatchingSettings(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.fxAutoBatchingSettings : null
+      );
+    }
+
     async function reloadHedgeQuickModeSettingsFromApi() {
       if (!DEMO_API_ENABLED) {
         hedgeQuickModeSettings = [];
@@ -19958,7 +20099,6 @@
       const currencyPairValue = normalizedPricingRuleCurrencyPair(row.querySelector("[data-pricing-rule-field='currencyPair']")?.value);
       const pricingContextIdValue = row.querySelector("[data-pricing-rule-field='pricingContextId']")?.value.trim().toUpperCase() || "";
       const preview = row.querySelector("[data-pricing-rule-preview]");
-      const counterpartyTypeCell = row.querySelector("[data-pricing-rule-counterparty-type]");
       const clientNameCell = row.querySelector("[data-pricing-rule-client-name]");
 
       if (preview) {
@@ -19968,10 +20108,6 @@
           pricingContextIdValue,
           row.dataset.pricingRuleId || ""
         );
-      }
-
-      if (counterpartyTypeCell) {
-        counterpartyTypeCell.textContent = counterpartyTypeForInn(inn);
       }
 
       if (clientNameCell) {
@@ -20223,7 +20359,6 @@
       return `
         <tr class="is-selected is-editing"${indexAttribute}${pricingRuleIdAttribute} data-pricing-rule-edit-row data-pricing-rule-context-status="${escapeHtml(contextState.status)}">
           <td class="pricing-rule-id-preview" data-pricing-rule-preview>${escapeHtml(preview)}</td>
-          <td data-pricing-rule-counterparty-type>${escapeHtml(tradingCounterpartyRolesLabel(rule) || counterpartyTypeForInn(rule.inn))}</td>
           <td>
             <select class="inline-edit-control" data-pricing-rule-field="inn" required>
               ${pricingRuleClientOptions(rule.inn)}
@@ -20278,7 +20413,6 @@
       return `
         <tr data-pricing-rule-index="${index}">
           <td>${escapeHtml(rule.pricingRuleId)}</td>
-          <td>${escapeHtml(tradingCounterpartyRolesLabel(rule) || counterpartyTypeForInn(rule.inn))}</td>
           <td>${escapeHtml(rule.inn)}</td>
           <td>${escapeHtml(clientNameForInn(rule.inn))}</td>
           <td>${escapeHtml(rule.currencyPair)}</td>
@@ -20410,13 +20544,21 @@
       let totalWidth = 0;
 
       table.querySelectorAll("col[data-ui-column-key]").forEach((column, index) => {
+        const headerCell = headerCells[index];
+        const hidden = column.hidden || headerCell?.hidden;
+
+        if (hidden) {
+          column.style.removeProperty("width");
+          return;
+        }
+
         const setting = settingsByKey.get(column.dataset.uiColumnKey);
         column.style.removeProperty("width");
         const fallbackWidth = Math.min(
           240,
           Math.max(
             120,
-            Math.ceil(headerCells[index]?.scrollWidth || 0) + 24
+            Math.ceil(headerCell?.scrollWidth || 0) + 24
           )
         );
         const width = setting?.widthPx || fallbackWidth;
@@ -20455,6 +20597,52 @@
       });
     }
 
+    function applyClientExecutionContextAttachColumnLayout(tableLayout = uiTableLayout("execution_contexts_grid")) {
+      const table = document.querySelector(".client-context-attach-table");
+
+      if (!table || !tableLayout) {
+        return;
+      }
+
+      const settingsByKey = new Map(
+        tableLayout.columns.map(setting => [setting.columnKey, setting])
+      );
+      let totalWidth = 0;
+
+      table.querySelectorAll("col").forEach(column => {
+        const layoutColumnKey = column.dataset.clientContextAttachLayoutColumn;
+        const fixedWidth = Number(column.dataset.clientContextAttachFixedWidth);
+        const configuredWidth = layoutColumnKey
+          ? Number(settingsByKey.get(layoutColumnKey)?.widthPx)
+          : fixedWidth;
+        const width = Number.isInteger(configuredWidth)
+          && configuredWidth >= UI_TABLE_COLUMN_WIDTH_MIN_PX
+          && configuredWidth <= UI_TABLE_COLUMN_WIDTH_MAX_PX
+          ? configuredWidth
+          : Number.parseFloat(getComputedStyle(column).width);
+
+        if (!Number.isFinite(width) || width <= 0) {
+          return;
+        }
+
+        column.style.setProperty("width", `${width}px`, "important");
+        totalWidth += width;
+      });
+
+      if (totalWidth <= 0) {
+        return;
+      }
+
+      table.style.setProperty("width", `${totalWidth}px`, "important");
+      table.style.setProperty("min-width", `${totalWidth}px`, "important");
+      table.style.setProperty("max-width", `${totalWidth}px`, "important");
+      table.style.setProperty("table-layout", "fixed", "important");
+      clientExecutionContextAttachDialog.style.setProperty(
+        "--client-context-attach-table-width",
+        `${totalWidth}px`
+      );
+    }
+
     function applyUiTableLayout(tableKey) {
       const tableLayout = uiTableLayout(tableKey);
 
@@ -20464,6 +20652,10 @@
 
       applyNativeUiTableLayout(tableKey, tableLayout);
       applyTabulatorUiTableLayout(tableKey, tableLayout);
+
+      if (tableKey === "execution_contexts_grid") {
+        applyClientExecutionContextAttachColumnLayout(tableLayout);
+      }
     }
 
     function applyAllUiTableLayouts() {
@@ -20543,13 +20735,25 @@
         return;
       }
 
+      const nativeTable = nativeUiTable(tableLayout.tableKey);
+      const visibleColumnKeys = activeUiTableLayoutColumnKeys || (nativeTable
+        ? new Set(
+            Array.from(nativeTable.querySelectorAll("col[data-ui-column-key]"))
+              .filter(column => !column.hidden)
+              .map(column => column.dataset.uiColumnKey)
+          )
+        : null);
+      const editableColumns = visibleColumnKeys
+        ? tableLayout.columns.filter(setting => visibleColumnKeys.has(setting.columnKey))
+        : tableLayout.columns;
+
       pricingRulesTableLayoutList.innerHTML = `
         <div class="ui-table-layout-row is-header" aria-hidden="true">
           <span class="ui-table-layout-cell">Column</span>
           <span class="ui-table-layout-cell">Width</span>
           <span class="ui-table-layout-cell">Default</span>
         </div>
-        ${tableLayout.columns.map(setting => `
+        ${editableColumns.map(setting => `
           <label class="ui-table-layout-row">
             <span class="ui-table-layout-cell ui-table-layout-label">${escapeHtml(setting.columnLabel)}</span>
             <span class="ui-table-layout-cell">
@@ -20575,10 +20779,11 @@
     }
 
     function uiTableLayoutPayload() {
+      const tableLayout = uiTableLayout(activeUiTableLayoutKey);
       const controls = Array.from(
         pricingRulesTableLayoutList.querySelectorAll("[data-ui-table-column-width]")
       );
-      const columns = [];
+      const editedWidthsByKey = new Map();
 
       for (const control of controls) {
         const widthPx = Number(control.value);
@@ -20594,13 +20799,15 @@
           return null;
         }
 
-        columns.push({
-          columnKey: control.dataset.uiTableColumnWidth,
-          widthPx
-        });
+        editedWidthsByKey.set(control.dataset.uiTableColumnWidth, widthPx);
       }
 
-      return { columns };
+      return {
+        columns: (tableLayout?.columns || []).map(setting => ({
+          columnKey: setting.columnKey,
+          widthPx: editedWidthsByKey.get(setting.columnKey) ?? setting.widthPx
+        }))
+      };
     }
 
     function setUiTableLayoutBusy(busy) {
@@ -20611,7 +20818,7 @@
       pricingRulesTableLayoutDialogClose.disabled = busy;
     }
 
-    function openUiTableLayoutDialog(tableKey) {
+    function openUiTableLayoutDialog(tableKey, options = {}) {
       const tableLayout = uiTableLayout(tableKey);
 
       if (!tableLayout) {
@@ -20619,7 +20826,14 @@
       }
 
       activeUiTableLayoutKey = tableKey;
-      pricingRulesTableLayoutDialogTitle.textContent = `${tableLayout.tableLabel} Table Layout`;
+      activeUiTableLayoutColumnKeys = Array.isArray(options.columnKeys)
+        && options.columnKeys.length > 0
+        ? new Set(options.columnKeys)
+        : null;
+      activeUiTableLayoutTitle = String(options.title || "").trim();
+      pricingRulesTableLayoutDialogTitle.textContent = activeUiTableLayoutTitle
+        || `${tableLayout.tableLabel} Table Layout`;
+      pricingRulesTableLayoutSaveDefaultButton.hidden = activeUiTableLayoutColumnKeys !== null;
       renderUiTableLayoutEditor();
       setUiTableLayoutStatus();
       pricingRulesTableLayoutDialog.showModal();
@@ -20675,10 +20889,25 @@
       setUiTableLayoutStatus();
 
       try {
-        const saved = await demoApiRequest(
-          `/api/v1/ui-table-column-settings/${encodeURIComponent(activeUiTableLayoutKey)}/reset`,
-          { method: "POST" }
-        );
+        const saved = activeUiTableLayoutColumnKeys
+          ? await demoApiRequest(
+              `/api/v1/ui-table-column-settings/${encodeURIComponent(activeUiTableLayoutKey)}`,
+              {
+                method: "PUT",
+                body: JSON.stringify({
+                  columns: tableLayout.columns.map(setting => ({
+                    columnKey: setting.columnKey,
+                    widthPx: activeUiTableLayoutColumnKeys.has(setting.columnKey)
+                      ? setting.defaultWidthPx
+                      : setting.widthPx
+                  }))
+                })
+              }
+            )
+          : await demoApiRequest(
+              `/api/v1/ui-table-column-settings/${encodeURIComponent(activeUiTableLayoutKey)}/reset`,
+              { method: "POST" }
+            );
         const normalized = normalizedUiTableLayout({
           tableKey: activeUiTableLayoutKey,
           tableLabel: tableLayout.tableLabel,
@@ -20801,7 +21030,7 @@
       const scopeRules = clientPricingRules.filter(rule =>
         rule.counterpartyScope === activePricingRulesScope
       );
-      const columnCount = activePricingRulesScope === "INTERNAL" ? 9 : 8;
+      const columnCount = activePricingRulesScope === "INTERNAL" ? 8 : 7;
       const layoutKey = activePricingRulesLayoutKey();
 
       if (scopeRules.length === 0) {
@@ -22170,55 +22399,91 @@
       clientPricingRuleEditor.innerHTML = "";
     }
 
-    function clientPricingRuleInlineCreateMatches(profile, pricingContextIdValue) {
-      return Boolean(
+    function clientPricingRuleInlineEditorMatches(
+      profile,
+      pricingContextIdValue,
+      mode = "",
+      index = null
+    ) {
+      const state = clientPricingRuleInlineEditorState;
+      const matchesContext = Boolean(
         profile &&
-        clientPricingRuleInlineCreateState &&
-        clientPricingRuleInlineCreateState.inn === profile.inn &&
-        String(clientPricingRuleInlineCreateState.pricingContextId) === String(pricingContextIdValue)
+        state &&
+        state.inn === profile.inn &&
+        String(state.pricingContextId) === String(pricingContextIdValue)
       );
+
+      if (!matchesContext || (mode && state.mode !== mode)) {
+        return false;
+      }
+
+      return mode !== "edit" || Number(state.index) === Number(index);
     }
 
-    function updateClientPricingRuleInlineCreateAvailability(row) {
+    function updateClientPricingRuleInlineEditorAvailability(row) {
       const saveButton = row?.querySelector('[data-client-pricing-rule-inline-action="save"]');
       const currencyPairControl = row?.querySelector('[data-client-pricing-rule-inline-field="currencyPair"]');
       const marginControl = row?.querySelector('[data-client-pricing-rule-inline-field="marginPercent"]');
+      const state = clientPricingRuleInlineEditorState;
 
-      if (!saveButton || !currencyPairControl || !marginControl || !clientPricingRuleInlineCreateState) {
+      if (!saveButton || !currencyPairControl || !marginControl || !state) {
         return;
       }
 
-      clientPricingRuleInlineCreateState.currencyPair = currencyPairControl.value;
-      clientPricingRuleInlineCreateState.marginPercent = marginControl.value;
+      state.currencyPair = currencyPairControl.value;
+      state.marginPercent = marginControl.value;
       const margin = normalizeNumber(marginControl.value);
-      const canSave = Boolean(currencyPairControl.value) && margin !== null && margin >= 0 && margin < 100;
+      const savedRule = state.mode === "edit" ? clientPricingRules[state.index] : null;
+      const changed = state.mode !== "edit" || !savedRule ||
+        Math.abs(Number(savedRule.marginPercent) - Number(margin)) > 0.0000001;
+      const canSave = Boolean(currencyPairControl.value) && margin !== null &&
+        margin >= 0 && margin < 100 && changed;
 
-      saveButton.disabled = clientPricingRuleInlineCreateState.saving || !canSave;
-      saveButton.title = canSave ? "" : "Enter a margin from 0 up to, but not including, 100";
+      saveButton.disabled = state.saving || !canSave;
+      saveButton.title = canSave
+        ? ""
+        : margin === null || margin < 0 || margin >= 100
+          ? "Enter a margin from 0 up to, but not including, 100"
+          : "No changes to save";
     }
 
-    function clientPricingRuleFromInlineCreateRow(row) {
+    function clientPricingRuleFromInlineEditorRow(row) {
       const profile = selectedClientProfile();
-      const pricingContextIdValue = normalizedIntegerId(row?.dataset.clientPricingRuleInlineCreate);
+      const state = clientPricingRuleInlineEditorState;
+      const pricingContextIdValue = normalizedIntegerId(row?.dataset.clientPricingRuleInlineEditor);
       const currencyPairControl = row?.querySelector('[data-client-pricing-rule-inline-field="currencyPair"]');
       const marginControl = row?.querySelector('[data-client-pricing-rule-inline-field="marginPercent"]');
       const context = assignedExecutionContextsForProfile(profile).find(item =>
         String(item.pricingContextId) === String(pricingContextIdValue)
       );
+      const editing = state?.mode === "edit";
+      const savedRule = editing ? clientPricingRules[state.index] : null;
 
       if (
         !profile ||
+        !state ||
         !context ||
         !currencyPairControl ||
         !marginControl ||
-        !clientPricingRuleInlineCreateMatches(profile, pricingContextIdValue)
+        !clientPricingRuleInlineEditorMatches(profile, pricingContextIdValue) ||
+        (editing && (
+          !savedRule ||
+          savedRule.inn !== profile.inn ||
+          String(savedRule.pricingContextId) !== String(pricingContextIdValue)
+        ))
       ) {
         return null;
       }
 
-      const currencyPair = normalizedPricingRuleCurrencyPair(currencyPairControl.value);
-      const availableCurrencyPairs = availableClientPricingRuleCurrencyPairs(profile, pricingContextIdValue);
-      const pairIsAvailable = Boolean(currencyPair) && availableCurrencyPairs.includes(currencyPair);
+      const currencyPair = editing
+        ? savedRule.currencyPair
+        : normalizedPricingRuleCurrencyPair(currencyPairControl.value);
+      const pairIsAvailable = editing
+        ? currencyPair === normalizedPricingRuleCurrencyPair(currencyPairControl.value)
+        : Boolean(currencyPair) && availableClientPricingRuleCurrencyPairs(
+          profile,
+          pricingContextIdValue
+        ).includes(currencyPair);
 
       currencyPairControl.setCustomValidity(pairIsAvailable ? "" : "Select an available Ccy Pair.");
 
@@ -22234,7 +22499,7 @@
       }
 
       const rule = {
-        pricingRuleId: nextPricingRuleId(),
+        pricingRuleId: savedRule?.pricingRuleId || nextPricingRuleId(),
         counterpartyId: profile.counterpartyId,
         inn: profile.inn,
         currencyPair,
@@ -22242,7 +22507,9 @@
         pricingContextId: pricingContextIdValue,
         marginPercent
       };
-      const duplicateExists = clientPricingRules.some(item => samePricingRuleIdentity(item, rule));
+      const duplicateExists = !editing && clientPricingRules.some(item =>
+        samePricingRuleIdentity(item, rule)
+      );
 
       currencyPairControl.setCustomValidity(duplicateExists ? "Pricing Rule already exists." : "");
 
@@ -22251,76 +22518,87 @@
         return null;
       }
 
-      return rule;
+      return { rule, currentRule: savedRule, index: editing ? state.index : null };
     }
 
-    async function saveClientPricingRuleInlineCreate(pricingContextIdValue) {
+    async function saveClientPricingRuleInlineEditor() {
       const profile = selectedClientProfile();
+      const state = clientPricingRuleInlineEditorState;
       const row = clientExecutionContextsPanel.querySelector(
-        `[data-client-pricing-rule-inline-create="${pricingContextIdValue}"]`
+        "[data-client-pricing-rule-inline-editor]"
       );
 
       if (
         !profile ||
+        !state ||
         !row ||
-        !clientPricingRuleInlineCreateMatches(profile, pricingContextIdValue) ||
-        clientPricingRuleInlineCreateState.saving
+        !clientPricingRuleInlineEditorMatches(profile, state.pricingContextId) ||
+        state.saving
       ) {
         return;
       }
 
-      const rule = clientPricingRuleFromInlineCreateRow(row);
+      const draft = clientPricingRuleFromInlineEditorRow(row);
 
-      if (!rule) {
+      if (!draft) {
         return;
       }
 
-      clientPricingRuleInlineCreateState.saving = true;
+      state.saving = true;
       row.querySelectorAll("input, select, button").forEach(control => {
         control.disabled = true;
       });
 
       try {
-        const savedRule = await persistPricingRuleRecord(rule);
+        const savedRule = await persistPricingRuleRecord(draft.rule, draft.currentRule);
 
         if (!savedRule) {
           throw new Error("Pricing Rule response is invalid.");
         }
 
-        clientPricingRules.push(savedRule);
+        if (draft.currentRule) {
+          clientPricingRules[draft.index] = savedRule;
+        } else {
+          clientPricingRules.push(savedRule);
+        }
         saveClientPricingRules();
-        clientPricingRuleInlineCreateState = null;
+        clientPricingRuleInlineEditorState = null;
         setClientProfileStatus(
-          completedActionMessage(`Pricing Rule ${savedRule.pricingRuleId}`, "added"),
+          completedActionMessage(
+            `Pricing Rule ${savedRule.pricingRuleId}`,
+            draft.currentRule ? "saved" : "added"
+          ),
           "success"
         );
         renderClientPricingRulesPanel(profile);
         renderPricingRules();
       } catch (error) {
-        clientPricingRuleInlineCreateState.saving = false;
-        row.querySelectorAll("input, select, button").forEach(control => {
-          control.disabled = false;
-        });
-        updateClientPricingRuleInlineCreateAvailability(row);
+        state.saving = false;
         setClientProfileStatus(error.message || "Pricing Rule could not be saved.", "error");
+        renderClientExecutionContextsPanel(profile);
       }
     }
 
-    function cancelClientPricingRuleInlineCreate(pricingContextIdValue) {
+    function cancelClientPricingRuleInlineEditor() {
       const profile = selectedClientProfile();
+      const state = clientPricingRuleInlineEditorState;
 
       if (
-        !clientPricingRuleInlineCreateMatches(profile, pricingContextIdValue) ||
-        clientPricingRuleInlineCreateState.saving
+        !state ||
+        !clientPricingRuleInlineEditorMatches(profile, state.pricingContextId) ||
+        state.saving
       ) {
         return;
       }
 
-      clientPricingRuleInlineCreateState = null;
+      clientPricingRuleInlineEditorState = null;
       renderClientExecutionContextsPanel(profile);
-      clientExecutionContextsPanel
-        .querySelector(`[data-client-execution-context-action="add-rule"][data-client-execution-context-id="${pricingContextIdValue}"]`)
-        ?.focus();
+      requestAnimationFrame(() => {
+        const focusSelector = state.mode === "edit"
+          ? `[data-client-pricing-rule-action="edit"][data-client-pricing-rule-index="${state.index}"]`
+          : `[data-client-execution-context-action="add-rule"][data-client-execution-context-id="${state.pricingContextId}"]`;
+        clientExecutionContextsPanel.querySelector(focusSelector)?.focus();
+      });
     }
 
     function startClientPricingRuleCreate(pricingContextIdValue = "") {
@@ -22356,7 +22634,8 @@
         return;
       }
 
-      clientPricingRuleInlineCreateState = {
+      clientPricingRuleInlineEditorState = {
+        mode: "create",
         inn: profile.inn,
         counterpartyId: profile.counterpartyId,
         pricingContextId: context.pricingContextId,
@@ -22369,7 +22648,7 @@
       renderClientExecutionContextsPanel(profile);
       requestAnimationFrame(() => {
         clientExecutionContextsPanel
-          .querySelector(`[data-client-pricing-rule-inline-create="${context.pricingContextId}"] select`)
+          .querySelector("[data-client-pricing-rule-inline-editor] select")
           ?.focus();
       });
     }
@@ -22382,14 +22661,38 @@
         return;
       }
 
-      clientPricingRuleInlineCreateState = null;
-      clientPricingRuleEditState = { mode: "edit", index, inn: profile.inn };
+      clientPricingRuleInlineEditorState = {
+        mode: "edit",
+        index,
+        inn: profile.inn,
+        counterpartyId: profile.counterpartyId,
+        pricingContextId: rule.pricingContextId,
+        currencyPair: rule.currencyPair,
+        marginPercent: editNumber(rule.marginPercent, 4),
+        saving: false
+      };
+      clientPricingConfigurationCollapsedSet(profile).delete(String(rule.pricingContextId));
       setClientProfileStatus("");
-      openClientPricingRuleDialog(rule);
+      renderClientExecutionContextsPanel(profile);
+      requestAnimationFrame(() => {
+        clientExecutionContextsPanel
+          .querySelector('[data-client-pricing-rule-inline-editor] [data-client-pricing-rule-inline-field="marginPercent"]')
+          ?.focus();
+      });
     }
 
     function startClientPricingRuleDelete(index) {
-      startClientPricingRuleEdit(index);
+      const profile = selectedClientProfile();
+      const rule = clientPricingRules[index];
+
+      if (!profile || !rule || rule.inn !== profile.inn) {
+        return;
+      }
+
+      clientPricingRuleInlineEditorState = null;
+      clientPricingRuleEditState = { mode: "edit", index, inn: profile.inn };
+      setClientProfileStatus("");
+      openClientPricingRuleDialog(rule);
       requestAnimationFrame(() => clientPricingRuleDeleteButton.focus());
     }
 
@@ -22718,13 +23021,61 @@
       );
     }
 
+    function clientPricingRuleInlineEditorMarkup({
+      contextId,
+      currencyPairs,
+      selectedCurrencyPair,
+      marginValue,
+      editing,
+      index = null,
+      saving,
+      canSave
+    }) {
+      const cancelLabel = editing
+        ? "Cancel editing Pricing Rule"
+        : "Cancel adding Pricing Rule";
+
+      return `
+        <li
+          class="client-pricing-configuration-add-row is-editing"
+          data-client-pricing-rule-inline-editor="${escapeHtml(contextId)}"
+          data-client-pricing-rule-inline-mode="${editing ? "edit" : "create"}"
+          ${editing ? `data-client-pricing-rule-index="${index}"` : ""}
+        >
+          <label class="client-pricing-configuration-inline-field">
+            <span class="visually-hidden">Ccy Pair</span>
+            <select class="form-select form-select-sm" data-client-pricing-rule-inline-field="currencyPair" aria-label="Ccy Pair"${saving || editing ? " disabled" : ""}>
+              ${currencyPairs.map(currencyPair => `
+                <option value="${escapeHtml(currencyPair)}"${currencyPair === selectedCurrencyPair ? " selected" : ""}>${escapeHtml(currencyPair)}</option>
+              `).join("")}
+            </select>
+          </label>
+          <label class="client-pricing-configuration-inline-margin">
+            <span class="visually-hidden">Margin percent</span>
+            <span class="input-group input-group-sm">
+              <input class="form-control form-control-sm" type="text" inputmode="decimal" value="${escapeHtml(marginValue)}" data-client-pricing-rule-inline-field="marginPercent" aria-label="Margin percent"${saving ? " disabled" : ""}>
+              <span class="input-group-text">%</span>
+            </span>
+          </label>
+          <span class="client-pricing-configuration-inline-actions">
+            <button type="button" class="btn btn-sm btn-outline-primary reference-grid-action" data-client-pricing-rule-inline-action="save" aria-label="Save Pricing Rule" data-tooltip="Save Pricing Rule"${saving || !canSave ? " disabled" : ""}>
+              <span class="button-icon" aria-hidden="true">${saving ? "hourglass_top" : "save"}</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-pricing-rule-inline-action="cancel" aria-label="${cancelLabel}" data-tooltip="Cancel"${saving ? " disabled" : ""}>
+              <span class="button-icon" aria-hidden="true">close</span>
+            </button>
+          </span>
+        </li>
+      `;
+    }
+
     function renderClientExecutionContextsPanel(profile) {
       if (!clientExecutionContextsPanel) {
         return;
       }
 
       if (!profile) {
-        clientPricingRuleInlineCreateState = null;
+        clientPricingRuleInlineEditorState = null;
         clientExecutionContextsPanel.hidden = true;
         clientExecutionContextsList.innerHTML = "";
         clientExecutionContextsCount.textContent = "0 contexts · 0 rules";
@@ -22746,13 +23097,13 @@
       const contextIds = new Set(contexts.map(context => String(context.pricingContextId)));
 
       if (
-        clientPricingRuleInlineCreateState &&
+        clientPricingRuleInlineEditorState &&
         (
-          clientPricingRuleInlineCreateState.inn !== profile.inn ||
-          !contextIds.has(String(clientPricingRuleInlineCreateState.pricingContextId))
+          clientPricingRuleInlineEditorState.inn !== profile.inn ||
+          !contextIds.has(String(clientPricingRuleInlineEditorState.pricingContextId))
         )
       ) {
-        clientPricingRuleInlineCreateState = null;
+        clientPricingRuleInlineEditorState = null;
       }
 
       Array.from(collapsedContexts).forEach(contextId => {
@@ -22825,65 +23176,84 @@
           const branchId = `client-pricing-context-${counterpartyId}-${contextKey}`;
           const rulesMarkup = ruleEntries.length === 0
             ? '<li class="client-pricing-configuration-empty">No Pricing Rules configured</li>'
-            : ruleEntries.map(({ rule, index }) => `
-                <li class="client-pricing-configuration-rule" data-client-pricing-rule-index="${index}">
-                  <strong class="client-pricing-configuration-rule-pair">${escapeHtml(rule.currencyPair)}</strong>
-                  <span class="client-pricing-configuration-margin">
-                    <span class="client-pricing-configuration-margin-label">Margin</span>
-                    <span>${escapeHtml(editNumber(rule.marginPercent, 4))}%</span>
-                  </span>
-                  <span class="client-pricing-configuration-rule-actions">
-                    <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-pricing-rule-action="edit" data-client-pricing-rule-index="${index}" aria-label="Edit Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Edit Pricing Rule">
-                      <span class="button-icon" aria-hidden="true">edit</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action profile-danger-action" data-client-pricing-rule-action="delete" data-client-pricing-rule-index="${index}" aria-label="Delete Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Delete Pricing Rule">
-                      <span class="button-icon" aria-hidden="true">delete</span>
-                    </button>
-                  </span>
-                </li>
-              `).join("");
-          const inlineCreateActive = clientPricingRuleInlineCreateMatches(profile, context.pricingContextId);
+            : ruleEntries.map(({ rule, index }) => {
+                const editing = clientPricingRuleInlineEditorMatches(
+                  profile,
+                  context.pricingContextId,
+                  "edit",
+                  index
+                );
+
+                if (editing) {
+                  const marginValue = clientPricingRuleInlineEditorState.marginPercent;
+                  const margin = normalizeNumber(marginValue);
+                  const canSave = margin !== null && margin >= 0 && margin < 100 &&
+                    Math.abs(Number(rule.marginPercent) - Number(margin)) > 0.0000001;
+
+                  return clientPricingRuleInlineEditorMarkup({
+                    contextId: context.pricingContextId,
+                    currencyPairs: [rule.currencyPair],
+                    selectedCurrencyPair: rule.currencyPair,
+                    marginValue,
+                    editing: true,
+                    index,
+                    saving: clientPricingRuleInlineEditorState.saving,
+                    canSave
+                  });
+                }
+
+                return `
+                  <li class="client-pricing-configuration-rule" data-client-pricing-rule-index="${index}">
+                    <strong class="client-pricing-configuration-rule-pair">${escapeHtml(rule.currencyPair)}</strong>
+                    <span class="client-pricing-configuration-margin">
+                      <span class="client-pricing-configuration-margin-label">Margin</span>
+                      <span>${escapeHtml(editNumber(rule.marginPercent, 4))}%</span>
+                    </span>
+                    <span class="client-pricing-configuration-rule-actions">
+                      <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-pricing-rule-action="edit" data-client-pricing-rule-index="${index}" aria-label="Edit Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Edit Pricing Rule">
+                        <span class="button-icon" aria-hidden="true">edit</span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action profile-danger-action" data-client-pricing-rule-action="delete" data-client-pricing-rule-index="${index}" aria-label="Delete Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Delete Pricing Rule">
+                        <span class="button-icon" aria-hidden="true">delete</span>
+                      </button>
+                    </span>
+                  </li>
+                `;
+              }).join("");
+          const inlineCreateActive = clientPricingRuleInlineEditorMatches(
+            profile,
+            context.pricingContextId,
+            "create"
+          );
+          const inlineEditActive = clientPricingRuleInlineEditorMatches(
+            profile,
+            context.pricingContextId,
+            "edit",
+            clientPricingRuleInlineEditorState?.index
+          );
           const inlineCurrencyPair = inlineCreateActive && availableCurrencyPairs.includes(
-            clientPricingRuleInlineCreateState.currencyPair
+            clientPricingRuleInlineEditorState.currencyPair
           )
-            ? clientPricingRuleInlineCreateState.currencyPair
+            ? clientPricingRuleInlineEditorState.currencyPair
             : availableCurrencyPairs[0] || "";
           const inlineMarginValue = inlineCreateActive
-            ? clientPricingRuleInlineCreateState.marginPercent
+            ? clientPricingRuleInlineEditorState.marginPercent
             : editNumber(0, 4);
           const inlineMarginNumber = normalizeNumber(inlineMarginValue);
           const inlineCanSave = Boolean(inlineCurrencyPair) && inlineMarginNumber !== null
             && inlineMarginNumber >= 0 && inlineMarginNumber < 100;
-          const inlineSaving = inlineCreateActive && clientPricingRuleInlineCreateState.saving;
+          const inlineSaving = inlineCreateActive && clientPricingRuleInlineEditorState.saving;
           const addRuleRowMarkup = inlineCreateActive
-            ? `
-                <li class="client-pricing-configuration-add-row is-editing" data-client-pricing-rule-inline-create="${escapeHtml(context.pricingContextId)}">
-                  <label class="client-pricing-configuration-inline-field">
-                    <span class="visually-hidden">Ccy Pair</span>
-                    <select class="form-select form-select-sm" data-client-pricing-rule-inline-field="currencyPair" aria-label="Ccy Pair"${inlineSaving ? " disabled" : ""}>
-                      ${availableCurrencyPairs.map(currencyPair => `
-                        <option value="${escapeHtml(currencyPair)}"${currencyPair === inlineCurrencyPair ? " selected" : ""}>${escapeHtml(currencyPair)}</option>
-                      `).join("")}
-                    </select>
-                  </label>
-                  <label class="client-pricing-configuration-inline-margin">
-                    <span class="visually-hidden">Margin percent</span>
-                    <span class="input-group input-group-sm">
-                      <input class="form-control form-control-sm" type="text" inputmode="decimal" value="${escapeHtml(inlineMarginValue)}" data-client-pricing-rule-inline-field="marginPercent" aria-label="Margin percent"${inlineSaving ? " disabled" : ""}>
-                      <span class="input-group-text">%</span>
-                    </span>
-                  </label>
-                  <span class="client-pricing-configuration-inline-actions">
-                    <button type="button" class="btn btn-sm btn-outline-primary reference-grid-action" data-client-pricing-rule-inline-action="save" data-client-pricing-rule-inline-context-id="${escapeHtml(context.pricingContextId)}" aria-label="Save Pricing Rule" data-tooltip="Save Pricing Rule"${inlineSaving || !inlineCanSave ? " disabled" : ""}>
-                      <span class="button-icon" aria-hidden="true">${inlineSaving ? "hourglass_top" : "save"}</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-pricing-rule-inline-action="cancel" data-client-pricing-rule-inline-context-id="${escapeHtml(context.pricingContextId)}" aria-label="Cancel adding Pricing Rule" data-tooltip="Cancel"${inlineSaving ? " disabled" : ""}>
-                      <span class="button-icon" aria-hidden="true">close</span>
-                    </button>
-                  </span>
-                </li>
-              `
-            : availableCurrencyPairs.length > 0
+            ? clientPricingRuleInlineEditorMarkup({
+                contextId: context.pricingContextId,
+                currencyPairs: availableCurrencyPairs,
+                selectedCurrencyPair: inlineCurrencyPair,
+                marginValue: inlineMarginValue,
+                editing: false,
+                saving: inlineSaving,
+                canSave: inlineCanSave
+              })
+            : !inlineEditActive && availableCurrencyPairs.length > 0
               ? `
                   <li class="client-pricing-configuration-add-row">
                     <button type="button" class="btn btn-sm btn-outline-primary with-icon client-pricing-configuration-add-rule" data-client-execution-context-action="add-rule" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}">
@@ -22902,7 +23272,7 @@
                   <span class="client-pricing-configuration-context-label">Pricing Context</span>
                   <span class="client-pricing-context-candidate-path" title="${escapeHtml(pricingContextDisplayPath(context))}">${pricingContextFacetsMarkup(context)}</span>
                   <span class="client-pricing-configuration-context-meta">
-                    <span class="client-pricing-configuration-context-relation">· Execution System Pricing Mode:</span>
+                    <span class="client-pricing-configuration-context-relation">Execution System Pricing Mode</span>
                     <span class="client-pricing-configuration-mode">${pricingModeIndicatorMarkup(pricingMode, escapeHtml(pricingMode))}</span>
                   </span>
                 </button>
@@ -23062,8 +23432,9 @@
       clientExecutionContextAttachFilterControls.forEach(control => {
         control.value = "";
       });
-      clientExecutionContextAttachDialogSubtitle.textContent = profile.name;
+      clientExecutionContextAttachDialogSubtitle.textContent = `Select one or more contexts to attach to ${profile.name}.`;
       setClientExecutionContextAttachStatus("");
+      applyClientExecutionContextAttachColumnLayout();
       renderClientExecutionContextAttachTable();
 
       if (typeof clientExecutionContextAttachDialog.showModal === "function") {
@@ -28784,7 +29155,10 @@
       workspaceNav.hidden = activeRoute === "home";
       closeWorkspaceNavMenus();
       workspaceNavLinks.forEach(link => {
-        const isActive = link.dataset.workspaceRoute === activeRoute;
+        const routes = String(
+          link.dataset.workspaceRoutes || link.dataset.workspaceRoute || ""
+        ).split(/\s+/).filter(Boolean);
+        const isActive = routes.includes(activeRoute);
         link.classList.toggle("is-active", isActive);
 
         if (isActive) {
@@ -28805,6 +29179,14 @@
 
     function batchingHistoryRoute() {
       return "#batching:history";
+    }
+
+    function setFxDealsActiveTab(activeRoute) {
+      fxDealsTabs.forEach(tab => {
+        const isActive = tab.dataset.fxDealsRoute === activeRoute;
+        tab.classList.toggle("active", isActive);
+        tab.setAttribute("aria-selected", String(isActive));
+      });
     }
 
     function batchDetailsRoute(batchId) {
@@ -28894,6 +29276,10 @@
 
     function hedgingSettingsRoute() {
       return "#hedging-settings";
+    }
+
+    function batchingSettingsRoute() {
+      return "#batching-settings";
     }
 
     function pricingRoute() {
@@ -29000,6 +29386,10 @@
 
     function isHedgingSettingsRoute() {
       return location.hash === hedgingSettingsRoute();
+    }
+
+    function isBatchingSettingsRoute() {
+      return location.hash === batchingSettingsRoute();
     }
 
     function isPricingRoute() {
@@ -30148,6 +30538,110 @@
       }
     }
 
+    function applyFxAutoBatchingProcessState(state) {
+      fxAutoBatchingProcessState = {
+        ...fxAutoBatchingProcessState,
+        ...(state && typeof state === "object" ? state : {})
+      };
+      const running = fxAutoBatchingProcessState.running === true;
+
+      autoBatchButton.classList.toggle("is-running", running);
+      autoBatchButton.setAttribute("aria-pressed", String(running));
+      autoBatchButton.setAttribute(
+        "aria-label",
+        running ? "Stop Auto Batching" : "Start Auto Batching"
+      );
+      autoBatchButton.title = running ? "Stop Auto Batching" : "Start Auto Batching";
+      autoBatchLabel.textContent = running ? "Stop Auto Batch" : "Auto Batch";
+      autoBatchButton.disabled = !DEMO_API_ENABLED || fxAutoBatchingToggleInFlight;
+
+      if (running && fxAutoBatchingRefreshTimer === null) {
+        fxAutoBatchingRefreshTimer = window.setInterval(() => {
+          void refreshFxAutoBatchingProcess();
+        }, FX_AUTO_BATCHING_REFRESH_INTERVAL_MS);
+      } else if (!running && fxAutoBatchingRefreshTimer !== null) {
+        window.clearInterval(fxAutoBatchingRefreshTimer);
+        fxAutoBatchingRefreshTimer = null;
+      }
+    }
+
+    async function refreshFxAutoBatchingProcess() {
+      if (fxAutoBatchingRefreshInFlight) {
+        return;
+      }
+
+      fxAutoBatchingRefreshInFlight = true;
+      const previousBatchId = Number(fxAutoBatchingProcessState.lastFormedBatchId) || null;
+
+      try {
+        const state = await demoApiRequest("/api/v1/fx-auto-batching/process");
+        applyFxAutoBatchingProcessState(state);
+        const nextBatchId = Number(state.lastFormedBatchId) || null;
+
+        if (nextBatchId !== null && nextBatchId !== previousBatchId) {
+          await Promise.all([
+            reloadFxPositionsFromApi(),
+            reloadFxBatchesFromApi()
+          ]);
+          render(fxPositions);
+          setBatchStatus(
+            `FX Batch ${nextBatchId} was formed automatically from ${
+              Number(state.lastCandidateTradeCount) || 0
+            } trade${Number(state.lastCandidateTradeCount) === 1 ? "" : "s"}.`,
+            "success"
+          );
+        } else if (state.lastError) {
+          setBatchStatus(state.lastError, "error");
+        }
+      } catch (error) {
+        setBatchStatus(error.message || "Unable to refresh Auto Batching process.", "error");
+      } finally {
+        fxAutoBatchingRefreshInFlight = false;
+      }
+    }
+
+    async function toggleFxAutoBatchingProcess() {
+      const running = fxAutoBatchingProcessState.running === true;
+      const endpoint = running
+        ? "/api/v1/fx-auto-batching/process/stop"
+        : "/api/v1/fx-auto-batching/process/start";
+
+      fxAutoBatchingToggleInFlight = true;
+      autoBatchButton.disabled = true;
+
+      try {
+        const state = await demoApiRequest(endpoint, { method: "POST" });
+        applyFxAutoBatchingProcessState(state);
+        const intervalSeconds = Number(state.intervalMs) / 1000;
+        setBatchStatus(
+          state.running
+            ? `Auto Batching started. One compatible FX Batch may be formed every ${intervalSeconds} seconds.`
+            : "Auto Batching was stopped successfully.",
+          "success"
+        );
+      } catch (error) {
+        setBatchStatus(error.message || "Unable to change Auto Batching process.", "error");
+      } finally {
+        fxAutoBatchingToggleInFlight = false;
+        applyFxAutoBatchingProcessState(fxAutoBatchingProcessState);
+      }
+    }
+
+    async function connectFxAutoBatchingProcess() {
+      if (!DEMO_API_ENABLED) {
+        autoBatchButton.disabled = true;
+        return;
+      }
+
+      try {
+        const state = await demoApiRequest("/api/v1/fx-auto-batching/process");
+        applyFxAutoBatchingProcessState(state);
+      } catch (error) {
+        autoBatchButton.disabled = true;
+        setBatchStatus(error.message || "Unable to read Auto Batching process status.", "error");
+      }
+    }
+
     function closeResetDemoTradesDialog() {
       resetDemoTradesStatus.textContent = "";
       resetDemoTradesStatus.className = "alert alert-danger batch-rollback-status";
@@ -30201,6 +30695,7 @@
         );
 
         applyClientDealGenerationProcessState(result.generationProcess);
+        applyFxAutoBatchingProcessState(result.autoBatchingProcess);
         selectedDealIds.clear();
 
         await Promise.all([
@@ -30243,6 +30738,8 @@
         !DEMO_API_ENABLED
         || oneBatchInFlight
         || selectedBatchSourceTrades().length === 0;
+
+      autoBatchButton.disabled = !DEMO_API_ENABLED || fxAutoBatchingToggleInFlight;
     }
 
     function updateSelectAllCheckboxes(rows) {
@@ -31164,6 +31661,119 @@
       }
     }
 
+    function setAutoBatchingSettingsStatus(message = "", tone = "") {
+      setWorkbenchPageStatus(autoBatchingSettingsStatus, message, tone);
+    }
+
+    function autoBatchingSettingsDraft() {
+      const maxIntervalSeconds = Number(
+        autoBatchingSettingsForm.elements.maxIntervalSeconds.value
+      );
+
+      if (
+        !Number.isInteger(maxIntervalSeconds)
+        || maxIntervalSeconds < 1
+        || maxIntervalSeconds > 3600
+      ) {
+        throw new Error(
+          "Maximum Batching Interval must be a whole number of seconds from 1 to 3600."
+        );
+      }
+
+      return { maxIntervalSeconds };
+    }
+
+    function updateAutoBatchingSettingsSaveAvailability() {
+      let draft;
+
+      try {
+        draft = autoBatchingSettingsDraft();
+      } catch {
+        setSaveButtonAvailability(
+          autoBatchingSettingsSaveButton,
+          false,
+          "Enter a valid Maximum Batching Interval"
+        );
+        return;
+      }
+
+      setSaveButtonAvailability(
+        autoBatchingSettingsSaveButton,
+        draft.maxIntervalSeconds !== autoBatchingSettings.maxIntervalSeconds
+      );
+    }
+
+    function renderAutoBatchingSettings() {
+      autoBatchingSettingsForm.elements.maxIntervalSeconds.value =
+        autoBatchingSettings.maxIntervalSeconds;
+      updateAutoBatchingSettingsSaveAvailability();
+    }
+
+    async function loadBatchingSettingsPage() {
+      renderAutoBatchingSettings();
+
+      if (!DEMO_API_ENABLED) {
+        setAutoBatchingSettingsStatus(
+          "SQLite API is unavailable. Start the demo with start-demo.bat.",
+          "error"
+        );
+        return;
+      }
+
+      setAutoBatchingSettingsStatus("Loading Auto Batching settings...");
+
+      try {
+        autoBatchingSettings = normalizedFxAutoBatchingSettings(
+          await demoApiRequest("/api/v1/fx-auto-batching-settings")
+        );
+        renderAutoBatchingSettings();
+        setAutoBatchingSettingsStatus();
+      } catch (error) {
+        setAutoBatchingSettingsStatus(
+          error.message || "Unable to load Auto Batching settings.",
+          "error"
+        );
+      }
+    }
+
+    async function saveAutoBatchingSettings(event) {
+      event.preventDefault();
+      let payload;
+
+      try {
+        payload = autoBatchingSettingsDraft();
+      } catch (error) {
+        setAutoBatchingSettingsStatus(error.message, "error");
+        return;
+      }
+
+      autoBatchingSettingsSaveButton.disabled = true;
+      setAutoBatchingSettingsStatus("Saving Auto Batching settings...");
+
+      try {
+        autoBatchingSettings = normalizedFxAutoBatchingSettings(
+          await demoApiRequest("/api/v1/fx-auto-batching-settings", {
+            method: "PUT",
+            body: JSON.stringify(payload)
+          })
+        );
+        applyFxAutoBatchingProcessState(
+          await demoApiRequest("/api/v1/fx-auto-batching/process")
+        );
+        renderAutoBatchingSettings();
+        setAutoBatchingSettingsStatus(
+          "Auto Batching settings were saved successfully.",
+          "success"
+        );
+      } catch (error) {
+        updateAutoBatchingSettingsSaveAvailability();
+        setAutoBatchingSettingsStatus(
+          error.message || "Unable to save Auto Batching settings.",
+          "error"
+        );
+      }
+    }
+
     function setHedgeQuickModeSettingsStatus(message = "", tone = "") {
       setWorkbenchPageStatus(hedgeQuickModeSettingsStatus, message, tone);
     }
@@ -31771,6 +32381,7 @@
       const toggle = event.target.closest("[data-hedge-quick-mode-pricing-rule-toggle]");
 
       if (toggle) {
+        event.stopPropagation();
         hedgeQuickModePricingRulesExpanded = !hedgeQuickModePricingRulesExpanded;
         renderHedgeQuickModePricingRules();
         hedgeQuickModePricingRulePicker
@@ -32532,6 +33143,7 @@
       const toggle = event.target.closest("[data-add-hedge-deal-pricing-rule-toggle]");
 
       if (toggle) {
+        event.stopPropagation();
         addHedgeDealPricingRulesExpanded = !addHedgeDealPricingRulesExpanded;
         renderAddHedgeDealPricingRules();
         addHedgeDealPricingRulePicker
@@ -34228,7 +34840,7 @@
       if (!setting) {
         hedgeQuickModeToolbar.innerHTML = `
           <div class="hedge-quick-toolbar-state text-secondary">
-            <span class="button-icon" aria-hidden="true">bolt_off</span>
+            <span class="button-icon" aria-hidden="true">bolt</span>
             <span>Quick Mode is not configured for ${escapeHtml(currencyPair)}.</span>
           </div>
         `;
@@ -34600,73 +35212,36 @@
       return context ? pricingContextDisplayPath(context) : `Execution Context #${normalizedId}`;
     }
 
+    function fxDealsExecutionContextFormatter(cell) {
+      const row = cell.getRow().getData();
+      const normalizedId = Number(row.executionContextId);
+      const context = Number.isInteger(normalizedId) && normalizedId > 0
+        ? pricingContextById(String(normalizedId))
+        : null;
+
+      if (!context) {
+        return escapeHtml(cell.getValue() || "");
+      }
+
+      const label = pricingContextDisplayPath(context);
+      return `
+        <span
+          class="client-pricing-context-candidate-path fx-deals-execution-context-path"
+          role="group"
+          aria-label="Execution Context: ${escapeHtml(label)}"
+          data-smart-width-content
+        >
+          ${pricingContextFacetsMarkup(context)}
+        </span>
+      `;
+    }
+
     function clientFxDealsFilterableColumn(size, definition) {
       return tabulatorSizedColumn(size, {
         headerFilter: "input",
         headerFilterFunc: "like",
         ...definition
       });
-    }
-
-    function clientFxDealsIdentifierFormatter(cell) {
-      const row = cell.getRow().getData();
-      return counterpartyIdentifierMarkup(
-        String(row.clientCodeType || ""),
-        String(row.clientCode || "")
-      );
-    }
-
-    function clientFxDealsIdentifierHeaderFilter(_cell, _onRendered, success) {
-      const control = document.createElement("span");
-      control.className = "counterparty-identifier-filter";
-
-      const scheme = document.createElement("select");
-      scheme.className = "form-select form-select-sm";
-      scheme.setAttribute("aria-label", "Filter Client FX Deals by identifier scheme");
-      scheme.innerHTML = [
-        '<option value="">All</option>',
-        ...EXTERNAL_COUNTERPARTY_CODE_TYPES.map(value =>
-          `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`
-        )
-      ].join("");
-
-      const code = document.createElement("input");
-      code.className = "form-control form-control-sm";
-      code.type = "text";
-      code.autocomplete = "off";
-      code.setAttribute("aria-label", "Filter Client FX Deals by identifier value");
-
-      const applyFilter = () => {
-        const value = {
-          scheme: scheme.value,
-          code: code.value.trim().toLowerCase()
-        };
-        success(value.scheme || value.code ? JSON.stringify(value) : "");
-      };
-
-      scheme.addEventListener("change", applyFilter);
-      code.addEventListener("input", applyFilter);
-      control.append(scheme, code);
-      return control;
-    }
-
-    function clientFxDealsIdentifierHeaderFilterFunc(filterValue, _rowValue, rowData) {
-      if (!filterValue) {
-        return true;
-      }
-
-      let filter;
-
-      try {
-        filter = JSON.parse(filterValue);
-      } catch {
-        return true;
-      }
-
-      const scheme = String(rowData.clientCodeType || "").toUpperCase();
-      const code = String(rowData.clientCode || "").toLowerCase();
-      return (!filter.scheme || scheme === filter.scheme)
-        && (!filter.code || code.includes(filter.code));
     }
 
     function clientFxDealColumnDefinitions() {
@@ -34693,15 +35268,8 @@
           title: "Client Details",
           cssClass: "client-deals-group-client",
           columns: [
-            tabulatorSizedColumn("identifier", {
-              title: "Identifier",
-              field: "identifier",
-              headerSort: false,
-              headerFilter: clientFxDealsIdentifierHeaderFilter,
-              headerFilterFunc: clientFxDealsIdentifierHeaderFilterFunc,
-              formatter: clientFxDealsIdentifierFormatter,
-              cssClass: "client-deals-col-client"
-            }),
+            clientFxDealsFilterableColumn("type", { title: "Business ID Type", field: "clientCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
+            clientFxDealsFilterableColumn("code", { title: "Business ID", field: "clientCode", headerSort: false, cssClass: "client-deals-col-client" }),
             clientFxDealsFilterableColumn("name", { title: "Client Name", field: "clientName", cssClass: "client-deals-col-client" })
           ]
         },
@@ -34730,7 +35298,7 @@
           title: "Pricing Details",
           cssClass: "client-deals-group-pricing",
           columns: [
-            clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, tooltip: true, cssClass: "client-deals-col-pricing" }),
+            clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, tooltip: true, cssClass: "client-deals-col-pricing" }),
             tabulatorSizedColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number" })
           ]
         },
@@ -34753,7 +35321,6 @@
           rowKey: `${tradeId || "client-fx-deal"}:${index}`,
           ...deal,
           tradeId,
-          identifier: `${String(deal.clientCodeType || "").trim()} ${String(deal.clientCode || "").trim()}`.trim(),
           executionContextLabel: clientFxDealsExecutionContextLabel(deal.executionContextId),
           pricingRuleMargin: fxDealPricingRuleMargin(deal)
         };
@@ -34768,29 +35335,8 @@
         : `${filteredCount} of ${total} deals`;
     }
 
-    function renderClientFxDealsColumnMenu(definitions) {
-      clientFxDealsColumnMenu.innerHTML = definitions
-        .map(group => `
-          <fieldset class="client-deals-column-group">
-            <legend>${escapeHtml(group.title)}</legend>
-            ${group.columns.map(column => `
-              <label class="client-deals-column-option" for="client-fx-column-${escapeHtml(column.field)}">
-                <input class="form-check-input" type="checkbox" id="client-fx-column-${escapeHtml(column.field)}" data-client-fx-column="${escapeHtml(column.field)}" checked>
-                <span>${escapeHtml(column.title)}</span>
-              </label>
-            `).join("")}
-          </fieldset>
-        `)
-        .join("") + `
-          <div class="client-deals-column-menu-footer">
-            <button type="button" class="btn btn-sm btn-link" data-client-fx-columns-show-all>Show all</button>
-          </div>
-        `;
-    }
-
     function initializeClientFxDealsGrid(data) {
       const columns = uiTableColumns("client_fx_deals_grid", clientFxDealColumnDefinitions());
-      renderClientFxDealsColumnMenu(columns);
       clientFxDealsGrid = new Tabulator(clientFxDealsGridEl, {
         data,
         index: "rowKey",
@@ -34819,14 +35365,6 @@
       });
       clientFxDealsGrid.on("dataFiltered", (_filters, rows) => {
         updateClientFxDealsCount(rows.length);
-      });
-      clientFxDealsGrid.on("columnVisibilityChanged", (column, visible) => {
-        const field = column.getField();
-        const input = clientFxDealsColumnMenu.querySelector(`[data-client-fx-column="${field}"]`);
-
-        if (input) {
-          input.checked = visible;
-        }
       });
     }
 
@@ -34922,8 +35460,8 @@
           title: "Trading Counterparty Details",
           cssClass: "client-deals-group-client",
           columns: [
-            clientFxDealsFilterableColumn("type", { title: "Counterparty Code Type", field: "counterpartyCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
-            clientFxDealsFilterableColumn("code", { title: "Counterparty Code", field: "counterpartyCode", headerSort: false, cssClass: "client-deals-col-client" }),
+            clientFxDealsFilterableColumn("type", { title: "Business ID Type", field: "counterpartyCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
+            clientFxDealsFilterableColumn("code", { title: "Business ID", field: "counterpartyCode", headerSort: false, cssClass: "client-deals-col-client" }),
             clientFxDealsFilterableColumn("name", { title: "Counterparty Name", field: "counterpartyName", cssClass: "client-deals-col-client" })
           ]
         },
@@ -34952,7 +35490,7 @@
           title: "Pricing Details",
           cssClass: "client-deals-group-pricing",
           columns: [
-            clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, tooltip: true, cssClass: "client-deals-col-pricing" }),
+            clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, tooltip: true, cssClass: "client-deals-col-pricing" }),
             tabulatorSizedColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number" })
           ]
         },
@@ -34989,29 +35527,8 @@
         : `${filteredCount} of ${total} deals`;
     }
 
-    function renderHedgeFxDealsColumnMenu(definitions) {
-      hedgeFxDealsColumnMenu.innerHTML = definitions
-        .map(group => `
-          <fieldset class="client-deals-column-group">
-            <legend>${escapeHtml(group.title)}</legend>
-            ${group.columns.map(column => `
-              <label class="client-deals-column-option" for="hedge-fx-column-${escapeHtml(column.field)}">
-                <input class="form-check-input" type="checkbox" id="hedge-fx-column-${escapeHtml(column.field)}" data-hedge-fx-column="${escapeHtml(column.field)}" checked>
-                <span>${escapeHtml(column.title)}</span>
-              </label>
-            `).join("")}
-          </fieldset>
-        `)
-        .join("") + `
-          <div class="client-deals-column-menu-footer">
-            <button type="button" class="btn btn-sm btn-link" data-hedge-fx-columns-show-all>Show all</button>
-          </div>
-        `;
-    }
-
     function initializeHedgeFxDealsGrid(data) {
       const columns = uiTableColumns("hedge_fx_deals_grid", hedgeFxDealColumnDefinitions());
-      renderHedgeFxDealsColumnMenu(columns);
       hedgeFxDealsGrid = new Tabulator(hedgeFxDealsGridEl, {
         data,
         index: "rowKey",
@@ -35040,14 +35557,6 @@
       });
       hedgeFxDealsGrid.on("dataFiltered", (_filters, rows) => {
         updateHedgeFxDealsCount(rows.length);
-      });
-      hedgeFxDealsGrid.on("columnVisibilityChanged", (column, visible) => {
-        const field = column.getField();
-        const input = hedgeFxDealsColumnMenu.querySelector(`[data-hedge-fx-column="${field}"]`);
-
-        if (input) {
-          input.checked = visible;
-        }
       });
     }
 
@@ -35174,8 +35683,10 @@
 
     function applyInitialPageMode() {
       batchDetailsRequestSequence += 1;
+      fxDealsPage.hidden = true;
       clientFxDealsPage.hidden = true;
       hedgeFxDealsPage.hidden = true;
+      batchingSettingsPage.hidden = true;
       hedgingSettingsPage.hidden = true;
       databasePage.hidden = true;
       batchingHistoryPage.hidden = true;
@@ -35188,7 +35699,6 @@
 
       if (isBatchDetailsRoute()) {
         setWorkspaceRoute("batch-details");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -35203,7 +35713,6 @@
 
       if (isBatchingHistoryRoute()) {
         setWorkspaceRoute("batching-history");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -35218,35 +35727,50 @@
 
       if (isClientFxDealsRoute()) {
         setWorkspaceRoute("client-fx-deals");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
+        fxDealsPage.hidden = false;
         clientFxDealsPage.hidden = false;
+        setFxDealsActiveTab("client-fx-deals");
         document.title = "Client FX Deals";
         return;
       }
 
       if (isHedgeFxDealsRoute()) {
         setWorkspaceRoute("hedge-fx-deals");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
+        fxDealsPage.hidden = false;
         hedgeFxDealsPage.hidden = false;
+        setFxDealsActiveTab("hedge-fx-deals");
         document.title = "Hedge FX Deals";
+        return;
+      }
+
+      if (isBatchingSettingsRoute()) {
+        setWorkspaceRoute("batching-settings");
+        marketPage.hidden = true;
+        mainPage.hidden = true;
+        clientProfilePage.hidden = true;
+        pricingPage.hidden = true;
+        referenceDataPage.hidden = true;
+        pricingRulesPage.hidden = true;
+        batchingSettingsPage.hidden = false;
+        document.title = "Batching Settings";
+        loadBatchingSettingsPage();
         return;
       }
 
       if (isHedgingSettingsRoute()) {
         setWorkspaceRoute("hedging-settings");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -35261,7 +35785,6 @@
 
       if (isUsersRoute()) {
         setWorkspaceRoute("users");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         pricingPage.hidden = true;
@@ -35275,7 +35798,6 @@
 
       if (isClientProfileRoute()) {
         setWorkspaceRoute("profile");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         pricingPage.hidden = true;
@@ -35293,7 +35815,6 @@
           ? "Currency Pair Settings"
           : "Currency Settings";
         setWorkspaceRoute(settingsKind === "pairs" ? "settings-currency-pairs" : "settings-currencies");
-        homePage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
@@ -35307,7 +35828,6 @@
 
       if (isMarketRoute()) {
         setWorkspaceRoute("market");
-        homePage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
@@ -35321,7 +35841,6 @@
 
       if (isDatabaseRoute()) {
         setWorkspaceRoute("database");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -35336,7 +35855,6 @@
 
       if (isPricingRoute()) {
         setWorkspaceRoute("pricing");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -35351,7 +35869,6 @@
         referenceDataEditState = null;
         updateReferenceDataVisibility();
         setWorkspaceRoute("reference");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -35367,7 +35884,6 @@
         pricingRuleEditState = null;
         activePricingRulesScope = pricingRulesScopeFromRoute();
         setWorkspaceRoute("pricing-rules");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -35380,7 +35896,6 @@
 
       if (isBatchingBlotterRoute()) {
         setWorkspaceRoute("batching");
-        homePage.hidden = true;
         marketPage.hidden = true;
         mainPage.hidden = false;
         clientProfilePage.hidden = true;
@@ -35391,15 +35906,7 @@
         return;
       }
 
-      setWorkspaceRoute("home");
-      homePage.hidden = false;
-      marketPage.hidden = true;
-      mainPage.hidden = true;
-      clientProfilePage.hidden = true;
-      pricingPage.hidden = true;
-      referenceDataPage.hidden = true;
-      pricingRulesPage.hidden = true;
-      document.title = "Demo Workspace";
+      location.hash = batchingBlotterRoute();
     }
 
     workspaceNavMenuEntries.forEach(entry => {
@@ -35544,6 +36051,7 @@
     generateClientDealButton.addEventListener("click", generateClientDeal);
     runClientDealGenerationButton.addEventListener("click", toggleClientDealGenerationProcess);
     oneBatchButton.addEventListener("click", formOneBatchFromSelection);
+    autoBatchButton.addEventListener("click", toggleFxAutoBatchingProcess);
     batchRollbackDialogClose.addEventListener("click", closeBatchRollbackDialog);
     batchRollbackCancelButton.addEventListener("click", closeBatchRollbackDialog);
     batchRollbackConfirmButton.addEventListener("click", confirmBatchRollback);
@@ -35559,6 +36067,15 @@
       event.stopPropagation();
       location.hash = hedgingSettingsRoute();
     });
+    autoBatchingSettingsButton.addEventListener("click", event => {
+      event.stopPropagation();
+      location.hash = batchingSettingsRoute();
+    });
+    autoBatchingSettingsForm.addEventListener("submit", saveAutoBatchingSettings);
+    autoBatchingSettingsForm.addEventListener(
+      "input",
+      updateAutoBatchingSettingsSaveAvailability
+    );
     addClientDealForm.addEventListener("submit", createClientDeal);
     addClientDealForm.addEventListener("click", selectAddClientDealAmountFixingCurrency);
     addClientDealForm.addEventListener("keydown", handleAddClientDealControlEnter);
@@ -36023,21 +36540,19 @@
       openClientExecutionContextAttachDialog();
     });
     clientExecutionContextsPanel.addEventListener("click", event => {
-      const inlineCreateButton = event.target.closest("[data-client-pricing-rule-inline-action]");
+      const inlineEditorButton = event.target.closest("[data-client-pricing-rule-inline-action]");
       const contextButton = event.target.closest("[data-client-execution-context-action]");
       const pricingRuleButton = event.target.closest("[data-client-pricing-rule-action]");
 
-      if (inlineCreateButton) {
-        const contextId = normalizedIntegerId(inlineCreateButton.dataset.clientPricingRuleInlineContextId);
-
-        if (!contextId || inlineCreateButton.disabled) {
+      if (inlineEditorButton) {
+        if (inlineEditorButton.disabled) {
           return;
         }
 
-        if (inlineCreateButton.dataset.clientPricingRuleInlineAction === "save") {
-          saveClientPricingRuleInlineCreate(contextId);
-        } else if (inlineCreateButton.dataset.clientPricingRuleInlineAction === "cancel") {
-          cancelClientPricingRuleInlineCreate(contextId);
+        if (inlineEditorButton.dataset.clientPricingRuleInlineAction === "save") {
+          saveClientPricingRuleInlineEditor();
+        } else if (inlineEditorButton.dataset.clientPricingRuleInlineAction === "cancel") {
+          cancelClientPricingRuleInlineEditor();
         }
         return;
       }
@@ -36096,27 +36611,26 @@
     });
     ["input", "change"].forEach(eventName => {
       clientExecutionContextsPanel.addEventListener(eventName, event => {
-        const row = event.target.closest("[data-client-pricing-rule-inline-create]");
+        const row = event.target.closest("[data-client-pricing-rule-inline-editor]");
 
         if (row) {
-          updateClientPricingRuleInlineCreateAvailability(row);
+          updateClientPricingRuleInlineEditorAvailability(row);
         }
       });
     });
     clientExecutionContextsPanel.addEventListener("keydown", event => {
-      const row = event.target.closest("[data-client-pricing-rule-inline-create]");
-      const contextId = normalizedIntegerId(row?.dataset.clientPricingRuleInlineCreate);
+      const row = event.target.closest("[data-client-pricing-rule-inline-editor]");
 
-      if (!row || !contextId) {
+      if (!row) {
         return;
       }
 
       if (event.key === "Enter") {
         event.preventDefault();
-        saveClientPricingRuleInlineCreate(contextId);
+        saveClientPricingRuleInlineEditor();
       } else if (event.key === "Escape") {
         event.preventDefault();
-        cancelClientPricingRuleInlineCreate(contextId);
+        cancelClientPricingRuleInlineEditor();
       }
     });
     clientExecutionContextAttachForm.addEventListener("submit", attachSelectedExecutionContexts);
@@ -36423,7 +36937,15 @@
       const button = event.target.closest("[data-ui-table-layout]");
 
       if (button && !button.disabled) {
-        openUiTableLayoutDialog(button.dataset.uiTableLayout);
+        const columnKeys = String(button.dataset.uiTableLayoutColumns || "")
+          .split(/\s+/)
+          .map(value => value.trim())
+          .filter(Boolean);
+
+        openUiTableLayoutDialog(button.dataset.uiTableLayout, {
+          columnKeys,
+          title: button.dataset.uiTableLayoutTitle
+        });
       }
     });
     pricingRulesTableLayoutForm.addEventListener("submit", saveUiTableLayout);
@@ -36434,6 +36956,11 @@
     pricingRulesTableLayoutDialog.addEventListener("cancel", event => {
       event.preventDefault();
       closeUiTableLayoutDialog();
+    });
+    pricingRulesTableLayoutDialog.addEventListener("close", () => {
+      activeUiTableLayoutColumnKeys = null;
+      activeUiTableLayoutTitle = "";
+      pricingRulesTableLayoutSaveDefaultButton.hidden = false;
     });
     pricingRulesTableLayoutList.addEventListener("input", event => {
       if (event.target.matches("[data-ui-table-column-width]")) {
@@ -36883,76 +37410,6 @@
       updateSelectAllCheckboxes(currentDisplayRows());
     });
 
-    clientFxDealsColumnMenu.addEventListener("change", event => {
-      const input = event.target.closest("[data-client-fx-column]");
-
-      if (!input || !clientFxDealsGridReady) {
-        return;
-      }
-
-      const column = clientFxDealsGrid.getColumn(input.dataset.clientFxColumn);
-
-      if (input.checked) {
-        column?.show();
-      } else {
-        column?.hide();
-      }
-    });
-    clientFxDealsColumnMenu.addEventListener("click", event => {
-      if (!event.target.closest("[data-client-fx-columns-show-all]") || !clientFxDealsGridReady) {
-        return;
-      }
-
-      clientFxDealColumnDefinitions().forEach(group => {
-        group.columns.forEach(column => clientFxDealsGrid.getColumn(column.field)?.show());
-      });
-    });
-    document.addEventListener("click", event => {
-      if (clientFxDealsColumnPicker.open && !clientFxDealsColumnPicker.contains(event.target)) {
-        clientFxDealsColumnPicker.open = false;
-      }
-    });
-    clientFxDealsColumnPicker.addEventListener("keydown", event => {
-      if (event.key === "Escape") {
-        clientFxDealsColumnPicker.open = false;
-        clientFxDealsColumnPicker.querySelector("summary")?.focus();
-      }
-    });
-    hedgeFxDealsColumnMenu.addEventListener("change", event => {
-      const input = event.target.closest("[data-hedge-fx-column]");
-
-      if (!input || !hedgeFxDealsGridReady) {
-        return;
-      }
-
-      const column = hedgeFxDealsGrid.getColumn(input.dataset.hedgeFxColumn);
-
-      if (input.checked) {
-        column?.show();
-      } else {
-        column?.hide();
-      }
-    });
-    hedgeFxDealsColumnMenu.addEventListener("click", event => {
-      if (!event.target.closest("[data-hedge-fx-columns-show-all]") || !hedgeFxDealsGridReady) {
-        return;
-      }
-
-      hedgeFxDealColumnDefinitions().forEach(group => {
-        group.columns.forEach(column => hedgeFxDealsGrid.getColumn(column.field)?.show());
-      });
-    });
-    document.addEventListener("click", event => {
-      if (hedgeFxDealsColumnPicker.open && !hedgeFxDealsColumnPicker.contains(event.target)) {
-        hedgeFxDealsColumnPicker.open = false;
-      }
-    });
-    hedgeFxDealsColumnPicker.addEventListener("keydown", event => {
-      if (event.key === "Escape") {
-        hedgeFxDealsColumnPicker.open = false;
-        hedgeFxDealsColumnPicker.querySelector("summary")?.focus();
-      }
-    });
     window.addEventListener("hashchange", () => {
       applyInitialPageMode();
       render(fxPositions);
@@ -37012,6 +37469,7 @@
 
     connectMarketPulseSimulation();
     connectClientDealGenerationProcess();
+    connectFxAutoBatchingProcess();
     initializeHedgeQuickModeToolbar();
     setTradingCounterpartyScopeTab(activeTradingCounterpartyScope);
     applyInitialPageMode();
