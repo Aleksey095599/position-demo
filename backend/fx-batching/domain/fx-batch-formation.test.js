@@ -360,7 +360,7 @@ test("rejects any FX trade without a positive Transfer Rate", () => {
   }
 });
 
-test("rejects trades from different settlement buckets", () => {
+test("rejects trades with different Batching Keys", () => {
   assert.throws(
     () => formFxBatch({
       trades: [

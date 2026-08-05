@@ -11,6 +11,16 @@ const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
   Object.freeze({ tableKey: "internal_units_grid", legacyColumnKey: "counterparty_name", columnKey: "unit_name" }),
   Object.freeze({ tableKey: "users_grid", legacyColumnKey: "status", columnKey: "active" }),
   Object.freeze({
+    tableKey: "batching_history_grid",
+    legacyColumnKey: "formation_reason",
+    columnKey: "formation_reason_code"
+  }),
+  Object.freeze({
+    tableKey: "batching_history_grid",
+    legacyColumnKey: "created_at",
+    columnKey: "formed_at"
+  }),
+  Object.freeze({
     tableKey: "execution_contexts_grid",
     legacyColumnKey: "pricing_rules_count",
     columnKey: "counterparties_count"
@@ -108,13 +118,24 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["transfer_rate", "Transfer Rate", 122],
     ["analytical_pnl", "Analytical PnL", 126]
   ]),
-  batching_history_grid: layout("Batching History", [
+  batching_history_grid: layout("FX Batches", [
     ["batch_id", "Batch ID", 96],
     ["ccy_pair_code", "Ccy Pair Code", 100],
     ["batch_status", "Batch Status", 101],
-    ["formation_reason", "Formation Reason", 252],
-    ["trigger_details", "Trigger Details (Demo)", 560],
-    ["created_at", "Created At", 157],
+    ["formation_reason_code", "Formation Reason", 252],
+    ["formed_at", "Formed At", 157],
+    ["actions", "Actions", 80]
+  ]),
+  batch_formation_audit_grid: layout("Batch Formation Audit", [
+    ["batch_id", "Batch ID", 96],
+    ["batching_key", "Batching Key", 450],
+    ["window_opened_at", "Window Opened At", 157],
+    ["window_closed_at", "Window Closed At", 157],
+    ["formed_at", "Batch Formed At", 157],
+    ["window_duration_ms", "Duration", 105],
+    ["formation_reason_code", "Formation Reason", 252],
+    ["source_trade_count", "Source Trades", 108],
+    ["batch_status", "Status", 101],
     ["actions", "Actions", 80]
   ]),
   batch_members_grid: layout("FX Trade Members", [

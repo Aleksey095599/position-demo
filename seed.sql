@@ -16,11 +16,18 @@ VALUES
     ('USD_RUB', 'USD', 'RUB', 4);
 
 INSERT INTO market_quote_simulation_settings
-    (ccy_pair_code, bid_min, spread, bid_max)
+    (
+        ccy_pair_code,
+        bid_min,
+        spread,
+        bid_max,
+        one_way_duration_seconds,
+        fluctuation_spreads
+    )
 VALUES
-    ('EUR_USD', 1.1220, 0.0002, 1.1222),
-    ('GBP_USD', 1.2680, 0.0003, 1.2710),
-    ('USD_RUB', 88.5000, 0.1500, 90.2500);
+    ('EUR_USD', 1.1220, 0.0002, 1.1250, 60, 3),
+    ('GBP_USD', 1.2680, 0.0003, 1.2710, 60, 3),
+    ('USD_RUB', 88.5000, 0.1500, 90.2500, 60, 3);
 
 INSERT INTO servicing_locations
     (servicing_location_id, name, region, location_type, is_active)
@@ -171,10 +178,19 @@ VALUES
     ('batching_history_grid', 'batch_id', 'Batch ID', 0, 96, 96),
     ('batching_history_grid', 'ccy_pair_code', 'Ccy Pair Code', 1, 100, 100),
     ('batching_history_grid', 'batch_status', 'Batch Status', 2, 101, 101),
-    ('batching_history_grid', 'formation_reason', 'Formation Reason', 3, 252, 252),
-    ('batching_history_grid', 'trigger_details', 'Trigger Details (Demo)', 4, 560, 560),
-    ('batching_history_grid', 'created_at', 'Created At', 5, 157, 157),
-    ('batching_history_grid', 'actions', 'Actions', 6, 80, 80),
+    ('batching_history_grid', 'formation_reason_code', 'Formation Reason', 3, 252, 252),
+    ('batching_history_grid', 'formed_at', 'Formed At', 4, 157, 157),
+    ('batching_history_grid', 'actions', 'Actions', 5, 80, 80),
+    ('batch_formation_audit_grid', 'batch_id', 'Batch ID', 0, 96, 96),
+    ('batch_formation_audit_grid', 'batching_key', 'Batching Key', 1, 450, 450),
+    ('batch_formation_audit_grid', 'window_opened_at', 'Window Opened At', 2, 157, 157),
+    ('batch_formation_audit_grid', 'window_closed_at', 'Window Closed At', 3, 157, 157),
+    ('batch_formation_audit_grid', 'formed_at', 'Batch Formed At', 4, 157, 157),
+    ('batch_formation_audit_grid', 'window_duration_ms', 'Duration', 5, 105, 105),
+    ('batch_formation_audit_grid', 'formation_reason_code', 'Formation Reason', 6, 252, 252),
+    ('batch_formation_audit_grid', 'source_trade_count', 'Source Trades', 7, 108, 108),
+    ('batch_formation_audit_grid', 'batch_status', 'Status', 8, 101, 101),
+    ('batch_formation_audit_grid', 'actions', 'Actions', 9, 80, 80),
     ('batch_members_grid', 'trade_id', 'Trade ID', 0, 96, 96),
     ('batch_members_grid', 'trade_type', 'Trade Type', 1, 281, 281),
     ('batch_members_grid', 'member_role', 'Member Role', 2, 124, 124),

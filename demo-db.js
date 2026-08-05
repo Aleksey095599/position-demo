@@ -5,7 +5,9 @@ window.__DEMO_DB_STARTUP_DATA__ = {
     {
       "bidMin": 1.122,
       "spread": 0.0002,
-      "bidMax": 1.1222,
+      "bidMax": 1.125,
+      "oneWayDurationSeconds": 60,
+      "fluctuationSpreads": 3,
       "currencyPair": "EUR/USD",
       "defaultQuoteDecimals": 4
     },
@@ -13,6 +15,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "bidMin": 1.268,
       "spread": 0.0003,
       "bidMax": 1.271,
+      "oneWayDurationSeconds": 60,
+      "fluctuationSpreads": 3,
       "currencyPair": "GBP/USD",
       "defaultQuoteDecimals": 4
     }
@@ -235,9 +239,9 @@ window.__DEMO_DB_STARTUP_DATA__ = {
     schemaVersion: SCHEMA_VERSION,
     selectedCurrencyPair: "",
     marketPairs: [
-      { currencyPair: "EUR/USD", defaultQuoteDecimals: 4, bidMin: 1.1220, spread: 0.0002, bidMax: 1.1222 },
-      { currencyPair: "GBP/USD", defaultQuoteDecimals: 4, bidMin: 1.2680, spread: 0.0003, bidMax: 1.2710 },
-      { currencyPair: "USD/RUB", defaultQuoteDecimals: 4, bidMin: 88.5000, spread: 0.1500, bidMax: 90.2500 }
+      { currencyPair: "EUR/USD", defaultQuoteDecimals: 4, bidMin: 1.1220, spread: 0.0002, bidMax: 1.1250, oneWayDurationSeconds: 60, fluctuationSpreads: 3 },
+      { currencyPair: "GBP/USD", defaultQuoteDecimals: 4, bidMin: 1.2680, spread: 0.0003, bidMax: 1.2710, oneWayDurationSeconds: 60, fluctuationSpreads: 3 },
+      { currencyPair: "USD/RUB", defaultQuoteDecimals: 4, bidMin: 88.5000, spread: 0.1500, bidMax: 90.2500, oneWayDurationSeconds: 60, fluctuationSpreads: 3 }
     ],
     ccyOptions: [
       { code: "EUR", name: "Euro", country: "Euro Area", fractionDigits: 2 },

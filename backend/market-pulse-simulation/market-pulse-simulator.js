@@ -3,6 +3,11 @@
 const DEFAULT_UPDATE_INTERVAL_MS = 1000;
 const DEFAULT_QUOTE_DECIMALS = 4;
 const MAX_QUOTE_DECIMALS = 8;
+const DEFAULT_ONE_WAY_DURATION_SECONDS = 60;
+const MIN_ONE_WAY_DURATION_SECONDS = 5;
+const MAX_ONE_WAY_DURATION_SECONDS = 3600;
+const DEFAULT_FLUCTUATION_SPREADS = 3;
+const MAX_FLUCTUATION_SPREADS = 10;
 
 function normalizedQuoteDecimals(value) {
   const decimals = Number(value);
@@ -20,6 +25,12 @@ function normalizedConfiguration(value) {
   const bidMin = Number(source.bidMin);
   const spread = Number(source.spread);
   const bidMax = Number(source.bidMax);
+  const oneWayDurationSeconds = Number(
+    source.oneWayDurationSeconds ?? DEFAULT_ONE_WAY_DURATION_SECONDS
+  );
+  const fluctuationSpreads = Number(
+    source.fluctuationSpreads ?? DEFAULT_FLUCTUATION_SPREADS
+  );
   const pairCode = String(source.pairCode || "").trim().toUpperCase();
   const currencyPair = String(source.currencyPair || pairCode.replace("_", "/")).trim().toUpperCase();
 
@@ -31,6 +42,12 @@ function normalizedConfiguration(value) {
     || bidMin <= 0
     || spread <= 0
     || bidMax <= bidMin
+    || !Number.isInteger(oneWayDurationSeconds)
+    || oneWayDurationSeconds < MIN_ONE_WAY_DURATION_SECONDS
+    || oneWayDurationSeconds > MAX_ONE_WAY_DURATION_SECONDS
+    || !Number.isFinite(fluctuationSpreads)
+    || fluctuationSpreads < 0
+    || fluctuationSpreads > MAX_FLUCTUATION_SPREADS
   ) {
     return null;
   }
@@ -41,7 +58,9 @@ function normalizedConfiguration(value) {
     defaultQuoteDecimals: normalizedQuoteDecimals(source.defaultQuoteDecimals),
     bidMin,
     spread,
-    bidMax
+    bidMax,
+    oneWayDurationSeconds,
+    fluctuationSpreads
   };
 }
 
@@ -88,17 +107,25 @@ class MarketPulseSimulator {
   generateQuote(configuration, index, timestamp) {
     const quoteStep = 10 ** -configuration.defaultQuoteDecimals;
     const range = Math.max(configuration.bidMax - configuration.bidMin, quoteStep);
-    const mid = (configuration.bidMin + configuration.bidMax) / 2;
-    const amplitude = range / 2;
     const elapsed = Math.max(0, timestamp - this.startedAt);
     const seed = this.seedFor(configuration, index);
-    const period = 13000 + (index % 5) * 1800;
-    const primary = Math.sin((elapsed / period) * Math.PI * 2 + seed - Math.PI / 2);
-    const noise =
-      Math.sin((elapsed / (2300 + index * 120)) + seed) * 0.045
-      + Math.sin((elapsed / (5100 + index * 220)) + seed * 0.47) * 0.025;
+    const oneWayDurationMs = configuration.oneWayDurationSeconds * 1000;
+    const cyclePosition = (elapsed % (oneWayDurationMs * 2)) / oneWayDurationMs;
+    const legProgress = cyclePosition <= 1 ? cyclePosition : cyclePosition - 1;
+    const trendProgress = cyclePosition <= 1 ? cyclePosition : 2 - cyclePosition;
+    const linearBid = configuration.bidMin + range * trendProgress;
+    const fluctuationEnvelope = Math.sin(Math.PI * legProgress);
+    const fluctuationAmplitude = Math.min(
+      configuration.spread * configuration.fluctuationSpreads,
+      range / 3
+    );
+    const fluctuation = fluctuationEnvelope * fluctuationAmplitude * (
+      Math.sin(elapsed / (3700 + index * 130) + seed) * 0.55
+      + Math.sin(elapsed / (1900 + index * 90) + seed * 1.37) * 0.30
+      + Math.sin(elapsed / (970 + index * 50) + seed * 0.63) * 0.15
+    );
     const bid = roundRate(
-      Math.min(configuration.bidMax, Math.max(configuration.bidMin, mid + amplitude * (primary + noise))),
+      Math.min(configuration.bidMax, Math.max(configuration.bidMin, linearBid + fluctuation)),
       configuration.defaultQuoteDecimals
     );
     const offer = roundRate(bid + configuration.spread, configuration.defaultQuoteDecimals);
@@ -220,4 +247,11 @@ class MarketPulseSimulator {
   }
 }
 
-module.exports = { MarketPulseSimulator };
+module.exports = {
+  DEFAULT_FLUCTUATION_SPREADS,
+  DEFAULT_ONE_WAY_DURATION_SECONDS,
+  MAX_FLUCTUATION_SPREADS,
+  MAX_ONE_WAY_DURATION_SECONDS,
+  MIN_ONE_WAY_DURATION_SECONDS,
+  MarketPulseSimulator
+};

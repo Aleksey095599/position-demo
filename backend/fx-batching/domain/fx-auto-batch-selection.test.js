@@ -25,7 +25,7 @@ function trade(overrides = {}) {
   };
 }
 
-test("selects every eligible trade from the oldest settlement bucket", () => {
+test("selects every eligible trade sharing the oldest Trade's Batching Key", () => {
   const selected = selectNextAutoBatchTradeIds([
     trade({ tradeId: 4, ccyPairCode: "GBP_USD" }),
     trade({ tradeId: 3, entryTimestamp: "2026-08-04T09:00:01.000Z" }),
@@ -36,7 +36,7 @@ test("selects every eligible trade from the oldest settlement bucket", () => {
   assert.deepEqual(selected, [1, 3]);
 });
 
-test("keeps distinct settlement buckets in separate automatic batches", () => {
+test("keeps distinct Batching Keys in separate automatic batches", () => {
   const selected = selectNextAutoBatchTradeIds([
     trade({ tradeId: 1 }),
     trade({

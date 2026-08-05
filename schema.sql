@@ -72,10 +72,12 @@ CREATE TABLE IF NOT EXISTS ccy_pair_options
 
 CREATE TABLE IF NOT EXISTS market_quote_simulation_settings
 (
-    ccy_pair_code TEXT PRIMARY KEY,
-    bid_min       REAL NOT NULL,
-    spread        REAL NOT NULL,
-    bid_max       REAL NOT NULL,
+    ccy_pair_code            TEXT    PRIMARY KEY,
+    bid_min                  REAL    NOT NULL,
+    spread                   REAL    NOT NULL,
+    bid_max                  REAL    NOT NULL,
+    one_way_duration_seconds INTEGER NOT NULL DEFAULT 60,
+    fluctuation_spreads      REAL    NOT NULL DEFAULT 3,
 
     CONSTRAINT fk_market_quote_simulation_settings_pair
         FOREIGN KEY (ccy_pair_code)
@@ -87,6 +89,16 @@ CREATE TABLE IF NOT EXISTS market_quote_simulation_settings
             bid_min > 0
             AND spread > 0
             AND bid_max > bid_min
+        ),
+    CONSTRAINT chk_market_quote_simulation_settings_duration
+        CHECK (
+            typeof(one_way_duration_seconds) = 'integer'
+            AND one_way_duration_seconds BETWEEN 5 AND 3600
+        ),
+    CONSTRAINT chk_market_quote_simulation_settings_fluctuation
+        CHECK (
+            typeof(fluctuation_spreads) IN ('integer', 'real')
+            AND fluctuation_spreads BETWEEN 0 AND 10
         )
 );
 
@@ -889,6 +901,8 @@ CREATE TABLE IF NOT EXISTS fx_batches
     batch_status    TEXT    NOT NULL DEFAULT 'BUILDING',
     formation_reason_code TEXT NOT NULL DEFAULT 'MANUAL_SELECTION',
     formation_reason_details_json TEXT NOT NULL DEFAULT '{}',
+    window_opened_at TEXT,
+    window_closed_at TEXT,
     created_at      TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     rolled_back_at  TEXT,
@@ -923,6 +937,30 @@ CREATE TABLE IF NOT EXISTS fx_batches
             AND json_valid(formation_reason_details_json) = 1
             AND substr(formation_reason_details_json, 1, 1) = '{'
             AND substr(formation_reason_details_json, -1, 1) = '}'
+        ),
+    CONSTRAINT chk_fx_batches_formation_timing
+        CHECK (
+            (
+                formation_reason_code = 'MANUAL_SELECTION'
+                AND window_opened_at IS NULL
+                AND window_closed_at IS NULL
+            )
+            OR (
+                formation_reason_code IN (
+                    'MAX_INTERVAL_REACHED',
+                    'TRANSFER_RATE_CORRIDOR_BREACHED'
+                )
+                AND length(window_opened_at) = 24
+                AND window_opened_at GLOB '????-??-??T??:??:??.???Z'
+                AND strftime('%Y-%m-%dT%H:%M:%fZ', window_opened_at)
+                    = window_opened_at
+                AND length(window_closed_at) = 24
+                AND window_closed_at GLOB '????-??-??T??:??:??.???Z'
+                AND strftime('%Y-%m-%dT%H:%M:%fZ', window_closed_at)
+                    = window_closed_at
+                AND window_opened_at <= window_closed_at
+                AND window_closed_at <= created_at
+            )
         ),
     CONSTRAINT chk_fx_batches_created_at
         CHECK (
@@ -1039,6 +1077,46 @@ CREATE TABLE IF NOT EXISTS fx_batch_quote_cash_output
             AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
         )
 );
+
+CREATE VIEW IF NOT EXISTS v_fx_batch_formation_audit AS
+WITH source_trade_summary AS
+(
+    SELECT
+        member.batch_id,
+        COUNT(*) AS source_trade_count,
+        MIN(exposure.trade_date) AS trade_date,
+        MIN(exposure.tenor) AS tenor,
+        MIN(exposure.base_ccy_value_date) AS base_ccy_value_date,
+        MIN(exposure.quote_ccy_value_date) AS quote_ccy_value_date,
+        MIN(exposure.base_ccy_fraction_digits) AS base_ccy_fraction_digits,
+        MIN(exposure.quote_ccy_fraction_digits) AS quote_ccy_fraction_digits
+    FROM fx_batch_members member
+    INNER JOIN fx_trade_exposure exposure
+        ON exposure.trade_id = member.trade_id
+        AND exposure.trade_type = member.trade_type
+    WHERE member.member_role = 'TRADE'
+    GROUP BY member.batch_id
+)
+SELECT
+    batch.batch_id,
+    batch.batch_status,
+    batch.ccy_pair_code,
+    source.trade_date,
+    source.tenor,
+    source.base_ccy_value_date,
+    source.quote_ccy_value_date,
+    source.base_ccy_fraction_digits,
+    source.quote_ccy_fraction_digits,
+    batch.window_opened_at,
+    batch.window_closed_at,
+    batch.created_at AS formed_at,
+    batch.formation_reason_code,
+    batch.formation_reason_details_json,
+    source.source_trade_count,
+    batch.rolled_back_at
+FROM fx_batches batch
+INNER JOIN source_trade_summary source ON source.batch_id = batch.batch_id
+WHERE batch.batch_status IN ('FORMED', 'ROLLED_BACK');
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_execution_contexts_components
     ON execution_contexts
@@ -1303,7 +1381,7 @@ BEGIN
             WHERE o.batch_id = OLD.batch_id
               AND e.ccy_pair_code <> OLD.ccy_pair_code
         )
-        THEN RAISE(ABORT, 'formed batch trades must use the batch currency pair')
+        THEN RAISE(ABORT, 'formed FX Batch trades must share the Batching Key currency pair')
     END;
     SELECT CASE
         WHEN EXISTS
@@ -1336,7 +1414,7 @@ BEGIN
                 OR COUNT(DISTINCT base_ccy_value_date) <> 1
                 OR COUNT(DISTINCT quote_ccy_value_date) <> 1
         )
-        THEN RAISE(ABORT, 'formed batch trades must use one settlement bucket')
+        THEN RAISE(ABORT, 'formed FX Batch trades must share the Batching Key settlement terms')
     END;
     SELECT CASE
         WHEN EXISTS
@@ -1363,7 +1441,7 @@ BEGIN
             HAVING COUNT(DISTINCT base_ccy_fraction_digits) <> 1
                 OR COUNT(DISTINCT quote_ccy_fraction_digits) <> 1
         )
-        THEN RAISE(ABORT, 'formed batch trades must use one currency precision')
+        THEN RAISE(ABORT, 'formed FX Batch trades must share the Batching Key currency precision')
     END;
     SELECT CASE
         WHEN NOT EXISTS
@@ -1575,6 +1653,49 @@ BEGIN
     SELECT RAISE(ABORT, 'batch formation reason details must be a JSON object');
 END;
 
+CREATE TRIGGER IF NOT EXISTS trg_fx_batches_validate_formation_timing_insert
+BEFORE INSERT ON fx_batches
+FOR EACH ROW
+WHEN
+    (
+        NEW.formation_reason_code = 'MANUAL_SELECTION'
+        AND (NEW.window_opened_at IS NOT NULL OR NEW.window_closed_at IS NOT NULL)
+    )
+    OR (
+        NEW.formation_reason_code <> 'MANUAL_SELECTION'
+        AND (
+            NEW.window_opened_at IS NULL
+            OR NEW.window_closed_at IS NULL
+            OR NEW.window_opened_at > NEW.window_closed_at
+            OR NEW.window_closed_at > NEW.created_at
+        )
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'batch formation timing is inconsistent');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batches_validate_formation_timing_update
+BEFORE UPDATE OF formation_reason_code, window_opened_at, window_closed_at, created_at
+ON fx_batches
+FOR EACH ROW
+WHEN
+    (
+        NEW.formation_reason_code = 'MANUAL_SELECTION'
+        AND (NEW.window_opened_at IS NOT NULL OR NEW.window_closed_at IS NOT NULL)
+    )
+    OR (
+        NEW.formation_reason_code <> 'MANUAL_SELECTION'
+        AND (
+            NEW.window_opened_at IS NULL
+            OR NEW.window_closed_at IS NULL
+            OR NEW.window_opened_at > NEW.window_closed_at
+            OR NEW.window_closed_at > NEW.created_at
+        )
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'batch formation timing is inconsistent');
+END;
+
 CREATE TRIGGER IF NOT EXISTS trg_fx_batches_immutable_update
 BEFORE UPDATE ON fx_batches
 FOR EACH ROW
@@ -1590,6 +1711,8 @@ WHEN
             AND NEW.created_at = OLD.created_at
             AND NEW.formation_reason_code = OLD.formation_reason_code
             AND NEW.formation_reason_details_json = OLD.formation_reason_details_json
+            AND NEW.window_opened_at IS OLD.window_opened_at
+            AND NEW.window_closed_at IS OLD.window_closed_at
             AND OLD.rolled_back_at IS NULL
             AND NEW.rolled_back_at IS NOT NULL
         )

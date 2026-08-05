@@ -1,7 +1,7 @@
 "use strict";
 
 const {
-  settlementBucketKey
+  batchingKey
 } = require("./fx-auto-batch-selection");
 const {
   evaluateTransferRateCorridor
@@ -43,7 +43,7 @@ function normalizedTrade(trade, index) {
     entryTimestamp,
     ccyPairCode,
     transferRate: trade.transferRate,
-    settlementBucketKey: settlementBucketKey(trade)
+    batchingKey: batchingKey(trade)
   });
 }
 
@@ -105,7 +105,7 @@ function planAutoBatchByTransferRateCorridor({
     .map(normalizedTrade)
     .sort(compareByArrival);
   const tradeIds = new Set();
-  const expectedBucketKey = normalizedTrades[0].settlementBucketKey;
+  const expectedBatchingKey = normalizedTrades[0].batchingKey;
   const ccyPairCode = normalizedTrades[0].ccyPairCode;
 
   normalizedTrades.forEach(trade => {
@@ -113,9 +113,9 @@ function planAutoBatchByTransferRateCorridor({
       throw planningError(`FX Trade ID ${trade.tradeId} is duplicated.`);
     }
 
-    if (trade.settlementBucketKey !== expectedBucketKey) {
+    if (trade.batchingKey !== expectedBatchingKey) {
       throw planningError(
-        "Auto Batch corridor planning requires one Ccy Pair and settlement bucket."
+        "A Batching Window requires one Batching Key."
       );
     }
 

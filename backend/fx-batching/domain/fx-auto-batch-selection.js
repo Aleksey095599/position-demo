@@ -1,12 +1,17 @@
 "use strict";
 
 const DEFAULT_MAX_TRADES_PER_BATCH = 200;
+const CARRY_IN_POSITION_TRADE_TYPE = "BATCH_POSITION_OUT";
 
 function normalizedText(value) {
   return String(value || "").trim().toUpperCase();
 }
 
-function settlementBucketKey(trade) {
+function isCarryInPosition(trade) {
+  return normalizedText(trade?.tradeType) === CARRY_IN_POSITION_TRADE_TYPE;
+}
+
+function batchingKey(trade) {
   return JSON.stringify([
     normalizedText(trade.ccyPairCode),
     String(trade.tradeDate || "").trim(),
@@ -69,7 +74,7 @@ function selectAutoBatchCandidatesByCurrencyPair(
   const candidates = [];
 
   eligibleTrades.forEach(triggerTrade => {
-    if (normalizedText(triggerTrade.tradeType) === "BATCH_POSITION_OUT") {
+    if (isCarryInPosition(triggerTrade)) {
       return;
     }
 
@@ -80,11 +85,11 @@ function selectAutoBatchCandidatesByCurrencyPair(
     }
 
     selectedPairs.add(ccyPairCode);
-    const nextBucketKey = settlementBucketKey(triggerTrade);
+    const nextBatchingKey = batchingKey(triggerTrade);
     candidates.push({
       ccyPairCode,
       tradeIds: eligibleTrades
-        .filter(trade => settlementBucketKey(trade) === nextBucketKey)
+        .filter(trade => batchingKey(trade) === nextBatchingKey)
         .slice(0, maxTrades)
         .map(trade => Number(trade.tradeId))
     });
@@ -103,10 +108,12 @@ function selectNextAutoBatchTradeIds(
 }
 
 module.exports = {
+  CARRY_IN_POSITION_TRADE_TYPE,
   DEFAULT_MAX_TRADES_PER_BATCH,
   compareByAge,
   eligibleFxTrades,
+  isCarryInPosition,
   selectAutoBatchCandidatesByCurrencyPair,
   selectNextAutoBatchTradeIds,
-  settlementBucketKey
+  batchingKey
 };

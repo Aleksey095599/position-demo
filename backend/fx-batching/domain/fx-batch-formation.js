@@ -185,7 +185,7 @@ function normalizedSourceTrade(value) {
   };
 }
 
-function assertSingleSettlementBucket(trades) {
+function assertSingleBatchingKey(trades) {
   const first = trades[0];
   const fields = [
     ["ccyPairCode", "Ccy Pair"],
@@ -287,7 +287,7 @@ function formFxBatch({
     );
   }
 
-  assertSingleSettlementBucket(normalizedTrades);
+  assertSingleBatchingKey(normalizedTrades);
 
   const rateDigits = fractionDigits(rateFractionDigits, "Rate Fraction Digits");
   const first = normalizedTrades[0];

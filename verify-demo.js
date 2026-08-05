@@ -926,6 +926,8 @@ function verifyFreshSchemaAndSeed() {
       && storedBatch?.batch_status === "BUILDING"
       && storedBatch?.formation_reason_code === "MANUAL_SELECTION"
       && storedBatch?.formation_reason_details_json === "{}"
+      && storedBatch?.window_opened_at === null
+      && storedBatch?.window_closed_at === null
       && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(storedBatch?.created_at || "");
 
     const insertQuoteCashMember = database.prepare(`
@@ -1317,6 +1319,19 @@ function verifyFreshSchemaAndSeed() {
     currencies: database.prepare("SELECT COUNT(*) AS count FROM ccy_options").get().count,
     pairs: database.prepare("SELECT COUNT(*) AS count FROM ccy_pair_options").get().count,
     simulationSettings: database.prepare("SELECT COUNT(*) AS count FROM market_quote_simulation_settings").get().count,
+    simulationSettingsColumns: database.prepare("PRAGMA table_info(market_quote_simulation_settings)").all()
+      .map(column => column.name),
+    simulationSettingsRows: database.prepare(`
+      SELECT
+        ccy_pair_code,
+        bid_min,
+        spread,
+        bid_max,
+        one_way_duration_seconds,
+        fluctuation_spreads
+      FROM market_quote_simulation_settings
+      ORDER BY ccy_pair_code
+    `).all(),
     servicingLocations: database.prepare("SELECT COUNT(*) AS count FROM servicing_locations").get().count,
     accountingSystems: database.prepare("SELECT COUNT(*) AS count FROM accounting_systems").get().count,
     executionSystems: database.prepare("SELECT COUNT(*) AS count FROM execution_systems").get().count,
@@ -1516,6 +1531,14 @@ function verifyFreshSchemaAndSeed() {
       SELECT COUNT(*) AS count
       FROM fx_batches
     `).get().count,
+    batchFormationAuditView: database.prepare(`
+      SELECT type, sql
+      FROM sqlite_schema
+      WHERE name = 'v_fx_batch_formation_audit'
+    `).get(),
+    batchFormationAuditViewColumns: database.prepare(`
+      PRAGMA table_info(v_fx_batch_formation_audit)
+    `).all().map(column => column.name),
     fxTradeBatchColumns: database.prepare(`
       PRAGMA table_info(fx_batches)
     `).all().map(column => column.name),
@@ -1667,6 +1690,9 @@ function verifyFrontendStructure() {
   );
   const fxAutoBatchingPolicySource = normalizedSource(
     path.join("backend", "fx-batching", "domain", "fx-auto-batching-policy.js")
+  );
+  const fxBatchingWindowPlannerSource = normalizedSource(
+    path.join("backend", "fx-batching", "domain", "fx-batching-window-planner.js")
   );
   const fxBatchFormationReasonSource = normalizedSource(
     path.join("backend", "fx-batching", "domain", "fx-batch-formation-reason.js")
@@ -2041,7 +2067,7 @@ function verifyFrontendStructure() {
       && batchingSettingsPageMarkup.includes('name="maxTransferRateSpreadPercent"')
       && batchingSettingsPageMarkup.includes(">Default Transfer Rate Corridor</label>")
       && batchingSettingsPageMarkup.includes(
-        "Each Ccy Pair and settlement bucket is evaluated independently."
+        "Auto Batching waits for the first new Trade for each Batching Key."
       )
       && batchingSettingsPageMarkup.includes('id="autoBatchingSettingsSaveButton"')
       && inlineScript.includes("function batchingSettingsRoute()")
@@ -2057,25 +2083,34 @@ function verifyFrontendStructure() {
       && fxAutoBatchingProcessSource.includes("batchingInProgress")
       && fxAutoBatchingProcessSource.includes("requestEvaluation()")
       && fxAutoBatchingProcessSource.includes("nextEvaluationDelayMs")
+      && fxAutoBatchingProcessSource.includes("WAITING_FOR_FIRST_TRADE")
+      && fxAutoBatchingProcessSource.includes("getLatestTradeId")
+      && fxAutoBatchingProcessSource.includes("afterTradeId")
+      && fxAutoBatchingProcessSource.includes("keepTradesUnderManualControl")
       && !fxAutoBatchingProcessSource.includes("setIntervalFn")
-      && fxAutoBatchSelectionSource.includes("settlementBucketKey")
+      && fxAutoBatchSelectionSource.includes("batchingKey")
       && fxAutoBatchingPolicySource.includes("function planFxAutoBatching(")
       && fxAutoBatchingPolicySource.includes("DEFAULT_MIN_TRADES_PER_AUTO_BATCH = 2")
       && fxAutoBatchingPolicySource.includes("TRANSFER_RATE_CORRIDOR_BREACHED")
       && fxAutoBatchingPolicySource.includes("MAX_INTERVAL_REACHED")
+      && fxAutoBatchingPolicySource.includes("nextArrivalAtMilliseconds")
+      && fxBatchingWindowPlannerSource.includes("FX_BATCHING_WINDOW_STATUS")
+      && fxBatchingWindowPlannerSource.includes("incomingAtMilliseconds >= deadlineAtMilliseconds")
+      && fxBatchingWindowPlannerSource.includes("before its Entry Timestamp")
       && fxBatchFormationReasonSource.includes("MANUAL_SELECTION")
       && fxAutoBatchingProcessSource.includes("lastCandidatePairCount")
       && fxAutoBatchingProcessSource.includes("for (const candidate of candidates)")
       && serverSource.includes("new FxAutoBatchingProcess")
       && serverSource.includes("planFxAutoBatching({")
       && serverSource.includes("fxAutoBatchingProcess.notifyTradeCreated()")
+      && serverSource.includes("fxAutoBatchingProcess.keepTradesUnderManualControl(")
       && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process"')
       && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process/start"')
       && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process/stop"')
       && serverSource.includes("fxAutoBatchingProcess: fxAutoBatchingProcess.status()")
       && inlineScript.includes("async function toggleFxAutoBatchingProcess()")
       && inlineScript.includes("async function refreshFxAutoBatchingProcess()")
-      && inlineScript.includes("Each Ccy Pair is monitored by its Transfer Rate corridor")
+      && inlineScript.includes("is waiting for the first new Trade")
       && inlineScript.includes(
         'autoBatchButton.addEventListener("click", toggleFxAutoBatchingProcess)'
       ),
@@ -2318,24 +2353,30 @@ function verifyFrontendStructure() {
       && inlineScript.includes("requestSequence !== fxPositionsRequestSequence"),
     usesBatchingHistory:
       html.includes('id="workspaceBatchesLink"')
+      && !html.includes('id="workspaceBatchesMenu"')
       && html.includes('href="#batching:history"')
-      && html.includes('>Batches</span>')
-      && !html.includes('id="workspaceBatchingMenu"')
+      && html.includes('>FX Batches</span>')
+      && html.includes('id="fxBatchesPage"')
+      && html.includes('id="fxBatchesTab"')
       && html.includes('id="batchingHistoryPage"')
       && html.includes('id="batchingHistoryGrid"')
-      && html.includes('<h1 class="page-title">Batching History</h1>')
+      && html.includes('<h1 class="page-title">FX Batches</h1>')
       && inlineScript.includes("function initializeBatchingHistoryGrid(data)")
       && inlineScript.includes('demoApiRequest("/api/v1/fx-batches")')
       && inlineScript.includes('title: "Batch ID"')
       && inlineScript.includes('title: "Ccy Pair Code"')
       && inlineScript.includes('title: "Batch Status"')
       && inlineScript.includes('title: "Formation Reason"')
-      && inlineScript.includes('title: "Trigger Details (Demo)"')
-      && inlineScript.includes('title: "Created At"')
-      && /#batchingHistoryPage \.batching-history-content,[\s\S]*?#batchingHistoryPage \.batching-history-grid-shell \{[\s\S]*?width: fit-content;[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;/.test(html)
-      && /#batchingHistoryPage \.batching-history-grid \{[\s\S]*?width: max-content;[\s\S]*?max-width: 100%;[\s\S]*?height: auto;[\s\S]*?max-height: 465px;/.test(html)
-      && /function initializeBatchingHistoryGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: 465,/.test(inlineScript)
-      && /tabulatorSizedColumn\("timestamp", \{[\s\S]*?title: "Created At",[\s\S]*?field: "createdAt",/.test(inlineScript)
+      && /title: "Formation Reason",[\s\S]*?field: "formationReasonCode",/.test(inlineScript)
+      && !inlineScript.includes('title: "Trigger Details (Demo)"')
+      && !inlineScript.includes('field: "formationReasonDescription"')
+       && inlineScript.includes('title: "Formed At"')
+       && html.includes('#fxBatchesPage:not([hidden])')
+       && html.includes('height: calc(100vh - var(--workspace-nav-height));')
+       && html.includes(':is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content')
+       && html.includes(':is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid')
+       && /function initializeBatchingHistoryGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: "100%",/.test(inlineScript)
+      && /tabulatorSizedColumn\("timestamp", \{[\s\S]*?title: "Formed At",[\s\S]*?field: "formedAt",/.test(inlineScript)
       && serverSource.includes("function fxBatches()")
       && serverSource.includes("function fxBatchFormationReasonDescription(")
       && schemaSource.includes("formation_reason_code")
@@ -2343,8 +2384,32 @@ function verifyFrontendStructure() {
       && serverSource.includes(
         'pathname === "/api/v1/fx-batches" && method === "GET"'
       ),
+    usesBatchFormationAudit:
+      html.includes('href="#batching:formation-audit"')
+      && html.includes('data-fx-batches-route="batch-formation-audit"')
+      && html.includes('id="batchFormationAuditTab"')
+      && html.includes('id="batchFormationAuditPage"')
+      && html.includes('id="batchFormationAuditGrid"')
+      && html.includes('data-ui-table-layout-host="batch_formation_audit_grid"')
+      && html.includes('<span>Batch Formation Audit</span>')
+      && inlineScript.includes("function initializeBatchFormationAuditGrid(data)")
+      && inlineScript.includes('demoApiRequest("/api/v1/fx-batch-formation-audit")')
+      && inlineScript.includes('title: "Batching Key"')
+      && inlineScript.includes('title: "Window Opened At"')
+      && inlineScript.includes('title: "Window Closed At"')
+      && inlineScript.includes('title: "Batch Formed At"')
+      && inlineScript.includes('title: "Duration"')
+       && inlineScript.includes('title: "Source Trades"')
+       && inlineScript.includes('data-batch-formation-audit-action="view"')
+       && /function initializeBatchFormationAuditGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: "100%",/.test(inlineScript)
+       && serverSource.includes("function fxBatchFormationAudit()")
+      && serverSource.includes(
+        'pathname === "/api/v1/fx-batch-formation-audit" && method === "GET"'
+      )
+      && schemaSource.includes("CREATE VIEW IF NOT EXISTS v_fx_batch_formation_audit")
+      && schemaSource.includes("member.member_role = 'TRADE'"),
     usesBatchStructure:
-      html.includes('data-workspace-routes="batching-history batch-details"')
+      html.includes('data-workspace-routes="batching-history batch-formation-audit batch-details"')
       && !html.includes('href="#batching:details"')
       && html.includes('<h1 class="page-title">Batch Structure</h1>')
       && !html.includes(">Batch Details<")
@@ -2365,7 +2430,7 @@ function verifyFrontendStructure() {
         '<h2 class="batch-details-section-title" id="batchDetailsOutputsTitle">Net Position Output</h2>'
       )
       && html.includes(
-        'class="btn btn-sm btn-outline-secondary workbench-detail-back-button" href="#batching:history" aria-label="Back to Batching History"'
+        'class="btn btn-sm btn-outline-secondary workbench-detail-back-button" href="#batching:history" aria-label="Back to FX Batches"'
       )
       && html.includes('<span class="button-icon" aria-hidden="true">arrow_back</span>')
       && html.includes("source position was already flat")
@@ -2773,6 +2838,7 @@ function verifyFrontendStructure() {
     usesHedgeFxDealsTabulator: html.includes('id="hedgeFxDealsGrid"')
       && html.includes('id="hedgeFxDealsColumnMenu"')
       && inlineScript.includes("hedgeFxDealsGrid = new Tabulator")
+      && /function initializeHedgeFxDealsGrid\(data\) \{[\s\S]*?maxHeight: "calc\(100vh - 225px\)",/.test(inlineScript)
       && inlineScript.includes('title: "Trading Counterparty Details"')
       && inlineScript.includes('title: "Trade Economics"')
       && inlineScript.includes('title: "Value Date Details"')
@@ -3459,6 +3525,7 @@ function verifyFrontendStructure() {
       && !html.includes('id="clientFxDealsTable"')
       && !html.includes('id="clientFxDealRows"')
       && inlineScript.includes('clientFxDealsGrid = new Tabulator')
+      && /function initializeClientFxDealsGrid\(data\) \{[\s\S]*?maxHeight: "calc\(100vh - 225px\)",/.test(inlineScript)
       && inlineScript.includes('renderVertical: "virtual"')
       && inlineScript.includes('layout: "fitData"')
       && inlineScript.includes('title: "Trade Details"')
@@ -3730,7 +3797,9 @@ function verifyFrontendStructure() {
       && html.includes('#pricingPage .profile-panel-head,')
       && html.includes('justify-content: flex-end;'),
     usesFluidPricingRulesTable: html.includes('#pricingRulesPage.unified-bootstrap-workspace.workbench-page .pricing-layout .profile-table-panel,')
-      && html.includes('#pricingRulesPage.unified-bootstrap-workspace.workbench-page .pricing-rules-table {'),
+      && html.includes('#pricingRulesPage.unified-bootstrap-workspace.workbench-page .pricing-rules-table {')
+      && /#pricingRulesPage\.unified-bootstrap-workspace\.workbench-page \.pricing-layout \.profile-table-panel \{[\s\S]*?height: auto;[\s\S]*?max-height: 100%;[\s\S]*?align-self: start;/.test(html)
+      && /#pricingRulesPage\.unified-bootstrap-workspace\.workbench-page \.profile-table-wrap \{[\s\S]*?flex: 0 1 auto;/.test(html),
     usesPricingRulesHeaderLayout: html.includes(':is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-column-head {')
       && html.includes(':is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-header-filter {')
       && html.includes(':is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-sort-control {'),
@@ -3797,23 +3866,28 @@ function verifyMarketPulseSimulator() {
       defaultQuoteDecimals: 4,
       bidMin: 1.1220,
       spread: 0.0002,
-      bidMax: 1.1222
+      bidMax: 1.1250,
+      oneWayDurationSeconds: 60,
+      fluctuationSpreads: 3
     }],
     now: () => timestamp,
     random: () => 0.5
   });
   const started = simulator.start();
-  timestamp += 1000;
-  const refreshed = simulator.refresh();
+  timestamp += 60000;
+  const upperBoundary = simulator.refresh();
+  timestamp += 60000;
+  const returned = simulator.refresh();
   const stopped = simulator.stop();
   simulator.dispose();
 
   return {
     startedRunning: started.running,
-    refreshedRunning: refreshed.running,
+    refreshedRunning: upperBoundary.running,
     stoppedRunning: stopped.running,
     startedQuote: started.quotes[0],
-    refreshedQuote: refreshed.quotes[0]
+    upperBoundaryQuote: upperBoundary.quotes[0],
+    returnedQuote: returned.quotes[0]
   };
 }
 
@@ -3970,6 +4044,10 @@ async function verifyApiAndMigration() {
       { idempotencyKey: "verify-batch-41", tradeIds: [41] }
     );
     const fxBatchHistoryAfterCreate = await request("GET", "/api/v1/fx-batches");
+    const batchFormationAuditAfterCreate = await request(
+      "GET",
+      "/api/v1/fx-batch-formation-audit"
+    );
     const batchBalancingTradesAfterCreate = await request(
       "GET",
       `/api/v1/fx-batches/${createFxBatch.body?.batchId}`
@@ -4008,6 +4086,14 @@ async function verifyApiAndMigration() {
       `/api/v1/fx-batches/${createFxBatch.body?.batchId}/rollback`
     );
     const fxBatchHistoryAfterRollback = await request("GET", "/api/v1/fx-batches");
+    const batchFormationAuditAfterRollback = await request(
+      "GET",
+      "/api/v1/fx-batch-formation-audit"
+    );
+    const batchFormationAuditCreatedRecord = batchFormationAuditAfterCreate.body
+      ?.find(record => record.batchId === createFxBatch.body?.batchId);
+    const batchFormationAuditRolledBackRecord = batchFormationAuditAfterRollback.body
+      ?.find(record => record.batchId === createFxBatch.body?.batchId);
     const fxPositionsAfterRollback = await request("GET", "/api/v1/fx-positions");
     const replayRollbackFxBatch = await request(
       "POST",
@@ -4423,7 +4509,9 @@ async function verifyApiAndMigration() {
     const putSettings = await request("PUT", "/api/v1/ccy-pair-options/QAA_EUR/simulation-settings", {
       bidMin: 1.1,
       spread: 0.0002,
-      bidMax: 1.2
+      bidMax: 1.2,
+      oneWayDurationSeconds: 45,
+      fluctuationSpreads: 2.5
     });
     const getSettings = await request("GET", "/api/v1/ccy-pair-options/QAA_EUR/simulation-settings");
     const patchPair = await request("PATCH", "/api/v1/ccy-pair-options/QAA_EUR", {
@@ -4433,7 +4521,9 @@ async function verifyApiAndMigration() {
     const restoreSettings = await request("PUT", "/api/v1/ccy-pair-options/QAA_EUR/simulation-settings", {
       bidMin: 1.1,
       spread: 0.0002,
-      bidMax: 1.2
+      bidMax: 1.2,
+      oneWayDurationSeconds: 60,
+      fluctuationSpreads: 3
     });
     const blockedCurrencyDelete = await request("DELETE", "/api/v1/ccy-options/QAA");
     const deletePair = await request("DELETE", "/api/v1/ccy-pair-options/QAA_EUR");
@@ -5348,7 +5438,14 @@ async function verifyApiAndMigration() {
         && usersTable.body?.createSql?.includes("is_active IN (0, 1)"),
       pairColumns: pairTable.body?.columns?.map(column => column.name) || [],
       pairForeignKeys: pairTable.body?.foreignKeys?.length ?? -1,
+      simulationSettingsColumns: settingsTable.body?.columns?.map(column => column.name) || [],
       settingsForeignKeys: settingsTable.body?.foreignKeys || [],
+      simulationSettingsLifecycle: {
+        savedDuration: putSettings.body?.oneWayDurationSeconds,
+        savedFluctuation: putSettings.body?.fluctuationSpreads,
+        readDuration: getSettings.body?.oneWayDurationSeconds,
+        readFluctuation: getSettings.body?.fluctuationSpreads
+      },
       servicingLocationColumns: servicingLocationsTable.body?.columns?.map(column => column.name) || [],
       servicingLocations: {
         count: servicingLocations.body?.length ?? -1,
@@ -5538,6 +5635,13 @@ async function verifyApiAndMigration() {
         historyHidesIdempotencyKey: fxBatchHistoryAfterCreate.body?.every(batch =>
           !Object.hasOwn(batch, "idempotencyKey")
         ) === true,
+        formationAuditStatus: batchFormationAuditAfterCreate.statusCode,
+        formationAuditCount: batchFormationAuditAfterCreate.body?.length ?? -1,
+        formationAuditRecord: batchFormationAuditCreatedRecord || null,
+        formationAuditAfterRollbackStatus:
+          batchFormationAuditAfterRollback.statusCode,
+        formationAuditRolledBackRecord:
+          batchFormationAuditRolledBackRecord || null,
         createdTypes: createFxBatch.body?.trades?.map(trade => trade.tradeType) || [],
         createdSides: createFxBatch.body?.trades?.map(trade => trade.side) || [],
         createdAmounts: createFxBatch.body?.trades?.map(trade => trade.baseCcyAmount) || [],
@@ -5554,8 +5658,8 @@ async function verifyApiAndMigration() {
         storedCount: batchBalancingTradesAfterCreate.body?.trades?.length ?? -1,
         detailStatus: batchBalancingTradesAfterCreate.statusCode,
         detailCurrencyPair: batchBalancingTradesAfterCreate.body?.currencyPair,
-        detailSettlementBucket:
-          batchBalancingTradesAfterCreate.body?.settlementBucket || null,
+        detailBatchingKey:
+          batchBalancingTradesAfterCreate.body?.batchingKey || null,
         detailMemberCount: batchBalancingTradesAfterCreate.body?.memberCount ?? -1,
         detailOutputCount: batchBalancingTradesAfterCreate.body?.outputCount ?? -1,
         detailMemberRoles:
@@ -6467,6 +6571,12 @@ async function main() {
     const failed = freshSchema.currencies !== 5
       || freshSchema.pairs !== 3
       || freshSchema.simulationSettings !== 3
+      || freshSchema.simulationSettingsColumns.join(",")
+        !== "ccy_pair_code,bid_min,spread,bid_max,one_way_duration_seconds,fluctuation_spreads"
+      || !freshSchema.simulationSettingsRows.every(row =>
+        row.one_way_duration_seconds === 60
+        && row.fluctuation_spreads === 3
+      )
       || freshSchema.servicingLocations !== 6
       || freshSchema.accountingSystems !== 2
       || freshSchema.executionSystems !== 3
@@ -6498,10 +6608,10 @@ async function main() {
       || freshSchema.users !== 3
       || freshSchema.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
       || freshSchema.userRoles.join(",") !== "ADMIN,DEALER,SUPERVISOR"
-      || freshSchema.uiTableColumnSettings !== 160
+      || freshSchema.uiTableColumnSettings !== 169
       || freshSchema.uiTableColumnLayoutKeys.map(row =>
         `${row.table_key}:${row.column_count}`
-      ).join(",") !== "accounting_systems_grid:5,batch_cash_output_grid:3,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:7,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:18,deal_generation_settings_grid:11,execution_contexts_grid:6,execution_systems_grid:6,external_counterparties_grid:8,hedge_fx_deals_grid:18,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:8,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:7,servicing_locations_grid:7,users_grid:7"
+      ).join(",") !== "accounting_systems_grid:5,batch_cash_output_grid:3,batch_formation_audit_grid:10,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:6,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:18,deal_generation_settings_grid:11,execution_contexts_grid:6,execution_systems_grid:6,external_counterparties_grid:8,hedge_fx_deals_grid:18,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:8,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:7,servicing_locations_grid:7,users_grid:7"
       || freshSchema.uiTableColumnSettingColumns.join(",")
         !== "table_key,column_key,column_label,display_order,default_width_px,width_px,updated_at"
       || freshSchema.uiTableColumnSettingRows.map(row =>
@@ -6615,7 +6725,10 @@ async function main() {
         !== "pricing_rule_id,ccy_pair_code"
       || freshSchema.hedgeQuickModeSettingsTriggers.length < 9
       || freshSchema.fxTradeBatches !== 0
-      || freshSchema.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,formation_reason_code,formation_reason_details_json,created_at,rolled_back_at"
+      || freshSchema.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,formation_reason_code,formation_reason_details_json,window_opened_at,window_closed_at,created_at,rolled_back_at"
+      || freshSchema.batchFormationAuditView?.type !== "view"
+      || freshSchema.batchFormationAuditViewColumns.join(",")
+        !== "batch_id,batch_status,ccy_pair_code,trade_date,tenor,base_ccy_value_date,quote_ccy_value_date,base_ccy_fraction_digits,quote_ccy_fraction_digits,window_opened_at,window_closed_at,formed_at,formation_reason_code,formation_reason_details_json,source_trade_count,rolled_back_at"
       || freshSchema.fxTradeBatchForeignKeys.length !== 1
       || freshSchema.fxTradeBatchForeignKeys[0]?.table !== "ccy_pair_options"
       || freshSchema.fxTradeBatchForeignKeys[0]?.on_update !== "RESTRICT"
@@ -6726,6 +6839,7 @@ async function main() {
       || !frontend.usesFxBatchFormation
       || !frontend.serializesFxBatchUiRequests
       || !frontend.usesBatchingHistory
+      || !frontend.usesBatchFormationAudit
       || !frontend.usesBatchStructure
       || !frontend.removesBatchingPositionsWorkspace
       || !frontend.supportsBatchRollback
@@ -6882,9 +6996,10 @@ async function main() {
       || !simulator.startedRunning
       || !simulator.refreshedRunning
       || simulator.stoppedRunning
-      || simulator.startedQuote.bid < 1.122
-      || simulator.startedQuote.bid > 1.1222
+      || simulator.startedQuote.bid !== 1.122
       || simulator.startedQuote.offer < simulator.startedQuote.bid
+      || simulator.upperBoundaryQuote.bid !== 1.125
+      || simulator.returnedQuote.bid !== 1.122
       || apiAndMigration.demoTradeReset.invalidStatus !== 400
       || apiAndMigration.demoTradeReset.invalidCode
         !== "INVALID_DEMO_TRADE_RESET_CONFIRMATION"
@@ -7134,7 +7249,7 @@ async function main() {
         .includes("large_base_ccy_amount_minor < xlarge_base_ccy_amount_minor")
       || !apiAndMigration.hedgeQuickModeSettingsCreateSql
         .includes("default_tenor IN ('TOD', 'TOM', 'SPOT')")
-      || apiAndMigration.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,formation_reason_code,formation_reason_details_json,created_at,rolled_back_at"
+      || apiAndMigration.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,formation_reason_code,formation_reason_details_json,window_opened_at,window_closed_at,created_at,rolled_back_at"
       || apiAndMigration.fxTradeBatchForeignKeys.length !== 1
       || apiAndMigration.fxTradeBatchForeignKeys[0]?.onUpdate !== "RESTRICT"
       || apiAndMigration.fxTradeBatchForeignKeys[0]?.onDelete !== "RESTRICT"
@@ -7203,8 +7318,56 @@ async function main() {
       || apiAndMigration.batchBalancingFlow.historyStatus !== 200
       || apiAndMigration.batchBalancingFlow.historyCount !== 1
       || apiAndMigration.batchBalancingFlow.historyFields.join(",")
-        !== "batchId,batchStatus,ccyPairCode,createdAt,rolledBackAt"
+        !== "batchId,batchStatus,ccyPairCode,formationReasonCode,formationReasonDescription,formationReasonDetails,formationReasonDetailsJson,formedAt,rolledBackAt"
       || !apiAndMigration.batchBalancingFlow.historyHidesIdempotencyKey
+      || apiAndMigration.batchBalancingFlow.formationAuditStatus !== 200
+      || apiAndMigration.batchBalancingFlow.formationAuditCount !== 1
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord?.batchId
+        !== apiAndMigration.batchBalancingFlow.batchId
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.formationReasonCode !== "MANUAL_SELECTION"
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.sourceTradeCount !== 1
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.batchStatus !== "FORMED"
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.windowOpenedAt !== null
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.windowClosedAt !== null
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.windowDurationMs !== null
+      || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+        .test(String(
+          apiAndMigration.batchBalancingFlow.formationAuditRecord
+            ?.formedAt || ""
+        ))
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.batchingKey?.ccyPairCode !== "EUR_USD"
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.batchingKey?.tradeDate !== "2026-07-15"
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.batchingKey?.tenor !== "TOM"
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.batchingKey?.baseCcyValueDate !== "2026-07-16"
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.batchingKey?.quoteCcyValueDate !== "2026-07-16"
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.batchingKey?.baseCcyFractionDigits !== 2
+      || apiAndMigration.batchBalancingFlow.formationAuditRecord
+        ?.batchingKey?.quoteCcyFractionDigits !== 2
+      || apiAndMigration.batchBalancingFlow.formationAuditAfterRollbackStatus
+        !== 200
+      || apiAndMigration.batchBalancingFlow.formationAuditRolledBackRecord
+        ?.batchStatus !== "ROLLED_BACK"
+      || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+        .test(String(
+          apiAndMigration.batchBalancingFlow.formationAuditRolledBackRecord
+            ?.rolledBackAt || ""
+        ))
+      || apiAndMigration.batchBalancingFlow.formationAuditRolledBackRecord
+        ?.formedAt
+        !== apiAndMigration.batchBalancingFlow.formationAuditRecord
+          ?.formedAt
       || apiAndMigration.batchBalancingFlow.createdTypes.join(",") !== "BATCH_BALANCE_TRADE,BATCH_POSITION_OUT"
       || apiAndMigration.batchBalancingFlow.createdSides.join(",") !== "BUY,SELL"
       || apiAndMigration.batchBalancingFlow.createdAmounts.join(",") !== "1500000,1500000"
@@ -7216,8 +7379,13 @@ async function main() {
       || apiAndMigration.batchBalancingFlow.storedCount !== 2
       || apiAndMigration.batchBalancingFlow.detailStatus !== 200
       || apiAndMigration.batchBalancingFlow.detailCurrencyPair !== "EUR/USD"
-      || apiAndMigration.batchBalancingFlow.detailSettlementBucket?.tradeDate !== "2026-07-15"
-      || apiAndMigration.batchBalancingFlow.detailSettlementBucket?.tenor !== "TOM"
+      || apiAndMigration.batchBalancingFlow.detailBatchingKey?.ccyPairCode !== "EUR_USD"
+      || apiAndMigration.batchBalancingFlow.detailBatchingKey?.tradeDate !== "2026-07-15"
+      || apiAndMigration.batchBalancingFlow.detailBatchingKey?.tenor !== "TOM"
+      || apiAndMigration.batchBalancingFlow.detailBatchingKey?.baseCcyValueDate !== "2026-07-16"
+      || apiAndMigration.batchBalancingFlow.detailBatchingKey?.quoteCcyValueDate !== "2026-07-16"
+      || apiAndMigration.batchBalancingFlow.detailBatchingKey?.baseCcyFractionDigits !== 2
+      || apiAndMigration.batchBalancingFlow.detailBatchingKey?.quoteCcyFractionDigits !== 2
       || apiAndMigration.batchBalancingFlow.detailMemberCount !== 2
       || apiAndMigration.batchBalancingFlow.detailOutputCount !== 1
       || apiAndMigration.batchBalancingFlow.detailMemberRoles.join(",")
@@ -7571,12 +7739,20 @@ async function main() {
       || simulationForeignKey?.referencedTable !== "ccy_pair_options"
       || simulationForeignKey?.referencedColumn !== "ccy_pair_code"
       || simulationForeignKey?.onDelete !== "CASCADE"
+      || apiAndMigration.simulationSettingsColumns.join(",")
+        !== "ccy_pair_code,bid_min,spread,bid_max,one_way_duration_seconds,fluctuation_spreads"
+      || apiAndMigration.simulationSettingsLifecycle.savedDuration !== 45
+      || apiAndMigration.simulationSettingsLifecycle.savedFluctuation !== 2.5
+      || apiAndMigration.simulationSettingsLifecycle.readDuration !== 45
+      || apiAndMigration.simulationSettingsLifecycle.readFluctuation !== 2.5
       || apiAndMigration.migratedPair?.bidMin !== 1.122
       || apiAndMigration.eurUsdPricingRulesCount !== 5
       || apiAndMigration.blockedPairDelete.status !== 409
       || apiAndMigration.blockedPairDelete.code !== "CCY_PAIR_IN_USE"
       || apiAndMigration.blockedPairDelete.message !== "Ccy Pair EUR/USD is used in 5 Pricing Rules."
       || apiAndMigration.migratedSettings?.bidMax !== 1.1222
+      || apiAndMigration.migratedSettings?.oneWayDurationSeconds !== 60
+      || apiAndMigration.migratedSettings?.fluctuationSpreads !== 3
       || apiAndMigration.simulationControl.status !== 200
       || apiAndMigration.simulationControl.start !== 200
       || !apiAndMigration.simulationControl.startRunning

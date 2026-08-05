@@ -6,7 +6,14 @@ const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { URL } = require("node:url");
 const { DatabaseSync } = require("node:sqlite");
-const { MarketPulseSimulator } = require("./backend/market-pulse-simulation/market-pulse-simulator");
+const {
+  DEFAULT_FLUCTUATION_SPREADS,
+  DEFAULT_ONE_WAY_DURATION_SECONDS,
+  MAX_FLUCTUATION_SPREADS,
+  MAX_ONE_WAY_DURATION_SECONDS,
+  MIN_ONE_WAY_DURATION_SECONDS,
+  MarketPulseSimulator
+} = require("./backend/market-pulse-simulation/market-pulse-simulator");
 const {
   calculateAnalyticalPnlMinor,
   calculateClientFxDealEconomics,
@@ -35,6 +42,9 @@ const {
 const {
   FxAutoBatchingProcess
 } = require("./backend/fx-batching/application/fx-auto-batching-process");
+const {
+  selectFxTradesForAutoBatchingRun
+} = require("./backend/fx-batching/application/fx-auto-batching-trade-scope");
 const {
   planFxAutoBatching
 } = require("./backend/fx-batching/domain/fx-auto-batching-policy");
@@ -196,9 +206,11 @@ migrateUnprefixedBatchTables(database);
 migrateTradingCounterpartyTerminology(database);
 prepareTradingCounterpartyExecutionContextSchema(database);
 if (sqliteTableExists(database, "fx_batches")) {
+  ensureFxBatchFormationTiming(database);
   ensureFxBatchFormationReason(database);
 }
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
+database.exec("DROP VIEW IF EXISTS v_fx_batch_formation_audit");
 dropTradingCounterpartyExecutionContextIntegrityTriggers(database);
 ensureHedgeQuickModeSettingsDefaultTenor(database);
 dropBatchIntegrityTriggers(database);
@@ -219,6 +231,7 @@ migrateCcyOptionsConstraints(database);
 if (databaseAlreadyInitialized) {
   migrateLegacySimulationSettings(database);
 }
+ensureMarketQuoteSimulationSettings(database);
 migrateCcyPairOptionsConstraints(database);
 migrateFxTradeExposureTypes(database);
 migrateLegacyExecutionContextIds(database);
@@ -246,6 +259,8 @@ ensureClientFxDealIndexes(database);
 backfillInitialClientFxDealAttribution(database);
 ensureClientFxDealTriggers(database);
 rebuildLegacyCounterpartyConstraintNames(database);
+ensureFxBatchFormationTiming(database);
+ensureFxBatchFormationReason(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 ensureHedgeFxDealTriggers(database);
 
@@ -357,6 +372,44 @@ function ensureFxAutoBatchingSettings(sqlite) {
   );
 }
 
+function ensureFxBatchFormationTiming(sqlite) {
+  const columns = tableColumnNames(sqlite, "fx_batches");
+
+  if (!columns.has("window_opened_at")) {
+    sqlite.exec(`
+      ALTER TABLE fx_batches
+      ADD COLUMN window_opened_at TEXT
+        CONSTRAINT chk_fx_batches_window_opened_at
+        CHECK (
+          window_opened_at IS NULL
+          OR (
+            length(window_opened_at) = 24
+            AND window_opened_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', window_opened_at)
+              = window_opened_at
+          )
+        )
+    `);
+  }
+
+  if (!columns.has("window_closed_at")) {
+    sqlite.exec(`
+      ALTER TABLE fx_batches
+      ADD COLUMN window_closed_at TEXT
+        CONSTRAINT chk_fx_batches_window_closed_at
+        CHECK (
+          window_closed_at IS NULL
+          OR (
+            length(window_closed_at) = 24
+            AND window_closed_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', window_closed_at)
+              = window_closed_at
+          )
+        )
+    `);
+  }
+}
+
 function ensureFxBatchFormationReason(sqlite) {
   const columns = tableColumnNames(sqlite, "fx_batches");
 
@@ -392,6 +445,8 @@ function ensureFxBatchFormationReason(sqlite) {
   sqlite.exec(`
     DROP TRIGGER IF EXISTS trg_fx_batches_validate_formation_reason_insert;
     DROP TRIGGER IF EXISTS trg_fx_batches_validate_formation_reason_update;
+    DROP TRIGGER IF EXISTS trg_fx_batches_validate_formation_timing_insert;
+    DROP TRIGGER IF EXISTS trg_fx_batches_validate_formation_timing_update;
     DROP TRIGGER IF EXISTS trg_fx_batches_immutable_update;
 
     CREATE TRIGGER trg_fx_batches_validate_formation_reason_insert
@@ -418,6 +473,49 @@ function ensureFxBatchFormationReason(sqlite) {
       SELECT RAISE(ABORT, 'batch formation reason details must be a JSON object');
     END;
 
+    CREATE TRIGGER trg_fx_batches_validate_formation_timing_insert
+    BEFORE INSERT ON fx_batches
+    FOR EACH ROW
+    WHEN
+      (
+        NEW.formation_reason_code = '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
+        AND (NEW.window_opened_at IS NOT NULL OR NEW.window_closed_at IS NOT NULL)
+      )
+      OR (
+        NEW.formation_reason_code <> '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
+        AND (
+          NEW.window_opened_at IS NULL
+          OR NEW.window_closed_at IS NULL
+          OR NEW.window_opened_at > NEW.window_closed_at
+          OR NEW.window_closed_at > NEW.created_at
+        )
+      )
+    BEGIN
+      SELECT RAISE(ABORT, 'batch formation timing is inconsistent');
+    END;
+
+    CREATE TRIGGER trg_fx_batches_validate_formation_timing_update
+    BEFORE UPDATE OF formation_reason_code, window_opened_at, window_closed_at, created_at
+    ON fx_batches
+    FOR EACH ROW
+    WHEN
+      (
+        NEW.formation_reason_code = '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
+        AND (NEW.window_opened_at IS NOT NULL OR NEW.window_closed_at IS NOT NULL)
+      )
+      OR (
+        NEW.formation_reason_code <> '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
+        AND (
+          NEW.window_opened_at IS NULL
+          OR NEW.window_closed_at IS NULL
+          OR NEW.window_opened_at > NEW.window_closed_at
+          OR NEW.window_closed_at > NEW.created_at
+        )
+      )
+    BEGIN
+      SELECT RAISE(ABORT, 'batch formation timing is inconsistent');
+    END;
+
     CREATE TRIGGER trg_fx_batches_immutable_update
     BEFORE UPDATE ON fx_batches
     FOR EACH ROW
@@ -433,6 +531,8 @@ function ensureFxBatchFormationReason(sqlite) {
           AND NEW.created_at = OLD.created_at
           AND NEW.formation_reason_code = OLD.formation_reason_code
           AND NEW.formation_reason_details_json = OLD.formation_reason_details_json
+          AND NEW.window_opened_at IS OLD.window_opened_at
+          AND NEW.window_closed_at IS OLD.window_closed_at
           AND OLD.rolled_back_at IS NULL
           AND NEW.rolled_back_at IS NOT NULL
         )
@@ -5895,7 +5995,9 @@ function ccyPairOptions() {
       ) AS pricingRulesCount,
       s.bid_min AS bidMin,
       s.spread,
-      s.bid_max AS bidMax
+      s.bid_max AS bidMax,
+      s.one_way_duration_seconds AS oneWayDurationSeconds,
+      s.fluctuation_spreads AS fluctuationSpreads
     FROM ccy_pair_options p
     LEFT JOIN market_quote_simulation_settings s
       ON s.ccy_pair_code = p.ccy_pair_code
@@ -5920,7 +6022,9 @@ function ccyPairOption(pairCode) {
       ) AS pricingRulesCount,
       s.bid_min AS bidMin,
       s.spread,
-      s.bid_max AS bidMax
+      s.bid_max AS bidMax,
+      s.one_way_duration_seconds AS oneWayDurationSeconds,
+      s.fluctuation_spreads AS fluctuationSpreads
     FROM ccy_pair_options p
     INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = p.base_ccy_code
     INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = p.quote_ccy_code
@@ -6097,7 +6201,9 @@ function marketQuoteSimulationSettings(pairCode) {
       ccy_pair_code AS pairCode,
       bid_min AS bidMin,
       spread,
-      bid_max AS bidMax
+      bid_max AS bidMax,
+      one_way_duration_seconds AS oneWayDurationSeconds,
+      fluctuation_spreads AS fluctuationSpreads
     FROM market_quote_simulation_settings
     WHERE ccy_pair_code = ?
   `).get(pairCode) || null;
@@ -6111,7 +6217,9 @@ function marketPulseSimulationConfigurations() {
       p.default_quote_decimals AS defaultQuoteDecimals,
       s.bid_min AS bidMin,
       s.spread,
-      s.bid_max AS bidMax
+      s.bid_max AS bidMax,
+      s.one_way_duration_seconds AS oneWayDurationSeconds,
+      s.fluctuation_spreads AS fluctuationSpreads
     FROM ccy_pair_options p
     INNER JOIN market_quote_simulation_settings s
       ON s.ccy_pair_code = p.ccy_pair_code
@@ -7018,11 +7126,97 @@ function fxBatches() {
       batch_status AS batchStatus,
       formation_reason_code AS formationReasonCode,
       formation_reason_details_json AS formationReasonDetailsJson,
-      created_at AS createdAt,
+      created_at AS formedAt,
       rolled_back_at AS rolledBackAt
     FROM fx_batches
     ORDER BY batch_id DESC
   `).all().map(fxBatchWithFormationReason);
+}
+
+function ensureMarketQuoteSimulationSettings(sqlite) {
+  if (!sqliteTableExists(sqlite, "market_quote_simulation_settings")) {
+    return;
+  }
+
+  const columns = tableColumnNames(sqlite, "market_quote_simulation_settings");
+
+  if (!columns.has("one_way_duration_seconds")) {
+    sqlite.exec(`
+      ALTER TABLE market_quote_simulation_settings
+      ADD COLUMN one_way_duration_seconds INTEGER NOT NULL DEFAULT ${DEFAULT_ONE_WAY_DURATION_SECONDS}
+        CHECK (
+          typeof(one_way_duration_seconds) = 'integer'
+          AND one_way_duration_seconds BETWEEN ${MIN_ONE_WAY_DURATION_SECONDS} AND ${MAX_ONE_WAY_DURATION_SECONDS}
+        )
+    `);
+  }
+
+  if (!columns.has("fluctuation_spreads")) {
+    sqlite.exec(`
+      ALTER TABLE market_quote_simulation_settings
+      ADD COLUMN fluctuation_spreads REAL NOT NULL DEFAULT ${DEFAULT_FLUCTUATION_SPREADS}
+        CHECK (
+          typeof(fluctuation_spreads) IN ('integer', 'real')
+          AND fluctuation_spreads BETWEEN 0 AND ${MAX_FLUCTUATION_SPREADS}
+        )
+    `);
+  }
+}
+
+function fxBatchFormationAudit() {
+  return database.prepare(`
+    SELECT
+      batch_id AS batchId,
+      batch_status AS batchStatus,
+      ccy_pair_code AS ccyPairCode,
+      trade_date AS tradeDate,
+      tenor,
+      base_ccy_value_date AS baseCcyValueDate,
+      quote_ccy_value_date AS quoteCcyValueDate,
+      base_ccy_fraction_digits AS baseCcyFractionDigits,
+      quote_ccy_fraction_digits AS quoteCcyFractionDigits,
+      window_opened_at AS windowOpenedAt,
+      window_closed_at AS windowClosedAt,
+      formed_at AS formedAt,
+      formation_reason_code AS formationReasonCode,
+      formation_reason_details_json AS formationReasonDetailsJson,
+      source_trade_count AS sourceTradeCount,
+      rolled_back_at AS rolledBackAt
+    FROM v_fx_batch_formation_audit
+    ORDER BY batch_id DESC
+  `).all().map(row => {
+    const batch = fxBatchWithFormationReason(row);
+    const windowOpenedAtMilliseconds = Date.parse(row.windowOpenedAt || "");
+    const windowClosedAtMilliseconds = Date.parse(row.windowClosedAt || "");
+    const windowDurationMs = Number.isFinite(windowOpenedAtMilliseconds)
+      && Number.isFinite(windowClosedAtMilliseconds)
+      && windowClosedAtMilliseconds >= windowOpenedAtMilliseconds
+      ? windowClosedAtMilliseconds - windowOpenedAtMilliseconds
+      : null;
+
+    return {
+      batchId: Number(row.batchId),
+      batchingKey: {
+        ccyPairCode: row.ccyPairCode,
+        tradeDate: row.tradeDate,
+        tenor: row.tenor,
+        baseCcyValueDate: row.baseCcyValueDate,
+        quoteCcyValueDate: row.quoteCcyValueDate,
+        baseCcyFractionDigits: Number(row.baseCcyFractionDigits),
+        quoteCcyFractionDigits: Number(row.quoteCcyFractionDigits)
+      },
+      windowOpenedAt: row.windowOpenedAt || null,
+      windowClosedAt: row.windowClosedAt || null,
+      formedAt: row.formedAt,
+      windowDurationMs,
+      formationReasonCode: batch.formationReasonCode,
+      formationReasonDetails: batch.formationReasonDetails,
+      formationReasonDescription: batch.formationReasonDescription,
+      sourceTradeCount: Number(row.sourceTradeCount),
+      batchStatus: row.batchStatus,
+      rolledBackAt: row.rolledBackAt || null
+    };
+  });
 }
 
 function parsedFxBatchFormationReasonDetails(value) {
@@ -7058,19 +7252,26 @@ function fxBatchFormationReasonDescription(reasonCode, details) {
   const tradeCountLabel = formationReasonTradeCountLabel(details);
 
   if (reasonCode === FX_BATCH_FORMATION_REASON_CODE.MAX_INTERVAL_REACHED) {
-    const ageMilliseconds = Number(details?.oldestTradeAgeMilliseconds);
-    const ageSeconds = Number.isFinite(ageMilliseconds)
-      ? (ageMilliseconds / 1000).toFixed(ageMilliseconds % 1000 === 0 ? 0 : 3)
+    const durationMilliseconds = Number(
+      details?.windowDurationMilliseconds
+        ?? details?.oldestTradeAgeMilliseconds
+    );
+    const durationSeconds = Number.isFinite(durationMilliseconds)
+      ? (durationMilliseconds / 1000).toFixed(
+          durationMilliseconds % 1000 === 0 ? 0 : 3
+        )
       : null;
     const intervalSeconds = Number(details?.maxIntervalSeconds);
     const intervalLabel = Number.isFinite(intervalSeconds)
       ? `${intervalSeconds} sec`
       : "the configured limit";
-    const ageLabel = ageSeconds === null ? "the limit" : `${ageSeconds} sec`;
+    const durationLabel = durationSeconds === null
+      ? "the configured limit"
+      : `${durationSeconds} sec`;
 
     return [
-      `Maximum interval reached: oldest pending trade waited ${ageLabel} `
-        + `(limit ${intervalLabel}).`,
+      `Maximum Batching Interval reached: the Batching Window was open `
+        + `${durationLabel} (limit ${intervalLabel}).`,
       tradeCountLabel
     ].filter(Boolean).join(" ");
   }
@@ -7490,7 +7691,8 @@ function saveFormedFxBatch({
   idempotencyKey,
   sourceTrades,
   formation,
-  formationReason
+  formationReason,
+  formationTiming
 }) {
     const firstSourceTrade = sourceTrades[0];
     const pair = ccyPairOption(firstSourceTrade.ccyPairCode);
@@ -7515,14 +7717,18 @@ function saveFormedFxBatch({
           idempotency_key,
           ccy_pair_code,
           formation_reason_code,
-          formation_reason_details_json
+          formation_reason_details_json,
+          window_opened_at,
+          window_closed_at
         )
-      VALUES (?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?)
     `).run(
       idempotencyKey,
       firstSourceTrade.ccyPairCode,
       formationReason.reasonCode,
-      formationReason.detailsJson
+      formationReason.detailsJson,
+      formationTiming.windowOpenedAt,
+      formationTiming.windowClosedAt
     );
     const batchId = Number(batchResult.lastInsertRowid);
     const insertExposure = database.prepare(`
@@ -7677,7 +7883,9 @@ function completedBatchResult(batchId) {
       batch_status AS batchStatus,
       formation_reason_code AS formationReasonCode,
       formation_reason_details_json AS formationReasonDetailsJson,
-      created_at AS createdAt,
+      window_opened_at AS windowOpenedAt,
+      window_closed_at AS windowClosedAt,
+      created_at AS formedAt,
       rolled_back_at AS rolledBackAt
     FROM fx_batches
     WHERE batch_id = ?
@@ -7708,18 +7916,21 @@ function completedBatchResult(batchId) {
 function fxBatchDetails(batchId) {
   const batch = completedBatchResult(batchId);
   const content = fxBatchContent(batchId);
-  const settlementTrade = content.members[0] || content.outputs[0] || null;
+  const batchingKeyTrade = content.members[0] || content.outputs[0] || null;
   const cashOutput = fxBatchQuoteCashOutput(batchId);
 
   return {
     ...batch,
-    currencyPair: settlementTrade?.currencyPair ?? null,
-    settlementBucket: settlementTrade
+    currencyPair: batchingKeyTrade?.currencyPair ?? null,
+    batchingKey: batchingKeyTrade
       ? {
-          tradeDate: settlementTrade.tradeDate,
-          tenor: settlementTrade.tenor,
-          baseCcyValueDate: settlementTrade.baseCcyValueDate,
-          quoteCcyValueDate: settlementTrade.quoteCcyValueDate
+          ccyPairCode: batchingKeyTrade.ccyPairCode,
+          tradeDate: batchingKeyTrade.tradeDate,
+          tenor: batchingKeyTrade.tenor,
+          baseCcyValueDate: batchingKeyTrade.baseCcyValueDate,
+          quoteCcyValueDate: batchingKeyTrade.quoteCcyValueDate,
+          baseCcyFractionDigits: batchingKeyTrade.baseCcyFractionDigits,
+          quoteCcyFractionDigits: batchingKeyTrade.quoteCcyFractionDigits
         }
       : null,
     memberCount: content.members.length,
@@ -7741,6 +7952,15 @@ function formedBatchByIdempotencyKey(idempotencyKey) {
   return batch ? completedBatchResult(batch.batchId) : null;
 }
 
+function fxBatchMemberTradeIds(batchId) {
+  return database.prepare(`
+    SELECT trade_id AS tradeId
+    FROM fx_batch_members
+    WHERE batch_id = ?
+    ORDER BY trade_id
+  `).all(batchId).map(row => Number(row.tradeId));
+}
+
 function rollbackFxBatchWithinTransaction(batchId) {
   const batch = database.prepare(`
     SELECT batch_status AS batchStatus
@@ -7757,6 +7977,7 @@ function rollbackFxBatchWithinTransaction(batchId) {
   if (batch.batchStatus === "ROLLED_BACK") {
     return {
       ...completedBatchResult(batchId),
+      returnedTradeIds: fxBatchMemberTradeIds(batchId),
       replayed: true
     };
   }
@@ -7787,6 +8008,7 @@ function rollbackFxBatchWithinTransaction(batchId) {
 
   return {
     ...completedBatchResult(batchId),
+    returnedTradeIds: fxBatchMemberTradeIds(batchId),
     replayed: false
   };
 }
@@ -7811,11 +8033,25 @@ const formFxBatchUseCase = new FormFxBatchUseCase({
   }
 });
 
-function nextFxAutoBatchPlan() {
+function latestFxTradeId() {
+  return Number(database.prepare(`
+    SELECT COALESCE(MAX(trade_id), 0) AS trade_id
+    FROM fx_trade_exposure
+  `).get().trade_id);
+}
+
+function nextFxAutoBatchPlan({
+  afterTradeId = 0,
+  excludedTradeIds = []
+} = {}) {
   const settings = fxAutoBatchingSettings();
 
   return planFxAutoBatching({
-    trades: fxPositions(),
+    trades: selectFxTradesForAutoBatchingRun({
+      trades: fxPositions(),
+      afterTradeId,
+      excludedTradeIds
+    }),
     maxSpreadPercent: settings.maxTransferRateSpreadPercent,
     maxIntervalSeconds: settings.maxIntervalSeconds,
     now: new Date()
@@ -7826,6 +8062,7 @@ const fxAutoBatchingProcess = new FxAutoBatchingProcess({
   selectCandidates: nextFxAutoBatchPlan,
   formBatch: command => formFxBatchUseCase.execute(command),
   getIntervalMs: () => fxAutoBatchingSettings().maxIntervalSeconds * 1000,
+  getLatestTradeId: latestFxTradeId,
   createIdempotencyKey: () => `auto-batch:${randomUUID()}`
 });
 
@@ -10154,6 +10391,11 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (pathname === "/api/v1/fx-batch-formation-audit" && method === "GET") {
+    sendJson(response, 200, fxBatchFormationAudit());
+    return true;
+  }
+
   if (pathname === "/api/v1/batching-positions" && method === "GET") {
     sendJson(response, 200, fxBatchTrades());
     return true;
@@ -10167,6 +10409,7 @@ async function handleApi(request, response, url) {
         idempotencyKey: request.headers?.["idempotency-key"] ?? body.idempotencyKey,
         tradeIds: body.tradeIds
       });
+      fxAutoBatchingProcess.requestEvaluation();
       sendJson(response, result.replayed ? 200 : 201, result);
     } catch (error) {
       if (error?.code === "INVALID_BATCH_COMMAND") {
@@ -10192,7 +10435,9 @@ async function handleApi(request, response, url) {
 
     try {
       const result = rollbackFxBatch(batchId);
-      fxAutoBatchingProcess.requestEvaluation();
+      fxAutoBatchingProcess.keepTradesUnderManualControl(
+        result.returnedTradeIds
+      );
       sendJson(response, 200, result);
     } catch (error) {
       if (error?.code === "FX_BATCH_NOT_FOUND") {
@@ -11729,26 +11974,61 @@ async function handleApi(request, response, url) {
     const bidMin = nullablePositiveNumber(body.bidMin);
     const spread = nullablePositiveNumber(body.spread);
     const bidMax = nullablePositiveNumber(body.bidMax);
+    const oneWayDurationSeconds = body.oneWayDurationSeconds === undefined
+      ? DEFAULT_ONE_WAY_DURATION_SECONDS
+      : integerInRange(
+          body.oneWayDurationSeconds,
+          MIN_ONE_WAY_DURATION_SECONDS,
+          MAX_ONE_WAY_DURATION_SECONDS
+        );
+    const fluctuationSpreads = body.fluctuationSpreads === undefined
+      ? DEFAULT_FLUCTUATION_SPREADS
+      : Number(body.fluctuationSpreads);
     const validSettings = Number.isFinite(bidMin)
       && Number.isFinite(spread)
       && Number.isFinite(bidMax)
-      && bidMax > bidMin;
+      && bidMax > bidMin
+      && Number.isInteger(oneWayDurationSeconds)
+      && Number.isFinite(fluctuationSpreads)
+      && fluctuationSpreads >= 0
+      && fluctuationSpreads <= MAX_FLUCTUATION_SPREADS;
 
     if (!validSettings) {
-      apiError(response, 400, "INVALID_SIMULATION_SETTINGS", "Simulation values must be positive and Max Bid must exceed Min Bid.");
+      apiError(
+        response,
+        400,
+        "INVALID_SIMULATION_SETTINGS",
+        `Simulation values are invalid. Max Bid must exceed Min Bid, One-way Duration must be ${MIN_ONE_WAY_DURATION_SECONDS}-${MAX_ONE_WAY_DURATION_SECONDS} seconds, and Fluctuation must be 0-${MAX_FLUCTUATION_SPREADS} spreads.`
+      );
       return true;
     }
 
     try {
       database.prepare(`
         INSERT INTO market_quote_simulation_settings
-          (ccy_pair_code, bid_min, spread, bid_max)
-        VALUES (?, ?, ?, ?)
+          (
+            ccy_pair_code,
+            bid_min,
+            spread,
+            bid_max,
+            one_way_duration_seconds,
+            fluctuation_spreads
+          )
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT (ccy_pair_code) DO UPDATE SET
           bid_min = excluded.bid_min,
           spread = excluded.spread,
-          bid_max = excluded.bid_max
-      `).run(pairCode, bidMin, spread, bidMax);
+          bid_max = excluded.bid_max,
+          one_way_duration_seconds = excluded.one_way_duration_seconds,
+          fluctuation_spreads = excluded.fluctuation_spreads
+      `).run(
+        pairCode,
+        bidMin,
+        spread,
+        bidMax,
+        oneWayDurationSeconds,
+        fluctuationSpreads
+      );
       marketPulseSimulator.refresh();
       sendJson(response, 200, marketQuoteSimulationSettings(pairCode));
     } catch (error) {

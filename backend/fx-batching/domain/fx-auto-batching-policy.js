@@ -4,11 +4,13 @@ const {
   DEFAULT_MAX_TRADES_PER_BATCH,
   compareByAge,
   eligibleFxTrades,
-  settlementBucketKey
+  batchingKey,
+  isCarryInPosition
 } = require("./fx-auto-batch-selection");
 const {
-  planAutoBatchByTransferRateCorridor
-} = require("./fx-auto-batch-corridor-planner");
+  FX_BATCHING_WINDOW_STATUS,
+  planFxBatchingWindows
+} = require("./fx-batching-window-planner");
 const {
   FX_BATCH_FORMATION_REASON_CODE
 } = require("./fx-batch-formation-reason");
@@ -41,11 +43,11 @@ function normalizedPositiveInteger(value, name) {
   return number;
 }
 
-function tradeGroups(trades) {
+function tradesByBatchingKey(trades) {
   const groups = new Map();
 
   trades.forEach(trade => {
-    const key = settlementBucketKey(trade);
+    const key = batchingKey(trade);
 
     if (!groups.has(key)) {
       groups.set(key, []);
@@ -59,92 +61,140 @@ function tradeGroups(trades) {
     .sort((left, right) => compareByAge(left[0], right[0]));
 }
 
-function tradesByIds(trades, tradeIds) {
-  const byId = new Map(trades.map(trade => [Number(trade.tradeId), trade]));
-  return tradeIds.map(tradeId => byId.get(Number(tradeId)));
-}
-
-function corridorSegments(trades, maxSpreadPercent) {
-  const segments = [];
-  let remainingTrades = [...trades];
-
-  while (remainingTrades.length > 0) {
-    const plan = planAutoBatchByTransferRateCorridor({
-      trades: remainingTrades,
-      maxSpreadPercent
-    });
-
-    if (!plan.shouldBatch) {
-      segments.push(Object.freeze({
-        trades: Object.freeze([...remainingTrades]),
-        closedByCorridor: false,
-        breachingTrade: null,
-        plan
-      }));
-      break;
-    }
-
-    const acceptedTrades = tradesByIds(
-      remainingTrades,
-      plan.candidateTradeIds
+function carryInPositionsAvailableForWindow(carryInPositions, window) {
+  if (
+    window.closeTrigger ===
+      FX_BATCH_FORMATION_REASON_CODE.TRANSFER_RATE_CORRIDOR_BREACHED
+    && window.breachingTrade
+  ) {
+    return carryInPositions.filter(position =>
+      compareByAge(position, window.breachingTrade) < 0
     );
-    const nextTrades = tradesByIds(remainingTrades, plan.remainingTradeIds);
-    segments.push(Object.freeze({
-      trades: Object.freeze(acceptedTrades),
-      closedByCorridor: true,
-      breachingTrade: nextTrades[0] || null,
-      plan
-    }));
-    remainingTrades = nextTrades;
   }
 
-  return segments;
+  const boundaryMilliseconds = Date.parse(window.closedAt);
+
+  return carryInPositions.filter(position =>
+    Date.parse(position.entryTimestamp) <= boundaryMilliseconds
+  );
 }
 
-function containsAutomaticSource(trades) {
-  return trades.some(trade => String(trade.tradeType || "").trim().toUpperCase()
-    !== "BATCH_POSITION_OUT");
+function selectedBatchSources({
+  window,
+  carryInPositions,
+  maxTradesPerBatch
+}) {
+  // Резервируем место входящей сделке: один Carry-in не формирует FX Batch.
+  const selectedCarryInPositions = carryInPositions.slice(
+    0,
+    Math.max(0, maxTradesPerBatch - 1)
+  );
+  const selectedWindowTrades = window.trades.slice(
+    0,
+    maxTradesPerBatch - selectedCarryInPositions.length
+  );
+
+  return Object.freeze({
+    trades: Object.freeze([
+      ...selectedCarryInPositions,
+      ...selectedWindowTrades
+    ].sort(compareByAge)),
+    windowTrades: Object.freeze(selectedWindowTrades),
+    carryInPositions: Object.freeze(selectedCarryInPositions),
+    deferredCarryInPositionCount:
+      carryInPositions.length - selectedCarryInPositions.length,
+    deferredWindowTradeCount:
+      window.trades.length - selectedWindowTrades.length
+  });
 }
 
-function selectedTradeIds(segment, maxTradesPerBatch) {
-  return segment.trades
-    .slice(0, maxTradesPerBatch)
-    .map(trade => Number(trade.tradeId));
-}
-
-function corridorReasonDetails(segment, maxSpreadPercent, selectedCount) {
+function corridorReasonDetails(
+  window,
+  maxSpreadPercent,
+  selectedSources
+) {
   return Object.freeze({
     maxSpreadPercent: String(maxSpreadPercent),
-    acceptedTradeCount: segment.trades.length,
-    selectedTradeCount: selectedCount,
-    acceptedMinTransferRate: segment.plan.acceptedCorridor?.minTransferRate ?? null,
-    acceptedMaxTransferRate: segment.plan.acceptedCorridor?.maxTransferRate ?? null,
-    acceptedSpreadPercent: segment.plan.acceptedCorridor?.spreadPercent ?? null,
-    breachingTradeId: segment.plan.breachingTradeId,
-    incomingTransferRate: segment.breachingTrade === null
+    acceptedTradeCount: window.trades.length,
+    carryInPositionCount: selectedSources.carryInPositions.length,
+    deferredCarryInPositionCount:
+      selectedSources.deferredCarryInPositionCount,
+    deferredWindowTradeCount: selectedSources.deferredWindowTradeCount,
+    selectedTradeCount: selectedSources.trades.length,
+    acceptedMinTransferRate:
+      window.corridorPlan.acceptedCorridor?.minTransferRate ?? null,
+    acceptedMaxTransferRate:
+      window.corridorPlan.acceptedCorridor?.maxTransferRate ?? null,
+    acceptedSpreadPercent:
+      window.corridorPlan.acceptedCorridor?.spreadPercent ?? null,
+    breachingTradeId: window.corridorPlan.breachingTradeId,
+    incomingTransferRate: window.breachingTrade === null
       ? null
-      : String(segment.breachingTrade.transferRate),
-    breachedMinTransferRate: segment.plan.breachedCorridor?.minTransferRate ?? null,
-    breachedMaxTransferRate: segment.plan.breachedCorridor?.maxTransferRate ?? null,
-    breachedSpreadPercent: segment.plan.breachedCorridor?.spreadPercent ?? null
+      : String(window.breachingTrade.transferRate),
+    breachedMinTransferRate:
+      window.corridorPlan.breachedCorridor?.minTransferRate ?? null,
+    breachedMaxTransferRate:
+      window.corridorPlan.breachedCorridor?.maxTransferRate ?? null,
+    breachedSpreadPercent:
+      window.corridorPlan.breachedCorridor?.spreadPercent ?? null
+  });
+}
+
+function arrivedTradesAt(trades, evaluationTime) {
+  const arrived = [];
+  let nextArrivalAtMilliseconds = null;
+
+  trades.forEach(trade => {
+    const entryAtMilliseconds = Date.parse(trade.entryTimestamp);
+
+    if (!Number.isFinite(entryAtMilliseconds)) {
+      throw policyError(
+        `FX Trade ${trade.tradeId} Entry Timestamp must be a valid timestamp.`
+      );
+    }
+
+    if (entryAtMilliseconds <= evaluationTime.getTime()) {
+      arrived.push(trade);
+      return;
+    }
+
+    if (!isCarryInPosition(trade)) {
+      nextArrivalAtMilliseconds = nextArrivalAtMilliseconds === null
+        ? entryAtMilliseconds
+        : Math.min(nextArrivalAtMilliseconds, entryAtMilliseconds);
+    }
+  });
+
+  return Object.freeze({
+    trades: Object.freeze(arrived),
+    nextArrivalAtMilliseconds
   });
 }
 
 function intervalReasonDetails({
-  segment,
+  window,
   maxIntervalSeconds,
-  ageMilliseconds,
-  selectedCount
+  selectedSources
 }) {
+  const windowDurationMilliseconds = Date.parse(window.closedAt)
+    - Date.parse(window.openedAt);
+
   return Object.freeze({
     maxIntervalSeconds,
-    oldestTradeId: Number(segment.trades[0].tradeId),
-    oldestTradeAgeMilliseconds: ageMilliseconds,
-    candidateTradeCount: segment.trades.length,
-    selectedTradeCount: selectedCount,
-    corridorMinTransferRate: segment.plan.acceptedCorridor?.minTransferRate ?? null,
-    corridorMaxTransferRate: segment.plan.acceptedCorridor?.maxTransferRate ?? null,
-    corridorSpreadPercent: segment.plan.acceptedCorridor?.spreadPercent ?? null
+    oldestTradeId: Number(window.trades[0].tradeId),
+    windowDurationMilliseconds,
+    candidateTradeCount: window.trades.length,
+    carryInPositionCount: selectedSources.carryInPositions.length,
+    deferredCarryInPositionCount:
+      selectedSources.deferredCarryInPositionCount,
+    deferredWindowTradeCount: selectedSources.deferredWindowTradeCount,
+    selectedTradeCount: selectedSources.trades.length,
+    corridorMinTransferRate:
+      window.corridorPlan.acceptedCorridor?.minTransferRate ?? null,
+    corridorMaxTransferRate:
+      window.corridorPlan.acceptedCorridor?.maxTransferRate ?? null,
+    corridorSpreadPercent:
+      window.corridorPlan.acceptedCorridor?.spreadPercent ?? null
   });
 }
 
@@ -169,10 +219,18 @@ function planFxAutoBatching({
     maxTradesPerBatch,
     "Maximum trades per Auto Batch"
   );
+
+  if (minimumTrades > maximumTrades) {
+    throw policyError(
+      "Minimum trades per Auto Batch must not exceed its maximum."
+    );
+  }
+
   const eligibleTrades = eligibleFxTrades(trades, maximumTrades);
+  const arrivalPlan = arrivedTradesAt(eligibleTrades, evaluationTime);
   const pairGroups = new Map();
 
-  tradeGroups(eligibleTrades).forEach(group => {
+  tradesByBatchingKey(arrivalPlan.trades).forEach(group => {
     const pairCode = String(group[0]?.ccyPairCode || "").trim().toUpperCase();
 
     if (!pairGroups.has(pairCode)) {
@@ -183,69 +241,99 @@ function planFxAutoBatching({
   });
 
   const candidates = [];
-  let nextEvaluationAtMilliseconds = null;
+  const closedWithoutBatchTradeIds = new Set();
+  let openWindowCount = 0;
+  let nextEvaluationAtMilliseconds = arrivalPlan.nextArrivalAtMilliseconds;
 
   for (const [ccyPairCode, groups] of pairGroups) {
     let selectedForPair = false;
 
     for (const group of groups) {
-      for (const segment of corridorSegments(group, maxSpreadPercent)) {
-        if (
-          segment.trades.length < minimumTrades
-          || !containsAutomaticSource(segment.trades)
-        ) {
+      const carryInPositions = group.filter(isCarryInPosition);
+      const windowTrades = group.filter(trade => !isCarryInPosition(trade));
+
+      if (windowTrades.length === 0) {
+        continue;
+      }
+
+      const windows = planFxBatchingWindows({
+        trades: windowTrades,
+        maxSpreadPercent,
+        maxIntervalSeconds: intervalSeconds,
+        now: evaluationTime
+      });
+
+      for (const window of windows) {
+        if (window.status === FX_BATCHING_WINDOW_STATUS.OPEN) {
+          openWindowCount += 1;
+          const deadline = Date.parse(window.deadlineAt);
+          nextEvaluationAtMilliseconds = nextEvaluationAtMilliseconds === null
+            ? deadline
+            : Math.min(nextEvaluationAtMilliseconds, deadline);
           continue;
         }
 
-        const tradeIds = selectedTradeIds(segment, maximumTrades);
+        const selectedSources = selectedBatchSources({
+          window,
+          carryInPositions: carryInPositionsAvailableForWindow(
+            carryInPositions,
+            window
+          ),
+          maxTradesPerBatch: maximumTrades
+        });
+        const tradeIds = selectedSources.trades
+          .map(trade => Number(trade.tradeId));
+        const canFormBatch = selectedSources.windowTrades.length > 0
+          && selectedSources.trades.length >= minimumTrades;
 
-        if (segment.closedByCorridor) {
+        if (!canFormBatch) {
+          selectedSources.windowTrades.forEach(trade =>
+            closedWithoutBatchTradeIds.add(Number(trade.tradeId))
+          );
+          continue;
+        }
+
+        if (
+          window.closeTrigger ===
+            FX_BATCH_FORMATION_REASON_CODE.TRANSFER_RATE_CORRIDOR_BREACHED
+        ) {
           candidates.push(Object.freeze({
             ccyPairCode,
             tradeIds: Object.freeze(tradeIds),
+            windowOpenedAt: window.openedAt,
+            windowClosedAt: window.closedAt,
             formationReasonCode:
               FX_BATCH_FORMATION_REASON_CODE.TRANSFER_RATE_CORRIDOR_BREACHED,
             formationReasonDetails: corridorReasonDetails(
-              segment,
+              window,
               maxSpreadPercent,
-              tradeIds.length
+              selectedSources
             )
           }));
           selectedForPair = true;
           break;
         }
 
-        const oldestTimestamp = Date.parse(segment.trades[0].entryTimestamp || "");
-
-        if (!Number.isFinite(oldestTimestamp)) {
-          throw policyError(
-            `FX Trade ${segment.trades[0].tradeId} must have a valid Entry Timestamp.`
-          );
-        }
-
-        const deadline = oldestTimestamp + intervalSeconds * 1000;
-        const ageMilliseconds = Math.max(0, evaluationTime.getTime() - oldestTimestamp);
-
-        if (deadline <= evaluationTime.getTime()) {
+        if (
+          window.closeTrigger ===
+            FX_BATCH_FORMATION_REASON_CODE.MAX_INTERVAL_REACHED
+        ) {
           candidates.push(Object.freeze({
             ccyPairCode,
             tradeIds: Object.freeze(tradeIds),
+            windowOpenedAt: window.openedAt,
+            windowClosedAt: window.closedAt,
             formationReasonCode:
               FX_BATCH_FORMATION_REASON_CODE.MAX_INTERVAL_REACHED,
             formationReasonDetails: intervalReasonDetails({
-              segment,
+              window,
               maxIntervalSeconds: intervalSeconds,
-              ageMilliseconds,
-              selectedCount: tradeIds.length
+              selectedSources
             })
           }));
           selectedForPair = true;
           break;
         }
-
-        nextEvaluationAtMilliseconds = nextEvaluationAtMilliseconds === null
-          ? deadline
-          : Math.min(nextEvaluationAtMilliseconds, deadline);
       }
 
       if (selectedForPair) {
@@ -256,7 +344,10 @@ function planFxAutoBatching({
 
   return Object.freeze({
     candidates: Object.freeze(candidates),
-    nextEvaluationDelayMs: candidates.length > 0
+    closedWithoutBatchTradeIds: Object.freeze([...closedWithoutBatchTradeIds]),
+    openWindowCount,
+    nextEvaluationDelayMs:
+      candidates.length > 0 || closedWithoutBatchTradeIds.size > 0
       ? 0
       : nextEvaluationAtMilliseconds === null
         ? null

@@ -26,11 +26,42 @@ function optionalDelayMilliseconds(value) {
   return delayMs;
 }
 
+function nonNegativeTradeId(value, name) {
+  const tradeId = Number(value);
+
+  if (!Number.isSafeInteger(tradeId) || tradeId < 0) {
+    throw new RangeError(`${name} must be a non-negative safe integer Trade ID.`);
+  }
+
+  return tradeId;
+}
+
+function tradeIdCollection(value, name) {
+  if (value === null || value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${name} must be a Trade ID collection.`);
+  }
+
+  return value.map((tradeId, index) => {
+    const normalized = nonNegativeTradeId(tradeId, `${name} item ${index + 1}`);
+
+    if (normalized === 0) {
+      throw new RangeError(`${name} must contain positive Trade IDs.`);
+    }
+
+    return normalized;
+  });
+}
+
 class FxAutoBatchingProcess {
   constructor({
     selectCandidates,
     formBatch,
     getIntervalMs,
+    getLatestTradeId = () => 0,
     createIdempotencyKey,
     setTimeoutFn = setTimeout,
     clearTimeoutFn = clearTimeout,
@@ -48,6 +79,10 @@ class FxAutoBatchingProcess {
       throw new TypeError("FX Auto Batching Process requires a batching-interval provider.");
     }
 
+    if (typeof getLatestTradeId !== "function") {
+      throw new TypeError("FX Auto Batching Process requires a latest Trade ID provider.");
+    }
+
     if (typeof createIdempotencyKey !== "function") {
       throw new TypeError("FX Auto Batching Process requires an Idempotency Key factory.");
     }
@@ -55,18 +90,27 @@ class FxAutoBatchingProcess {
     this.selectCandidates = selectCandidates;
     this.formBatch = formBatch;
     this.getIntervalMs = getIntervalMs;
+    this.getLatestTradeId = getLatestTradeId;
     this.createIdempotencyKey = createIdempotencyKey;
     this.setTimeoutFn = setTimeoutFn;
     this.clearTimeoutFn = clearTimeoutFn;
     this.now = now;
     this.running = false;
+    this.runRevision = 0;
+    this.startedAt = null;
+    this.acceptTradesAfterId = null;
+    this.excludedTradeIds = new Set();
     this.timer = null;
     this.batchingInProgress = false;
+    this.formationInProgress = false;
     this.evaluationRequested = false;
     this.nextEvaluationDelayMs = null;
     this.formedBatchCount = 0;
     this.lastCandidateTradeCount = 0;
     this.lastCandidatePairCount = 0;
+    this.lastOpenWindowCount = 0;
+    this.lastClosedWithoutBatchTradeCount = 0;
+    this.lastCancelledWindowCount = 0;
     this.lastCycleBatchCount = 0;
     this.lastFormedBatchId = null;
     this.lastFormedBatchIds = [];
@@ -81,15 +125,30 @@ class FxAutoBatchingProcess {
   }
 
   status() {
+    const phase = !this.running
+      ? "STOPPED"
+      : this.formationInProgress
+        ? "FORMING_BATCH"
+        : this.lastOpenWindowCount > 0
+          ? "WINDOW_OPEN"
+          : "WAITING_FOR_FIRST_TRADE";
+
     return {
       running: this.running,
       status: this.running ? "RUNNING" : "STOPPED",
+      phase,
+      startedAt: this.startedAt,
       intervalMs: this.intervalMs(),
       batchingInProgress: this.batchingInProgress,
+      formationInProgress: this.formationInProgress,
       evaluationRequested: this.evaluationRequested,
       formedBatchCount: this.formedBatchCount,
       lastCandidateTradeCount: this.lastCandidateTradeCount,
       lastCandidatePairCount: this.lastCandidatePairCount,
+      lastOpenWindowCount: this.lastOpenWindowCount,
+      lastClosedWithoutBatchTradeCount:
+        this.lastClosedWithoutBatchTradeCount,
+      lastCancelledWindowCount: this.lastCancelledWindowCount,
       lastCycleBatchCount: this.lastCycleBatchCount,
       lastFormedBatchId: this.lastFormedBatchId,
       lastFormedBatchIds: [...this.lastFormedBatchIds],
@@ -107,9 +166,18 @@ class FxAutoBatchingProcess {
     }
 
     this.batchingInProgress = true;
+    const runRevision = this.runRevision;
 
     try {
-      const selection = await this.selectCandidates();
+      const selection = await this.selectCandidates({
+        afterTradeId: this.acceptTradesAfterId,
+        excludedTradeIds: [...this.excludedTradeIds]
+      });
+
+      if (!this.running || runRevision !== this.runRevision) {
+        return [];
+      }
+
       const candidates = Array.isArray(selection)
         ? selection
         : selection?.candidates;
@@ -121,8 +189,29 @@ class FxAutoBatchingProcess {
       this.nextEvaluationDelayMs = Array.isArray(selection)
         ? this.intervalMs()
         : optionalDelayMilliseconds(selection?.nextEvaluationDelayMs);
+      const closedWithoutBatchTradeIds = Array.isArray(selection)
+        ? []
+        : tradeIdCollection(
+            selection?.closedWithoutBatchTradeIds,
+            "Closed Batching Window Trade IDs"
+          );
+      const openWindowCount = Array.isArray(selection)
+        ? 0
+        : Number(selection?.openWindowCount || 0);
+
+      if (!Number.isInteger(openWindowCount) || openWindowCount < 0) {
+        throw new RangeError(
+          "FX Auto Batching open Batching Window count must be a non-negative integer."
+        );
+      }
+
+      closedWithoutBatchTradeIds.forEach(tradeId => {
+        this.excludedTradeIds.add(tradeId);
+      });
 
       this.lastCycleAt = this.now().toISOString();
+      this.lastOpenWindowCount = openWindowCount;
+      this.lastClosedWithoutBatchTradeCount = closedWithoutBatchTradeIds.length;
       this.lastCandidatePairCount = candidates.length;
       this.lastCandidateTradeCount = candidates.reduce(
         (count, candidate) => count + (Array.isArray(candidate?.tradeIds) ? candidate.tradeIds.length : 0),
@@ -140,6 +229,10 @@ class FxAutoBatchingProcess {
       const errors = [];
 
       for (const candidate of candidates) {
+        if (!this.running || runRevision !== this.runRevision) {
+          break;
+        }
+
         const ccyPairCode = String(candidate?.ccyPairCode || "").trim().toUpperCase();
         const tradeIds = Array.isArray(candidate?.tradeIds) ? candidate.tradeIds : [];
 
@@ -149,9 +242,16 @@ class FxAutoBatchingProcess {
         }
 
         try {
+          this.formationInProgress = true;
           const result = await this.formBatch({
             idempotencyKey: this.createIdempotencyKey(),
             tradeIds,
+            ...(candidate?.windowOpenedAt || candidate?.windowClosedAt
+              ? {
+                  windowOpenedAt: candidate.windowOpenedAt,
+                  windowClosedAt: candidate.windowClosedAt
+                }
+              : {}),
             ...(candidate?.formationReasonCode
               ? {
                   formationReasonCode: candidate.formationReasonCode,
@@ -159,6 +259,12 @@ class FxAutoBatchingProcess {
                 }
               : {})
           });
+
+          if (!this.running || runRevision !== this.runRevision) {
+            results.push(result);
+            break;
+          }
+
           const batchId = Number(result?.batchId) || null;
 
           results.push(result);
@@ -177,6 +283,8 @@ class FxAutoBatchingProcess {
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           errors.push(`${ccyPairCode}: ${message}`);
+        } finally {
+          this.formationInProgress = false;
         }
       }
 
@@ -189,6 +297,7 @@ class FxAutoBatchingProcess {
       this.nextEvaluationDelayMs = this.intervalMs();
       return null;
     } finally {
+      this.formationInProgress = false;
       this.batchingInProgress = false;
     }
   }
@@ -235,6 +344,16 @@ class FxAutoBatchingProcess {
       return this.status();
     }
 
+    this.acceptTradesAfterId = nonNegativeTradeId(
+      this.getLatestTradeId(),
+      "Latest Trade ID at Auto Batching start"
+    );
+    this.excludedTradeIds.clear();
+    this.lastOpenWindowCount = 0;
+    this.lastClosedWithoutBatchTradeCount = 0;
+    this.lastCancelledWindowCount = 0;
+    this.startedAt = this.now().toISOString();
+    this.runRevision += 1;
     this.running = true;
     this.requestEvaluation();
     return this.status();
@@ -265,6 +384,23 @@ class FxAutoBatchingProcess {
     return this.requestEvaluation();
   }
 
+  keepTradesUnderManualControl(tradeIds) {
+    const manualTradeIds = tradeIdCollection(
+      tradeIds,
+      "Trades returned to manual control"
+    );
+
+    if (!this.running) {
+      return this.status();
+    }
+
+    manualTradeIds.forEach(tradeId => {
+      this.excludedTradeIds.add(tradeId);
+    });
+
+    return this.requestEvaluation();
+  }
+
   reschedule() {
     if (!this.running) {
       return this.status();
@@ -274,7 +410,12 @@ class FxAutoBatchingProcess {
   }
 
   stop() {
+    const cancelledWindowCount = this.running
+      ? this.lastOpenWindowCount
+      : 0;
+
     this.running = false;
+    this.runRevision += 1;
 
     if (this.timer !== null) {
       this.clearTimeoutFn(this.timer);
@@ -284,6 +425,12 @@ class FxAutoBatchingProcess {
     this.nextCycleAt = null;
     this.evaluationRequested = false;
     this.nextEvaluationDelayMs = null;
+    this.startedAt = null;
+    this.acceptTradesAfterId = null;
+    this.excludedTradeIds.clear();
+    this.lastOpenWindowCount = 0;
+    this.lastClosedWithoutBatchTradeCount = 0;
+    this.lastCancelledWindowCount = cancelledWindowCount;
     return this.status();
   }
 
@@ -292,6 +439,9 @@ class FxAutoBatchingProcess {
     this.formedBatchCount = 0;
     this.lastCandidateTradeCount = 0;
     this.lastCandidatePairCount = 0;
+    this.lastOpenWindowCount = 0;
+    this.lastClosedWithoutBatchTradeCount = 0;
+    this.lastCancelledWindowCount = 0;
     this.lastCycleBatchCount = 0;
     this.lastFormedBatchId = null;
     this.lastFormedBatchIds = [];

@@ -83,6 +83,10 @@ test("forms a batch through one transaction boundary", () => {
   assert.equal(savedBatch.formation.quoteCashOut.quoteBalanceContributionMinor, 0n);
   assert.equal(savedBatch.formationReason.reasonCode, "MANUAL_SELECTION");
   assert.deepEqual(savedBatch.formationReason.details, { selectedTradeCount: 1 });
+  assert.deepEqual(savedBatch.formationTiming, {
+    windowOpenedAt: null,
+    windowClosedAt: null
+  });
 });
 
 test("preserves an automatic formation reason with its structured values", () => {
@@ -108,7 +112,9 @@ test("preserves an automatic formation reason with its structured values", () =>
     formationReasonDetails: {
       maxIntervalSeconds: 60,
       oldestTradeAgeMilliseconds: 60000
-    }
+    },
+    windowOpenedAt: "2026-07-27T09:59:00.000Z",
+    windowClosedAt: "2026-07-27T10:00:00.000Z"
   });
 
   assert.equal(savedBatch.formationReason.reasonCode, "MAX_INTERVAL_REACHED");
@@ -121,6 +127,10 @@ test("preserves an automatic formation reason with its structured values", () =>
     savedBatch.formationReason.detailsJson,
     "{\"maxIntervalSeconds\":60,\"oldestTradeAgeMilliseconds\":60000,\"selectedTradeCount\":1}"
   );
+  assert.deepEqual(savedBatch.formationTiming, {
+    windowOpenedAt: "2026-07-27T09:59:00.000Z",
+    windowClosedAt: "2026-07-27T10:00:00.000Z"
+  });
 });
 
 test("returns an idempotent replay for the same selection", () => {

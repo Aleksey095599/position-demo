@@ -23,7 +23,7 @@ function trade(overrides = {}) {
   };
 }
 
-test("keeps an empty corridor open without an automatic batch candidate", () => {
+test("keeps an empty Batching Window open without an automatic batch candidate", () => {
   assert.deepEqual(planAutoBatchByTransferRateCorridor({
     trades: [],
     maxSpreadPercent: "0.05"
@@ -39,7 +39,7 @@ test("keeps an empty corridor open without an automatic batch candidate", () => 
   });
 });
 
-test("keeps all ordered trades pending while their Transfer Rates remain in the corridor", () => {
+test("keeps a Batching Window open while its Transfer Rates remain in the corridor", () => {
   const plan = planAutoBatchByTransferRateCorridor({
     trades: [
       trade({ tradeId: 1, transferRate: "1.1220" }),
@@ -68,7 +68,7 @@ test("keeps all ordered trades pending while their Transfer Rates remain in the 
   assert.equal(plan.breachedCorridor, null);
 });
 
-test("selects the accepted prefix and leaves the breaching trade for the next corridor", () => {
+test("closes a Batching Window and leaves the breaching Trade for the next window", () => {
   const plan = planAutoBatchByTransferRateCorridor({
     trades: [
       trade({ tradeId: 1, transferRate: "1.1220" }),
@@ -163,7 +163,7 @@ test("orders trades by Entry Timestamp and Trade ID without mutating the input",
   assert.deepEqual(trades.map(item => item.tradeId), [4, 3, 2, 1]);
 });
 
-test("rejects duplicated trades or a mixed settlement bucket", () => {
+test("rejects duplicated trades or mixed Batching Keys", () => {
   assert.throws(
     () => planAutoBatchByTransferRateCorridor({
       trades: [trade({ tradeId: 1 }), trade({ tradeId: 1 })],

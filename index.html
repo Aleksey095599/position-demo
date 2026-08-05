@@ -3673,7 +3673,84 @@
     }
 
     .market-simulation-dialog {
-      width: min(560px, calc(100vw - 32px));
+      width: min(720px, calc(100vw - 32px));
+    }
+
+    .market-simulation-dialog .modal-body {
+      display: grid;
+      gap: 12px;
+      background: var(--bs-tertiary-bg);
+    }
+
+    .market-simulation-section {
+      margin: 0;
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    .market-simulation-section + .market-simulation-section {
+      padding-top: 14px;
+    }
+
+    .market-simulation-section-title {
+      margin: 0 0 14px;
+    }
+
+    .market-simulation-section-name,
+    .market-simulation-section-copy {
+      display: block;
+    }
+
+    .market-simulation-section-name {
+      margin: 0;
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-body);
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.3;
+    }
+
+    .market-simulation-section-copy {
+      margin: 3px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      font-weight: var(--app-font-weight-regular);
+      line-height: 1.35;
+    }
+
+    .market-simulation-parameter-grid {
+      display: grid;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .market-simulation-price-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(150px, 0.72fr);
+    }
+
+    .market-simulation-movement-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .market-simulation-field {
+      display: block;
+      min-width: 0;
+    }
+
+    .market-simulation-dialog .form-text {
+      display: block;
+      min-height: 1.35em;
+      margin-top: 5px;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 575.98px) {
+      .market-simulation-price-grid,
+      .market-simulation-movement-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .client-pricing-rule-dialog {
@@ -7809,38 +7886,70 @@
       text-overflow: clip;
     }
 
-    #batchingHistoryPage .batching-history-content,
-    #batchingHistoryPage .batching-history-grid-shell {
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content,
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid-shell {
       width: fit-content;
       max-width: 100%;
       min-width: 0;
     }
 
-    #batchingHistoryPage .batching-history-toolbar {
+    #fxBatchesPage:not([hidden]) {
+      display: grid;
+      height: calc(100vh - var(--workspace-nav-height));
+      grid-template-rows: auto auto minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    #fxBatchesPage .batches-tab-panel:not([hidden]) {
+      display: grid;
+      min-height: 0;
+      grid-template-rows: minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content {
+      display: grid;
+      min-height: 0;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid-shell {
+      min-height: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-toolbar {
       display: flex;
       width: 100%;
       align-items: center;
       justify-content: flex-end;
+      gap: 8px;
       margin-bottom: 8px;
     }
 
-    #batchingHistoryPage .batching-history-content,
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-toolbar > .client-deals-count:first-child {
+      margin-left: 0;
+      margin-right: auto;
+    }
+
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content,
     #batchDetailsPage .batch-details-content {
       margin-top: 12px;
     }
 
-    #batchingHistoryPage .batching-history-grid {
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid {
       width: max-content;
       max-width: 100%;
       height: auto;
-      max-height: 465px;
+      max-height: 100%;
     }
 
-    #batchingHistoryPage .tabulator {
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator {
       box-sizing: border-box;
     }
 
-    #batchingHistoryPage .tabulator .tabulator-header-filter select {
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator .tabulator-header-filter select {
       min-height: 27px;
       padding: 3px 26px 3px 7px;
       border: 1px solid #cfd5dc;
@@ -7849,7 +7958,7 @@
       font-size: 11px;
     }
 
-    #batchingHistoryPage .batch-status-token,
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token,
     #batchDetailsPage .batch-status-token {
       display: inline-flex;
       align-items: center;
@@ -7863,28 +7972,28 @@
       font-weight: 500;
     }
 
-    #batchingHistoryPage .batch-status-token.is-formed,
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token.is-formed,
     #batchDetailsPage .batch-status-token.is-formed {
       border-color: #b8daca;
       background: #e8f4ed;
       color: #226548;
     }
 
-    #batchingHistoryPage .batch-status-token.is-rolled-back,
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token.is-rolled-back,
     #batchDetailsPage .batch-status-token.is-rolled-back {
       border-color: #e4d39b;
       background: #fff7dc;
       color: #715b16;
     }
 
-    #batchingHistoryPage .batching-history-actions {
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-actions {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
     }
 
-    #batchingHistoryPage .batching-history-action {
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-action {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -7893,8 +8002,24 @@
       padding: 0;
     }
 
-    #batchingHistoryPage .batching-history-action .button-icon {
+    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-action .button-icon {
       font-size: 16px;
+    }
+
+    #batchFormationAuditPage .batching-key-cell {
+      display: grid;
+      gap: 2px;
+      line-height: 1.25;
+    }
+
+    #batchFormationAuditPage .batching-key-primary {
+      color: var(--bs-body-color);
+      font-weight: 600;
+    }
+
+    #batchFormationAuditPage .batching-key-secondary {
+      color: var(--bs-secondary-color);
+      font-size: 11px;
     }
 
     #batchDetailsPage .batch-details-content {
@@ -10364,7 +10489,7 @@
       text-transform: none;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs {
       display: flex;
       width: max-content;
       max-width: 100%;
@@ -10376,7 +10501,7 @@
       gap: 2px;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link {
       display: inline-flex;
       min-height: 34px;
       margin-bottom: -1px;
@@ -10394,23 +10519,23 @@
       box-shadow: none;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:hover {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:hover {
       border-color: var(--bs-nav-tabs-link-hover-border-color);
       color: var(--bs-primary);
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:is(.active, .is-active) {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:is(.active, .is-active) {
       border-color: var(--bs-border-color) var(--bs-border-color) var(--bs-body-bg);
       background: var(--bs-body-bg);
       color: var(--bs-primary);
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link::after {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link::after {
       display: none;
       content: none;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .button-icon {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .button-icon {
       font-size: 17px;
     }
 
@@ -10419,7 +10544,8 @@
     }
 
     #fxDealsPage.workbench-page .fx-deals-grid {
-      height: max(320px, calc(100vh - 225px));
+      height: auto;
+      max-height: calc(100vh - 225px);
     }
 
     #referenceDataPage.unified-bootstrap-workspace.workbench-page .reference-layout {
@@ -10448,8 +10574,10 @@
 
     #pricingRulesPage.unified-bootstrap-workspace.workbench-page .pricing-layout .profile-table-panel {
       display: flex;
-      height: 100%;
+      height: auto;
+      max-height: 100%;
       min-height: 0;
+      align-self: start;
       flex-direction: column;
     }
 
@@ -10464,7 +10592,7 @@
 
     #pricingRulesPage.unified-bootstrap-workspace.workbench-page .profile-table-wrap {
       min-height: 0;
-      flex: 1 1 auto;
+      flex: 0 1 auto;
       overflow: auto;
     }
 
@@ -13191,9 +13319,9 @@
         <span class="button-icon workspace-nav-icon" aria-hidden="true">table_chart</span>
         <span>FX Position</span>
       </a>
-      <a class="workspace-nav-link" id="workspaceBatchesLink" href="#batching:history" data-workspace-route="batching-history" data-workspace-routes="batching-history batch-details">
+      <a class="workspace-nav-link" id="workspaceBatchesLink" href="#batching:history" data-workspace-route="batching-history" data-workspace-routes="batching-history batch-formation-audit batch-details">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
-        <span>Batches</span>
+        <span>FX Batches</span>
       </a>
       <a class="workspace-nav-link" href="#market-pulse" data-workspace-route="market">
         <span class="button-icon workspace-nav-icon market-pulse-icon" aria-hidden="true">monitoring</span>
@@ -13320,20 +13448,50 @@
           <button type="button" class="btn-close" id="marketSimulationDialogClose" aria-label="Close"></button>
         </div>
         <div class="modal-body" aria-label="Quote Simulation Parameters">
-          <div class="row g-3">
-            <label class="col-sm-4">
-              <span class="form-label d-block">Min Bid</span>
-              <input class="form-control text-end" type="text" name="bidMin" inputmode="decimal" required>
-            </label>
-            <label class="col-sm-4">
-              <span class="form-label d-block">Spread</span>
-              <input class="form-control text-end" type="text" name="spread" inputmode="decimal" required>
-            </label>
-            <label class="col-sm-4">
-              <span class="form-label d-block">Max Bid</span>
-              <input class="form-control text-end" type="text" name="bidMax" inputmode="decimal" required>
-            </label>
-          </div>
+          <section class="market-simulation-section" aria-labelledby="marketSimulationPriceRangeTitle">
+            <header class="market-simulation-section-title">
+              <h3 class="market-simulation-section-name" id="marketSimulationPriceRangeTitle">Price Range</h3>
+              <p class="market-simulation-section-copy">Bid moves between these boundaries; Offer is calculated as Bid plus Spread.</p>
+            </header>
+            <div class="market-simulation-parameter-grid market-simulation-price-grid">
+              <label class="market-simulation-field">
+                <span class="form-label d-block">Min Bid</span>
+                <input class="form-control text-end" type="text" name="bidMin" inputmode="decimal" required>
+              </label>
+              <label class="market-simulation-field">
+                <span class="form-label d-block">Max Bid</span>
+                <input class="form-control text-end" type="text" name="bidMax" inputmode="decimal" required>
+              </label>
+              <label class="market-simulation-field">
+                <span class="form-label d-block">Spread</span>
+                <input class="form-control text-end" type="text" name="spread" inputmode="decimal" required>
+              </label>
+            </div>
+          </section>
+          <section class="market-simulation-section" aria-labelledby="marketSimulationMovementTitle">
+            <header class="market-simulation-section-title">
+              <h3 class="market-simulation-section-name" id="marketSimulationMovementTitle">Movement Pattern</h3>
+              <p class="market-simulation-section-copy">Controls how quickly the price moves and how far it may deviate from its linear path.</p>
+            </header>
+            <div class="market-simulation-parameter-grid market-simulation-movement-grid">
+              <label class="market-simulation-field">
+                <span class="form-label d-block">One-way Duration</span>
+                <span class="input-group">
+                  <input class="form-control text-end" type="number" name="oneWayDurationSeconds" min="5" max="3600" step="1" required>
+                  <span class="input-group-text">sec</span>
+                </span>
+                <span class="form-text">Time from Min Bid to Max Bid, or back.</span>
+              </label>
+              <label class="market-simulation-field">
+                <span class="form-label d-block">Fluctuation</span>
+                <span class="input-group">
+                  <input class="form-control text-end" type="number" name="fluctuationSpreads" min="0" max="10" step="0.1" required>
+                  <span class="input-group-text">spreads</span>
+                </span>
+                <span class="form-text">Maximum deviation from the linear path.</span>
+              </label>
+            </div>
+          </section>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-sm btn-outline-secondary" id="marketSimulationCancelButton">Cancel</button>
@@ -13606,17 +13764,45 @@
     </section>
   </main>
 
-  <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace batching-history-page workbench-page" id="batchingHistoryPage" hidden>
-    <section class="action-bar workbench-page-header" aria-label="Batching History header">
-      <h1 class="page-title">Batching History</h1>
-      <span class="client-deals-count" id="batchingHistoryCount">0 batches</span>
-      <div class="profile-status batching-history-status workbench-page-status" id="batchingHistoryStatus" role="status" aria-live="polite" hidden></div>
+  <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace workbench-page" id="fxBatchesPage" hidden>
+    <section class="action-bar workbench-page-header" aria-label="FX Batches header">
+      <h1 class="page-title">FX Batches</h1>
     </section>
 
-    <section class="batching-history-content" aria-label="Batching History">
-      <div class="batching-history-toolbar" data-ui-table-layout-host="batching_history_grid"></div>
-      <div class="client-deals-grid-shell batching-history-grid-shell">
-        <div class="batching-history-grid" id="batchingHistoryGrid" aria-label="FX Batches table"></div>
+    <nav class="nav nav-tabs workbench-section-tabs batches-scope-tabs" aria-label="FX Batch views" role="tablist">
+      <a class="nav-link" id="fxBatchesTab" href="#batching:history" data-fx-batches-route="batching-history" role="tab" aria-controls="batchingHistoryPage" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">stacks</span>
+        <span>FX Batches</span>
+      </a>
+      <a class="nav-link" id="batchFormationAuditTab" href="#batching:formation-audit" data-fx-batches-route="batch-formation-audit" role="tab" aria-controls="batchFormationAuditPage" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">fact_check</span>
+        <span>Batch Formation Audit</span>
+      </a>
+    </nav>
+
+    <section class="batches-tab-panel batching-history-page" id="batchingHistoryPage" role="tabpanel" aria-labelledby="fxBatchesTab" hidden>
+      <div class="batching-history-content" aria-label="FX Batches">
+        <div class="batching-history-toolbar">
+          <span class="client-deals-count" id="batchingHistoryCount">0 batches</span>
+          <div class="profile-status batching-history-status workbench-page-status" id="batchingHistoryStatus" role="status" aria-live="polite" hidden></div>
+          <div data-ui-table-layout-host="batching_history_grid"></div>
+        </div>
+        <div class="client-deals-grid-shell batching-history-grid-shell">
+          <div class="batching-history-grid" id="batchingHistoryGrid" aria-label="FX Batches table"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="batches-tab-panel batching-history-page" id="batchFormationAuditPage" role="tabpanel" aria-labelledby="batchFormationAuditTab" hidden>
+      <div class="batching-history-content" aria-label="Batch Formation Audit">
+        <div class="batching-history-toolbar">
+          <span class="client-deals-count" id="batchFormationAuditCount">0 batches</span>
+          <div class="profile-status batching-history-status workbench-page-status" id="batchFormationAuditStatus" role="status" aria-live="polite" hidden></div>
+          <div data-ui-table-layout-host="batch_formation_audit_grid"></div>
+        </div>
+        <div class="client-deals-grid-shell batching-history-grid-shell">
+          <div class="batching-history-grid" id="batchFormationAuditGrid" aria-label="FX Batch formation audit table"></div>
+        </div>
       </div>
     </section>
   </main>
@@ -13624,9 +13810,9 @@
   <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace batch-details-page workbench-page" id="batchDetailsPage" hidden>
     <section class="action-bar workbench-page-header" aria-label="Batch Structure header">
       <div class="workbench-detail-heading">
-        <a class="btn btn-sm btn-outline-secondary workbench-detail-back-button" href="#batching:history" aria-label="Back to Batching History">
+        <a class="btn btn-sm btn-outline-secondary workbench-detail-back-button" href="#batching:history" aria-label="Back to FX Batches">
           <span class="button-icon" aria-hidden="true">arrow_back</span>
-          <span>Batching History</span>
+          <span>FX Batches</span>
         </a>
         <div class="workbench-detail-title-block">
           <h1 class="page-title">Batch Structure</h1>
@@ -13656,8 +13842,8 @@
               <dd id="batchDetailsCurrencyPair">—</dd>
             </div>
             <div class="batch-details-meta-item">
-              <dt>Created At</dt>
-              <dd id="batchDetailsCreatedAt">—</dd>
+              <dt>Formed At</dt>
+              <dd id="batchDetailsFormedAt">—</dd>
             </div>
             <div class="batch-details-meta-item">
               <dt>Rolled Back At</dt>
@@ -15340,12 +15526,12 @@
           </div>
           <div class="modal-body">
             <p class="form-text auto-batching-process-description">
-              Each Ccy Pair and settlement bucket is evaluated independently. Auto Batch forms 2-200 compatible trades immediately before an incoming Transfer Rate would breach the full corridor, or when the oldest compatible group reaches the maximum interval. The breaching trade starts the next corridor; isolated trades stay on FX Position for manual control.
+              Auto Batching waits for the first new Trade for each Batching Key. That Trade opens a Batching Window, which collects 2-200 compatible Trades and closes immediately before an incoming Transfer Rate would breach the configured corridor, or when the Maximum Batching Interval is reached. Closing the window forms an FX Batch; the breaching Trade opens the next window. Trades already present when Auto Batching starts, cancelled windows, and isolated Trades stay on FX Position for manual control.
             </p>
             <div class="auto-batching-settings-fields">
               <div class="auto-batching-settings-field">
                 <label class="form-label" for="autoBatchingMaxIntervalSeconds">Maximum Batching Interval</label>
-                <p class="form-text">Each Ccy Pair receives an independent automatic batching attempt within this maximum interval.</p>
+                <p class="form-text">Each open Batching Window closes no later than this maximum interval.</p>
                 <div class="input-group">
                   <input class="form-control" type="number" id="autoBatchingMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" inputmode="numeric" required>
                   <span class="input-group-text">sec</span>
@@ -15353,7 +15539,7 @@
               </div>
               <div class="auto-batching-settings-field">
                 <label class="form-label" for="autoBatchingMaxTransferRateSpreadPercent">Default Transfer Rate Corridor</label>
-                <p class="form-text">Maximum full Transfer Rate spread within one automatic FX Batch.</p>
+                <p class="form-text">Maximum full Transfer Rate spread allowed within one Batching Window.</p>
                 <div class="input-group">
                   <input class="form-control" type="number" id="autoBatchingMaxTransferRateSpreadPercent" name="maxTransferRateSpreadPercent" min="0.0001" max="100" step="0.0001" inputmode="decimal" required>
                   <span class="input-group-text">%</span>
@@ -15729,7 +15915,11 @@
     const UI_TABLE_LAYOUT_COLUMN_ALIASES = Object.freeze({
       external_counterparties_grid: Object.freeze({ status: "active" }),
       internal_units_grid: Object.freeze({ status: "active" }),
-      users_grid: Object.freeze({ status: "active" })
+      users_grid: Object.freeze({ status: "active" }),
+      batching_history_grid: Object.freeze({
+        formation_reason: "formation_reason_code",
+        created_at: "formed_at"
+      })
     });
     const UI_TABLE_LAYOUT_BOOTSTRAP = Array.isArray(DEMO_API_BOOTSTRAP?.uiTableLayouts)
       ? DEMO_API_BOOTSTRAP.uiTableLayouts
@@ -15740,6 +15930,11 @@
     const DEFAULT_CCY_OPTIONS = DemoDb.defaults.ccyOptions;
     const DEFAULT_QUOTE_DECIMALS = 4;
     const MAX_DEFAULT_QUOTE_DECIMALS = 8;
+    const DEFAULT_MARKET_ONE_WAY_DURATION_SECONDS = 60;
+    const MIN_MARKET_ONE_WAY_DURATION_SECONDS = 5;
+    const MAX_MARKET_ONE_WAY_DURATION_SECONDS = 3600;
+    const DEFAULT_MARKET_FLUCTUATION_SPREADS = 3;
+    const MAX_MARKET_FLUCTUATION_SPREADS = 10;
     Big.DP = 40;
     Big.RM = Big.roundHalfUp;
     const COUNTERPARTY_ROLES = ["CLIENT", "HEDGE_COUNTERPARTY"];
@@ -15836,6 +16031,7 @@
     let clientFxDeals = loadClientFxDeals();
     let hedgeFxDeals = loadHedgeFxDeals();
     let fxBatchHistory = loadFxBatches();
+    let batchFormationAuditRecords = [];
     let fxPositionRecords = Array.isArray(DEMO_API_BOOTSTRAP.fxPositions)
       ? DEMO_API_BOOTSTRAP.fxPositions
       : [];
@@ -15867,6 +16063,8 @@
     let fxAutoBatchingProcessState = {
       running: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.running === true,
       status: String(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.status || "STOPPED"),
+      phase: String(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.phase || "STOPPED"),
+      startedAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.startedAt || null,
       intervalMs: Number(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.intervalMs) || 60000,
       batchingInProgress: false,
       formedBatchCount: Number(
@@ -15875,6 +16073,9 @@
       lastCandidateTradeCount: 0,
       lastCandidatePairCount: Number(
         DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCandidatePairCount
+      ) || 0,
+      lastOpenWindowCount: Number(
+        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastOpenWindowCount
       ) || 0,
       lastCycleBatchCount: Number(
         DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCycleBatchCount
@@ -16550,10 +16751,16 @@
     const mainPage = document.getElementById("mainPage");
     const batchingSettingsPage = document.getElementById("batchingSettingsPage");
     const hedgingSettingsPage = document.getElementById("hedgingSettingsPage");
+    const fxBatchesPage = document.getElementById("fxBatchesPage");
+    const fxBatchesTabs = Array.from(document.querySelectorAll("[data-fx-batches-route]"));
     const batchingHistoryPage = document.getElementById("batchingHistoryPage");
     const batchingHistoryGridEl = document.getElementById("batchingHistoryGrid");
     const batchingHistoryCountEl = document.getElementById("batchingHistoryCount");
     const batchingHistoryStatusEl = document.getElementById("batchingHistoryStatus");
+    const batchFormationAuditPage = document.getElementById("batchFormationAuditPage");
+    const batchFormationAuditGridEl = document.getElementById("batchFormationAuditGrid");
+    const batchFormationAuditCountEl = document.getElementById("batchFormationAuditCount");
+    const batchFormationAuditStatusEl = document.getElementById("batchFormationAuditStatus");
     const batchDetailsPage = document.getElementById("batchDetailsPage");
     const batchDetailsStatusEl = document.getElementById("batchDetailsStatus");
     const batchDetailsPrompt = document.getElementById("batchDetailsPrompt");
@@ -16563,7 +16770,7 @@
     const batchDetailsSummaryTitle = document.getElementById("batchDetailsSummaryTitle");
     const batchDetailsBatchStatus = document.getElementById("batchDetailsBatchStatus");
     const batchDetailsCurrencyPair = document.getElementById("batchDetailsCurrencyPair");
-    const batchDetailsCreatedAt = document.getElementById("batchDetailsCreatedAt");
+    const batchDetailsFormedAt = document.getElementById("batchDetailsFormedAt");
     const batchDetailsRolledBackAt = document.getElementById("batchDetailsRolledBackAt");
     const batchDetailsTradeDate = document.getElementById("batchDetailsTradeDate");
     const batchDetailsTenor = document.getElementById("batchDetailsTenor");
@@ -16975,6 +17182,8 @@
     let clientFxDealsTotalCount = 0;
     let batchingHistoryGrid = null;
     let batchingHistoryGridReady = false;
+    let batchFormationAuditGrid = null;
+    let batchFormationAuditGridReady = false;
     let batchDetailsMembersGrid = null;
     let batchDetailsCashOutputGrid = null;
     let batchDetailsOutputsGrid = null;
@@ -18047,6 +18256,8 @@
         const number = Number(value);
         return Number.isFinite(number) && number > 0 ? number : null;
       };
+      const sourceDuration = Number(source.oneWayDurationSeconds);
+      const sourceFluctuation = Number(source.fluctuationSpreads);
 
       return {
         pairCode: String(source.pairCode ?? currencyPair.replace("/", "_")).trim().toUpperCase(),
@@ -18057,7 +18268,17 @@
         pricingRulesCount: Math.max(0, Number(source.pricingRulesCount) || 0),
         bidMin: optionalPositiveNumber(source.bidMin ?? source.marketBidMin),
         spread: optionalPositiveNumber(source.spread ?? source.marketSpread),
-        bidMax: optionalPositiveNumber(source.bidMax ?? source.marketBidMax)
+        bidMax: optionalPositiveNumber(source.bidMax ?? source.marketBidMax),
+        oneWayDurationSeconds: Number.isInteger(sourceDuration) &&
+          sourceDuration >= MIN_MARKET_ONE_WAY_DURATION_SECONDS &&
+          sourceDuration <= MAX_MARKET_ONE_WAY_DURATION_SECONDS
+            ? sourceDuration
+            : DEFAULT_MARKET_ONE_WAY_DURATION_SECONDS,
+        fluctuationSpreads: Number.isFinite(sourceFluctuation) &&
+          sourceFluctuation >= 0 &&
+          sourceFluctuation <= MAX_MARKET_FLUCTUATION_SPREADS
+            ? sourceFluctuation
+            : DEFAULT_MARKET_FLUCTUATION_SPREADS
       };
     }
 
@@ -18182,7 +18403,13 @@
       return Boolean(pair) &&
         Number.isFinite(pair.bidMin) && pair.bidMin > 0 &&
         Number.isFinite(pair.spread) && pair.spread > 0 &&
-        Number.isFinite(pair.bidMax) && pair.bidMax > pair.bidMin;
+        Number.isFinite(pair.bidMax) && pair.bidMax > pair.bidMin &&
+        Number.isInteger(pair.oneWayDurationSeconds) &&
+        pair.oneWayDurationSeconds >= MIN_MARKET_ONE_WAY_DURATION_SECONDS &&
+        pair.oneWayDurationSeconds <= MAX_MARKET_ONE_WAY_DURATION_SECONDS &&
+        Number.isFinite(pair.fluctuationSpreads) &&
+        pair.fluctuationSpreads >= 0 &&
+        pair.fluctuationSpreads <= MAX_MARKET_FLUCTUATION_SPREADS;
     }
 
     function loadClientProfiles() {
@@ -19253,7 +19480,7 @@
         formationReasonDescription: String(
           source.formationReasonDescription || "Manual selection."
         ).trim(),
-        createdAt: String(source.createdAt || "").trim(),
+        formedAt: String(source.formedAt || source.createdAt || "").trim(),
         rolledBackAt: String(source.rolledBackAt || "").trim()
       };
     }
@@ -19275,6 +19502,60 @@
         .sort((left, right) => right.batchId - left.batchId);
       renderBatchingHistory(fxBatchHistory);
       return fxBatchHistory;
+    }
+
+    function normalizedBatchFormationAuditRecord(value) {
+      const source = value && typeof value === "object" ? value : {};
+      const sourceBatchingKey = source.batchingKey
+        && typeof source.batchingKey === "object"
+        ? source.batchingKey
+        : {};
+      const hasDuration = source.windowDurationMs !== null
+        && source.windowDurationMs !== undefined
+        && source.windowDurationMs !== "";
+      const duration = hasDuration ? Number(source.windowDurationMs) : null;
+
+      return {
+        batchId: Number(source.batchId),
+        batchingKey: {
+          ccyPairCode: String(sourceBatchingKey.ccyPairCode || "").trim().toUpperCase(),
+          tradeDate: String(sourceBatchingKey.tradeDate || "").trim(),
+          tenor: String(sourceBatchingKey.tenor || "").trim().toUpperCase(),
+          baseCcyValueDate: String(sourceBatchingKey.baseCcyValueDate || "").trim(),
+          quoteCcyValueDate: String(sourceBatchingKey.quoteCcyValueDate || "").trim(),
+          baseCcyFractionDigits: Number(sourceBatchingKey.baseCcyFractionDigits),
+          quoteCcyFractionDigits: Number(sourceBatchingKey.quoteCcyFractionDigits)
+        },
+        windowOpenedAt: source.windowOpenedAt
+          ? String(source.windowOpenedAt).trim()
+          : null,
+        windowClosedAt: source.windowClosedAt
+          ? String(source.windowClosedAt).trim()
+          : null,
+        formedAt: String(source.formedAt || "").trim(),
+        windowDurationMs: hasDuration && Number.isFinite(duration) && duration >= 0
+          ? duration
+          : null,
+        formationReasonCode: String(
+          source.formationReasonCode || "MANUAL_SELECTION"
+        ).trim().toUpperCase(),
+        formationReasonDescription: String(
+          source.formationReasonDescription || "Manual selection."
+        ).trim(),
+        sourceTradeCount: Number(source.sourceTradeCount),
+        batchStatus: String(source.batchStatus || "").trim().toUpperCase(),
+        rolledBackAt: source.rolledBackAt ? String(source.rolledBackAt).trim() : null
+      };
+    }
+
+    async function reloadBatchFormationAuditFromApi() {
+      const records = await demoApiRequest("/api/v1/fx-batch-formation-audit");
+      batchFormationAuditRecords = (Array.isArray(records) ? records : [])
+        .map(normalizedBatchFormationAuditRecord)
+        .filter(record => Number.isInteger(record.batchId) && record.batchId > 0)
+        .sort((left, right) => right.batchId - left.batchId);
+      renderBatchFormationAudit(batchFormationAuditRecords);
+      return batchFormationAuditRecords;
     }
 
     function normalizedBatchBalanceMinor(
@@ -19448,9 +19729,9 @@
     function normalizedFxBatchDetails(value) {
       const source = value && typeof value === "object" ? value : {};
       const batch = normalizedFxBatch(source);
-      const settlementSource = source.settlementBucket
-        && typeof source.settlementBucket === "object"
-        ? source.settlementBucket
+      const batchingKeySource = source.batchingKey
+        && typeof source.batchingKey === "object"
+        ? source.batchingKey
         : {};
       const members = (Array.isArray(source.members) ? source.members : [])
         .map(member => normalizedBatchDetailTrade(member, "memberRole"))
@@ -19465,15 +19746,24 @@
         currencyPair: String(
           source.currencyPair || batch.ccyPairCode.replace("_", "/")
         ).trim().toUpperCase(),
-        settlementBucket: {
-          tradeDate: String(settlementSource.tradeDate || "").trim(),
-          tenor: String(settlementSource.tenor || "").trim().toUpperCase(),
+        batchingKey: {
+          ccyPairCode: String(
+            batchingKeySource.ccyPairCode || batch.ccyPairCode
+          ).trim().toUpperCase(),
+          tradeDate: String(batchingKeySource.tradeDate || "").trim(),
+          tenor: String(batchingKeySource.tenor || "").trim().toUpperCase(),
           baseCcyValueDate: String(
-            settlementSource.baseCcyValueDate || ""
+            batchingKeySource.baseCcyValueDate || ""
           ).trim(),
           quoteCcyValueDate: String(
-            settlementSource.quoteCcyValueDate || ""
-          ).trim()
+            batchingKeySource.quoteCcyValueDate || ""
+          ).trim(),
+          baseCcyFractionDigits: Number(
+            batchingKeySource.baseCcyFractionDigits
+          ),
+          quoteCcyFractionDigits: Number(
+            batchingKeySource.quoteCcyFractionDigits
+          )
         },
         members,
         outputs,
@@ -21681,6 +21971,11 @@
     function setBatchingHistoryStatus(message = "", tone = "") {
       setWorkbenchPageStatus(batchingHistoryStatusEl, message, tone);
       batchingHistoryStatusEl.hidden = !message;
+    }
+
+    function setBatchFormationAuditStatus(message = "", tone = "") {
+      setWorkbenchPageStatus(batchFormationAuditStatusEl, message, tone);
+      batchFormationAuditStatusEl.hidden = !message;
     }
 
     function setDatabaseStatus(message = "", tone = "") {
@@ -27194,7 +27489,7 @@
         layout: "fitDataTable",
         renderVertical: "virtual",
         renderVerticalBuffer: 240,
-        maxHeight: 465,
+        maxHeight: "100%",
         placeholder: "No FX Batches have been formed.",
         movableColumns: false,
         resizableColumns: false,
@@ -27233,15 +27528,9 @@
             headerFilterFunc: "=",
             cssClass: "text-nowrap"
           }),
-          tabulatorSizedColumn("name", {
-            title: "Trigger Details (Demo)",
-            field: "formationReasonDescription",
-            headerFilter: "input",
-            cssClass: "text-nowrap"
-          }),
           tabulatorSizedColumn("timestamp", {
-            title: "Created At",
-            field: "createdAt",
+            title: "Formed At",
+            field: "formedAt",
             headerFilter: "input"
           }),
           tabulatorSizedColumn("actions", {
@@ -27308,21 +27597,291 @@
     async function loadBatchingHistoryPage() {
       if (!DEMO_API_ENABLED) {
         setBatchingHistoryStatus(
-          "Start the demo server to view Batching History.",
+          "Start the demo server to view FX Batches.",
           "warning"
         );
         renderBatchingHistory([]);
         return;
       }
 
-      setBatchingHistoryStatus("Loading Batching History...");
+      setBatchingHistoryStatus("Loading FX Batches...");
 
       try {
         await reloadFxBatchesFromApi();
         setBatchingHistoryStatus();
       } catch (error) {
         setBatchingHistoryStatus(
-          error.message || "Unable to load Batching History.",
+          error.message || "Unable to load FX Batches.",
+          "error"
+        );
+      }
+    }
+
+    function batchFormationAuditBatchingKeySearchText(value) {
+      const key = value && typeof value === "object" ? value : {};
+
+      return [
+        key.ccyPairCode,
+        String(key.ccyPairCode || "").replace("_", "/"),
+        key.tradeDate,
+        key.tenor,
+        key.baseCcyValueDate,
+        key.quoteCcyValueDate,
+        key.baseCcyFractionDigits,
+        key.quoteCcyFractionDigits
+      ].join(" ").toLowerCase();
+    }
+
+    function batchFormationAuditBatchingKeyFormatter(cell) {
+      const key = cell.getValue() && typeof cell.getValue() === "object"
+        ? cell.getValue()
+        : {};
+      const pair = String(key.ccyPairCode || "").replace("_", "/") || "—";
+      const tenor = String(key.tenor || "").trim() || "—";
+      const tradeDate = clientFxDealsDateLabel(key.tradeDate) || "—";
+      const baseValueDate = clientFxDealsDateLabel(key.baseCcyValueDate) || "—";
+      const quoteValueDate = clientFxDealsDateLabel(key.quoteCcyValueDate) || "—";
+      const basePrecision = Number.isInteger(key.baseCcyFractionDigits)
+        ? key.baseCcyFractionDigits
+        : "—";
+      const quotePrecision = Number.isInteger(key.quoteCcyFractionDigits)
+        ? key.quoteCcyFractionDigits
+        : "—";
+      const tooltip = `${pair} · Trade ${tradeDate} · ${tenor} · `
+        + `Value ${baseValueDate} / ${quoteValueDate} · Precision ${basePrecision} / ${quotePrecision}`;
+
+      return `
+        <div class="batching-key-cell" data-tooltip="${escapeHtml(tooltip)}">
+          <span class="batching-key-primary">${escapeHtml(pair)} · ${escapeHtml(tenor)} · Trade ${escapeHtml(tradeDate)}</span>
+          <span class="batching-key-secondary">Value ${escapeHtml(baseValueDate)} / ${escapeHtml(quoteValueDate)} · Precision ${escapeHtml(basePrecision)} / ${escapeHtml(quotePrecision)}</span>
+        </div>
+      `;
+    }
+
+    function batchFormationAuditBatchingKeyFilter(headerValue, rowValue) {
+      const query = String(headerValue || "").trim().toLowerCase();
+
+      return !query || batchFormationAuditBatchingKeySearchText(rowValue).includes(query);
+    }
+
+    function batchFormationAuditTimestampFormatter(cell) {
+      const value = String(cell.getValue() || "").trim();
+      return value ? escapeHtml(batchDetailsTimestampLabel(value)) : "&mdash;";
+    }
+
+    function batchFormationAuditDurationLabel(value) {
+      if (value === null || value === undefined || value === "") {
+        return "—";
+      }
+
+      const milliseconds = Number(value);
+
+      if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+        return "—";
+      }
+
+      if (milliseconds < 1000) {
+        return `${milliseconds} ms`;
+      }
+
+      const totalSeconds = milliseconds / 1000;
+
+      if (totalSeconds < 60) {
+        const seconds = totalSeconds.toFixed(milliseconds % 1000 === 0 ? 0 : 3)
+          .replace(/\.?0+$/, "");
+        return `${seconds} sec`;
+      }
+
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = Math.floor(totalSeconds % 60);
+      return seconds > 0 ? `${minutes} min ${seconds} sec` : `${minutes} min`;
+    }
+
+    function batchFormationAuditDurationFormatter(cell) {
+      return escapeHtml(batchFormationAuditDurationLabel(cell.getValue()));
+    }
+
+    function batchFormationAuditReasonFormatter(cell) {
+      const record = cell.getRow().getData();
+      return `<span data-tooltip="${escapeHtml(record.formationReasonDescription)}">${escapeHtml(cell.getValue())}</span>`;
+    }
+
+    function batchFormationAuditActionFormatter(cell) {
+      const record = cell.getRow().getData();
+
+      return `
+        <div class="batching-history-actions">
+          <button type="button"
+            class="btn btn-sm btn-outline-secondary batching-history-action"
+            data-batch-formation-audit-action="view"
+            aria-label="View Batch Structure for batch ${escapeHtml(record.batchId)}"
+            data-tooltip="View Batch Structure">
+            <span class="button-icon" aria-hidden="true">visibility</span>
+          </button>
+        </div>
+      `;
+    }
+
+    function updateBatchFormationAuditCount(
+      filteredCount = batchFormationAuditRecords.length
+    ) {
+      const total = batchFormationAuditRecords.length;
+      const label = total === 1 ? "batch" : "batches";
+      batchFormationAuditCountEl.textContent = filteredCount === total
+        ? `${total} ${label}`
+        : `${filteredCount} of ${total} batches`;
+    }
+
+    function initializeBatchFormationAuditGrid(data) {
+      batchFormationAuditGrid = new Tabulator(batchFormationAuditGridEl, {
+        data,
+        index: "batchId",
+        layout: "fitDataTable",
+        renderVertical: "virtual",
+        renderVerticalBuffer: 240,
+        maxHeight: "100%",
+        placeholder: "No completed FX Batches are available for audit.",
+        movableColumns: false,
+        resizableColumns: false,
+        headerFilterLiveFilterDelay: 250,
+        initialSort: [{ column: "batchId", dir: "desc" }],
+        columnDefaults: {
+          resizable: false,
+          vertAlign: "middle",
+          tooltip: false,
+          headerSort: false
+        },
+        columns: uiTableColumns("batch_formation_audit_grid", [
+          tabulatorSizedColumn("primaryId", {
+            title: "Batch ID",
+            field: "batchId",
+            sorter: "number",
+            headerSort: true,
+            headerFilter: "input"
+          }),
+          tabulatorSizedColumn("executionContext", {
+            title: "Batching Key",
+            field: "batchingKey",
+            headerFilter: "input",
+            headerFilterFunc: batchFormationAuditBatchingKeyFilter,
+            formatter: batchFormationAuditBatchingKeyFormatter
+          }),
+          tabulatorSizedColumn("timestamp", {
+            title: "Window Opened At",
+            field: "windowOpenedAt",
+            headerFilter: "input",
+            formatter: batchFormationAuditTimestampFormatter
+          }),
+          tabulatorSizedColumn("timestamp", {
+            title: "Window Closed At",
+            field: "windowClosedAt",
+            headerFilter: "input",
+            formatter: batchFormationAuditTimestampFormatter
+          }),
+          tabulatorSizedColumn("timestamp", {
+            title: "Batch Formed At",
+            field: "formedAt",
+            headerFilter: "input",
+            formatter: batchFormationAuditTimestampFormatter
+          }),
+          tabulatorSizedColumn("amount", {
+            title: "Duration",
+            field: "windowDurationMs",
+            sorter: "number",
+            headerFilter: "input",
+            formatter: batchFormationAuditDurationFormatter,
+            hozAlign: "right",
+            headerHozAlign: "right"
+          }),
+          tabulatorSizedColumn("name", {
+            title: "Formation Reason",
+            field: "formationReasonCode",
+            headerFilter: batchingHistoryReasonHeaderFilter,
+            headerFilterFunc: "=",
+            formatter: batchFormationAuditReasonFormatter,
+            cssClass: "text-nowrap"
+          }),
+          tabulatorSizedColumn("count", {
+            title: "Source Trades",
+            field: "sourceTradeCount",
+            sorter: "number",
+            headerFilter: "input",
+            hozAlign: "right",
+            headerHozAlign: "right"
+          }),
+          tabulatorSizedColumn("type", {
+            title: "Status",
+            field: "batchStatus",
+            headerFilter: batchingHistoryStatusHeaderFilter,
+            headerFilterFunc: "=",
+            formatter: batchingHistoryStatusFormatter
+          }),
+          tabulatorSizedColumn("actions", {
+            title: "Actions",
+            field: "actions",
+            hozAlign: "center",
+            headerHozAlign: "center",
+            formatter: batchFormationAuditActionFormatter,
+            cellClick(event, cell) {
+              if (!event.target.closest("[data-batch-formation-audit-action='view']")) {
+                return;
+              }
+
+              location.hash = batchDetailsRoute(cell.getRow().getData().batchId);
+            }
+          })
+        ])
+      });
+      registerUiTableTabulator("batch_formation_audit_grid", batchFormationAuditGrid);
+
+      batchFormationAuditGrid.on("tableBuilt", () => {
+        batchFormationAuditGridReady = true;
+        updateBatchFormationAuditCount(data.length);
+        batchFormationAuditGrid.redraw(true);
+      });
+      batchFormationAuditGrid.on("dataFiltered", (_filters, rows) => {
+        updateBatchFormationAuditCount(rows.length);
+      });
+    }
+
+    function renderBatchFormationAudit(source = batchFormationAuditRecords) {
+      const data = Array.isArray(source) ? source : [];
+      updateBatchFormationAuditCount(data.length);
+
+      if (!batchFormationAuditGrid) {
+        if (!batchFormationAuditPage.hidden) {
+          initializeBatchFormationAuditGrid(data);
+        }
+        return;
+      }
+
+      if (!batchFormationAuditGridReady) {
+        return;
+      }
+
+      batchFormationAuditGrid.replaceData(data).then(() => {
+        batchFormationAuditGrid.redraw(true);
+      });
+    }
+
+    async function loadBatchFormationAuditPage() {
+      if (!DEMO_API_ENABLED) {
+        setBatchFormationAuditStatus(
+          "Start the demo server to view Batch Formation Audit.",
+          "warning"
+        );
+        renderBatchFormationAudit([]);
+        return;
+      }
+
+      setBatchFormationAuditStatus("Loading Batch Formation Audit...");
+
+      try {
+        await reloadBatchFormationAuditFromApi();
+        setBatchFormationAuditStatus();
+      } catch (error) {
+        setBatchFormationAuditStatus(
+          error.message || "Unable to load Batch Formation Audit.",
           "error"
         );
       }
@@ -27836,26 +28395,26 @@
         : status === "ROLLED_BACK"
           ? " is-rolled-back"
           : "";
-      const settlement = details.settlementBucket || {};
+      const batchingKey = details.batchingKey || {};
 
       batchDetailsSummaryTitle.textContent = `Batch #${details.batchId}`;
       batchDetailsBatchStatus.textContent = status;
       batchDetailsBatchStatus.className = `batch-status-token${statusTone}`;
       batchDetailsCurrencyPair.textContent =
         details.currencyPair || details.ccyPairCode || "—";
-      batchDetailsCreatedAt.textContent = batchDetailsTimestampLabel(details.createdAt);
+      batchDetailsFormedAt.textContent = batchDetailsTimestampLabel(details.formedAt);
       batchDetailsRolledBackAt.textContent = details.rolledBackAt
         ? batchDetailsTimestampLabel(details.rolledBackAt)
         : "—";
-      batchDetailsTradeDate.textContent = settlement.tradeDate
-        ? clientFxDealsDateLabel(settlement.tradeDate)
+      batchDetailsTradeDate.textContent = batchingKey.tradeDate
+        ? clientFxDealsDateLabel(batchingKey.tradeDate)
         : "—";
-      batchDetailsTenor.textContent = settlement.tenor || "—";
-      batchDetailsBaseValueDate.textContent = settlement.baseCcyValueDate
-        ? clientFxDealsDateLabel(settlement.baseCcyValueDate)
+      batchDetailsTenor.textContent = batchingKey.tenor || "—";
+      batchDetailsBaseValueDate.textContent = batchingKey.baseCcyValueDate
+        ? clientFxDealsDateLabel(batchingKey.baseCcyValueDate)
         : "—";
-      batchDetailsQuoteValueDate.textContent = settlement.quoteCcyValueDate
-        ? clientFxDealsDateLabel(settlement.quoteCcyValueDate)
+      batchDetailsQuoteValueDate.textContent = batchingKey.quoteCcyValueDate
+        ? clientFxDealsDateLabel(batchingKey.quoteCcyValueDate)
         : "—";
       batchDetailsMembersCount.textContent =
         `${details.members.length} ${details.members.length === 1 ? "trade" : "trades"}`;
@@ -28617,11 +29176,15 @@
       marketSimulationForm.elements.bidMin.value = editNumber(pair.bidMin, pair.defaultQuoteDecimals);
       marketSimulationForm.elements.spread.value = editNumber(pair.spread, pair.defaultQuoteDecimals);
       marketSimulationForm.elements.bidMax.value = editNumber(pair.bidMax, pair.defaultQuoteDecimals);
+      marketSimulationForm.elements.oneWayDurationSeconds.value = String(pair.oneWayDurationSeconds);
+      marketSimulationForm.elements.fluctuationSpreads.value = String(pair.fluctuationSpreads);
 
       [
         marketSimulationForm.elements.bidMin,
         marketSimulationForm.elements.spread,
-        marketSimulationForm.elements.bidMax
+        marketSimulationForm.elements.bidMax,
+        marketSimulationForm.elements.oneWayDurationSeconds,
+        marketSimulationForm.elements.fluctuationSpreads
       ].forEach(input => input.setCustomValidity(""));
 
       if (typeof marketSimulationDialog.showModal === "function") {
@@ -28647,12 +29210,22 @@
       const bidMinInput = marketSimulationForm.elements.bidMin;
       const spreadInput = marketSimulationForm.elements.spread;
       const bidMaxInput = marketSimulationForm.elements.bidMax;
+      const oneWayDurationInput = marketSimulationForm.elements.oneWayDurationSeconds;
+      const fluctuationInput = marketSimulationForm.elements.fluctuationSpreads;
       const bidMin = normalizeNumber(bidMinInput.value);
       const spread = normalizeNumber(spreadInput.value);
       const bidMax = normalizeNumber(bidMaxInput.value);
+      const oneWayDurationSeconds = Number(oneWayDurationInput.value);
+      const fluctuationSpreads = normalizeNumber(fluctuationInput.value);
       const validBidMin = Number.isFinite(bidMin) && bidMin > 0;
       const validSpread = Number.isFinite(spread) && spread > 0;
       const validBidMax = Number.isFinite(bidMax) && bidMax > 0;
+      const validDuration = Number.isInteger(oneWayDurationSeconds) &&
+        oneWayDurationSeconds >= MIN_MARKET_ONE_WAY_DURATION_SECONDS &&
+        oneWayDurationSeconds <= MAX_MARKET_ONE_WAY_DURATION_SECONDS;
+      const validFluctuation = Number.isFinite(fluctuationSpreads) &&
+        fluctuationSpreads >= 0 &&
+        fluctuationSpreads <= MAX_MARKET_FLUCTUATION_SPREADS;
 
       bidMinInput.setCustomValidity(validBidMin ? "" : "Min Bid must be greater than zero.");
       spreadInput.setCustomValidity(validSpread ? "" : "Spread must be greater than zero.");
@@ -28662,6 +29235,16 @@
           : validBidMin && bidMax <= bidMin
             ? "Max Bid must be greater than Min Bid."
             : ""
+      );
+      oneWayDurationInput.setCustomValidity(
+        validDuration
+          ? ""
+          : `One-way Duration must be a whole number from ${MIN_MARKET_ONE_WAY_DURATION_SECONDS} to ${MAX_MARKET_ONE_WAY_DURATION_SECONDS} seconds.`
+      );
+      fluctuationInput.setCustomValidity(
+        validFluctuation
+          ? ""
+          : `Fluctuation must be from 0 to ${MAX_MARKET_FLUCTUATION_SPREADS} spreads.`
       );
 
       if (!validBidMin) {
@@ -28679,7 +29262,17 @@
         return null;
       }
 
-      return { bidMin, spread, bidMax };
+      if (!validDuration) {
+        oneWayDurationInput.reportValidity();
+        return null;
+      }
+
+      if (!validFluctuation) {
+        fluctuationInput.reportValidity();
+        return null;
+      }
+
+      return { bidMin, spread, bidMax, oneWayDurationSeconds, fluctuationSpreads };
     }
 
     async function saveMarketSimulationSettingsFromForm(event) {
@@ -29337,9 +29930,21 @@
       return "#batching:history";
     }
 
+    function batchFormationAuditRoute() {
+      return "#batching:formation-audit";
+    }
+
     function setFxDealsActiveTab(activeRoute) {
       fxDealsTabs.forEach(tab => {
         const isActive = tab.dataset.fxDealsRoute === activeRoute;
+        tab.classList.toggle("active", isActive);
+        tab.setAttribute("aria-selected", String(isActive));
+      });
+    }
+
+    function setFxBatchesActiveTab(activeRoute) {
+      fxBatchesTabs.forEach(tab => {
+        const isActive = tab.dataset.fxBatchesRoute === activeRoute;
         tab.classList.toggle("active", isActive);
         tab.setAttribute("aria-selected", String(isActive));
       });
@@ -29498,6 +30103,10 @@
     function isBatchingHistoryRoute() {
       return location.hash === "#batching"
         || location.hash === batchingHistoryRoute();
+    }
+
+    function isBatchFormationAuditRoute() {
+      return location.hash === batchFormationAuditRoute();
     }
 
     function isBatchDetailsRoute() {
@@ -30779,8 +31388,8 @@
         const intervalSeconds = Number(state.intervalMs) / 1000;
         setBatchStatus(
           state.running
-            ? `Auto Batching started. Each Ccy Pair is monitored by its Transfer Rate corridor and ${intervalSeconds}-second maximum interval.`
-            : "Auto Batching was stopped successfully.",
+            ? `Auto Batching started and is waiting for the first new Trade. Existing FX Position trades are unchanged. Each opened Batching Window has a ${intervalSeconds}-second maximum interval.`
+            : "Auto Batching stopped. Open Batching Windows, when present, were cancelled; their Trades remain in FX Position.",
           "success"
         );
       } catch (error) {
@@ -35532,6 +36141,7 @@
         layout: "fitData",
         renderVertical: "virtual",
         renderVerticalBuffer: 320,
+        maxHeight: "calc(100vh - 225px)",
         placeholder: "No client FX deals.",
         movableColumns: false,
         resizableColumns: false,
@@ -35724,6 +36334,7 @@
         layout: "fitData",
         renderVertical: "virtual",
         renderVerticalBuffer: 320,
+        maxHeight: "calc(100vh - 225px)",
         placeholder: "No hedge FX deals.",
         movableColumns: false,
         resizableColumns: false,
@@ -35878,7 +36489,9 @@
       batchingSettingsPage.hidden = true;
       hedgingSettingsPage.hidden = true;
       databasePage.hidden = true;
+      fxBatchesPage.hidden = true;
       batchingHistoryPage.hidden = true;
+      batchFormationAuditPage.hidden = true;
       batchDetailsPage.hidden = true;
 
       if (location.hash === "#batching:details") {
@@ -35908,9 +36521,27 @@
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
+        fxBatchesPage.hidden = false;
         batchingHistoryPage.hidden = false;
-        document.title = "Batching History";
+        setFxBatchesActiveTab("batching-history");
+        document.title = "FX Batches";
         loadBatchingHistoryPage();
+        return;
+      }
+
+      if (isBatchFormationAuditRoute()) {
+        setWorkspaceRoute("batch-formation-audit");
+        marketPage.hidden = true;
+        mainPage.hidden = true;
+        clientProfilePage.hidden = true;
+        pricingPage.hidden = true;
+        referenceDataPage.hidden = true;
+        pricingRulesPage.hidden = true;
+        fxBatchesPage.hidden = false;
+        batchFormationAuditPage.hidden = false;
+        setFxBatchesActiveTab("batch-formation-audit");
+        document.title = "Batch Formation Audit - FX Batches";
+        loadBatchFormationAuditPage();
         return;
       }
 
