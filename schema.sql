@@ -546,9 +546,10 @@ CREATE TABLE IF NOT EXISTS client_deal_generation_process_settings
 
 CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
 (
-    settings_id             INTEGER PRIMARY KEY,
-    max_interval_seconds    INTEGER NOT NULL DEFAULT 60,
-    updated_at              TEXT    NOT NULL
+    settings_id                           INTEGER PRIMARY KEY,
+    max_interval_seconds                  INTEGER NOT NULL DEFAULT 60,
+    default_transfer_rate_spread_percent  TEXT    NOT NULL DEFAULT '0.05',
+    updated_at                            TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
     CONSTRAINT chk_fx_auto_batching_settings_singleton
@@ -557,6 +558,16 @@ CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
         CHECK (
             typeof(max_interval_seconds) = 'integer'
             AND max_interval_seconds BETWEEN 1 AND 3600
+        ),
+    CONSTRAINT chk_fx_auto_batching_settings_transfer_rate_spread
+        CHECK (
+            typeof(default_transfer_rate_spread_percent) = 'text'
+            AND default_transfer_rate_spread_percent GLOB '[0-9]*'
+            AND default_transfer_rate_spread_percent NOT GLOB '*[^0-9.]*'
+            AND length(default_transfer_rate_spread_percent)
+                - length(replace(default_transfer_rate_spread_percent, '.', '')) <= 1
+            AND CAST(default_transfer_rate_spread_percent AS REAL)
+                BETWEEN 0.0001 AND 100
         ),
     CONSTRAINT chk_fx_auto_batching_settings_updated_at
         CHECK (
@@ -876,6 +887,8 @@ CREATE TABLE IF NOT EXISTS fx_batches
     idempotency_key TEXT    NOT NULL,
     ccy_pair_code   TEXT    NOT NULL,
     batch_status    TEXT    NOT NULL DEFAULT 'BUILDING',
+    formation_reason_code TEXT NOT NULL DEFAULT 'MANUAL_SELECTION',
+    formation_reason_details_json TEXT NOT NULL DEFAULT '{}',
     created_at      TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     rolled_back_at  TEXT,
@@ -896,6 +909,21 @@ CREATE TABLE IF NOT EXISTS fx_batches
         ),
     CONSTRAINT chk_fx_batches_status
         CHECK (batch_status IN ('BUILDING', 'FORMED', 'ROLLED_BACK')),
+    CONSTRAINT chk_fx_batches_formation_reason_code
+        CHECK (
+            formation_reason_code IN (
+                'MANUAL_SELECTION',
+                'MAX_INTERVAL_REACHED',
+                'TRANSFER_RATE_CORRIDOR_BREACHED'
+            )
+        ),
+    CONSTRAINT chk_fx_batches_formation_reason_details
+        CHECK (
+            length(formation_reason_details_json) BETWEEN 2 AND 4000
+            AND json_valid(formation_reason_details_json) = 1
+            AND substr(formation_reason_details_json, 1, 1) = '{'
+            AND substr(formation_reason_details_json, -1, 1) = '}'
+        ),
     CONSTRAINT chk_fx_batches_created_at
         CHECK (
             length(created_at) = 24
@@ -1523,6 +1551,30 @@ BEGIN
     SELECT RAISE(ABORT, 'batch status transition is not allowed');
 END;
 
+CREATE TRIGGER IF NOT EXISTS trg_fx_batches_validate_formation_reason_insert
+BEFORE INSERT ON fx_batches
+FOR EACH ROW
+WHEN CASE
+    WHEN json_valid(NEW.formation_reason_details_json) = 0 THEN 1
+    WHEN json_type(NEW.formation_reason_details_json) <> 'object' THEN 1
+    ELSE 0
+END
+BEGIN
+    SELECT RAISE(ABORT, 'batch formation reason details must be a JSON object');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_batches_validate_formation_reason_update
+BEFORE UPDATE OF formation_reason_details_json ON fx_batches
+FOR EACH ROW
+WHEN CASE
+    WHEN json_valid(NEW.formation_reason_details_json) = 0 THEN 1
+    WHEN json_type(NEW.formation_reason_details_json) <> 'object' THEN 1
+    ELSE 0
+END
+BEGIN
+    SELECT RAISE(ABORT, 'batch formation reason details must be a JSON object');
+END;
+
 CREATE TRIGGER IF NOT EXISTS trg_fx_batches_immutable_update
 BEFORE UPDATE ON fx_batches
 FOR EACH ROW
@@ -1536,6 +1588,8 @@ WHEN
             AND NEW.ccy_pair_code = OLD.ccy_pair_code
             AND NEW.batch_status = 'ROLLED_BACK'
             AND NEW.created_at = OLD.created_at
+            AND NEW.formation_reason_code = OLD.formation_reason_code
+            AND NEW.formation_reason_details_json = OLD.formation_reason_details_json
             AND OLD.rolled_back_at IS NULL
             AND NEW.rolled_back_at IS NOT NULL
         )

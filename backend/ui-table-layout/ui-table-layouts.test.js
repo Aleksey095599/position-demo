@@ -20,7 +20,7 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   ccy_pair_options_grid: 6,
   client_fx_deals_grid: 18,
   hedge_fx_deals_grid: 18,
-  batching_history_grid: 5,
+  batching_history_grid: 7,
   batch_members_grid: 9,
   batch_cash_output_grid: 3,
   batch_position_output_grid: 9,
@@ -31,7 +31,8 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   servicing_locations_grid: 7,
   accounting_systems_grid: 5,
   execution_systems_grid: 6,
-  hedge_quick_mode_settings_grid: 7
+  hedge_quick_mode_settings_grid: 7,
+  deal_generation_settings_grid: 11
 });
 
 test("defines a valid default width for every managed UI table column", () => {
@@ -64,7 +65,7 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 147);
+  assert.equal(fullyQualifiedColumnKeys.size, 160);
 });
 
 test("keeps fresh-database defaults aligned with the UI layout registry", () => {

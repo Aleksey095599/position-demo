@@ -924,6 +924,8 @@ function verifyFreshSchemaAndSeed() {
       && storedBatch?.idempotency_key === "verify-batch"
       && storedBatch?.ccy_pair_code === "EUR_USD"
       && storedBatch?.batch_status === "BUILDING"
+      && storedBatch?.formation_reason_code === "MANUAL_SELECTION"
+      && storedBatch?.formation_reason_details_json === "{}"
       && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(storedBatch?.created_at || "");
 
     const insertQuoteCashMember = database.prepare(`
@@ -1021,6 +1023,26 @@ function verifyFreshSchemaAndSeed() {
       `).run();
       fxTradeBatchConstraintsEnforced = false;
     } catch {}
+
+    [
+      ["verify-invalid-reason", "UNKNOWN", "{}"],
+      ["verify-invalid-reason-json", "MANUAL_SELECTION", "{invalid}"],
+      ["verify-non-object-reason-json", "MANUAL_SELECTION", "[]"]
+    ].forEach(([idempotencyKey, reasonCode, detailsJson]) => {
+      try {
+        database.prepare(`
+          INSERT INTO fx_batches
+            (
+              idempotency_key,
+              ccy_pair_code,
+              formation_reason_code,
+              formation_reason_details_json
+            )
+          VALUES (?, 'EUR_USD', ?, ?)
+        `).run(idempotencyKey, reasonCode, detailsJson);
+        fxTradeBatchConstraintsEnforced = false;
+      } catch {}
+    });
   } finally {
     database.exec("ROLLBACK TO verify_batches");
     database.exec("RELEASE verify_batches");
@@ -1643,6 +1665,12 @@ function verifyFrontendStructure() {
   const fxAutoBatchSelectionSource = normalizedSource(
     path.join("backend", "fx-batching", "domain", "fx-auto-batch-selection.js")
   );
+  const fxAutoBatchingPolicySource = normalizedSource(
+    path.join("backend", "fx-batching", "domain", "fx-auto-batching-policy.js")
+  );
+  const fxBatchFormationReasonSource = normalizedSource(
+    path.join("backend", "fx-batching", "domain", "fx-batch-formation-reason.js")
+  );
   const clientDealGeneratorSource = normalizedSource(
     path.join("backend", "client-fx-deal", "client-fx-deal-generator.js")
   );
@@ -2010,6 +2038,11 @@ function verifyFrontendStructure() {
       && batchingSettingsPageMarkup.includes(">Batching Settings</h1>")
       && batchingSettingsPageMarkup.includes(">Auto Batching</h2>")
       && batchingSettingsPageMarkup.includes('name="maxIntervalSeconds"')
+      && batchingSettingsPageMarkup.includes('name="maxTransferRateSpreadPercent"')
+      && batchingSettingsPageMarkup.includes(">Default Transfer Rate Corridor</label>")
+      && batchingSettingsPageMarkup.includes(
+        "Each Ccy Pair and settlement bucket is evaluated independently."
+      )
       && batchingSettingsPageMarkup.includes('id="autoBatchingSettingsSaveButton"')
       && inlineScript.includes("function batchingSettingsRoute()")
       && inlineScript.includes("function isBatchingSettingsRoute()")
@@ -2020,19 +2053,29 @@ function verifyFrontendStructure() {
       && /class="batch-control batch-toolbar-settings"[\s\S]*?id="autoBatchingSettingsButton"/.test(batchToolbarMarkup),
     usesFxAutoBatchingProcess:
       fxAutoBatchingProcessSource.includes("class FxAutoBatchingProcess")
-      && fxAutoBatchingProcessSource.includes("scheduleNextCycle()")
+      && fxAutoBatchingProcessSource.includes("scheduleNextCycle(")
       && fxAutoBatchingProcessSource.includes("batchingInProgress")
+      && fxAutoBatchingProcessSource.includes("requestEvaluation()")
+      && fxAutoBatchingProcessSource.includes("nextEvaluationDelayMs")
       && !fxAutoBatchingProcessSource.includes("setIntervalFn")
-      && fxAutoBatchSelectionSource.includes("selectNextAutoBatchTradeIds")
       && fxAutoBatchSelectionSource.includes("settlementBucketKey")
+      && fxAutoBatchingPolicySource.includes("function planFxAutoBatching(")
+      && fxAutoBatchingPolicySource.includes("DEFAULT_MIN_TRADES_PER_AUTO_BATCH = 2")
+      && fxAutoBatchingPolicySource.includes("TRANSFER_RATE_CORRIDOR_BREACHED")
+      && fxAutoBatchingPolicySource.includes("MAX_INTERVAL_REACHED")
+      && fxBatchFormationReasonSource.includes("MANUAL_SELECTION")
+      && fxAutoBatchingProcessSource.includes("lastCandidatePairCount")
+      && fxAutoBatchingProcessSource.includes("for (const candidate of candidates)")
       && serverSource.includes("new FxAutoBatchingProcess")
-      && serverSource.includes("selectNextAutoBatchTradeIds(fxPositions())")
+      && serverSource.includes("planFxAutoBatching({")
+      && serverSource.includes("fxAutoBatchingProcess.notifyTradeCreated()")
       && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process"')
       && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process/start"')
       && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process/stop"')
       && serverSource.includes("fxAutoBatchingProcess: fxAutoBatchingProcess.status()")
       && inlineScript.includes("async function toggleFxAutoBatchingProcess()")
       && inlineScript.includes("async function refreshFxAutoBatchingProcess()")
+      && inlineScript.includes("Each Ccy Pair is monitored by its Transfer Rate corridor")
       && inlineScript.includes(
         'autoBatchButton.addEventListener("click", toggleFxAutoBatchingProcess)'
       ),
@@ -2286,12 +2329,17 @@ function verifyFrontendStructure() {
       && inlineScript.includes('title: "Batch ID"')
       && inlineScript.includes('title: "Ccy Pair Code"')
       && inlineScript.includes('title: "Batch Status"')
+      && inlineScript.includes('title: "Formation Reason"')
+      && inlineScript.includes('title: "Trigger Details (Demo)"')
       && inlineScript.includes('title: "Created At"')
       && /#batchingHistoryPage \.batching-history-content,[\s\S]*?#batchingHistoryPage \.batching-history-grid-shell \{[\s\S]*?width: fit-content;[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;/.test(html)
       && /#batchingHistoryPage \.batching-history-grid \{[\s\S]*?width: max-content;[\s\S]*?max-width: 100%;[\s\S]*?height: auto;[\s\S]*?max-height: 465px;/.test(html)
       && /function initializeBatchingHistoryGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: 465,/.test(inlineScript)
       && /tabulatorSizedColumn\("timestamp", \{[\s\S]*?title: "Created At",[\s\S]*?field: "createdAt",/.test(inlineScript)
       && serverSource.includes("function fxBatches()")
+      && serverSource.includes("function fxBatchFormationReasonDescription(")
+      && schemaSource.includes("formation_reason_code")
+      && schemaSource.includes("formation_reason_details_json")
       && serverSource.includes(
         'pathname === "/api/v1/fx-batches" && method === "GET"'
       ),
@@ -2591,20 +2639,33 @@ function verifyFrontendStructure() {
       && generationSettingsDialogMarkup.includes(
         'class="table table-sm table-hover align-middle generation-settings-table unified-data-table"'
       )
+      && generationSettingsDialogMarkup.includes(
+        'data-ui-table-layout-host="deal_generation_settings_grid"'
+      )
+      && generationSettingsDialogMarkup.includes(
+        'data-ui-table-layout-key="deal_generation_settings_grid"'
+      )
       && generationSettingsDialogMarkup.includes('class="dialog-close btn-close"')
       && html.includes('class="btn btn-sm btn-outline-primary generation-settings-save"')
       && html.includes(".generation-dialog .modal-header")
       && html.includes("font-family: var(--bs-body-font-family);")
-      && html.includes(".generation-settings-table tbody tr:nth-child(even)"),
+      && html.includes(".generation-settings-table tbody tr:nth-child(even)")
+      && inlineScript.includes("settings.counterpartyName")
+      && !inlineScript.includes("generation-settings-client-code")
+      && /pricingModeIndicatorMarkup\(\s*settings\.pricingMode,\s*escapeHtml\(settings\.pricingMode\),\s*false\s*\)/.test(inlineScript),
     showsAutoPricedClientDealGenerationMode:
-      generationSettingsDialogMarkup.includes(">Pricing Mode</th>")
+      generationSettingsDialogMarkup.includes(">Pricing Mode</span>")
       && generationSettingsDialogMarkup.includes(
-        "Only Pricing Rules linked to AUTO_PRICED Execution Systems are available."
+        "Only AUTO_PRICED Execution Systems are available for Client Deal generation."
       )
       && generationSettingsDialogMarkup.indexOf(
-        "Only Pricing Rules linked to AUTO_PRICED Execution Systems are available."
-      ) > generationSettingsDialogMarkup.indexOf("</table>")
-      && generationSettingsDialogMarkup.includes('aria-hidden="true">warning</span>')
+        "Only AUTO_PRICED Execution Systems are available for Client Deal generation."
+      ) > generationSettingsDialogMarkup.indexOf("<table")
+      && generationSettingsDialogMarkup.indexOf(
+        "Only AUTO_PRICED Execution Systems are available for Client Deal generation."
+      ) < generationSettingsDialogMarkup.indexOf("</thead>")
+      && generationSettingsDialogMarkup.includes('class="button-icon form-label-help"')
+      && !generationSettingsDialogMarkup.includes("configured for deal generation")
       && !generationSettingsDialogMarkup.includes(">Margin %</th>")
       && !inlineScript.includes("editNumber(settings.marginPercent, 4)")
       && inlineScript.includes("settings.pricingMode"),
@@ -6437,15 +6498,15 @@ async function main() {
       || freshSchema.users !== 3
       || freshSchema.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
       || freshSchema.userRoles.join(",") !== "ADMIN,DEALER,SUPERVISOR"
-      || freshSchema.uiTableColumnSettings !== 137
+      || freshSchema.uiTableColumnSettings !== 160
       || freshSchema.uiTableColumnLayoutKeys.map(row =>
         `${row.table_key}:${row.column_count}`
-      ).join(",") !== "accounting_systems_grid:5,batch_cash_output_grid:3,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:5,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:17,execution_contexts_grid:6,execution_systems_grid:6,external_counterparties_grid:8,hedge_fx_deals_grid:18,hedge_quick_mode_settings_grid:7,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:8,servicing_locations_grid:7,users_grid:7"
+      ).join(",") !== "accounting_systems_grid:5,batch_cash_output_grid:3,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:7,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:18,deal_generation_settings_grid:11,execution_contexts_grid:6,execution_systems_grid:6,external_counterparties_grid:8,hedge_fx_deals_grid:18,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:8,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:7,servicing_locations_grid:7,users_grid:7"
       || freshSchema.uiTableColumnSettingColumns.join(",")
         !== "table_key,column_key,column_label,display_order,default_width_px,width_px,updated_at"
       || freshSchema.uiTableColumnSettingRows.map(row =>
         `${row.column_key}:${row.default_width_px}:${row.width_px}`
-      ).join(",") !== "id:64:64,counterparty_type:147:147,counterparty_code:122:122,counterparty_name:158:158,ccy_pair:88:88,execution_context:596:596,pricing_mode:156:156,margin:82:82"
+      ).join(",") !== "id:64:64,counterparty_code:122:122,counterparty_name:158:158,ccy_pair:88:88,execution_context:596:596,pricing_mode:156:156,margin:82:82"
       || !freshSchema.uiTableColumnSettingsConstraintsEnforced
       || freshSchema.pricingRules !== 7
       || freshSchema.legacyMonetaryColumns.length !== 0
@@ -6457,9 +6518,10 @@ async function main() {
       || freshSchema.clientDealGenerationProcessSettings?.min_deals_per_cycle !== 3
       || freshSchema.clientDealGenerationProcessSettings?.max_deals_per_cycle !== 7
       || freshSchema.fxAutoBatchingSettingsColumns.join(",")
-        !== "settings_id,max_interval_seconds,updated_at"
+        !== "settings_id,max_interval_seconds,default_transfer_rate_spread_percent,updated_at"
       || freshSchema.fxAutoBatchingSettings?.settings_id !== 1
       || freshSchema.fxAutoBatchingSettings?.max_interval_seconds !== 60
+      || freshSchema.fxAutoBatchingSettings?.default_transfer_rate_spread_percent !== "0.05"
       || freshSchema.clientDealGenerationSettings !== 2
       || freshSchema.clientDealGenerationSettingsColumns.join(",") !== "pricing_rule_id,min_base_ccy_amount_minor,max_base_ccy_amount_minor,base_ccy_amount_step_minor,base_ccy_fraction_digits,buy_probability_percent,is_active"
       || freshSchema.clientDealGenerationSettingsForeignKeys.length !== 1
@@ -6553,7 +6615,7 @@ async function main() {
         !== "pricing_rule_id,ccy_pair_code"
       || freshSchema.hedgeQuickModeSettingsTriggers.length < 9
       || freshSchema.fxTradeBatches !== 0
-      || freshSchema.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,created_at,rolled_back_at"
+      || freshSchema.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,formation_reason_code,formation_reason_details_json,created_at,rolled_back_at"
       || freshSchema.fxTradeBatchForeignKeys.length !== 1
       || freshSchema.fxTradeBatchForeignKeys[0]?.table !== "ccy_pair_options"
       || freshSchema.fxTradeBatchForeignKeys[0]?.on_update !== "RESTRICT"
@@ -7072,7 +7134,7 @@ async function main() {
         .includes("large_base_ccy_amount_minor < xlarge_base_ccy_amount_minor")
       || !apiAndMigration.hedgeQuickModeSettingsCreateSql
         .includes("default_tenor IN ('TOD', 'TOM', 'SPOT')")
-      || apiAndMigration.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,created_at,rolled_back_at"
+      || apiAndMigration.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,formation_reason_code,formation_reason_details_json,created_at,rolled_back_at"
       || apiAndMigration.fxTradeBatchForeignKeys.length !== 1
       || apiAndMigration.fxTradeBatchForeignKeys[0]?.onUpdate !== "RESTRICT"
       || apiAndMigration.fxTradeBatchForeignKeys[0]?.onDelete !== "RESTRICT"

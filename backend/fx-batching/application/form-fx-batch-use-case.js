@@ -3,6 +3,9 @@
 const {
   formFxBatch
 } = require("../domain/fx-batch-formation");
+const {
+  fxBatchFormationReason
+} = require("../domain/fx-batch-formation-reason");
 
 function applicationError(code, message) {
   const error = new Error(message);
@@ -51,9 +54,15 @@ function normalizedCommand(command) {
     );
   }
 
+  const formationReason = fxBatchFormationReason({
+    reasonCode: source.formationReasonCode,
+    details: source.formationReasonDetails
+  }, tradeIds.length);
+
   return {
     idempotencyKey,
-    tradeIds: [...tradeIds].sort((left, right) => left - right)
+    tradeIds: [...tradeIds].sort((left, right) => left - right),
+    formationReason
   };
 }
 
@@ -111,7 +120,8 @@ class FormFxBatchUseCase {
       const result = this.fxBatchRepository.saveFormed({
         idempotencyKey: normalized.idempotencyKey,
         sourceTrades,
-        formation
+        formation,
+        formationReason: normalized.formationReason
       });
 
       return {

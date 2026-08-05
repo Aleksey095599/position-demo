@@ -10,9 +10,25 @@ function positiveIntervalMilliseconds(value) {
   return intervalMs;
 }
 
+function optionalDelayMilliseconds(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const delayMs = Number(value);
+
+  if (!Number.isInteger(delayMs) || delayMs < 0) {
+    throw new RangeError(
+      "Auto Batching next evaluation delay must be a non-negative integer number of milliseconds."
+    );
+  }
+
+  return delayMs;
+}
+
 class FxAutoBatchingProcess {
   constructor({
-    selectNextTradeIds,
+    selectCandidates,
     formBatch,
     getIntervalMs,
     createIdempotencyKey,
@@ -20,8 +36,8 @@ class FxAutoBatchingProcess {
     clearTimeoutFn = clearTimeout,
     now = () => new Date()
   }) {
-    if (typeof selectNextTradeIds !== "function") {
-      throw new TypeError("FX Auto Batching Process requires a trade-selection query.");
+    if (typeof selectCandidates !== "function") {
+      throw new TypeError("FX Auto Batching Process requires a per-currency-pair selection query.");
     }
 
     if (typeof formBatch !== "function") {
@@ -36,7 +52,7 @@ class FxAutoBatchingProcess {
       throw new TypeError("FX Auto Batching Process requires an Idempotency Key factory.");
     }
 
-    this.selectNextTradeIds = selectNextTradeIds;
+    this.selectCandidates = selectCandidates;
     this.formBatch = formBatch;
     this.getIntervalMs = getIntervalMs;
     this.createIdempotencyKey = createIdempotencyKey;
@@ -46,9 +62,14 @@ class FxAutoBatchingProcess {
     this.running = false;
     this.timer = null;
     this.batchingInProgress = false;
+    this.evaluationRequested = false;
+    this.nextEvaluationDelayMs = null;
     this.formedBatchCount = 0;
     this.lastCandidateTradeCount = 0;
+    this.lastCandidatePairCount = 0;
+    this.lastCycleBatchCount = 0;
     this.lastFormedBatchId = null;
+    this.lastFormedBatchIds = [];
     this.lastFormedAt = null;
     this.lastCycleAt = null;
     this.nextCycleAt = null;
@@ -65,9 +86,13 @@ class FxAutoBatchingProcess {
       status: this.running ? "RUNNING" : "STOPPED",
       intervalMs: this.intervalMs(),
       batchingInProgress: this.batchingInProgress,
+      evaluationRequested: this.evaluationRequested,
       formedBatchCount: this.formedBatchCount,
       lastCandidateTradeCount: this.lastCandidateTradeCount,
+      lastCandidatePairCount: this.lastCandidatePairCount,
+      lastCycleBatchCount: this.lastCycleBatchCount,
       lastFormedBatchId: this.lastFormedBatchId,
+      lastFormedBatchIds: [...this.lastFormedBatchIds],
       lastFormedAt: this.lastFormedAt,
       lastCycleAt: this.lastCycleAt,
       nextCycleAt: this.nextCycleAt,
@@ -77,47 +102,110 @@ class FxAutoBatchingProcess {
 
   async tick() {
     if (this.batchingInProgress) {
+      this.evaluationRequested = true;
       return null;
     }
 
     this.batchingInProgress = true;
 
     try {
-      const tradeIds = await this.selectNextTradeIds();
+      const selection = await this.selectCandidates();
+      const candidates = Array.isArray(selection)
+        ? selection
+        : selection?.candidates;
+
+      if (!Array.isArray(candidates)) {
+        throw new TypeError("FX Auto Batching selection must return a candidate collection.");
+      }
+
+      this.nextEvaluationDelayMs = Array.isArray(selection)
+        ? this.intervalMs()
+        : optionalDelayMilliseconds(selection?.nextEvaluationDelayMs);
+
       this.lastCycleAt = this.now().toISOString();
-      this.lastCandidateTradeCount = Array.isArray(tradeIds)
-        ? tradeIds.length
-        : 0;
+      this.lastCandidatePairCount = candidates.length;
+      this.lastCandidateTradeCount = candidates.reduce(
+        (count, candidate) => count + (Array.isArray(candidate?.tradeIds) ? candidate.tradeIds.length : 0),
+        0
+      );
+      this.lastCycleBatchCount = 0;
+      this.lastFormedBatchIds = [];
 
       if (this.lastCandidateTradeCount === 0) {
         this.lastError = null;
-        return null;
+        return [];
       }
 
-      const result = await this.formBatch({
-        idempotencyKey: this.createIdempotencyKey(),
-        tradeIds
-      });
-      this.formedBatchCount += result?.replayed === true ? 0 : 1;
-      this.lastFormedBatchId = Number(result?.batchId) || null;
-      this.lastFormedAt = this.now().toISOString();
-      this.lastError = null;
-      return result;
+      const results = [];
+      const errors = [];
+
+      for (const candidate of candidates) {
+        const ccyPairCode = String(candidate?.ccyPairCode || "").trim().toUpperCase();
+        const tradeIds = Array.isArray(candidate?.tradeIds) ? candidate.tradeIds : [];
+
+        if (!ccyPairCode || tradeIds.length === 0) {
+          errors.push(`${ccyPairCode || "Unknown Ccy Pair"}: invalid Auto Batching candidate.`);
+          continue;
+        }
+
+        try {
+          const result = await this.formBatch({
+            idempotencyKey: this.createIdempotencyKey(),
+            tradeIds,
+            ...(candidate?.formationReasonCode
+              ? {
+                  formationReasonCode: candidate.formationReasonCode,
+                  formationReasonDetails: candidate.formationReasonDetails
+                }
+              : {})
+          });
+          const batchId = Number(result?.batchId) || null;
+
+          results.push(result);
+
+          if (result?.replayed !== true) {
+            this.formedBatchCount += 1;
+            this.lastCycleBatchCount += 1;
+          }
+
+          if (batchId !== null) {
+            this.lastFormedBatchId = batchId;
+            this.lastFormedBatchIds.push(batchId);
+          }
+
+          this.lastFormedAt = this.now().toISOString();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          errors.push(`${ccyPairCode}: ${message}`);
+        }
+      }
+
+      this.lastError = errors.length > 0
+        ? `Auto Batching failed for ${errors.join("; ")}`
+        : null;
+      return results;
     } catch (error) {
       this.lastError = error instanceof Error ? error.message : String(error);
+      this.nextEvaluationDelayMs = this.intervalMs();
       return null;
     } finally {
       this.batchingInProgress = false;
     }
   }
 
-  scheduleNextCycle() {
+  scheduleNextCycle(delayMs = this.nextEvaluationDelayMs) {
     if (!this.running || this.timer !== null || this.batchingInProgress) {
       return;
     }
 
-    const intervalMs = this.intervalMs();
-    this.nextCycleAt = new Date(this.now().getTime() + intervalMs).toISOString();
+    const scheduledDelayMs = optionalDelayMilliseconds(delayMs);
+
+    if (scheduledDelayMs === null) {
+      this.nextCycleAt = null;
+      return;
+    }
+
+    this.nextCycleAt = new Date(this.now().getTime() + scheduledDelayMs).toISOString();
     this.timer = this.setTimeoutFn(async () => {
       this.timer = null;
       this.nextCycleAt = null;
@@ -126,9 +214,19 @@ class FxAutoBatchingProcess {
         return;
       }
 
+      this.evaluationRequested = false;
       await this.tick();
-      this.scheduleNextCycle();
-    }, intervalMs);
+      const requestedDuringEvaluation = this.evaluationRequested;
+      this.evaluationRequested = false;
+      const retryDelayMs = this.lastError
+        ? Math.min(1000, this.intervalMs())
+        : null;
+      this.scheduleNextCycle(
+        requestedDuringEvaluation
+          ? 0
+          : retryDelayMs ?? this.nextEvaluationDelayMs
+      );
+    }, scheduledDelayMs);
     this.timer?.unref?.();
   }
 
@@ -138,12 +236,18 @@ class FxAutoBatchingProcess {
     }
 
     this.running = true;
-    this.scheduleNextCycle();
+    this.requestEvaluation();
     return this.status();
   }
 
-  reschedule() {
+  requestEvaluation() {
     if (!this.running) {
+      return this.status();
+    }
+
+    this.evaluationRequested = true;
+
+    if (this.batchingInProgress) {
       return this.status();
     }
 
@@ -153,8 +257,20 @@ class FxAutoBatchingProcess {
     }
 
     this.nextCycleAt = null;
-    this.scheduleNextCycle();
+    this.scheduleNextCycle(0);
     return this.status();
+  }
+
+  notifyTradeCreated() {
+    return this.requestEvaluation();
+  }
+
+  reschedule() {
+    if (!this.running) {
+      return this.status();
+    }
+
+    return this.requestEvaluation();
   }
 
   stop() {
@@ -166,6 +282,8 @@ class FxAutoBatchingProcess {
     }
 
     this.nextCycleAt = null;
+    this.evaluationRequested = false;
+    this.nextEvaluationDelayMs = null;
     return this.status();
   }
 
@@ -173,7 +291,10 @@ class FxAutoBatchingProcess {
     this.stop();
     this.formedBatchCount = 0;
     this.lastCandidateTradeCount = 0;
+    this.lastCandidatePairCount = 0;
+    this.lastCycleBatchCount = 0;
     this.lastFormedBatchId = null;
+    this.lastFormedBatchIds = [];
     this.lastFormedAt = null;
     this.lastCycleAt = null;
     this.lastError = null;
@@ -187,5 +308,6 @@ class FxAutoBatchingProcess {
 
 module.exports = {
   FxAutoBatchingProcess,
+  optionalDelayMilliseconds,
   positiveIntervalMilliseconds
 };

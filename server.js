@@ -36,10 +36,16 @@ const {
   FxAutoBatchingProcess
 } = require("./backend/fx-batching/application/fx-auto-batching-process");
 const {
-  selectNextAutoBatchTradeIds
-} = require("./backend/fx-batching/domain/fx-auto-batch-selection");
+  planFxAutoBatching
+} = require("./backend/fx-batching/domain/fx-auto-batching-policy");
+const {
+  FX_BATCH_FORMATION_REASON_CODE,
+  FX_BATCH_FORMATION_REASON_CODES,
+  FX_BATCH_FORMATION_REASON_DETAILS_MAX_LENGTH
+} = require("./backend/fx-batching/domain/fx-batch-formation-reason");
 const {
   FX_AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT,
+  FX_AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT,
   fxAutoBatchingSettings: validatedFxAutoBatchingSettings
 } = require("./backend/fx-batching/domain/fx-auto-batching-settings");
 const {
@@ -189,6 +195,9 @@ const hedgeFxDealsAlreadyInitialized = Boolean(database.prepare(`
 migrateUnprefixedBatchTables(database);
 migrateTradingCounterpartyTerminology(database);
 prepareTradingCounterpartyExecutionContextSchema(database);
+if (sqliteTableExists(database, "fx_batches")) {
+  ensureFxBatchFormationReason(database);
+}
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 dropTradingCounterpartyExecutionContextIntegrityTriggers(database);
 ensureHedgeQuickModeSettingsDefaultTenor(database);
@@ -291,6 +300,7 @@ migrateTradingCounterpartyExecutionContexts(database);
 ensureTradingCounterpartyExecutionContextIntegrityTriggers(database);
 ensureUiTableColumnSettings(database);
 ensureFxAutoBatchingSettings(database);
+ensureFxBatchFormationReason(database);
 
 function tableColumnNames(sqlite, tableName) {
   return new Set(sqlite.prepare(`PRAGMA table_info(${tableName})`).all().map(column => column.name));
@@ -313,11 +323,124 @@ function runInImmediateTransaction(sqlite, operation) {
 }
 
 function ensureFxAutoBatchingSettings(sqlite) {
+  const columns = tableColumnNames(sqlite, "fx_auto_batching_settings");
+
+  if (!columns.has("default_transfer_rate_spread_percent")) {
+    sqlite.exec(`
+      ALTER TABLE fx_auto_batching_settings
+      ADD COLUMN default_transfer_rate_spread_percent TEXT NOT NULL
+        DEFAULT '${FX_AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT}'
+        CONSTRAINT chk_fx_auto_batching_settings_transfer_rate_spread
+        CHECK (
+          typeof(default_transfer_rate_spread_percent) = 'text'
+          AND default_transfer_rate_spread_percent GLOB '[0-9]*'
+          AND default_transfer_rate_spread_percent NOT GLOB '*[^0-9.]*'
+          AND length(default_transfer_rate_spread_percent)
+            - length(replace(default_transfer_rate_spread_percent, '.', '')) <= 1
+          AND CAST(default_transfer_rate_spread_percent AS REAL)
+            BETWEEN 0.0001 AND 100
+        )
+    `);
+  }
+
   sqlite.prepare(`
     INSERT OR IGNORE INTO fx_auto_batching_settings
-      (settings_id, max_interval_seconds)
-    VALUES (1, ?)
-  `).run(FX_AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT);
+      (
+        settings_id,
+        max_interval_seconds,
+        default_transfer_rate_spread_percent
+      )
+    VALUES (1, ?, ?)
+  `).run(
+    FX_AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT,
+    FX_AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT
+  );
+}
+
+function ensureFxBatchFormationReason(sqlite) {
+  const columns = tableColumnNames(sqlite, "fx_batches");
+
+  if (!columns.has("formation_reason_code")) {
+    sqlite.exec(`
+      ALTER TABLE fx_batches
+      ADD COLUMN formation_reason_code TEXT NOT NULL
+        DEFAULT '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
+        CONSTRAINT chk_fx_batches_formation_reason_code
+        CHECK (formation_reason_code IN (
+          '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}',
+          '${FX_BATCH_FORMATION_REASON_CODE.MAX_INTERVAL_REACHED}',
+          '${FX_BATCH_FORMATION_REASON_CODE.TRANSFER_RATE_CORRIDOR_BREACHED}'
+        ))
+    `);
+  }
+
+  if (!columns.has("formation_reason_details_json")) {
+    sqlite.exec(`
+      ALTER TABLE fx_batches
+      ADD COLUMN formation_reason_details_json TEXT NOT NULL DEFAULT '{}'
+        CONSTRAINT chk_fx_batches_formation_reason_details
+        CHECK (
+          length(formation_reason_details_json) BETWEEN 2
+            AND ${FX_BATCH_FORMATION_REASON_DETAILS_MAX_LENGTH}
+          AND json_valid(formation_reason_details_json) = 1
+          AND substr(formation_reason_details_json, 1, 1) = '{'
+          AND substr(formation_reason_details_json, -1, 1) = '}'
+        )
+    `);
+  }
+
+  sqlite.exec(`
+    DROP TRIGGER IF EXISTS trg_fx_batches_validate_formation_reason_insert;
+    DROP TRIGGER IF EXISTS trg_fx_batches_validate_formation_reason_update;
+    DROP TRIGGER IF EXISTS trg_fx_batches_immutable_update;
+
+    CREATE TRIGGER trg_fx_batches_validate_formation_reason_insert
+    BEFORE INSERT ON fx_batches
+    FOR EACH ROW
+    WHEN CASE
+      WHEN json_valid(NEW.formation_reason_details_json) = 0 THEN 1
+      WHEN json_type(NEW.formation_reason_details_json) <> 'object' THEN 1
+      ELSE 0
+    END
+    BEGIN
+      SELECT RAISE(ABORT, 'batch formation reason details must be a JSON object');
+    END;
+
+    CREATE TRIGGER trg_fx_batches_validate_formation_reason_update
+    BEFORE UPDATE OF formation_reason_details_json ON fx_batches
+    FOR EACH ROW
+    WHEN CASE
+      WHEN json_valid(NEW.formation_reason_details_json) = 0 THEN 1
+      WHEN json_type(NEW.formation_reason_details_json) <> 'object' THEN 1
+      ELSE 0
+    END
+    BEGIN
+      SELECT RAISE(ABORT, 'batch formation reason details must be a JSON object');
+    END;
+
+    CREATE TRIGGER trg_fx_batches_immutable_update
+    BEFORE UPDATE ON fx_batches
+    FOR EACH ROW
+    WHEN
+      OLD.batch_status = 'ROLLED_BACK'
+      OR (
+        OLD.batch_status = 'FORMED'
+        AND NOT (
+          NEW.batch_id = OLD.batch_id
+          AND NEW.idempotency_key = OLD.idempotency_key
+          AND NEW.ccy_pair_code = OLD.ccy_pair_code
+          AND NEW.batch_status = 'ROLLED_BACK'
+          AND NEW.created_at = OLD.created_at
+          AND NEW.formation_reason_code = OLD.formation_reason_code
+          AND NEW.formation_reason_details_json = OLD.formation_reason_details_json
+          AND OLD.rolled_back_at IS NULL
+          AND NEW.rolled_back_at IS NOT NULL
+        )
+      )
+    BEGIN
+      SELECT RAISE(ABORT, 'completed batch is immutable');
+    END;
+  `);
 }
 
 function sqliteTableExists(sqlite, tableName) {
@@ -6449,6 +6572,7 @@ function fxAutoBatchingSettings() {
   const settings = database.prepare(`
     SELECT
       max_interval_seconds AS maxIntervalSeconds,
+      default_transfer_rate_spread_percent AS maxTransferRateSpreadPercent,
       updated_at AS updatedAt
     FROM fx_auto_batching_settings
     WHERE settings_id = 1
@@ -6468,9 +6592,13 @@ function updateFxAutoBatchingSettings(payload) {
   const result = database.prepare(`
     UPDATE fx_auto_batching_settings
     SET max_interval_seconds = ?,
+        default_transfer_rate_spread_percent = ?,
         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
     WHERE settings_id = 1
-  `).run(payload.maxIntervalSeconds);
+  `).run(
+    payload.maxIntervalSeconds,
+    payload.maxTransferRateSpreadPercent
+  );
 
   if (result.changes !== 1) {
     throw new Error("FX Auto Batching Settings are not configured.");
@@ -6888,11 +7016,117 @@ function fxBatches() {
       batch_id AS batchId,
       ccy_pair_code AS ccyPairCode,
       batch_status AS batchStatus,
+      formation_reason_code AS formationReasonCode,
+      formation_reason_details_json AS formationReasonDetailsJson,
       created_at AS createdAt,
       rolled_back_at AS rolledBackAt
     FROM fx_batches
     ORDER BY batch_id DESC
-  `).all();
+  `).all().map(fxBatchWithFormationReason);
+}
+
+function parsedFxBatchFormationReasonDetails(value) {
+  try {
+    const details = JSON.parse(String(value || "{}"));
+    return details && typeof details === "object" && !Array.isArray(details)
+      ? details
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function formationReasonTradeCountLabel(details) {
+  const count = Number(details?.selectedTradeCount);
+
+  return Number.isInteger(count) && count > 0
+    ? `${count} ${count === 1 ? "trade" : "trades"} selected.`
+    : "";
+}
+
+function conciseBatchReasonPercent(value) {
+  const percent = Number(value);
+
+  if (!Number.isFinite(percent)) {
+    return String(value ?? "");
+  }
+
+  return percent.toFixed(6).replace(/\.?0+$/, "");
+}
+
+function fxBatchFormationReasonDescription(reasonCode, details) {
+  const tradeCountLabel = formationReasonTradeCountLabel(details);
+
+  if (reasonCode === FX_BATCH_FORMATION_REASON_CODE.MAX_INTERVAL_REACHED) {
+    const ageMilliseconds = Number(details?.oldestTradeAgeMilliseconds);
+    const ageSeconds = Number.isFinite(ageMilliseconds)
+      ? (ageMilliseconds / 1000).toFixed(ageMilliseconds % 1000 === 0 ? 0 : 3)
+      : null;
+    const intervalSeconds = Number(details?.maxIntervalSeconds);
+    const intervalLabel = Number.isFinite(intervalSeconds)
+      ? `${intervalSeconds} sec`
+      : "the configured limit";
+    const ageLabel = ageSeconds === null ? "the limit" : `${ageSeconds} sec`;
+
+    return [
+      `Maximum interval reached: oldest pending trade waited ${ageLabel} `
+        + `(limit ${intervalLabel}).`,
+      tradeCountLabel
+    ].filter(Boolean).join(" ");
+  }
+
+  if (
+    reasonCode ===
+      FX_BATCH_FORMATION_REASON_CODE.TRANSFER_RATE_CORRIDOR_BREACHED
+  ) {
+    const acceptedRange = details?.acceptedMinTransferRate
+      && details?.acceptedMaxTransferRate
+      ? `${details.acceptedMinTransferRate}-${details.acceptedMaxTransferRate}`
+      : "the accepted range";
+    const acceptedSpread = details?.acceptedSpreadPercent === null
+      || details?.acceptedSpreadPercent === undefined
+      ? ""
+      : ` (${conciseBatchReasonPercent(details.acceptedSpreadPercent)}%)`;
+    const limit = details?.maxSpreadPercent
+      ? `${conciseBatchReasonPercent(details.maxSpreadPercent)}%`
+      : "the configured limit";
+    const incoming = details?.incomingTransferRate
+      ? `Trade #${details.breachingTradeId} at ${details.incomingTransferRate}`
+      : "The incoming trade";
+    const breachedSpread = details?.breachedSpreadPercent === null
+      || details?.breachedSpreadPercent === undefined
+      ? ""
+      : ` to ${conciseBatchReasonPercent(details.breachedSpreadPercent)}%`;
+
+    return [
+      `Transfer Rate corridor breached: accepted ${acceptedRange}${acceptedSpread}, `
+        + `limit ${limit}; ${incoming} would widen the full spread${breachedSpread}.`,
+      tradeCountLabel
+    ].filter(Boolean).join(" ");
+  }
+
+  return ["Manual selection.", tradeCountLabel].filter(Boolean).join(" ");
+}
+
+function fxBatchWithFormationReason(batch) {
+  const formationReasonCode = FX_BATCH_FORMATION_REASON_CODES.includes(
+    batch?.formationReasonCode
+  )
+    ? batch.formationReasonCode
+    : FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION;
+  const formationReasonDetails = parsedFxBatchFormationReasonDetails(
+    batch?.formationReasonDetailsJson
+  );
+
+  return {
+    ...batch,
+    formationReasonCode,
+    formationReasonDetails,
+    formationReasonDescription: fxBatchFormationReasonDescription(
+      formationReasonCode,
+      formationReasonDetails
+    )
+  };
 }
 
 function fxBatchTrades() {
@@ -7252,7 +7486,12 @@ function fxBatchSourceTrades(tradeIds) {
   return sourceTrades;
 }
 
-function saveFormedFxBatch({ idempotencyKey, sourceTrades, formation }) {
+function saveFormedFxBatch({
+  idempotencyKey,
+  sourceTrades,
+  formation,
+  formationReason
+}) {
     const firstSourceTrade = sourceTrades[0];
     const pair = ccyPairOption(firstSourceTrade.ccyPairCode);
 
@@ -7271,9 +7510,20 @@ function saveFormedFxBatch({ idempotencyKey, sourceTrades, formation }) {
     }
 
     const batchResult = database.prepare(`
-      INSERT INTO fx_batches (idempotency_key, ccy_pair_code)
-      VALUES (?, ?)
-    `).run(idempotencyKey, firstSourceTrade.ccyPairCode);
+      INSERT INTO fx_batches
+        (
+          idempotency_key,
+          ccy_pair_code,
+          formation_reason_code,
+          formation_reason_details_json
+        )
+      VALUES (?, ?, ?, ?)
+    `).run(
+      idempotencyKey,
+      firstSourceTrade.ccyPairCode,
+      formationReason.reasonCode,
+      formationReason.detailsJson
+    );
     const batchId = Number(batchResult.lastInsertRowid);
     const insertExposure = database.prepare(`
       INSERT INTO fx_trade_exposure
@@ -7419,12 +7669,14 @@ function saveFormedFxBatch({ idempotencyKey, sourceTrades, formation }) {
 }
 
 function completedBatchResult(batchId) {
-  const batch = database.prepare(`
+  const batchRecord = database.prepare(`
     SELECT
       batch_id AS batchId,
       idempotency_key AS idempotencyKey,
       ccy_pair_code AS ccyPairCode,
       batch_status AS batchStatus,
+      formation_reason_code AS formationReasonCode,
+      formation_reason_details_json AS formationReasonDetailsJson,
       created_at AS createdAt,
       rolled_back_at AS rolledBackAt
     FROM fx_batches
@@ -7432,9 +7684,11 @@ function completedBatchResult(batchId) {
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
   `).get(batchId);
 
-  if (!batch) {
+  if (!batchRecord) {
     throw new Error(`Completed FX Batch ${batchId} was not found.`);
   }
+
+  const batch = fxBatchWithFormationReason(batchRecord);
 
   const quoteCashOut = fxBatchQuoteCashOutput(batchId);
 
@@ -7557,12 +7811,19 @@ const formFxBatchUseCase = new FormFxBatchUseCase({
   }
 });
 
-function nextFxAutoBatchTradeIds() {
-  return selectNextAutoBatchTradeIds(fxPositions());
+function nextFxAutoBatchPlan() {
+  const settings = fxAutoBatchingSettings();
+
+  return planFxAutoBatching({
+    trades: fxPositions(),
+    maxSpreadPercent: settings.maxTransferRateSpreadPercent,
+    maxIntervalSeconds: settings.maxIntervalSeconds,
+    now: new Date()
+  });
 }
 
 const fxAutoBatchingProcess = new FxAutoBatchingProcess({
-  selectNextTradeIds: nextFxAutoBatchTradeIds,
+  selectCandidates: nextFxAutoBatchPlan,
   formBatch: command => formFxBatchUseCase.execute(command),
   getIntervalMs: () => fxAutoBatchingSettings().maxIntervalSeconds * 1000,
   createIdempotencyKey: () => `auto-batch:${randomUUID()}`
@@ -7624,7 +7885,7 @@ function clientFxDealWithCalculatedEconomics(payload, exposureAmounts) {
 }
 
 function createClientFxDeal(payload, suppliedExposureAmounts = null) {
-  return runInImmediateTransaction(database, () => {
+  const tradeId = runInImmediateTransaction(database, () => {
     const exposureAmounts = suppliedExposureAmounts || fxTradeExposureAmounts(payload);
     const exposureResult = database.prepare(`
       INSERT INTO fx_trade_exposure
@@ -7708,6 +7969,9 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
 
     return tradeId;
   });
+
+  fxAutoBatchingProcess.notifyTradeCreated();
+  return tradeId;
 }
 
 function hedgeFxDealWithCalculatedTerms(
@@ -7790,7 +8054,7 @@ function autoPricedHedgeFxDealWithCalculatedTerms(payload) {
 }
 
 function createHedgeFxDeal(payload, suppliedExposureAmounts = null) {
-  return runInImmediateTransaction(database, () => {
+  const tradeId = runInImmediateTransaction(database, () => {
     const exposureAmounts = suppliedExposureAmounts || fxTradeExposureAmounts(payload);
     const exposureResult = database.prepare(`
       INSERT INTO fx_trade_exposure
@@ -7872,6 +8136,9 @@ function createHedgeFxDeal(payload, suppliedExposureAmounts = null) {
 
     return tradeId;
   });
+
+  fxAutoBatchingProcess.notifyTradeCreated();
+  return tradeId;
 }
 
 function updateClientFxDealComment(tradeId, comment) {
@@ -9844,8 +10111,17 @@ async function handleApi(request, response, url) {
     }
 
     try {
+      const previousSettings = fxAutoBatchingSettings();
       const settings = updateFxAutoBatchingSettings(payload);
-      fxAutoBatchingProcess.reschedule();
+
+      if (
+        settings.maxIntervalSeconds !== previousSettings.maxIntervalSeconds
+        || settings.maxTransferRateSpreadPercent
+          !== previousSettings.maxTransferRateSpreadPercent
+      ) {
+        fxAutoBatchingProcess.reschedule();
+      }
+
       sendJson(response, 200, settings);
     } catch (error) {
       handleDatabaseError(response, error);
@@ -9915,7 +10191,9 @@ async function handleApi(request, response, url) {
     const batchId = Number(fxBatchRollbackMatch[1]);
 
     try {
-      sendJson(response, 200, rollbackFxBatch(batchId));
+      const result = rollbackFxBatch(batchId);
+      fxAutoBatchingProcess.requestEvaluation();
+      sendJson(response, 200, result);
     } catch (error) {
       if (error?.code === "FX_BATCH_NOT_FOUND") {
         apiError(response, 404, error.code, error.message);

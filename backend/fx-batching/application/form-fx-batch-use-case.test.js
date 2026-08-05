@@ -49,7 +49,7 @@ function useCaseWith(overrides = {}) {
 
 test("forms a batch through one transaction boundary", () => {
   let transactions = 0;
-  let savedFormation;
+  let savedBatch;
   const useCase = useCaseWith({
     transactionRunner: {
       run(operation) {
@@ -60,7 +60,7 @@ test("forms a batch through one transaction boundary", () => {
     fxBatchRepository: {
       findFormedByIdempotencyKey: () => null,
       saveFormed(value) {
-        savedFormation = value.formation;
+        savedBatch = value;
         return {
           batchId: 7,
           batchStatus: "FORMED",
@@ -78,9 +78,49 @@ test("forms a batch through one transaction boundary", () => {
   assert.equal(transactions, 1);
   assert.equal(result.batchId, 7);
   assert.equal(result.replayed, false);
-  assert.equal("tradeType" in savedFormation.quoteCashOut, false);
-  assert.equal("memberRole" in savedFormation.quoteCashOut, false);
-  assert.equal(savedFormation.quoteCashOut.quoteBalanceContributionMinor, 0n);
+  assert.equal("tradeType" in savedBatch.formation.quoteCashOut, false);
+  assert.equal("memberRole" in savedBatch.formation.quoteCashOut, false);
+  assert.equal(savedBatch.formation.quoteCashOut.quoteBalanceContributionMinor, 0n);
+  assert.equal(savedBatch.formationReason.reasonCode, "MANUAL_SELECTION");
+  assert.deepEqual(savedBatch.formationReason.details, { selectedTradeCount: 1 });
+});
+
+test("preserves an automatic formation reason with its structured values", () => {
+  let savedBatch;
+  const useCase = useCaseWith({
+    fxBatchRepository: {
+      findFormedByIdempotencyKey: () => null,
+      saveFormed(value) {
+        savedBatch = value;
+        return {
+          batchId: 8,
+          batchStatus: "FORMED",
+          sourceTradeIds: value.formation.sourceTradeIds
+        };
+      }
+    }
+  });
+
+  useCase.execute({
+    idempotencyKey: "auto-batch-1",
+    tradeIds: [1],
+    formationReasonCode: "MAX_INTERVAL_REACHED",
+    formationReasonDetails: {
+      maxIntervalSeconds: 60,
+      oldestTradeAgeMilliseconds: 60000
+    }
+  });
+
+  assert.equal(savedBatch.formationReason.reasonCode, "MAX_INTERVAL_REACHED");
+  assert.deepEqual(savedBatch.formationReason.details, {
+    maxIntervalSeconds: 60,
+    oldestTradeAgeMilliseconds: 60000,
+    selectedTradeCount: 1
+  });
+  assert.equal(
+    savedBatch.formationReason.detailsJson,
+    "{\"maxIntervalSeconds\":60,\"oldestTradeAgeMilliseconds\":60000,\"selectedTradeCount\":1}"
+  );
 });
 
 test("returns an idempotent replay for the same selection", () => {

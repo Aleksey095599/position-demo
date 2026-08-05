@@ -412,11 +412,15 @@
       color: inherit;
     }
 
-    .action-button.with-icon {
+    :is(.action-button, .btn).with-icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
+    }
+
+    :is(.action-button, .btn).with-icon .button-icon {
+      flex: 0 0 auto;
     }
 
     .icon-action {
@@ -4744,7 +4748,6 @@
       flex: 0 0 auto;
       padding: 14px 18px;
       border: 0;
-      border-bottom: 1px solid var(--bs-border-color, #dee2e6);
       background: var(--bs-body-bg, #ffffff);
       box-shadow: none;
     }
@@ -4775,11 +4778,6 @@
     .generation-dialog-subtitle .button-icon {
       flex: 0 0 auto;
       font-size: 15px;
-    }
-
-    .generation-settings-availability-note {
-      margin-top: 8px;
-      padding: 0 2px;
     }
 
     .generation-dialog .dialog-close.btn-close {
@@ -4934,6 +4932,8 @@
 
     .generation-settings-status {
       display: flex;
+      width: fit-content;
+      max-width: 100%;
       min-height: 34px;
       align-items: center;
       margin: 0 0 10px;
@@ -4960,6 +4960,20 @@
       border-color: var(--bs-success-border-subtle, #a3cfbb);
       background: var(--bs-success-bg-subtle, #d1e7dd);
       color: var(--bs-success-text-emphasis, #0a3622);
+    }
+
+    .generation-settings-table-region {
+      display: grid;
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    .generation-settings-table-toolbar {
+      display: flex;
+      min-height: var(--workbench-control-height);
+      align-items: center;
+      justify-content: flex-end;
+      margin-bottom: 8px;
     }
 
     .generation-settings-table-wrap {
@@ -5049,16 +5063,6 @@
       line-height: 1.25;
     }
 
-    .generation-settings-client-code {
-      display: block;
-      margin-top: 2px;
-      overflow: hidden;
-      color: var(--bs-secondary-color, #6c757d);
-      font-size: var(--app-font-size-caption);
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
     .generation-settings-table .form-control {
       width: 100%;
       min-width: 0;
@@ -5136,7 +5140,6 @@
       margin: 0;
       padding: 10px 18px;
       border: 0;
-      border-top: 1px solid var(--bs-border-color, #dee2e6);
       background: var(--bs-body-bg, #ffffff);
     }
 
@@ -9562,6 +9565,16 @@
       padding: 10px 12px;
     }
 
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-fields {
+      display: grid;
+      gap: 16px;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-process-description {
+      margin: 0 0 16px;
+      line-height: 1.45;
+    }
+
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field {
       width: min(360px, 100%);
     }
@@ -12883,6 +12896,53 @@
       font-weight: var(--app-font-weight-medium);
     }
 
+    /* Keep transaction-entry forms on one restrained typography hierarchy. */
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    .client-deal-create-section-title {
+      font-size: 14px;
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    .form-label {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-label);
+      font-weight: var(--app-font-weight-regular);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(.form-control, .form-select, .input-group-text) {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-regular);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(.client-deal-currency-pair-field, .client-deal-pricing-mode-field) .form-select {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(.client-pricing-context-candidate-name, .client-deal-pricing-rule-margin-value, .client-deal-fixed-currency-toggle) {
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog)
+    .client-deal-amount-field.is-fixed .form-label {
+      color: var(--bs-secondary-color);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedging-settings-panel .modal-title {
+      font-size: 16px;
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #hedgingSettingsPage .hedge-quick-settings-active .form-check-label {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-regular);
+    }
+
     :is(.workbench-page, .modal, dialog) :is(.btn:not(.btn-close), .action-button) {
       font-size: var(--app-font-size-table);
       font-weight: var(--app-font-weight-medium);
@@ -12922,7 +12982,6 @@
       .client-pricing-context-facet-count,
       .client-pricing-context-option-count,
       .generation-cycle-settings-range-label,
-      .generation-settings-client-code,
       .app-status-token,
       .client-deal-market-pulse-brand,
       .client-deal-custom-date-badge,
@@ -15215,29 +15274,46 @@
           <button class="btn btn-sm btn-outline-primary generation-cycle-settings-save" type="submit" id="clientDealGenerationProcessSettingsSave" disabled>Save</button>
         </form>
         <div class="generation-settings-status" id="clientDealGenerationSettingsStatus" role="status" aria-live="polite"></div>
-        <div class="table-responsive generation-settings-table-wrap">
-          <table class="table table-sm table-hover align-middle generation-settings-table unified-data-table">
-            <thead class="table-light">
-              <tr>
-                <th scope="col" data-column-kind="primaryId">Pricing Rule</th>
-                <th scope="col" data-column-kind="name">Client</th>
-                <th scope="col" data-column-kind="pair">Ccy Pair</th>
-                <th scope="col" data-column-kind="type">Pricing Mode</th>
-                <th scope="col" class="text-end" data-column-kind="amount">Min Base Ccy Amount</th>
-                <th scope="col" class="text-end" data-column-kind="amount">Max Base Ccy Amount</th>
-                <th scope="col" class="text-end" data-column-kind="amount">Amount Step</th>
-                <th scope="col" class="text-end" data-column-kind="number">BUY %</th>
-                <th scope="col" class="text-end" data-column-kind="number">SELL %</th>
-                <th scope="col" class="text-center" data-column-kind="boolean">Active</th>
-                <th scope="col" class="text-center" data-column-kind="compactActions">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="clientDealGenerationSettingsRows"></tbody>
-          </table>
-        </div>
-        <div class="generation-dialog-subtitle generation-settings-availability-note">
-          <span class="button-icon" aria-hidden="true">warning</span>
-          <span>Only Pricing Rules linked to AUTO_PRICED Execution Systems are available.</span>
+        <div class="generation-settings-table-region">
+          <div class="generation-settings-table-toolbar" data-ui-table-layout-host="deal_generation_settings_grid"></div>
+          <div class="table-responsive generation-settings-table-wrap">
+            <table class="table table-sm table-hover align-middle generation-settings-table unified-data-table" data-ui-table-layout-key="deal_generation_settings_grid">
+              <colgroup>
+                <col data-ui-column-key="pricing_rule">
+                <col data-ui-column-key="client">
+                <col data-ui-column-key="currency_pair">
+                <col data-ui-column-key="pricing_mode">
+                <col data-ui-column-key="min_base_ccy_amount">
+                <col data-ui-column-key="max_base_ccy_amount">
+                <col data-ui-column-key="amount_step">
+                <col data-ui-column-key="buy_probability">
+                <col data-ui-column-key="sell_probability">
+                <col data-ui-column-key="active">
+                <col data-ui-column-key="actions">
+              </colgroup>
+              <thead class="table-light">
+                <tr>
+                  <th scope="col" data-column-kind="primaryId">Pricing Rule</th>
+                  <th scope="col" data-column-kind="name">Client</th>
+                  <th scope="col" data-column-kind="pair">Ccy Pair</th>
+                  <th scope="col" data-column-kind="type">
+                    <span class="form-label-with-help">
+                      <span>Pricing Mode</span>
+                      <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Only AUTO_PRICED Execution Systems are available for Client Deal generation." data-tooltip="Only AUTO_PRICED Execution Systems are available for Client Deal generation.">info</span>
+                    </span>
+                  </th>
+                  <th scope="col" class="text-end" data-column-kind="amount">Min Base Ccy Amount</th>
+                  <th scope="col" class="text-end" data-column-kind="amount">Max Base Ccy Amount</th>
+                  <th scope="col" class="text-end" data-column-kind="amount">Amount Step</th>
+                  <th scope="col" class="text-end" data-column-kind="number">BUY %</th>
+                  <th scope="col" class="text-end" data-column-kind="number">SELL %</th>
+                  <th scope="col" class="text-center" data-column-kind="boolean">Active</th>
+                  <th scope="col" class="text-center" data-column-kind="compactActions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="clientDealGenerationSettingsRows"></tbody>
+            </table>
+          </div>
         </div>
       </div>
       <div class="dialog-actions modal-footer">
@@ -15263,12 +15339,25 @@
             <h2 class="modal-title" id="autoBatchingSettingsTitle">Auto Batching</h2>
           </div>
           <div class="modal-body">
-            <div class="auto-batching-settings-field">
-              <label class="form-label" for="autoBatchingMaxIntervalSeconds">Maximum Batching Interval</label>
-              <p class="form-text">Maximum time trades may wait before automatic batching.</p>
-              <div class="input-group">
-                <input class="form-control" type="number" id="autoBatchingMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" inputmode="numeric" required>
-                <span class="input-group-text">sec</span>
+            <p class="form-text auto-batching-process-description">
+              Each Ccy Pair and settlement bucket is evaluated independently. Auto Batch forms 2-200 compatible trades immediately before an incoming Transfer Rate would breach the full corridor, or when the oldest compatible group reaches the maximum interval. The breaching trade starts the next corridor; isolated trades stay on FX Position for manual control.
+            </p>
+            <div class="auto-batching-settings-fields">
+              <div class="auto-batching-settings-field">
+                <label class="form-label" for="autoBatchingMaxIntervalSeconds">Maximum Batching Interval</label>
+                <p class="form-text">Each Ccy Pair receives an independent automatic batching attempt within this maximum interval.</p>
+                <div class="input-group">
+                  <input class="form-control" type="number" id="autoBatchingMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" inputmode="numeric" required>
+                  <span class="input-group-text">sec</span>
+                </div>
+              </div>
+              <div class="auto-batching-settings-field">
+                <label class="form-label" for="autoBatchingMaxTransferRateSpreadPercent">Default Transfer Rate Corridor</label>
+                <p class="form-text">Maximum full Transfer Rate spread within one automatic FX Batch.</p>
+                <div class="input-group">
+                  <input class="form-control" type="number" id="autoBatchingMaxTransferRateSpreadPercent" name="maxTransferRateSpreadPercent" min="0.0001" max="100" step="0.0001" inputmode="decimal" required>
+                  <span class="input-group-text">%</span>
+                </div>
               </div>
             </div>
           </div>
@@ -15784,9 +15873,20 @@
         DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.formedBatchCount
       ) || 0,
       lastCandidateTradeCount: 0,
+      lastCandidatePairCount: Number(
+        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCandidatePairCount
+      ) || 0,
+      lastCycleBatchCount: Number(
+        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCycleBatchCount
+      ) || 0,
       lastFormedBatchId: Number(
         DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedBatchId
       ) || null,
+      lastFormedBatchIds: Array.isArray(
+        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedBatchIds
+      )
+        ? [...DEMO_API_BOOTSTRAP.fxAutoBatchingProcess.lastFormedBatchIds]
+        : [],
       lastFormedAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedAt || null,
       lastCycleAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCycleAt || null,
       nextCycleAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.nextCycleAt || null,
@@ -18825,6 +18925,20 @@
 
     function normalizedFxAutoBatchingSettings(source) {
       const maxIntervalSeconds = Number(source?.maxIntervalSeconds);
+      const maxTransferRateSpreadPercent = positiveDecimalInputText(
+        source?.maxTransferRateSpreadPercent
+      );
+      let validSpreadPercent = "0.05";
+
+      try {
+        if (
+          maxTransferRateSpreadPercent !== null
+          && new Big(maxTransferRateSpreadPercent).gte("0.0001")
+          && new Big(maxTransferRateSpreadPercent).lte("100")
+        ) {
+          validSpreadPercent = maxTransferRateSpreadPercent;
+        }
+      } catch {}
 
       return {
         maxIntervalSeconds: Number.isInteger(maxIntervalSeconds)
@@ -18832,6 +18946,7 @@
           && maxIntervalSeconds <= 3600
           ? maxIntervalSeconds
           : 60,
+        maxTransferRateSpreadPercent: validSpreadPercent,
         updatedAt: String(source?.updatedAt || "")
       };
     }
@@ -19121,11 +19236,23 @@
 
     function normalizedFxBatch(value) {
       const source = value && typeof value === "object" ? value : {};
+      const formationReasonDetails = source.formationReasonDetails
+        && typeof source.formationReasonDetails === "object"
+        && !Array.isArray(source.formationReasonDetails)
+        ? source.formationReasonDetails
+        : {};
 
       return {
         batchId: Number(source.batchId),
         ccyPairCode: String(source.ccyPairCode || "").trim().toUpperCase(),
         batchStatus: String(source.batchStatus || "").trim().toUpperCase(),
+        formationReasonCode: String(
+          source.formationReasonCode || "MANUAL_SELECTION"
+        ).trim().toUpperCase(),
+        formationReasonDetails,
+        formationReasonDescription: String(
+          source.formationReasonDescription || "Manual selection."
+        ).trim(),
         createdAt: String(source.createdAt || "").trim(),
         rolledBackAt: String(source.rolledBackAt || "").trim()
       };
@@ -21302,20 +21429,6 @@
       }
     }
 
-    function clientDealGenerationSettingsSummary() {
-      const configuredPricingRuleIds = new Set(
-        clientDealGenerationSettings
-          .map(settings => Number(settings.pricingRuleId))
-          .filter(pricingRuleId => Number.isInteger(pricingRuleId) && pricingRuleId > 0)
-      );
-      const configuredPricingRuleCount = configuredPricingRuleIds.size;
-      const pricingRuleLabel = configuredPricingRuleCount === 1 ? "Pricing Rule" : "Pricing Rules";
-      const verb = configuredPricingRuleCount === 1 ? "is" : "are";
-
-      return `${configuredPricingRuleCount} ${pricingRuleLabel} linked to AUTO_PRICED `
-        + `${verb} configured for deal generation.`;
-    }
-
     function renderClientDealGenerationSettings() {
       if (clientDealGenerationSettings.length === 0) {
         clientDealGenerationSettingsRows.innerHTML = `
@@ -21385,11 +21498,14 @@
             <td class="generation-settings-rule-id">#${escapeHtml(settings.pricingRuleId)}</td>
             <td class="generation-settings-client">
               <span>${escapeHtml(settings.counterpartyName)}</span>${inactiveClient}
-              <span class="generation-settings-client-code">${escapeHtml(settings.counterpartyCodeType)}: ${escapeHtml(settings.counterpartyCode)}</span>
             </td>
-            <td><span class="badge text-bg-light border">${escapeHtml(settings.currencyPair)}</span></td>
+            <td>${escapeHtml(settings.currencyPair)}</td>
             <td>
-              <span class="badge text-bg-light border">${escapeHtml(settings.pricingMode)}</span>${inactiveExecutionSystem}
+              ${pricingModeIndicatorMarkup(
+                settings.pricingMode,
+                escapeHtml(settings.pricingMode),
+                false
+              )}${inactiveExecutionSystem}
             </td>
             ${valueCells}
             <td class="text-center">
@@ -21416,7 +21532,7 @@
         clientDealGenerationProcessSettings = processSettings;
         renderClientDealGenerationProcessSettings();
         renderClientDealGenerationSettings();
-        setClientDealGenerationSettingsStatus(clientDealGenerationSettingsSummary());
+        setClientDealGenerationSettingsStatus();
       } catch (error) {
         clientDealGenerationSettings = [];
         renderClientDealGenerationProcessSettings();
@@ -21506,7 +21622,7 @@
     function cancelClientDealGenerationSettingsRowEdit() {
       clientDealGenerationSettingsEditPricingRuleId = null;
       renderClientDealGenerationSettings();
-      setClientDealGenerationSettingsStatus(clientDealGenerationSettingsSummary());
+      setClientDealGenerationSettingsStatus();
     }
 
     async function saveClientDealGenerationSettingsRow(row) {
@@ -26767,9 +26883,15 @@
       }
 
       await loadClientDealGenerationSettingsFromApi();
-      clientDealGenerationSettingsRows
-        .querySelector("[data-generation-settings-edit]")
-        ?.focus();
+      const tableViewport = clientDealGenerationDialog.querySelector(
+        ".generation-settings-table-wrap"
+      );
+
+      if (tableViewport) {
+        tableViewport.scrollLeft = 0;
+      }
+
+      document.getElementById("generationMinIntervalSeconds")?.focus();
     }
 
     function closeClientDealGenerationDialog() {
@@ -26910,6 +27032,27 @@
 
     function batchingHistoryStatusFormatter(cell) {
       return batchStatusTokenMarkup(cell.getValue());
+    }
+
+    function batchingHistoryReasonHeaderFilter(_cell, _onRendered, success) {
+      const select = document.createElement("select");
+      select.className = "form-select form-select-sm";
+      select.setAttribute("aria-label", "Filter batches by formation reason");
+
+      [
+        ["", "All"],
+        ["MANUAL_SELECTION", "MANUAL_SELECTION"],
+        ["MAX_INTERVAL_REACHED", "MAX_INTERVAL_REACHED"],
+        ["TRANSFER_RATE_CORRIDOR_BREACHED", "TRANSFER_RATE_CORRIDOR_BREACHED"]
+      ].forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        select.append(option);
+      });
+      select.addEventListener("change", () => success(select.value));
+
+      return select;
     }
 
     function batchingHistoryStatusHeaderFilter(_cell, _onRendered, success) {
@@ -27082,6 +27225,19 @@
             headerFilter: batchingHistoryStatusHeaderFilter,
             headerFilterFunc: "=",
             formatter: batchingHistoryStatusFormatter
+          }),
+          tabulatorSizedColumn("name", {
+            title: "Formation Reason",
+            field: "formationReasonCode",
+            headerFilter: batchingHistoryReasonHeaderFilter,
+            headerFilterFunc: "=",
+            cssClass: "text-nowrap"
+          }),
+          tabulatorSizedColumn("name", {
+            title: "Trigger Details (Demo)",
+            field: "formationReasonDescription",
+            headerFilter: "input",
+            cssClass: "text-nowrap"
           }),
           tabulatorSizedColumn("timestamp", {
             title: "Created At",
@@ -30584,11 +30740,19 @@
             reloadFxBatchesFromApi()
           ]);
           render(fxPositions);
+          const tradeCount = Number(state.lastCandidateTradeCount) || 0;
+          const pairCount = Number(state.lastCandidatePairCount) || 0;
+          const batchCount = Number(state.lastCycleBatchCount) || 1;
+          const successMessage = batchCount === 1
+            ? `FX Batch ${nextBatchId} was formed automatically from ${tradeCount} trade${
+                tradeCount === 1 ? "" : "s"
+              }.`
+            : `${batchCount} FX Batches were formed automatically for ${pairCount} Ccy Pairs from ${
+                tradeCount
+              } trades.`;
           setBatchStatus(
-            `FX Batch ${nextBatchId} was formed automatically from ${
-              Number(state.lastCandidateTradeCount) || 0
-            } trade${Number(state.lastCandidateTradeCount) === 1 ? "" : "s"}.`,
-            "success"
+            state.lastError ? `${successMessage} ${state.lastError}` : successMessage,
+            state.lastError ? "error" : "success"
           );
         } else if (state.lastError) {
           setBatchStatus(state.lastError, "error");
@@ -30615,7 +30779,7 @@
         const intervalSeconds = Number(state.intervalMs) / 1000;
         setBatchStatus(
           state.running
-            ? `Auto Batching started. One compatible FX Batch may be formed every ${intervalSeconds} seconds.`
+            ? `Auto Batching started. Each Ccy Pair is monitored by its Transfer Rate corridor and ${intervalSeconds}-second maximum interval.`
             : "Auto Batching was stopped successfully.",
           "success"
         );
@@ -31669,6 +31833,9 @@
       const maxIntervalSeconds = Number(
         autoBatchingSettingsForm.elements.maxIntervalSeconds.value
       );
+      const maxTransferRateSpreadPercent = positiveDecimalInputText(
+        autoBatchingSettingsForm.elements.maxTransferRateSpreadPercent.value
+      );
 
       if (
         !Number.isInteger(maxIntervalSeconds)
@@ -31680,7 +31847,24 @@
         );
       }
 
-      return { maxIntervalSeconds };
+      try {
+        if (
+          maxTransferRateSpreadPercent === null
+          || new Big(maxTransferRateSpreadPercent).lt("0.0001")
+          || new Big(maxTransferRateSpreadPercent).gt("100")
+        ) {
+          throw new Error();
+        }
+      } catch {
+        throw new Error(
+          "Default Transfer Rate Corridor must be a decimal percentage from 0.0001 to 100."
+        );
+      }
+
+      return {
+        maxIntervalSeconds,
+        maxTransferRateSpreadPercent
+      };
     }
 
     function updateAutoBatchingSettingsSaveAvailability() {
@@ -31692,7 +31876,7 @@
         setSaveButtonAvailability(
           autoBatchingSettingsSaveButton,
           false,
-          "Enter a valid Maximum Batching Interval"
+          "Enter valid Auto Batching settings"
         );
         return;
       }
@@ -31700,12 +31884,17 @@
       setSaveButtonAvailability(
         autoBatchingSettingsSaveButton,
         draft.maxIntervalSeconds !== autoBatchingSettings.maxIntervalSeconds
+          || !new Big(draft.maxTransferRateSpreadPercent).eq(
+            autoBatchingSettings.maxTransferRateSpreadPercent
+          )
       );
     }
 
     function renderAutoBatchingSettings() {
       autoBatchingSettingsForm.elements.maxIntervalSeconds.value =
         autoBatchingSettings.maxIntervalSeconds;
+      autoBatchingSettingsForm.elements.maxTransferRateSpreadPercent.value =
+        autoBatchingSettings.maxTransferRateSpreadPercent;
       updateAutoBatchingSettingsSaveAvailability();
     }
 

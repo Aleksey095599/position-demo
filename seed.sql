@@ -171,8 +171,10 @@ VALUES
     ('batching_history_grid', 'batch_id', 'Batch ID', 0, 96, 96),
     ('batching_history_grid', 'ccy_pair_code', 'Ccy Pair Code', 1, 100, 100),
     ('batching_history_grid', 'batch_status', 'Batch Status', 2, 101, 101),
-    ('batching_history_grid', 'created_at', 'Created At', 3, 157, 157),
-    ('batching_history_grid', 'actions', 'Actions', 4, 80, 80),
+    ('batching_history_grid', 'formation_reason', 'Formation Reason', 3, 252, 252),
+    ('batching_history_grid', 'trigger_details', 'Trigger Details (Demo)', 4, 560, 560),
+    ('batching_history_grid', 'created_at', 'Created At', 5, 157, 157),
+    ('batching_history_grid', 'actions', 'Actions', 6, 80, 80),
     ('batch_members_grid', 'trade_id', 'Trade ID', 0, 96, 96),
     ('batch_members_grid', 'trade_type', 'Trade Type', 1, 281, 281),
     ('batch_members_grid', 'member_role', 'Member Role', 2, 124, 124),
@@ -247,7 +249,18 @@ VALUES
     ('hedge_quick_mode_settings_grid', 'presets_summary', 'Quick Amounts', 3, 221, 221),
     ('hedge_quick_mode_settings_grid', 'default_tenor', 'Tenor', 4, 73, 73),
     ('hedge_quick_mode_settings_grid', 'state', 'Status', 5, 73, 73),
-    ('hedge_quick_mode_settings_grid', 'actions', 'Actions', 6, 72, 72);
+    ('hedge_quick_mode_settings_grid', 'actions', 'Actions', 6, 72, 72),
+    ('deal_generation_settings_grid', 'pricing_rule', 'Pricing Rule', 0, 96, 96),
+    ('deal_generation_settings_grid', 'client', 'Client', 1, 180, 180),
+    ('deal_generation_settings_grid', 'currency_pair', 'Ccy Pair', 2, 94, 94),
+    ('deal_generation_settings_grid', 'pricing_mode', 'Pricing Mode', 3, 156, 156),
+    ('deal_generation_settings_grid', 'min_base_ccy_amount', 'Min Base Ccy Amount', 4, 150, 150),
+    ('deal_generation_settings_grid', 'max_base_ccy_amount', 'Max Base Ccy Amount', 5, 150, 150),
+    ('deal_generation_settings_grid', 'amount_step', 'Amount Step', 6, 130, 130),
+    ('deal_generation_settings_grid', 'buy_probability', 'BUY %', 7, 80, 80),
+    ('deal_generation_settings_grid', 'sell_probability', 'SELL %', 8, 80, 80),
+    ('deal_generation_settings_grid', 'active', 'Active', 9, 72, 72),
+    ('deal_generation_settings_grid', 'actions', 'Actions', 10, 80, 80);
 
 WITH counterparty_execution_context_seed
     (counterparty_code, servicing_location_id, accounting_system_id, execution_system_id)
@@ -370,8 +383,12 @@ INSERT OR IGNORE INTO client_deal_generation_process_settings
 VALUES (1, 1, 3, 3, 7);
 
 INSERT OR IGNORE INTO fx_auto_batching_settings
-    (settings_id, max_interval_seconds)
-VALUES (1, 60);
+    (
+        settings_id,
+        max_interval_seconds,
+        default_transfer_rate_spread_percent
+    )
+VALUES (1, 60, '0.05');
 
 INSERT INTO client_deal_generation_settings
     (

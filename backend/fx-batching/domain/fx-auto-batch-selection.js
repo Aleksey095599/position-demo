@@ -43,7 +43,7 @@ function compareByAge(left, right) {
     || Number(left.tradeId) - Number(right.tradeId);
 }
 
-function selectNextAutoBatchTradeIds(
+function eligibleFxTrades(
   trades,
   maxTrades = DEFAULT_MAX_TRADES_PER_BATCH
 ) {
@@ -55,27 +55,58 @@ function selectNextAutoBatchTradeIds(
     throw new RangeError("Maximum trades per FX Batch must be a positive integer.");
   }
 
-  const eligibleTrades = trades
+  return trades
     .filter(isEligibleFxTrade)
     .sort(compareByAge);
-  const triggerTrade = eligibleTrades.find(
-    trade => normalizedText(trade.tradeType) !== "BATCH_POSITION_OUT"
-  );
+}
 
-  if (!triggerTrade) {
-    return [];
-  }
+function selectAutoBatchCandidatesByCurrencyPair(
+  trades,
+  maxTrades = DEFAULT_MAX_TRADES_PER_BATCH
+) {
+  const eligibleTrades = eligibleFxTrades(trades, maxTrades);
+  const selectedPairs = new Set();
+  const candidates = [];
 
-  const nextBucketKey = settlementBucketKey(triggerTrade);
+  eligibleTrades.forEach(triggerTrade => {
+    if (normalizedText(triggerTrade.tradeType) === "BATCH_POSITION_OUT") {
+      return;
+    }
 
-  return eligibleTrades
-    .filter(trade => settlementBucketKey(trade) === nextBucketKey)
-    .slice(0, maxTrades)
-    .map(trade => Number(trade.tradeId));
+    const ccyPairCode = normalizedText(triggerTrade.ccyPairCode);
+
+    if (!ccyPairCode || selectedPairs.has(ccyPairCode)) {
+      return;
+    }
+
+    selectedPairs.add(ccyPairCode);
+    const nextBucketKey = settlementBucketKey(triggerTrade);
+    candidates.push({
+      ccyPairCode,
+      tradeIds: eligibleTrades
+        .filter(trade => settlementBucketKey(trade) === nextBucketKey)
+        .slice(0, maxTrades)
+        .map(trade => Number(trade.tradeId))
+    });
+  });
+
+  return candidates;
+}
+
+function selectNextAutoBatchTradeIds(
+  trades,
+  maxTrades = DEFAULT_MAX_TRADES_PER_BATCH
+) {
+  const candidate = selectAutoBatchCandidatesByCurrencyPair(trades, maxTrades)[0];
+
+  return candidate?.tradeIds || [];
 }
 
 module.exports = {
   DEFAULT_MAX_TRADES_PER_BATCH,
+  compareByAge,
+  eligibleFxTrades,
+  selectAutoBatchCandidatesByCurrencyPair,
   selectNextAutoBatchTradeIds,
   settlementBucketKey
 };

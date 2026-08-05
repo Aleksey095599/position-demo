@@ -112,6 +112,8 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["batch_id", "Batch ID", 96],
     ["ccy_pair_code", "Ccy Pair Code", 100],
     ["batch_status", "Batch Status", 101],
+    ["formation_reason", "Formation Reason", 252],
+    ["trigger_details", "Trigger Details (Demo)", 560],
     ["created_at", "Created At", 157],
     ["actions", "Actions", 80]
   ]),
@@ -211,6 +213,19 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["default_tenor", "Tenor", 73],
     ["state", "Status", 73],
     ["actions", "Actions", 72]
+  ]),
+  deal_generation_settings_grid: layout("Deal Generating Settings", [
+    ["pricing_rule", "Pricing Rule", 96],
+    ["client", "Client", 180],
+    ["currency_pair", "Ccy Pair", 94],
+    ["pricing_mode", "Pricing Mode", 156],
+    ["min_base_ccy_amount", "Min Base Ccy Amount", 150],
+    ["max_base_ccy_amount", "Max Base Ccy Amount", 150],
+    ["amount_step", "Amount Step", 130],
+    ["buy_probability", "BUY %", 80],
+    ["sell_probability", "SELL %", 80],
+    ["active", "Active", 72],
+    ["actions", "Actions", 80]
   ])
 });
 
