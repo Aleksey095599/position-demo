@@ -391,6 +391,51 @@ CREATE TABLE IF NOT EXISTS ui_table_column_settings
         )
 );
 
+CREATE TABLE IF NOT EXISTS ui_color_tokens
+(
+    token_code     TEXT    PRIMARY KEY,
+    palette_family TEXT    NOT NULL,
+    shade          INTEGER NOT NULL,
+    color_value    TEXT    NOT NULL,
+    display_order  INTEGER NOT NULL UNIQUE,
+    updated_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT uq_ui_color_tokens_family_shade
+        UNIQUE (palette_family, shade),
+    CONSTRAINT chk_ui_color_tokens_code
+        CHECK (
+            length(token_code) BETWEEN 1 AND 50
+            AND token_code = lower(token_code)
+            AND token_code NOT GLOB '*[^a-z0-9_]*'
+        ),
+    CONSTRAINT chk_ui_color_tokens_family
+        CHECK (
+            palette_family IN
+            (
+                'BLUE',
+                'INDIGO',
+                'PURPLE',
+                'PINK',
+                'RED',
+                'ORANGE',
+                'YELLOW',
+                'GREEN',
+                'TEAL',
+                'CYAN',
+                'GRAY'
+            )
+        ),
+    CONSTRAINT chk_ui_color_tokens_shade
+        CHECK (shade IN (100, 200, 300, 400, 500, 600, 700, 800, 900)),
+    CONSTRAINT chk_ui_color_tokens_value
+        CHECK (
+            length(color_value) = 7
+            AND color_value GLOB '#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]'
+        ),
+    CONSTRAINT chk_ui_color_tokens_order
+        CHECK (display_order BETWEEN 0 AND 9999)
+);
+
 CREATE TABLE IF NOT EXISTS pricing_rules
 (
     pricing_rule_id     INTEGER PRIMARY KEY,

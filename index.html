@@ -9,10 +9,69 @@
   <link rel="stylesheet" href="./vendor/tabulator/tabulator_bootstrap5.min.css">
   <style>
     :root {
+      --palette-slate-50: #f8fafc;
+      --palette-slate-100: #f1f5f9;
+      --palette-slate-200: #e2e8f0;
+      --palette-slate-300: #cbd5e1;
+      --palette-slate-400: #94a3b8;
+      --palette-slate-500: #64748b;
+      --palette-slate-600: #475569;
+      --palette-slate-700: #334155;
+      --palette-slate-800: #1e293b;
+      --palette-slate-900: #0f172a;
+      --palette-blue-gray-50: #eceff1;
+      --palette-blue-gray-100: #cfd8dc;
+      --palette-blue-gray-200: #b0bec5;
+      --palette-blue-gray-300: #90a4ae;
+      --palette-blue-gray-400: #78909c;
+      --palette-blue-gray-500: #607d8b;
+      --palette-blue-gray-600: #546e7a;
+      --palette-blue-gray-700: #455a64;
+      --palette-blue-gray-800: #37474f;
+      --palette-blue-gray-900: #263238;
+      --palette-steel-blue-50: #f2f6f9;
+      --palette-steel-blue-100: #e3ebf1;
+      --palette-steel-blue-200: #c9d9e3;
+      --palette-steel-blue-300: #a6bece;
+      --palette-steel-blue-400: #7f9fb4;
+      --palette-steel-blue-500: #637f94;
+      --palette-steel-blue-600: #536b7f;
+      --palette-steel-blue-700: #465968;
+      --palette-steel-blue-800: #3d4b57;
+      --palette-steel-blue-900: #343f49;
+      --palette-terracotta-50: #fbf5f3;
+      --palette-terracotta-400: #cb8574;
+      --palette-terracotta-500: #b66a59;
+      --palette-terracotta-600: #985446;
+      --palette-terracotta-700: #7d463b;
+      --palette-terracotta-800: #673c34;
+      --palette-amber-50: #fbf8f1;
+      --palette-amber-100: #f5eedc;
+      --palette-amber-200: #eaddb9;
+      --palette-amber-300: #dcc58d;
+      --palette-amber-400: #caa761;
+      --palette-amber-500: #b28a45;
+      --palette-amber-600: #916d37;
+      --palette-amber-700: #74572f;
+      --palette-amber-800: #5f492b;
+      --palette-amber-900: #503e27;
       --bg: #ffffff;
       --line: #a8a8a8;
       --line-strong: #000000;
-      --text: #15191f;
+      --text: var(--palette-slate-800);
+      --bs-body-color: var(--palette-slate-800);
+      --bs-body-color-rgb: 30, 41, 59;
+      --bs-emphasis-color: var(--palette-slate-900);
+      --bs-emphasis-color-rgb: 15, 23, 42;
+      --bs-secondary-color: var(--palette-slate-500);
+      --bs-secondary-color-rgb: 100, 116, 139;
+      --bs-tertiary-color: var(--palette-slate-400);
+      --bs-tertiary-color-rgb: 148, 163, 184;
+      --bs-heading-color: var(--palette-slate-900);
+      --bs-link-color: var(--palette-steel-blue-700);
+      --bs-link-color-rgb: 70, 89, 104;
+      --bs-link-hover-color: var(--palette-steel-blue-800);
+      --bs-link-hover-color-rgb: 61, 75, 87;
       --sell: #ffe49a;
       --sell-accent: #a9544c;
       --sell-head: #f8ebe8;
@@ -29,7 +88,30 @@
       --market-offer-accent: #6b737d;
       --common-accent: #69717c;
       --common-head: #f7f7f8;
-      --selection-accent: #2f79a8;
+      --app-primary: #2f79a8;
+      --app-primary-rgb: 47, 121, 168;
+      --app-primary-hover: #286b94;
+      --app-primary-active: #235f89;
+      --app-primary-soft: #e8f3fa;
+      --app-primary-border-subtle: #a9c9dc;
+      --app-primary-text: #235f89;
+      --app-process-idle: #337caa;
+      --app-process-idle-border: #2f79a8;
+      --app-process-idle-text: #ffffff;
+      --app-process-idle-hover: #2f79a8;
+      --app-process-idle-hover-border: #286b94;
+      --app-process-idle-active: #286b94;
+      --app-process-running: #af5951;
+      --app-process-running-border: #a9544c;
+      --app-process-running-rgb: 175, 89, 81;
+      --app-process-running-hover: #a9544c;
+      --app-process-running-active: #934840;
+      --bs-primary: var(--app-primary);
+      --bs-primary-rgb: var(--app-primary-rgb);
+      --bs-primary-bg-subtle: var(--app-primary-soft);
+      --bs-primary-border-subtle: var(--app-primary-border-subtle);
+      --bs-primary-text-emphasis: var(--app-primary-text);
+      --selection-accent: var(--app-primary);
       --selection-accent-soft: rgba(47, 121, 168, 0.24);
       --selection-ring: rgba(47, 121, 168, 0.82);
       --selection-wash: rgba(47, 121, 168, 0.22);
@@ -46,25 +128,39 @@
       --control-border: #c5cdd5;
       --control-border-strong: #b8c2cc;
       --control-bg: #f7f9fb;
-      --control-text-muted: #52606d;
-      --control-text-readonly: #5c6671;
-      --control-disabled-text: #8c97a3;
+      --control-text-muted: var(--palette-slate-600);
+      --control-text-readonly: var(--palette-slate-500);
+      --control-disabled-text: var(--palette-slate-400);
       --control-bg-muted: #f4f7fa;
       --control-soft-bg: #eef6fb;
       --control-icon-bg: #eef6fb;
-      --control-icon-text: #2f6f9a;
-      --control-primary-bg: #e8f3fa;
-      --control-primary-text: #235f89;
-      --text-strong: #202832;
-      --text-muted: #5d6875;
-      --text-subtle: #637080;
+      --control-icon-text: var(--palette-steel-blue-700);
+      --control-primary-bg: var(--app-primary-soft);
+      --control-primary-text: var(--app-primary-text);
+      --app-dialog-titlebar-bg: var(--palette-steel-blue-500);
+      --app-dialog-workspace-bg: var(--palette-slate-100);
+      --app-dialog-section-border: var(--palette-slate-200);
+      --app-dialog-section-shadow: 0 1px 2px rgba(32, 49, 66, 0.025);
+      --app-dialog-readonly-bg: var(--palette-slate-100);
+      --app-dialog-readonly-addon-bg: var(--palette-blue-gray-50);
+      --app-dialog-readonly-border: var(--palette-slate-300);
+      --app-dialog-readonly-text: var(--palette-slate-500);
+      --app-dialog-footer-bg: var(--palette-slate-50);
+      --app-tooltip-bg: var(--palette-slate-800);
+      --app-tooltip-border: var(--palette-slate-700);
+      --app-tooltip-text: var(--palette-slate-50);
+      --app-tooltip-text-muted: var(--palette-slate-300);
+      --app-tooltip-shadow: 0 3px 10px rgba(15, 23, 42, 0.18);
+      --text-strong: var(--palette-slate-900);
+      --text-muted: var(--palette-slate-500);
+      --text-subtle: var(--palette-slate-500);
       --status-info: #31556b;
       --status-error: #a23d33;
       --error-border: #b36f64;
       --error-bg: #fff7f5;
       --error-text: #823b31;
-      --status-neutral: #4a5561;
-      --page-title-text: #4b535d;
+      --status-neutral: var(--palette-slate-600);
+      --page-title-text: var(--palette-slate-900);
       --section-muted-bg: #f5f6f7;
       --state-selected-soft: rgba(47, 121, 168, 0.10);
       --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 7.5 10 12l4.5-4.5' fill='none' stroke='%2342515d' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -2921,11 +3017,11 @@
       max-width: min(320px, calc(100vw - 16px));
       margin: 0;
       padding: 6px 8px;
-      border: 1px solid #28445f;
-      border-radius: 3px;
-      background: #172b3f;
-      color: #ffffff;
-      box-shadow: 0 3px 10px rgba(15, 35, 54, 0.22);
+      border: 1px solid var(--app-tooltip-border);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--app-tooltip-bg);
+      color: var(--app-tooltip-text);
+      box-shadow: var(--app-tooltip-shadow);
       font-size: 12px;
       font-weight: 500;
       line-height: 1.35;
@@ -5240,8 +5336,8 @@
     }
 
     :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running {
-      border-color: var(--bs-danger, #dc3545);
-      background: var(--bs-danger, #dc3545);
+      border-color: var(--app-process-running-border);
+      background: var(--app-process-running);
       color: #ffffff;
     }
 
@@ -6183,7 +6279,7 @@
     }
 
     .client-deal-create-dialog::backdrop {
-      background: rgba(33, 37, 41, 0.38);
+      background: rgba(15, 23, 42, 0.38);
     }
 
     .client-deal-create-dialog .modal-content {
@@ -9616,6 +9712,14 @@
       font-weight: 600;
     }
 
+    .ui-table-layout-row:not(.is-header) {
+      background: var(--bs-body-bg);
+    }
+
+    .ui-table-layout-row:not(.is-header):nth-child(odd) {
+      background: var(--workbench-grid-stripe-bg, #f8f9fa);
+    }
+
     .ui-table-layout-cell {
       min-width: 0;
       padding: 6px 10px;
@@ -10416,6 +10520,108 @@
       background: var(--bs-tertiary-bg);
       font-size: 12px;
       line-height: 1.45;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-palette {
+      display: grid;
+      gap: 16px;
+      margin-top: 6px;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-palette-group {
+      display: grid;
+      gap: 7px;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-palette-group-title {
+      margin: 0;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-palette-group-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
+      gap: 10px;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-token-card {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: 64px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 9px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-token-swatch {
+      display: block;
+      width: 64px;
+      height: 64px;
+      border: 1px solid rgba(32, 40, 50, 0.18);
+      border-radius: 6px;
+      background: var(--database-token-color);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-token-copy {
+      display: grid;
+      min-width: 0;
+      gap: 2px;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-token-code {
+      overflow: hidden;
+      color: var(--bs-emphasis-color);
+      font-family: var(--bs-font-monospace);
+      font-size: 12px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-token-value {
+      color: var(--bs-secondary-color);
+      font-family: var(--bs-font-monospace);
+      font-size: 12px;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-token-shade {
+      display: -webkit-box;
+      overflow: hidden;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      line-height: 1.35;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-value-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-value-swatch {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      border: 1px solid rgba(32, 40, 50, 0.18);
+      border-radius: 5px;
+      background: var(--database-token-color);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-color-value-code {
+      font-family: var(--bs-font-monospace);
+      font-size: 12px;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page {
@@ -11857,11 +12063,51 @@
 
     /* FX Position keeps its mirrored domain layout while following the Bootstrap 5 + Tabulator workbench contract. */
     #mainPage.fx-position-bootstrap.workbench-page {
-      --market-trade-bg: #fff8e1;
-      --market-trade-border: #ffe082;
-      --market-trade-border-active: #ffca28;
-      --market-trade-text: #795500;
-      --market-trade-focus-ring: rgba(255, 202, 40, 0.24);
+      --app-primary: var(--palette-steel-blue-500);
+      --app-primary-rgb: 99, 127, 148;
+      --app-primary-hover: var(--palette-steel-blue-600);
+      --app-primary-active: var(--palette-steel-blue-700);
+      --app-primary-soft: var(--palette-steel-blue-100);
+      --app-primary-border-subtle: var(--palette-steel-blue-300);
+      --app-primary-text: var(--palette-steel-blue-700);
+      --app-process-idle: var(--palette-steel-blue-300);
+      --app-process-idle-border: var(--palette-steel-blue-400);
+      --app-process-idle-text: var(--palette-steel-blue-900);
+      --app-process-idle-hover: var(--palette-steel-blue-400);
+      --app-process-idle-hover-border: var(--palette-steel-blue-500);
+      --app-process-idle-active: var(--palette-steel-blue-500);
+      --app-process-running: var(--palette-terracotta-600);
+      --app-process-running-border: var(--palette-terracotta-700);
+      --app-process-running-rgb: 152, 84, 70;
+      --app-process-running-hover: var(--palette-terracotta-700);
+      --app-process-running-active: var(--palette-terracotta-800);
+      --bs-primary: var(--app-primary);
+      --bs-primary-rgb: var(--app-primary-rgb);
+      --bs-primary-bg-subtle: var(--app-primary-soft);
+      --bs-primary-border-subtle: var(--app-primary-border-subtle);
+      --bs-primary-text-emphasis: var(--app-primary-text);
+      --bs-secondary: var(--palette-slate-500);
+      --bs-secondary-rgb: 100, 116, 139;
+      --bs-secondary-bg: var(--palette-slate-100);
+      --bs-secondary-color: var(--palette-slate-500);
+      --bs-tertiary-bg: var(--palette-slate-50);
+      --bs-body-color: var(--palette-slate-800);
+      --bs-emphasis-color: var(--palette-slate-900);
+      --bs-border-color: var(--palette-slate-200);
+      --selection-accent: var(--app-primary);
+      --selection-accent-soft: rgba(99, 127, 148, 0.24);
+      --selection-ring: rgba(99, 127, 148, 0.82);
+      --selection-wash: rgba(99, 127, 148, 0.22);
+      --data-grid-line-color: var(--palette-slate-200);
+      --workbench-grid-header-bg: var(--palette-slate-50);
+      --workbench-grid-stripe-bg: var(--palette-slate-50);
+      --workbench-grid-hover-bg: var(--palette-steel-blue-50);
+      --workbench-grid-selected-bg: var(--palette-steel-blue-100);
+      --market-trade-bg: #fbf8f1;
+      --market-trade-border: #eaddb9;
+      --market-trade-border-active: #caa761;
+      --market-trade-text: #5f492b;
+      --market-trade-focus-ring: rgba(202, 167, 97, 0.24);
       --fx-position-section-rule-width: 2px;
       --fx-position-toolbar-gap: 8px;
       display: flex;
@@ -12876,14 +13122,14 @@
     }
 
     #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running {
-      border-color: var(--bs-danger);
-      background: var(--bs-danger);
+      border-color: var(--app-process-running-border);
+      background: var(--app-process-running);
       color: #ffffff;
     }
 
     #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running:hover:not(:disabled) {
-      border-color: #b02a37;
-      background: #bb2d3b;
+      border-color: var(--app-process-running-hover);
+      background: var(--app-process-running-hover);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .hedge-toolbar) .action-button:disabled {
@@ -13270,16 +13516,275 @@
       );
     }
 
+    .btn-primary {
+      --bs-btn-color: #ffffff;
+      --bs-btn-bg: var(--app-primary);
+      --bs-btn-border-color: var(--app-primary);
+      --bs-btn-focus-shadow-rgb: var(--app-primary-rgb);
+      --bs-btn-disabled-color: #ffffff;
+      --bs-btn-disabled-bg: var(--app-primary);
+      --bs-btn-disabled-border-color: var(--app-primary);
+    }
+
+    .btn-outline-primary {
+      --bs-btn-color: var(--app-primary);
+      --bs-btn-border-color: var(--app-primary);
+      --bs-btn-focus-shadow-rgb: var(--app-primary-rgb);
+      --bs-btn-disabled-color: var(--app-primary);
+      --bs-btn-disabled-bg: transparent;
+      --bs-btn-disabled-border-color: var(--app-primary);
+    }
+
     .btn-soft-primary {
-      --bs-btn-color: var(--bs-primary-text-emphasis);
-      --bs-btn-bg: rgba(var(--bs-primary-rgb), 0.07);
-      --bs-btn-border-color: rgba(var(--bs-primary-rgb), 0.58);
-      --bs-btn-hover-color: var(--bs-primary-text-emphasis);
-      --bs-btn-hover-bg: rgba(var(--bs-primary-rgb), 0.14);
-      --bs-btn-hover-border-color: var(--bs-primary);
-      --bs-btn-active-color: var(--bs-primary-text-emphasis);
-      --bs-btn-active-bg: rgba(var(--bs-primary-rgb), 0.2);
-      --bs-btn-active-border-color: var(--bs-primary);
+      --bs-btn-color: var(--app-primary-text);
+      --bs-btn-bg: rgba(var(--app-primary-rgb), 0.07);
+      --bs-btn-border-color: rgba(var(--app-primary-rgb), 0.58);
+      --bs-btn-hover-color: var(--app-primary-text);
+      --bs-btn-hover-bg: rgba(var(--app-primary-rgb), 0.14);
+      --bs-btn-hover-border-color: var(--app-primary);
+      --bs-btn-active-color: var(--app-primary-text);
+      --bs-btn-active-bg: rgba(var(--app-primary-rgb), 0.2);
+      --bs-btn-active-border-color: var(--app-primary);
+    }
+
+    .process-toggle-button:not(.is-running) {
+      --bs-btn-color: var(--app-process-idle-text);
+      --bs-btn-bg: var(--app-process-idle);
+      --bs-btn-border-color: var(--app-process-idle-border);
+      --bs-btn-hover-color: var(--app-process-idle-text);
+      --bs-btn-hover-bg: var(--app-process-idle-hover);
+      --bs-btn-hover-border-color: var(--app-process-idle-hover-border);
+      --bs-btn-active-color: var(--app-process-idle-text);
+      --bs-btn-active-bg: var(--app-process-idle-active);
+      --bs-btn-active-border-color: var(--app-process-idle-hover-border);
+      border-color: var(--app-process-idle-border);
+      background: var(--app-process-idle);
+      color: var(--app-process-idle-text);
+    }
+
+    .process-toggle-button:not(.is-running):hover:not(:disabled) {
+      border-color: var(--app-process-idle-hover-border);
+      background: var(--app-process-idle-hover);
+      color: var(--app-process-idle-text);
+    }
+
+    .process-toggle-button:not(.is-running):active:not(:disabled) {
+      border-color: var(--app-process-idle-hover-border);
+      background: var(--app-process-idle-active);
+      color: var(--app-process-idle-text);
+    }
+
+    .process-toggle-button.is-running {
+      --bs-btn-color: #ffffff;
+      --bs-btn-bg: var(--app-process-running);
+      --bs-btn-border-color: var(--app-process-running-border);
+      --bs-btn-hover-color: #ffffff;
+      --bs-btn-hover-bg: var(--app-process-running-hover);
+      --bs-btn-hover-border-color: var(--app-process-running-hover);
+      --bs-btn-active-color: #ffffff;
+      --bs-btn-active-bg: var(--app-process-running-active);
+      --bs-btn-active-border-color: var(--app-process-running-active);
+      --bs-btn-focus-shadow-rgb: var(--app-process-running-rgb);
+      border-color: var(--app-process-running-border);
+      background: var(--app-process-running);
+      color: #ffffff;
+    }
+
+    .process-toggle-button.is-running:hover:not(:disabled) {
+      border-color: var(--app-process-running-hover);
+      background: var(--app-process-running-hover);
+      color: #ffffff;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+      border-color: var(--palette-amber-300);
+      background: var(--palette-amber-100);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    :is(.hedge-toolbar-title, .hedge-quick-boundary-start, .hedge-quick-boundary-end) {
+      border-color: var(--palette-amber-500);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action) {
+      --bs-btn-color: var(--palette-amber-800);
+      --bs-btn-bg: var(--palette-amber-200);
+      --bs-btn-border-color: var(--palette-amber-600);
+      --bs-btn-hover-color: var(--palette-amber-800);
+      --bs-btn-hover-bg: var(--palette-amber-300);
+      --bs-btn-hover-border-color: var(--palette-amber-600);
+      --bs-btn-active-color: var(--palette-amber-800);
+      --bs-btn-active-bg: var(--palette-amber-400);
+      --bs-btn-active-border-color: var(--palette-amber-700);
+      --bs-btn-disabled-color: var(--palette-amber-800);
+      --bs-btn-disabled-bg: var(--palette-amber-200);
+      --bs-btn-disabled-border-color: var(--palette-amber-600);
+      border-color: var(--bs-btn-border-color);
+      background: var(--bs-btn-bg);
+      color: var(--bs-btn-color) !important;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):hover:not(:disabled) {
+      border-color: var(--bs-btn-hover-border-color);
+      background: var(--bs-btn-hover-bg);
+      color: var(--bs-btn-hover-color) !important;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):is(:active, .active):not(:disabled) {
+      border-color: var(--bs-btn-active-border-color);
+      background: var(--bs-btn-active-bg);
+      color: var(--bs-btn-active-color) !important;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):disabled {
+      border-color: var(--bs-btn-disabled-border-color);
+      background: var(--bs-btn-disabled-bg);
+      color: var(--bs-btn-disabled-color) !important;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    .hedge-quick-preset.active,
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    .hedge-quick-preset.active:disabled {
+      border-color: var(--palette-amber-700);
+      background: var(--palette-amber-400);
+      color: var(--palette-amber-800) !important;
+    }
+
+    dialog {
+      --app-primary: var(--palette-steel-blue-500);
+      --app-primary-rgb: 99, 127, 148;
+      --app-primary-hover: var(--palette-steel-blue-600);
+      --app-primary-active: var(--palette-steel-blue-700);
+      --app-primary-soft: var(--palette-steel-blue-100);
+      --app-primary-border-subtle: var(--palette-steel-blue-300);
+      --app-primary-text: var(--palette-steel-blue-700);
+      --bs-primary: var(--app-primary);
+      --bs-primary-rgb: var(--app-primary-rgb);
+      --bs-primary-bg-subtle: var(--app-primary-soft);
+      --bs-primary-border-subtle: var(--app-primary-border-subtle);
+      --bs-primary-text-emphasis: var(--app-primary-text);
+      --bs-body-color: var(--palette-slate-800);
+      --bs-emphasis-color: var(--palette-slate-900);
+      --bs-secondary-color: var(--palette-slate-500);
+      --bs-border-color: var(--palette-slate-300);
+      --bs-tertiary-bg: var(--app-dialog-readonly-bg);
+    }
+
+    dialog .modal-content {
+      border-color: var(--app-dialog-section-border);
+    }
+
+    dialog .modal-content > .modal-header {
+      min-height: 52px;
+      padding: 12px 16px;
+      border-bottom: 0;
+      background: var(--app-dialog-titlebar-bg);
+      box-shadow: none;
+    }
+
+    dialog .modal-content > .modal-header:has(
+      :is(.generation-dialog-subtitle, .client-context-attach-subtitle):not(:empty)
+    ) {
+      min-height: 64px;
+    }
+
+    dialog:is(.batch-rollback-dialog, .client-deal-duplicate-dialog)
+    .modal-content > .modal-header {
+      min-height: 48px;
+      padding-block: 10px;
+    }
+
+    dialog .modal-content > .modal-header :is(.modal-title, .dialog-title) {
+      color: #fff;
+    }
+
+    dialog .modal-content > .modal-header :is(.generation-dialog-subtitle, .client-context-attach-subtitle) {
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    dialog .modal-content > .modal-header .btn-close {
+      background-color: transparent;
+      filter: invert(1) grayscale(100%) brightness(200%);
+      opacity: 0.78;
+    }
+
+    dialog .modal-content > .modal-header .btn-close:hover,
+    dialog .modal-content > .modal-header .btn-close:focus-visible {
+      background-color: rgba(255, 255, 255, 0.12);
+      opacity: 1;
+    }
+
+    dialog .modal-content > .modal-header .btn:not(.btn-close) {
+      --bs-btn-color: rgba(255, 255, 255, 0.9);
+      --bs-btn-border-color: rgba(255, 255, 255, 0.55);
+      --bs-btn-hover-color: #fff;
+      --bs-btn-hover-bg: rgba(255, 255, 255, 0.12);
+      --bs-btn-hover-border-color: rgba(255, 255, 255, 0.85);
+      --bs-btn-active-color: #fff;
+      --bs-btn-active-bg: rgba(255, 255, 255, 0.18);
+      --bs-btn-active-border-color: #fff;
+    }
+
+    dialog .modal-content > .modal-body {
+      background: var(--app-dialog-workspace-bg);
+    }
+
+    dialog :is(.client-deal-create-section, .market-simulation-section, .pricing-rule-bootstrap-section, .deal-form-section) {
+      border-color: var(--app-dialog-section-border);
+      background: var(--bs-body-bg);
+      box-shadow: var(--app-dialog-section-shadow);
+    }
+
+    dialog .client-deal-create-section-title {
+      min-height: 0;
+      padding: 14px 14px 0;
+      border-bottom: 0;
+      background: transparent;
+    }
+
+    dialog .client-deal-create-section-body {
+      padding: 10px 14px 14px;
+    }
+
+    dialog .client-deal-additional-summary {
+      min-height: 42px;
+      padding: 10px 14px;
+      background: var(--bs-body-bg);
+    }
+
+    dialog :is(.form-control, .form-select):not(:disabled):not([readonly]) {
+      background-color: #fff;
+    }
+
+    dialog :is(.form-control[readonly], .form-control:disabled, .form-select:disabled) {
+      border-color: var(--app-dialog-readonly-border);
+      background-color: var(--app-dialog-readonly-bg);
+      color: var(--app-dialog-readonly-text);
+      opacity: 1;
+    }
+
+    dialog .input-group:has(:is(.form-control[readonly], .form-control:disabled)) .input-group-text {
+      border-color: var(--app-dialog-readonly-border);
+      background-color: var(--app-dialog-readonly-addon-bg);
+      color: var(--app-dialog-readonly-text);
+    }
+
+    dialog .client-deal-pricing-rule-select.is-disabled
+    :is(.client-deal-pricing-rule-select-value, .client-deal-pricing-rule-select-toggle) {
+      border-color: var(--app-dialog-readonly-border);
+      background-color: var(--app-dialog-readonly-bg);
+      color: var(--app-dialog-readonly-text);
+      opacity: 1;
+    }
+
+    dialog .modal-content > .modal-footer {
+      border-top-color: var(--palette-slate-200);
+      background: var(--app-dialog-footer-bg);
     }
 
     @media (max-width: 720px) {
@@ -13428,7 +13933,7 @@
       <section class="market-bootstrap-panel" data-market-panel="streams" aria-label="Quote Stream simulation" hidden>
         <div class="market-grid-toolbar" data-ui-table-layout-host="market_stream_grid">
           <h2 class="sr-only">Market Quotes</h2>
-          <button type="button" class="btn btn-sm btn-primary" id="marketStreamToggleButton">
+          <button type="button" class="btn btn-sm btn-primary process-toggle-button" id="marketStreamToggleButton" aria-label="Start stream" title="Start stream" aria-pressed="false">
             <span class="button-icon" aria-hidden="true" id="marketStreamToggleIcon">play_arrow</span>
             <span id="marketStreamToggleText">Start stream</span>
           </button>
@@ -13573,6 +14078,13 @@
               <tbody id="databaseForeignKeyRows"></tbody>
             </table>
           </div>
+        </article>
+
+        <article class="profile-panel" id="databaseColorPalettePanel" hidden>
+          <div class="profile-panel-head">
+            <h2 class="database-section-title">Color Palette</h2>
+          </div>
+          <div class="database-color-palette" id="databaseColorPalette"></div>
         </article>
 
         <article class="profile-panel profile-table-panel">
@@ -13727,7 +14239,8 @@
           <div class="batch-control deal-generation-control" aria-label="Demo Deal Generation actions">
             <span class="batch-label">Demo Generation</span>
             <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-main" id="generateClientDealButton">One Deal</button>
-            <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-process" id="runClientDealGenerationButton" aria-label="Start automatic Deal Generation" title="Start automatic Deal Generation" aria-pressed="false">
+            <button type="button" class="action-button btn btn-sm btn-primary batch-process process-toggle-button with-icon" id="runClientDealGenerationButton" aria-label="Start automatic Deal Generation" title="Start automatic Deal Generation" aria-pressed="false">
+              <span class="button-icon" aria-hidden="true" id="runClientDealGenerationIcon">play_arrow</span>
               <span id="runClientDealGenerationLabel">Auto Generate</span>
             </button>
             <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary generation-settings-toggle" id="clientDealSettingsButton" aria-label="Demo Deal Generation settings" title="Demo Deal Generation settings" aria-expanded="false">
@@ -13744,7 +14257,8 @@
               </span>
               <div class="batch-control" aria-label="Batching actions">
                 <button type="button" class="action-button primary btn btn-sm btn-soft-primary batch-main" id="oneBatchButton" aria-label="One Batch" aria-keyshortcuts="G" title="One Batch · Shortcut: G" disabled>One Batch</button>
-                <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-process" id="autoBatchButton" aria-label="Start Auto Batching" title="Start Auto Batching" aria-pressed="false" disabled>
+                <button type="button" class="action-button btn btn-sm btn-primary batch-process process-toggle-button with-icon" id="autoBatchButton" aria-label="Start Auto Batching" title="Start Auto Batching" aria-pressed="false" disabled>
+                  <span class="button-icon" aria-hidden="true" id="autoBatchIcon">play_arrow</span>
                   <span id="autoBatchLabel">Auto Batch</span>
                 </button>
               </div>
@@ -16908,10 +17422,12 @@
     const resetDemoTradesConfirmButton = document.getElementById("resetDemoTradesConfirmButton");
     const generateClientDealButton = document.getElementById("generateClientDealButton");
     const runClientDealGenerationButton = document.getElementById("runClientDealGenerationButton");
+    const runClientDealGenerationIcon = document.getElementById("runClientDealGenerationIcon");
     const runClientDealGenerationLabel = document.getElementById("runClientDealGenerationLabel");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
     const oneBatchButton = document.getElementById("oneBatchButton");
     const autoBatchButton = document.getElementById("autoBatchButton");
+    const autoBatchIcon = document.getElementById("autoBatchIcon");
     const autoBatchLabel = document.getElementById("autoBatchLabel");
     const autoBatchingSettingsButton = document.getElementById("autoBatchingSettingsButton");
     const addHedgeDealButton = document.getElementById("addHedgeDealButton");
@@ -17073,6 +17589,8 @@
     const databaseTableTitleEl = document.getElementById("databaseTableTitle");
     const databaseSchemaRowsEl = document.getElementById("databaseSchemaRows");
     const databaseForeignKeyRowsEl = document.getElementById("databaseForeignKeyRows");
+    const databaseColorPalettePanelEl = document.getElementById("databaseColorPalettePanel");
+    const databaseColorPaletteEl = document.getElementById("databaseColorPalette");
     const databaseDataHeadEl = document.getElementById("databaseDataHead");
     const databaseDataRowsEl = document.getElementById("databaseDataRows");
     const databaseCreateSqlEl = document.getElementById("databaseCreateSql");
@@ -17126,6 +17644,7 @@
         label: "UI Configuration",
         icon: "dashboard_customize",
         tables: [
+          "ui_color_tokens",
           "ui_table_column_settings"
         ]
       },
@@ -17332,6 +17851,7 @@
     }
 
     let activeTooltipTarget = null;
+    const titleTooltipTargets = new WeakSet();
     const tradeIdCopyFeedbackTimers = new WeakMap();
 
     function initializeTooltipElement(element) {
@@ -17355,12 +17875,29 @@
       root.querySelectorAll?.("[data-tooltip]").forEach(initializeTooltipElement);
     }
 
-    function suppressNativeTooltips(root = document) {
-      if (root instanceof Element && root.hasAttribute("title")) {
-        root.removeAttribute("title");
+    function migrateNativeTooltipElement(element) {
+      if (!(element instanceof Element) || !element.hasAttribute("title")) {
+        return;
       }
 
-      root.querySelectorAll?.("[title]").forEach(element => element.removeAttribute("title"));
+      const titleText = element.getAttribute("title")?.trim();
+      const tooltipText = element.dataset.tooltip?.trim();
+
+      if (titleText && (!tooltipText || titleTooltipTargets.has(element))) {
+        element.dataset.tooltip = titleText;
+        titleTooltipTargets.add(element);
+      }
+
+      element.removeAttribute("title");
+      initializeTooltipElement(element);
+    }
+
+    function migrateNativeTooltips(root = document) {
+      if (root instanceof Element) {
+        migrateNativeTooltipElement(root);
+      }
+
+      root.querySelectorAll?.("[title]").forEach(migrateNativeTooltipElement);
     }
 
     function hideAppTooltip() {
@@ -29551,8 +30088,13 @@
       renderHedgeQuickModeToolbar();
       marketStreamToggleIcon.textContent = marketStreamRunning ? "stop" : "play_arrow";
       marketStreamToggleText.textContent = marketStreamRunning ? "Stop stream" : "Start stream";
-      marketStreamToggleButton.classList.toggle("btn-primary", !marketStreamRunning);
-      marketStreamToggleButton.classList.toggle("btn-outline-danger", marketStreamRunning);
+      marketStreamToggleButton.classList.toggle("is-running", marketStreamRunning);
+      marketStreamToggleButton.setAttribute("aria-pressed", String(marketStreamRunning));
+      marketStreamToggleButton.setAttribute(
+        "aria-label",
+        marketStreamRunning ? "Stop stream" : "Start stream"
+      );
+      marketStreamToggleButton.title = marketStreamRunning ? "Stop stream" : "Start stream";
       marketStreamToggleButton.disabled = !DEMO_API_ENABLED
         || (!marketStreamRunning && !marketPairs.some(marketSimulationConfigured));
       syncDealMarketQuotes();
@@ -29742,6 +30284,24 @@
           unit_type: "Unit Type",
           unit_code: "Business ID"
         })
+      }),
+      ui_color_tokens: Object.freeze({
+        order: Object.freeze([
+          "palette_family",
+          "shade",
+          "color_value",
+          "token_code",
+          "display_order",
+          "updated_at"
+        ]),
+        labels: Object.freeze({
+          palette_family: "Palette",
+          shade: "Shade",
+          color_value: "Color",
+          token_code: "Token",
+          display_order: "Order",
+          updated_at: "Updated At"
+        })
       })
     });
 
@@ -29765,12 +30325,84 @@
       return `<span data-tooltip="SQLite column: ${escapeHtml(columnName)}">${escapeHtml(label)}</span>`;
     }
 
+    function safeDatabaseColorValue(value) {
+      const colorValue = String(value || "").trim().toUpperCase();
+      return /^#[0-9A-F]{6}$/.test(colorValue) ? colorValue : "#000000";
+    }
+
+    function databaseDataCellMarkup(tableName, columnName, value) {
+      if (tableName === "ui_color_tokens" && columnName === "color_value") {
+        const colorValue = safeDatabaseColorValue(value);
+
+        return `
+          <span class="database-color-value-cell">
+            <span
+              class="database-color-value-swatch"
+              style="--database-token-color: ${colorValue}"
+              aria-hidden="true"
+            ></span>
+            <span class="database-color-value-code">${escapeHtml(colorValue)}</span>
+          </span>
+        `;
+      }
+
+      return escapeHtml(databaseCellValue(value));
+    }
+
+    function renderDatabaseColorPalette(tableName, rows) {
+      const isColorPalette = tableName === "ui_color_tokens";
+      databaseColorPalettePanelEl.hidden = !isColorPalette;
+
+      if (!isColorPalette) {
+        databaseColorPaletteEl.innerHTML = "";
+        return;
+      }
+
+      const rowsByFamily = new Map();
+
+      [...rows]
+        .sort((left, right) => Number(left.display_order || 0) - Number(right.display_order || 0))
+        .forEach(row => {
+          const family = String(row.palette_family || "OTHER");
+          rowsByFamily.set(family, [...(rowsByFamily.get(family) || []), row]);
+        });
+
+      databaseColorPaletteEl.innerHTML = [...rowsByFamily.entries()]
+        .map(([family, familyRows]) => `
+          <section class="database-color-palette-group" aria-label="${escapeHtml(family)} palette">
+            <h3 class="database-color-palette-group-title">${escapeHtml(family.replaceAll("_", " "))}</h3>
+            <div class="database-color-palette-group-grid">
+              ${familyRows.map(row => {
+                const colorValue = safeDatabaseColorValue(row.color_value);
+
+                return `
+                  <article class="database-color-token-card">
+                    <span
+                      class="database-color-token-swatch"
+                      style="--database-token-color: ${colorValue}"
+                      aria-label="${escapeHtml(colorValue)}"
+                      role="img"
+                    ></span>
+                    <span class="database-color-token-copy">
+                      <span class="database-color-token-code">${escapeHtml(row.token_code)}</span>
+                      <span class="database-color-token-value">${escapeHtml(colorValue)}</span>
+                      <span class="database-color-token-shade">Shade ${escapeHtml(row.shade)}</span>
+                    </span>
+                  </article>
+                `;
+              }).join("")}
+            </div>
+          </section>
+        `).join("");
+    }
+
     function renderDatabaseTableDetails(details) {
       const columns = Array.isArray(details?.columns) ? details.columns : [];
       const foreignKeys = Array.isArray(details?.foreignKeys) ? details.foreignKeys : [];
       const rows = Array.isArray(details?.rows) ? details.rows : [];
       const dataColumns = databaseDataColumnNames(details.tableName, columns);
 
+      renderDatabaseColorPalette(details.tableName, rows);
       databaseTableTitleEl.textContent = `${details.tableName} · ${details.rowCount} rows`;
       databaseSchemaRowsEl.innerHTML = columns.length > 0
         ? columns.map(column => `
@@ -29798,7 +30430,7 @@
         ? `<tr>${dataColumns.map(column => `<th>${databaseDataColumnHeader(details.tableName, column)}</th>`).join("")}</tr>`
         : "";
       databaseDataRowsEl.innerHTML = rows.length > 0
-        ? rows.map(row => `<tr>${dataColumns.map(column => `<td>${escapeHtml(databaseCellValue(row[column]))}</td>`).join("")}</tr>`).join("")
+        ? rows.map(row => `<tr>${dataColumns.map(column => `<td>${databaseDataCellMarkup(details.tableName, column, row[column])}</td>`).join("")}</tr>`).join("")
         : `<tr><td class="profile-empty" colspan="${Math.max(1, dataColumns.length)}">No rows.</td></tr>`;
       databaseCreateSqlEl.textContent = details.createSql || "";
       scheduleSmartColumnSizing();
@@ -29808,6 +30440,8 @@
       databaseTableTitleEl.textContent = "Database unavailable";
       databaseSchemaRowsEl.innerHTML = `<tr><td class="profile-empty" colspan="5">${escapeHtml(message)}</td></tr>`;
       databaseForeignKeyRowsEl.innerHTML = `<tr><td class="profile-empty" colspan="5">—</td></tr>`;
+      databaseColorPalettePanelEl.hidden = true;
+      databaseColorPaletteEl.innerHTML = "";
       databaseDataHeadEl.innerHTML = "";
       databaseDataRowsEl.innerHTML = "";
       databaseCreateSqlEl.textContent = "";
@@ -31236,6 +31870,7 @@
       );
       runClientDealGenerationButton.title =
         running ? "Stop automatic Deal Generation" : "Start automatic Deal Generation";
+      runClientDealGenerationIcon.textContent = running ? "stop" : "play_arrow";
       runClientDealGenerationLabel.textContent = running ? "Stop Generation" : "Auto Generate";
 
       if (running && clientDealGenerationRefreshTimer === null) {
@@ -31317,6 +31952,7 @@
         running ? "Stop Auto Batching" : "Start Auto Batching"
       );
       autoBatchButton.title = running ? "Stop Auto Batching" : "Start Auto Batching";
+      autoBatchIcon.textContent = running ? "stop" : "play_arrow";
       autoBatchLabel.textContent = running ? "Stop Auto Batch" : "Auto Batch";
       autoBatchButton.disabled = !DEMO_API_ENABLED || fxAutoBatchingToggleInFlight;
 
@@ -35378,10 +36014,9 @@
       const normalizedSide = String(side || "").trim().toUpperCase();
       const tone = normalizedSide === "SELL" ? "danger" : "success";
       const label = `${normalizedSide} ${baseCcyCode}`;
-      const tooltip = disabled ? "" : "Hold Ctrl and click";
       const accessibleLabel = disabled
         ? `${label} is unavailable until Quick Hedge settings and its configured price stream are available.`
-        : `${label}. ${tooltip}`;
+        : `${label}. Hold Ctrl and click`;
 
       return `
         <button type="button"
@@ -35389,7 +36024,6 @@
           data-hedge-quick-action="${normalizedSide}"
           aria-label="${escapeHtml(accessibleLabel)}"
           aria-keyshortcuts="Control+Enter"
-          ${tooltip ? `data-tooltip="${escapeHtml(tooltip)}"` : ""}
           ${disabled ? "disabled" : ""}>
           <span class="button-icon" aria-hidden="true">bolt</span>
           <span>${escapeHtml(label)}</span>
@@ -35581,22 +36215,17 @@
       hedgeQuickModeToolbar.querySelectorAll("[data-hedge-quick-action]").forEach(action => {
         const side = String(action.dataset.hedgeQuickAction || "").trim().toUpperCase();
         const label = `${side} ${setting.baseCcyCode}`;
-        const tooltip = "Hold Ctrl and click";
         const accessibleLabel = actionsDisabled
           ? `${label} is unavailable until Quick Hedge settings and its configured price stream are available.`
-          : `${label}. ${tooltip}`;
+          : `${label}. Hold Ctrl and click`;
 
         action.disabled = actionsDisabled;
         if (action.getAttribute("aria-label") !== accessibleLabel) {
           action.setAttribute("aria-label", accessibleLabel);
         }
 
-        if (actionsDisabled) {
-          if (action.hasAttribute("data-tooltip")) {
-            action.removeAttribute("data-tooltip");
-          }
-        } else if (action.getAttribute("data-tooltip") !== tooltip) {
-          action.setAttribute("data-tooltip", tooltip);
+        if (action.hasAttribute("data-tooltip")) {
+          action.removeAttribute("data-tooltip");
         }
       });
     }
@@ -38257,7 +38886,7 @@
       mutations.forEach(mutation => {
         if (mutation.type === "attributes") {
           if (mutation.attributeName === "title") {
-            mutation.target.removeAttribute("title");
+            migrateNativeTooltipElement(mutation.target);
           } else {
             initializeTooltipElement(mutation.target);
           }
@@ -38267,7 +38896,7 @@
 
         mutation.addedNodes.forEach(node => {
           if (node instanceof Element) {
-            suppressNativeTooltips(node);
+            migrateNativeTooltips(node);
             initializeTooltips(node);
           }
         });
@@ -38278,7 +38907,7 @@
       }
     });
 
-    suppressNativeTooltips();
+    migrateNativeTooltips();
     initializeTooltips();
     tooltipObserver.observe(document.body, {
       attributes: true,

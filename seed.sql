@@ -105,6 +105,77 @@ VALUES
     ('TIN_WOODMAN', 'Tin', 'Woodman', 'SUPERVISOR', 1),
     ('ALICE', 'Alice', 'Wonderland', 'ADMIN', 1);
 
+WITH bootstrap_palette
+    (
+        palette_family,
+        family_order,
+        shade_100,
+        shade_200,
+        shade_300,
+        shade_400,
+        shade_500,
+        shade_600,
+        shade_700,
+        shade_800,
+        shade_900
+    )
+AS
+(
+    VALUES
+        ('BLUE', 0, '#CFE2FF', '#9EC5FE', '#6EA8FE', '#3D8BFD', '#0D6EFD', '#0A58CA', '#084298', '#052C65', '#031633'),
+        ('INDIGO', 1, '#E0CFFC', '#C29FFA', '#A370F7', '#8540F5', '#6610F2', '#520DC2', '#3D0A91', '#290661', '#140330'),
+        ('PURPLE', 2, '#E2D9F3', '#C5B3E6', '#A98EDA', '#8C68CD', '#6F42C1', '#59359A', '#432874', '#2C1A4D', '#160D27'),
+        ('PINK', 3, '#F7D6E6', '#EFADCE', '#E685B5', '#DE5C9D', '#D63384', '#AB296A', '#801F4F', '#561435', '#2B0A1A'),
+        ('RED', 4, '#F8D7DA', '#F1AEB5', '#EA868F', '#E35D6A', '#DC3545', '#B02A37', '#842029', '#58151C', '#2C0B0E'),
+        ('ORANGE', 5, '#FFE5D0', '#FECBA1', '#FEB272', '#FD9843', '#FD7E14', '#CA6510', '#984C0C', '#653208', '#331904'),
+        ('YELLOW', 6, '#FFF3CD', '#FFE69C', '#FFDA6A', '#FFCD39', '#FFC107', '#CC9A06', '#997404', '#664D03', '#332701'),
+        ('GREEN', 7, '#D1E7DD', '#A3CFBB', '#75B798', '#479F76', '#198754', '#146C43', '#0F5132', '#0A3622', '#051B11'),
+        ('TEAL', 8, '#D2F4EA', '#A6E9D5', '#79DFC1', '#4DD4AC', '#20C997', '#1AA179', '#13795B', '#0D503C', '#06281E'),
+        ('CYAN', 9, '#CFF4FC', '#9EEAF9', '#6EDFF6', '#3DD5F3', '#0DCAF0', '#0AA2C0', '#087990', '#055160', '#032830'),
+        ('GRAY', 10, '#F8F9FA', '#E9ECEF', '#DEE2E6', '#CED4DA', '#ADB5BD', '#6C757D', '#495057', '#343A40', '#212529')
+),
+bootstrap_shades (shade, shade_order)
+AS
+(
+    VALUES
+        (100, 1),
+        (200, 2),
+        (300, 3),
+        (400, 4),
+        (500, 5),
+        (600, 6),
+        (700, 7),
+        (800, 8),
+        (900, 9)
+)
+INSERT INTO ui_color_tokens
+    (
+        token_code,
+        palette_family,
+        shade,
+        color_value,
+        display_order
+    )
+SELECT
+    lower(palette_family) || '_' || shade,
+    palette_family,
+    shade,
+    CASE shade
+        WHEN 100 THEN shade_100
+        WHEN 200 THEN shade_200
+        WHEN 300 THEN shade_300
+        WHEN 400 THEN shade_400
+        WHEN 500 THEN shade_500
+        WHEN 600 THEN shade_600
+        WHEN 700 THEN shade_700
+        WHEN 800 THEN shade_800
+        WHEN 900 THEN shade_900
+    END,
+    (family_order * 100) + (shade_order * 10)
+FROM bootstrap_palette
+CROSS JOIN bootstrap_shades
+ORDER BY family_order, shade_order;
+
 INSERT INTO ui_table_column_settings
     (table_key, column_key, column_label, display_order, default_width_px, width_px)
 VALUES

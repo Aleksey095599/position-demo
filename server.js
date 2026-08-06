@@ -80,6 +80,10 @@ const {
   UI_TABLE_COLUMN_WIDTH_MAX_PX,
   UI_TABLE_LAYOUTS
 } = require("./backend/ui-table-layout/ui-table-layouts");
+const {
+  DEFAULT_UI_COLOR_TOKENS,
+  UI_COLOR_TOKEN_TABLE_SQL
+} = require("./backend/ui-configuration/ui-color-tokens");
 
 const HOST = "127.0.0.1";
 const UI_TABLE_DEFAULT_CONFIRMATION = "SAVE_AS_DEFAULT";
@@ -314,6 +318,7 @@ if (databaseAlreadyInitialized && !hedgeQuickModeSettingsAlreadyInitialized) {
 migrateTradingCounterpartyExecutionContexts(database);
 ensureTradingCounterpartyExecutionContextIntegrityTriggers(database);
 ensureUiTableColumnSettings(database);
+ensureUiColorTokens(database);
 ensureFxAutoBatchingSettings(database);
 ensureFxBatchFormationReason(database);
 
@@ -621,6 +626,61 @@ function ensureUiTableColumnSettings(sqlite) {
           existingSetting?.updatedAt ?? null
         );
       });
+    });
+  });
+}
+
+function ensureUiColorTokens(sqlite) {
+  const expectedColumns = [
+    "token_code",
+    "palette_family",
+    "shade",
+    "color_value",
+    "display_order",
+    "updated_at"
+  ];
+  const existingColumns = [...tableColumnNames(sqlite, "ui_color_tokens")];
+  const columnsMatch = existingColumns.join(",") === expectedColumns.join(",");
+  const tableSql = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table'
+      AND name = 'ui_color_tokens'
+  `).get()?.sql || "";
+  const paletteFamilies = [...new Set(
+    DEFAULT_UI_COLOR_TOKENS.map(token => token.paletteFamily)
+  )];
+  const supportsPaletteFamilies = paletteFamilies.every(
+    paletteFamily => tableSql.includes(`'${paletteFamily}'`)
+  );
+  if (!columnsMatch || !supportsPaletteFamilies) {
+    runInImmediateTransaction(sqlite, () => {
+      sqlite.exec("DROP TABLE ui_color_tokens");
+      sqlite.exec(UI_COLOR_TOKEN_TABLE_SQL);
+    });
+  }
+
+  const insert = sqlite.prepare(`
+    INSERT OR IGNORE INTO ui_color_tokens
+      (
+        token_code,
+        palette_family,
+        shade,
+        color_value,
+        display_order
+      )
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  runInImmediateTransaction(sqlite, () => {
+    DEFAULT_UI_COLOR_TOKENS.forEach(token => {
+      insert.run(
+        token.tokenCode,
+        token.paletteFamily,
+        token.shade,
+        token.colorValue,
+        token.displayOrder
+      );
     });
   });
 }

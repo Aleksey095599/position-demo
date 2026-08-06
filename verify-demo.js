@@ -1372,6 +1372,24 @@ function verifyFreshSchemaAndSeed() {
       FROM users
       ORDER BY user_role
     `).all().map(row => row.user_role),
+    uiColorTokens: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM ui_color_tokens
+    `).get().count,
+    uiColorTokenColumns: database.prepare(`
+      PRAGMA table_info(ui_color_tokens)
+    `).all().map(column => column.name),
+    uiColorTokenFamilies: database.prepare(`
+      SELECT DISTINCT palette_family
+      FROM ui_color_tokens
+      ORDER BY palette_family
+    `).all().map(row => row.palette_family),
+    uiColorTokenSamples: database.prepare(`
+      SELECT token_code, palette_family, shade, color_value
+      FROM ui_color_tokens
+      WHERE token_code IN ('blue_500', 'red_100', 'green_100')
+      ORDER BY display_order
+    `).all(),
     uiTableColumnSettings: database.prepare(`
       SELECT COUNT(*) AS count
       FROM ui_table_column_settings
@@ -1819,6 +1837,26 @@ function verifyFrontendStructure() {
       && inlineScript.includes('<span class="button-icon" aria-hidden="true">delete</span>'),
     usesPricingRulesEndpoint: inlineScript.includes("/api/v1/pricing-rules"),
     usesPricingRulesBootstrap: inlineScript.includes("DEMO_API_BOOTSTRAP.pricingRules"),
+    usesUiColorTokenPalette:
+      schemaSource.includes("CREATE TABLE IF NOT EXISTS ui_color_tokens")
+      && databaseTableSectionsSource.includes('"ui_color_tokens"')
+      && html.includes('id="databaseColorPalettePanel"')
+      && html.includes('id="databaseColorPalette"')
+      && inlineScript.includes('tableName === "ui_color_tokens"')
+      && inlineScript.includes("function renderDatabaseColorPalette(tableName, rows)")
+      && html.includes(".database-color-token-swatch"),
+    usesFxPositionColorPalette:
+      html.includes("--palette-slate-200: #e2e8f0;")
+      && html.includes("--palette-steel-blue-500: #637f94;")
+      && html.includes("--app-primary: var(--palette-steel-blue-500);")
+      && html.includes("--app-process-idle: var(--palette-steel-blue-300);")
+      && html.includes("--app-process-idle-hover: var(--palette-steel-blue-400);")
+      && html.includes("--data-grid-line-color: var(--palette-slate-200);")
+      && html.includes("--market-trade-bg: #fbf8f1;")
+      && html.includes(".fx-position-grid .sell-head")
+      && html.includes("background: rgba(var(--bs-danger-rgb), 0.055);")
+      && html.includes(".fx-position-grid .buy-head")
+      && html.includes("background: rgba(var(--bs-success-rgb), 0.055);"),
     usesDatabaseBackedUiTableColumnLayouts:
       schemaSource.includes("CREATE TABLE IF NOT EXISTS ui_table_column_settings")
       && uiTableLayoutsSource.includes("const UI_TABLE_LAYOUTS = Object.freeze({")
@@ -3971,6 +4009,7 @@ async function verifyApiAndMigration() {
     const internalUnitsTable = await request("GET", "/api/database/tables/internal_units");
     const tradingCounterpartyRolesTable = await request("GET", "/api/database/tables/trading_counterparty_roles");
     const usersTable = await request("GET", "/api/database/tables/users");
+    const uiColorTokensTable = await request("GET", "/api/database/tables/ui_color_tokens");
     const pricingRulesTable = await request("GET", "/api/database/tables/pricing_rules");
     const clientDealGenerationProcessSettingsTable = await request(
       "GET",
@@ -5436,6 +5475,13 @@ async function verifyApiAndMigration() {
         && usersTable.body?.createSql?.includes("length(trim(last_name)) BETWEEN 1 AND 50")
         && usersTable.body?.createSql?.includes("'DEALER', 'SUPERVISOR', 'ADMIN'")
         && usersTable.body?.createSql?.includes("is_active IN (0, 1)"),
+      uiColorTokens: {
+        count: uiColorTokensTable.body?.rowCount ?? -1,
+        columns: uiColorTokensTable.body?.columns?.map(column => column.name) || [],
+        blue500: uiColorTokensTable.body?.rows?.find(
+          row => row.token_code === "blue_500"
+        ) || null
+      },
       pairColumns: pairTable.body?.columns?.map(column => column.name) || [],
       pairForeignKeys: pairTable.body?.foreignKeys?.length ?? -1,
       simulationSettingsColumns: settingsTable.body?.columns?.map(column => column.name) || [],
@@ -6564,6 +6610,7 @@ async function main() {
       "trading_counterparties",
       "trading_counterparty_execution_contexts",
       "trading_counterparty_roles",
+      "ui_color_tokens",
       "ui_table_column_settings",
       "users"
     ];
@@ -6608,6 +6655,13 @@ async function main() {
       || freshSchema.users !== 3
       || freshSchema.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
       || freshSchema.userRoles.join(",") !== "ADMIN,DEALER,SUPERVISOR"
+      || freshSchema.uiColorTokens !== 99
+      || freshSchema.uiColorTokenColumns.join(",")
+        !== "token_code,palette_family,shade,color_value,display_order,updated_at"
+      || freshSchema.uiColorTokenFamilies.join(",")
+        !== "BLUE,CYAN,GRAY,GREEN,INDIGO,ORANGE,PINK,PURPLE,RED,TEAL,YELLOW"
+      || freshSchema.uiColorTokenSamples.map(row => `${row.token_code}:${row.color_value}`).join(",")
+        !== "blue_500:#0D6EFD,red_100:#F8D7DA,green_100:#D1E7DD"
       || freshSchema.uiTableColumnSettings !== 169
       || freshSchema.uiTableColumnLayoutKeys.map(row =>
         `${row.table_key}:${row.column_count}`
@@ -6832,6 +6886,8 @@ async function main() {
       || !frontend.usesPricingModeIndicators
       || !frontend.usesUnifiedMarginIndicators
       || !frontend.usesGroupedDatabaseExplorer
+      || !frontend.usesUiColorTokenPalette
+      || !frontend.usesFxPositionColorPalette
       || !frontend.usesDatabaseBackedFxPositions
       || !frontend.usesClientDealCommentOnlyEditing
       || !frontend.usesDatabaseBackedClientDealGeneration
@@ -7053,6 +7109,10 @@ async function main() {
       || apiAndMigration.internalUnitColumns.join(",") !== "counterparty_id,unit_code,unit_type"
       || apiAndMigration.tradingCounterpartyRoleColumns.join(",") !== "counterparty_id,role_code"
       || apiAndMigration.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
+      || apiAndMigration.uiColorTokens.count !== 99
+      || apiAndMigration.uiColorTokens.columns.join(",")
+        !== "token_code,palette_family,shade,color_value,display_order,updated_at"
+      || apiAndMigration.uiColorTokens.blue500?.color_value !== "#0D6EFD"
       || apiAndMigration.counterpartyExecutionContextTable.status !== 200
       || apiAndMigration.counterpartyExecutionContextTable.columns.join(",")
         !== "counterparty_id,execution_context_id"
