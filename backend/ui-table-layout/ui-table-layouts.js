@@ -78,6 +78,20 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["pricing_rules_count", "Pricing Rules Count", 65],
     ["actions", "Actions", 80]
   ]),
+  fx_position_grid: layout("FX Position", [
+    ["trade_id", "ID", 48],
+    ["trade", "Trade", 280],
+    ["trade_date", "Trade Date", 100],
+    ["base_ccy_value_date", "Base Ccy Value Date", 145],
+    ["sell_base_ccy_amount", "SELL Base Ccy Amount", 145],
+    ["sell_trade_rate", "SELL Trade Rate", 90],
+    ["sell_transfer_rate", "SELL Transfer Rate", 95],
+    ["market_bid", "Market Bid", 75],
+    ["market_offer", "Market Offer", 75],
+    ["buy_transfer_rate", "BUY Transfer Rate", 95],
+    ["buy_trade_rate", "BUY Trade Rate", 90],
+    ["buy_base_ccy_amount", "BUY Base Ccy Amount", 167]
+  ]),
   client_fx_deals_grid: layout("Client FX Deals", [
     ["trade_id", "Trade ID", 96],
     ["entry_timestamp", "Entry Timestamp", 157],

@@ -9,170 +9,225 @@
   <link rel="stylesheet" href="./vendor/tabulator/tabulator_bootstrap5.min.css">
   <style>
     :root {
-      --palette-slate-50: #f8fafc;
-      --palette-slate-100: #f1f5f9;
-      --palette-slate-200: #e2e8f0;
-      --palette-slate-300: #cbd5e1;
-      --palette-slate-400: #94a3b8;
-      --palette-slate-500: #64748b;
-      --palette-slate-600: #475569;
-      --palette-slate-700: #334155;
-      --palette-slate-800: #1e293b;
-      --palette-slate-900: #0f172a;
-      --palette-blue-gray-50: #eceff1;
-      --palette-blue-gray-100: #cfd8dc;
-      --palette-blue-gray-200: #b0bec5;
-      --palette-blue-gray-300: #90a4ae;
-      --palette-blue-gray-400: #78909c;
-      --palette-blue-gray-500: #607d8b;
-      --palette-blue-gray-600: #546e7a;
-      --palette-blue-gray-700: #455a64;
-      --palette-blue-gray-800: #37474f;
-      --palette-blue-gray-900: #263238;
-      --palette-steel-blue-50: #f2f6f9;
-      --palette-steel-blue-100: #e3ebf1;
-      --palette-steel-blue-200: #c9d9e3;
-      --palette-steel-blue-300: #a6bece;
-      --palette-steel-blue-400: #7f9fb4;
-      --palette-steel-blue-500: #637f94;
-      --palette-steel-blue-600: #536b7f;
-      --palette-steel-blue-700: #465968;
-      --palette-steel-blue-800: #3d4b57;
-      --palette-steel-blue-900: #343f49;
-      --palette-terracotta-50: #fbf5f3;
-      --palette-terracotta-400: #cb8574;
-      --palette-terracotta-500: #b66a59;
-      --palette-terracotta-600: #985446;
-      --palette-terracotta-700: #7d463b;
-      --palette-terracotta-800: #673c34;
-      --palette-amber-50: #fbf8f1;
-      --palette-amber-100: #f5eedc;
-      --palette-amber-200: #eaddb9;
-      --palette-amber-300: #dcc58d;
-      --palette-amber-400: #caa761;
-      --palette-amber-500: #b28a45;
-      --palette-amber-600: #916d37;
-      --palette-amber-700: #74572f;
-      --palette-amber-800: #5f492b;
-      --palette-amber-900: #503e27;
-      --bg: #ffffff;
-      --line: #a8a8a8;
-      --line-strong: #000000;
-      --text: var(--palette-slate-800);
-      --bs-body-color: var(--palette-slate-800);
-      --bs-body-color-rgb: 30, 41, 59;
-      --bs-emphasis-color: var(--palette-slate-900);
-      --bs-emphasis-color-rgb: 15, 23, 42;
-      --bs-secondary-color: var(--palette-slate-500);
-      --bs-secondary-color-rgb: 100, 116, 139;
-      --bs-tertiary-color: var(--palette-slate-400);
-      --bs-tertiary-color-rgb: 148, 163, 184;
-      --bs-heading-color: var(--palette-slate-900);
-      --bs-link-color: var(--palette-steel-blue-700);
-      --bs-link-color-rgb: 70, 89, 104;
-      --bs-link-hover-color: var(--palette-steel-blue-800);
-      --bs-link-hover-color-rgb: 61, 75, 87;
-      --sell: #ffe49a;
-      --sell-accent: #a9544c;
-      --sell-head: #f8ebe8;
-      --buy: #9dc3e6;
-      --buy-accent: #3f7c59;
-      --buy-head: #e8f3ec;
-      --market-accent: #6b737d;
-      --market-head: #f7f7f8;
-      --market-bid: #f6f7f8;
-      --market-bid-head: #f7f7f8;
-      --market-bid-accent: #6b737d;
-      --market-offer: #f6f7f8;
-      --market-offer-head: #f7f7f8;
-      --market-offer-accent: #6b737d;
-      --common-accent: #69717c;
-      --common-head: #f7f7f8;
-      --app-primary: #2f79a8;
-      --app-primary-rgb: 47, 121, 168;
-      --app-primary-hover: #286b94;
-      --app-primary-active: #235f89;
-      --app-primary-soft: #e8f3fa;
-      --app-primary-border-subtle: #a9c9dc;
-      --app-primary-text: #235f89;
-      --app-process-idle: #337caa;
-      --app-process-idle-border: #2f79a8;
-      --app-process-idle-text: #ffffff;
-      --app-process-idle-hover: #2f79a8;
-      --app-process-idle-hover-border: #286b94;
-      --app-process-idle-active: #286b94;
-      --app-process-running: #af5951;
-      --app-process-running-border: #a9544c;
-      --app-process-running-rgb: 175, 89, 81;
-      --app-process-running-hover: #a9544c;
-      --app-process-running-active: #934840;
+      /* Canonical Bootstrap 5 palette; values mirror ui_color_tokens. */
+      --palette-blue-100: #CFE2FF;
+      --palette-blue-200: #9EC5FE;
+      --palette-blue-300: #6EA8FE;
+      --palette-blue-400: #3D8BFD;
+      --palette-blue-500: #0D6EFD;
+      --palette-blue-600: #0A58CA;
+      --palette-blue-700: #084298;
+      --palette-blue-800: #052C65;
+      --palette-blue-900: #031633;
+      --palette-indigo-100: #E0CFFC;
+      --palette-indigo-200: #C29FFA;
+      --palette-indigo-300: #A370F7;
+      --palette-indigo-400: #8540F5;
+      --palette-indigo-500: #6610F2;
+      --palette-indigo-600: #520DC2;
+      --palette-indigo-700: #3D0A91;
+      --palette-indigo-800: #290661;
+      --palette-indigo-900: #140330;
+      --palette-purple-100: #E2D9F3;
+      --palette-purple-200: #C5B3E6;
+      --palette-purple-300: #A98EDA;
+      --palette-purple-400: #8C68CD;
+      --palette-purple-500: #6F42C1;
+      --palette-purple-600: #59359A;
+      --palette-purple-700: #432874;
+      --palette-purple-800: #2C1A4D;
+      --palette-purple-900: #160D27;
+      --palette-pink-100: #F7D6E6;
+      --palette-pink-200: #EFADCE;
+      --palette-pink-300: #E685B5;
+      --palette-pink-400: #DE5C9D;
+      --palette-pink-500: #D63384;
+      --palette-pink-600: #AB296A;
+      --palette-pink-700: #801F4F;
+      --palette-pink-800: #561435;
+      --palette-pink-900: #2B0A1A;
+      --palette-red-100: #F8D7DA;
+      --palette-red-200: #F1AEB5;
+      --palette-red-300: #EA868F;
+      --palette-red-400: #E35D6A;
+      --palette-red-500: #DC3545;
+      --palette-red-600: #B02A37;
+      --palette-red-700: #842029;
+      --palette-red-800: #58151C;
+      --palette-red-900: #2C0B0E;
+      --palette-orange-100: #FFE5D0;
+      --palette-orange-200: #FECBA1;
+      --palette-orange-300: #FEB272;
+      --palette-orange-400: #FD9843;
+      --palette-orange-500: #FD7E14;
+      --palette-orange-600: #CA6510;
+      --palette-orange-700: #984C0C;
+      --palette-orange-800: #653208;
+      --palette-orange-900: #331904;
+      --palette-yellow-100: #FFF3CD;
+      --palette-yellow-200: #FFE69C;
+      --palette-yellow-300: #FFDA6A;
+      --palette-yellow-400: #FFCD39;
+      --palette-yellow-500: #FFC107;
+      --palette-yellow-600: #CC9A06;
+      --palette-yellow-700: #997404;
+      --palette-yellow-800: #664D03;
+      --palette-yellow-900: #332701;
+      --palette-green-100: #D1E7DD;
+      --palette-green-200: #A3CFBB;
+      --palette-green-300: #75B798;
+      --palette-green-400: #479F76;
+      --palette-green-500: #198754;
+      --palette-green-600: #146C43;
+      --palette-green-700: #0F5132;
+      --palette-green-800: #0A3622;
+      --palette-green-900: #051B11;
+      --palette-teal-100: #D2F4EA;
+      --palette-teal-200: #A6E9D5;
+      --palette-teal-300: #79DFC1;
+      --palette-teal-400: #4DD4AC;
+      --palette-teal-500: #20C997;
+      --palette-teal-600: #1AA179;
+      --palette-teal-700: #13795B;
+      --palette-teal-800: #0D503C;
+      --palette-teal-900: #06281E;
+      --palette-cyan-100: #CFF4FC;
+      --palette-cyan-200: #9EEAF9;
+      --palette-cyan-300: #6EDFF6;
+      --palette-cyan-400: #3DD5F3;
+      --palette-cyan-500: #0DCAF0;
+      --palette-cyan-600: #0AA2C0;
+      --palette-cyan-700: #087990;
+      --palette-cyan-800: #055160;
+      --palette-cyan-900: #032830;
+      --palette-gray-100: #F8F9FA;
+      --palette-gray-200: #E9ECEF;
+      --palette-gray-300: #DEE2E6;
+      --palette-gray-400: #CED4DA;
+      --palette-gray-500: #ADB5BD;
+      --palette-gray-600: #6C757D;
+      --palette-gray-700: #495057;
+      --palette-gray-800: #343A40;
+      --palette-gray-900: #212529;
+      --bg: var(--bs-white);
+      --line: var(--palette-gray-500);
+      --line-strong: var(--palette-gray-900);
+      --text: var(--palette-gray-900);
+      --bs-body-color: var(--palette-gray-900);
+      --bs-body-color-rgb: 33, 37, 41;
+      --bs-emphasis-color: var(--palette-gray-900);
+      --bs-emphasis-color-rgb: 33, 37, 41;
+      --bs-secondary-color: var(--palette-gray-600);
+      --bs-secondary-color-rgb: 108, 117, 125;
+      --bs-tertiary-color: var(--palette-gray-500);
+      --bs-tertiary-color-rgb: 173, 181, 189;
+      --bs-heading-color: var(--palette-gray-900);
+      --bs-link-color: var(--palette-blue-600);
+      --bs-link-color-rgb: 10, 88, 202;
+      --bs-link-hover-color: var(--palette-blue-700);
+      --bs-link-hover-color-rgb: 8, 66, 152;
+      --sell: var(--palette-yellow-200);
+      --sell-accent: var(--palette-red-700);
+      --sell-head: var(--palette-red-100);
+      --buy: var(--palette-blue-200);
+      --buy-accent: var(--palette-green-600);
+      --buy-head: var(--palette-green-100);
+      --market-accent: var(--palette-gray-600);
+      --market-head: var(--palette-gray-100);
+      --market-bid: var(--palette-gray-100);
+      --market-bid-head: var(--palette-gray-100);
+      --market-bid-accent: var(--palette-gray-600);
+      --market-offer: var(--palette-gray-100);
+      --market-offer-head: var(--palette-gray-100);
+      --market-offer-accent: var(--palette-gray-600);
+      --common-accent: var(--palette-gray-600);
+      --common-head: var(--palette-gray-100);
+      --app-primary: var(--palette-blue-500);
+      --app-primary-rgb: 13, 110, 253;
+      --app-primary-hover: var(--palette-blue-600);
+      --app-primary-active: var(--palette-blue-700);
+      --app-primary-soft: var(--palette-blue-100);
+      --app-primary-border-subtle: var(--palette-blue-200);
+      --app-primary-text: var(--palette-blue-700);
+      --app-process-idle: var(--palette-blue-500);
+      --app-process-idle-border: var(--palette-blue-600);
+      --app-process-idle-text: var(--bs-white);
+      --app-process-idle-hover: var(--palette-blue-600);
+      --app-process-idle-hover-border: var(--palette-blue-700);
+      --app-process-idle-active: var(--palette-blue-700);
+      --app-process-running: var(--palette-red-500);
+      --app-process-running-border: var(--palette-red-600);
+      --app-process-running-rgb: 220, 53, 69;
+      --app-process-running-hover: var(--palette-red-600);
+      --app-process-running-active: var(--palette-red-700);
       --bs-primary: var(--app-primary);
       --bs-primary-rgb: var(--app-primary-rgb);
       --bs-primary-bg-subtle: var(--app-primary-soft);
       --bs-primary-border-subtle: var(--app-primary-border-subtle);
       --bs-primary-text-emphasis: var(--app-primary-text);
       --selection-accent: var(--app-primary);
-      --selection-accent-soft: rgba(47, 121, 168, 0.24);
-      --selection-ring: rgba(47, 121, 168, 0.82);
-      --selection-wash: rgba(47, 121, 168, 0.22);
-      --open: #ff0000;
-      --rate: #ff0000;
-      --surface-page: #f8fafc;
-      --surface-card: #ffffff;
-      --surface-hover: #f7fbfe;
-      --surface-border: #dde4ea;
-      --surface-divider: #e3e8ee;
-      --surface-shadow: 0 2px 8px rgba(38, 50, 56, 0.08);
-      --surface-row-shadow: 0 1px 3px rgba(38, 50, 56, 0.08);
-      --surface-shadow-raised: 0 8px 22px rgba(53, 68, 83, 0.08);
-      --control-border: #c5cdd5;
-      --control-border-strong: #b8c2cc;
-      --control-bg: #f7f9fb;
-      --control-text-muted: var(--palette-slate-600);
-      --control-text-readonly: var(--palette-slate-500);
-      --control-disabled-text: var(--palette-slate-400);
-      --control-bg-muted: #f4f7fa;
-      --control-soft-bg: #eef6fb;
-      --control-icon-bg: #eef6fb;
-      --control-icon-text: var(--palette-steel-blue-700);
+      --selection-accent-soft: rgba(var(--bs-primary-rgb), 0.24);
+      --selection-ring: rgba(var(--bs-primary-rgb), 0.82);
+      --selection-wash: rgba(var(--bs-primary-rgb), 0.22);
+      --open: var(--palette-red-500);
+      --rate: var(--palette-red-500);
+      --surface-page: var(--palette-gray-100);
+      --surface-card: var(--bs-white);
+      --surface-hover: var(--palette-gray-100);
+      --surface-border: var(--palette-gray-300);
+      --surface-divider: var(--palette-gray-200);
+      --surface-shadow: 0 2px 8px rgba(var(--bs-dark-rgb), 0.08);
+      --surface-row-shadow: 0 1px 3px rgba(var(--bs-dark-rgb), 0.08);
+      --surface-shadow-raised: 0 8px 22px rgba(var(--bs-dark-rgb), 0.08);
+      --control-border: var(--palette-gray-400);
+      --control-border-strong: var(--palette-gray-500);
+      --control-bg: var(--palette-gray-100);
+      --control-text-muted: var(--palette-gray-700);
+      --control-text-readonly: var(--palette-gray-600);
+      --control-disabled-text: var(--palette-gray-500);
+      --control-bg-muted: var(--palette-gray-100);
+      --control-soft-bg: var(--palette-blue-100);
+      --control-icon-bg: var(--palette-blue-100);
+      --control-icon-text: var(--palette-blue-700);
       --control-primary-bg: var(--app-primary-soft);
       --control-primary-text: var(--app-primary-text);
-      --app-dialog-titlebar-bg: var(--palette-steel-blue-500);
-      --app-dialog-workspace-bg: var(--palette-slate-100);
-      --app-dialog-section-border: var(--palette-slate-200);
-      --app-dialog-section-shadow: 0 1px 2px rgba(32, 49, 66, 0.025);
-      --app-dialog-readonly-bg: var(--palette-slate-100);
-      --app-dialog-readonly-addon-bg: var(--palette-blue-gray-50);
-      --app-dialog-readonly-border: var(--palette-slate-300);
-      --app-dialog-readonly-text: var(--palette-slate-500);
-      --app-dialog-footer-bg: var(--palette-slate-50);
-      --app-tooltip-bg: var(--palette-slate-800);
-      --app-tooltip-border: var(--palette-slate-700);
-      --app-tooltip-text: var(--palette-slate-50);
-      --app-tooltip-text-muted: var(--palette-slate-300);
-      --app-tooltip-shadow: 0 3px 10px rgba(15, 23, 42, 0.18);
-      --text-strong: var(--palette-slate-900);
-      --text-muted: var(--palette-slate-500);
-      --text-subtle: var(--palette-slate-500);
-      --status-info: #31556b;
-      --status-error: #a23d33;
-      --error-border: #b36f64;
-      --error-bg: #fff7f5;
-      --error-text: #823b31;
-      --status-neutral: var(--palette-slate-600);
-      --page-title-text: var(--palette-slate-900);
-      --section-muted-bg: #f5f6f7;
-      --state-selected-soft: rgba(47, 121, 168, 0.10);
-      --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 7.5 10 12l4.5-4.5' fill='none' stroke='%2342515d' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-      --select-chevron-disabled: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 7.5 10 12l4.5-4.5' fill='none' stroke='%239aa4ae' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      --app-dialog-titlebar-bg: var(--bs-white);
+      --app-dialog-workspace-bg: var(--palette-gray-100);
+      --app-dialog-chrome-border: var(--palette-gray-200);
+      --app-dialog-section-border: var(--palette-gray-300);
+      --app-dialog-section-shadow: 0 1px 2px rgba(var(--bs-dark-rgb), 0.025);
+      --app-dialog-readonly-bg: var(--palette-gray-100);
+      --app-dialog-readonly-addon-bg: var(--palette-gray-200);
+      --app-dialog-readonly-border: var(--palette-gray-400);
+      --app-dialog-readonly-text: var(--palette-gray-600);
+      --app-dialog-footer-bg: var(--bs-white);
+      --app-tooltip-bg: var(--palette-gray-900);
+      --app-tooltip-border: var(--palette-gray-800);
+      --app-tooltip-text: var(--palette-gray-100);
+      --app-tooltip-text-muted: var(--palette-gray-400);
+      --app-tooltip-shadow: 0 3px 10px rgba(var(--bs-dark-rgb), 0.18);
+      --text-strong: var(--palette-gray-900);
+      --text-muted: var(--palette-gray-600);
+      --text-subtle: var(--palette-gray-600);
+      --status-info: var(--palette-cyan-800);
+      --status-error: var(--palette-red-600);
+      --error-border: var(--palette-red-300);
+      --error-bg: var(--palette-red-100);
+      --error-text: var(--palette-red-700);
+      --status-neutral: var(--palette-gray-700);
+      --page-title-text: var(--palette-gray-900);
+      --section-muted-bg: var(--palette-gray-100);
+      --state-selected-soft: rgba(var(--bs-primary-rgb), 0.10);
+      --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 7.5 10 12l4.5-4.5' fill='none' stroke='%23495057' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      --select-chevron-disabled: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 7.5 10 12l4.5-4.5' fill='none' stroke='%23ADB5BD' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
       --workspace-nav-height: 48px;
-      --large-table-line: #a8a8a8;
-      --large-table-line-strong: #69717c;
-      --large-table-title-bg: #d3e7f6;
-      --large-table-title-accent: #496f95;
-      --large-table-filter-bg: #f6f7f8;
-      --large-table-header-bg: #e9edf1;
-      --large-table-row-hover: #f5f9fc;
+      --large-table-line: var(--palette-gray-500);
+      --large-table-line-strong: var(--palette-gray-600);
+      --large-table-title-bg: var(--palette-blue-100);
+      --large-table-title-accent: var(--palette-blue-700);
+      --large-table-filter-bg: var(--palette-gray-100);
+      --large-table-header-bg: var(--palette-gray-200);
+      --large-table-row-hover: var(--palette-gray-100);
       --column-filter-trigger-size: 20px;
       --column-filter-icon-size: 15px;
       --primary-grid-line: var(--large-table-line);
@@ -180,7 +235,7 @@
       --primary-title-bg: var(--large-table-title-bg);
       --primary-title-accent: var(--large-table-title-accent);
       --primary-header-bg: var(--large-table-header-bg);
-      --primary-control-bg: #f7f8f9;
+      --primary-control-bg: var(--palette-gray-100);
       --primary-control-height: 28px;
       --primary-radius: 0;
       --data-grid-line-width: 1px;
@@ -211,8 +266,8 @@
       --workbench-grid-row-height: 36px;
       --workbench-grid-header-bg: var(--bs-tertiary-bg, #f8f9fa);
       --workbench-grid-stripe-bg: #f8f9fa;
-      --workbench-grid-hover-bg: #eef5fb;
-      --workbench-grid-selected-bg: #e7f1ff;
+      --workbench-grid-hover-bg: var(--palette-gray-200);
+      --workbench-grid-selected-bg: var(--palette-blue-100);
       --workbench-control-height: 34px;
       --workbench-radius: var(--bs-border-radius-sm, 4px);
       --workbench-actions-column-width: 80px;
@@ -251,7 +306,7 @@
       padding: 8px 18px;
       border-bottom: 1px solid var(--surface-divider);
       background: var(--surface-card);
-      box-shadow: 0 1px 5px rgba(38, 50, 56, 0.08);
+      box-shadow: 0 1px 5px rgba(var(--bs-dark-rgb), 0.08);
     }
 
     .workspace-nav[hidden] {
@@ -289,7 +344,7 @@
     }
 
     .workspace-nav-link.is-active {
-      border-color: rgba(47, 121, 168, 0.26);
+      border-color: rgba(var(--bs-primary-rgb), 0.26);
       background: var(--control-primary-bg);
       color: var(--control-primary-text);
     }
@@ -346,8 +401,8 @@
 
     .currency-pair-panel {
       border-top: 3px solid var(--common-accent);
-      background: #f8fafc;
-      box-shadow: inset -1px 0 0 rgba(108, 119, 132, 0.18);
+      background: var(--palette-gray-100);
+      box-shadow: inset -1px 0 0 rgba(var(--bs-secondary-rgb), 0.18);
     }
 
     .currency-pair-title {
@@ -384,8 +439,8 @@
     }
 
     .currency-pair-button:hover {
-      border-color: rgba(47, 121, 168, 0.22);
-      background: #ffffff;
+      border-color: rgba(var(--bs-primary-rgb), 0.22);
+      background: var(--bs-white);
     }
 
     .currency-pair-button:focus-visible {
@@ -394,7 +449,7 @@
     }
 
     .currency-pair-button.is-active {
-      border-color: rgba(47, 121, 168, 0.42);
+      border-color: rgba(var(--bs-primary-rgb), 0.42);
       background: var(--control-primary-bg);
       color: var(--control-primary-text);
       font-weight: 700;
@@ -410,7 +465,7 @@
       min-width: 20px;
       border-radius: 999px;
       padding: 1px 5px;
-      background: rgba(99, 112, 128, 0.12);
+      background: rgba(var(--bs-secondary-rgb), 0.12);
       color: var(--text-subtle);
       font-size: 11px;
       font-weight: 700;
@@ -418,7 +473,7 @@
     }
 
     .currency-pair-button.is-active .currency-pair-count {
-      background: rgba(47, 121, 168, 0.16);
+      background: rgba(var(--bs-primary-rgb), 0.16);
       color: var(--control-primary-text);
     }
 
@@ -461,20 +516,20 @@
     }
 
     .action-button:not(.btn).primary {
-      border-color: #8fb2cc;
+      border-color: var(--palette-blue-200);
       background: var(--control-primary-bg);
       color: var(--control-primary-text);
     }
 
     .action-button:not(.btn).danger {
-      border-color: #d0aaa5;
-      background: #fff8f7;
-      color: #8b3f36;
+      border-color: var(--palette-red-200);
+      background: var(--palette-red-100);
+      color: var(--palette-red-700);
     }
 
     .action-button:not(.btn).danger:hover:not(:disabled) {
-      border-color: #b67870;
-      background: #fcebe8;
+      border-color: var(--palette-red-300);
+      background: var(--palette-red-100);
     }
 
     .button-icon {
@@ -539,7 +594,7 @@
     .icon-action:disabled,
     .icon-action:disabled:hover {
       background: transparent;
-      color: #aab2bb;
+      color: var(--palette-gray-500);
       cursor: not-allowed;
       opacity: 0.62;
     }
@@ -580,20 +635,20 @@
       gap: 8px;
       margin: 8px 0 0;
       padding: 7px 8px;
-      border: 1px solid #bdd0df;
+      border: 1px solid var(--palette-gray-400);
       border-radius: 6px;
-      box-shadow: 0 1px 2px rgba(33, 47, 61, 0.08);
+      box-shadow: 0 1px 2px rgba(var(--bs-dark-rgb), 0.08);
     }
 
     .deal-toolbar {
-      border-left: 4px solid #4b789b;
-      background: #f7fbfe;
+      border-left: 4px solid var(--palette-blue-700);
+      background: var(--palette-gray-100);
     }
 
     .batch-toolbar,
     .hedge-toolbar {
-      border-left: 4px solid #7b669f;
-      background: #fbf9fe;
+      border-left: 4px solid var(--palette-purple-500);
+      background: var(--palette-purple-100);
     }
 
     .deal-toolbar-title,
@@ -733,7 +788,7 @@
       align-items: end;
       padding: 12px 16px;
       border-bottom: 1px solid var(--surface-divider);
-      background: #fbfcfd;
+      background: var(--palette-gray-100);
     }
 
     .profile-search-field {
@@ -993,11 +1048,11 @@
     }
 
     .market-bid-cell {
-      color: #2f6f4e;
+      color: var(--palette-green-600);
     }
 
     .market-offer-cell {
-      color: #8d463d;
+      color: var(--palette-red-700);
     }
 
     .profile-table-wrap {
@@ -1062,7 +1117,7 @@
 
     .profile-table th {
       height: 31px;
-      background: #f6f8fa;
+      background: var(--palette-gray-100);
       color: var(--control-text-muted);
       font-size: 11px;
       font-weight: 700;
@@ -1176,7 +1231,7 @@
     }
 
     .pricing-context-table tbody tr.is-editing td {
-      background: #fbfdff;
+      background: var(--palette-gray-100);
     }
 
     .pricing-rules-table td:nth-child(7) {
@@ -1203,7 +1258,7 @@
     }
 
     .pricing-rules-table tbody tr.is-editing td {
-      background: #fbfdff;
+      background: var(--palette-gray-100);
     }
 
     .reference-layout {
@@ -1255,7 +1310,7 @@
     #referenceDataPage .reference-switcher-link:hover {
       border: 0;
       background: transparent;
-      color: #245f8c;
+      color: var(--palette-blue-700);
     }
 
     #referenceDataPage .reference-switcher-link.is-active {
@@ -1263,7 +1318,7 @@
       z-index: auto;
       border: 0;
       background: transparent;
-      color: #173b57;
+      color: var(--palette-blue-800);
       box-shadow: none;
     }
 
@@ -1279,7 +1334,7 @@
 
     #referenceDataPage .profile-panel {
       border-color: var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
       box-shadow: none;
     }
 
@@ -1292,14 +1347,14 @@
     }
 
     #referenceDataPage .profile-panel-title {
-      color: #233646;
+      color: var(--palette-gray-800);
       font-size: 12px;
       font-weight: 800;
       text-transform: uppercase;
     }
 
     #referenceDataPage .profile-table-wrap {
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     #referenceDataPage .profile-search-field {
@@ -1311,7 +1366,7 @@
     #referenceDataPage .profile-search-control {
       height: 28px;
       border-color: var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
       padding: 0 7px;
     }
 
@@ -1329,21 +1384,21 @@
       min-height: 28px;
       padding: 0 9px;
       border-color: var(--large-table-line);
-      background: #f7f8f9;
+      background: var(--palette-gray-100);
       color: var(--text);
       box-shadow: none;
       font-size: 12px;
     }
 
     #referenceDataPage .action-button.primary {
-      border-color: #8fb7d9;
-      background: #e8f3fa;
+      border-color: var(--palette-blue-200);
+      background: var(--palette-blue-100);
       color: var(--control-primary-text);
     }
 
     #referenceDataPage .reference-table {
       border-collapse: collapse;
-      background: #ffffff;
+      background: var(--bs-white);
       font-size: 12px;
     }
 
@@ -1356,7 +1411,7 @@
     }
 
     #referenceDataPage .reference-table tbody td {
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     #referenceDataPage .reference-table tbody tr:hover td {
@@ -1365,10 +1420,10 @@
 
     #referenceDataPage .reference-search-match {
       border-radius: 2px;
-      background: #ffe69a;
+      background: var(--palette-yellow-200);
       color: inherit;
       padding: 0 1px;
-      box-shadow: inset 0 -1px 0 #d5a932;
+      box-shadow: inset 0 -1px 0 var(--palette-yellow-600);
     }
 
     #referenceDataPage .reference-table tbody tr:last-child td {
@@ -1425,7 +1480,7 @@
     #pricingPage .profile-panel,
     #pricingRulesPage .profile-panel {
       border-color: var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
       box-shadow: none;
     }
 
@@ -1440,7 +1495,7 @@
 
     #pricingPage .profile-panel-title,
     #pricingRulesPage .profile-panel-title {
-      color: #233646;
+      color: var(--palette-gray-800);
       font-size: 12px;
       font-weight: 800;
       text-transform: uppercase;
@@ -1450,7 +1505,7 @@
     #pricingRulesPage .profile-table-wrap {
       overflow-x: auto;
       overflow-y: visible;
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     #pricingPage .profile-search-field,
@@ -1464,7 +1519,7 @@
     #pricingRulesPage .profile-search-control {
       height: 28px;
       border-color: var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
       padding: 0 7px;
     }
 
@@ -1485,7 +1540,7 @@
       min-height: 28px;
       padding: 0 9px;
       border-color: var(--large-table-line);
-      background: #f7f8f9;
+      background: var(--palette-gray-100);
       color: var(--text);
       box-shadow: none;
       font-size: 12px;
@@ -1493,15 +1548,15 @@
 
     #pricingPage .action-button.primary,
     #pricingRulesPage .action-button.primary {
-      border-color: #8fb7d9;
-      background: #e8f3fa;
+      border-color: var(--palette-blue-200);
+      background: var(--palette-blue-100);
       color: var(--control-primary-text);
     }
 
     #pricingPage .profile-table,
     #pricingRulesPage .profile-table {
       border-collapse: collapse;
-      background: #ffffff;
+      background: var(--bs-white);
       font-size: 12px;
     }
 
@@ -1517,7 +1572,7 @@
 
     #pricingPage .profile-table tbody td,
     #pricingRulesPage .profile-table tbody td {
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     #pricingPage .profile-table tbody tr:hover td,
@@ -1568,7 +1623,7 @@
     #pricingRulesPage .reference-column-filter.is-open .reference-column-filter-trigger,
     #pricingRulesPage .reference-column-filter.is-filtered .reference-column-filter-trigger {
       border-color: var(--large-table-line-strong);
-      background: #ffffff;
+      background: var(--bs-white);
       color: var(--selection-accent);
     }
 
@@ -1576,13 +1631,13 @@
     #pricingRulesPage .reference-column-filter-menu {
       top: calc(100% + 4px);
       border-color: var(--large-table-line);
-      box-shadow: 2px 2px 0 rgba(78, 90, 102, 0.12);
+      box-shadow: 2px 2px 0 rgba(var(--bs-secondary-rgb), 0.12);
     }
 
     #pricingPage .reference-filter-action,
     #pricingRulesPage .reference-filter-action {
       border-color: var(--large-table-line);
-      background: #f7f8f9;
+      background: var(--palette-gray-100);
       font-weight: 700;
     }
 
@@ -1650,7 +1705,7 @@
     #marketPage .reference-switcher-link:hover {
       border: 0;
       background: transparent;
-      color: #245f8c;
+      color: var(--palette-blue-700);
     }
 
     #marketPage .reference-switcher-link.is-active {
@@ -1658,7 +1713,7 @@
       z-index: auto;
       border: 0;
       background: transparent;
-      color: #173b57;
+      color: var(--palette-blue-800);
       font-weight: 600;
       box-shadow: none;
     }
@@ -1676,7 +1731,7 @@
     #clientProfilePage .profile-panel,
     #marketPage .profile-panel {
       border-color: var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
       box-shadow: none;
     }
 
@@ -1691,7 +1746,7 @@
 
     #clientProfilePage .profile-panel-title,
     #marketPage .profile-panel-title {
-      color: #233646;
+      color: var(--palette-gray-800);
       font-size: 12px;
       font-weight: 800;
       text-transform: uppercase;
@@ -1719,10 +1774,10 @@
       margin: 0;
       gap: 5px;
       padding: 0 11px 0 9px;
-      border: 1px solid #9bc4df;
+      border: 1px solid var(--palette-blue-200);
       border-radius: 6px;
-      background: #f8fcff;
-      color: #075f96;
+      background: var(--palette-gray-100);
+      color: var(--palette-blue-700);
       box-shadow: none;
       font-weight: 600;
       transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -1734,20 +1789,20 @@
       width: 16px;
       border-right: 0;
       background: transparent;
-      color: #0874b5;
+      color: var(--palette-blue-600);
     }
 
     #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton:hover:not(:disabled) {
-      border-color: #78afd2;
-      background: #eef7fc;
+      border-color: var(--palette-blue-200);
+      background: var(--palette-cyan-100);
     }
 
     #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton:active:not(:disabled) {
-      background: #e4f2fa;
+      background: var(--palette-blue-100);
     }
 
     #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton:focus-visible {
-      outline: 2px solid rgba(38, 124, 177, 0.28);
+      outline: 2px solid rgba(var(--bs-primary-rgb), 0.28);
       outline-offset: 2px;
     }
 
@@ -1781,12 +1836,12 @@
 
     #marketPage .reference-switcher-link.is-active .button-icon,
     #referenceDataPage .reference-switcher-link.is-active .button-icon {
-      color: #245f8c;
+      color: var(--palette-blue-700);
     }
 
     #clientProfilePage .profile-table-wrap,
     #marketPage .profile-table-wrap {
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     #clientProfilePage .profile-search-field {
@@ -1798,7 +1853,7 @@
     #clientProfilePage .profile-search-control {
       height: 28px;
       border-color: var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
       padding: 0 7px;
     }
 
@@ -1817,7 +1872,7 @@
       min-height: 28px;
       padding: 0 9px;
       border-color: var(--large-table-line);
-      background: #f7f8f9;
+      background: var(--palette-gray-100);
       color: var(--text);
       box-shadow: none;
       font-size: 12px;
@@ -1825,15 +1880,15 @@
 
     #clientProfilePage .action-button.primary,
     #marketPage .action-button.primary {
-      border-color: #8fb7d9;
-      background: #e8f3fa;
+      border-color: var(--palette-blue-200);
+      background: var(--palette-blue-100);
       color: var(--control-primary-text);
     }
 
     #clientProfilePage .profile-table,
     #marketPage .profile-table {
       border-collapse: collapse;
-      background: #ffffff;
+      background: var(--bs-white);
       font-size: 12px;
     }
 
@@ -1849,7 +1904,7 @@
 
     #clientProfilePage .profile-table tbody td,
     #marketPage .profile-table tbody td {
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     #clientProfilePage .profile-table tbody tr:hover td,
@@ -1895,7 +1950,7 @@
     #clientProfilePage .reference-column-filter.is-open .reference-column-filter-trigger,
     #clientProfilePage .reference-column-filter.is-filtered .reference-column-filter-trigger {
       border-color: var(--large-table-line-strong);
-      background: #ffffff;
+      background: var(--bs-white);
       color: var(--selection-accent);
     }
 
@@ -1909,7 +1964,7 @@
     #clientProfilePage .profile-form .form-field select {
       height: 30px;
       border-color: var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
       font-size: 12px;
     }
 
@@ -1928,7 +1983,7 @@
     #clientProfilePage .client-pricing-rules-panel {
       gap: 8px;
       border-color: var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
       padding: 8px;
     }
 
@@ -1942,7 +1997,7 @@
     #clientProfilePage .pricing-filter-chip {
       min-height: 24px;
       border-color: var(--large-table-line);
-      background: #f7f8f9;
+      background: var(--palette-gray-100);
       font-size: 11px;
     }
 
@@ -1960,13 +2015,13 @@
     #clientProfilePage .client-pricing-rules-list {
       border-color: var(--large-table-line);
       border-top: 0;
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     #clientProfilePage .client-pricing-rules-list li {
       min-height: 24px;
       border-bottom-color: var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
       padding: 3px 6px;
     }
 
@@ -1987,13 +2042,13 @@
     }
 
     .reference-layout .profile-panel-head {
-      border-bottom-color: #94bddc;
-      background: linear-gradient(180deg, #dceefa 0%, #c8e0f2 100%);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      border-bottom-color: var(--palette-blue-200);
+      background: linear-gradient(180deg, var(--palette-cyan-100) 0%, var(--palette-blue-100) 100%);
+      box-shadow: inset 0 1px 0 rgba(var(--bs-white-rgb), 0.9);
     }
 
     .reference-layout .profile-panel-title {
-      color: #17496f;
+      color: var(--palette-blue-800);
     }
 
     .reference-switcher {
@@ -2024,10 +2079,10 @@
     }
 
     .reference-switcher-link.is-active {
-      border-color: #8fb7d9;
-      background: #edf6fc;
+      border-color: var(--palette-blue-200);
+      background: var(--palette-blue-100);
       color: var(--action-blue);
-      box-shadow: inset 0 0 0 1px rgba(52, 112, 153, 0.14);
+      box-shadow: inset 0 0 0 1px rgba(var(--bs-primary-rgb), 0.14);
     }
 
     .reference-filter-field {
@@ -2057,8 +2112,8 @@
       min-width: 0 !important;
       height: 58px;
       padding: 8px 12px 10px;
-      background: #f7f9fb;
-      color: #52606d;
+      background: var(--palette-gray-100);
+      color: var(--palette-gray-700);
       font-weight: 400;
       vertical-align: bottom;
     }
@@ -2078,8 +2133,8 @@
     }
 
     .reference-layout .reference-table thead tr:not(.reference-filter-row) th {
-      background: #edf1f5;
-      color: #43515f;
+      background: var(--palette-gray-200);
+      color: var(--palette-gray-700);
       font-weight: 800;
     }
 
@@ -2155,8 +2210,8 @@
 
     .reference-column-filter.is-open .reference-column-filter-trigger,
     .reference-column-filter.is-filtered .reference-column-filter-trigger {
-      border-color: #8fb7d9;
-      background: #edf6fc;
+      border-color: var(--palette-blue-200);
+      background: var(--palette-blue-100);
       color: var(--action-blue);
     }
 
@@ -2171,7 +2226,7 @@
       border: 1px solid var(--large-table-line);
       border-radius: 0;
       background: var(--surface-card);
-      box-shadow: 2px 2px 0 rgba(78, 90, 102, 0.12);
+      box-shadow: 2px 2px 0 rgba(var(--bs-secondary-rgb), 0.12);
       padding: 8px;
     }
 
@@ -2210,7 +2265,7 @@
     .reference-filter-action {
       border: 1px solid var(--control-border);
       border-radius: 6px;
-      background: #ffffff;
+      background: var(--bs-white);
       color: var(--control-text);
       font: inherit;
       font-size: 11px;
@@ -2287,7 +2342,7 @@
 
     .reference-table tbody tr.is-editing td,
     .market-pair-options-table tbody tr.is-editing td {
-      background: #fbfdff;
+      background: var(--palette-gray-100);
     }
 
     .pricing-context-table .inline-edit-control,
@@ -2353,7 +2408,7 @@
       padding: 12px;
       border: 1px solid var(--surface-divider);
       border-radius: 7px;
-      background: #fbfcfd;
+      background: var(--palette-gray-100);
     }
 
     .client-pricing-rules-head {
@@ -2398,7 +2453,7 @@
       border: 1px solid var(--surface-divider);
       border-bottom: 0;
       border-radius: 7px 7px 0 0;
-      background: #f6f8fa;
+      background: var(--palette-gray-100);
       color: var(--control-text-muted);
       font-size: 11px;
       font-weight: 700;
@@ -2512,7 +2567,7 @@
       min-height: 30px;
       border: 1px solid var(--control-border);
       border-radius: 999px;
-      background: #eef5fb;
+      background: var(--palette-gray-200);
       padding: 0 10px;
       color: var(--control-text);
       font-size: 12px;
@@ -2567,7 +2622,7 @@
     }
 
     .profile-danger-action {
-      color: #8f3d35;
+      color: var(--palette-red-700);
     }
 
     .profile-empty {
@@ -2675,11 +2730,11 @@
     }
 
     .batch-status.is-warning {
-      color: #8a5f18;
+      color: var(--palette-yellow-800);
     }
 
     .batch-status.is-error {
-      color: #9a4b43;
+      color: var(--palette-red-700);
     }
 
     .blotter-shell {
@@ -2810,111 +2865,111 @@
     }
 
     .ledger-key-title {
-      --section-accent: #3f7c59;
-      --section-title-bg: #edf7f1;
+      --section-accent: var(--palette-green-600);
+      --section-title-bg: var(--palette-green-100);
       color: var(--page-title-text);
       background: var(--section-title-bg);
     }
 
     .ledger-context-title {
-      --section-accent: #4f7f88;
-      --section-title-bg: #edf7f8;
+      --section-accent: var(--palette-cyan-700);
+      --section-title-bg: var(--palette-cyan-100);
       color: var(--page-title-text);
       background: var(--section-title-bg);
     }
 
     .ledger-pricing-title {
-      --section-accent: #6d7f41;
-      --section-title-bg: #f3f7e8;
+      --section-accent: var(--palette-green-600);
+      --section-title-bg: var(--palette-green-100);
       color: var(--page-title-text);
       background: var(--section-title-bg);
     }
 
     .ledger-identity-title {
-      --section-accent: #496f95;
-      --section-title-bg: #edf4fb;
+      --section-accent: var(--palette-blue-700);
+      --section-title-bg: var(--palette-blue-100);
       color: var(--page-title-text);
       background: var(--section-title-bg);
     }
 
     .ledger-client-title {
-      --section-accent: #687787;
-      --section-title-bg: #f0f3f6;
+      --section-accent: var(--palette-gray-600);
+      --section-title-bg: var(--palette-gray-200);
       color: var(--page-title-text);
       background: var(--section-title-bg);
     }
 
     .ledger-batch-title {
-      --section-accent: #7b669f;
-      --section-title-bg: #f4f0fa;
+      --section-accent: var(--palette-purple-500);
+      --section-title-bg: var(--palette-purple-100);
       color: var(--page-title-text);
       background: var(--section-title-bg);
     }
 
     .ledger-cash-title {
-      --section-accent: #8a6a3b;
-      --section-title-bg: #fbf4e8;
+      --section-accent: var(--palette-yellow-800);
+      --section-title-bg: var(--palette-yellow-100);
       color: var(--page-title-text);
       background: var(--section-title-bg);
     }
 
     .ledger-market-title {
-      --section-accent: #2f79a8;
-      --section-title-bg: #eef6fb;
+      --section-accent: var(--palette-blue-500);
+      --section-title-bg: var(--palette-blue-100);
       color: var(--page-title-text);
       background: var(--section-title-bg);
     }
 
     .ledger-identity-head {
-      background: #edf4fb;
-      border-bottom-color: #496f95;
+      background: var(--palette-blue-100);
+      border-bottom-color: var(--palette-blue-700);
     }
 
     .ledger-client-head {
-      background: #f0f3f6;
-      border-bottom-color: #687787;
+      background: var(--palette-gray-200);
+      border-bottom-color: var(--palette-gray-600);
     }
 
     .ledger-context-head {
-      background: #edf7f8;
-      border-bottom-color: #4f7f88;
+      background: var(--palette-cyan-100);
+      border-bottom-color: var(--palette-cyan-700);
     }
 
     .ledger-pricing-head {
-      background: #f3f7e8;
-      border-bottom-color: #6d7f41;
+      background: var(--palette-green-100);
+      border-bottom-color: var(--palette-green-600);
     }
 
     .ledger-core-head {
-      background: #edf7f1;
-      border-bottom-color: #3f7c59;
+      background: var(--palette-green-100);
+      border-bottom-color: var(--palette-green-600);
     }
 
     .generated-position-title {
-      --section-accent: #2f7c76;
-      --section-title-bg: #edf7f6;
+      --section-accent: var(--palette-teal-700);
+      --section-title-bg: var(--palette-teal-100);
       color: var(--page-title-text);
       background: var(--section-title-bg);
     }
 
     .generated-position-head {
-      background: #edf7f6;
-      border-bottom-color: #2f7c76;
+      background: var(--palette-teal-100);
+      border-bottom-color: var(--palette-teal-700);
     }
 
     .ledger-market-head {
-      background: #eef6fb;
-      border-bottom-color: #2f79a8;
+      background: var(--palette-blue-100);
+      border-bottom-color: var(--palette-blue-500);
     }
 
     .ledger-batch-head {
-      background: #f4f0fa;
-      border-bottom-color: #7b669f;
+      background: var(--palette-purple-100);
+      border-bottom-color: var(--palette-purple-500);
     }
 
     .ledger-cash-head {
-      background: #fbf4e8;
-      border-bottom-color: #8a6a3b;
+      background: var(--palette-yellow-100);
+      border-bottom-color: var(--palette-yellow-800);
     }
 
     table {
@@ -2922,7 +2977,7 @@
       table-layout: fixed;
       width: auto;
       min-width: 1260px;
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     th,
@@ -2937,7 +2992,7 @@
     }
 
     th {
-      background: #ffffff;
+      background: var(--bs-white);
       font-weight: 700;
       text-align: center;
     }
@@ -3034,6 +3089,22 @@
       visibility: visible;
     }
 
+    /* Tabulator owns tooltip positioning; the application owns its visual palette. */
+    .tabulator-tooltip {
+      z-index: 10000;
+      max-width: min(320px, calc(100vw - 16px));
+      padding: 6px 8px;
+      border: 1px solid var(--app-tooltip-border);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--app-tooltip-bg);
+      color: var(--app-tooltip-text);
+      box-shadow: var(--app-tooltip-shadow);
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
     .section-name::before {
       content: "";
       display: block;
@@ -3048,7 +3119,7 @@
 
     .sell-title {
       --section-accent: var(--sell-accent);
-      background: rgba(248, 235, 232, 0.42);
+      background: rgba(248, 215, 218, 0.42);
     }
 
     .market-title {
@@ -3059,7 +3130,7 @@
 
     .buy-title {
       --section-accent: var(--buy-accent);
-      background: rgba(232, 243, 236, 0.46);
+      background: rgba(209, 231, 221, 0.46);
     }
 
     .column-title th {
@@ -3088,11 +3159,11 @@
     }
 
     .rate-title-row .sell-rate-band {
-      border-bottom-color: rgba(169, 84, 76, 0.72);
+      border-bottom-color: rgba(132, 32, 41, 0.72);
     }
 
     .rate-title-row .buy-rate-band {
-      border-bottom-color: rgba(63, 124, 89, 0.72);
+      border-bottom-color: rgba(20, 108, 67, 0.72);
     }
 
     .common-head {
@@ -3116,42 +3187,42 @@
     }
 
     .sell-zone {
-      background: rgba(248, 235, 232, 0.56);
+      background: rgba(248, 215, 218, 0.56);
     }
 
     .sell-zone-left {
-      background: rgba(248, 235, 232, 0.56);
+      background: rgba(248, 215, 218, 0.56);
     }
 
     .sell-zone-right {
-      background: rgba(248, 235, 232, 0.56);
+      background: rgba(248, 215, 218, 0.56);
     }
 
     .sell-check-zone {
-      background: rgba(248, 235, 232, 0.46);
+      background: rgba(248, 215, 218, 0.46);
     }
 
     .sell-check-zone.select-all-cell {
-      border-bottom-color: rgba(169, 84, 76, 0.72);
-      background: rgba(248, 235, 232, 0.54);
+      border-bottom-color: rgba(132, 32, 41, 0.72);
+      background: rgba(248, 215, 218, 0.54);
     }
 
     .sell-check-zone {
-      box-shadow: inset -8px 0 12px -14px rgba(21, 25, 31, 0.65);
+      box-shadow: inset -8px 0 12px -14px rgba(var(--bs-dark-rgb), 0.65);
     }
 
     .buy-zone {
-      background: rgba(232, 243, 236, 0.58);
+      background: rgba(209, 231, 221, 0.58);
     }
 
     .buy-check-zone {
-      background: rgba(232, 243, 236, 0.48);
-      box-shadow: inset 8px 0 12px -14px rgba(21, 25, 31, 0.65);
+      background: rgba(209, 231, 221, 0.48);
+      box-shadow: inset 8px 0 12px -14px rgba(var(--bs-dark-rgb), 0.65);
     }
 
     .buy-check-zone.select-all-cell {
-      border-bottom-color: rgba(63, 124, 89, 0.72);
-      background: rgba(232, 243, 236, 0.56);
+      border-bottom-color: rgba(20, 108, 67, 0.72);
+      background: rgba(209, 231, 221, 0.56);
     }
 
     .branch {
@@ -3185,7 +3256,7 @@
       border: 1px solid var(--large-table-line);
       border-radius: 4px;
       padding: 0;
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
       color: var(--control-icon-text);
       cursor: pointer;
     }
@@ -3240,7 +3311,7 @@
       justify-content: center;
       border: 1px solid var(--bs-border-color, #dee2e6);
       border-radius: var(--workbench-radius, 4px);
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
       color: var(--bs-secondary-color, #6c757d);
     }
 
@@ -3295,7 +3366,7 @@
       width: 14px;
       min-width: 14px;
       border: 0;
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     .wide-gap {
@@ -3312,7 +3383,7 @@
 
     .select-all-cell {
       background:
-        linear-gradient(180deg, #f7fbfe 0%, #edf5fa 100%);
+        linear-gradient(180deg, var(--palette-gray-100) 0%, var(--palette-blue-100) 100%);
       border: 0;
       border-bottom: 2px solid var(--selection-accent);
       vertical-align: middle;
@@ -3329,32 +3400,32 @@
       bottom: 0;
       left: 50%;
       width: 2px;
-      background: #c3c7cc;
+      background: var(--palette-gray-400);
       transform: translateX(-50%);
     }
 
     .market-left {
-      background: #eef1f3;
-      border-left: 1px solid #8f969f;
+      background: var(--palette-gray-200);
+      border-left: 1px solid var(--palette-gray-500);
       border-right: 2px solid var(--line-strong);
-      box-shadow: inset 7px 0 12px -12px rgba(21, 25, 31, 0.72);
+      box-shadow: inset 7px 0 12px -12px rgba(var(--bs-dark-rgb), 0.72);
     }
 
     .market-right {
-      background: #eef1f3;
+      background: var(--palette-gray-200);
       border-left: 0;
-      border-right: 1px solid #8f969f;
-      box-shadow: inset -7px 0 12px -12px rgba(21, 25, 31, 0.72);
+      border-right: 1px solid var(--palette-gray-500);
+      box-shadow: inset -7px 0 12px -12px rgba(var(--bs-dark-rgb), 0.72);
     }
 
     .column-title .market-left {
-      background: #e7eaed;
+      background: var(--palette-gray-200);
       border-bottom-color: var(--market-bid-accent);
       box-shadow: none;
     }
 
     .column-title .market-right {
-      background: #e7eaed;
+      background: var(--palette-gray-200);
       border-bottom-color: var(--market-offer-accent);
       box-shadow: none;
     }
@@ -3373,27 +3444,27 @@
     }
 
     .batching-summary-total td {
-      border-top: 4px solid #68717c;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+      border-top: 4px solid var(--palette-gray-600);
+      box-shadow: inset 0 1px 0 rgba(var(--bs-white-rgb), 0.84);
     }
 
     .batching-summary-net td {
-      border-top-color: #d5dade;
+      border-top-color: var(--palette-gray-400);
       font-size: 11px;
     }
 
     .summary-sell {
-      background: rgba(248, 235, 232, 0.72);
+      background: rgba(248, 215, 218, 0.72);
     }
 
     .summary-buy {
-      background: rgba(232, 243, 236, 0.72);
+      background: rgba(209, 231, 221, 0.72);
     }
 
     .summary-bridge {
       border-left: 0;
       border-right: 0;
-      background: #ffffff;
+      background: var(--bs-white);
       box-shadow: none;
     }
 
@@ -3402,18 +3473,18 @@
     }
 
     .summary-net-active.sell-side {
-      background: rgba(248, 225, 221, 0.92);
-      color: #8c3f39;
+      background: rgba(248, 215, 218, 0.92);
+      color: var(--palette-red-700);
     }
 
     .summary-net-active.buy-side {
-      background: rgba(220, 239, 226, 0.94);
-      color: #2f6f49;
+      background: rgba(209, 231, 221, 0.94);
+      color: var(--palette-green-600);
     }
 
     .blotter-table .market-left,
     .blotter-table .market-right {
-      background: #eef1f3;
+      background: var(--palette-gray-200);
       border-left: 1px solid var(--line);
       border-right: 1px solid var(--line);
       box-shadow: none;
@@ -3438,11 +3509,11 @@
     }
 
     .shell {
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     .table-wrap {
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     .action-bar {
@@ -3474,14 +3545,14 @@
     }
 
     .action-button:not(.btn).primary {
-      border-color: #8fb7d9;
-      background: #e8f3fa;
+      border-color: var(--palette-blue-200);
+      background: var(--palette-blue-100);
       color: var(--control-primary-text);
     }
 
     .action-button:not(.btn).danger {
-      border-color: #b67870;
-      background: #fff7f5;
+      border-color: var(--palette-red-300);
+      background: var(--palette-red-100);
     }
 
     .icon-action {
@@ -3490,7 +3561,7 @@
 
     .batching-table,
     .blotter-table {
-      background: #ffffff;
+      background: var(--bs-white);
       border-collapse: collapse;
       font-size: 12px;
     }
@@ -3517,7 +3588,7 @@
     .currency-pair-panel {
       border: 1px solid var(--primary-grid-line);
       border-top: 3px solid var(--common-accent);
-      background: #ffffff;
+      background: var(--bs-white);
       box-shadow: none;
     }
 
@@ -3538,24 +3609,24 @@
       padding: 5px 6px;
       border-color: var(--primary-grid-line);
       border-radius: var(--primary-radius);
-      background: #ffffff;
+      background: var(--bs-white);
       box-shadow: none;
     }
 
     .deal-toolbar {
-      border-left-color: #4b789b;
+      border-left-color: var(--palette-blue-700);
     }
 
     .batch-toolbar,
     .hedge-toolbar {
-      border-left-color: #7b669f;
+      border-left-color: var(--palette-purple-500);
     }
 
     .batch-control {
       padding: 4px;
       border-color: var(--primary-grid-line);
       border-radius: var(--primary-radius);
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     .batch-label,
@@ -3589,7 +3660,7 @@
       content: attr(data-sort-indicator);
       display: inline-block;
       width: 8px;
-      color: #48505a;
+      color: var(--palette-gray-700);
       font-size: var(--app-font-size-micro);
       line-height: 1;
       text-align: center;
@@ -3601,7 +3672,7 @@
     }
 
     .sort-button:focus-visible {
-      outline: 2px solid #48505a;
+      outline: 2px solid var(--palette-gray-700);
       outline-offset: 2px;
     }
 
@@ -3617,7 +3688,7 @@
     }
 
     .deal-checkbox:checked {
-      filter: drop-shadow(0 0 3px rgba(47, 121, 168, 0.45));
+      filter: drop-shadow(0 0 3px rgba(var(--bs-primary-rgb), 0.45));
     }
 
     .deal-checkbox:focus-visible {
@@ -3635,7 +3706,7 @@
     }
 
     .select-all-checkbox:hover {
-      filter: drop-shadow(0 0 3px rgba(47, 121, 168, 0.35));
+      filter: drop-shadow(0 0 3px rgba(var(--bs-primary-rgb), 0.35));
     }
 
     .select-all-checkbox:focus-visible {
@@ -3657,7 +3728,7 @@
     }
 
     .is-selected .selection-active {
-      background: rgba(47, 121, 168, 0.16);
+      background: rgba(var(--bs-primary-rgb), 0.16);
     }
 
     .header-rate {
@@ -3681,7 +3752,7 @@
     .open-row.side-sell .sell-side,
     .open-row.side-buy .buy-side {
       background: var(--open);
-      color: #000000;
+      color: var(--palette-gray-900);
       font-weight: 700;
     }
 
@@ -3695,7 +3766,7 @@
 
     .open-row .blotter-trade {
       background: var(--open);
-      color: #000000;
+      color: var(--palette-gray-900);
       font-weight: 700;
     }
 
@@ -3714,18 +3785,18 @@
     }
 
     .side-token.sell {
-      color: #8f453d;
-      background: rgba(248, 235, 232, 0.88);
+      color: var(--palette-red-700);
+      background: rgba(248, 215, 218, 0.88);
     }
 
     .side-token.buy {
-      color: #3f7c59;
-      background: rgba(232, 243, 236, 0.9);
+      color: var(--palette-green-600);
+      background: rgba(209, 231, 221, 0.9);
     }
 
     .open-row .side-token {
-      color: #000000;
-      background: rgba(255, 255, 255, 0.38);
+      color: var(--palette-gray-900);
+      background: rgba(var(--bs-white-rgb), 0.38);
     }
 
     .open-row .blank {
@@ -3747,17 +3818,17 @@
 
     .deal-dialog {
       width: min(860px, calc(100vw - 32px));
-      border: 1px solid #9da8b3;
+      border: 1px solid var(--palette-gray-500);
       border-radius: 6px;
       padding: 0;
       color: var(--text);
-      background: #ffffff;
-      box-shadow: 0 18px 42px rgba(21, 25, 31, 0.22);
+      background: var(--bs-white);
+      box-shadow: 0 18px 42px rgba(var(--bs-dark-rgb), 0.22);
       font-family: var(--bs-body-font-family);
     }
 
     .deal-dialog::backdrop {
-      background: rgba(21, 25, 31, 0.24);
+      background: rgba(var(--bs-dark-rgb), 0.24);
     }
 
     .deal-form {
@@ -3867,7 +3938,7 @@
       justify-content: space-between;
       gap: 12px;
       padding: 13px 16px 11px;
-      border-bottom: 1px solid #d8dde3;
+      border-bottom: 1px solid var(--palette-gray-300);
     }
 
     .dialog-title {
@@ -3939,9 +4010,9 @@
     }
 
     .client-pricing-context-results {
-      border: 1px solid #d7e0e8;
+      border: 1px solid var(--palette-gray-300);
       border-radius: 6px;
-      background: #ffffff;
+      background: var(--bs-white);
       padding: 8px;
       color: var(--text-muted);
       font-size: 12px;
@@ -3949,8 +4020,8 @@
     }
 
     .client-pricing-context-results.is-selected {
-      border-color: #9fc2df;
-      background: #f2f8fc;
+      border-color: var(--palette-blue-200);
+      background: var(--palette-blue-100);
       color: var(--text);
     }
 
@@ -3961,9 +4032,9 @@
     }
 
     .client-pricing-context-results.is-warning {
-      border-color: #c9a86a;
-      background: #fffaf0;
-      color: #7a571d;
+      border-color: var(--palette-orange-200);
+      background: var(--palette-yellow-100);
+      color: var(--palette-yellow-800);
     }
 
     .client-pricing-context-result-title {
@@ -4040,7 +4111,7 @@
       width: 100%;
       border: 1px solid var(--control-border);
       border-radius: 6px;
-      background: #ffffff;
+      background: var(--bs-white);
       padding: 6px 8px;
       color: var(--text);
       font: inherit;
@@ -4073,22 +4144,22 @@
       overflow: hidden;
       border: 1px solid;
       border-radius: 3px;
-      color: #293843;
+      color: var(--palette-gray-800);
     }
 
     .client-pricing-context-candidate-facet[data-pricing-context-candidate-facet="servicingBranchCode"] {
-      border-color: #a5b8c3;
-      background: #eaf1f5;
+      border-color: var(--palette-gray-500);
+      background: var(--palette-gray-200);
     }
 
     .client-pricing-context-candidate-facet[data-pricing-context-candidate-facet="settlementSystemId"] {
-      border-color: #acb5a5;
-      background: #edf0ea;
+      border-color: var(--palette-green-200);
+      background: var(--palette-green-100);
     }
 
     .client-pricing-context-candidate-facet[data-pricing-context-candidate-facet="tradeCaptureChannelId"] {
-      border-color: #b5acb8;
-      background: #efedf1;
+      border-color: var(--palette-purple-200);
+      background: var(--palette-purple-100);
     }
 
     .client-pricing-context-candidate-facet-icon {
@@ -4096,20 +4167,20 @@
       width: 26px;
       height: 26px;
       border-right: 1px solid currentColor;
-      background: rgba(255, 255, 255, 0.52);
+      background: rgba(var(--bs-white-rgb), 0.52);
       font-size: 15px;
     }
 
     .client-pricing-context-candidate-facet[data-pricing-context-candidate-facet="servicingBranchCode"] .client-pricing-context-candidate-facet-icon {
-      color: #48697a;
+      color: var(--palette-cyan-800);
     }
 
     .client-pricing-context-candidate-facet[data-pricing-context-candidate-facet="settlementSystemId"] .client-pricing-context-candidate-facet-icon {
-      color: #596753;
+      color: var(--palette-green-700);
     }
 
     .client-pricing-context-candidate-facet[data-pricing-context-candidate-facet="tradeCaptureChannelId"] .client-pricing-context-candidate-facet-icon {
-      color: #665d6b;
+      color: var(--palette-purple-700);
     }
 
     .client-pricing-context-candidate-name {
@@ -4131,21 +4202,21 @@
     }
 
     .client-pricing-context-resolved .button-icon {
-      color: #2f6f4e;
+      color: var(--palette-green-600);
       font-size: 16px;
     }
 
     .deal-form-section {
       display: grid;
       gap: 8px;
-      border: 1px solid #d7e0e8;
+      border: 1px solid var(--palette-gray-300);
       border-radius: 6px;
       padding: 10px 11px 11px;
-      background: #fbfdff;
+      background: var(--palette-gray-100);
     }
 
     .deal-form-section-title {
-      color: #4f5c68;
+      color: var(--palette-gray-700);
       font-size: 11px;
       font-weight: 800;
       letter-spacing: 0.02em;
@@ -4211,19 +4282,19 @@
     }
 
     .client-pricing-rule-dialog .deal-form-section-title {
-      color: #566270;
+      color: var(--palette-gray-700);
       font-weight: 700;
       letter-spacing: 0.035em;
     }
 
     .client-pricing-rule-dialog .form-field {
-      color: #4f5c68;
+      color: var(--palette-gray-700);
       font-weight: 600;
     }
 
     .client-pricing-rule-dialog .form-field input,
     .client-pricing-rule-dialog .form-field select {
-      color: #1f2933;
+      color: var(--palette-gray-900);
       font-weight: 400;
     }
 
@@ -4240,7 +4311,7 @@
       width: min(720px, calc(100vw - 32px));
       border-color: var(--large-table-line);
       border-radius: 0;
-      box-shadow: 0 14px 32px rgba(21, 25, 31, 0.2);
+      box-shadow: 0 14px 32px rgba(var(--bs-dark-rgb), 0.2);
     }
 
     .client-pricing-rule-dialog .dialog-head {
@@ -4252,7 +4323,7 @@
     }
 
     .client-pricing-rule-dialog .dialog-title {
-      color: #233646;
+      color: var(--palette-gray-800);
       font-size: var(--app-font-size-dialog-title);
       font-weight: var(--app-font-weight-medium);
       letter-spacing: 0;
@@ -4268,14 +4339,14 @@
     .client-pricing-rule-dialog .deal-form-body {
       gap: 8px;
       padding: 10px;
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     .client-pricing-rule-dialog .deal-form-section {
       gap: 0;
       border-color: var(--large-table-line);
       border-radius: 0;
-      background: #ffffff;
+      background: var(--bs-white);
       padding: 0;
     }
 
@@ -4334,7 +4405,7 @@
       align-items: center;
       height: 30px;
       border: 1px solid var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     .client-pricing-context-facet-control:focus-within {
@@ -4388,7 +4459,7 @@
       width: 28px;
       border: 0;
       border-left: 1px solid var(--large-table-line);
-      background: #ffffff;
+      background: var(--bs-white);
       color: var(--text-muted);
       cursor: pointer;
       grid-column: 3;
@@ -4435,8 +4506,8 @@
       max-height: 210px;
       overflow-y: auto;
       border: 1px solid var(--large-table-line);
-      background: #ffffff;
-      box-shadow: 2px 2px 0 rgba(78, 90, 102, 0.12);
+      background: var(--bs-white);
+      box-shadow: 2px 2px 0 rgba(var(--bs-secondary-rgb), 0.12);
       padding: 3px;
     }
 
@@ -4453,7 +4524,7 @@
       min-height: 30px;
       border: 0;
       border-bottom: 1px solid var(--surface-divider);
-      background: #ffffff;
+      background: var(--bs-white);
       padding: 4px 6px;
       color: var(--text);
       font: inherit;
@@ -4527,7 +4598,7 @@
       height: 28px;
       border-color: var(--large-table-line);
       border-radius: 0;
-      background-color: #ffffff;
+      background-color: var(--bs-white);
       color: var(--text);
       font-size: 12px;
       font-weight: 400;
@@ -4549,7 +4620,7 @@
 
     .client-pricing-rule-dialog .client-pricing-context-results.is-selected {
       border-color: var(--large-table-line-strong);
-      background: #f7fbfe;
+      background: var(--palette-gray-100);
     }
 
     .client-pricing-rule-dialog .client-pricing-context-results.is-error {
@@ -4582,7 +4653,7 @@
       min-height: 28px;
       border-color: var(--large-table-line);
       border-radius: 0;
-      background: #f7f8f9;
+      background: var(--palette-gray-100);
       color: var(--text);
       box-shadow: none;
       font-size: 12px;
@@ -4591,8 +4662,8 @@
     }
 
     .client-pricing-rule-dialog .action-button.primary {
-      border-color: #8fb7d9;
-      background: #e8f3fa;
+      border-color: var(--palette-blue-200);
+      background: var(--palette-blue-100);
       color: var(--control-primary-text);
     }
 
@@ -4610,7 +4681,7 @@
     }
 
     .deal-dialog .dialog-title {
-      color: #233646;
+      color: var(--palette-gray-800);
       font-size: var(--app-font-size-dialog-title);
       font-weight: var(--app-font-weight-medium);
       letter-spacing: 0;
@@ -4626,14 +4697,14 @@
     .deal-dialog .deal-form-body {
       gap: 8px;
       padding: 10px;
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     .deal-dialog .deal-form-section {
       gap: 0;
       border-color: var(--large-table-line);
       border-radius: 0;
-      background: #ffffff;
+      background: var(--bs-white);
       padding: 0;
     }
 
@@ -4691,7 +4762,7 @@
     .deal-dialog .form-field textarea {
       border-color: var(--large-table-line);
       border-radius: 0;
-      background-color: #ffffff;
+      background-color: var(--bs-white);
       color: var(--text);
       font-size: 12px;
       font-weight: 400;
@@ -4740,15 +4811,15 @@
     }
 
     .deal-dialog .form-field input.market-quote-bid {
-      border-color: #9bbda7;
-      background: #f1f8f3;
-      color: #2f6f4e;
+      border-color: var(--palette-green-200);
+      background: var(--palette-green-100);
+      color: var(--palette-green-600);
     }
 
     .deal-dialog .form-field input.market-quote-offer {
-      border-color: #c9a09a;
-      background: #fff4f2;
-      color: #8d463d;
+      border-color: var(--palette-red-200);
+      background: var(--palette-red-100);
+      color: var(--palette-red-700);
     }
 
     .deal-dialog .form-action-field {
@@ -4764,7 +4835,7 @@
       min-height: 28px;
       border-color: var(--large-table-line);
       border-radius: 0;
-      background: #f7f8f9;
+      background: var(--palette-gray-100);
       color: var(--text);
       box-shadow: none;
       font-size: 12px;
@@ -4773,8 +4844,8 @@
     }
 
     .deal-dialog .action-button.primary {
-      border-color: #8fb7d9;
-      background: #e8f3fa;
+      border-color: var(--palette-blue-200);
+      background: var(--palette-blue-100);
       color: var(--control-primary-text);
     }
 
@@ -4783,14 +4854,14 @@
       width: min(680px, calc(100vw - 32px));
       border: 1px solid var(--bs-border-color, #dee2e6);
       border-radius: var(--bs-border-radius-lg, 8px);
-      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+      box-shadow: 0 0.5rem 1rem rgba(var(--bs-dark-rgb), 0.15);
     }
 
     .execution-context-dialog .dialog-head {
       min-height: 0;
       padding: 16px 20px;
       border-bottom: 1px solid var(--bs-border-color, #dee2e6);
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
       box-shadow: none;
     }
 
@@ -4815,7 +4886,7 @@
 
     .execution-context-dialog .deal-form-body {
       padding: 20px;
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
     }
 
     .execution-context-dialog .deal-form-section {
@@ -4852,8 +4923,8 @@
 
     .execution-context-dialog .form-field input:focus,
     .execution-context-dialog .form-field select:focus {
-      border-color: #86b7fe;
-      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+      border-color: var(--palette-blue-300);
+      box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
     }
 
     .execution-context-dialog .dialog-actions {
@@ -4876,12 +4947,12 @@
     .execution-context-dialog .action-button.primary {
       border-color: var(--bs-primary, #0d6efd);
       background: var(--bs-primary, #0d6efd);
-      color: #ffffff;
+      color: var(--bs-white);
     }
 
     .execution-context-dialog .action-button.primary:hover:not(:disabled) {
       border-color: var(--bs-primary, #0d6efd);
-      background: #0b5ed7;
+      background: var(--palette-blue-600);
     }
 
     .execution-context-dialog .action-button:disabled {
@@ -4894,9 +4965,9 @@
       overflow: hidden;
       border: 1px solid var(--bs-border-color, #dee2e6);
       border-radius: var(--bs-border-radius-lg, 0.5rem);
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
       color: var(--bs-body-color, #212529);
-      box-shadow: var(--bs-box-shadow-lg, 0 1rem 3rem rgba(0, 0, 0, 0.175));
+      box-shadow: var(--bs-box-shadow-lg, 0 1rem 3rem rgba(var(--bs-dark-rgb), 0.175));
       font-family: var(--bs-body-font-family);
     }
 
@@ -4912,7 +4983,7 @@
       overflow: hidden;
       border: 0;
       border-radius: inherit;
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
       box-shadow: none;
     }
 
@@ -4921,7 +4992,7 @@
       flex: 0 0 auto;
       padding: 14px 18px;
       border: 0;
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
       box-shadow: none;
     }
 
@@ -4978,7 +5049,7 @@
       flex: 1 1 auto;
       overflow: hidden;
       padding: 14px 18px 16px;
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
     }
 
     .generation-cycle-settings {
@@ -5038,12 +5109,12 @@
       overflow: hidden;
       border: 1px solid var(--bs-border-color, #dee2e6);
       border-radius: var(--workbench-radius, 0.25rem);
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
     .generation-cycle-settings-range-control:focus-within {
-      border-color: #86b7fe;
+      border-color: var(--palette-blue-300);
       box-shadow: 0 0 0 0.2rem rgb(13 110 253 / 15%);
     }
 
@@ -5156,7 +5227,7 @@
       overflow: auto;
       border: var(--data-grid-line-width) solid var(--data-grid-line-color);
       border-radius: var(--workbench-radius, 0.25rem);
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
     }
 
     .generation-settings-table {
@@ -5166,7 +5237,7 @@
       border: 0;
       border-collapse: separate;
       border-spacing: 0;
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
       color: var(--bs-body-color, #212529);
       font-family: var(--bs-body-font-family);
       font-size: var(--workbench-grid-size, 12px);
@@ -5211,7 +5282,7 @@
     }
 
     .generation-settings-table tbody tr {
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
     }
 
     .generation-settings-table tbody tr:nth-child(even) {
@@ -5219,7 +5290,7 @@
     }
 
     .generation-settings-table tbody tr:hover {
-      background: var(--workbench-grid-hover-bg, #eef5fb);
+      background: var(--workbench-grid-hover-bg, var(--palette-gray-200));
     }
 
     .generation-settings-table tbody td {
@@ -5243,7 +5314,7 @@
       padding: 3px 6px;
       border-color: var(--bs-border-color, #dee2e6);
       border-radius: var(--workbench-radius, 0.25rem);
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
       color: var(--bs-body-color, #212529);
       box-shadow: none;
       font-family: var(--bs-body-font-family);
@@ -5313,7 +5384,7 @@
       margin: 0;
       padding: 10px 18px;
       border: 0;
-      background: var(--bs-body-bg, #ffffff);
+      background: var(--bs-body-bg, var(--bs-white));
     }
 
     .generation-dialog .modal-footer .btn {
@@ -5338,7 +5409,7 @@
     :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running {
       border-color: var(--app-process-running-border);
       background: var(--app-process-running);
-      color: #ffffff;
+      color: var(--bs-white);
     }
 
     .workspace-nav-link {
@@ -5354,7 +5425,7 @@
     #referenceDataPage .profile-table td[colspan],
     #clientProfilePage .profile-table td[colspan] {
       height: 30px;
-      background: #ffffff;
+      background: var(--bs-white);
       color: var(--text-muted);
       font-size: 12px;
       font-weight: 400;
@@ -5390,7 +5461,7 @@
     }
 
     .batch-status.is-warning {
-      color: #8a5f18;
+      color: var(--palette-yellow-800);
     }
 
     .icon-action,
@@ -5415,12 +5486,12 @@
     .icon-action:disabled:hover {
       border-color: transparent;
       background: transparent;
-      color: #aab2bb;
+      color: var(--palette-gray-500);
       opacity: 0.62;
     }
 
     .deal-dialog::backdrop {
-      background: rgba(21, 25, 31, 0.28);
+      background: rgba(var(--bs-dark-rgb), 0.28);
     }
 
     .action-button:focus-visible,
@@ -5484,7 +5555,7 @@
 
     select option {
       color: var(--text);
-      background: #ffffff;
+      background: var(--bs-white);
     }
 
     select option:checked {
@@ -5625,7 +5696,7 @@
       overflow: auto;
       margin: 0;
       padding: 12px;
-      background: #f6f8fa;
+      background: var(--palette-gray-100);
       color: var(--text-strong);
       font: 12px/1.5 Consolas, "Courier New", monospace;
       white-space: pre-wrap;
@@ -5737,13 +5808,49 @@
     }
 
     #marketPage.market-bootstrap #marketStreamToggleButton {
+      --bs-btn-color: var(--app-primary);
+      --bs-btn-bg: transparent;
+      --bs-btn-border-color: var(--app-primary);
+      --bs-btn-hover-color: var(--app-primary-text);
+      --bs-btn-hover-bg: rgba(var(--app-primary-rgb), 0.08);
+      --bs-btn-hover-border-color: var(--app-primary);
+      --bs-btn-active-color: var(--app-primary-text);
+      --bs-btn-active-bg: rgba(var(--app-primary-rgb), 0.14);
+      --bs-btn-active-border-color: var(--app-primary);
       height: 30px;
       min-height: 30px;
       margin: 0;
       padding: 4px 11px;
+      border-color: var(--app-primary);
       border-radius: var(--bs-border-radius);
+      background: transparent;
+      color: var(--app-primary);
       box-shadow: none;
       font-weight: 500;
+    }
+
+    #marketPage.market-bootstrap #marketStreamToggleButton:hover:not(:disabled):not(.is-running) {
+      border-color: var(--app-primary);
+      background: rgba(var(--app-primary-rgb), 0.08);
+      color: var(--app-primary-text);
+    }
+
+    #marketPage.market-bootstrap #marketStreamToggleButton:active:not(:disabled):not(.is-running) {
+      border-color: var(--app-primary);
+      background: rgba(var(--app-primary-rgb), 0.14);
+      color: var(--app-primary-text);
+    }
+
+    #marketPage.market-bootstrap #marketStreamToggleButton.is-running {
+      border-color: var(--app-process-running-border);
+      background: var(--app-process-running);
+      color: var(--bs-white);
+    }
+
+    #marketPage.market-bootstrap #marketStreamToggleButton.is-running:hover:not(:disabled) {
+      border-color: var(--app-process-running-hover);
+      background: var(--app-process-running-hover);
+      color: var(--bs-white);
     }
 
     #marketPage.market-bootstrap #marketStreamToggleIcon {
@@ -5852,7 +5959,7 @@
       border: 1px solid var(--bs-border-color);
       border-radius: var(--bs-border-radius-lg);
       border-color: var(--bs-border-color);
-      background: var(--bs-body-bg, #fff);
+      background: var(--bs-body-bg, var(--bs-white));
       box-shadow: none;
       overflow: hidden;
     }
@@ -6279,7 +6386,7 @@
     }
 
     .client-deal-create-dialog::backdrop {
-      background: rgba(15, 23, 42, 0.38);
+      background: rgba(var(--bs-dark-rgb), 0.38);
     }
 
     .client-deal-create-dialog .modal-content {
@@ -6647,15 +6754,15 @@
     }
 
     .app-status-token.is-active {
-      border-color: #b8daca;
-      background: #e8f4ed;
-      color: #226548;
+      border-color: var(--palette-green-200);
+      background: var(--palette-green-100);
+      color: var(--palette-green-700);
     }
 
     .app-status-token.is-unavailable {
-      border-color: #e4d39b;
-      background: #fff7dc;
-      color: #715b16;
+      border-color: var(--palette-yellow-200);
+      background: var(--palette-yellow-100);
+      color: var(--palette-yellow-800);
     }
 
     .hedge-quick-settings-grid-action {
@@ -8048,9 +8155,9 @@
     :is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator .tabulator-header-filter select {
       min-height: 27px;
       padding: 3px 26px 3px 7px;
-      border: 1px solid #cfd5dc;
+      border: 1px solid var(--palette-gray-400);
       border-radius: var(--bs-border-radius-sm);
-      background-color: rgba(255, 255, 255, 0.9);
+      background-color: rgba(var(--bs-white-rgb), 0.9);
       font-size: 11px;
     }
 
@@ -8070,16 +8177,16 @@
 
     :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token.is-formed,
     #batchDetailsPage .batch-status-token.is-formed {
-      border-color: #b8daca;
-      background: #e8f4ed;
-      color: #226548;
+      border-color: var(--palette-green-200);
+      background: var(--palette-green-100);
+      color: var(--palette-green-700);
     }
 
     :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token.is-rolled-back,
     #batchDetailsPage .batch-status-token.is-rolled-back {
-      border-color: #e4d39b;
-      background: #fff7dc;
-      color: #715b16;
+      border-color: var(--palette-yellow-200);
+      background: var(--palette-yellow-100);
+      color: var(--palette-yellow-800);
     }
 
     :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-actions {
@@ -8515,9 +8622,9 @@
     .client-deals-bootstrap .tabulator .tabulator-header-filter input {
       min-height: 27px;
       padding: 3px 7px;
-      border-color: #cfd5dc;
+      border-color: var(--palette-gray-400);
       border-radius: var(--bs-border-radius-sm);
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(var(--bs-white-rgb), 0.9);
       font-size: 11px;
     }
 
@@ -8532,7 +8639,7 @@
     }
 
     .client-deals-bootstrap .tabulator .tabulator-row:hover {
-      background: #eef5fb;
+      background: var(--palette-gray-200);
     }
 
     .client-deals-bootstrap .tabulator .tabulator-cell {
@@ -8700,7 +8807,7 @@
     }
 
     .unified-bootstrap-workspace .unified-data-table tbody tr:hover td {
-      background: #eef5fb;
+      background: var(--palette-gray-200);
     }
 
     .unified-bootstrap-workspace .unified-data-table tbody tr.is-selected td {
@@ -8927,7 +9034,7 @@
     }
 
     :is(#clientProfilePage, #pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage).unified-bootstrap-workspace .unified-data-table tbody tr:hover td {
-      background: #eef5fb;
+      background: var(--palette-gray-200);
     }
 
     :is(#clientProfilePage, #pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage).unified-bootstrap-workspace .unified-data-table .reference-filter-row th {
@@ -9126,7 +9233,7 @@
     }
 
     :is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-sort-control:focus-visible {
-      outline: 2px solid rgba(13, 110, 253, 0.35);
+      outline: 2px solid rgba(var(--bs-primary-rgb), 0.35);
       outline-offset: 2px;
       border-radius: var(--bs-border-radius-sm);
     }
@@ -9153,9 +9260,9 @@
       height: 27px;
       margin: 0;
       padding: 3px 7px;
-      border: 1px solid #cfd5dc;
+      border: 1px solid var(--palette-gray-400);
       border-radius: var(--bs-border-radius-sm);
-      background-color: rgba(255, 255, 255, 0.9);
+      background-color: rgba(var(--bs-white-rgb), 0.9);
       color: var(--bs-body-color);
       font-family: var(--bs-body-font-family);
       font-size: 11px;
@@ -9169,9 +9276,9 @@
     }
 
     :is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-header-filter:focus {
-      border-color: #86b7fe;
+      border-color: var(--palette-blue-300);
       outline: 0;
-      box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+      box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.15);
     }
 
     #referenceDataPage.unified-bootstrap-workspace .reference-table tbody td {
@@ -9184,11 +9291,11 @@
     }
 
     #referenceDataPage.unified-bootstrap-workspace .reference-table tbody tr:hover td {
-      background: #eef5fb;
+      background: var(--palette-gray-200);
     }
 
     #referenceDataPage.unified-bootstrap-workspace .reference-table tbody tr.is-editing td {
-      background: #e7f1ff;
+      background: var(--palette-blue-100);
     }
 
     #referenceDataPage.unified-bootstrap-workspace .profile-row-actions {
@@ -9768,6 +9875,10 @@
       margin-top: 12px;
     }
 
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .settings-topbar {
+      border-bottom: 0;
+    }
+
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel {
       width: min(560px, 100%);
       overflow: hidden;
@@ -9784,6 +9895,7 @@
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel .modal-header {
       min-height: 42px;
       padding: 9px 12px;
+      border-bottom: 0;
     }
 
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel .modal-body {
@@ -9796,24 +9908,40 @@
 
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-fields {
       display: grid;
-      gap: 16px;
-    }
-
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-process-description {
-      margin: 0 0 16px;
-      line-height: 1.45;
+      gap: 12px;
     }
 
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field {
-      width: min(360px, 100%);
+      width: 100%;
+      overflow: hidden;
+      border: 1px solid var(--surface-border);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-body-bg);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field-title {
+      display: flex;
+      min-height: 36px;
+      margin: 0;
+      align-items: center;
+      border-bottom: 1px solid var(--surface-border);
+      background: var(--bs-tertiary-bg);
+      padding: 8px 12px;
+      color: var(--bs-emphasis-color);
+      font-size: var(--app-font-size-label);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field-body {
+      padding: 10px 12px 12px;
     }
 
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field .input-group {
-      width: min(220px, 100%);
+      width: min(160px, 100%);
     }
 
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field .form-text {
-      margin: 4px 0 8px;
+      margin: 0 0 8px;
       color: var(--bs-secondary-color);
       font-size: 11px;
     }
@@ -10193,9 +10321,9 @@
       min-height: 28px;
       height: 28px;
       padding: 3px 7px;
-      border: 1px solid #cfd5dc;
+      border: 1px solid var(--palette-gray-400);
       border-radius: var(--workbench-radius);
-      background: rgba(255, 255, 255, 0.95);
+      background: rgba(var(--bs-white-rgb), 0.95);
       color: var(--bs-body-color);
       font-family: var(--bs-body-font-family);
       font-size: 11px;
@@ -10564,10 +10692,10 @@
       display: block;
       width: 64px;
       height: 64px;
-      border: 1px solid rgba(32, 40, 50, 0.18);
+      border: 1px solid rgba(var(--bs-dark-rgb), 0.18);
       border-radius: 6px;
       background: var(--database-token-color);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+      box-shadow: inset 0 0 0 1px rgba(var(--bs-white-rgb), 0.28);
     }
 
     #databasePage.unified-bootstrap-workspace.workbench-page .database-color-token-copy {
@@ -10613,10 +10741,10 @@
       width: 38px;
       height: 38px;
       flex: 0 0 38px;
-      border: 1px solid rgba(32, 40, 50, 0.18);
+      border: 1px solid rgba(var(--bs-dark-rgb), 0.18);
       border-radius: 5px;
       background: var(--database-token-color);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+      box-shadow: inset 0 0 0 1px rgba(var(--bs-white-rgb), 0.28);
     }
 
     #databasePage.unified-bootstrap-workspace.workbench-page .database-color-value-code {
@@ -10927,9 +11055,9 @@
       height: 28px;
       min-width: 0;
       overflow: hidden;
-      border: 1px solid #cfd5dc;
+      border: 1px solid var(--palette-gray-400);
       border-radius: var(--workbench-radius);
-      background-color: rgba(255, 255, 255, 0.95);
+      background-color: rgba(var(--bs-white-rgb), 0.95);
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
@@ -10958,7 +11086,7 @@
 
     :is(#clientProfilePage, .client-deals-bootstrap) .counterparty-identifier-filter > select {
       padding: 3px 30px 3px 7px;
-      border-right: 1px solid #cfd5dc !important;
+      border-right: 1px solid var(--palette-gray-400) !important;
       background-size: 12px 9px;
     }
 
@@ -11136,9 +11264,9 @@
       height: 28px;
       margin: 0;
       padding: 3px 7px;
-      border: 1px solid #cfd5dc;
+      border: 1px solid var(--palette-gray-400);
       border-radius: var(--workbench-radius);
-      background-color: rgba(255, 255, 255, 0.95);
+      background-color: rgba(var(--bs-white-rgb), 0.95);
       color: var(--bs-body-color);
       font-family: var(--bs-body-font-family);
       font-size: 11px;
@@ -12063,51 +12191,51 @@
 
     /* FX Position keeps its mirrored domain layout while following the Bootstrap 5 + Tabulator workbench contract. */
     #mainPage.fx-position-bootstrap.workbench-page {
-      --app-primary: var(--palette-steel-blue-500);
-      --app-primary-rgb: 99, 127, 148;
-      --app-primary-hover: var(--palette-steel-blue-600);
-      --app-primary-active: var(--palette-steel-blue-700);
-      --app-primary-soft: var(--palette-steel-blue-100);
-      --app-primary-border-subtle: var(--palette-steel-blue-300);
-      --app-primary-text: var(--palette-steel-blue-700);
-      --app-process-idle: var(--palette-steel-blue-300);
-      --app-process-idle-border: var(--palette-steel-blue-400);
-      --app-process-idle-text: var(--palette-steel-blue-900);
-      --app-process-idle-hover: var(--palette-steel-blue-400);
-      --app-process-idle-hover-border: var(--palette-steel-blue-500);
-      --app-process-idle-active: var(--palette-steel-blue-500);
-      --app-process-running: var(--palette-terracotta-600);
-      --app-process-running-border: var(--palette-terracotta-700);
-      --app-process-running-rgb: 152, 84, 70;
-      --app-process-running-hover: var(--palette-terracotta-700);
-      --app-process-running-active: var(--palette-terracotta-800);
+      --app-primary: var(--palette-blue-500);
+      --app-primary-rgb: 13, 110, 253;
+      --app-primary-hover: var(--palette-blue-600);
+      --app-primary-active: var(--palette-blue-700);
+      --app-primary-soft: var(--palette-blue-100);
+      --app-primary-border-subtle: var(--palette-blue-200);
+      --app-primary-text: var(--palette-blue-700);
+      --app-process-idle: var(--palette-blue-200);
+      --app-process-idle-border: var(--palette-blue-300);
+      --app-process-idle-text: var(--palette-gray-800);
+      --app-process-idle-hover: var(--palette-blue-300);
+      --app-process-idle-hover-border: var(--palette-blue-400);
+      --app-process-idle-active: var(--palette-blue-400);
+      --app-process-running: var(--palette-red-500);
+      --app-process-running-border: var(--palette-red-600);
+      --app-process-running-rgb: 220, 53, 69;
+      --app-process-running-hover: var(--palette-red-600);
+      --app-process-running-active: var(--palette-red-700);
       --bs-primary: var(--app-primary);
       --bs-primary-rgb: var(--app-primary-rgb);
       --bs-primary-bg-subtle: var(--app-primary-soft);
       --bs-primary-border-subtle: var(--app-primary-border-subtle);
       --bs-primary-text-emphasis: var(--app-primary-text);
-      --bs-secondary: var(--palette-slate-500);
-      --bs-secondary-rgb: 100, 116, 139;
-      --bs-secondary-bg: var(--palette-slate-100);
-      --bs-secondary-color: var(--palette-slate-500);
-      --bs-tertiary-bg: var(--palette-slate-50);
-      --bs-body-color: var(--palette-slate-800);
-      --bs-emphasis-color: var(--palette-slate-900);
-      --bs-border-color: var(--palette-slate-200);
+      --bs-secondary: var(--palette-gray-600);
+      --bs-secondary-rgb: 108, 117, 125;
+      --bs-secondary-bg: var(--palette-gray-100);
+      --bs-secondary-color: var(--palette-gray-600);
+      --bs-tertiary-bg: var(--palette-gray-100);
+      --bs-body-color: var(--palette-gray-900);
+      --bs-emphasis-color: var(--palette-gray-900);
+      --bs-border-color: var(--palette-gray-300);
       --selection-accent: var(--app-primary);
-      --selection-accent-soft: rgba(99, 127, 148, 0.24);
-      --selection-ring: rgba(99, 127, 148, 0.82);
-      --selection-wash: rgba(99, 127, 148, 0.22);
-      --data-grid-line-color: var(--palette-slate-200);
-      --workbench-grid-header-bg: var(--palette-slate-50);
-      --workbench-grid-stripe-bg: var(--palette-slate-50);
-      --workbench-grid-hover-bg: var(--palette-steel-blue-50);
-      --workbench-grid-selected-bg: var(--palette-steel-blue-100);
-      --market-trade-bg: #fbf8f1;
-      --market-trade-border: #eaddb9;
-      --market-trade-border-active: #caa761;
-      --market-trade-text: #5f492b;
-      --market-trade-focus-ring: rgba(202, 167, 97, 0.24);
+      --selection-accent-soft: rgba(var(--bs-primary-rgb), 0.24);
+      --selection-ring: rgba(var(--bs-primary-rgb), 0.82);
+      --selection-wash: rgba(var(--bs-primary-rgb), 0.22);
+      --data-grid-line-color: var(--palette-gray-300);
+      --workbench-grid-header-bg: var(--palette-gray-100);
+      --workbench-grid-stripe-bg: var(--palette-gray-100);
+      --workbench-grid-hover-bg: var(--palette-blue-100);
+      --workbench-grid-selected-bg: var(--palette-blue-100);
+      --market-trade-bg: var(--palette-yellow-100);
+      --market-trade-border: var(--palette-yellow-200);
+      --market-trade-border-active: var(--palette-yellow-600);
+      --market-trade-text: var(--palette-yellow-900);
+      --market-trade-focus-ring: rgba(204, 154, 6, 0.24);
       --fx-position-section-rule-width: 2px;
       --fx-position-toolbar-gap: 8px;
       display: flex;
@@ -12126,6 +12254,24 @@
       padding: 0;
       border: 0;
       background: var(--bs-body-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-header-tools {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-header-tools .workbench-page-status {
+      margin: 0;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid-layout-host {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .page-title {
@@ -12411,7 +12557,18 @@
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .client {
-      width: 320px;
+      width: 280px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .trade-id-column {
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(th, td).trade-id-column {
+      padding-inline: 0;
+      text-align: center;
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .date {
@@ -12726,9 +12883,14 @@
       margin-top: var(--fx-position-toolbar-gap);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.batch-toolbar, .hedge-toolbar) {
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
       margin-top: 0;
       background: var(--bs-tertiary-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar {
+      margin-top: 0;
+      background: var(--bs-body-bg);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .hedge-toolbar) {
@@ -13121,10 +13283,40 @@
       background: var(--bs-secondary-bg);
     }
 
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar)
+    .process-toggle-button:not(.is-running) {
+      --bs-btn-color: var(--app-primary);
+      --bs-btn-bg: transparent;
+      --bs-btn-border-color: var(--app-primary);
+      --bs-btn-hover-color: var(--app-primary-text);
+      --bs-btn-hover-bg: rgba(var(--app-primary-rgb), 0.08);
+      --bs-btn-hover-border-color: var(--app-primary);
+      --bs-btn-active-color: var(--app-primary-text);
+      --bs-btn-active-bg: rgba(var(--app-primary-rgb), 0.14);
+      --bs-btn-active-border-color: var(--app-primary);
+      border-color: var(--app-primary);
+      background: transparent;
+      color: var(--app-primary);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar)
+    .process-toggle-button:not(.is-running):hover:not(:disabled) {
+      border-color: var(--app-primary);
+      background: rgba(var(--app-primary-rgb), 0.08);
+      color: var(--app-primary-text);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar)
+    .process-toggle-button:not(.is-running):active:not(:disabled) {
+      border-color: var(--app-primary);
+      background: rgba(var(--app-primary-rgb), 0.14);
+      color: var(--app-primary-text);
+    }
+
     #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running {
       border-color: var(--app-process-running-border);
       background: var(--app-process-running);
-      color: #ffffff;
+      color: var(--bs-white);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running:hover:not(:disabled) {
@@ -13479,7 +13671,7 @@
       --bs-btn-hover-border-color: color-mix(
         in srgb,
         var(--bs-btn-color) 84%,
-        #000 16%
+        var(--palette-gray-900) 16%
       );
       --bs-btn-active-bg: color-mix(
         in srgb,
@@ -13489,7 +13681,7 @@
       --bs-btn-active-border-color: color-mix(
         in srgb,
         var(--bs-btn-color) 72%,
-        #000 28%
+        var(--palette-gray-900) 28%
       );
     }
 
@@ -13497,31 +13689,31 @@
       --bs-btn-hover-bg: color-mix(
         in srgb,
         var(--bs-btn-bg) 88%,
-        #000 12%
+        var(--palette-gray-900) 12%
       );
       --bs-btn-hover-border-color: color-mix(
         in srgb,
         var(--bs-btn-border-color) 82%,
-        #000 18%
+        var(--palette-gray-900) 18%
       );
       --bs-btn-active-bg: color-mix(
         in srgb,
         var(--bs-btn-bg) 78%,
-        #000 22%
+        var(--palette-gray-900) 22%
       );
       --bs-btn-active-border-color: color-mix(
         in srgb,
         var(--bs-btn-border-color) 70%,
-        #000 30%
+        var(--palette-gray-900) 30%
       );
     }
 
     .btn-primary {
-      --bs-btn-color: #ffffff;
+      --bs-btn-color: var(--bs-white);
       --bs-btn-bg: var(--app-primary);
       --bs-btn-border-color: var(--app-primary);
       --bs-btn-focus-shadow-rgb: var(--app-primary-rgb);
-      --bs-btn-disabled-color: #ffffff;
+      --bs-btn-disabled-color: var(--bs-white);
       --bs-btn-disabled-bg: var(--app-primary);
       --bs-btn-disabled-border-color: var(--app-primary);
     }
@@ -13575,51 +13767,51 @@
     }
 
     .process-toggle-button.is-running {
-      --bs-btn-color: #ffffff;
+      --bs-btn-color: var(--bs-white);
       --bs-btn-bg: var(--app-process-running);
       --bs-btn-border-color: var(--app-process-running-border);
-      --bs-btn-hover-color: #ffffff;
+      --bs-btn-hover-color: var(--bs-white);
       --bs-btn-hover-bg: var(--app-process-running-hover);
       --bs-btn-hover-border-color: var(--app-process-running-hover);
-      --bs-btn-active-color: #ffffff;
+      --bs-btn-active-color: var(--bs-white);
       --bs-btn-active-bg: var(--app-process-running-active);
       --bs-btn-active-border-color: var(--app-process-running-active);
       --bs-btn-focus-shadow-rgb: var(--app-process-running-rgb);
       border-color: var(--app-process-running-border);
       background: var(--app-process-running);
-      color: #ffffff;
+      color: var(--bs-white);
     }
 
     .process-toggle-button.is-running:hover:not(:disabled) {
       border-color: var(--app-process-running-hover);
       background: var(--app-process-running-hover);
-      color: #ffffff;
+      color: var(--bs-white);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
-      border-color: var(--palette-amber-300);
-      background: var(--palette-amber-100);
+      border-color: var(--palette-yellow-300);
+      background: var(--palette-yellow-100);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
     :is(.hedge-toolbar-title, .hedge-quick-boundary-start, .hedge-quick-boundary-end) {
-      border-color: var(--palette-amber-500);
+      border-color: var(--palette-yellow-500);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
     :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action) {
-      --bs-btn-color: var(--palette-amber-800);
-      --bs-btn-bg: var(--palette-amber-200);
-      --bs-btn-border-color: var(--palette-amber-600);
-      --bs-btn-hover-color: var(--palette-amber-800);
-      --bs-btn-hover-bg: var(--palette-amber-300);
-      --bs-btn-hover-border-color: var(--palette-amber-600);
-      --bs-btn-active-color: var(--palette-amber-800);
-      --bs-btn-active-bg: var(--palette-amber-400);
-      --bs-btn-active-border-color: var(--palette-amber-700);
-      --bs-btn-disabled-color: var(--palette-amber-800);
-      --bs-btn-disabled-bg: var(--palette-amber-200);
-      --bs-btn-disabled-border-color: var(--palette-amber-600);
+      --bs-btn-color: var(--palette-yellow-800);
+      --bs-btn-bg: var(--palette-yellow-200);
+      --bs-btn-border-color: var(--palette-yellow-600);
+      --bs-btn-hover-color: var(--palette-yellow-800);
+      --bs-btn-hover-bg: var(--palette-yellow-300);
+      --bs-btn-hover-border-color: var(--palette-yellow-600);
+      --bs-btn-active-color: var(--palette-yellow-800);
+      --bs-btn-active-bg: var(--palette-yellow-400);
+      --bs-btn-active-border-color: var(--palette-yellow-700);
+      --bs-btn-disabled-color: var(--palette-yellow-800);
+      --bs-btn-disabled-bg: var(--palette-yellow-200);
+      --bs-btn-disabled-border-color: var(--palette-yellow-600);
       border-color: var(--bs-btn-border-color);
       background: var(--bs-btn-bg);
       color: var(--bs-btn-color) !important;
@@ -13650,28 +13842,28 @@
     .hedge-quick-preset.active,
     #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
     .hedge-quick-preset.active:disabled {
-      border-color: var(--palette-amber-700);
-      background: var(--palette-amber-400);
-      color: var(--palette-amber-800) !important;
+      border-color: var(--palette-yellow-700);
+      background: var(--palette-yellow-400);
+      color: var(--palette-yellow-800) !important;
     }
 
     dialog {
-      --app-primary: var(--palette-steel-blue-500);
-      --app-primary-rgb: 99, 127, 148;
-      --app-primary-hover: var(--palette-steel-blue-600);
-      --app-primary-active: var(--palette-steel-blue-700);
-      --app-primary-soft: var(--palette-steel-blue-100);
-      --app-primary-border-subtle: var(--palette-steel-blue-300);
-      --app-primary-text: var(--palette-steel-blue-700);
+      --app-primary: var(--palette-blue-500);
+      --app-primary-rgb: 13, 110, 253;
+      --app-primary-hover: var(--palette-blue-600);
+      --app-primary-active: var(--palette-blue-700);
+      --app-primary-soft: var(--palette-blue-100);
+      --app-primary-border-subtle: var(--palette-blue-200);
+      --app-primary-text: var(--palette-blue-700);
       --bs-primary: var(--app-primary);
       --bs-primary-rgb: var(--app-primary-rgb);
       --bs-primary-bg-subtle: var(--app-primary-soft);
       --bs-primary-border-subtle: var(--app-primary-border-subtle);
       --bs-primary-text-emphasis: var(--app-primary-text);
-      --bs-body-color: var(--palette-slate-800);
-      --bs-emphasis-color: var(--palette-slate-900);
-      --bs-secondary-color: var(--palette-slate-500);
-      --bs-border-color: var(--palette-slate-300);
+      --bs-body-color: var(--palette-gray-900);
+      --bs-emphasis-color: var(--palette-gray-900);
+      --bs-secondary-color: var(--palette-gray-600);
+      --bs-border-color: var(--palette-gray-400);
       --bs-tertiary-bg: var(--app-dialog-readonly-bg);
     }
 
@@ -13682,7 +13874,7 @@
     dialog .modal-content > .modal-header {
       min-height: 52px;
       padding: 12px 16px;
-      border-bottom: 0;
+      border-bottom: 1px solid var(--app-dialog-chrome-border);
       background: var(--app-dialog-titlebar-bg);
       box-shadow: none;
     }
@@ -13700,34 +13892,23 @@
     }
 
     dialog .modal-content > .modal-header :is(.modal-title, .dialog-title) {
-      color: #fff;
+      color: var(--bs-emphasis-color);
     }
 
     dialog .modal-content > .modal-header :is(.generation-dialog-subtitle, .client-context-attach-subtitle) {
-      color: rgba(255, 255, 255, 0.78);
+      color: var(--bs-secondary-color);
     }
 
     dialog .modal-content > .modal-header .btn-close {
       background-color: transparent;
-      filter: invert(1) grayscale(100%) brightness(200%);
-      opacity: 0.78;
+      filter: none;
+      opacity: 0.55;
     }
 
     dialog .modal-content > .modal-header .btn-close:hover,
     dialog .modal-content > .modal-header .btn-close:focus-visible {
-      background-color: rgba(255, 255, 255, 0.12);
-      opacity: 1;
-    }
-
-    dialog .modal-content > .modal-header .btn:not(.btn-close) {
-      --bs-btn-color: rgba(255, 255, 255, 0.9);
-      --bs-btn-border-color: rgba(255, 255, 255, 0.55);
-      --bs-btn-hover-color: #fff;
-      --bs-btn-hover-bg: rgba(255, 255, 255, 0.12);
-      --bs-btn-hover-border-color: rgba(255, 255, 255, 0.85);
-      --bs-btn-active-color: #fff;
-      --bs-btn-active-bg: rgba(255, 255, 255, 0.18);
-      --bs-btn-active-border-color: #fff;
+      background-color: var(--bs-tertiary-bg);
+      opacity: 0.85;
     }
 
     dialog .modal-content > .modal-body {
@@ -13757,8 +13938,25 @@
       background: var(--bs-body-bg);
     }
 
+    dialog .client-deal-market-pulse-card.is-compact .client-deal-market-pulse-brand,
+    dialog .client-deal-rate-input-group .client-deal-rate-icon {
+      border-color: var(--app-dialog-readonly-border);
+      background: var(--app-dialog-readonly-addon-bg);
+      color: var(--app-dialog-readonly-text);
+    }
+
+    dialog .client-deal-market-pulse-brand .button-icon {
+      color: inherit;
+    }
+
+    dialog .client-deal-loss-sensitive-field.is-negative-pnl .client-deal-rate-icon {
+      border-color: var(--bs-danger-border-subtle);
+      background: var(--bs-danger-bg-subtle);
+      color: var(--bs-danger-text-emphasis);
+    }
+
     dialog :is(.form-control, .form-select):not(:disabled):not([readonly]) {
-      background-color: #fff;
+      background-color: var(--bs-white);
     }
 
     dialog :is(.form-control[readonly], .form-control:disabled, .form-select:disabled) {
@@ -13783,7 +13981,7 @@
     }
 
     dialog .modal-content > .modal-footer {
-      border-top-color: var(--palette-slate-200);
+      border-top-color: var(--app-dialog-chrome-border);
       background: var(--app-dialog-footer-bg);
     }
 
@@ -13933,7 +14131,7 @@
       <section class="market-bootstrap-panel" data-market-panel="streams" aria-label="Quote Stream simulation" hidden>
         <div class="market-grid-toolbar" data-ui-table-layout-host="market_stream_grid">
           <h2 class="sr-only">Market Quotes</h2>
-          <button type="button" class="btn btn-sm btn-primary process-toggle-button" id="marketStreamToggleButton" aria-label="Start stream" title="Start stream" aria-pressed="false">
+          <button type="button" class="btn btn-sm btn-outline-primary process-toggle-button" id="marketStreamToggleButton" aria-label="Start stream" title="Start stream" aria-pressed="false">
             <span class="button-icon" aria-hidden="true" id="marketStreamToggleIcon">play_arrow</span>
             <span id="marketStreamToggleText">Start stream</span>
           </button>
@@ -14112,7 +14310,10 @@
   <main class="shell fx-position-bootstrap workbench-page" id="mainPage" hidden>
     <section class="action-bar workbench-page-header" aria-label="FX Position actions">
       <h1 class="page-title">FX Position</h1>
-      <div class="batch-status workbench-page-status" id="batchStatus" role="status" aria-live="polite"></div>
+      <div class="fx-position-header-tools">
+        <div class="batch-status workbench-page-status" id="batchStatus" role="status" aria-live="polite"></div>
+        <div class="fx-position-grid-layout-host" data-ui-table-layout-host="fx_position_grid"></div>
+      </div>
     </section>
 
     <section class="batching-workspace" aria-label="FX Position workspace">
@@ -14123,26 +14324,27 @@
 
       <div class="batching-workspace-main">
         <section class="table-wrap fx-position-grid-frame" aria-label="FX positions">
-          <table class="table table-sm align-middle batching-table fx-position-grid">
+          <table class="table table-sm align-middle batching-table fx-position-grid" data-ui-table-layout-key="fx_position_grid">
             <colgroup>
-              <col class="client">
-              <col class="date">
-              <col class="base-value-date">
-              <col class="wide-gap">
-              <col class="amount">
-              <col class="rate">
-              <col class="rate">
-              <col class="selection-gap">
-              <col class="market-left">
-              <col class="market-right">
-              <col class="selection-gap">
-              <col class="rate">
-              <col class="rate">
-              <col class="amount">
+              <col class="trade-id-column" data-ui-column-key="trade_id">
+              <col class="client" data-ui-column-key="trade">
+              <col class="date" data-ui-column-key="trade_date">
+              <col class="base-value-date" data-ui-column-key="base_ccy_value_date">
+              <col class="wide-gap" data-fx-position-fixed-width="16">
+              <col class="amount" data-ui-column-key="sell_base_ccy_amount">
+              <col class="rate" data-ui-column-key="sell_trade_rate">
+              <col class="rate" data-ui-column-key="sell_transfer_rate">
+              <col class="selection-gap" data-fx-position-fixed-width="32">
+              <col class="market-left" data-ui-column-key="market_bid">
+              <col class="market-right" data-ui-column-key="market_offer">
+              <col class="selection-gap" data-fx-position-fixed-width="32">
+              <col class="rate" data-ui-column-key="buy_transfer_rate">
+              <col class="rate" data-ui-column-key="buy_trade_rate">
+              <col class="amount" data-ui-column-key="buy_base_ccy_amount">
             </colgroup>
             <thead>
               <tr class="group-title">
-                <th class="section-name common-title" colspan="3">SHARED TRADE ATTRIBUTES</th>
+                <th class="section-name common-title" colspan="4">SHARED TRADE ATTRIBUTES</th>
                 <th class="gap wide-gap trade-divider"></th>
                 <th class="section-name sell-title" colspan="3">SELL SIDE</th>
                 <th class="gap selection-gap sell-check-zone"></th>
@@ -14157,7 +14359,7 @@
                 <th class="section-name buy-title" colspan="3">BUY SIDE</th>
               </tr>
               <tr class="rate-title-row" aria-hidden="true">
-                <th class="common-head rate-title-spacer" colspan="3"></th>
+                <th class="common-head rate-title-spacer" colspan="4"></th>
                 <th class="gap wide-gap trade-divider"></th>
                 <th class="sell-head sell-zone sell-zone-left rate-title-spacer"></th>
                 <th class="sell-head sell-zone sell-rate-band" colspan="2">Rate</th>
@@ -14168,6 +14370,7 @@
                 <th class="buy-head buy-zone rate-title-spacer"></th>
               </tr>
               <tr class="column-title">
+                <th class="trade-id-column common-head">ID</th>
                 <th class="client common-head">Trade</th>
                 <th class="date common-head">Trade Date</th>
                 <th class="base-value-date common-head">Base Ccy Value Date</th>
@@ -14219,7 +14422,7 @@
           </div>
           <div class="hedge-quick-toolbar" id="hedgeQuickModeToolbar" aria-label="Quick Mode Hedge controls" aria-live="polite"></div>
           <div class="batch-control hedge-toolbar-settings" aria-label="Hedging settings">
-            <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-settings-toggle" id="hedgeQuickModeSettingsButton" aria-label="Hedging Settings" data-tooltip="Hedging Settings">
+            <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-settings-toggle" id="hedgeQuickModeSettingsButton" aria-label="Hedging Settings">
               <span class="button-icon" aria-hidden="true">settings</span>
             </button>
           </div>
@@ -14230,7 +14433,7 @@
             <span class="button-icon" aria-hidden="true">handshake</span>
           </span>
           <div class="batch-control client-deal-actions" aria-label="Client Deal actions">
-            <button type="button" class="action-button primary btn btn-sm btn-soft-primary with-icon" id="createDealButton">
+            <button type="button" class="action-button primary btn btn-sm btn-outline-primary with-icon" id="createDealButton">
               <span class="button-icon" aria-hidden="true">add</span>
               <span>Client Deal</span>
             </button>
@@ -14239,11 +14442,11 @@
           <div class="batch-control deal-generation-control" aria-label="Demo Deal Generation actions">
             <span class="batch-label">Demo Generation</span>
             <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-main" id="generateClientDealButton">One Deal</button>
-            <button type="button" class="action-button btn btn-sm btn-primary batch-process process-toggle-button with-icon" id="runClientDealGenerationButton" aria-label="Start automatic Deal Generation" title="Start automatic Deal Generation" aria-pressed="false">
+            <button type="button" class="action-button btn btn-sm btn-outline-primary batch-process process-toggle-button with-icon" id="runClientDealGenerationButton" aria-label="Start automatic Deal Generation" aria-pressed="false">
               <span class="button-icon" aria-hidden="true" id="runClientDealGenerationIcon">play_arrow</span>
               <span id="runClientDealGenerationLabel">Auto Generate</span>
             </button>
-            <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary generation-settings-toggle" id="clientDealSettingsButton" aria-label="Demo Deal Generation settings" title="Demo Deal Generation settings" aria-expanded="false">
+            <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary generation-settings-toggle" id="clientDealSettingsButton" aria-label="Demo Deal Generation settings" aria-expanded="false">
               <span class="button-icon" aria-hidden="true">settings</span>
             </button>
           </div>
@@ -14256,15 +14459,15 @@
                 <span class="button-icon" aria-hidden="true">stacks</span>
               </span>
               <div class="batch-control" aria-label="Batching actions">
-                <button type="button" class="action-button primary btn btn-sm btn-soft-primary batch-main" id="oneBatchButton" aria-label="One Batch" aria-keyshortcuts="G" title="One Batch · Shortcut: G" disabled>One Batch</button>
-                <button type="button" class="action-button btn btn-sm btn-primary batch-process process-toggle-button with-icon" id="autoBatchButton" aria-label="Start Auto Batching" title="Start Auto Batching" aria-pressed="false" disabled>
+                <button type="button" class="action-button primary btn btn-sm btn-outline-primary batch-main" id="oneBatchButton" aria-label="One Batch" aria-keyshortcuts="G" title="One Batch · Shortcut: G" disabled>One Batch</button>
+                <button type="button" class="action-button btn btn-sm btn-outline-primary batch-process process-toggle-button with-icon" id="autoBatchButton" aria-label="Start Auto Batching" aria-pressed="false" disabled>
                   <span class="button-icon" aria-hidden="true" id="autoBatchIcon">play_arrow</span>
                   <span id="autoBatchLabel">Auto Batch</span>
                 </button>
               </div>
             </div>
             <div class="batch-control batch-toolbar-settings" aria-label="Batching settings">
-              <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-settings-toggle" id="autoBatchingSettingsButton" aria-label="Batching Settings" data-tooltip="Batching Settings">
+              <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-settings-toggle" id="autoBatchingSettingsButton" aria-label="Batching Settings">
                 <span class="button-icon" aria-hidden="true">settings</span>
               </button>
             </div>
@@ -16039,26 +16242,27 @@
             <h2 class="modal-title" id="autoBatchingSettingsTitle">Auto Batching</h2>
           </div>
           <div class="modal-body">
-            <p class="form-text auto-batching-process-description">
-              Auto Batching waits for the first new Trade for each Batching Key. That Trade opens a Batching Window, which collects 2-200 compatible Trades and closes immediately before an incoming Transfer Rate would breach the configured corridor, or when the Maximum Batching Interval is reached. Closing the window forms an FX Batch; the breaching Trade opens the next window. Trades already present when Auto Batching starts, cancelled windows, and isolated Trades stay on FX Position for manual control.
-            </p>
             <div class="auto-batching-settings-fields">
-              <div class="auto-batching-settings-field">
-                <label class="form-label" for="autoBatchingMaxIntervalSeconds">Maximum Batching Interval</label>
-                <p class="form-text">Each open Batching Window closes no later than this maximum interval.</p>
-                <div class="input-group">
-                  <input class="form-control" type="number" id="autoBatchingMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" inputmode="numeric" required>
-                  <span class="input-group-text">sec</span>
+              <section class="auto-batching-settings-field">
+                <label class="form-label auto-batching-settings-field-title" for="autoBatchingMaxIntervalSeconds">Maximum Batching Interval</label>
+                <div class="auto-batching-settings-field-body">
+                  <p class="form-text">Each open Batching Window closes no later than this maximum interval.</p>
+                  <div class="input-group">
+                    <input class="form-control" type="number" id="autoBatchingMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" inputmode="numeric" required>
+                    <span class="input-group-text">sec</span>
+                  </div>
                 </div>
-              </div>
-              <div class="auto-batching-settings-field">
-                <label class="form-label" for="autoBatchingMaxTransferRateSpreadPercent">Default Transfer Rate Corridor</label>
-                <p class="form-text">Maximum full Transfer Rate spread allowed within one Batching Window.</p>
-                <div class="input-group">
-                  <input class="form-control" type="number" id="autoBatchingMaxTransferRateSpreadPercent" name="maxTransferRateSpreadPercent" min="0.0001" max="100" step="0.0001" inputmode="decimal" required>
-                  <span class="input-group-text">%</span>
+              </section>
+              <section class="auto-batching-settings-field">
+                <label class="form-label auto-batching-settings-field-title" for="autoBatchingMaxTransferRateSpreadPercent">Default Transfer Rate Corridor</label>
+                <div class="auto-batching-settings-field-body">
+                  <p class="form-text">Maximum full Transfer Rate spread allowed within one Batching Window.</p>
+                  <div class="input-group">
+                    <input class="form-control" type="number" id="autoBatchingMaxTransferRateSpreadPercent" name="maxTransferRateSpreadPercent" min="0.0001" max="100" step="0.0001" inputmode="decimal" required>
+                    <span class="input-group-text">%</span>
+                  </div>
                 </div>
-              </div>
+              </section>
             </div>
           </div>
           <div class="modal-footer">
@@ -16198,7 +16402,7 @@
       <div class="modal-footer" id="hedgeQuickModeSettingsFooter">
         <button type="button" class="btn btn-outline-danger btn-sm" id="hedgeQuickModeSettingsDeleteButton" hidden>Delete Setting</button>
         <button type="button" class="btn btn-outline-secondary btn-sm" id="hedgeQuickModeSettingsCancelButton">Close</button>
-        <button type="submit" class="btn btn-primary btn-sm" id="hedgeQuickModeSettingsSaveButton">
+        <button type="submit" class="btn btn-primary btn-sm with-icon" id="hedgeQuickModeSettingsSaveButton">
           <span class="button-icon" aria-hidden="true">save</span>
           <span>Save Settings</span>
         </button>
@@ -21529,6 +21733,44 @@
       }
     }
 
+    function applyFxPositionGridLayout(tableLayout) {
+      const table = nativeUiTable("fx_position_grid");
+
+      if (!table || !tableLayout) {
+        return;
+      }
+
+      const settingsByKey = new Map(
+        tableLayout.columns.map(setting => [setting.columnKey, setting])
+      );
+      let totalWidth = 0;
+
+      table.querySelectorAll("col").forEach(column => {
+        const setting = settingsByKey.get(column.dataset.uiColumnKey);
+        const fixedWidth = Number(column.dataset.fxPositionFixedWidth);
+        const width = setting?.widthPx || fixedWidth;
+
+        if (!Number.isFinite(width) || width <= 0) {
+          return;
+        }
+
+        column.style.setProperty("width", `${width}px`, "important");
+        totalWidth += width;
+      });
+
+      if (totalWidth <= 0) {
+        return;
+      }
+
+      table.dataset.columnSizing = "managed";
+      table.style.setProperty("width", `${totalWidth}px`, "important");
+      table.style.setProperty("min-width", `${totalWidth}px`, "important");
+      table.style.setProperty("max-width", `${totalWidth}px`, "important");
+      table.style.setProperty("table-layout", "fixed", "important");
+      scheduleFxPositionGridFillHeight();
+      scheduleHedgeQuickModeQuoteAlignment();
+    }
+
     function applyTabulatorUiTableLayout(tableKey, tableLayout) {
       const table = uiTableTabulatorInstances.get(tableKey);
 
@@ -21601,6 +21843,11 @@
       const tableLayout = uiTableLayout(tableKey);
 
       if (!tableLayout) {
+        return;
+      }
+
+      if (tableKey === "fx_position_grid") {
+        applyFxPositionGridLayout(tableLayout);
         return;
       }
 
@@ -30327,7 +30574,7 @@
 
     function safeDatabaseColorValue(value) {
       const colorValue = String(value || "").trim().toUpperCase();
-      return /^#[0-9A-F]{6}$/.test(colorValue) ? colorValue : "#000000";
+      return /^#[0-9A-F]{6}$/.test(colorValue) ? colorValue : "#212529";
     }
 
     function databaseDataCellMarkup(tableName, columnName, value) {
@@ -31868,8 +32115,6 @@
         "aria-label",
         running ? "Stop automatic Deal Generation" : "Start automatic Deal Generation"
       );
-      runClientDealGenerationButton.title =
-        running ? "Stop automatic Deal Generation" : "Start automatic Deal Generation";
       runClientDealGenerationIcon.textContent = running ? "stop" : "play_arrow";
       runClientDealGenerationLabel.textContent = running ? "Stop Generation" : "Auto Generate";
 
@@ -31951,7 +32196,6 @@
         "aria-label",
         running ? "Stop Auto Batching" : "Start Auto Batching"
       );
-      autoBatchButton.title = running ? "Stop Auto Batching" : "Start Auto Batching";
       autoBatchIcon.textContent = running ? "stop" : "play_arrow";
       autoBatchLabel.textContent = running ? "Stop Auto Batch" : "Auto Batch";
       autoBatchButton.disabled = !DEMO_API_ENABLED || fxAutoBatchingToggleInFlight;
@@ -35841,7 +36085,6 @@
         : "";
       const tradeCell = `
         <span class="position-label-content">
-          ${tradeIdCopyButton}
           <span class="position-label-text">
             ${tradeTypeChip}
             ${tradeContextLabel}
@@ -35851,6 +36094,7 @@
 
       return `
         <tr class="${rowClass}">
+          <td class="identity trade-id-column">${tradeIdCopyButton}</td>
           <td class="identity client position-label-cell" title="${safeTradeLabel}">${tradeCell}</td>
           <td class="identity date number">${escapeHtml(positionTradeDate(deal))}</td>
           <td class="identity base-value-date number">${escapeHtml(baseCurrencyValueDateLabel(deal))}</td>
@@ -36386,7 +36630,7 @@
 
       batchingSummaryRowsEl.innerHTML = `
         <tr class="batching-summary-row batching-summary-total">
-          <td class="summary-label" colspan="3">Total</td>
+          <td class="summary-label" colspan="4">Total</td>
           <td class="gap wide-gap trade-divider"></td>
           <td class="summary-sell amount number">${minorAmountCell(sell.amountMinor, fractionDigits)}</td>
           <td class="summary-sell rate number">${rateCell(sell.tradeRate)}</td>
@@ -36397,7 +36641,7 @@
           <td class="summary-buy amount number">${minorAmountCell(buy.amountMinor, fractionDigits)}</td>
         </tr>
         <tr class="batching-summary-row batching-summary-net">
-          <td class="summary-label" colspan="3">Net Difference</td>
+          <td class="summary-label" colspan="4">Net Difference</td>
           <td class="gap wide-gap trade-divider"></td>
           <td class="summary-sell ${sellNetMinor > 0n ? "summary-net-active sell-side" : ""} amount number">${minorAmountCell(sellNetMinor, fractionDigits)}</td>
           <td class="summary-sell rate"></td>
@@ -36413,6 +36657,7 @@
     function fxPositionGridFillRow() {
       return `
         <tr class="fx-position-grid-fill" aria-hidden="true">
+          <td class="identity trade-id-column"></td>
           <td class="identity client"></td>
           <td class="identity date"></td>
           <td class="identity base-value-date"></td>
