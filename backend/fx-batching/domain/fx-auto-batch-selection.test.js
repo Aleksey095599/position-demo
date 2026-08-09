@@ -11,7 +11,7 @@ function trade(overrides = {}) {
   return {
     tradeId: 1,
     tradeType: "CLIENT_DEAL",
-    entryTimestamp: "2026-08-04T09:00:00.000Z",
+    receivedTimestamp: "2026-08-04T09:00:00.000Z",
     ccyPairCode: "EUR_USD",
     side: "SELL",
     transferRate: 1.12,
@@ -28,7 +28,7 @@ function trade(overrides = {}) {
 test("selects every eligible trade sharing the oldest Trade's Batching Key", () => {
   const selected = selectNextAutoBatchTradeIds([
     trade({ tradeId: 4, ccyPairCode: "GBP_USD" }),
-    trade({ tradeId: 3, entryTimestamp: "2026-08-04T09:00:01.000Z" }),
+    trade({ tradeId: 3, receivedTimestamp: "2026-08-04T09:00:01.000Z" }),
     trade({ tradeId: 2, transferRate: null }),
     trade({ tradeId: 1 })
   ]);
@@ -41,7 +41,7 @@ test("keeps distinct Batching Keys in separate automatic batches", () => {
     trade({ tradeId: 1 }),
     trade({
       tradeId: 2,
-      entryTimestamp: "2026-08-04T09:00:01.000Z",
+      receivedTimestamp: "2026-08-04T09:00:01.000Z",
       quoteCcyValueDate: "2026-08-06"
     })
   ]);
@@ -51,9 +51,9 @@ test("keeps distinct Batching Keys in separate automatic batches", () => {
 
 test("selects one independent automatic batch candidate for every currency pair", () => {
   const selected = selectAutoBatchCandidatesByCurrencyPair([
-    trade({ tradeId: 5, ccyPairCode: "GBP_USD", entryTimestamp: "2026-08-04T09:00:03.000Z" }),
-    trade({ tradeId: 3, entryTimestamp: "2026-08-04T09:00:01.000Z" }),
-    trade({ tradeId: 4, ccyPairCode: "GBP_USD", entryTimestamp: "2026-08-04T09:00:02.000Z" }),
+    trade({ tradeId: 5, ccyPairCode: "GBP_USD", receivedTimestamp: "2026-08-04T09:00:03.000Z" }),
+    trade({ tradeId: 3, receivedTimestamp: "2026-08-04T09:00:01.000Z" }),
+    trade({ tradeId: 4, ccyPairCode: "GBP_USD", receivedTimestamp: "2026-08-04T09:00:02.000Z" }),
     trade({ tradeId: 1 })
   ]);
 

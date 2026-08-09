@@ -35,8 +35,8 @@ function isEligibleFxTrade(trade) {
 }
 
 function compareByAge(left, right) {
-  const leftTimestamp = Date.parse(left.entryTimestamp || "");
-  const rightTimestamp = Date.parse(right.entryTimestamp || "");
+  const leftTimestamp = Date.parse(left.receivedTimestamp || "");
+  const rightTimestamp = Date.parse(right.receivedTimestamp || "");
   const normalizedLeftTimestamp = Number.isFinite(leftTimestamp)
     ? leftTimestamp
     : Number.MAX_SAFE_INTEGER;

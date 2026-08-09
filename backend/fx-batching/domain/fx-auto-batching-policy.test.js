@@ -13,7 +13,7 @@ function trade(overrides = {}) {
   return {
     tradeId: 1,
     tradeType: "CLIENT_DEAL",
-    entryTimestamp: "2026-08-05T09:00:00.000Z",
+    receivedTimestamp: "2026-08-05T09:00:00.000Z",
     ccyPairCode: "EUR_USD",
     side: "SELL",
     transferRate: "1.1220",
@@ -33,7 +33,7 @@ test("keeps a Batching Window open until its maximum interval", () => {
       trade({ tradeId: 1 }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:10.000Z",
+        receivedTimestamp: "2026-08-05T09:00:10.000Z",
         transferRate: "1.1221"
       })
     ],
@@ -52,7 +52,7 @@ test("closes a Batching Window when its maximum interval is reached", () => {
       trade({ tradeId: 1 }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:10.000Z",
+        receivedTimestamp: "2026-08-05T09:00:10.000Z",
         transferRate: "1.1221"
       })
     ],
@@ -92,7 +92,7 @@ test("treats Client and Hedge Deals as equal Auto Batching sources", () => {
       trade({
         tradeId: 2,
         tradeType: "HEDGE_DEAL",
-        entryTimestamp: "2026-08-05T09:00:10.000Z",
+        receivedTimestamp: "2026-08-05T09:00:10.000Z",
         side: "BUY",
         transferRate: "1.1221"
       })
@@ -116,17 +116,17 @@ test("closes the accepted Batching Window before the corridor is breached", () =
       trade({ tradeId: 1, transferRate: "1.1220" }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:01.000Z",
+        receivedTimestamp: "2026-08-05T09:00:01.000Z",
         transferRate: "1.1222"
       }),
       trade({
         tradeId: 3,
-        entryTimestamp: "2026-08-05T09:00:02.000Z",
+        receivedTimestamp: "2026-08-05T09:00:02.000Z",
         transferRate: "1.1221"
       }),
       trade({
         tradeId: 4,
-        entryTimestamp: "2026-08-05T09:00:03.000Z",
+        receivedTimestamp: "2026-08-05T09:00:03.000Z",
         transferRate: "1.1250"
       })
     ],
@@ -156,17 +156,17 @@ test("leaves an isolated outlier manual without blocking a later compatible grou
       trade({ tradeId: 1, transferRate: "1.1000" }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:01.000Z",
+        receivedTimestamp: "2026-08-05T09:00:01.000Z",
         transferRate: "1.2000"
       }),
       trade({
         tradeId: 3,
-        entryTimestamp: "2026-08-05T09:00:02.000Z",
+        receivedTimestamp: "2026-08-05T09:00:02.000Z",
         transferRate: "1.2001"
       }),
       trade({
         tradeId: 4,
-        entryTimestamp: "2026-08-05T09:00:03.000Z",
+        receivedTimestamp: "2026-08-05T09:00:03.000Z",
         transferRate: "1.3000"
       })
     ],
@@ -183,12 +183,12 @@ test("plans one independent candidate for every currency pair", () => {
   const plan = planFxAutoBatching({
     trades: [
       trade({ tradeId: 1 }),
-      trade({ tradeId: 2, entryTimestamp: "2026-08-05T09:00:01.000Z" }),
+      trade({ tradeId: 2, receivedTimestamp: "2026-08-05T09:00:01.000Z" }),
       trade({ tradeId: 3, ccyPairCode: "GBP_USD", transferRate: "1.3000" }),
       trade({
         tradeId: 4,
         ccyPairCode: "GBP_USD",
-        entryTimestamp: "2026-08-05T09:00:01.000Z",
+        receivedTimestamp: "2026-08-05T09:00:01.000Z",
         transferRate: "1.3001"
       })
     ],
@@ -213,7 +213,7 @@ test("does not create an automatic chain from Position Out trades alone", () => 
       trade({
         tradeId: 2,
         tradeType: "BATCH_POSITION_OUT",
-        entryTimestamp: "2026-08-05T09:00:01.000Z"
+        receivedTimestamp: "2026-08-05T09:00:01.000Z"
       })
     ],
     maxSpreadPercent: "0.05",
@@ -232,7 +232,7 @@ test("does not schedule an evaluation for a future Carry-in Position", () => {
     trades: [trade({
       tradeId: 1,
       tradeType: "BATCH_POSITION_OUT",
-      entryTimestamp: "2026-08-05T09:05:00.000Z"
+      receivedTimestamp: "2026-08-05T09:05:00.000Z"
     })],
     maxSpreadPercent: "0.05",
     maxIntervalSeconds: 60,
@@ -249,12 +249,12 @@ test("uses Position Out as Carry-in without opening or timing the Batching Windo
     trade({
       tradeId: 1,
       tradeType: "BATCH_POSITION_OUT",
-      entryTimestamp: "2026-08-05T09:00:00.000Z",
+      receivedTimestamp: "2026-08-05T09:00:00.000Z",
       transferRate: "1.1000"
     }),
     trade({
       tradeId: 2,
-      entryTimestamp: "2026-08-05T09:05:00.000Z",
+      receivedTimestamp: "2026-08-05T09:05:00.000Z",
       transferRate: "1.1220"
     })
   ];
@@ -292,23 +292,23 @@ test("excludes Carry-in Position from a Transfer Rate Corridor breach", () => {
       trade({
         tradeId: 1,
         tradeType: "BATCH_POSITION_OUT",
-        entryTimestamp: "2026-08-05T08:55:00.000Z",
+        receivedTimestamp: "2026-08-05T08:55:00.000Z",
         transferRate: "1.1000"
       }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:00.000Z",
+        receivedTimestamp: "2026-08-05T09:00:00.000Z",
         transferRate: "1.1220"
       }),
       trade({
         tradeId: 3,
         tradeType: "HEDGE_DEAL",
-        entryTimestamp: "2026-08-05T09:00:01.000Z",
+        receivedTimestamp: "2026-08-05T09:00:01.000Z",
         transferRate: "1.1222"
       }),
       trade({
         tradeId: 4,
-        entryTimestamp: "2026-08-05T09:00:02.000Z",
+        receivedTimestamp: "2026-08-05T09:00:02.000Z",
         transferRate: "1.1250"
       })
     ],
@@ -332,17 +332,17 @@ test("does not attach Carry-in Position to a window closed before it existed", (
     trades: [
       trade({
         tradeId: 1,
-        entryTimestamp: "2026-08-05T09:00:00.000Z"
+        receivedTimestamp: "2026-08-05T09:00:00.000Z"
       }),
       trade({
         tradeId: 2,
         tradeType: "BATCH_POSITION_OUT",
-        entryTimestamp: "2026-08-05T09:01:30.000Z",
+        receivedTimestamp: "2026-08-05T09:01:30.000Z",
         transferRate: "1.1000"
       }),
       trade({
         tradeId: 3,
-        entryTimestamp: "2026-08-05T09:02:00.000Z"
+        receivedTimestamp: "2026-08-05T09:02:00.000Z"
       })
     ],
     maxSpreadPercent: "0.05",
@@ -363,18 +363,18 @@ test("uses Trade ID order for Carry-in at the corridor-close timestamp", () => {
       trade({
         tradeId: 19,
         tradeType: "BATCH_POSITION_OUT",
-        entryTimestamp: "2026-08-05T09:00:02.000Z",
+        receivedTimestamp: "2026-08-05T09:00:02.000Z",
         transferRate: "1.1000"
       }),
       trade({
         tradeId: 20,
-        entryTimestamp: "2026-08-05T09:00:02.000Z",
+        receivedTimestamp: "2026-08-05T09:00:02.000Z",
         transferRate: "1.1250"
       }),
       trade({
         tradeId: 21,
         tradeType: "BATCH_POSITION_OUT",
-        entryTimestamp: "2026-08-05T09:00:02.000Z",
+        receivedTimestamp: "2026-08-05T09:00:02.000Z",
         transferRate: "1.1000"
       })
     ],
@@ -392,7 +392,7 @@ test("forms a full 200-Trade batch from 199 Carry-ins and one incoming Trade", (
   const carryInPositions = Array.from({ length: 199 }, (_, index) => trade({
     tradeId: index + 1,
     tradeType: "BATCH_POSITION_OUT",
-    entryTimestamp: "2026-08-05T08:59:00.000Z"
+    receivedTimestamp: "2026-08-05T08:59:00.000Z"
   }));
   const plan = planFxAutoBatching({
     trades: [
@@ -415,7 +415,7 @@ test("defers excess Carry-in Positions without losing the incoming Trade", () =>
   const carryInPositions = Array.from({ length: 200 }, (_, index) => trade({
     tradeId: index + 1,
     tradeType: "BATCH_POSITION_OUT",
-    entryTimestamp: "2026-08-05T08:59:00.000Z"
+    receivedTimestamp: "2026-08-05T08:59:00.000Z"
   }));
   const plan = planFxAutoBatching({
     trades: [
@@ -444,7 +444,7 @@ test("defers excess window Trades after reserving capacity for Carry-in", () => 
       trade({
         tradeId: 1,
         tradeType: "BATCH_POSITION_OUT",
-        entryTimestamp: "2026-08-05T08:59:00.000Z"
+        receivedTimestamp: "2026-08-05T08:59:00.000Z"
       }),
       ...incomingTrades
     ],
@@ -478,6 +478,18 @@ test("rejects a minimum batch size greater than the maximum", () => {
   );
 });
 
+test("rejects an unsupported cross-tenor Auto Batching mode", () => {
+  assert.throws(
+    () => planFxAutoBatching({
+      trades: [],
+      maxSpreadPercent: "0.05",
+      maxIntervalSeconds: 60,
+      tenorCompatibilityMode: "CROSS_TENOR_WITH_SWAPS"
+    }),
+    error => error?.code === "INVALID_FX_AUTO_BATCHING_POLICY"
+  );
+});
+
 test("closes a single-Trade window without a batch and leaves the Trade manual", () => {
   const plan = planFxAutoBatching({
     trades: [trade({ tradeId: 1 })],
@@ -498,12 +510,12 @@ test("does not include a Trade received after the first window deadline", () => 
       trade({ tradeId: 1 }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:10.000Z",
+        receivedTimestamp: "2026-08-05T09:00:10.000Z",
         transferRate: "1.1221"
       }),
       trade({
         tradeId: 3,
-        entryTimestamp: "2026-08-05T09:01:00.000Z",
+        receivedTimestamp: "2026-08-05T09:01:00.000Z",
         transferRate: "1.1221"
       })
     ],
@@ -517,12 +529,12 @@ test("does not include a Trade received after the first window deadline", () => 
   assert.equal(plan.openWindowCount, 0);
 });
 
-test("waits until a future Entry Timestamp before opening a Batching Window", () => {
+test("waits until a future Received Timestamp before opening a Batching Window", () => {
   const plan = planFxAutoBatching({
     trades: [
       trade({
         tradeId: 1,
-        entryTimestamp: "2026-08-05T09:00:10.000Z"
+        receivedTimestamp: "2026-08-05T09:00:10.000Z"
       })
     ],
     maxSpreadPercent: "0.05",

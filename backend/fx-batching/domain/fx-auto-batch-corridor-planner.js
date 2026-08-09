@@ -23,15 +23,15 @@ function normalizedText(value) {
 
 function normalizedTrade(trade, index) {
   const tradeId = Number(trade?.tradeId);
-  const entryTimestamp = Date.parse(trade?.entryTimestamp || "");
+  const receivedTimestamp = Date.parse(trade?.receivedTimestamp || "");
   const ccyPairCode = normalizedText(trade?.ccyPairCode);
 
   if (!Number.isSafeInteger(tradeId) || tradeId <= 0) {
     throw planningError(`FX Trade ${index + 1} must have a positive integer ID.`);
   }
 
-  if (!Number.isFinite(entryTimestamp)) {
-    throw planningError(`FX Trade ${tradeId} must have a valid Entry Timestamp.`);
+  if (!Number.isFinite(receivedTimestamp)) {
+    throw planningError(`FX Trade ${tradeId} must have a valid Received Timestamp.`);
   }
 
   if (!ccyPairCode) {
@@ -40,7 +40,7 @@ function normalizedTrade(trade, index) {
 
   return Object.freeze({
     tradeId,
-    entryTimestamp,
+    receivedTimestamp,
     ccyPairCode,
     transferRate: trade.transferRate,
     batchingKey: batchingKey(trade)
@@ -48,7 +48,7 @@ function normalizedTrade(trade, index) {
 }
 
 function compareByArrival(left, right) {
-  return left.entryTimestamp - right.entryTimestamp
+  return left.receivedTimestamp - right.receivedTimestamp
     || left.tradeId - right.tradeId;
 }
 

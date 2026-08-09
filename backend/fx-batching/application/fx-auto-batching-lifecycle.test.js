@@ -14,14 +14,14 @@ const {
 
 function trade(
   tradeId,
-  entryTimestamp,
+  receivedTimestamp,
   transferRate = "1.1220",
   overrides = {}
 ) {
   return {
     tradeId,
     tradeType: "CLIENT_DEAL",
-    entryTimestamp,
+    receivedTimestamp,
     ccyPairCode: "EUR_USD",
     side: "SELL",
     transferRate,
@@ -123,7 +123,7 @@ test("Stop cancels an open window and restart batches only newly arrived Trades"
   assert.equal(formedCommands[0].windowClosedAt, "2026-08-05T09:00:09.000Z");
 });
 
-test("an existing Carry-in waits for a new Trade and continues without an automatic chain", async () => {
+test("ignores a pre-run Carry-in and reuses only a Position Out created during this run", async () => {
   let now = new Date("2026-08-05T09:00:00.000Z");
   let nextTradeId = 2;
   const trades = [trade(
@@ -197,9 +197,16 @@ test("an existing Carry-in waits for a new Trade and continues without an automa
   await runNext();
   assert.equal(process.status().phase, "WINDOW_OPEN");
 
+  now = new Date("2026-08-05T09:00:02.000Z");
+  trades.push(trade(nextTradeId, now.toISOString(), "1.1221"));
+  nextTradeId += 1;
+  process.notifyTradeCreated();
+  await runNext();
+
   now = new Date("2026-08-05T09:00:06.000Z");
   await runNext();
-  assert.deepEqual(formedCommands[0].tradeIds, [1, 2]);
+  assert.deepEqual(formedCommands[0].tradeIds, [2, 3]);
+  assert.equal(formedCommands[0].tradeIds.includes(1), false);
 
   await runNext();
   assert.equal(process.status().phase, "WAITING_FOR_FIRST_TRADE");
@@ -213,5 +220,5 @@ test("an existing Carry-in waits for a new Trade and continues without an automa
 
   now = new Date("2026-08-05T09:00:12.000Z");
   await runNext();
-  assert.deepEqual(formedCommands[1].tradeIds, [3, 4]);
+  assert.deepEqual(formedCommands[1].tradeIds, [4, 5]);
 });

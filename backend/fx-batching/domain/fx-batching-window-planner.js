@@ -100,12 +100,12 @@ function planFxBatchingWindows({
   });
 
   const notYetArrivedTrade = orderedTrades.find(
-    trade => Date.parse(trade.entryTimestamp) > evaluationTime.getTime()
+    trade => Date.parse(trade.receivedTimestamp) > evaluationTime.getTime()
   );
 
   if (notYetArrivedTrade) {
     throw planningError(
-      `FX Trade ${notYetArrivedTrade.tradeId} cannot enter a Batching Window before its Entry Timestamp.`
+      `FX Trade ${notYetArrivedTrade.tradeId} cannot enter a Batching Window before its Received Timestamp.`
     );
   }
 
@@ -114,7 +114,7 @@ function planFxBatchingWindows({
 
   while (firstTradeIndex < orderedTrades.length) {
     const firstTrade = orderedTrades[firstTradeIndex];
-    const openedAtMilliseconds = Date.parse(firstTrade.entryTimestamp);
+    const openedAtMilliseconds = Date.parse(firstTrade.receivedTimestamp);
     const deadlineAtMilliseconds = openedAtMilliseconds + intervalSeconds * 1000;
     const acceptedTrades = [firstTrade];
     let corridorPlan = planAutoBatchByTransferRateCorridor({
@@ -126,7 +126,7 @@ function planFxBatchingWindows({
 
     while (nextTradeIndex < orderedTrades.length) {
       const incomingTrade = orderedTrades[nextTradeIndex];
-      const incomingAtMilliseconds = Date.parse(incomingTrade.entryTimestamp);
+      const incomingAtMilliseconds = Date.parse(incomingTrade.receivedTimestamp);
 
       if (incomingAtMilliseconds >= deadlineAtMilliseconds) {
         windows.push(frozenWindow({

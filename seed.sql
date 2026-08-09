@@ -223,41 +223,59 @@ VALUES
     ('fx_position_grid', 'buy_trade_rate', 'BUY Trade Rate', 10, 90, 90),
     ('fx_position_grid', 'buy_base_ccy_amount', 'BUY Base Ccy Amount', 11, 167, 167),
     ('client_fx_deals_grid', 'trade_id', 'Trade ID', 0, 96, 96),
-    ('client_fx_deals_grid', 'entry_timestamp', 'Entry Timestamp', 1, 157, 157),
-    ('client_fx_deals_grid', 'client_code_type', 'Business ID Type', 2, 150, 150),
-    ('client_fx_deals_grid', 'client_code', 'Business ID', 3, 170, 170),
-    ('client_fx_deals_grid', 'client_name', 'Client Name', 4, 141, 141),
-    ('client_fx_deals_grid', 'trade_date', 'Trade Date', 5, 109, 109),
-    ('client_fx_deals_grid', 'currency_pair', 'Ccy Pair', 6, 94, 94),
-    ('client_fx_deals_grid', 'side', 'Side', 7, 84, 84),
-    ('client_fx_deals_grid', 'base_ccy_amount', 'Base Ccy Amount', 8, 146, 146),
-    ('client_fx_deals_grid', 'quote_ccy_amount', 'Quote Ccy Amount', 9, 155, 155),
-    ('client_fx_deals_grid', 'trade_rate', 'Trade Rate', 10, 108, 108),
-    ('client_fx_deals_grid', 'tenor', 'Tenor', 11, 73, 73),
-    ('client_fx_deals_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 12, 160, 160),
-    ('client_fx_deals_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 13, 168, 168),
-    ('client_fx_deals_grid', 'execution_context_label', 'Execution Context', 14, 435, 435),
-    ('client_fx_deals_grid', 'pricing_rule_margin', 'Margin', 15, 102, 102),
-    ('client_fx_deals_grid', 'transfer_rate', 'Transfer Rate', 16, 122, 122),
-    ('client_fx_deals_grid', 'analytical_pnl', 'Analytical PnL', 17, 126, 126),
+    ('client_fx_deals_grid', 'execution_timestamp', 'Execution Timestamp', 1, 170, 170),
+    ('client_fx_deals_grid', 'received_timestamp', 'Received Timestamp', 2, 170, 170),
+    ('client_fx_deals_grid', 'client_code_type', 'Business ID Type', 3, 150, 150),
+    ('client_fx_deals_grid', 'client_code', 'Business ID', 4, 170, 170),
+    ('client_fx_deals_grid', 'client_name', 'Client Name', 5, 141, 141),
+    ('client_fx_deals_grid', 'trade_date', 'Trade Date', 6, 109, 109),
+    ('client_fx_deals_grid', 'currency_pair', 'Ccy Pair', 7, 94, 94),
+    ('client_fx_deals_grid', 'side', 'Side', 8, 84, 84),
+    ('client_fx_deals_grid', 'base_ccy_amount', 'Base Ccy Amount', 9, 146, 146),
+    ('client_fx_deals_grid', 'quote_ccy_amount', 'Quote Ccy Amount', 10, 155, 155),
+    ('client_fx_deals_grid', 'trade_rate', 'Trade Rate', 11, 108, 108),
+    ('client_fx_deals_grid', 'tenor', 'Tenor', 12, 73, 73),
+    ('client_fx_deals_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 13, 160, 160),
+    ('client_fx_deals_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 14, 168, 168),
+    ('client_fx_deals_grid', 'execution_context_label', 'Execution Context', 15, 435, 435),
+    ('client_fx_deals_grid', 'pricing_rule_margin', 'Margin', 16, 102, 102),
+    ('client_fx_deals_grid', 'transfer_rate', 'Transfer Rate', 17, 122, 122),
+    ('client_fx_deals_grid', 'analytical_pnl', 'Analytical PnL', 18, 126, 126),
     ('hedge_fx_deals_grid', 'trade_id', 'Trade ID', 0, 96, 96),
-    ('hedge_fx_deals_grid', 'entry_timestamp', 'Entry Timestamp', 1, 157, 157),
-    ('hedge_fx_deals_grid', 'counterparty_code_type', 'Business ID Type', 2, 150, 150),
-    ('hedge_fx_deals_grid', 'counterparty_code', 'Business ID', 3, 170, 170),
-    ('hedge_fx_deals_grid', 'counterparty_name', 'Counterparty Name', 4, 158, 158),
-    ('hedge_fx_deals_grid', 'trade_date', 'Trade Date', 5, 109, 109),
-    ('hedge_fx_deals_grid', 'currency_pair', 'Ccy Pair', 6, 94, 94),
-    ('hedge_fx_deals_grid', 'side', 'Hedge Side', 7, 88, 88),
-    ('hedge_fx_deals_grid', 'base_ccy_amount', 'Base Ccy Amount', 8, 146, 146),
-    ('hedge_fx_deals_grid', 'quote_ccy_amount', 'Quote Ccy Amount', 9, 155, 155),
-    ('hedge_fx_deals_grid', 'trade_rate', 'Trade Rate', 10, 108, 108),
-    ('hedge_fx_deals_grid', 'tenor', 'Tenor', 11, 73, 73),
-    ('hedge_fx_deals_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 12, 160, 160),
-    ('hedge_fx_deals_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 13, 168, 168),
-    ('hedge_fx_deals_grid', 'execution_context_label', 'Execution Context', 14, 435, 435),
-    ('hedge_fx_deals_grid', 'pricing_rule_margin', 'Margin', 15, 102, 102),
-    ('hedge_fx_deals_grid', 'transfer_rate', 'Transfer Rate', 16, 122, 122),
-    ('hedge_fx_deals_grid', 'analytical_pnl', 'Analytical PnL', 17, 126, 126),
+    ('hedge_fx_deals_grid', 'request_timestamp', 'Request Timestamp', 1, 170, 170),
+    ('hedge_fx_deals_grid', 'execution_timestamp', 'Execution Timestamp', 2, 170, 170),
+    ('hedge_fx_deals_grid', 'received_timestamp', 'Received Timestamp', 3, 170, 170),
+    ('hedge_fx_deals_grid', 'counterparty_code_type', 'Business ID Type', 4, 150, 150),
+    ('hedge_fx_deals_grid', 'counterparty_code', 'Business ID', 5, 170, 170),
+    ('hedge_fx_deals_grid', 'counterparty_name', 'Counterparty Name', 6, 158, 158),
+    ('hedge_fx_deals_grid', 'trade_date', 'Trade Date', 7, 109, 109),
+    ('hedge_fx_deals_grid', 'currency_pair', 'Ccy Pair', 8, 94, 94),
+    ('hedge_fx_deals_grid', 'side', 'Hedge Side', 9, 88, 88),
+    ('hedge_fx_deals_grid', 'base_ccy_amount', 'Base Ccy Amount', 10, 146, 146),
+    ('hedge_fx_deals_grid', 'quote_ccy_amount', 'Quote Ccy Amount', 11, 155, 155),
+    ('hedge_fx_deals_grid', 'trade_rate', 'Trade Rate', 12, 108, 108),
+    ('hedge_fx_deals_grid', 'tenor', 'Tenor', 13, 73, 73),
+    ('hedge_fx_deals_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 14, 160, 160),
+    ('hedge_fx_deals_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 15, 168, 168),
+    ('hedge_fx_deals_grid', 'execution_context_label', 'Execution Context', 16, 435, 435),
+    ('hedge_fx_deals_grid', 'pricing_rule_margin', 'Margin', 17, 102, 102),
+    ('hedge_fx_deals_grid', 'transfer_rate', 'Transfer Rate', 18, 122, 122),
+    ('hedge_fx_deals_grid', 'analytical_pnl', 'Analytical PnL', 19, 126, 126),
+    ('analytical_pnl_report_grid', 'trade_id', 'Trade ID', 0, 96, 96),
+    ('analytical_pnl_report_grid', 'trade_type', 'Trade Type', 1, 122, 122),
+    ('analytical_pnl_report_grid', 'trade_date', 'Trade Date', 2, 109, 109),
+    ('analytical_pnl_report_grid', 'identifier', 'Identifier', 3, 210, 210),
+    ('analytical_pnl_report_grid', 'counterparty_name', 'Counterparty Name', 4, 180, 180),
+    ('analytical_pnl_report_grid', 'currency_pair', 'Ccy Pair', 5, 94, 94),
+    ('analytical_pnl_report_grid', 'side', 'Side', 6, 90, 90),
+    ('analytical_pnl_report_grid', 'base_ccy_amount', 'Base Ccy Amount', 7, 146, 146),
+    ('analytical_pnl_report_grid', 'quote_ccy_amount', 'Quote Ccy Amount', 8, 155, 155),
+    ('analytical_pnl_report_grid', 'trade_rate', 'Trade Rate', 9, 108, 108),
+    ('analytical_pnl_report_grid', 'transfer_rate', 'Transfer Rate', 10, 122, 122),
+    ('analytical_pnl_report_grid', 'analytical_pnl', 'Analytical PnL', 11, 145, 145),
+    ('analytical_pnl_summary_grid', 'currency', 'Currency', 0, 100, 100),
+    ('analytical_pnl_summary_grid', 'amount', 'Amount', 1, 150, 150),
+    ('analytical_pnl_summary_grid', 'weighted_average_margin', 'Weighted Average Margin', 2, 190, 190),
     ('batching_history_grid', 'batch_id', 'Batch ID', 0, 96, 96),
     ('batching_history_grid', 'ccy_pair_code', 'Ccy Pair Code', 1, 100, 100),
     ('batching_history_grid', 'batch_status', 'Batch Status', 2, 101, 101),
@@ -485,9 +503,16 @@ INSERT OR IGNORE INTO fx_auto_batching_settings
     (
         settings_id,
         max_interval_seconds,
-        default_transfer_rate_spread_percent
+        default_transfer_rate_spread_percent,
+        tenor_compatibility_mode
     )
-VALUES (1, 60, '0.05');
+VALUES (1, 60, '0.05', 'SAME_TENOR_ONLY');
+
+INSERT OR IGNORE INTO fx_auto_batching_ccy_pairs
+    (settings_id, ccy_pair_code)
+VALUES
+    (1, 'EUR_USD'),
+    (1, 'GBP_USD');
 
 INSERT INTO client_deal_generation_settings
     (
@@ -555,7 +580,8 @@ WHERE e.pricing_mode = 'AUTO_PRICED';
 
 INSERT INTO fx_trade_exposure
     (
-        entry_timestamp,
+        execution_timestamp,
+        received_timestamp,
         trade_type,
         trade_date,
         ccy_pair_code,
@@ -572,6 +598,7 @@ INSERT INTO fx_trade_exposure
     )
 VALUES
     (
+        '2026-07-15T09:30:00.000Z',
         '2026-07-15T09:30:00.000Z',
         'CLIENT_DEAL',
         '2026-07-15',
@@ -640,7 +667,8 @@ WHERE d.trade_id = last_insert_rowid();
 
 INSERT INTO fx_trade_exposure
     (
-        entry_timestamp,
+        execution_timestamp,
+        received_timestamp,
         trade_type,
         trade_date,
         ccy_pair_code,
@@ -657,6 +685,7 @@ INSERT INTO fx_trade_exposure
     )
 VALUES
     (
+        '2026-07-15T09:31:00.000Z',
         '2026-07-15T09:31:00.000Z',
         'HEDGE_DEAL',
         '2026-07-15',
@@ -677,6 +706,7 @@ INSERT INTO fx_hedge_deals
     (
         trade_id,
         trade_type,
+        request_timestamp,
         counterparty_id,
         execution_context_id,
         pricing_rule_id,
@@ -687,6 +717,7 @@ INSERT INTO fx_hedge_deals
 SELECT
     last_insert_rowid(),
     'HEDGE_DEAL',
+    '2026-07-15T09:31:00.000Z',
     r.counterparty_id,
     r.execution_context_id,
     r.pricing_rule_id,

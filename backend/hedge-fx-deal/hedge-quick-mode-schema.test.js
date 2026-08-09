@@ -60,6 +60,13 @@ function quickModeDatabase() {
       (1, 'HEDGE_COUNTERPARTY'),
       (2, 'CLIENT');
 
+    INSERT INTO trading_counterparty_execution_contexts
+      (counterparty_id, execution_context_id)
+    VALUES
+      (1, 1),
+      (1, 2),
+      (2, 1);
+
     INSERT INTO pricing_rules
       (pricing_rule_id, counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
     VALUES

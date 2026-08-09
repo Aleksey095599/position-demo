@@ -29,7 +29,7 @@ test("Hedge Deal terms derive quote amount, dates and zero-margin economics", ()
   });
 
   assert.deepEqual(terms, {
-    entryTimestamp: new Date(2026, 6, 24, 12, 30, 0).toISOString(),
+    executionTimestamp: new Date(2026, 6, 24, 12, 30, 0).toISOString(),
     tradeDate: "2026-07-24",
     side: "SELL",
     baseCcyAmount: 1_000_000,

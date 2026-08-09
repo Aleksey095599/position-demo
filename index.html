@@ -7992,6 +7992,30 @@
       white-space: nowrap;
     }
 
+    .fx-deals-view-switch {
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .fx-deals-view-switch .btn {
+      min-width: 72px;
+      justify-content: center;
+      margin-left: 0;
+      border-radius: var(--workbench-radius);
+    }
+
+    .client-deals-bootstrap .fx-deals-view-switch .btn.active {
+      border-color: rgba(var(--bs-primary-rgb), 0.55);
+      background: rgba(var(--bs-primary-rgb), 0.1);
+      color: var(--bs-primary);
+    }
+
+    .client-deals-bootstrap .fx-deals-view-switch .btn:not(.active):hover {
+      border-color: var(--bs-secondary-color);
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-body-color);
+    }
+
     .client-deals-column-picker {
       position: relative;
     }
@@ -8557,6 +8581,22 @@
 
     .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-col-group {
       border-bottom: 0;
+    }
+
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-col-group.client-deals-group-identity,
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-col-group.client-deals-group-terms,
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-col-group.client-deals-group-pricing {
+      background: var(--bs-tertiary-bg);
+    }
+
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-col-group.client-deals-group-client,
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-col-group.client-deals-group-value-dates,
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-col-group.client-deals-group-position-processing {
+      background: var(--bs-secondary-bg);
+    }
+
+    .client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] > .tabulator-col-content {
+      background: inherit;
     }
 
     .client-deals-bootstrap .tabulator .tabulator-col-group-cols {
@@ -9872,6 +9912,7 @@
     }
 
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-layout {
+      width: min(680px, 100%);
       margin-top: 12px;
     }
 
@@ -9879,39 +9920,12 @@
       border-bottom: 0;
     }
 
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel {
-      width: min(560px, 100%);
-      overflow: hidden;
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--workbench-radius);
-      background: var(--bs-body-bg);
-    }
-
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel .modal-content {
-      border: 0;
-      border-radius: var(--workbench-radius);
-    }
-
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel .modal-header {
-      min-height: 42px;
-      padding: 9px 12px;
-      border-bottom: 0;
-    }
-
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel .modal-body {
-      padding: 12px;
-    }
-
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-panel .modal-footer {
-      padding: 10px 12px;
-    }
-
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-fields {
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-form {
       display: grid;
       gap: 12px;
     }
 
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field {
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-panel {
       width: 100%;
       overflow: hidden;
       border: 1px solid var(--surface-border);
@@ -9919,36 +9933,409 @@
       background: var(--bs-body-bg);
     }
 
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field-title {
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-panel-head {
       display: flex;
-      min-height: 36px;
-      margin: 0;
+      min-height: 38px;
       align-items: center;
+      padding: 8px 12px;
       border-bottom: 1px solid var(--surface-border);
       background: var(--bs-tertiary-bg);
-      padding: 8px 12px;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-panel-title {
+      margin: 0;
       color: var(--bs-emphasis-color);
-      font-size: var(--app-font-size-label);
+      font-size: var(--app-font-size-section-title);
       font-weight: var(--app-font-weight-semibold);
+      line-height: 1.3;
     }
 
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field-body {
-      padding: 10px 12px 12px;
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-panel-body {
+      padding: 0 12px;
     }
 
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field .input-group {
-      width: min(160px, 100%);
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-setting-group {
+      padding: 12px 0;
     }
 
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field .form-text {
-      margin: 0 0 8px;
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-setting-group + .auto-batching-setting-group {
+      border-top: 1px solid var(--surface-divider);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-setting-group-head {
+      display: flex;
+      min-height: 20px;
+      margin-bottom: 8px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-setting-group-title {
+      margin: 0;
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-label);
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.3;
+    }
+
+    .auto-batching-pair-selection-count {
+      flex: 0 0 auto;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      padding: 3px 7px;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-weight: 400;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .auto-batching-ccy-pair-picker {
+      width: min(420px, 100%);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-ccy-pair-search {
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-ccy-pair-search .form-control {
+      min-width: 0;
+      text-align: left;
+      font-variant-numeric: normal;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-ccy-pair-search .form-control::-webkit-search-cancel-button {
+      display: none;
+      appearance: none;
+    }
+
+    .auto-batching-ccy-pair-search .input-group-text,
+    .auto-batching-ccy-pair-search .btn {
+      display: inline-flex;
+      width: 34px;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .auto-batching-ccy-pair-search .button-icon {
+      font-size: 17px;
+    }
+
+    .auto-batching-ccy-pair-options {
+      max-height: 178px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    .auto-batching-ccy-pair-option {
+      display: flex;
+      min-height: 34px;
+      margin: 0;
+      align-items: center;
+      gap: 7px;
+      border-bottom: 1px solid var(--bs-border-color);
+      background: var(--bs-body-bg);
+      padding: 7px 10px;
+      color: var(--bs-body-color);
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .auto-batching-ccy-pair-option[hidden] {
+      display: none;
+    }
+
+    .auto-batching-ccy-pair-option:last-child,
+    .auto-batching-ccy-pair-option:last-of-type {
+      border-bottom: 0;
+    }
+
+    .auto-batching-ccy-pair-option:hover {
+      background: var(--workbench-grid-hover-bg);
+    }
+
+    .auto-batching-ccy-pair-option:has(.form-check-input:checked) {
+      background: var(--bs-primary-bg-subtle);
+    }
+
+    .auto-batching-ccy-pair-option .form-check-input {
+      flex: 0 0 auto;
+      margin: 0;
+    }
+
+    .auto-batching-ccy-pair-empty {
+      margin: 8px 0 0;
       color: var(--bs-secondary-color);
       font-size: 11px;
     }
 
-    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-field .form-control {
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-tenor-select {
+      width: min(320px, 100%);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-close-trigger-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-close-trigger {
+      min-width: 0;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-close-trigger .form-label {
+      min-height: 20px;
+      margin-bottom: 6px;
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-label);
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-close-trigger .input-group {
+      width: min(190px, 100%);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-close-trigger .form-control {
       text-align: right;
       font-variant-numeric: tabular-nums;
+    }
+
+    @media (max-width: 760px) {
+      #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-close-trigger-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0;
+      padding: 10px 12px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-actions .btn {
+      display: inline-flex;
+      min-height: 30px;
+      align-items: center;
+      gap: 5px;
+      border-radius: var(--workbench-radius);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .auto-batching-flow-dialog {
+      width: min(760px, calc(100vw - 32px));
+    }
+
+    .auto-batching-flow-dialog .modal-body {
+      max-height: min(74vh, 760px);
+      overflow-y: auto;
+    }
+
+    .auto-batching-flow-title-block {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .auto-batching-flow-version {
+      flex: 0 0 auto;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-tertiary-bg);
+      padding: 3px 6px;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.2;
+    }
+
+    .auto-batching-flow-intro {
+      margin: 0 0 14px;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .auto-batching-flowchart {
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+    }
+
+    .auto-batching-flow-step,
+    .auto-batching-flow-branch {
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-body-bg);
+      padding: 9px 12px;
+      text-align: center;
+    }
+
+    .auto-batching-flow-step {
+      width: min(560px, 100%);
+    }
+
+    .auto-batching-flow-step.is-start,
+    .auto-batching-flow-step.is-result {
+      border-color: var(--bs-primary-border-subtle);
+      background: var(--bs-primary-bg-subtle);
+    }
+
+    .auto-batching-flow-step.is-decision {
+      border-color: var(--bs-secondary-border-subtle);
+      background: var(--bs-tertiary-bg);
+    }
+
+    .auto-batching-flow-step-title {
+      color: var(--bs-emphasis-color);
+      font-size: 12px;
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.35;
+    }
+
+    .auto-batching-flow-step-detail {
+      margin-top: 3px;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .auto-batching-flow-arrow {
+      display: flex;
+      height: 18px;
+      align-items: center;
+      justify-content: center;
+      color: var(--bs-secondary-color);
+    }
+
+    .auto-batching-flow-arrow .button-icon {
+      font-size: 18px;
+    }
+
+    .auto-batching-flow-branches {
+      display: grid;
+      width: min(680px, 100%);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .auto-batching-flow-branch {
+      min-width: 0;
+    }
+
+    .auto-batching-flow-branch-label {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--bs-secondary-color);
+      font-size: 10px;
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    .auto-batching-flow-note {
+      display: flex;
+      margin: 14px 0 0;
+      align-items: flex-start;
+      gap: 8px;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .auto-batching-flow-note .button-icon {
+      flex: 0 0 auto;
+      margin-top: 1px;
+      font-size: 16px;
+    }
+
+    .auto-batching-flow-capture {
+      width: min(500px, 100%);
+      margin: 8px auto 0;
+      border-top: 1px solid var(--bs-primary-border-subtle);
+      padding-top: 7px;
+      text-align: left;
+    }
+
+    .auto-batching-flow-capture summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--bs-primary-text-emphasis);
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: var(--app-font-weight-semibold);
+      list-style: none;
+      text-transform: uppercase;
+    }
+
+    .auto-batching-flow-capture summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .auto-batching-flow-capture summary .button-icon {
+      font-size: 15px;
+    }
+
+    .auto-batching-flow-capture summary .auto-batching-flow-capture-chevron {
+      transition: transform 120ms ease;
+    }
+
+    .auto-batching-flow-capture[open] summary .auto-batching-flow-capture-chevron {
+      transform: rotate(180deg);
+    }
+
+    .auto-batching-flow-capture-list {
+      display: grid;
+      gap: 5px;
+      margin-top: 7px;
+    }
+
+    .auto-batching-flow-capture-item {
+      display: grid;
+      grid-template-columns: minmax(128px, auto) minmax(0, 1fr);
+      gap: 8px;
+      align-items: baseline;
+      color: var(--bs-secondary-color);
+      font-size: 10px;
+      line-height: 1.35;
+    }
+
+    .auto-batching-flow-capture-item code {
+      color: var(--bs-emphasis-color);
+      font-size: 10px;
+    }
+
+    @media (max-width: 575.98px) {
+      .auto-batching-flow-title-block {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .auto-batching-flow-branches {
+        grid-template-columns: 1fr;
+      }
+
+      .auto-batching-flow-capture-item {
+        grid-template-columns: 1fr;
+        gap: 1px;
+      }
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel {
@@ -10625,6 +11012,21 @@
       white-space: nowrap;
     }
 
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-table-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page .database-object-type {
+      color: var(--bs-secondary-color);
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
     #databasePage.unified-bootstrap-workspace.workbench-page .database-table-button:hover {
       background: var(--workbench-grid-hover-bg);
     }
@@ -10880,6 +11282,217 @@
     #fxDealsPage.workbench-page .fx-deals-grid {
       height: auto;
       max-height: calc(100vh - 225px);
+    }
+
+    #analyticalPnlReportPage.workbench-page {
+      display: flex;
+      height: calc(100vh - var(--workspace-nav-height));
+      min-height: 0;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #analyticalPnlReportPage[hidden] {
+      display: none;
+    }
+
+    .analytical-pnl-report-overview {
+      display: grid;
+      width: fit-content;
+      max-width: 100%;
+      align-items: start;
+      justify-items: start;
+      gap: 12px;
+      padding-top: 12px;
+    }
+
+    .analytical-pnl-report-panel {
+      max-width: 100%;
+      padding: 12px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    .analytical-pnl-report-panel-title {
+      margin: 0 0 10px;
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .analytical-pnl-report-filter-panel {
+      width: fit-content;
+    }
+
+    .analytical-pnl-report-filters {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(150px, 190px)) minmax(180px, 220px) auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .analytical-pnl-report-filter {
+      display: grid;
+      gap: 5px;
+      margin: 0;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .analytical-pnl-report-filter :is(.form-control, .form-select) {
+      min-height: var(--workbench-control-height);
+      border-color: var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      font-size: 13px;
+    }
+
+    .analytical-pnl-report-filter-actions {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .analytical-pnl-report-filter-actions .btn {
+      display: inline-flex;
+      min-height: var(--workbench-control-height);
+      align-items: center;
+      gap: 5px;
+      border-radius: var(--workbench-radius);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .analytical-pnl-report-summary {
+      width: fit-content;
+      min-width: 0;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+    }
+
+    .analytical-pnl-report-summary-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .analytical-pnl-report-summary-header .analytical-pnl-report-panel-title {
+      margin: 0;
+    }
+
+    .analytical-pnl-report-summary-header .ui-table-layout-button {
+      margin-left: auto;
+    }
+
+    .analytical-pnl-report-summary-grid-shell {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    #analyticalPnlReportSummaryGrid {
+      width: max-content;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .analytical-pnl-report-summary-note {
+      margin: 8px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+    }
+
+    .analytical-pnl-report-total-value {
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    .analytical-pnl-report-total-value.is-negative {
+      color: var(--bs-danger-text-emphasis);
+    }
+
+    #analyticalPnlReportPage .client-deals-toolbar {
+      width: 100%;
+      flex: 0 0 auto;
+      margin-top: 0;
+    }
+
+    #analyticalPnlReportPage .analytical-pnl-report-table-title {
+      margin: 0;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #analyticalPnlReportPage .analytical-pnl-report-table-region {
+      display: grid;
+      width: fit-content;
+      max-width: 100%;
+      min-width: 0;
+      grid-template-rows: auto minmax(0, 1fr);
+      margin-top: 8px;
+    }
+
+    #analyticalPnlReportPage .analytical-pnl-report-grid-shell {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    #analyticalPnlReportGrid {
+      width: max-content;
+      max-width: 100%;
+      height: auto;
+      max-height: calc(100vh - 260px);
+    }
+
+    .analytical-pnl-trade-type {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .analytical-pnl-trade-type .button-icon {
+      color: var(--bs-secondary-color);
+      font-size: 16px;
+    }
+
+    .analytical-pnl-identifier {
+      display: inline-flex;
+      max-width: 100%;
+      align-items: center;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .analytical-pnl-identifier > span {
+      min-width: 0;
+      padding: 2px 7px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .analytical-pnl-identifier-type {
+      border-right: 1px solid var(--bs-border-color);
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+    }
+
+    @media (max-width: 980px) {
+      .analytical-pnl-report-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .analytical-pnl-report-filter-actions {
+        grid-column: 1 / -1;
+      }
     }
 
     #referenceDataPage.unified-bootstrap-workspace.workbench-page .reference-layout {
@@ -14047,6 +14660,11 @@
         <span>Pricing</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
+      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceReportsToggle" aria-haspopup="menu" aria-controls="workspaceReportsMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceReportsMenu" data-workspace-routes="analytical-pnl-report">
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">assessment</span>
+        <span>Reports</span>
+        <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
+      </button>
       <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceSettingsToggle" aria-haspopup="menu" aria-controls="workspaceSettingsMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceSettingsMenu" data-workspace-routes="settings-currencies settings-currency-pairs batching-settings hedging-settings">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">settings</span>
         <span>Settings</span>
@@ -14072,6 +14690,12 @@
     <a class="workspace-nav-menu-link" href="#pricing-rules" data-workspace-route="pricing-rules" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">rule</span>
       <span>Pricing Rules</span>
+    </a>
+  </div>
+  <div class="workspace-nav-menu" id="workspaceReportsMenu" role="menu" aria-label="Reports" data-workspace-nav-menu hidden>
+    <a class="workspace-nav-menu-link" href="#reports:analytical-pnl" data-workspace-route="analytical-pnl-report" role="menuitem">
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">query_stats</span>
+      <span>Analytical PnL Report</span>
     </a>
   </div>
   <div class="workspace-nav-menu" id="workspaceSettingsMenu" role="menu" aria-label="Settings" data-workspace-nav-menu hidden>
@@ -14748,6 +15372,10 @@
 
     <section class="trades-tab-panel" id="clientFxDealsPage" role="tabpanel" aria-labelledby="clientFxDealsTab" hidden>
       <section class="client-deals-toolbar" data-ui-table-layout-host="client_fx_deals_grid" aria-label="Client FX Deals table layout">
+        <div class="fx-deals-view-switch" role="group" aria-label="Client FX Deals view">
+          <button type="button" class="btn btn-outline-secondary active" data-fx-deals-view-scope="client" data-fx-deals-view-mode="STANDARD" aria-pressed="true">Standard</button>
+          <button type="button" class="btn btn-outline-secondary" data-fx-deals-view-scope="client" data-fx-deals-view-mode="AUDIT" aria-pressed="false">Audit</button>
+        </div>
         <span class="client-deals-count" id="clientFxDealsCount">0 deals</span>
       </section>
       <section class="client-deals-grid-shell" aria-label="client_fx_deals">
@@ -14757,12 +15385,77 @@
 
     <section class="trades-tab-panel" id="hedgeFxDealsPage" role="tabpanel" aria-labelledby="hedgeFxDealsTab" hidden>
       <section class="client-deals-toolbar" data-ui-table-layout-host="hedge_fx_deals_grid" aria-label="Hedge FX Deals table layout">
+        <div class="fx-deals-view-switch" role="group" aria-label="Hedge FX Deals view">
+          <button type="button" class="btn btn-outline-secondary active" data-fx-deals-view-scope="hedge" data-fx-deals-view-mode="STANDARD" aria-pressed="true">Standard</button>
+          <button type="button" class="btn btn-outline-secondary" data-fx-deals-view-scope="hedge" data-fx-deals-view-mode="AUDIT" aria-pressed="false">Audit</button>
+        </div>
         <span class="client-deals-count" id="hedgeFxDealsCount">0 deals</span>
       </section>
       <section class="client-deals-grid-shell" aria-label="fx_hedge_deals">
         <div class="fx-deals-grid" id="hedgeFxDealsGrid" aria-label="Hedge FX Deals table"></div>
       </section>
     </section>
+  </main>
+
+  <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace workbench-page" id="analyticalPnlReportPage" hidden>
+    <section class="action-bar workbench-page-header" aria-label="Analytical PnL Report header">
+      <h1 class="page-title">Analytical PnL Report</h1>
+      <div class="profile-status workbench-page-status" id="analyticalPnlReportStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <div class="analytical-pnl-report-overview">
+      <section class="analytical-pnl-report-panel analytical-pnl-report-filter-panel" aria-labelledby="analyticalPnlReportFiltersTitle">
+        <h2 class="analytical-pnl-report-panel-title" id="analyticalPnlReportFiltersTitle">Report Filters</h2>
+        <form class="analytical-pnl-report-filters" id="analyticalPnlReportFilters" autocomplete="off">
+          <label class="analytical-pnl-report-filter">
+            <span>Trade Date From</span>
+            <input class="form-control form-control-sm" type="date" name="dateFrom">
+          </label>
+          <label class="analytical-pnl-report-filter">
+            <span>Trade Date To</span>
+            <input class="form-control form-control-sm" type="date" name="dateTo">
+          </label>
+          <label class="analytical-pnl-report-filter">
+            <span>Trade Type</span>
+            <select class="form-select form-select-sm" name="tradeType">
+              <option value="">All deals</option>
+              <option value="CLIENT_DEAL">Client FX Deals</option>
+              <option value="HEDGE_DEAL">Hedge FX Deals</option>
+            </select>
+          </label>
+          <div class="analytical-pnl-report-filter-actions">
+            <button type="submit" class="btn btn-sm btn-primary">
+              <span class="button-icon" aria-hidden="true">filter_alt</span>
+              <span>Apply</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="analyticalPnlReportClearFilters">
+              <span class="button-icon" aria-hidden="true">filter_alt_off</span>
+              <span>Clear</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="analytical-pnl-report-summary" aria-labelledby="analyticalPnlReportSummaryTitle">
+        <div class="analytical-pnl-report-summary-header" data-ui-table-layout-host="analytical_pnl_summary_grid">
+          <h2 class="analytical-pnl-report-panel-title" id="analyticalPnlReportSummaryTitle">Net Analytical PnL</h2>
+        </div>
+        <div class="analytical-pnl-report-summary-grid-shell">
+          <div id="analyticalPnlReportSummaryGrid" aria-label="Net Analytical PnL by currency"></div>
+        </div>
+        <p class="analytical-pnl-report-summary-note" id="analyticalPnlReportSummaryNote" hidden></p>
+      </section>
+    </div>
+
+    <div class="analytical-pnl-report-table-region">
+      <section class="client-deals-toolbar" data-ui-table-layout-host="analytical_pnl_report_grid" aria-label="Analytical PnL Report table layout">
+        <h2 class="analytical-pnl-report-table-title">Analytical PnL by Deal</h2>
+        <span class="client-deals-count" id="analyticalPnlReportCount">0 deals</span>
+      </section>
+      <section class="client-deals-grid-shell analytical-pnl-report-grid-shell" aria-label="Analytical PnL Report">
+        <div class="fx-deals-grid" id="analyticalPnlReportGrid" aria-label="Analytical PnL Report table"></div>
+      </section>
+    </div>
   </main>
 
   <main class="settings-shell profile-shell client-profile-shell unified-bootstrap-workspace workbench-page" id="clientProfilePage" hidden>
@@ -16236,45 +16929,198 @@
     </section>
 
     <section class="batching-settings-layout" aria-label="Batching Settings">
-      <section class="profile-panel batching-settings-panel" aria-labelledby="autoBatchingSettingsTitle">
-        <form class="modal-content" id="autoBatchingSettingsForm" autocomplete="off">
-          <div class="modal-header">
-            <h2 class="modal-title" id="autoBatchingSettingsTitle">Auto Batching</h2>
+      <form class="batching-settings-form" id="autoBatchingSettingsForm" autocomplete="off">
+        <section class="auto-batching-settings-panel" aria-labelledby="autoBatchingSettingsTitle">
+          <div class="auto-batching-settings-panel-head">
+            <h2 class="auto-batching-settings-panel-title" id="autoBatchingSettingsTitle">Auto Batching Settings</h2>
           </div>
-          <div class="modal-body">
-            <div class="auto-batching-settings-fields">
-              <section class="auto-batching-settings-field">
-                <label class="form-label auto-batching-settings-field-title" for="autoBatchingMaxIntervalSeconds">Maximum Batching Interval</label>
-                <div class="auto-batching-settings-field-body">
-                  <p class="form-text">Each open Batching Window closes no later than this maximum interval.</p>
+          <div class="auto-batching-settings-panel-body">
+            <section class="auto-batching-setting-group" aria-labelledby="autoBatchingEligibleCcyPairCodesLabel">
+              <div class="auto-batching-setting-group-head">
+                <h3 class="auto-batching-setting-group-title" id="autoBatchingEligibleCcyPairCodesLabel">Auto Batching Currency Pairs</h3>
+                <span class="auto-batching-pair-selection-count" id="autoBatchingEligibleCcyPairCount">0 selected</span>
+              </div>
+              <div class="auto-batching-ccy-pair-picker">
+                <div class="input-group auto-batching-ccy-pair-search">
+                  <span class="input-group-text"><span class="button-icon" aria-hidden="true">search</span></span>
+                  <input class="form-control" type="search" id="autoBatchingEligibleCcyPairSearch" autocomplete="off" placeholder="Search currency pairs..." aria-label="Search Auto Batching Currency Pairs" aria-controls="autoBatchingEligibleCcyPairCodes">
+                  <button type="button" class="btn btn-outline-secondary" id="autoBatchingEligibleCcyPairSearchClear" aria-label="Clear currency pair search" hidden>
+                    <span class="button-icon" aria-hidden="true">close</span>
+                  </button>
+                </div>
+                <div class="auto-batching-ccy-pair-options" id="autoBatchingEligibleCcyPairCodes" role="group" aria-labelledby="autoBatchingEligibleCcyPairCodesLabel"></div>
+                <p class="auto-batching-ccy-pair-empty" id="autoBatchingEligibleCcyPairEmpty" hidden>No matching currency pairs.</p>
+              </div>
+            </section>
+
+            <section class="auto-batching-setting-group" aria-labelledby="autoBatchingTenorCompatibilityModeLabel">
+              <div class="auto-batching-setting-group-head">
+                <h3 class="auto-batching-setting-group-title" id="autoBatchingTenorCompatibilityModeLabel">Tenor Compatibility</h3>
+              </div>
+              <select class="form-select auto-batching-tenor-select" id="autoBatchingTenorCompatibilityMode" name="tenorCompatibilityMode" aria-labelledby="autoBatchingTenorCompatibilityModeLabel" required>
+                <option value="SAME_TENOR_ONLY">Same Tenor Only</option>
+                <option value="CROSS_TENOR_WITH_SWAPS" disabled>Cross-Tenor with FX Swaps (In Development)</option>
+              </select>
+            </section>
+
+            <section class="auto-batching-setting-group" aria-labelledby="autoBatchingCloseTriggersLabel">
+              <div class="auto-batching-setting-group-head">
+                <h3 class="auto-batching-setting-group-title" id="autoBatchingCloseTriggersLabel">Batching Window Close Triggers</h3>
+              </div>
+              <div class="auto-batching-close-trigger-grid">
+                <div class="auto-batching-close-trigger">
+                  <label class="form-label form-label-with-help" for="autoBatchingMaxIntervalSeconds">
+                    <span>Maximum Batching Interval</span>
+                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Each open Batching Window closes no later than this maximum interval." data-tooltip="Each open Batching Window closes no later than this maximum interval.">info</span>
+                  </label>
                   <div class="input-group">
                     <input class="form-control" type="number" id="autoBatchingMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" inputmode="numeric" required>
                     <span class="input-group-text">sec</span>
                   </div>
                 </div>
-              </section>
-              <section class="auto-batching-settings-field">
-                <label class="form-label auto-batching-settings-field-title" for="autoBatchingMaxTransferRateSpreadPercent">Default Transfer Rate Corridor</label>
-                <div class="auto-batching-settings-field-body">
-                  <p class="form-text">Maximum full Transfer Rate spread allowed within one Batching Window.</p>
+                <div class="auto-batching-close-trigger">
+                  <label class="form-label form-label-with-help" for="autoBatchingMaxTransferRateSpreadPercent">
+                    <span>Default Transfer Rate Corridor</span>
+                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Maximum full Transfer Rate spread allowed within one Batching Window." data-tooltip="Maximum full Transfer Rate spread allowed within one Batching Window.">info</span>
+                  </label>
                   <div class="input-group">
                     <input class="form-control" type="number" id="autoBatchingMaxTransferRateSpreadPercent" name="maxTransferRateSpreadPercent" min="0.0001" max="100" step="0.0001" inputmode="decimal" required>
                     <span class="input-group-text">%</span>
                   </div>
                 </div>
-              </section>
-            </div>
+              </div>
+            </section>
           </div>
-          <div class="modal-footer">
+        </section>
+
+        <div class="batching-settings-actions profile-form-actions">
+          <button type="button" class="btn btn-sm btn-outline-secondary auto-batching-process-flow-button" id="autoBatchingProcessFlowButton">
+            <span class="button-icon" aria-hidden="true">account_tree</span>
+            <span>Process Flow</span>
+          </button>
+          <span class="profile-row-actions">
             <button type="submit" class="btn btn-primary btn-sm" id="autoBatchingSettingsSaveButton">
               <span class="button-icon" aria-hidden="true">save</span>
               <span>Save Settings</span>
             </button>
-          </div>
-        </form>
-      </section>
+          </span>
+        </div>
+      </form>
     </section>
   </main>
+
+  <dialog class="market-bootstrap-dialog auto-batching-flow-dialog" id="autoBatchingProcessFlowDialog" aria-labelledby="autoBatchingProcessFlowDialogTitle">
+    <div class="modal-content">
+      <header class="modal-header">
+        <div class="auto-batching-flow-title-block">
+          <h2 class="modal-title" id="autoBatchingProcessFlowDialogTitle">Current Auto Batching Flow</h2>
+          <span class="auto-batching-flow-version">Draft - 08.08.2026</span>
+        </div>
+        <button type="button" class="btn-close" id="autoBatchingProcessFlowDialogClose" aria-label="Close"></button>
+      </header>
+      <div class="modal-body">
+        <p class="auto-batching-flow-intro">This diagram records the currently implemented process. Each currency pair is evaluated independently.</p>
+        <div class="auto-batching-flowchart" role="group" aria-label="Current Auto Batching process flow">
+          <div class="auto-batching-flow-step is-start">
+            <div class="auto-batching-flow-step-title">AutoBatch Process Starts</div>
+            <div class="auto-batching-flow-step-detail">Capture the process start time and Trade ID boundary. Load configured Currency Pairs and Tenor Compatibility.</div>
+            <details class="auto-batching-flow-capture">
+              <summary>
+                <span class="button-icon" aria-hidden="true">data_object</span>
+                <span>Captured / Logged</span>
+                <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="auto-batching-flow-capture-list">
+                <div class="auto-batching-flow-capture-item"><code>startedAt</code><span>Server timestamp when the Auto Batch process starts.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>startBoundaryTradeId</code><span>Latest Trade ID already present at process start.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>eligibleCcyPairCodes</code><span>Configured Currency Pairs enabled for this process.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>tenorCompatibilityMode</code><span>Currently fixed as SAME_TENOR_ONLY.</span></div>
+              </div>
+            </details>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Select trades for this run</div>
+            <div class="auto-batching-flow-step-detail">Only new Client and Hedge Deals above the start boundary may open a window. Older FX Position trades remain under manual control.</div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Build independent queues</div>
+            <div class="auto-batching-flow-step-detail">Group by Ccy Pair, Trade Date, Tenor, Value Dates and currency precision.</div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Order by Received Timestamp</div>
+            <div class="auto-batching-flow-step-detail">Trade ID resolves equal timestamps.</div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">First eligible trade opens a Batching Window</div>
+            <div class="auto-batching-flow-step-detail">Deadline = first Received Timestamp + Maximum Batching Interval.</div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step is-decision">
+            <div class="auto-batching-flow-step-title">Would the next trade breach the Transfer Rate corridor?</div>
+          </div>
+          <div class="auto-batching-flow-branches">
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">Breach</span>
+              <div class="auto-batching-flow-step-title">Close the window</div>
+              <div class="auto-batching-flow-step-detail">Reason: TRANSFER_RATE_CORRIDOR_BREACHED. The breaching trade starts the next window.</div>
+            </div>
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">Within corridor</span>
+              <div class="auto-batching-flow-step-title">Add the trade</div>
+              <div class="auto-batching-flow-step-detail">Keep the current window open and continue evaluating it.</div>
+            </div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step is-decision">
+            <div class="auto-batching-flow-step-title">Has the Maximum Batching Interval elapsed?</div>
+          </div>
+          <div class="auto-batching-flow-branches">
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">Reached</span>
+              <div class="auto-batching-flow-step-title">Close the window</div>
+              <div class="auto-batching-flow-step-detail">Reason: MAX_INTERVAL_REACHED.</div>
+            </div>
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">Not reached</span>
+              <div class="auto-batching-flow-step-title">Wait for another trade</div>
+              <div class="auto-batching-flow-step-detail">Re-evaluate when a trade arrives or the deadline is reached.</div>
+            </div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step is-decision">
+            <div class="auto-batching-flow-step-title">Does the closed window contain at least two eligible trades?</div>
+          </div>
+          <div class="auto-batching-flow-branches">
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">Yes</span>
+              <div class="auto-batching-flow-step-title">Form an FX Batch</div>
+              <div class="auto-batching-flow-step-detail">At most one candidate is formed per currency pair in one evaluation cycle.</div>
+            </div>
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">No</span>
+              <div class="auto-batching-flow-step-title">Keep manual control</div>
+              <div class="auto-batching-flow-step-detail">Trades remain in FX Position and are excluded from the current Auto Batch run.</div>
+            </div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step is-result">
+            <div class="auto-batching-flow-step-title">Continue independently for each currency pair</div>
+          </div>
+        </div>
+        <p class="auto-batching-flow-note" role="note">
+          <span class="button-icon" aria-hidden="true">info</span>
+          <span>Execution Timestamp is stored for trades but is not yet used by this Auto Batching flow.</span>
+        </p>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="autoBatchingProcessFlowCloseButton">Close</button>
+      </footer>
+    </div>
+  </dialog>
 
   <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page hedging-settings-page" id="hedgingSettingsPage" hidden>
     <section class="settings-topbar workbench-page-header" aria-label="Hedging Settings header">
@@ -17526,12 +18372,23 @@
     const batchRollbackConfirmButton = document.getElementById("batchRollbackConfirmButton");
     const fxDealsPage = document.getElementById("fxDealsPage");
     const fxDealsTabs = Array.from(document.querySelectorAll("[data-fx-deals-route]"));
+    const fxDealsViewModeButtons = Array.from(
+      document.querySelectorAll("[data-fx-deals-view-mode]")
+    );
     const clientFxDealsPage = document.getElementById("clientFxDealsPage");
     const clientFxDealsGridEl = document.getElementById("clientFxDealsGrid");
     const clientFxDealsCountEl = document.getElementById("clientFxDealsCount");
     const hedgeFxDealsPage = document.getElementById("hedgeFxDealsPage");
     const hedgeFxDealsGridEl = document.getElementById("hedgeFxDealsGrid");
     const hedgeFxDealsCountEl = document.getElementById("hedgeFxDealsCount");
+    const analyticalPnlReportPage = document.getElementById("analyticalPnlReportPage");
+    const analyticalPnlReportStatusEl = document.getElementById("analyticalPnlReportStatus");
+    const analyticalPnlReportFiltersForm = document.getElementById("analyticalPnlReportFilters");
+    const analyticalPnlReportClearFiltersButton = document.getElementById("analyticalPnlReportClearFilters");
+    const analyticalPnlReportSummaryGridEl = document.getElementById("analyticalPnlReportSummaryGrid");
+    const analyticalPnlReportSummaryNoteEl = document.getElementById("analyticalPnlReportSummaryNote");
+    const analyticalPnlReportCountEl = document.getElementById("analyticalPnlReportCount");
+    const analyticalPnlReportGridEl = document.getElementById("analyticalPnlReportGrid");
     const clientProfilePage = document.getElementById("clientProfilePage");
     const clientProfileTopbar = document.getElementById("clientProfileTopbar");
     const clientProfileLayout = document.getElementById("clientProfileLayout");
@@ -17749,6 +18606,15 @@
     const autoBatchingSettingsForm = document.getElementById("autoBatchingSettingsForm");
     const autoBatchingSettingsSaveButton = document.getElementById("autoBatchingSettingsSaveButton");
     const autoBatchingSettingsStatus = document.getElementById("autoBatchingSettingsStatus");
+    const autoBatchingEligibleCcyPairCodes = document.getElementById("autoBatchingEligibleCcyPairCodes");
+    const autoBatchingEligibleCcyPairCount = document.getElementById("autoBatchingEligibleCcyPairCount");
+    const autoBatchingEligibleCcyPairSearch = document.getElementById("autoBatchingEligibleCcyPairSearch");
+    const autoBatchingEligibleCcyPairSearchClear = document.getElementById("autoBatchingEligibleCcyPairSearchClear");
+    const autoBatchingEligibleCcyPairEmpty = document.getElementById("autoBatchingEligibleCcyPairEmpty");
+    const autoBatchingProcessFlowButton = document.getElementById("autoBatchingProcessFlowButton");
+    const autoBatchingProcessFlowDialog = document.getElementById("autoBatchingProcessFlowDialog");
+    const autoBatchingProcessFlowDialogClose = document.getElementById("autoBatchingProcessFlowDialogClose");
+    const autoBatchingProcessFlowCloseButton = document.getElementById("autoBatchingProcessFlowCloseButton");
     const clientDealDuplicateCheckDialog = document.getElementById("clientDealDuplicateCheckDialog");
     const clientDealDuplicateCheckCloseButton = document.getElementById("clientDealDuplicateCheckCloseButton");
     const clientDealDuplicateCheckSummary = document.getElementById("clientDealDuplicateCheckSummary");
@@ -17840,7 +18706,8 @@
           "ccy_options",
           "ccy_pair_options",
           "fx_hedge_quick_mode_settings",
-          "fx_auto_batching_settings"
+          "fx_auto_batching_settings",
+          "fx_auto_batching_ccy_pairs"
         ]
       },
       {
@@ -17899,10 +18766,13 @@
       )
     );
     const selectedDealIds = new Set();
+    const FX_DEALS_VIEW_MODE_STANDARD = "STANDARD";
+    const FX_DEALS_VIEW_MODE_AUDIT = "AUDIT";
     let clientFxDealsGrid = null;
     let clientFxDealsGridReady = false;
     let clientFxDealsPendingData = [];
     let clientFxDealsTotalCount = 0;
+    let clientFxDealsViewMode = FX_DEALS_VIEW_MODE_STANDARD;
     let batchingHistoryGrid = null;
     let batchingHistoryGridReady = false;
     let batchFormationAuditGrid = null;
@@ -17916,6 +18786,15 @@
     let hedgeFxDealsGridReady = false;
     let hedgeFxDealsPendingData = [];
     let hedgeFxDealsTotalCount = 0;
+    let hedgeFxDealsViewMode = FX_DEALS_VIEW_MODE_STANDARD;
+    let analyticalPnlReportGrid = null;
+    let analyticalPnlReportGridReady = false;
+    let analyticalPnlReportPendingData = null;
+    let analyticalPnlReportRequestSequence = 0;
+    let analyticalPnlReportTotalCount = 0;
+    let analyticalPnlReportSummaryGrid = null;
+    let analyticalPnlReportSummaryGridReady = false;
+    let analyticalPnlReportSummaryPendingData = null;
     let selectedCurrencyPair = loadSelectedCurrencyPair();
     let editingDealId = null;
     let marketCcyOptionsEditState = null;
@@ -19896,6 +20775,20 @@
       const maxTransferRateSpreadPercent = positiveDecimalInputText(
         source?.maxTransferRateSpreadPercent
       );
+      const availableCcyPairCodes = marketPairs.map(pair => pair.pairCode);
+      const availableCcyPairCodeSet = new Set(availableCcyPairCodes);
+      const defaultEligibleCcyPairCodes = ["EUR_USD", "GBP_USD"]
+        .filter(code => availableCcyPairCodeSet.has(code));
+      const sourceCcyPairCodes = Array.isArray(source?.eligibleCcyPairCodes)
+        ? source.eligibleCcyPairCodes
+        : [];
+      const eligibleCcyPairCodes = [...new Set(sourceCcyPairCodes
+        .map(code => String(code || "").trim().toUpperCase())
+        .filter(code => availableCcyPairCodeSet.has(code)))]
+        .sort((left, right) => left.localeCompare(right));
+      const tenorCompatibilityMode = String(
+        source?.tenorCompatibilityMode || "SAME_TENOR_ONLY"
+      ).trim().toUpperCase();
       let validSpreadPercent = "0.05";
 
       try {
@@ -19915,6 +20808,14 @@
           ? maxIntervalSeconds
           : 60,
         maxTransferRateSpreadPercent: validSpreadPercent,
+        eligibleCcyPairCodes: eligibleCcyPairCodes.length > 0
+          ? eligibleCcyPairCodes
+          : defaultEligibleCcyPairCodes.length > 0
+            ? defaultEligibleCcyPairCodes
+            : availableCcyPairCodes,
+        tenorCompatibilityMode: tenorCompatibilityMode === "SAME_TENOR_ONLY"
+          ? tenorCompatibilityMode
+          : "SAME_TENOR_ONLY",
         updatedAt: String(source?.updatedAt || "")
       };
     }
@@ -20016,8 +20917,10 @@
         ));
       }
       const entryDate = isoDateFromClientFxDealValue(source.entryDate);
-      const entryTimestamp = String(source.entryTimestamp || "").trim()
+      const executionTimestamp = String(source.executionTimestamp || "").trim()
         || (entryDate ? `${entryDate}T00:00:00.000Z` : "");
+      const receivedTimestamp = String(source.receivedTimestamp || "").trim()
+        || executionTimestamp;
       const tradeDate = isoDateFromClientFxDealValue(source.tradeDate);
       const baseCcyValueDate = isoDateFromClientFxDealValue(
         source.baseCcyValueDate ?? source.baseCurrencySettlementDay ?? source.valueDate
@@ -20099,7 +21002,8 @@
       return {
         tradeId,
         clientDealId: tradeId,
-        entryTimestamp,
+        executionTimestamp,
+        receivedTimestamp,
         counterpartyId: Number(source.counterpartyId) || null,
         executionContextId: Number.isInteger(executionContextId) && executionContextId > 0
           ? executionContextId
@@ -20178,6 +21082,9 @@
         ...sharedTrade,
         tradeId,
         hedgeDealId: tradeId,
+        requestTimestamp: String(
+          source.requestTimestamp ?? source.request_timestamp ?? ""
+        ).trim(),
         counterpartyCode: String(source.counterpartyCode ?? source.clientCode ?? "").trim(),
         counterpartyCodeType: String(source.counterpartyCodeType ?? source.clientCodeType ?? "").trim().toUpperCase(),
         counterpartyName: String(source.counterpartyName ?? source.clientName ?? "").trim()
@@ -20379,7 +21286,8 @@
         tradeId,
         tradeType,
         [roleField]: String(source[roleField] || "").trim().toUpperCase(),
-        entryTimestamp: String(source.entryTimestamp || "").trim(),
+        executionTimestamp: String(source.executionTimestamp || "").trim(),
+        receivedTimestamp: String(source.receivedTimestamp || "").trim(),
         tradeDate: String(source.tradeDate || "").trim(),
         ccyPairCode: String(source.ccyPairCode || "").trim().toUpperCase(),
         currencyPair,
@@ -20535,7 +21443,8 @@
         tradeId,
         tradeType: String(source.tradeType || "").trim().toUpperCase(),
         createdAt: String(source.createdAt || "").trim(),
-        entryTimestamp: String(source.entryTimestamp || "").trim(),
+        executionTimestamp: String(source.executionTimestamp || "").trim(),
+        receivedTimestamp: String(source.receivedTimestamp || "").trim(),
         tradeDate: String(source.tradeDate || "").trim(),
         ccyPairCode: String(source.ccyPairCode || "").trim().toUpperCase(),
         currencyPair: String(source.currencyPair || "").trim().toUpperCase(),
@@ -20611,8 +21520,9 @@
         type: "client_deal",
         counterpartyName: record.clientName,
         clientName: record.clientName,
-        entryTimestamp: record.entryTimestamp,
-        entryDate: clientFxDealsDateLabel(record.entryTimestamp.slice(0, 10)),
+        executionTimestamp: record.executionTimestamp,
+        receivedTimestamp: record.receivedTimestamp,
+        entryDate: clientFxDealsDateLabel(record.executionTimestamp.slice(0, 10)),
         tradeDate: clientFxDealsDateLabel(record.tradeDate),
         valueDate: clientFxDealsDateLabel(record.baseCcyValueDate),
         baseCurrencySettlementDay: clientFxDealsDateLabel(record.baseCcyValueDate),
@@ -20676,8 +21586,9 @@
         type: "hedge_deal",
         counterpartyName: record.counterpartyName,
         clientName: "",
-        entryTimestamp: record.entryTimestamp,
-        entryDate: clientFxDealsDateLabel(record.entryTimestamp.slice(0, 10)),
+        executionTimestamp: record.executionTimestamp,
+        receivedTimestamp: record.receivedTimestamp,
+        entryDate: clientFxDealsDateLabel(record.executionTimestamp.slice(0, 10)),
         tradeDate: clientFxDealsDateLabel(record.tradeDate),
         valueDate: clientFxDealsDateLabel(record.baseCcyValueDate),
         baseCurrencySettlementDay: clientFxDealsDateLabel(record.baseCcyValueDate),
@@ -20735,8 +21646,9 @@
         type: record.tradeType.toLowerCase(),
         counterpartyName: "",
         clientName: "",
-        entryTimestamp: record.entryTimestamp,
-        entryDate: clientFxDealsDateLabel(record.entryTimestamp.slice(0, 10)),
+        executionTimestamp: record.executionTimestamp,
+        receivedTimestamp: record.receivedTimestamp,
+        entryDate: clientFxDealsDateLabel(record.executionTimestamp.slice(0, 10)),
         tradeDate: clientFxDealsDateLabel(record.tradeDate),
         valueDate: clientFxDealsDateLabel(record.baseCcyValueDate),
         baseCurrencySettlementDay: clientFxDealsDateLabel(record.baseCcyValueDate),
@@ -20775,7 +21687,7 @@
     function clientFxDealApiPayloadFromFxPosition(deal) {
       const profile = clientProfiles.find(item => item.counterpartyId === Number(deal.counterpartyId))
         || clientProfileByInn(clientFxDealClientCode(deal));
-      const entryTimestamp = String(deal.entryTimestamp || "").trim();
+      const executionTimestamp = String(deal.executionTimestamp || "").trim();
       const executionContextId = Number(deal.pricingContextId);
       const pricingRuleId = Number(deal.pricingRuleId);
       const manualPricing = deal.manualPricingReason === CLIENT_ONBOARDING_MANUAL_PRICING
@@ -20788,12 +21700,12 @@
         ? storedMarketPulseStreamStatus
         : marketStreamRunning ? "RUNNING" : "STOPPED";
       const hasMarketPulseSnapshot = Number.isFinite(marketPulseBid) && Number.isFinite(marketPulseOffer);
-      const persistedEntryTimestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(entryTimestamp)
-        ? entryTimestamp
+      const persistedExecutionTimestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(executionTimestamp)
+        ? executionTimestamp
         : new Date().toISOString();
 
       return {
-        entryTimestamp: persistedEntryTimestamp,
+        executionTimestamp: persistedExecutionTimestamp,
         counterpartyId: profile?.counterpartyId ?? null,
         executionContextId: Number.isInteger(executionContextId) && executionContextId > 0
           ? executionContextId
@@ -30433,8 +31345,8 @@
       }).filter(group => group.tables.length > 0);
     }
 
-    function databaseTableCountLabel(count) {
-      return `${count} ${count === 1 ? "table" : "tables"}`;
+    function databaseObjectCountLabel(count) {
+      return `${count} ${count === 1 ? "object" : "objects"}`;
     }
 
     function databaseRowCountLabel(count) {
@@ -30452,7 +31364,10 @@
           ${isActive ? 'aria-current="true"' : ""}
         >
           <span class="database-table-name">${escapeHtml(table.tableName)}</span>
-          <span class="database-row-count">${escapeHtml(databaseRowCountLabel(table.rowCount))}</span>
+          <span class="database-table-meta">
+            ${table.objectType === "view" ? '<span class="database-object-type">View</span>' : ""}
+            <span class="database-row-count">${escapeHtml(databaseRowCountLabel(table.rowCount))}</span>
+          </span>
         </button>
       `;
     }
@@ -30489,7 +31404,7 @@
               <span class="button-icon database-table-section-icon" aria-hidden="true">${escapeHtml(section.icon)}</span>
               <span class="database-table-section-name">${escapeHtml(section.label)}</span>
               <span class="database-table-section-meta">
-                ${escapeHtml(databaseTableCountLabel(tables.length))} · ${escapeHtml(databaseRowCountLabel(rowCount))}
+                ${escapeHtml(databaseObjectCountLabel(tables.length))} · ${escapeHtml(databaseRowCountLabel(rowCount))}
               </span>
               <span class="button-icon database-table-section-chevron" aria-hidden="true">chevron_right</span>
             </summary>
@@ -30650,7 +31565,8 @@
       const dataColumns = databaseDataColumnNames(details.tableName, columns);
 
       renderDatabaseColorPalette(details.tableName, rows);
-      databaseTableTitleEl.textContent = `${details.tableName} · ${details.rowCount} rows`;
+      const objectTypeLabel = details.objectType === "view" ? "View" : "Table";
+      databaseTableTitleEl.textContent = `${details.tableName} · ${objectTypeLabel} · ${details.rowCount} rows`;
       databaseSchemaRowsEl.innerHTML = columns.length > 0
         ? columns.map(column => `
             <tr>
@@ -30728,7 +31644,7 @@
         }
 
         setDatabaseStatus(
-          `data/demo.sqlite · ${databaseTableCountLabel(databaseTables.length)}`
+          `data/demo.sqlite · ${databaseObjectCountLabel(databaseTables.length)}`
         );
       } catch (error) {
         setDatabaseStatus(error.message || "Unable to load the SQLite schema.", "error");
@@ -30916,6 +31832,10 @@
       return "#hedge-fx-deals";
     }
 
+    function analyticalPnlReportRoute() {
+      return "#reports:analytical-pnl";
+    }
+
     function hedgingSettingsRoute() {
       return "#hedging-settings";
     }
@@ -31028,6 +31948,10 @@
 
     function isHedgeFxDealsRoute() {
       return location.hash === hedgeFxDealsRoute();
+    }
+
+    function isAnalyticalPnlReportRoute() {
+      return location.hash === analyticalPnlReportRoute();
     }
 
     function isHedgingSettingsRoute() {
@@ -31315,7 +32239,8 @@
         executionVenue: deal.executionVenue || "",
         type: deal.type || "client_deal",
         clientName: deal.clientName,
-        entryTimestamp: deal.entryTimestamp || "",
+        executionTimestamp: deal.executionTimestamp || "",
+        receivedTimestamp: deal.receivedTimestamp || "",
         entryDate: deal.entryDate || "",
         tradeDate: deal.tradeDate || deal.createDate || "",
         settlementMethod: fxPositionSettlementMethod(deal),
@@ -33318,6 +34243,26 @@
       setWorkbenchPageStatus(autoBatchingSettingsStatus, message, tone);
     }
 
+    function openAutoBatchingProcessFlowDialog() {
+      if (typeof autoBatchingProcessFlowDialog.showModal === "function") {
+        autoBatchingProcessFlowDialog.showModal();
+      } else {
+        autoBatchingProcessFlowDialog.setAttribute("open", "");
+      }
+
+      autoBatchingProcessFlowDialogClose.focus();
+    }
+
+    function closeAutoBatchingProcessFlowDialog() {
+      if (typeof autoBatchingProcessFlowDialog.close === "function") {
+        autoBatchingProcessFlowDialog.close();
+      } else {
+        autoBatchingProcessFlowDialog.removeAttribute("open");
+      }
+
+      autoBatchingProcessFlowButton.focus();
+    }
+
     function autoBatchingSettingsDraft() {
       const maxIntervalSeconds = Number(
         autoBatchingSettingsForm.elements.maxIntervalSeconds.value
@@ -33325,6 +34270,14 @@
       const maxTransferRateSpreadPercent = positiveDecimalInputText(
         autoBatchingSettingsForm.elements.maxTransferRateSpreadPercent.value
       );
+      const eligibleCcyPairCodes = Array.from(
+        autoBatchingSettingsForm.querySelectorAll(
+          'input[name="eligibleCcyPairCodes"]:checked'
+        )
+      ).map(input => input.value).sort((left, right) => left.localeCompare(right));
+      const tenorCompatibilityMode = String(
+        autoBatchingSettingsForm.elements.tenorCompatibilityMode.value || ""
+      ).trim().toUpperCase();
 
       if (
         !Number.isInteger(maxIntervalSeconds)
@@ -33350,9 +34303,23 @@
         );
       }
 
+      if (eligibleCcyPairCodes.length === 0) {
+        throw new Error(
+          "Select at least one Currency Pair for Auto Batching."
+        );
+      }
+
+      if (tenorCompatibilityMode !== "SAME_TENOR_ONLY") {
+        throw new Error(
+          "Tenor Compatibility must be Same Tenor Only."
+        );
+      }
+
       return {
         maxIntervalSeconds,
-        maxTransferRateSpreadPercent
+        maxTransferRateSpreadPercent,
+        eligibleCcyPairCodes,
+        tenorCompatibilityMode
       };
     }
 
@@ -33376,14 +34343,73 @@
           || !new Big(draft.maxTransferRateSpreadPercent).eq(
             autoBatchingSettings.maxTransferRateSpreadPercent
           )
+          || draft.eligibleCcyPairCodes.join(",")
+            !== autoBatchingSettings.eligibleCcyPairCodes.join(",")
+          || draft.tenorCompatibilityMode
+            !== autoBatchingSettings.tenorCompatibilityMode
       );
     }
 
+    function updateAutoBatchingEligibleCcyPairSummary() {
+      const selectedCount = autoBatchingEligibleCcyPairCodes.querySelectorAll(
+        'input[name="eligibleCcyPairCodes"]:checked'
+      ).length;
+
+      autoBatchingEligibleCcyPairCount.textContent = `${selectedCount} selected`;
+    }
+
+    function filterAutoBatchingEligibleCcyPairOptions() {
+      const query = String(autoBatchingEligibleCcyPairSearch.value || "")
+        .trim()
+        .toUpperCase();
+      let visibleCount = 0;
+
+      autoBatchingEligibleCcyPairCodes
+        .querySelectorAll(".auto-batching-ccy-pair-option")
+        .forEach(option => {
+          const visible = !query
+            || String(option.dataset.searchText || "").includes(query);
+          option.hidden = !visible;
+          if (visible) {
+            visibleCount += 1;
+          }
+        });
+
+      autoBatchingEligibleCcyPairEmpty.hidden = visibleCount > 0;
+      autoBatchingEligibleCcyPairSearchClear.hidden = query.length === 0;
+    }
+
+    function renderAutoBatchingEligibleCcyPairOptions() {
+      const selectedCodes = new Set(autoBatchingSettings.eligibleCcyPairCodes);
+
+      autoBatchingEligibleCcyPairCodes.innerHTML = marketPairs.map(pair => {
+        const inputId = `autoBatchingCcyPair_${pair.pairCode}`;
+        const searchText = `${pair.currencyPair} ${pair.pairCode}`.toUpperCase();
+
+        return `
+          <label class="form-check auto-batching-ccy-pair-option" for="${inputId}" data-search-text="${escapeHtml(searchText)}">
+            <input class="form-check-input" type="checkbox"
+              id="${inputId}"
+              name="eligibleCcyPairCodes"
+              value="${escapeHtml(pair.pairCode)}"
+              ${selectedCodes.has(pair.pairCode) ? "checked" : ""}>
+            <span class="form-check-label">${escapeHtml(pair.currencyPair)}</span>
+          </label>
+        `;
+      }).join("");
+
+      updateAutoBatchingEligibleCcyPairSummary();
+      filterAutoBatchingEligibleCcyPairOptions();
+    }
+
     function renderAutoBatchingSettings() {
+      renderAutoBatchingEligibleCcyPairOptions();
       autoBatchingSettingsForm.elements.maxIntervalSeconds.value =
         autoBatchingSettings.maxIntervalSeconds;
       autoBatchingSettingsForm.elements.maxTransferRateSpreadPercent.value =
         autoBatchingSettings.maxTransferRateSpreadPercent;
+      autoBatchingSettingsForm.elements.tenorCompatibilityMode.value =
+        autoBatchingSettings.tenorCompatibilityMode;
       updateAutoBatchingSettingsSaveAvailability();
     }
 
@@ -35390,7 +36416,7 @@
         type: "client_deal",
         clientName: profile.name,
         entryDate: todayLabel(),
-        entryTimestamp: new Date().toISOString(),
+        executionTimestamp: new Date().toISOString(),
         tradeDate: formatDisplayDate(tradeDate),
         valueDate: baseValueDateLabel,
         baseCurrencySettlementDay: baseValueDateLabel,
@@ -35892,7 +36918,7 @@
       populateDealClientOptions(deal.clientName || clientDealProfiles()[0]?.name || "", deal.inn || "");
 
       editForm.elements.dealId.value = deal.id || "";
-      editForm.elements.entryDate.value = deal.entryTimestamp || positionEntryDate(deal);
+      editForm.elements.entryDate.value = deal.executionTimestamp || positionEntryDate(deal);
       editForm.elements.branchCode.value = deal.branchCode || "";
       editForm.elements.clientCode.value = deal.inn || innForClientName(deal.clientName);
       editForm.elements.clientName.value = deal.clientName || "";
@@ -36866,7 +37892,7 @@
         ? BigInt(pnlMinor) < 0n
         : Number.isFinite(value) && value < 0;
       const formattedValue = hasMinorPnl
-        ? minorAmountCell(pnlMinor, fractionDigits)
+        ? formattedMinorAmount(pnlMinor, fractionDigits)
         : amountCell(cell.getValue());
       const tone = isNegative ? " text-danger" : "";
 
@@ -36916,6 +37942,58 @@
       });
     }
 
+    function fxDealsViewMode(scope) {
+      return scope === "hedge" ? hedgeFxDealsViewMode : clientFxDealsViewMode;
+    }
+
+    function syncFxDealsViewModeButtons(scope) {
+      const activeMode = fxDealsViewMode(scope);
+
+      fxDealsViewModeButtons
+        .filter(button => button.dataset.fxDealsViewScope === scope)
+        .forEach(button => {
+          const isActive = button.dataset.fxDealsViewMode === activeMode;
+          button.classList.toggle("active", isActive);
+          button.setAttribute("aria-pressed", String(isActive));
+        });
+    }
+
+    function applyFxDealsViewMode(scope) {
+      const table = scope === "hedge" ? hedgeFxDealsGrid : clientFxDealsGrid;
+      const auditFields = scope === "hedge"
+        ? ["requestTimestamp", "executionTimestamp"]
+        : ["executionTimestamp"];
+      const showAuditFields = fxDealsViewMode(scope) === FX_DEALS_VIEW_MODE_AUDIT;
+
+      auditFields.forEach(field => {
+        const column = table?.getColumn(field);
+
+        if (showAuditFields) {
+          column?.show();
+        } else {
+          column?.hide();
+        }
+      });
+
+      table?.redraw(true);
+      syncFxDealsViewModeButtons(scope);
+    }
+
+    function setFxDealsViewMode(scope, mode) {
+      const normalizedScope = scope === "hedge" ? "hedge" : "client";
+      const normalizedMode = mode === FX_DEALS_VIEW_MODE_AUDIT
+        ? FX_DEALS_VIEW_MODE_AUDIT
+        : FX_DEALS_VIEW_MODE_STANDARD;
+
+      if (normalizedScope === "hedge") {
+        hedgeFxDealsViewMode = normalizedMode;
+      } else {
+        clientFxDealsViewMode = normalizedMode;
+      }
+
+      applyFxDealsViewMode(normalizedScope);
+    }
+
     function clientFxDealColumnDefinitions() {
       return [
         {
@@ -36929,8 +38007,15 @@
               cssClass: "client-deals-col-identity"
             }),
             clientFxDealsFilterableColumn("timestamp", {
-              title: "Entry Timestamp",
-              field: "entryTimestamp",
+              title: "Execution Timestamp",
+              field: "executionTimestamp",
+              visible: clientFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT,
+              formatter: clientFxDealsTimestampFormatter,
+              cssClass: "client-deals-col-identity"
+            }),
+            clientFxDealsFilterableColumn("timestamp", {
+              title: "Received Timestamp",
+              field: "receivedTimestamp",
               formatter: clientFxDealsTimestampFormatter,
               cssClass: "client-deals-col-identity"
             })
@@ -37034,7 +38119,7 @@
       clientFxDealsGrid.on("tableBuilt", () => {
         clientFxDealsGridReady = true;
         updateClientFxDealsCount(data.length);
-        clientFxDealsGrid.redraw(true);
+        applyFxDealsViewMode("client");
       });
       clientFxDealsGrid.on("dataFiltered", (_filters, rows) => {
         updateClientFxDealsCount(rows.length);
@@ -37122,8 +38207,22 @@
               cssClass: "client-deals-col-identity"
             }),
             clientFxDealsFilterableColumn("timestamp", {
-              title: "Entry Timestamp",
-              field: "entryTimestamp",
+              title: "Request Timestamp",
+              field: "requestTimestamp",
+              visible: hedgeFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT,
+              formatter: clientFxDealsTimestampFormatter,
+              cssClass: "client-deals-col-identity"
+            }),
+            clientFxDealsFilterableColumn("timestamp", {
+              title: "Execution Timestamp",
+              field: "executionTimestamp",
+              visible: hedgeFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT,
+              formatter: clientFxDealsTimestampFormatter,
+              cssClass: "client-deals-col-identity"
+            }),
+            clientFxDealsFilterableColumn("timestamp", {
+              title: "Received Timestamp",
+              field: "receivedTimestamp",
               formatter: clientFxDealsTimestampFormatter,
               cssClass: "client-deals-col-identity"
             })
@@ -37227,7 +38326,7 @@
       hedgeFxDealsGrid.on("tableBuilt", () => {
         hedgeFxDealsGridReady = true;
         updateHedgeFxDealsCount(data.length);
-        hedgeFxDealsGrid.redraw(true);
+        applyFxDealsViewMode("hedge");
       });
       hedgeFxDealsGrid.on("dataFiltered", (_filters, rows) => {
         updateHedgeFxDealsCount(rows.length);
@@ -37257,6 +38356,415 @@
         hedgeFxDealsPendingData = [];
         hedgeFxDealsGrid.redraw(true);
       });
+    }
+
+    function setAnalyticalPnlReportStatus(message = "", tone = "") {
+      setWorkbenchPageStatus(analyticalPnlReportStatusEl, message, tone);
+    }
+
+    function analyticalPnlReportTradeTypeFormatter(cell) {
+      const tradeType = String(cell.getValue() || "").toUpperCase();
+      const isHedge = tradeType === "HEDGE_DEAL";
+
+      return `
+        <span class="analytical-pnl-trade-type">
+          <span class="button-icon" aria-hidden="true">${isHedge ? "shield" : "handshake"}</span>
+          <span>${isHedge ? "Hedge" : "Client"}</span>
+        </span>
+      `;
+    }
+
+    function analyticalPnlReportIdentifierFormatter(cell) {
+      const row = cell.getRow().getData();
+      const codeType = String(row.counterpartyCodeType || "").toUpperCase();
+      const code = String(row.counterpartyCode || "");
+      const typeLabel = codeType === "INTERNAL_UNIT_CODE" ? "UNIT" : codeType;
+
+      if (!code) {
+        return "";
+      }
+
+      return `
+        <span class="analytical-pnl-identifier">
+          <span class="analytical-pnl-identifier-type">${escapeHtml(typeLabel)}</span>
+          <span>${escapeHtml(code)}</span>
+        </span>
+      `;
+    }
+
+    function analyticalPnlReportPnlFormatter(cell) {
+      const row = cell.getRow().getData();
+      const minor = row.analyticalPnlQuoteMinor;
+      const fractionDigits = Number(row.analyticalPnlQuoteFractionDigits);
+
+      if (!Number.isSafeInteger(minor)
+        || !Number.isInteger(fractionDigits)
+        || fractionDigits < 0
+        || fractionDigits > 10) {
+        return '<span class="text-secondary">Not calculated</span>';
+      }
+
+      const signedMinor = BigInt(minor);
+      const sign = signedMinor > 0n ? "+" : "";
+      const tone = signedMinor < 0n ? " text-danger" : "";
+      const value = `${sign}${formattedMinorAmount(signedMinor.toString(), fractionDigits)}`;
+
+      return `<span class="${tone.trim()}">${escapeHtml(value)} ${escapeHtml(row.quoteCcyCode)}</span>`;
+    }
+
+    function analyticalPnlReportColumns() {
+      return uiTableColumns("analytical_pnl_report_grid", [
+        clientFxDealsFilterableColumn("referenceId", {
+          title: "Trade ID",
+          field: "tradeId",
+          sorter: "number",
+          headerSort: true
+        }),
+        clientFxDealsFilterableColumn("type", {
+          title: "Trade Type",
+          field: "tradeType",
+          formatter: analyticalPnlReportTradeTypeFormatter
+        }),
+        clientFxDealsFilterableColumn("date", {
+          title: "Trade Date",
+          field: "tradeDate",
+          formatter: clientFxDealsDateFormatter,
+          headerSort: true
+        }),
+        clientFxDealsFilterableColumn("text", {
+          title: "Identifier",
+          field: "identifier",
+          formatter: analyticalPnlReportIdentifierFormatter
+        }),
+        clientFxDealsFilterableColumn("name", {
+          title: "Counterparty Name",
+          field: "counterpartyName",
+          headerSort: true
+        }),
+        clientFxDealsFilterableColumn("pair", {
+          title: "Ccy Pair",
+          field: "currencyPair",
+          headerSort: true
+        }),
+        clientFxDealsFilterableColumn("side", {
+          title: "Side",
+          field: "side",
+          formatter: clientFxDealsSideFormatter,
+          hozAlign: "center",
+          headerHozAlign: "center"
+        }),
+        tabulatorSizedColumn("amount", {
+          title: "Base Ccy Amount",
+          field: "baseCcyAmount",
+          sorter: "number",
+          headerSort: true,
+          formatter: clientFxDealsAmountFormatter,
+          hozAlign: "right",
+          headerHozAlign: "right"
+        }),
+        tabulatorSizedColumn("amount", {
+          title: "Quote Ccy Amount",
+          field: "quoteCcyAmount",
+          sorter: "number",
+          headerSort: true,
+          formatter: clientFxDealsAmountFormatter,
+          hozAlign: "right",
+          headerHozAlign: "right"
+        }),
+        tabulatorSizedColumn("rate", {
+          title: "Trade Rate",
+          field: "tradeRate",
+          sorter: "number",
+          headerSort: true,
+          formatter: clientFxDealsRateFormatter,
+          hozAlign: "right",
+          headerHozAlign: "right"
+        }),
+        tabulatorSizedColumn("transferRate", {
+          title: "Transfer Rate",
+          field: "transferRate",
+          sorter: "number",
+          headerSort: true,
+          formatter: clientFxDealsRateFormatter,
+          hozAlign: "right",
+          headerHozAlign: "right"
+        }),
+        tabulatorSizedColumn("positionAmount", {
+          title: "Analytical PnL",
+          field: "analyticalPnl",
+          sorter: "number",
+          headerSort: true,
+          formatter: analyticalPnlReportPnlFormatter,
+          hozAlign: "right",
+          headerHozAlign: "right"
+        })
+      ]);
+    }
+
+    function updateAnalyticalPnlReportCount(filteredCount = analyticalPnlReportTotalCount) {
+      const total = analyticalPnlReportTotalCount;
+      const label = total === 1 ? "deal" : "deals";
+      analyticalPnlReportCountEl.textContent = filteredCount === total
+        ? `${total} ${label}`
+        : `${filteredCount} of ${total} deals`;
+    }
+
+    function initializeAnalyticalPnlReportGrid(data) {
+      analyticalPnlReportGrid = new Tabulator(analyticalPnlReportGridEl, {
+        data,
+        index: "tradeId",
+        layout: "fitDataTable",
+        renderVertical: "virtual",
+        renderVerticalBuffer: 320,
+        maxHeight: "calc(100vh - 260px)",
+        placeholder: "No deals match the report filters.",
+        movableColumns: false,
+        resizableColumns: false,
+        columnHeaderVertAlign: "bottom",
+        headerFilterLiveFilterDelay: 300,
+        columnDefaults: {
+          resizable: false,
+          vertAlign: "middle",
+          tooltip: false,
+          headerSort: false
+        },
+        columns: analyticalPnlReportColumns()
+      });
+      registerUiTableTabulator("analytical_pnl_report_grid", analyticalPnlReportGrid);
+      analyticalPnlReportGrid.on("tableBuilt", () => {
+        analyticalPnlReportGridReady = true;
+        updateAnalyticalPnlReportCount(data.length);
+
+        if (analyticalPnlReportPendingData) {
+          const pendingData = analyticalPnlReportPendingData;
+          analyticalPnlReportPendingData = null;
+          analyticalPnlReportGrid.replaceData(pendingData);
+        }
+      });
+      analyticalPnlReportGrid.on("dataFiltered", (_filters, rows) => {
+        updateAnalyticalPnlReportCount(rows.length);
+      });
+    }
+
+    function analyticalPnlReportSummaryAmountFormatter(cell) {
+      const row = cell.getRow().getData();
+      const fractionDigits = Number(row.fractionDigits);
+
+      if (!/^-?\d+$/.test(String(row.amountMinor || ""))
+        || !Number.isInteger(fractionDigits)
+        || fractionDigits < 0
+        || fractionDigits > 10) {
+        return '<span class="text-secondary">Not calculated</span>';
+      }
+
+      const minor = BigInt(row.amountMinor);
+      const sign = minor > 0n ? "+" : "";
+      const formatted = `${sign}${formattedMinorAmount(minor.toString(), fractionDigits)}`;
+
+      return `
+        <span class="analytical-pnl-report-total-value ${minor < 0n ? "is-negative" : ""}">
+          ${escapeHtml(formatted)}
+        </span>
+      `;
+    }
+
+    function analyticalPnlReportSummaryMarginFormatter(cell) {
+      const row = cell.getRow().getData();
+      const margin = String(row.weightedAverageMarginPercent ?? "");
+
+      if (!/^-?\d+\.\d{4}$/.test(margin)) {
+        return '<span class="text-secondary">Not calculated</span>';
+      }
+
+      const numericMargin = Number(margin);
+      const formatted = `${numericMargin > 0 ? "+" : ""}${margin}%`;
+
+      return `
+        <span class="analytical-pnl-report-total-value ${numericMargin < 0 ? "is-negative" : ""}">
+          ${escapeHtml(formatted)}
+        </span>
+      `;
+    }
+
+    function analyticalPnlReportSummaryRows(summary = {}) {
+      const totals = Array.isArray(summary.totals) ? summary.totals : [];
+
+      return totals.map(total => {
+        const amountMinor = String(total.analyticalPnlQuoteMinor || "0");
+        const fractionDigits = Number(total.analyticalPnlQuoteFractionDigits);
+
+        return {
+          currency: String(total.quoteCcyCode || "").toUpperCase(),
+          amount: Number(minorToMajorDecimal(amountMinor, fractionDigits)),
+          amountMinor,
+          fractionDigits,
+          weightedAverageMargin: total.weightedAverageMarginPercent === null
+            ? null
+            : Number(total.weightedAverageMarginPercent),
+          weightedAverageMarginPercent: total.weightedAverageMarginPercent
+        };
+      });
+    }
+
+    function initializeAnalyticalPnlReportSummaryGrid(data) {
+      analyticalPnlReportSummaryGrid = new Tabulator(analyticalPnlReportSummaryGridEl, {
+        data,
+        index: "currency",
+        layout: "fitDataTable",
+        placeholder: "No calculated PnL in the current result.",
+        movableColumns: false,
+        resizableColumns: false,
+        columnHeaderVertAlign: "bottom",
+        headerFilterLiveFilterDelay: 300,
+        columnDefaults: {
+          resizable: false,
+          vertAlign: "middle",
+          tooltip: false,
+          headerSort: false
+        },
+        columns: uiTableColumns("analytical_pnl_summary_grid", [
+          clientFxDealsFilterableColumn("code", {
+            title: "Currency",
+            field: "currency",
+            headerSort: true
+          }),
+          tabulatorSizedColumn("positionAmount", {
+            title: "Amount",
+            field: "amount",
+            sorter: "number",
+            headerSort: true,
+            formatter: analyticalPnlReportSummaryAmountFormatter,
+            hozAlign: "right",
+            headerHozAlign: "right"
+          }),
+          tabulatorSizedColumn("wideStatus", {
+            title: "Weighted Average Margin",
+            field: "weightedAverageMargin",
+            sorter: "number",
+            headerSort: true,
+            formatter: analyticalPnlReportSummaryMarginFormatter,
+            hozAlign: "right",
+            headerHozAlign: "right"
+          })
+        ])
+      });
+      registerUiTableTabulator(
+        "analytical_pnl_summary_grid",
+        analyticalPnlReportSummaryGrid
+      );
+      analyticalPnlReportSummaryGrid.on("tableBuilt", () => {
+        analyticalPnlReportSummaryGridReady = true;
+
+        if (analyticalPnlReportSummaryPendingData) {
+          const pendingData = analyticalPnlReportSummaryPendingData;
+          analyticalPnlReportSummaryPendingData = null;
+          analyticalPnlReportSummaryGrid.replaceData(pendingData);
+        }
+      });
+    }
+
+    function renderAnalyticalPnlReportSummary(summary = {}) {
+      const rows = analyticalPnlReportSummaryRows(summary);
+      const missingPnlCount = Number(summary.dealsWithoutPnlCount) || 0;
+      const missingMessage = missingPnlCount > 0
+        ? `${missingPnlCount} ${missingPnlCount === 1 ? "deal" : "deals"} without calculated PnL`
+        : "";
+
+      analyticalPnlReportSummaryNoteEl.textContent = missingMessage;
+      analyticalPnlReportSummaryNoteEl.hidden = !missingMessage;
+      analyticalPnlReportSummaryPendingData = rows;
+
+      if (!analyticalPnlReportSummaryGrid) {
+        analyticalPnlReportSummaryPendingData = null;
+        initializeAnalyticalPnlReportSummaryGrid(rows);
+        return;
+      }
+
+      if (!analyticalPnlReportSummaryGridReady) {
+        return;
+      }
+
+      analyticalPnlReportSummaryGrid.replaceData(rows).then(() => {
+        analyticalPnlReportSummaryPendingData = null;
+        analyticalPnlReportSummaryGrid.redraw(true);
+      });
+    }
+
+    function analyticalPnlReportQuery() {
+      const parameters = new URLSearchParams();
+      const formData = new FormData(analyticalPnlReportFiltersForm);
+
+      ["dateFrom", "dateTo", "tradeType"].forEach(name => {
+        const value = String(formData.get(name) || "").trim();
+
+        if (value) {
+          parameters.set(name, value);
+        }
+      });
+
+      return parameters.toString();
+    }
+
+    function initializeAnalyticalPnlReportDefaultDateRange() {
+      const now = new Date();
+      const twoDigits = value => String(value).padStart(2, "0");
+      const today = [
+        now.getFullYear(),
+        twoDigits(now.getMonth() + 1),
+        twoDigits(now.getDate())
+      ].join("-");
+
+      analyticalPnlReportFiltersForm.elements.dateFrom.value = today;
+      analyticalPnlReportFiltersForm.elements.dateTo.value = today;
+    }
+
+    async function loadAnalyticalPnlReport() {
+      if (!DEMO_API_ENABLED) {
+        setAnalyticalPnlReportStatus("Start the application with start-demo.bat to load the report.", "warning");
+        return;
+      }
+
+      const requestSequence = ++analyticalPnlReportRequestSequence;
+      const query = analyticalPnlReportQuery();
+      setAnalyticalPnlReportStatus("Loading report...");
+      analyticalPnlReportFiltersForm.setAttribute("aria-busy", "true");
+
+      try {
+        const report = await demoApiRequest(`/api/v1/reports/analytical-pnl${query ? `?${query}` : ""}`);
+
+        if (requestSequence !== analyticalPnlReportRequestSequence) {
+          return;
+        }
+
+        const rows = Array.isArray(report?.rows)
+          ? report.rows.map(row => ({
+              ...row,
+              identifier: `${row.counterpartyCodeType || ""}:${row.counterpartyCode || ""}`
+            }))
+          : [];
+        analyticalPnlReportTotalCount = rows.length;
+        updateAnalyticalPnlReportCount(rows.length);
+        renderAnalyticalPnlReportSummary(report?.summary);
+        analyticalPnlReportPendingData = rows;
+
+        if (!analyticalPnlReportGrid) {
+          initializeAnalyticalPnlReportGrid(rows);
+        } else if (analyticalPnlReportGridReady) {
+          await analyticalPnlReportGrid.replaceData(rows);
+          analyticalPnlReportPendingData = null;
+          analyticalPnlReportGrid.redraw(true);
+        }
+
+        setAnalyticalPnlReportStatus("");
+      } catch (error) {
+        if (requestSequence === analyticalPnlReportRequestSequence) {
+          setAnalyticalPnlReportStatus(error.message || "Unable to load the report.", "error");
+        }
+      } finally {
+        if (requestSequence === analyticalPnlReportRequestSequence) {
+          analyticalPnlReportFiltersForm.removeAttribute("aria-busy");
+        }
+      }
     }
 
     function fallbackCopyText(text) {
@@ -37357,9 +38865,11 @@
 
     function applyInitialPageMode() {
       batchDetailsRequestSequence += 1;
+      analyticalPnlReportRequestSequence += 1;
       fxDealsPage.hidden = true;
       clientFxDealsPage.hidden = true;
       hedgeFxDealsPage.hidden = true;
+      analyticalPnlReportPage.hidden = true;
       batchingSettingsPage.hidden = true;
       hedgingSettingsPage.hidden = true;
       databasePage.hidden = true;
@@ -37446,6 +38956,20 @@
         hedgeFxDealsPage.hidden = false;
         setFxDealsActiveTab("hedge-fx-deals");
         document.title = "Hedge FX Deals";
+        return;
+      }
+
+      if (isAnalyticalPnlReportRoute()) {
+        setWorkspaceRoute("analytical-pnl-report");
+        marketPage.hidden = true;
+        mainPage.hidden = true;
+        clientProfilePage.hidden = true;
+        pricingPage.hidden = true;
+        referenceDataPage.hidden = true;
+        pricingRulesPage.hidden = true;
+        analyticalPnlReportPage.hidden = false;
+        document.title = "Analytical PnL Report";
+        loadAnalyticalPnlReport();
         return;
       }
 
@@ -37770,6 +39294,36 @@
       "input",
       updateAutoBatchingSettingsSaveAvailability
     );
+    autoBatchingEligibleCcyPairCodes.addEventListener("change", event => {
+      if (event.target.matches('input[name="eligibleCcyPairCodes"]')) {
+        updateAutoBatchingEligibleCcyPairSummary();
+      }
+    });
+    autoBatchingEligibleCcyPairSearch.addEventListener(
+      "input",
+      filterAutoBatchingEligibleCcyPairOptions
+    );
+    autoBatchingEligibleCcyPairSearchClear.addEventListener("click", () => {
+      autoBatchingEligibleCcyPairSearch.value = "";
+      filterAutoBatchingEligibleCcyPairOptions();
+      autoBatchingEligibleCcyPairSearch.focus();
+    });
+    autoBatchingProcessFlowButton.addEventListener(
+      "click",
+      openAutoBatchingProcessFlowDialog
+    );
+    autoBatchingProcessFlowDialogClose.addEventListener(
+      "click",
+      closeAutoBatchingProcessFlowDialog
+    );
+    autoBatchingProcessFlowCloseButton.addEventListener(
+      "click",
+      closeAutoBatchingProcessFlowDialog
+    );
+    autoBatchingProcessFlowDialog.addEventListener("cancel", event => {
+      event.preventDefault();
+      closeAutoBatchingProcessFlowDialog();
+    });
     addClientDealForm.addEventListener("submit", createClientDeal);
     addClientDealForm.addEventListener("click", selectAddClientDealAmountFixingCurrency);
     addClientDealForm.addEventListener("keydown", handleAddClientDealControlEnter);
@@ -39022,6 +40576,27 @@
       editingDealId = null;
       prepareEditDealForm();
       clearFormValidity();
+    });
+
+    fxDealsViewModeButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        setFxDealsViewMode(
+          button.dataset.fxDealsViewScope,
+          button.dataset.fxDealsViewMode
+        );
+      });
+    });
+    syncFxDealsViewModeButtons("client");
+    syncFxDealsViewModeButtons("hedge");
+
+    initializeAnalyticalPnlReportDefaultDateRange();
+    analyticalPnlReportFiltersForm.addEventListener("submit", event => {
+      event.preventDefault();
+      loadAnalyticalPnlReport();
+    });
+    analyticalPnlReportClearFiltersButton.addEventListener("click", () => {
+      analyticalPnlReportFiltersForm.reset();
+      loadAnalyticalPnlReport();
     });
 
     selectAllCheckboxes.forEach(checkbox => {

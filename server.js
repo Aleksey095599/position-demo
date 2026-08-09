@@ -54,8 +54,10 @@ const {
   FX_BATCH_FORMATION_REASON_DETAILS_MAX_LENGTH
 } = require("./backend/fx-batching/domain/fx-batch-formation-reason");
 const {
+  FX_AUTO_BATCHING_CCY_PAIR_CODES_DEFAULT,
   FX_AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT,
   FX_AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT,
+  FX_AUTO_BATCHING_TENOR_COMPATIBILITY_MODE_DEFAULT,
   fxAutoBatchingSettings: validatedFxAutoBatchingSettings
 } = require("./backend/fx-batching/domain/fx-auto-batching-settings");
 const {
@@ -84,6 +86,12 @@ const {
   DEFAULT_UI_COLOR_TOKENS,
   UI_COLOR_TOKEN_TABLE_SQL
 } = require("./backend/ui-configuration/ui-color-tokens");
+const {
+  analyticalPnlReportQuery
+} = require("./backend/reporting/analytical-pnl-report-query");
+const {
+  analyticalPnlSummary
+} = require("./backend/reporting/analytical-pnl-summary");
 
 const HOST = "127.0.0.1";
 const UI_TABLE_DEFAULT_CONFIRMATION = "SAVE_AS_DEFAULT";
@@ -214,6 +222,7 @@ if (sqliteTableExists(database, "fx_batches")) {
   ensureFxBatchFormationReason(database);
 }
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
+database.exec("DROP VIEW IF EXISTS analytical_pnl_report");
 database.exec("DROP VIEW IF EXISTS v_fx_batch_formation_audit");
 dropTradingCounterpartyExecutionContextIntegrityTriggers(database);
 ensureHedgeQuickModeSettingsDefaultTenor(database);
@@ -253,10 +262,12 @@ migrateClientFxDealsToTradeExposure(database);
 migrateFxTradeExposureAmountsToMinorUnits(database);
 migrateFxTradeExposureTradeSemantics(database);
 migrateFxBatchTradeSemantics(database);
+migrateFxTradeExposureTimestamps(database);
 migrateFxBatchRollbackSemantics(database);
 migrateFxBatchMemberRoleSemantics(database);
 migrateFxBatchQuoteCashOutput(database);
 migrateFxDealAnalyticalPnlToMinorUnits(database);
+migrateFxHedgeDealRequestTimestamp(database);
 ensureFxTradeExposureDealtCurrencyTriggers(database);
 migrateFxTradeMarketSnapshot(database);
 ensureClientFxDealIndexes(database);
@@ -363,18 +374,88 @@ function ensureFxAutoBatchingSettings(sqlite) {
     `);
   }
 
+  if (!columns.has("tenor_compatibility_mode")) {
+    sqlite.exec(`
+      ALTER TABLE fx_auto_batching_settings
+      ADD COLUMN tenor_compatibility_mode TEXT NOT NULL
+        DEFAULT '${FX_AUTO_BATCHING_TENOR_COMPATIBILITY_MODE_DEFAULT}'
+        CONSTRAINT chk_fx_auto_batching_settings_tenor_compatibility
+        CHECK (tenor_compatibility_mode = 'SAME_TENOR_ONLY')
+    `);
+  }
+
   sqlite.prepare(`
     INSERT OR IGNORE INTO fx_auto_batching_settings
       (
         settings_id,
         max_interval_seconds,
-        default_transfer_rate_spread_percent
+        default_transfer_rate_spread_percent,
+        tenor_compatibility_mode
       )
-    VALUES (1, ?, ?)
+    VALUES (1, ?, ?, ?)
   `).run(
     FX_AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT,
-    FX_AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT
+    FX_AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT,
+    FX_AUTO_BATCHING_TENOR_COMPATIBILITY_MODE_DEFAULT
   );
+
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS fx_auto_batching_ccy_pairs
+    (
+      settings_id INTEGER NOT NULL DEFAULT 1,
+      ccy_pair_code TEXT NOT NULL,
+      PRIMARY KEY (settings_id, ccy_pair_code),
+      CONSTRAINT fk_fx_auto_batching_ccy_pairs_settings
+        FOREIGN KEY (settings_id)
+          REFERENCES fx_auto_batching_settings (settings_id)
+          ON UPDATE RESTRICT
+          ON DELETE CASCADE,
+      CONSTRAINT fk_fx_auto_batching_ccy_pairs_ccy_pair
+        FOREIGN KEY (ccy_pair_code)
+          REFERENCES ccy_pair_options (ccy_pair_code)
+          ON UPDATE RESTRICT
+          ON DELETE RESTRICT,
+      CONSTRAINT chk_fx_auto_batching_ccy_pairs_singleton
+        CHECK (settings_id = 1)
+    ) WITHOUT ROWID
+  `);
+
+  const configuredPairCount = Number(sqlite.prepare(`
+    SELECT COUNT(*) AS pair_count
+    FROM fx_auto_batching_ccy_pairs
+    WHERE settings_id = 1
+  `).get().pair_count);
+
+  if (configuredPairCount === 0) {
+    const insertDefaultPair = sqlite.prepare(`
+      INSERT OR IGNORE INTO fx_auto_batching_ccy_pairs
+        (settings_id, ccy_pair_code)
+      SELECT 1, ccy_pair_code
+      FROM ccy_pair_options
+      WHERE ccy_pair_code = ?
+    `);
+
+    FX_AUTO_BATCHING_CCY_PAIR_CODES_DEFAULT.forEach(ccyPairCode => {
+      insertDefaultPair.run(ccyPairCode);
+    });
+
+    const insertedDefaultPairCount = Number(sqlite.prepare(`
+      SELECT COUNT(*) AS pair_count
+      FROM fx_auto_batching_ccy_pairs
+      WHERE settings_id = 1
+    `).get().pair_count);
+
+    if (insertedDefaultPairCount === 0) {
+      sqlite.prepare(`
+        INSERT INTO fx_auto_batching_ccy_pairs
+          (settings_id, ccy_pair_code)
+        SELECT 1, ccy_pair_code
+        FROM ccy_pair_options
+        ORDER BY ccy_pair_code
+        LIMIT 1
+      `).run();
+    }
+  }
 }
 
 function ensureFxBatchFormationTiming(sqlite) {
@@ -1056,6 +1137,24 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
     "base_ccy_value_date",
     "quote_ccy_value_date"
   ];
+  const timestampedFinalColumns = [
+    "trade_id",
+    "execution_timestamp",
+    "received_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "base_ccy_side",
+    "dealt_ccy_code",
+    "base_ccy_amount_minor",
+    "base_ccy_fraction_digits",
+    "quote_ccy_amount_minor",
+    "quote_ccy_fraction_digits",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
   const tableInfo = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all();
   const columns = tableInfo.map(column => column.name);
   const tableDefinition = sqlite.prepare(`
@@ -1066,9 +1165,15 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
 
   const isIntermediateSchema = columns.join(",") === targetColumns.join(",");
   const isFinalSchema = columns.join(",") === finalColumns.join(",");
+  const isTimestampedFinalSchema =
+    columns.join(",") === timestampedFinalColumns.join(",");
 
-  if (isIntermediateSchema || isFinalSchema) {
-    const amountColumnOffset = isFinalSchema ? 7 : 6;
+  if (isIntermediateSchema || isFinalSchema || isTimestampedFinalSchema) {
+    const amountColumnOffset = isTimestampedFinalSchema
+      ? 8
+      : isFinalSchema
+        ? 7
+        : 6;
     const targetDefinitionsAreValid = tableInfo[amountColumnOffset]?.type === "INTEGER"
       && tableInfo[amountColumnOffset]?.notnull === 1
       && tableInfo[amountColumnOffset + 1]?.type === "INTEGER"
@@ -1315,6 +1420,24 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
     "base_ccy_value_date",
     "quote_ccy_value_date"
   ];
+  const timestampedTargetColumns = [
+    "trade_id",
+    "execution_timestamp",
+    "received_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "base_ccy_side",
+    "dealt_ccy_code",
+    "base_ccy_amount_minor",
+    "base_ccy_fraction_digits",
+    "quote_ccy_amount_minor",
+    "quote_ccy_fraction_digits",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
   const tableInfo = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all();
   const columns = tableInfo.map(column => column.name);
   const tableDefinition = sqlite.prepare(`
@@ -1323,11 +1446,15 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
     WHERE type = 'table' AND name = 'fx_trade_exposure'
   `).get()?.sql || "";
 
-  if (columns.join(",") === targetColumns.join(",")) {
-    const definitionsAreValid = tableInfo[5]?.type === "TEXT"
-      && tableInfo[5]?.notnull === 1
-      && tableInfo[6]?.type === "TEXT"
-      && tableInfo[6]?.notnull === 1
+  const usesTimestampedTarget =
+    columns.join(",") === timestampedTargetColumns.join(",");
+
+  if (columns.join(",") === targetColumns.join(",") || usesTimestampedTarget) {
+    const semanticColumnOffset = usesTimestampedTarget ? 6 : 5;
+    const definitionsAreValid = tableInfo[semanticColumnOffset]?.type === "TEXT"
+      && tableInfo[semanticColumnOffset]?.notnull === 1
+      && tableInfo[semanticColumnOffset + 1]?.type === "TEXT"
+      && tableInfo[semanticColumnOffset + 1]?.notnull === 1
       && (
         tableDefinition.includes("chk_fx_trade_exposure_base_ccy_side")
         || tableDefinition.includes("base_ccy_side = 'FLAT'")
@@ -1521,6 +1648,275 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
 
     if (foreignKeyViolations.length > 0) {
       throw new Error("FX Trade Exposure trade-semantics migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function ensureFxTradeExposureTimestampIndexes(sqlite) {
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_execution_timestamp
+        ON fx_trade_exposure (execution_timestamp);
+    CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_received_timestamp
+        ON fx_trade_exposure (received_timestamp);
+  `);
+}
+
+function migrateFxTradeExposureTimestamps(sqlite) {
+  const tableInfo = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all();
+  const columns = tableInfo.map(column => column.name);
+  const legacyColumns = [
+    "trade_id",
+    "entry_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "base_ccy_side",
+    "dealt_ccy_code",
+    "base_ccy_amount_minor",
+    "base_ccy_fraction_digits",
+    "quote_ccy_amount_minor",
+    "quote_ccy_fraction_digits",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
+  const targetColumns = [
+    "trade_id",
+    "execution_timestamp",
+    "received_timestamp",
+    "trade_type",
+    "trade_date",
+    "ccy_pair_code",
+    "base_ccy_side",
+    "dealt_ccy_code",
+    "base_ccy_amount_minor",
+    "base_ccy_fraction_digits",
+    "quote_ccy_amount_minor",
+    "quote_ccy_fraction_digits",
+    "trade_rate",
+    "tenor",
+    "base_ccy_value_date",
+    "quote_ccy_value_date"
+  ];
+  const columnSignature = columns.join(",");
+
+  if (columnSignature === targetColumns.join(",")) {
+    const tableDefinition = sqlite.prepare(`
+      SELECT sql
+      FROM sqlite_master
+      WHERE type = 'table' AND name = 'fx_trade_exposure'
+    `).get()?.sql || "";
+    const definitionsAreValid = tableInfo[1]?.type === "TEXT"
+      && tableInfo[1]?.notnull === 1
+      && tableInfo[2]?.type === "TEXT"
+      && tableInfo[2]?.notnull === 1
+      && tableDefinition.includes("chk_fx_trade_exposure_execution_timestamp")
+      && tableDefinition.includes("chk_fx_trade_exposure_received_timestamp")
+      && !tableDefinition.includes("entry_timestamp");
+
+    if (!definitionsAreValid) {
+      throw new Error("Unsupported FX Trade Exposure timestamp schema.");
+    }
+
+    ensureFxTradeExposureTimestampIndexes(sqlite);
+    return;
+  }
+
+  if (columnSignature !== legacyColumns.join(",")) {
+    throw new Error("Unsupported FX Trade Exposure timestamp migration source.");
+  }
+
+  const originalRowCount = Number(
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+  );
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      CREATE TABLE fx_trade_exposure_timestamps
+      (
+          trade_id                    INTEGER PRIMARY KEY,
+          execution_timestamp         TEXT    NOT NULL,
+          received_timestamp          TEXT    NOT NULL,
+          trade_type                  TEXT    NOT NULL,
+          trade_date                  TEXT    NOT NULL,
+          ccy_pair_code               TEXT    NOT NULL,
+          base_ccy_side               TEXT    NOT NULL,
+          dealt_ccy_code              TEXT    NOT NULL,
+          base_ccy_amount_minor       INTEGER NOT NULL,
+          base_ccy_fraction_digits    INTEGER NOT NULL,
+          quote_ccy_amount_minor      INTEGER NOT NULL,
+          quote_ccy_fraction_digits   INTEGER NOT NULL,
+          trade_rate                  NUMERIC,
+          tenor                       TEXT    NOT NULL,
+          base_ccy_value_date         TEXT    NOT NULL,
+          quote_ccy_value_date        TEXT    NOT NULL,
+
+          CONSTRAINT fk_fx_trade_exposure_ccy_pair
+              FOREIGN KEY (ccy_pair_code)
+                  REFERENCES ccy_pair_options (ccy_pair_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_trade_exposure_dealt_ccy
+              FOREIGN KEY (dealt_ccy_code)
+                  REFERENCES ccy_options (ccy_code)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT uq_fx_trade_exposure_identity
+              UNIQUE (trade_id, trade_type),
+          CONSTRAINT chk_fx_trade_exposure_execution_timestamp
+              CHECK (
+                  length(execution_timestamp) = 24
+                  AND execution_timestamp GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', execution_timestamp)
+                      = execution_timestamp
+              ),
+          CONSTRAINT chk_fx_trade_exposure_received_timestamp
+              CHECK (
+                  length(received_timestamp) = 24
+                  AND received_timestamp GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', received_timestamp)
+                      = received_timestamp
+              ),
+          CONSTRAINT chk_fx_trade_exposure_trade_type
+              CHECK (
+                  trade_type IN
+                  (
+                      'CLIENT_DEAL',
+                      'HEDGE_DEAL',
+                      'BATCH_BALANCE_TRADE',
+                      'BATCH_POSITION_OUT'
+                  )
+              ),
+          CONSTRAINT chk_fx_trade_exposure_trade_date
+              CHECK (
+                  trade_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', trade_date) = trade_date
+              ),
+          CONSTRAINT chk_fx_trade_exposure_dealt_ccy_code
+              CHECK (
+                  length(dealt_ccy_code) = 3
+                  AND dealt_ccy_code = upper(dealt_ccy_code)
+                  AND dealt_ccy_code NOT GLOB '*[^A-Z]*'
+              ),
+          CONSTRAINT chk_fx_trade_exposure_amounts
+              CHECK (
+                  (
+                      trade_type = 'BATCH_POSITION_OUT'
+                      AND base_ccy_side = 'FLAT'
+                      AND typeof(base_ccy_amount_minor) = 'integer'
+                      AND base_ccy_amount_minor = 0
+                      AND typeof(quote_ccy_amount_minor) = 'integer'
+                      AND quote_ccy_amount_minor = 0
+                      AND trade_rate IS NULL
+                  )
+                  OR (
+                      base_ccy_side IN ('BUY', 'SELL')
+                      AND typeof(base_ccy_amount_minor) = 'integer'
+                      AND base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                      AND typeof(quote_ccy_amount_minor) = 'integer'
+                      AND quote_ccy_amount_minor BETWEEN 1 AND 9007199254740991
+                      AND typeof(trade_rate) IN ('integer', 'real')
+                      AND trade_rate > 0
+                  )
+              ),
+          CONSTRAINT chk_fx_trade_exposure_fraction_digits
+              CHECK (
+                  typeof(base_ccy_fraction_digits) = 'integer'
+                  AND base_ccy_fraction_digits BETWEEN 0 AND 10
+                  AND typeof(quote_ccy_fraction_digits) = 'integer'
+                  AND quote_ccy_fraction_digits BETWEEN 0 AND 10
+              ),
+          CONSTRAINT chk_fx_trade_exposure_tenor
+              CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
+          CONSTRAINT chk_fx_trade_exposure_value_dates
+              CHECK (
+                  base_ccy_value_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
+                  AND quote_ccy_value_date GLOB '????-??-??'
+                  AND strftime('%Y-%m-%d', quote_ccy_value_date) = quote_ccy_value_date
+              )
+      );
+
+      INSERT INTO fx_trade_exposure_timestamps
+        (
+          trade_id,
+          execution_timestamp,
+          received_timestamp,
+          trade_type,
+          trade_date,
+          ccy_pair_code,
+          base_ccy_side,
+          dealt_ccy_code,
+          base_ccy_amount_minor,
+          base_ccy_fraction_digits,
+          quote_ccy_amount_minor,
+          quote_ccy_fraction_digits,
+          trade_rate,
+          tenor,
+          base_ccy_value_date,
+          quote_ccy_value_date
+        )
+      SELECT
+          trade_id,
+          entry_timestamp,
+          entry_timestamp,
+          trade_type,
+          trade_date,
+          ccy_pair_code,
+          base_ccy_side,
+          dealt_ccy_code,
+          base_ccy_amount_minor,
+          base_ccy_fraction_digits,
+          quote_ccy_amount_minor,
+          quote_ccy_fraction_digits,
+          trade_rate,
+          tenor,
+          base_ccy_value_date,
+          quote_ccy_value_date
+      FROM fx_trade_exposure
+      ORDER BY trade_id;
+
+      DROP TABLE fx_trade_exposure;
+      ALTER TABLE fx_trade_exposure_timestamps RENAME TO fx_trade_exposure;
+
+      CREATE INDEX idx_fx_trade_exposure_execution_timestamp
+          ON fx_trade_exposure (execution_timestamp);
+      CREATE INDEX idx_fx_trade_exposure_received_timestamp
+          ON fx_trade_exposure (received_timestamp);
+      CREATE INDEX idx_fx_trade_exposure_trade_type
+          ON fx_trade_exposure (trade_type);
+      CREATE INDEX idx_fx_trade_exposure_trade_date
+          ON fx_trade_exposure (trade_date);
+      CREATE INDEX idx_fx_trade_exposure_ccy_pair
+          ON fx_trade_exposure (ccy_pair_code);
+      CREATE UNIQUE INDEX uq_fx_trade_exposure_identity
+          ON fx_trade_exposure (trade_id, trade_type);
+    `);
+
+    const migratedRowCount = Number(
+      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+    );
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (migratedRowCount !== originalRowCount) {
+      throw new Error("FX Trade Exposure timestamp migration did not preserve every row.");
+    }
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error("FX Trade Exposure timestamp migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -3535,6 +3931,9 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     && exposureColumns.includes("quote_ccy_fraction_digits");
   const exposureUsesBaseCcySide = exposureColumns.includes("base_ccy_side");
   const exposureUsesDealtCcyCode = exposureColumns.includes("dealt_ccy_code");
+  const exposureUsesExecutionAndReceivedTimestamps =
+    exposureColumns.includes("execution_timestamp")
+    && exposureColumns.includes("received_timestamp");
   const foreignKeys = sqlite.prepare("PRAGMA foreign_key_list(client_fx_deals)").all();
   const tableDefinition = sqlite.prepare(`
     SELECT sql
@@ -3828,7 +4227,30 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
         const exposureUsesFinalTradeSemantics = exposureUsesBaseCcySide
           && exposureUsesDealtCcyCode;
         const insertExposure = sqlite.prepare(exposureUsesFinalTradeSemantics
-          ? `
+          ? exposureUsesExecutionAndReceivedTimestamps
+            ? `
+              INSERT INTO fx_trade_exposure
+                (
+                  trade_id,
+                  execution_timestamp,
+                  received_timestamp,
+                  trade_type,
+                  trade_date,
+                  ccy_pair_code,
+                  base_ccy_side,
+                  dealt_ccy_code,
+                  base_ccy_amount_minor,
+                  base_ccy_fraction_digits,
+                  quote_ccy_amount_minor,
+                  quote_ccy_fraction_digits,
+                  trade_rate,
+                  tenor,
+                  base_ccy_value_date,
+                  quote_ccy_value_date
+                )
+              VALUES (?, ?, ?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `
+            : `
             INSERT INTO fx_trade_exposure
               (
                 trade_id,
@@ -3882,11 +4304,14 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
 
           const values = [
             row.client_deal_id,
-            row.entry_timestamp,
-            row.trade_date,
-            row.ccy_pair_code,
-            row.side
+            row.entry_timestamp
           ];
+
+          if (exposureUsesExecutionAndReceivedTimestamps) {
+            values.push(row.entry_timestamp);
+          }
+
+          values.push(row.trade_date, row.ccy_pair_code, row.side);
 
           if (exposureUsesFinalTradeSemantics) {
             values.push(row.base_ccy_code);
@@ -4080,6 +4505,7 @@ function migrateFxDealAnalyticalPnlTable(sqlite, {
   migratedTableName,
   tradeType,
   targetColumns,
+  compatibleTargetColumns = [],
   sourceColumns,
   analyticalPnlConstraint,
   createTableSql,
@@ -4104,9 +4530,12 @@ function migrateFxDealAnalyticalPnlTable(sqlite, {
   `).get(tableName)?.sql || "";
   const columnNames = columns.join(",");
 
-  if (columnNames === targetColumns.join(",")) {
-    const analyticalPnlMinorIndex = targetColumns.indexOf("analytical_pnl_quote_minor");
-    const analyticalPnlFractionDigitsIndex = targetColumns
+  const matchedTargetColumns = [targetColumns, ...compatibleTargetColumns]
+    .find(candidateColumns => columnNames === candidateColumns.join(","));
+
+  if (matchedTargetColumns) {
+    const analyticalPnlMinorIndex = matchedTargetColumns.indexOf("analytical_pnl_quote_minor");
+    const analyticalPnlFractionDigitsIndex = matchedTargetColumns
       .indexOf("analytical_pnl_quote_fraction_digits");
     const targetDefinitionIsValid = tableInfo[analyticalPnlMinorIndex]?.type === "INTEGER"
       && tableInfo[analyticalPnlMinorIndex]?.notnull === 0
@@ -4352,6 +4781,17 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
       "analytical_pnl_quote_minor",
       "analytical_pnl_quote_fraction_digits"
     ],
+    compatibleTargetColumns: [[
+      "trade_id",
+      "trade_type",
+      "request_timestamp",
+      "counterparty_id",
+      "execution_context_id",
+      "pricing_rule_id",
+      "transfer_rate",
+      "analytical_pnl_quote_minor",
+      "analytical_pnl_quote_fraction_digits"
+    ]],
     sourceColumns: [
       "trade_id",
       "trade_type",
@@ -4426,6 +4866,189 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
   });
 }
 
+function migrateFxHedgeDealRequestTimestamp(sqlite) {
+  const tableExists = Boolean(sqlite.prepare(`
+    SELECT 1 AS present
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'fx_hedge_deals'
+  `).get());
+
+  if (!tableExists) {
+    return;
+  }
+
+  const targetColumns = [
+    "trade_id",
+    "trade_type",
+    "request_timestamp",
+    "counterparty_id",
+    "execution_context_id",
+    "pricing_rule_id",
+    "transfer_rate",
+    "analytical_pnl_quote_minor",
+    "analytical_pnl_quote_fraction_digits"
+  ];
+  const legacyColumns = targetColumns.filter(column => column !== "request_timestamp");
+  const tableInfo = sqlite.prepare("PRAGMA table_info(fx_hedge_deals)").all();
+  const columnNames = tableInfo.map(column => column.name).join(",");
+  const tableDefinition = sqlite.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'fx_hedge_deals'
+  `).get()?.sql || "";
+
+  if (columnNames === targetColumns.join(",")) {
+    const requestTimestampColumn = tableInfo[targetColumns.indexOf("request_timestamp")];
+    const targetDefinitionIsValid = requestTimestampColumn?.type === "TEXT"
+      && requestTimestampColumn?.notnull === 1
+      && tableDefinition.includes("chk_fx_hedge_deals_request_timestamp");
+
+    if (!targetDefinitionIsValid) {
+      throw new Error("Unsupported FX Hedge Deal Request Timestamp schema.");
+    }
+
+    return;
+  }
+
+  if (columnNames !== legacyColumns.join(",")) {
+    throw new Error("Unsupported FX Hedge Deal Request Timestamp migration source schema.");
+  }
+
+  const originalRowCount = Number(
+    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_hedge_deals").get().count
+  );
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      CREATE TABLE fx_hedge_deals_request_timestamp_migrated
+      (
+          trade_id                    INTEGER PRIMARY KEY,
+          trade_type                  TEXT    NOT NULL DEFAULT 'HEDGE_DEAL',
+          request_timestamp           TEXT    NOT NULL,
+          counterparty_id             INTEGER NOT NULL,
+          execution_context_id        INTEGER,
+          pricing_rule_id             INTEGER,
+          transfer_rate               NUMERIC,
+          analytical_pnl_quote_minor  INTEGER,
+          analytical_pnl_quote_fraction_digits INTEGER,
+
+          CONSTRAINT fk_fx_hedge_deals_trade
+              FOREIGN KEY (trade_id, trade_type)
+                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_hedge_deals_counterparty
+              FOREIGN KEY (counterparty_id)
+                  REFERENCES trading_counterparties (counterparty_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_hedge_deals_execution_context
+              FOREIGN KEY (execution_context_id)
+                  REFERENCES execution_contexts (execution_context_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT fk_fx_hedge_deals_pricing_rule_scope
+              FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
+                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
+                  ON UPDATE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT chk_fx_hedge_deals_trade_type
+              CHECK (trade_type = 'HEDGE_DEAL'),
+          CONSTRAINT chk_fx_hedge_deals_request_timestamp
+              CHECK (
+                  length(request_timestamp) = 24
+                  AND request_timestamp GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', request_timestamp)
+                      = request_timestamp
+              ),
+          CONSTRAINT chk_fx_hedge_deals_pricing_context
+              CHECK (pricing_rule_id IS NULL OR execution_context_id IS NOT NULL),
+          CONSTRAINT chk_fx_hedge_deals_transfer_rate
+              CHECK (
+                  transfer_rate IS NULL
+                  OR (
+                      typeof(transfer_rate) IN ('integer', 'real')
+                      AND transfer_rate > 0
+                  )
+              ),
+          CONSTRAINT chk_fx_hedge_deals_analytical_pnl_quote
+              CHECK (
+                  (
+                      analytical_pnl_quote_minor IS NULL
+                      AND analytical_pnl_quote_fraction_digits IS NULL
+                  )
+                  OR (
+                      typeof(analytical_pnl_quote_minor) = 'integer'
+                      AND analytical_pnl_quote_minor
+                          BETWEEN -9007199254740991 AND 9007199254740991
+                      AND typeof(analytical_pnl_quote_fraction_digits) = 'integer'
+                      AND analytical_pnl_quote_fraction_digits BETWEEN 0 AND 10
+                  )
+              )
+      );
+
+      INSERT INTO fx_hedge_deals_request_timestamp_migrated
+      (
+          trade_id,
+          trade_type,
+          request_timestamp,
+          counterparty_id,
+          execution_context_id,
+          pricing_rule_id,
+          transfer_rate,
+          analytical_pnl_quote_minor,
+          analytical_pnl_quote_fraction_digits
+      )
+      SELECT
+          d.trade_id,
+          d.trade_type,
+          e.execution_timestamp,
+          d.counterparty_id,
+          d.execution_context_id,
+          d.pricing_rule_id,
+          d.transfer_rate,
+          d.analytical_pnl_quote_minor,
+          d.analytical_pnl_quote_fraction_digits
+      FROM fx_hedge_deals d
+      INNER JOIN fx_trade_exposure e
+        ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
+      ORDER BY d.trade_id;
+
+      DROP TABLE fx_hedge_deals;
+      ALTER TABLE fx_hedge_deals_request_timestamp_migrated RENAME TO fx_hedge_deals;
+
+      CREATE INDEX idx_fx_hedge_deals_counterparty
+          ON fx_hedge_deals (counterparty_id);
+    `);
+
+    const migratedRowCount = Number(
+      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_hedge_deals").get().count
+    );
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (migratedRowCount !== originalRowCount) {
+      throw new Error("FX Hedge Deal Request Timestamp migration did not preserve every row.");
+    }
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error("FX Hedge Deal Request Timestamp migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
 function ensureClientFxDealIndexes(sqlite) {
   sqlite.exec(`
     CREATE INDEX IF NOT EXISTS idx_client_fx_deals_counterparty
@@ -4469,7 +5092,7 @@ function backfillInitialClientFxDealAttribution(sqlite) {
       AND d.analytical_pnl_quote_fraction_digits IS NULL
       AND external.counterparty_code_type = 'INN'
       AND external.counterparty_code = '7701234567'
-      AND e.entry_timestamp = '2026-07-15T09:30:00.000Z'
+      AND e.execution_timestamp = '2026-07-15T09:30:00.000Z'
       AND e.trade_date = '2026-07-15'
       AND e.ccy_pair_code = 'EUR_USD'
       AND e.base_ccy_side = 'BUY'
@@ -5950,7 +6573,8 @@ function seedInitialClientFxDeals(sqlite) {
     const exposureResult = sqlite.prepare(`
       INSERT INTO fx_trade_exposure
         (
-          entry_timestamp,
+          execution_timestamp,
+          received_timestamp,
           trade_type,
           trade_date,
           ccy_pair_code,
@@ -5967,6 +6591,7 @@ function seedInitialClientFxDeals(sqlite) {
         )
       VALUES
         (
+          '2026-07-15T09:30:00.000Z',
           '2026-07-15T09:30:00.000Z',
           'CLIENT_DEAL',
           '2026-07-15',
@@ -6741,6 +7366,7 @@ function fxAutoBatchingSettings() {
     SELECT
       max_interval_seconds AS maxIntervalSeconds,
       default_transfer_rate_spread_percent AS maxTransferRateSpreadPercent,
+      tenor_compatibility_mode AS tenorCompatibilityMode,
       updated_at AS updatedAt
     FROM fx_auto_batching_settings
     WHERE settings_id = 1
@@ -6750,29 +7376,57 @@ function fxAutoBatchingSettings() {
     throw new Error("FX Auto Batching Settings are not configured.");
   }
 
+  const eligibleCcyPairCodes = database.prepare(`
+    SELECT ccy_pair_code AS ccyPairCode
+    FROM fx_auto_batching_ccy_pairs
+    WHERE settings_id = 1
+    ORDER BY ccy_pair_code
+  `).all().map(row => row.ccyPairCode);
+
   return {
-    ...validatedFxAutoBatchingSettings(settings),
+    ...validatedFxAutoBatchingSettings({
+      ...settings,
+      eligibleCcyPairCodes
+    }),
     updatedAt: settings.updatedAt
   };
 }
 
 function updateFxAutoBatchingSettings(payload) {
-  const result = database.prepare(`
-    UPDATE fx_auto_batching_settings
-    SET max_interval_seconds = ?,
-        default_transfer_rate_spread_percent = ?,
-        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-    WHERE settings_id = 1
-  `).run(
-    payload.maxIntervalSeconds,
-    payload.maxTransferRateSpreadPercent
-  );
+  return runInImmediateTransaction(database, () => {
+    const result = database.prepare(`
+      UPDATE fx_auto_batching_settings
+      SET max_interval_seconds = ?,
+          default_transfer_rate_spread_percent = ?,
+          tenor_compatibility_mode = ?,
+          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE settings_id = 1
+    `).run(
+      payload.maxIntervalSeconds,
+      payload.maxTransferRateSpreadPercent,
+      payload.tenorCompatibilityMode
+    );
 
-  if (result.changes !== 1) {
-    throw new Error("FX Auto Batching Settings are not configured.");
-  }
+    if (result.changes !== 1) {
+      throw new Error("FX Auto Batching Settings are not configured.");
+    }
 
-  return fxAutoBatchingSettings();
+    database.prepare(`
+      DELETE FROM fx_auto_batching_ccy_pairs
+      WHERE settings_id = 1
+    `).run();
+    const insertPair = database.prepare(`
+      INSERT INTO fx_auto_batching_ccy_pairs
+        (settings_id, ccy_pair_code)
+      VALUES (1, ?)
+    `);
+
+    payload.eligibleCcyPairCodes.forEach(ccyPairCode => {
+      insertPair.run(ccyPairCode);
+    });
+
+    return fxAutoBatchingSettings();
+  });
 }
 
 function clientDealGenerationProcessSettings() {
@@ -6977,7 +7631,8 @@ function clientFxDeals() {
     SELECT
       e.trade_id AS tradeId,
       e.trade_id AS clientDealId,
-      e.entry_timestamp AS entryTimestamp,
+      e.execution_timestamp AS executionTimestamp,
+      e.received_timestamp AS receivedTimestamp,
       d.counterparty_id AS counterpartyId,
       d.execution_context_id AS executionContextId,
       d.pricing_rule_id AS pricingRuleId,
@@ -7029,7 +7684,9 @@ function hedgeFxDeals() {
     SELECT
       e.trade_id AS tradeId,
       e.trade_id AS hedgeDealId,
-      e.entry_timestamp AS entryTimestamp,
+      e.execution_timestamp AS executionTimestamp,
+      e.received_timestamp AS receivedTimestamp,
+      d.request_timestamp AS requestTimestamp,
       d.counterparty_id AS counterpartyId,
       d.execution_context_id AS executionContextId,
       d.pricing_rule_id AS pricingRuleId,
@@ -7075,12 +7732,97 @@ function hedgeFxDeal(hedgeDealId) {
   return hedgeFxDeals().find(deal => deal.hedgeDealId === Number(hedgeDealId)) || null;
 }
 
+function analyticalPnlReportFilters(searchParams) {
+  const dateFrom = normalizedText(searchParams.get("dateFrom"));
+  const dateTo = normalizedText(searchParams.get("dateTo"));
+  const tradeType = normalizedText(searchParams.get("tradeType")).toUpperCase();
+  const counterpartyCode = normalizedText(searchParams.get("counterpartyCode"));
+
+  if (dateFrom && !isIsoCalendarDate(dateFrom)) {
+    return { error: "Date From must be a valid date in YYYY-MM-DD format." };
+  }
+
+  if (dateTo && !isIsoCalendarDate(dateTo)) {
+    return { error: "Date To must be a valid date in YYYY-MM-DD format." };
+  }
+
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    return { error: "Date From must not be later than Date To." };
+  }
+
+  if (tradeType && !["CLIENT_DEAL", "HEDGE_DEAL"].includes(tradeType)) {
+    return { error: "Trade Type must be CLIENT_DEAL or HEDGE_DEAL." };
+  }
+
+  if (counterpartyCode.length > COUNTERPARTY_CODE_MAX_LENGTH) {
+    return {
+      error: `Counterparty Code must not exceed ${COUNTERPARTY_CODE_MAX_LENGTH} characters.`
+    };
+  }
+
+  return { dateFrom, dateTo, tradeType, counterpartyCode };
+}
+
+function analyticalPnlReport(filters) {
+  const where = [];
+  const parameters = [];
+
+  if (filters.dateFrom) {
+    where.push("exposure.trade_date >= ?");
+    parameters.push(filters.dateFrom);
+  }
+
+  if (filters.dateTo) {
+    where.push("exposure.trade_date <= ?");
+    parameters.push(filters.dateTo);
+  }
+
+  if (filters.tradeType) {
+    where.push("deal.trade_type = ?");
+    parameters.push(filters.tradeType);
+  }
+
+  if (filters.counterpartyCode) {
+    where.push(`
+      instr(
+        upper(COALESCE(external.counterparty_code, internal.unit_code)),
+        upper(?)
+      ) > 0
+    `);
+    parameters.push(filters.counterpartyCode);
+  }
+
+  const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+  const rows = database.prepare(analyticalPnlReportQuery(whereSql))
+    .all(...parameters)
+    .map(fxTradeRowWithMajorAmounts);
+  const summary = analyticalPnlSummary(rows);
+
+  summary.totals.forEach(total => {
+    total.analyticalPnl = minorToMajor(
+      total.analyticalPnlQuoteMinor,
+      total.analyticalPnlQuoteFractionDigits
+    );
+    total.quoteCcyAmount = minorToMajor(
+      total.quoteCcyAmountMinor,
+      total.quoteCcyFractionDigits
+    );
+  });
+
+  return {
+    filters,
+    rows,
+    summary
+  };
+}
+
 function fxPositions() {
   return database.prepare(`
     SELECT
       e.trade_id AS tradeId,
       e.trade_type AS tradeType,
-      e.entry_timestamp AS entryTimestamp,
+      e.execution_timestamp AS executionTimestamp,
+      e.received_timestamp AS receivedTimestamp,
       e.trade_date AS tradeDate,
       e.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
@@ -7420,7 +8162,8 @@ function fxBatchTrades() {
       t.trade_id AS tradeId,
       b.created_at AS createdAt,
       b.batch_status AS originatingBatchStatus,
-      e.entry_timestamp AS entryTimestamp,
+      e.execution_timestamp AS executionTimestamp,
+      e.received_timestamp AS receivedTimestamp,
       e.trade_date AS tradeDate,
       e.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
@@ -7558,7 +8301,8 @@ function fxBatchContent(batchId) {
       content.content_role AS contentRole,
       exposure.trade_id AS tradeId,
       exposure.trade_type AS tradeType,
-      exposure.entry_timestamp AS entryTimestamp,
+      exposure.execution_timestamp AS executionTimestamp,
+      exposure.received_timestamp AS receivedTimestamp,
       exposure.trade_date AS tradeDate,
       exposure.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
@@ -7794,7 +8538,8 @@ function saveFormedFxBatch({
     const insertExposure = database.prepare(`
       INSERT INTO fx_trade_exposure
         (
-          entry_timestamp,
+          execution_timestamp,
+          received_timestamp,
           trade_type,
           trade_date,
           ccy_pair_code,
@@ -7809,7 +8554,7 @@ function saveFormedFxBatch({
           base_ccy_value_date,
           quote_ccy_value_date
         )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertMember = database.prepare(`
       INSERT INTO fx_batch_members (batch_id, trade_id, trade_type, member_role)
@@ -7844,7 +8589,8 @@ function saveFormedFxBatch({
       .filter(Boolean)
       .map(trade => {
       const exposureResult = insertExposure.run(
-        trade.entryTimestamp,
+        trade.executionTimestamp,
+        trade.receivedTimestamp,
         trade.tradeType,
         trade.tradeDate,
         trade.ccyPairCode,
@@ -8110,10 +8856,12 @@ function nextFxAutoBatchPlan({
     trades: selectFxTradesForAutoBatchingRun({
       trades: fxPositions(),
       afterTradeId,
-      excludedTradeIds
+      excludedTradeIds,
+      eligibleCcyPairCodes: settings.eligibleCcyPairCodes
     }),
     maxSpreadPercent: settings.maxTransferRateSpreadPercent,
     maxIntervalSeconds: settings.maxIntervalSeconds,
+    tenorCompatibilityMode: settings.tenorCompatibilityMode,
     now: new Date()
   });
 }
@@ -8182,12 +8930,14 @@ function clientFxDealWithCalculatedEconomics(payload, exposureAmounts) {
 }
 
 function createClientFxDeal(payload, suppliedExposureAmounts = null) {
+  const receivedTimestamp = new Date().toISOString();
   const tradeId = runInImmediateTransaction(database, () => {
     const exposureAmounts = suppliedExposureAmounts || fxTradeExposureAmounts(payload);
     const exposureResult = database.prepare(`
       INSERT INTO fx_trade_exposure
         (
-          entry_timestamp,
+          execution_timestamp,
+          received_timestamp,
           trade_type,
           trade_date,
           ccy_pair_code,
@@ -8202,9 +8952,10 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
           base_ccy_value_date,
           quote_ccy_value_date
         )
-      VALUES (?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      payload.entryTimestamp,
+      payload.executionTimestamp,
+      receivedTimestamp,
       payload.tradeDate,
       payload.ccyPairCode,
       payload.side,
@@ -8350,13 +9101,23 @@ function autoPricedHedgeFxDealWithCalculatedTerms(payload) {
   };
 }
 
-function createHedgeFxDeal(payload, suppliedExposureAmounts = null) {
+function createHedgeFxDeal(
+  payload,
+  suppliedExposureAmounts = null,
+  requestTimestamp = payload.executionTimestamp
+) {
+  if (!isIsoUtcTimestamp(requestTimestamp)) {
+    throw new RangeError("Hedge Deal Request Timestamp must be a valid ISO UTC timestamp.");
+  }
+
+  const receivedTimestamp = new Date().toISOString();
   const tradeId = runInImmediateTransaction(database, () => {
     const exposureAmounts = suppliedExposureAmounts || fxTradeExposureAmounts(payload);
     const exposureResult = database.prepare(`
       INSERT INTO fx_trade_exposure
         (
-          entry_timestamp,
+          execution_timestamp,
+          received_timestamp,
           trade_type,
           trade_date,
           ccy_pair_code,
@@ -8371,9 +9132,10 @@ function createHedgeFxDeal(payload, suppliedExposureAmounts = null) {
           base_ccy_value_date,
           quote_ccy_value_date
         )
-      VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, 'HEDGE_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      payload.entryTimestamp,
+      payload.executionTimestamp,
+      receivedTimestamp,
       payload.tradeDate,
       payload.ccyPairCode,
       payload.side,
@@ -8394,6 +9156,7 @@ function createHedgeFxDeal(payload, suppliedExposureAmounts = null) {
         (
           trade_id,
           trade_type,
+          request_timestamp,
           counterparty_id,
           execution_context_id,
           pricing_rule_id,
@@ -8401,9 +9164,10 @@ function createHedgeFxDeal(payload, suppliedExposureAmounts = null) {
           analytical_pnl_quote_minor,
           analytical_pnl_quote_fraction_digits
         )
-      VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?, ?)
+      VALUES (?, 'HEDGE_DEAL', ?, ?, ?, ?, ?, ?, ?)
     `).run(
       tradeId,
+      requestTimestamp,
       payload.counterpartyId,
       payload.executionContextId,
       payload.pricingRuleId,
@@ -9369,7 +10133,7 @@ function validateClientDealGenerationSettingsPayload(body, baseCcyFractionDigits
 }
 
 function validateClientFxDealPayload(body) {
-  const entryTimestamp = normalizedText(body.entryTimestamp);
+  const executionTimestamp = normalizedText(body.executionTimestamp);
   const counterpartyId = integerInRange(body.counterpartyId, 1, Number.MAX_SAFE_INTEGER);
   const executionContextId = optionalPositiveInteger(body.executionContextId);
   const pricingRuleId = optionalPositiveInteger(body.pricingRuleId);
@@ -9400,8 +10164,12 @@ function validateClientFxDealPayload(body) {
     return { error: "Comment must be a single line of no more than 500 characters." };
   }
 
-  if (!isIsoUtcTimestamp(entryTimestamp)) {
-    return { error: "Entry Timestamp must be an ISO UTC timestamp with milliseconds." };
+  if (Object.prototype.hasOwnProperty.call(body, "receivedTimestamp")) {
+    return { error: "Received Timestamp is assigned by the server and must not be provided." };
+  }
+
+  if (!isIsoUtcTimestamp(executionTimestamp)) {
+    return { error: "Execution Timestamp must be an ISO UTC timestamp with milliseconds." };
   }
 
   if (counterpartyId === null) {
@@ -9501,7 +10269,7 @@ function validateClientFxDealPayload(body) {
   }
 
   return {
-    entryTimestamp,
+    executionTimestamp,
     counterpartyId,
     executionContextId,
     pricingRuleId,
@@ -9774,7 +10542,18 @@ function pricingRuleReferenceError(payload) {
 
 function validateFxAutoBatchingSettingsPayload(body) {
   try {
-    return validatedFxAutoBatchingSettings(body);
+    const settings = validatedFxAutoBatchingSettings(body);
+    const unknownCcyPairCode = settings.eligibleCcyPairCodes.find(
+      ccyPairCode => !ccyPairOption(ccyPairCode)
+    );
+
+    if (unknownCcyPairCode) {
+      return {
+        error: `Ccy Pair ${unknownCcyPairCode} was not found.`
+      };
+    }
+
+    return settings;
   } catch (error) {
     return {
       error: error?.code === "INVALID_FX_AUTO_BATCHING_SETTINGS"
@@ -10024,17 +10803,21 @@ function handleDatabaseError(response, error) {
   apiError(response, mapped.status, mapped.code, mapped.message);
 }
 
-function tableNames() {
+function databaseObjects() {
   return database.prepare(`
-    SELECT name
+    SELECT name, type AS objectType
     FROM sqlite_master
-    WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+    WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'
     ORDER BY name
-  `).all().map(row => row.name);
+  `).all().map(row => ({ ...row }));
+}
+
+function databaseObjectNames() {
+  return databaseObjects().map(object => object.name);
 }
 
 function quotedIdentifier(identifier) {
-  if (!tableNames().includes(identifier)) {
+  if (!databaseObjectNames().includes(identifier)) {
     return null;
   }
 
@@ -10049,9 +10832,9 @@ function databaseTableDetails(tableName) {
   }
 
   const schemaRow = database.prepare(`
-    SELECT sql
+    SELECT type AS objectType, sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = ?
+    WHERE type IN ('table', 'view') AND name = ?
   `).get(tableName);
   const columns = database.prepare(`PRAGMA table_info(${quotedTable})`).all().map(column => ({
     position: column.cid,
@@ -10073,6 +10856,7 @@ function databaseTableDetails(tableName) {
 
   return {
     tableName,
+    objectType: schemaRow?.objectType || "table",
     createSql: schemaRow?.sql || "",
     columns,
     foreignKeys,
@@ -10388,6 +11172,18 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (pathname === "/api/v1/reports/analytical-pnl" && method === "GET") {
+    const filters = analyticalPnlReportFilters(url.searchParams);
+
+    if (filters.error) {
+      apiError(response, 400, "INVALID_ANALYTICAL_PNL_REPORT_FILTERS", filters.error);
+    } else {
+      sendJson(response, 200, analyticalPnlReport(filters));
+    }
+
+    return true;
+  }
+
   if (pathname === "/api/v1/fx-positions" && method === "GET") {
     sendJson(response, 200, fxPositions());
     return true;
@@ -10415,6 +11211,10 @@ async function handleApi(request, response, url) {
         settings.maxIntervalSeconds !== previousSettings.maxIntervalSeconds
         || settings.maxTransferRateSpreadPercent
           !== previousSettings.maxTransferRateSpreadPercent
+        || settings.tenorCompatibilityMode
+          !== previousSettings.tenorCompatibilityMode
+        || settings.eligibleCcyPairCodes.join(",")
+          !== previousSettings.eligibleCcyPairCodes.join(",")
       ) {
         fxAutoBatchingProcess.reschedule();
       }
@@ -10658,6 +11458,7 @@ async function handleApi(request, response, url) {
   }
 
   if (pathname === "/api/v1/hedge-fx-deals/quick-mode" && method === "POST") {
+    const requestTimestamp = new Date().toISOString();
     const body = await readJsonBody(request);
     const payload = validateHedgeQuickModeDealPayload(body);
 
@@ -10718,7 +11519,11 @@ async function handleApi(request, response, url) {
       }
 
       const priced = autoPricedHedgeFxDealWithCalculatedTerms(instruction);
-      const tradeId = createHedgeFxDeal(priced.deal, priced.exposureAmounts);
+      const tradeId = createHedgeFxDeal(
+        priced.deal,
+        priced.exposureAmounts,
+        requestTimestamp
+      );
       sendJson(response, 201, hedgeFxDeal(tradeId));
     } catch (error) {
       if (error?.code === "AUTO_PRICED_HEDGE_MARKET_QUOTE_UNAVAILABLE") {
@@ -10734,6 +11539,7 @@ async function handleApi(request, response, url) {
   }
 
   if (pathname === "/api/v1/hedge-fx-deals/auto-priced" && method === "POST") {
+    const requestTimestamp = new Date().toISOString();
     const body = await readJsonBody(request);
     const payload = validateAutoPricedHedgeFxDealPayload(body);
 
@@ -10756,7 +11562,11 @@ async function handleApi(request, response, url) {
 
     try {
       const priced = autoPricedHedgeFxDealWithCalculatedTerms(payload);
-      const tradeId = createHedgeFxDeal(priced.deal, priced.exposureAmounts);
+      const tradeId = createHedgeFxDeal(
+        priced.deal,
+        priced.exposureAmounts,
+        requestTimestamp
+      );
       sendJson(response, 201, hedgeFxDeal(tradeId));
     } catch (error) {
       if (error?.code === "AUTO_PRICED_HEDGE_MARKET_QUOTE_UNAVAILABLE") {
@@ -10772,6 +11582,7 @@ async function handleApi(request, response, url) {
   }
 
   if (pathname === "/api/v1/hedge-fx-deals" && method === "POST") {
+    const requestTimestamp = new Date().toISOString();
     const body = await readJsonBody(request);
     const payload = validateHedgeFxDealPayload(body);
 
@@ -10791,7 +11602,8 @@ async function handleApi(request, response, url) {
       const exposureAmounts = fxTradeExposureAmounts(payload);
       const tradeId = createHedgeFxDeal(
         hedgeFxDealWithCalculatedTerms(payload, exposureAmounts),
-        exposureAmounts
+        exposureAmounts,
+        requestTimestamp
       );
       sendJson(response, 201, hedgeFxDeal(tradeId));
     } catch (error) {
@@ -12181,9 +12993,10 @@ async function handleApi(request, response, url) {
   }
 
   if (pathname === "/api/database/tables" && method === "GET") {
-    sendJson(response, 200, tableNames().map(tableName => ({
-      tableName,
-      rowCount: database.prepare(`SELECT COUNT(*) AS count FROM ${quotedIdentifier(tableName)}`).get().count
+    sendJson(response, 200, databaseObjects().map(object => ({
+      tableName: object.name,
+      objectType: object.objectType,
+      rowCount: database.prepare(`SELECT COUNT(*) AS count FROM ${quotedIdentifier(object.name)}`).get().count
     })));
     return true;
   }

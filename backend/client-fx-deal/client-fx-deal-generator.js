@@ -189,7 +189,7 @@ function generatedClientFxDeal({
   const tradeDate = localIsoCalendarDate(timestamp);
 
   return {
-    entryTimestamp: timestamp.toISOString(),
+    executionTimestamp: timestamp.toISOString(),
     counterpartyId: Number(settings.counterpartyId),
     executionContextId: Number(settings.executionContextId),
     pricingRuleId: Number(settings.pricingRuleId),

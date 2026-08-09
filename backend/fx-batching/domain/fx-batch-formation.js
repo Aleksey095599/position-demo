@@ -211,7 +211,8 @@ function assertSingleBatchingKey(trades) {
 
 function commonTradeTerms(first, timestamp) {
   return {
-    entryTimestamp: timestamp.toISOString(),
+    executionTimestamp: timestamp.toISOString(),
+    receivedTimestamp: timestamp.toISOString(),
     tradeDate: first.tradeDate,
     ccyPairCode: first.ccyPairCode,
     dealtCcyCode: first.baseCcyCode,

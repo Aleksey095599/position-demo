@@ -11,6 +11,16 @@ const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
   Object.freeze({ tableKey: "internal_units_grid", legacyColumnKey: "counterparty_name", columnKey: "unit_name" }),
   Object.freeze({ tableKey: "users_grid", legacyColumnKey: "status", columnKey: "active" }),
   Object.freeze({
+    tableKey: "client_fx_deals_grid",
+    legacyColumnKey: "entry_timestamp",
+    columnKey: "execution_timestamp"
+  }),
+  Object.freeze({
+    tableKey: "hedge_fx_deals_grid",
+    legacyColumnKey: "entry_timestamp",
+    columnKey: "execution_timestamp"
+  }),
+  Object.freeze({
     tableKey: "batching_history_grid",
     legacyColumnKey: "formation_reason",
     columnKey: "formation_reason_code"
@@ -94,7 +104,8 @@ const UI_TABLE_LAYOUTS = Object.freeze({
   ]),
   client_fx_deals_grid: layout("Client FX Deals", [
     ["trade_id", "Trade ID", 96],
-    ["entry_timestamp", "Entry Timestamp", 157],
+    ["execution_timestamp", "Execution Timestamp", 170],
+    ["received_timestamp", "Received Timestamp", 170],
     ["client_code_type", "Business ID Type", 150],
     ["client_code", "Business ID", 170],
     ["client_name", "Client Name", 141],
@@ -114,7 +125,9 @@ const UI_TABLE_LAYOUTS = Object.freeze({
   ]),
   hedge_fx_deals_grid: layout("Hedge FX Deals", [
     ["trade_id", "Trade ID", 96],
-    ["entry_timestamp", "Entry Timestamp", 157],
+    ["request_timestamp", "Request Timestamp", 170],
+    ["execution_timestamp", "Execution Timestamp", 170],
+    ["received_timestamp", "Received Timestamp", 170],
     ["counterparty_code_type", "Business ID Type", 150],
     ["counterparty_code", "Business ID", 170],
     ["counterparty_name", "Counterparty Name", 158],
@@ -131,6 +144,25 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["pricing_rule_margin", "Margin", 102],
     ["transfer_rate", "Transfer Rate", 122],
     ["analytical_pnl", "Analytical PnL", 126]
+  ]),
+  analytical_pnl_report_grid: layout("Analytical PnL Report", [
+    ["trade_id", "Trade ID", 96],
+    ["trade_type", "Trade Type", 122],
+    ["trade_date", "Trade Date", 109],
+    ["identifier", "Identifier", 210],
+    ["counterparty_name", "Counterparty Name", 180],
+    ["currency_pair", "Ccy Pair", 94],
+    ["side", "Side", 90],
+    ["base_ccy_amount", "Base Ccy Amount", 146],
+    ["quote_ccy_amount", "Quote Ccy Amount", 155],
+    ["trade_rate", "Trade Rate", 108],
+    ["transfer_rate", "Transfer Rate", 122],
+    ["analytical_pnl", "Analytical PnL", 145]
+  ]),
+  analytical_pnl_summary_grid: layout("Net Analytical PnL", [
+    ["currency", "Currency", 100],
+    ["amount", "Amount", 150],
+    ["weighted_average_margin", "Weighted Average Margin", 190]
   ]),
   batching_history_grid: layout("FX Batches", [
     ["batch_id", "Batch ID", 96],

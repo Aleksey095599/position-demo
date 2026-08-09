@@ -606,6 +606,7 @@ CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
     settings_id                           INTEGER PRIMARY KEY,
     max_interval_seconds                  INTEGER NOT NULL DEFAULT 60,
     default_transfer_rate_spread_percent  TEXT    NOT NULL DEFAULT '0.05',
+    tenor_compatibility_mode              TEXT    NOT NULL DEFAULT 'SAME_TENOR_ONLY',
     updated_at                            TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
@@ -626,6 +627,8 @@ CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
             AND CAST(default_transfer_rate_spread_percent AS REAL)
                 BETWEEN 0.0001 AND 100
         ),
+    CONSTRAINT chk_fx_auto_batching_settings_tenor_compatibility
+        CHECK (tenor_compatibility_mode = 'SAME_TENOR_ONLY'),
     CONSTRAINT chk_fx_auto_batching_settings_updated_at
         CHECK (
             length(updated_at) = 24
@@ -633,6 +636,27 @@ CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
             AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
         )
 );
+
+CREATE TABLE IF NOT EXISTS fx_auto_batching_ccy_pairs
+(
+    settings_id    INTEGER NOT NULL DEFAULT 1,
+    ccy_pair_code  TEXT    NOT NULL,
+
+    PRIMARY KEY (settings_id, ccy_pair_code),
+
+    CONSTRAINT fk_fx_auto_batching_ccy_pairs_settings
+        FOREIGN KEY (settings_id)
+            REFERENCES fx_auto_batching_settings (settings_id)
+            ON UPDATE RESTRICT
+            ON DELETE CASCADE,
+    CONSTRAINT fk_fx_auto_batching_ccy_pairs_ccy_pair
+        FOREIGN KEY (ccy_pair_code)
+            REFERENCES ccy_pair_options (ccy_pair_code)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT chk_fx_auto_batching_ccy_pairs_singleton
+        CHECK (settings_id = 1)
+) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS client_deal_generation_settings
 (
@@ -674,13 +698,14 @@ CREATE TABLE IF NOT EXISTS client_deal_generation_settings
 
 CREATE TABLE IF NOT EXISTS fx_trade_exposure
 (
-    trade_id             INTEGER PRIMARY KEY,
-    entry_timestamp      TEXT    NOT NULL,
-    trade_type           TEXT    NOT NULL,
-    trade_date           TEXT    NOT NULL,
-    ccy_pair_code        TEXT    NOT NULL,
-    base_ccy_side        TEXT    NOT NULL,
-    dealt_ccy_code       TEXT    NOT NULL,
+    trade_id                    INTEGER PRIMARY KEY,
+    execution_timestamp         TEXT    NOT NULL,
+    received_timestamp          TEXT    NOT NULL,
+    trade_type                  TEXT    NOT NULL,
+    trade_date                  TEXT    NOT NULL,
+    ccy_pair_code               TEXT    NOT NULL,
+    base_ccy_side               TEXT    NOT NULL,
+    dealt_ccy_code              TEXT    NOT NULL,
     base_ccy_amount_minor      INTEGER NOT NULL,
     base_ccy_fraction_digits   INTEGER NOT NULL,
     quote_ccy_amount_minor     INTEGER NOT NULL,
@@ -700,11 +725,19 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
             REFERENCES ccy_options (ccy_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_trade_exposure_entry_timestamp
+    CONSTRAINT chk_fx_trade_exposure_execution_timestamp
         CHECK (
-            length(entry_timestamp) = 24
-            AND entry_timestamp GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
+            length(execution_timestamp) = 24
+            AND execution_timestamp GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', execution_timestamp)
+                = execution_timestamp
+        ),
+    CONSTRAINT chk_fx_trade_exposure_received_timestamp
+        CHECK (
+            length(received_timestamp) = 24
+            AND received_timestamp GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', received_timestamp)
+                = received_timestamp
         ),
     CONSTRAINT chk_fx_trade_exposure_trade_type
         CHECK (
@@ -883,6 +916,7 @@ CREATE TABLE IF NOT EXISTS fx_hedge_deals
 (
     trade_id                    INTEGER PRIMARY KEY,
     trade_type                  TEXT    NOT NULL DEFAULT 'HEDGE_DEAL',
+    request_timestamp           TEXT    NOT NULL,
     counterparty_id                    INTEGER NOT NULL,
     execution_context_id        INTEGER,
     pricing_rule_id             INTEGER,
@@ -912,6 +946,13 @@ CREATE TABLE IF NOT EXISTS fx_hedge_deals
             ON DELETE RESTRICT,
     CONSTRAINT chk_fx_hedge_deals_trade_type
         CHECK (trade_type = 'HEDGE_DEAL'),
+    CONSTRAINT chk_fx_hedge_deals_request_timestamp
+        CHECK (
+            length(request_timestamp) = 24
+            AND request_timestamp GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', request_timestamp)
+                = request_timestamp
+        ),
     CONSTRAINT chk_fx_hedge_deals_pricing_context
         CHECK (pricing_rule_id IS NULL OR execution_context_id IS NOT NULL),
     CONSTRAINT chk_fx_hedge_deals_transfer_rate
@@ -1194,9 +1235,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_client_deal_reference
 
 CREATE INDEX IF NOT EXISTS idx_pricing_rules_ccy_pair
     ON pricing_rules (ccy_pair_code);
-
-CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_entry_timestamp
-    ON fx_trade_exposure (entry_timestamp);
 
 CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_trade_type
     ON fx_trade_exposure (trade_type);

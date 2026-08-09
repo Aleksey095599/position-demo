@@ -4,6 +4,15 @@ const {
   isCarryInPosition
 } = require("../domain/fx-auto-batch-selection");
 
+const AUTO_BATCHING_INCOMING_TRADE_TYPES = new Set([
+  "CLIENT_DEAL",
+  "HEDGE_DEAL"
+]);
+
+function normalizedText(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
 function nonNegativeTradeId(value, name) {
   const tradeId = Number(value);
 
@@ -36,7 +45,8 @@ function excludedTradeIdSet(value) {
 function selectFxTradesForAutoBatchingRun({
   trades,
   afterTradeId = 0,
-  excludedTradeIds = []
+  excludedTradeIds = [],
+  eligibleCcyPairCodes = null
 }) {
   if (!Array.isArray(trades)) {
     throw new TypeError("FX Auto Batching run requires an FX Trade collection.");
@@ -48,15 +58,35 @@ function selectFxTradesForAutoBatchingRun({
   );
   const excluded = excludedTradeIdSet(excludedTradeIds);
 
-  // Граница запуска отсекает старые входящие сделки, но не пассивный Carry-in.
+  if (
+    eligibleCcyPairCodes !== null
+    && (!Array.isArray(eligibleCcyPairCodes) || eligibleCcyPairCodes.length === 0)
+  ) {
+    throw new RangeError(
+      "Eligible Auto Batching Currency Pairs must be a non-empty collection."
+    );
+  }
+
+  const eligiblePairs = eligibleCcyPairCodes === null
+    ? null
+    : new Set(eligibleCcyPairCodes.map(normalizedText));
+
   return Object.freeze(trades.filter(trade => {
     const tradeId = Number(trade?.tradeId);
+    const tradeType = normalizedText(trade?.tradeType);
+    const ccyPairCode = normalizedText(trade?.ccyPairCode);
 
     return !excluded.has(tradeId)
-      && (isCarryInPosition(trade) || tradeId > startBoundaryTradeId);
+      && tradeId > startBoundaryTradeId
+      && (
+        AUTO_BATCHING_INCOMING_TRADE_TYPES.has(tradeType)
+        || isCarryInPosition(trade)
+      )
+      && (eligiblePairs === null || eligiblePairs.has(ccyPairCode));
   }));
 }
 
 module.exports = {
+  AUTO_BATCHING_INCOMING_TRADE_TYPES,
   selectFxTradesForAutoBatchingRun
 };

@@ -13,7 +13,7 @@ const {
 function trade(overrides = {}) {
   return {
     tradeId: 1,
-    entryTimestamp: "2026-08-05T09:00:00.000Z",
+    receivedTimestamp: "2026-08-05T09:00:00.000Z",
     ccyPairCode: "EUR_USD",
     side: "SELL",
     transferRate: "1.1220",
@@ -33,7 +33,7 @@ test("opens a Batching Window with the first Trade and keeps it open until a tri
       trade({ tradeId: 1 }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:10.000Z",
+        receivedTimestamp: "2026-08-05T09:00:10.000Z",
         transferRate: "1.1221"
       })
     ],
@@ -76,7 +76,7 @@ test("closes at the exact Maximum Batching Interval and opens a later Trade in a
       trade({ tradeId: 1 }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:01:05.000Z",
+        receivedTimestamp: "2026-08-05T09:01:05.000Z",
         transferRate: "1.1221"
       })
     ],
@@ -104,12 +104,12 @@ test("a breaching Trade closes the current window and opens the next one", () =>
       trade({ tradeId: 1, transferRate: "1.1220" }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:01.000Z",
+        receivedTimestamp: "2026-08-05T09:00:01.000Z",
         transferRate: "1.1222"
       }),
       trade({
         tradeId: 3,
-        entryTimestamp: "2026-08-05T09:00:02.000Z",
+        receivedTimestamp: "2026-08-05T09:00:02.000Z",
         transferRate: "1.1250"
       })
     ],
@@ -138,7 +138,7 @@ test("does not let a future Trade close a Batching Window", () => {
         trade({ tradeId: 1 }),
         trade({
           tradeId: 2,
-          entryTimestamp: "2026-08-05T09:00:10.000Z",
+          receivedTimestamp: "2026-08-05T09:00:10.000Z",
           transferRate: "1.1300"
         })
       ],
@@ -147,6 +147,6 @@ test("does not let a future Trade close a Batching Window", () => {
       now: new Date("2026-08-05T09:00:05.000Z")
     }),
     error => error?.code === "INVALID_FX_BATCHING_WINDOW_PLAN"
-      && /before its Entry Timestamp/.test(error.message)
+      && /before its Received Timestamp/.test(error.message)
   );
 });

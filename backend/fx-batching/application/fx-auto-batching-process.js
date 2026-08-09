@@ -138,6 +138,7 @@ class FxAutoBatchingProcess {
       status: this.running ? "RUNNING" : "STOPPED",
       phase,
       startedAt: this.startedAt,
+      startBoundaryTradeId: this.acceptTradesAfterId,
       intervalMs: this.intervalMs(),
       batchingInProgress: this.batchingInProgress,
       formationInProgress: this.formationInProgress,

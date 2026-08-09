@@ -157,7 +157,7 @@ function createHedgeFxDealTerms({
   );
 
   return {
-    entryTimestamp: timestamp.toISOString(),
+    executionTimestamp: timestamp.toISOString(),
     tradeDate,
     side,
     baseCcyAmount: Number(normalizedBaseAmount),

@@ -19,8 +19,10 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   ccy_options_grid: 6,
   ccy_pair_options_grid: 6,
   fx_position_grid: 12,
-  client_fx_deals_grid: 18,
-  hedge_fx_deals_grid: 18,
+  client_fx_deals_grid: 19,
+  hedge_fx_deals_grid: 20,
+  analytical_pnl_report_grid: 12,
+  analytical_pnl_summary_grid: 3,
   batching_history_grid: 6,
   batch_formation_audit_grid: 10,
   batch_members_grid: 9,
@@ -67,7 +69,7 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 181);
+  assert.equal(fullyQualifiedColumnKeys.size, 199);
 });
 
 test("keeps fresh-database defaults aligned with the UI layout registry", () => {

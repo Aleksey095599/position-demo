@@ -51,6 +51,8 @@ test("forms one independent FX Batch per currency pair after each configured int
   const started = process.start();
 
   assert.equal(started.running, true);
+  assert.equal(started.startedAt, "2026-08-04T09:00:00.000Z");
+  assert.equal(started.startBoundaryTradeId, 0);
   assert.equal(started.nextCycleAt, "2026-08-04T09:00:00.000Z");
   assert.equal(scheduled[0].delayMs, 0);
   assert.equal(commands.length, 0);

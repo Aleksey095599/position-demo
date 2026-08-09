@@ -14,6 +14,9 @@ const {
 const {
   FX_BATCH_FORMATION_REASON_CODE
 } = require("./fx-batch-formation-reason");
+const {
+  FX_AUTO_BATCHING_TENOR_COMPATIBILITY_MODE
+} = require("./fx-auto-batching-settings");
 
 const DEFAULT_MIN_TRADES_PER_AUTO_BATCH = 2;
 
@@ -75,7 +78,7 @@ function carryInPositionsAvailableForWindow(carryInPositions, window) {
   const boundaryMilliseconds = Date.parse(window.closedAt);
 
   return carryInPositions.filter(position =>
-    Date.parse(position.entryTimestamp) <= boundaryMilliseconds
+    Date.parse(position.receivedTimestamp) <= boundaryMilliseconds
   );
 }
 
@@ -145,23 +148,23 @@ function arrivedTradesAt(trades, evaluationTime) {
   let nextArrivalAtMilliseconds = null;
 
   trades.forEach(trade => {
-    const entryAtMilliseconds = Date.parse(trade.entryTimestamp);
+    const receivedAtMilliseconds = Date.parse(trade.receivedTimestamp);
 
-    if (!Number.isFinite(entryAtMilliseconds)) {
+    if (!Number.isFinite(receivedAtMilliseconds)) {
       throw policyError(
-        `FX Trade ${trade.tradeId} Entry Timestamp must be a valid timestamp.`
+        `FX Trade ${trade.tradeId} Received Timestamp must be a valid timestamp.`
       );
     }
 
-    if (entryAtMilliseconds <= evaluationTime.getTime()) {
+    if (receivedAtMilliseconds <= evaluationTime.getTime()) {
       arrived.push(trade);
       return;
     }
 
     if (!isCarryInPosition(trade)) {
       nextArrivalAtMilliseconds = nextArrivalAtMilliseconds === null
-        ? entryAtMilliseconds
-        : Math.min(nextArrivalAtMilliseconds, entryAtMilliseconds);
+        ? receivedAtMilliseconds
+        : Math.min(nextArrivalAtMilliseconds, receivedAtMilliseconds);
     }
   });
 
@@ -202,6 +205,8 @@ function planFxAutoBatching({
   trades,
   maxSpreadPercent,
   maxIntervalSeconds,
+  tenorCompatibilityMode =
+    FX_AUTO_BATCHING_TENOR_COMPATIBILITY_MODE.SAME_TENOR_ONLY,
   now = new Date(),
   minTradesPerBatch = DEFAULT_MIN_TRADES_PER_AUTO_BATCH,
   maxTradesPerBatch = DEFAULT_MAX_TRADES_PER_BATCH
@@ -219,6 +224,15 @@ function planFxAutoBatching({
     maxTradesPerBatch,
     "Maximum trades per Auto Batch"
   );
+
+  if (
+    tenorCompatibilityMode
+      !== FX_AUTO_BATCHING_TENOR_COMPATIBILITY_MODE.SAME_TENOR_ONLY
+  ) {
+    throw policyError(
+      "FX Auto Batching currently supports SAME_TENOR_ONLY Tenor Compatibility."
+    );
+  }
 
   if (minimumTrades > maximumTrades) {
     throw policyError(

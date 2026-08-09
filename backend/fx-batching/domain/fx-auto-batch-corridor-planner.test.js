@@ -10,7 +10,7 @@ const {
 function trade(overrides = {}) {
   return {
     tradeId: 1,
-    entryTimestamp: "2026-08-05T09:00:00.000Z",
+    receivedTimestamp: "2026-08-05T09:00:00.000Z",
     ccyPairCode: "EUR_USD",
     transferRate: "1.1220",
     tradeDate: "2026-08-05",
@@ -45,12 +45,12 @@ test("keeps a Batching Window open while its Transfer Rates remain in the corrid
       trade({ tradeId: 1, transferRate: "1.1220" }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:01.000Z",
+        receivedTimestamp: "2026-08-05T09:00:01.000Z",
         transferRate: "1.1223"
       }),
       trade({
         tradeId: 3,
-        entryTimestamp: "2026-08-05T09:00:02.000Z",
+        receivedTimestamp: "2026-08-05T09:00:02.000Z",
         transferRate: "1.1219"
       })
     ],
@@ -74,22 +74,22 @@ test("closes a Batching Window and leaves the breaching Trade for the next windo
       trade({ tradeId: 1, transferRate: "1.1220" }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:01.000Z",
+        receivedTimestamp: "2026-08-05T09:00:01.000Z",
         transferRate: "1.1222"
       }),
       trade({
         tradeId: 3,
-        entryTimestamp: "2026-08-05T09:00:02.000Z",
+        receivedTimestamp: "2026-08-05T09:00:02.000Z",
         transferRate: "1.1221"
       }),
       trade({
         tradeId: 4,
-        entryTimestamp: "2026-08-05T09:00:03.000Z",
+        receivedTimestamp: "2026-08-05T09:00:03.000Z",
         transferRate: "1.1250"
       }),
       trade({
         tradeId: 5,
-        entryTimestamp: "2026-08-05T09:00:04.000Z",
+        receivedTimestamp: "2026-08-05T09:00:04.000Z",
         transferRate: "1.1251"
       })
     ],
@@ -117,7 +117,7 @@ test("accepts a Transfer Rate exactly on the corridor boundary", () => {
       trade({ tradeId: 1, transferRate: "0.9995" }),
       trade({
         tradeId: 2,
-        entryTimestamp: "2026-08-05T09:00:01.000Z",
+        receivedTimestamp: "2026-08-05T09:00:01.000Z",
         transferRate: "1.0005"
       })
     ],
@@ -129,26 +129,26 @@ test("accepts a Transfer Rate exactly on the corridor boundary", () => {
   assert.equal(plan.acceptedCorridor.spreadPercent, "0.1");
 });
 
-test("orders trades by Entry Timestamp and Trade ID without mutating the input", () => {
+test("orders trades by Received Timestamp and Trade ID without mutating the input", () => {
   const trades = [
     trade({
       tradeId: 4,
-      entryTimestamp: "2026-08-05T09:00:03.000Z",
+      receivedTimestamp: "2026-08-05T09:00:03.000Z",
       transferRate: "1.1251"
     }),
     trade({
       tradeId: 3,
-      entryTimestamp: "2026-08-05T09:00:02.000Z",
+      receivedTimestamp: "2026-08-05T09:00:02.000Z",
       transferRate: "1.1250"
     }),
     trade({
       tradeId: 2,
-      entryTimestamp: "2026-08-05T09:00:01.000Z",
+      receivedTimestamp: "2026-08-05T09:00:01.000Z",
       transferRate: "1.1221"
     }),
     trade({
       tradeId: 1,
-      entryTimestamp: "2026-08-05T09:00:01.000Z",
+      receivedTimestamp: "2026-08-05T09:00:01.000Z",
       transferRate: "1.1220"
     })
   ];
@@ -178,7 +178,7 @@ test("rejects duplicated trades or mixed Batching Keys", () => {
         trade({ tradeId: 1 }),
         trade({
           tradeId: 2,
-          entryTimestamp: "2026-08-05T09:00:01.000Z",
+          receivedTimestamp: "2026-08-05T09:00:01.000Z",
           quoteCcyValueDate: "2026-08-06"
         })
       ],
@@ -199,7 +199,7 @@ test("rejects malformed planning input", () => {
 
   for (const invalidTrade of [
     trade({ tradeId: 0 }),
-    trade({ entryTimestamp: "invalid" }),
+    trade({ receivedTimestamp: "invalid" }),
     trade({ ccyPairCode: "" })
   ]) {
     assert.throws(
