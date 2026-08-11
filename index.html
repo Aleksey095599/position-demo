@@ -9925,6 +9925,14 @@
       gap: 12px;
     }
 
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-tab-panel[hidden] {
+      display: none;
+    }
+
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-general-tenor-select {
+      width: min(320px, 100%);
+    }
+
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .auto-batching-settings-panel {
       width: 100%;
       overflow: hidden;
@@ -10138,6 +10146,39 @@
 
     .auto-batching-flow-dialog {
       width: min(760px, calc(100vw - 32px));
+    }
+
+    .one-batch-tenor-dialog {
+      width: min(620px, calc(100vw - 32px));
+    }
+
+    .one-batch-tenor-dialog .one-batch-tenor-summary {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .one-batch-tenor-dialog .one-batch-tenor-summary-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      padding: 8px 10px;
+    }
+
+    .one-batch-tenor-dialog .one-batch-tenor-count {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      white-space: nowrap;
+    }
+
+    .one-batch-tenor-dialog .one-batch-tenor-choice {
+      width: min(280px, 100%);
     }
 
     .auto-batching-flow-dialog .modal-body {
@@ -11225,7 +11266,7 @@
       text-transform: none;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage, #batchingSettingsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs {
       display: flex;
       width: max-content;
       max-width: 100%;
@@ -11237,7 +11278,7 @@
       gap: 2px;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage, #batchingSettingsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link {
       display: inline-flex;
       min-height: 34px;
       margin-bottom: -1px;
@@ -11255,23 +11296,23 @@
       box-shadow: none;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:hover {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage, #batchingSettingsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:hover {
       border-color: var(--bs-nav-tabs-link-hover-border-color);
       color: var(--bs-primary);
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:is(.active, .is-active) {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage, #batchingSettingsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link:is(.active, .is-active) {
       border-color: var(--bs-border-color) var(--bs-border-color) var(--bs-body-bg);
       background: var(--bs-body-bg);
       color: var(--bs-primary);
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link::after {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage, #batchingSettingsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .nav-link::after {
       display: none;
       content: none;
     }
 
-    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .button-icon {
+    :is(#clientProfilePage, #referenceDataPage, #pricingRulesPage, #fxDealsPage, #fxBatchesPage, #batchingSettingsPage).unified-bootstrap-workspace.workbench-page .workbench-section-tabs .button-icon {
       font-size: 17px;
     }
 
@@ -15310,6 +15351,32 @@
     </section>
   </main>
 
+  <dialog class="market-bootstrap-dialog one-batch-tenor-dialog" id="oneBatchTenorDialog" aria-labelledby="oneBatchTenorDialogTitle">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2 class="modal-title" id="oneBatchTenorDialogTitle">Different Tenors Selected</h2>
+        <button type="button" class="btn-close" id="oneBatchTenorDialogClose" aria-label="Close"></button>
+      </header>
+      <div class="modal-body">
+        <p>Cross-Tenor Batching is disabled. Choose one Tenor for a single FX Batch, or form independent FX Batches for each Tenor.</p>
+        <ul class="one-batch-tenor-summary" id="oneBatchTenorSummary" aria-label="Selected Tenors"></ul>
+        <div class="mt-3 one-batch-tenor-choice">
+          <label class="form-label" for="oneBatchTenorSelect">Tenor for a single FX Batch</label>
+          <select class="form-select" id="oneBatchTenorSelect"></select>
+        </div>
+        <div class="alert alert-danger mt-3 mb-0" id="oneBatchTenorStatus" role="alert" hidden></div>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="oneBatchTenorCancelButton">Cancel</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="oneBatchSelectedTenorButton">Create Selected Tenor Batch</button>
+        <button type="button" class="btn btn-sm btn-primary" id="oneBatchSeparateTenorsButton">
+          <span class="button-icon" aria-hidden="true">call_split</span>
+          <span>Create Independent Batches</span>
+        </button>
+      </footer>
+    </div>
+  </dialog>
+
   <dialog class="market-bootstrap-dialog batch-rollback-dialog" id="batchRollbackDialog" aria-labelledby="batchRollbackDialogTitle">
     <div class="modal-content">
       <header class="modal-header">
@@ -16925,10 +16992,53 @@
           <h1 class="settings-title">Batching Settings</h1>
         </div>
       </div>
-      <div class="workbench-page-status" id="autoBatchingSettingsStatus" role="status" aria-live="polite"></div>
+      <div class="workbench-page-status" id="batchingSettingsStatus" role="status" aria-live="polite"></div>
     </section>
 
+    <nav class="nav nav-tabs workbench-section-tabs batching-settings-tabs" aria-label="Batching Settings sections" role="tablist">
+      <button type="button" class="nav-link active" id="generalBatchingSettingsTab" data-batching-settings-tab="general" role="tab" aria-controls="generalBatchingSettingsPanel" aria-selected="true">
+        <span class="button-icon" aria-hidden="true">tune</span>
+        <span>General Batching Settings</span>
+      </button>
+      <button type="button" class="nav-link" id="autoBatchingSettingsTab" data-batching-settings-tab="auto" role="tab" aria-controls="autoBatchingSettingsPanel" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">autorenew</span>
+        <span>Auto Batching Settings</span>
+      </button>
+    </nav>
+
     <section class="batching-settings-layout" aria-label="Batching Settings">
+      <section class="batching-settings-tab-panel" id="generalBatchingSettingsPanel" role="tabpanel" aria-labelledby="generalBatchingSettingsTab">
+        <form class="batching-settings-form" id="batchingSettingsForm" autocomplete="off">
+          <section class="auto-batching-settings-panel" aria-labelledby="generalBatchingSettingsTitle">
+            <div class="auto-batching-settings-panel-head">
+              <h2 class="auto-batching-settings-panel-title" id="generalBatchingSettingsTitle">General Batching Settings</h2>
+            </div>
+            <div class="auto-batching-settings-panel-body">
+              <section class="auto-batching-setting-group" aria-labelledby="allowCrossTenorBatchingLabel">
+                <div class="auto-batching-setting-group-head">
+                  <h3 class="auto-batching-setting-group-title" id="allowCrossTenorBatchingLabel">Allow Cross-Tenor Batching</h3>
+                </div>
+                <select class="form-select batching-general-tenor-select" id="allowCrossTenorBatching" name="allowCrossTenorBatching" aria-labelledby="allowCrossTenorBatchingLabel" required>
+                  <option value="false">No</option>
+                  <option value="true" disabled>Yes (In Development)</option>
+                </select>
+              </section>
+            </div>
+          </section>
+
+          <div class="batching-settings-actions profile-form-actions">
+            <span></span>
+            <span class="profile-row-actions">
+              <button type="submit" class="btn btn-primary btn-sm" id="batchingSettingsSaveButton">
+                <span class="button-icon" aria-hidden="true">save</span>
+                <span>Save Settings</span>
+              </button>
+            </span>
+          </div>
+        </form>
+      </section>
+
+      <section class="batching-settings-tab-panel" id="autoBatchingSettingsPanel" role="tabpanel" aria-labelledby="autoBatchingSettingsTab" hidden>
       <form class="batching-settings-form" id="autoBatchingSettingsForm" autocomplete="off">
         <section class="auto-batching-settings-panel" aria-labelledby="autoBatchingSettingsTitle">
           <div class="auto-batching-settings-panel-head">
@@ -17006,6 +17116,7 @@
           </span>
         </div>
       </form>
+      </section>
     </section>
   </main>
 
@@ -17591,6 +17702,7 @@
     let pricingContexts = loadPricingContexts();
     let clientPricingRules = loadClientPricingRules();
     let hedgeQuickModeSettings = loadHedgeQuickModeSettings();
+    let batchingSettings = loadFxBatchingSettings();
     let autoBatchingSettings = loadFxAutoBatchingSettings();
     let clientFxDeals = loadClientFxDeals();
     let hedgeFxDeals = loadHedgeFxDeals();
@@ -17663,6 +17775,7 @@
     let fxPositionsRequestSequence = 0;
     let oneBatchInFlight = false;
     let pendingOneBatchRequest = null;
+    let pendingOneBatchTenorSelection = null;
     const fxPositions = [];
 
     loadFxPositionsFromDatabase();
@@ -18487,6 +18600,14 @@
     const runClientDealGenerationLabel = document.getElementById("runClientDealGenerationLabel");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
     const oneBatchButton = document.getElementById("oneBatchButton");
+    const oneBatchTenorDialog = document.getElementById("oneBatchTenorDialog");
+    const oneBatchTenorDialogClose = document.getElementById("oneBatchTenorDialogClose");
+    const oneBatchTenorSummary = document.getElementById("oneBatchTenorSummary");
+    const oneBatchTenorSelect = document.getElementById("oneBatchTenorSelect");
+    const oneBatchTenorStatus = document.getElementById("oneBatchTenorStatus");
+    const oneBatchTenorCancelButton = document.getElementById("oneBatchTenorCancelButton");
+    const oneBatchSelectedTenorButton = document.getElementById("oneBatchSelectedTenorButton");
+    const oneBatchSeparateTenorsButton = document.getElementById("oneBatchSeparateTenorsButton");
     const autoBatchButton = document.getElementById("autoBatchButton");
     const autoBatchIcon = document.getElementById("autoBatchIcon");
     const autoBatchLabel = document.getElementById("autoBatchLabel");
@@ -18603,9 +18724,16 @@
     const hedgeQuickModeCounterpartyPickerToggle = document.getElementById("hedgeQuickModeCounterpartyPickerToggle");
     const hedgeQuickModeCounterpartyOptions = document.getElementById("hedgeQuickModeCounterpartyOptions");
     const hedgeQuickModePricingRulePicker = document.getElementById("hedgeQuickModePricingRulePicker");
+    const batchingSettingsTabs = Array.from(
+      document.querySelectorAll("[data-batching-settings-tab]")
+    );
+    const generalBatchingSettingsPanel = document.getElementById("generalBatchingSettingsPanel");
+    const autoBatchingSettingsPanel = document.getElementById("autoBatchingSettingsPanel");
+    const batchingSettingsForm = document.getElementById("batchingSettingsForm");
+    const batchingSettingsSaveButton = document.getElementById("batchingSettingsSaveButton");
+    const batchingSettingsStatus = document.getElementById("batchingSettingsStatus");
     const autoBatchingSettingsForm = document.getElementById("autoBatchingSettingsForm");
     const autoBatchingSettingsSaveButton = document.getElementById("autoBatchingSettingsSaveButton");
-    const autoBatchingSettingsStatus = document.getElementById("autoBatchingSettingsStatus");
     const autoBatchingEligibleCcyPairCodes = document.getElementById("autoBatchingEligibleCcyPairCodes");
     const autoBatchingEligibleCcyPairCount = document.getElementById("autoBatchingEligibleCcyPairCount");
     const autoBatchingEligibleCcyPairSearch = document.getElementById("autoBatchingEligibleCcyPairSearch");
@@ -18681,6 +18809,8 @@
         icon: "stacks",
         tables: [
           "fx_batches",
+          "fx_manual_batch_formations",
+          "fx_manual_batch_formation_batches",
           "fx_batch_members",
           "fx_batch_position_output",
           "fx_batch_quote_cash_output"
@@ -18706,6 +18836,7 @@
           "ccy_options",
           "ccy_pair_options",
           "fx_hedge_quick_mode_settings",
+          "fx_batching_settings",
           "fx_auto_batching_settings",
           "fx_auto_batching_ccy_pairs"
         ]
@@ -20767,6 +20898,19 @@
     function loadHedgeQuickModeSettings() {
       return normalizedHedgeQuickModeSettings(
         DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.hedgeQuickModeSettings : []
+      );
+    }
+
+    function normalizedFxBatchingSettings(source) {
+      return {
+        allowCrossTenorBatching: source?.allowCrossTenorBatching === true,
+        updatedAt: String(source?.updatedAt || "")
+      };
+    }
+
+    function loadFxBatchingSettings() {
+      return normalizedFxBatchingSettings(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.fxBatchingSettings : null
       );
     }
 
@@ -32851,6 +32995,180 @@
       );
     }
 
+    function oneBatchTenorGroups(sourceDeals) {
+      const groups = new Map();
+      const tenorOrder = new Map([["TOD", 0], ["TOM", 1], ["SPOT", 2]]);
+
+      sourceDeals.forEach(deal => {
+        const tenor = String(positionTenor(deal) || "").trim().toUpperCase();
+
+        if (!groups.has(tenor)) {
+          groups.set(tenor, []);
+        }
+
+        groups.get(tenor).push(deal);
+      });
+
+      return Array.from(groups, ([tenor, deals]) => ({ tenor, deals }))
+        .sort((left, right) => {
+          const leftOrder = tenorOrder.get(left.tenor) ?? Number.MAX_SAFE_INTEGER;
+          const rightOrder = tenorOrder.get(right.tenor) ?? Number.MAX_SAFE_INTEGER;
+
+          return leftOrder - rightOrder || left.tenor.localeCompare(right.tenor);
+        });
+    }
+
+    function setOneBatchTenorDialogBusy(busy) {
+      oneBatchTenorDialogClose.disabled = busy;
+      oneBatchTenorCancelButton.disabled = busy;
+      oneBatchSelectedTenorButton.disabled = busy;
+      oneBatchSeparateTenorsButton.disabled = busy;
+      oneBatchTenorSelect.disabled = busy;
+    }
+
+    function setOneBatchTenorStatus(message = "") {
+      oneBatchTenorStatus.textContent = message;
+      oneBatchTenorStatus.hidden = !message;
+    }
+
+    function updateOneBatchSelectedTenorButton() {
+      const tenor = oneBatchTenorSelect.value;
+      oneBatchSelectedTenorButton.textContent = tenor
+        ? `Create ${tenor} Batch`
+        : "Create Selected Tenor Batch";
+    }
+
+    function openOneBatchTenorDialog(sourceDeals) {
+      const groups = oneBatchTenorGroups(sourceDeals);
+      pendingOneBatchTenorSelection = [...sourceDeals];
+      oneBatchTenorSummary.replaceChildren();
+      oneBatchTenorSelect.replaceChildren();
+      setOneBatchTenorStatus();
+      setOneBatchTenorDialogBusy(false);
+
+      groups.forEach(group => {
+        const tenorLabel = group.tenor || "Tenor not set";
+        const summaryItem = document.createElement("li");
+        const option = document.createElement("option");
+        const tradeLabel = group.deals.length === 1 ? "trade" : "trades";
+
+        summaryItem.className = "one-batch-tenor-summary-item";
+        summaryItem.innerHTML = `<strong>${escapeHtml(tenorLabel)}</strong><span class="one-batch-tenor-count">${group.deals.length} ${tradeLabel}</span>`;
+        oneBatchTenorSummary.append(summaryItem);
+        option.value = group.tenor;
+        option.textContent = `${tenorLabel} — ${group.deals.length} ${tradeLabel}`;
+        oneBatchTenorSelect.append(option);
+      });
+
+      updateOneBatchSelectedTenorButton();
+
+      if (typeof oneBatchTenorDialog.showModal === "function") {
+        oneBatchTenorDialog.showModal();
+      } else {
+        oneBatchTenorDialog.setAttribute("open", "");
+      }
+
+      oneBatchTenorSelect.focus();
+    }
+
+    function closeOneBatchTenorDialog({ restoreFocus = true } = {}) {
+      if (oneBatchInFlight) {
+        return;
+      }
+
+      if (oneBatchTenorDialog.open) {
+        if (typeof oneBatchTenorDialog.close === "function") {
+          oneBatchTenorDialog.close();
+        } else {
+          oneBatchTenorDialog.removeAttribute("open");
+        }
+      }
+
+      pendingOneBatchTenorSelection = null;
+      setOneBatchTenorStatus();
+
+      if (restoreFocus) {
+        oneBatchButton.focus();
+      }
+    }
+
+    async function submitOneBatchSelection(sourceDeals, mode = "SINGLE_BATCH") {
+      const tradeIds = sourceDeals
+        .map(deal => Number(fxPositionTradeId(deal)))
+        .sort((left, right) => left - right);
+      const submittedDealIds = sourceDeals.map(deal => deal.id);
+      const selectionKey = `${mode}:${tradeIds.join(",")}`;
+
+      if (pendingOneBatchRequest?.selectionKey !== selectionKey) {
+        pendingOneBatchRequest = {
+          idempotencyKey: crypto.randomUUID(),
+          selectionKey
+        };
+      }
+
+      const batchRequest = pendingOneBatchRequest;
+      oneBatchInFlight = true;
+      setOneBatchTenorDialogBusy(true);
+      updateActionButtons();
+      setBatchStatus(
+        mode === "SEPARATE_BY_TENOR"
+          ? `Forming independent FX Batches by Tenor from ${tradeIds.length} selected trades...`
+          : `Forming FX Batch from ${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}...`
+      );
+
+      try {
+        const result = await demoApiRequest(
+          "/api/v1/fx-batches",
+          {
+            method: "POST",
+            headers: {
+              "Idempotency-Key": batchRequest.idempotencyKey
+            },
+            body: JSON.stringify({ tradeIds, mode })
+          }
+        );
+        await reloadFxPositionsFromApi();
+
+        if (pendingOneBatchRequest === batchRequest) {
+          pendingOneBatchRequest = null;
+        }
+
+        submittedDealIds.forEach(dealId => selectedDealIds.delete(dealId));
+        oneBatchInFlight = false;
+        closeOneBatchTenorDialog({ restoreFocus: false });
+        render(fxPositions);
+
+        const batchIds = Array.isArray(result.batchIds)
+          ? result.batchIds
+          : [result.batchId].filter(Boolean);
+
+        if (batchIds.length > 1) {
+          setBatchStatus(
+            `${batchIds.length} independent FX Batches (${batchIds.join(", ")}) were formed successfully `
+              + `from ${tradeIds.length} selected trades.`,
+            "success"
+          );
+        } else {
+          setBatchStatus(
+            `FX Batch ${batchIds[0]} was formed successfully from `
+              + `${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}.`,
+            "success"
+          );
+        }
+      } catch (error) {
+        const message = error.message || "Unable to form FX Batch.";
+        setBatchStatus(message, "error");
+
+        if (oneBatchTenorDialog.open) {
+          setOneBatchTenorStatus(message);
+        }
+      } finally {
+        oneBatchInFlight = false;
+        setOneBatchTenorDialogBusy(false);
+        updateActionButtons();
+      }
+    }
+
     async function formOneBatchFromSelection() {
       if (oneBatchInFlight) {
         return;
@@ -32866,55 +33184,15 @@
         return;
       }
 
-      const tradeIds = sourceDeals
-        .map(deal => Number(fxPositionTradeId(deal)))
-        .sort((left, right) => left - right);
-      const submittedDealIds = sourceDeals.map(deal => deal.id);
-      const selectionKey = tradeIds.join(",");
-
-      if (pendingOneBatchRequest?.selectionKey !== selectionKey) {
-        pendingOneBatchRequest = {
-          idempotencyKey: crypto.randomUUID(),
-          selectionKey
-        };
+      if (
+        batchingSettings.allowCrossTenorBatching !== true
+        && oneBatchTenorGroups(sourceDeals).length > 1
+      ) {
+        openOneBatchTenorDialog(sourceDeals);
+        return;
       }
 
-      const batchRequest = pendingOneBatchRequest;
-      oneBatchInFlight = true;
-      updateActionButtons();
-      setBatchStatus(`Forming FX Batch from ${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}...`);
-
-      try {
-        const result = await demoApiRequest(
-          "/api/v1/fx-batches",
-          {
-            method: "POST",
-            headers: {
-              "Idempotency-Key": batchRequest.idempotencyKey
-            },
-            body: JSON.stringify({ tradeIds })
-          }
-        );
-        await reloadFxPositionsFromApi();
-
-        if (pendingOneBatchRequest === batchRequest) {
-          pendingOneBatchRequest = null;
-        }
-
-        submittedDealIds.forEach(dealId => selectedDealIds.delete(dealId));
-        render(fxPositions);
-
-        setBatchStatus(
-          `FX Batch ${result.batchId} was formed successfully from `
-            + `${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}.`,
-          "success"
-        );
-      } catch (error) {
-        setBatchStatus(error.message || "Unable to form FX Batch.", "error");
-      } finally {
-        oneBatchInFlight = false;
-        updateActionButtons();
-      }
+      await submitOneBatchSelection(sourceDeals);
     }
 
     function hasVisibleSelection() {
@@ -34239,8 +34517,96 @@
       }
     }
 
-    function setAutoBatchingSettingsStatus(message = "", tone = "") {
-      setWorkbenchPageStatus(autoBatchingSettingsStatus, message, tone);
+    function setBatchingSettingsStatus(message = "", tone = "") {
+      setWorkbenchPageStatus(batchingSettingsStatus, message, tone);
+    }
+
+    function setBatchingSettingsTab(tabName) {
+      const normalizedTab = tabName === "auto" ? "auto" : "general";
+
+      batchingSettingsTabs.forEach(tab => {
+        const active = tab.dataset.batchingSettingsTab === normalizedTab;
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-selected", String(active));
+      });
+      generalBatchingSettingsPanel.hidden = normalizedTab !== "general";
+      autoBatchingSettingsPanel.hidden = normalizedTab !== "auto";
+      setBatchingSettingsStatus();
+    }
+
+    function batchingSettingsDraft() {
+      const allowCrossTenorBatching =
+        batchingSettingsForm.elements.allowCrossTenorBatching.value === "true";
+
+      if (allowCrossTenorBatching) {
+        throw new Error(
+          "Cross-Tenor Batching is in development and cannot be enabled yet."
+        );
+      }
+
+      return { allowCrossTenorBatching };
+    }
+
+    function updateBatchingSettingsSaveAvailability() {
+      let draft;
+
+      try {
+        draft = batchingSettingsDraft();
+      } catch {
+        setSaveButtonAvailability(
+          batchingSettingsSaveButton,
+          false,
+          "Enter valid General Batching settings"
+        );
+        return;
+      }
+
+      setSaveButtonAvailability(
+        batchingSettingsSaveButton,
+        draft.allowCrossTenorBatching
+          !== batchingSettings.allowCrossTenorBatching
+      );
+    }
+
+    function renderBatchingSettings() {
+      batchingSettingsForm.elements.allowCrossTenorBatching.value =
+        String(batchingSettings.allowCrossTenorBatching);
+      updateBatchingSettingsSaveAvailability();
+    }
+
+    async function saveBatchingSettings(event) {
+      event.preventDefault();
+      let payload;
+
+      try {
+        payload = batchingSettingsDraft();
+      } catch (error) {
+        setBatchingSettingsStatus(error.message, "error");
+        return;
+      }
+
+      batchingSettingsSaveButton.disabled = true;
+      setBatchingSettingsStatus("Saving General Batching settings...");
+
+      try {
+        batchingSettings = normalizedFxBatchingSettings(
+          await demoApiRequest("/api/v1/fx-batching-settings", {
+            method: "PUT",
+            body: JSON.stringify(payload)
+          })
+        );
+        renderBatchingSettings();
+        setBatchingSettingsStatus(
+          "General Batching settings were saved successfully.",
+          "success"
+        );
+      } catch (error) {
+        updateBatchingSettingsSaveAvailability();
+        setBatchingSettingsStatus(
+          error.message || "Unable to save General Batching settings.",
+          "error"
+        );
+      }
     }
 
     function openAutoBatchingProcessFlowDialog() {
@@ -34414,27 +34780,32 @@
     }
 
     async function loadBatchingSettingsPage() {
+      renderBatchingSettings();
       renderAutoBatchingSettings();
 
       if (!DEMO_API_ENABLED) {
-        setAutoBatchingSettingsStatus(
+        setBatchingSettingsStatus(
           "SQLite API is unavailable. Start the demo with start-demo.bat.",
           "error"
         );
         return;
       }
 
-      setAutoBatchingSettingsStatus("Loading Auto Batching settings...");
+      setBatchingSettingsStatus("Loading Batching settings...");
 
       try {
-        autoBatchingSettings = normalizedFxAutoBatchingSettings(
-          await demoApiRequest("/api/v1/fx-auto-batching-settings")
-        );
+        const [generalSettingsResponse, autoSettingsResponse] = await Promise.all([
+          demoApiRequest("/api/v1/fx-batching-settings"),
+          demoApiRequest("/api/v1/fx-auto-batching-settings")
+        ]);
+        batchingSettings = normalizedFxBatchingSettings(generalSettingsResponse);
+        autoBatchingSettings = normalizedFxAutoBatchingSettings(autoSettingsResponse);
+        renderBatchingSettings();
         renderAutoBatchingSettings();
-        setAutoBatchingSettingsStatus();
+        setBatchingSettingsStatus();
       } catch (error) {
-        setAutoBatchingSettingsStatus(
-          error.message || "Unable to load Auto Batching settings.",
+        setBatchingSettingsStatus(
+          error.message || "Unable to load Batching settings.",
           "error"
         );
       }
@@ -34447,12 +34818,12 @@
       try {
         payload = autoBatchingSettingsDraft();
       } catch (error) {
-        setAutoBatchingSettingsStatus(error.message, "error");
+        setBatchingSettingsStatus(error.message, "error");
         return;
       }
 
       autoBatchingSettingsSaveButton.disabled = true;
-      setAutoBatchingSettingsStatus("Saving Auto Batching settings...");
+      setBatchingSettingsStatus("Saving Auto Batching settings...");
 
       try {
         autoBatchingSettings = normalizedFxAutoBatchingSettings(
@@ -34465,13 +34836,13 @@
           await demoApiRequest("/api/v1/fx-auto-batching/process")
         );
         renderAutoBatchingSettings();
-        setAutoBatchingSettingsStatus(
+        setBatchingSettingsStatus(
           "Auto Batching settings were saved successfully.",
           "success"
         );
       } catch (error) {
         updateAutoBatchingSettingsSaveAvailability();
-        setAutoBatchingSettingsStatus(
+        setBatchingSettingsStatus(
           error.message || "Unable to save Auto Batching settings.",
           "error"
         );
@@ -39269,6 +39640,36 @@
     generateClientDealButton.addEventListener("click", generateClientDeal);
     runClientDealGenerationButton.addEventListener("click", toggleClientDealGenerationProcess);
     oneBatchButton.addEventListener("click", formOneBatchFromSelection);
+    oneBatchTenorDialogClose.addEventListener("click", () => closeOneBatchTenorDialog());
+    oneBatchTenorCancelButton.addEventListener("click", () => closeOneBatchTenorDialog());
+    oneBatchTenorSelect.addEventListener("change", updateOneBatchSelectedTenorButton);
+    oneBatchSelectedTenorButton.addEventListener("click", async () => {
+      const selectedTenor = oneBatchTenorSelect.value;
+      const sourceDeals = (pendingOneBatchTenorSelection || []).filter(deal =>
+        String(positionTenor(deal) || "").trim().toUpperCase() === selectedTenor
+      );
+
+      if (sourceDeals.length === 0) {
+        setOneBatchTenorStatus("Select a Tenor containing at least one FX Trade.");
+        return;
+      }
+
+      await submitOneBatchSelection(sourceDeals, "SINGLE_BATCH");
+    });
+    oneBatchSeparateTenorsButton.addEventListener("click", async () => {
+      const sourceDeals = [...(pendingOneBatchTenorSelection || [])];
+
+      if (sourceDeals.length === 0) {
+        setOneBatchTenorStatus("No FX Trades remain selected for batching.");
+        return;
+      }
+
+      await submitOneBatchSelection(sourceDeals, "SEPARATE_BY_TENOR");
+    });
+    oneBatchTenorDialog.addEventListener("cancel", event => {
+      event.preventDefault();
+      closeOneBatchTenorDialog();
+    });
     autoBatchButton.addEventListener("click", toggleFxAutoBatchingProcess);
     batchRollbackDialogClose.addEventListener("click", closeBatchRollbackDialog);
     batchRollbackCancelButton.addEventListener("click", closeBatchRollbackDialog);
@@ -39289,6 +39690,16 @@
       event.stopPropagation();
       location.hash = batchingSettingsRoute();
     });
+    batchingSettingsTabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        setBatchingSettingsTab(tab.dataset.batchingSettingsTab);
+      });
+    });
+    batchingSettingsForm.addEventListener("submit", saveBatchingSettings);
+    batchingSettingsForm.addEventListener(
+      "input",
+      updateBatchingSettingsSaveAvailability
+    );
     autoBatchingSettingsForm.addEventListener("submit", saveAutoBatchingSettings);
     autoBatchingSettingsForm.addEventListener(
       "input",

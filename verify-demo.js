@@ -1451,6 +1451,14 @@ function verifyFreshSchemaAndSeed() {
     clientDealGenerationProcessSettingsColumns: database.prepare(`
       PRAGMA table_info(client_deal_generation_process_settings)
     `).all().map(column => column.name),
+    fxBatchingSettings: database.prepare(`
+      SELECT *
+      FROM fx_batching_settings
+      WHERE settings_id = 1
+    `).get(),
+    fxBatchingSettingsColumns: database.prepare(`
+      PRAGMA table_info(fx_batching_settings)
+    `).all().map(column => column.name),
     fxAutoBatchingSettings: database.prepare(`
       SELECT *
       FROM fx_auto_batching_settings
@@ -1715,6 +1723,12 @@ function verifyFrontendStructure() {
   const fxBatchFormationApplicationSource = normalizedSource(
     path.join("backend", "fx-batching", "application", "form-fx-batch-use-case.js")
   );
+  const fxManualBatchFormationApplicationSource = normalizedSource(
+    path.join("backend", "fx-batching", "application", "form-manual-fx-batches-use-case.js")
+  );
+  const fxManualBatchSelectionSource = normalizedSource(
+    path.join("backend", "fx-batching", "domain", "fx-manual-batch-selection.js")
+  );
   const fxAutoBatchingProcessSource = normalizedSource(
     path.join("backend", "fx-batching", "application", "fx-auto-batching-process.js")
   );
@@ -1778,6 +1792,9 @@ function verifyFrontendStructure() {
   )?.[0] || "";
   const autoBatchingProcessFlowDialogMarkup = html.match(
     /<dialog class="market-bootstrap-dialog auto-batching-flow-dialog"[\s\S]*?<\/dialog>/
+  )?.[0] || "";
+  const oneBatchTenorDialogMarkup = html.match(
+    /<dialog class="market-bootstrap-dialog one-batch-tenor-dialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
   const editClientDealDialogMarkup = html.match(
     /<dialog class="client-deal-create-dialog" id="editDealDialog"[\s\S]*?<\/dialog>/
@@ -2116,13 +2133,22 @@ function verifyFrontendStructure() {
         "FOREIGN KEY (pricing_rule_id, counterparty_id, ccy_pair_code)"
       ),
     usesFxAutoBatchingSettings:
-      schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_auto_batching_settings")
+      schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_batching_settings")
+      && schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_auto_batching_settings")
       && schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_auto_batching_ccy_pairs")
+      && serverSource.includes("function ensureFxBatchingSettings(sqlite)")
+      && serverSource.includes("function fxBatchingSettings()")
+      && serverSource.includes('pathname === "/api/v1/fx-batching-settings"')
+      && serverSource.includes("fxBatchingSettings: fxBatchingSettings()")
       && serverSource.includes("function ensureFxAutoBatchingSettings(sqlite)")
       && serverSource.includes("function fxAutoBatchingSettings()")
       && serverSource.includes('pathname === "/api/v1/fx-auto-batching-settings"')
       && serverSource.includes("fxAutoBatchingSettings: fxAutoBatchingSettings()")
       && batchingSettingsPageMarkup.includes(">Batching Settings</h1>")
+      && batchingSettingsPageMarkup.includes(">General Batching Settings</span>")
+      && batchingSettingsPageMarkup.includes(">Auto Batching Settings</span>")
+      && batchingSettingsPageMarkup.includes('name="allowCrossTenorBatching"')
+      && batchingSettingsPageMarkup.includes('value="true" disabled>Yes (In Development)</option>')
       && batchingSettingsPageMarkup.includes('name="maxIntervalSeconds"')
       && batchingSettingsPageMarkup.includes('name="maxTransferRateSpreadPercent"')
       && batchingSettingsPageMarkup.includes('id="autoBatchingEligibleCcyPairCodes"')
@@ -2145,6 +2171,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("function batchingSettingsRoute()")
       && inlineScript.includes("function isBatchingSettingsRoute()")
       && inlineScript.includes("async function loadBatchingSettingsPage()")
+      && inlineScript.includes("async function saveBatchingSettings(event)")
       && inlineScript.includes("async function saveAutoBatchingSettings(event)")
       && fxPositionPageMarkup.includes('id="autoBatchingSettingsButton"')
       && /autoBatchingSettingsButton\.addEventListener\("click",[\s\S]*?location\.hash = batchingSettingsRoute\(\)/.test(inlineScript)
@@ -2282,6 +2309,8 @@ function verifyFrontendStructure() {
         databaseTableSectionsSource
       )
       && databaseTableSectionsSource.includes('"fx_batch_quote_cash_output"')
+      && databaseTableSectionsSource.includes('"fx_manual_batch_formations"')
+      && databaseTableSectionsSource.includes('"fx_manual_batch_formation_batches"')
       && databaseTableSectionsSource.includes('"pricing_rules"')
       && databaseTableSectionsSource.includes('"execution_contexts"')
       && databaseTableSectionsSource.includes('"ccy_pair_options"')
@@ -2291,7 +2320,7 @@ function verifyFrontendStructure() {
         databaseTableSectionsSource
       )
       && !databaseTableSectionsSource.includes('id: "execution-context"')
-      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"fx_hedge_quick_mode_settings",\s*"fx_auto_batching_settings",\s*"fx_auto_batching_ccy_pairs"\s*\]/.test(
+      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"fx_hedge_quick_mode_settings",\s*"fx_batching_settings",\s*"fx_auto_batching_settings",\s*"fx_auto_batching_ccy_pairs"\s*\]/.test(
         databaseTableSectionsSource
       )
       && !databaseTableSectionsSource.includes('id: "hedging-settings"')
@@ -2390,10 +2419,20 @@ function verifyFrontendStructure() {
       && batchToolbarMarkup.includes(">One Batch</button>")
       && serverSource.includes('pathname === "/api/v1/fx-batches"')
       && serverSource.includes("new FormFxBatchUseCase")
+      && serverSource.includes("new FormManualFxBatchesUseCase")
+      && schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_manual_batch_formations")
+      && schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_manual_batch_formation_batches")
       && serverSource.includes("INSERT INTO fx_batch_members")
       && serverSource.includes("INSERT INTO fx_batch_position_output")
       && fxBatchFormationApplicationSource.includes("class FormFxBatchUseCase")
+      && fxManualBatchFormationApplicationSource.includes("class FormManualFxBatchesUseCase")
+      && fxManualBatchFormationApplicationSource.includes("executeWithinTransaction")
+      && fxManualBatchSelectionSource.includes("SEPARATE_BY_TENOR")
+      && fxManualBatchSelectionSource.includes("CROSS_TENOR_BATCHING_RESOLUTION_REQUIRED")
       && inlineScript.includes("formOneBatchFromSelection")
+      && inlineScript.includes("submitOneBatchSelection")
+      && oneBatchTenorDialogMarkup.includes(">Different Tenors Selected</h2>")
+      && oneBatchTenorDialogMarkup.includes(">Create Separate Batches</span>")
       && inlineScript.includes('"/api/v1/fx-batches"')
       && inlineScript.includes(
         'oneBatchButton.addEventListener("click", formOneBatchFromSelection)'
@@ -5480,7 +5519,9 @@ async function verifyApiAndMigration() {
       "fx_batches",
       "fx_batch_members",
       "fx_batch_position_output",
-      "fx_batch_quote_cash_output"
+      "fx_batch_quote_cash_output",
+      "fx_manual_batch_formation_batches",
+      "fx_manual_batch_formations"
     ].map(tableName => Number(
       demoResetProbe.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count
     ));
@@ -5493,15 +5534,17 @@ async function verifyApiAndMigration() {
           'trg_fx_batch_members_immutable_delete',
           'trg_fx_batch_position_output_immutable_delete',
           'trg_fx_batch_quote_cash_output_immutable_delete',
+          'trg_fx_manual_batch_formation_batches_immutable_delete',
+          'trg_fx_manual_batch_formations_immutable_delete',
           'trg_fx_batches_immutable_delete'
         )
       ORDER BY name
     `).all();
-    const demoResetBatchSequence = demoResetProbe.prepare(`
-      SELECT seq
+    const demoResetBatchSequences = demoResetProbe.prepare(`
+      SELECT name, seq
       FROM sqlite_sequence
-      WHERE name = 'fx_batches'
-    `).get();
+      WHERE name IN ('fx_batches', 'fx_manual_batch_formations')
+    `).all();
     const demoResetForeignKeyViolations =
       demoResetProbe.prepare("PRAGMA foreign_key_check").all().length;
     demoResetProbe.close();
@@ -6017,8 +6060,8 @@ async function verifyApiAndMigration() {
         referenceDataPreserved:
           JSON.stringify(demoResetReferenceBefore.map(result => result.body))
           === JSON.stringify(demoResetReferenceAfter.map(result => result.body)),
-        deleteTriggersRestored: demoResetDeleteTriggers.length === 4,
-        batchSequenceCleared: demoResetBatchSequence === undefined,
+        deleteTriggersRestored: demoResetDeleteTriggers.length === 6,
+        batchSequenceCleared: demoResetBatchSequences.length === 0,
         foreignKeyViolations: demoResetForeignKeyViolations
       },
       balanceTradeSourceFlow: {
@@ -6672,7 +6715,10 @@ async function main() {
       "fx_batch_members",
       "fx_batch_position_output",
       "fx_batch_quote_cash_output",
+      "fx_manual_batch_formation_batches",
+      "fx_manual_batch_formations",
       "fx_batches",
+      "fx_batching_settings",
       "fx_hedge_deals",
       "fx_hedge_quick_mode_settings",
       "fx_trade_exposure",
@@ -6686,7 +6732,8 @@ async function main() {
       "trading_counterparty_roles",
       "ui_color_tokens",
       "ui_table_column_settings",
-      "users"
+      "users",
+      "v_fx_batch_formation_audit"
     ];
     const simulationForeignKey = apiAndMigration.settingsForeignKeys[0];
     const failed = freshSchema.currencies !== 5
@@ -6755,6 +6802,10 @@ async function main() {
       || freshSchema.clientDealGenerationProcessSettings?.max_interval_seconds !== 3
       || freshSchema.clientDealGenerationProcessSettings?.min_deals_per_cycle !== 3
       || freshSchema.clientDealGenerationProcessSettings?.max_deals_per_cycle !== 7
+      || freshSchema.fxBatchingSettingsColumns.join(",")
+        !== "settings_id,allow_cross_tenor_batching,updated_at"
+      || freshSchema.fxBatchingSettings?.settings_id !== 1
+      || freshSchema.fxBatchingSettings?.allow_cross_tenor_batching !== 0
       || freshSchema.fxAutoBatchingSettingsColumns.join(",")
         !== "settings_id,max_interval_seconds,default_transfer_rate_spread_percent,tenor_compatibility_mode,updated_at"
       || freshSchema.fxAutoBatchingSettings?.settings_id !== 1

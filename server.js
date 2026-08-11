@@ -40,6 +40,9 @@ const {
   FormFxBatchUseCase
 } = require("./backend/fx-batching/application/form-fx-batch-use-case");
 const {
+  FormManualFxBatchesUseCase
+} = require("./backend/fx-batching/application/form-manual-fx-batches-use-case");
+const {
   FxAutoBatchingProcess
 } = require("./backend/fx-batching/application/fx-auto-batching-process");
 const {
@@ -60,6 +63,10 @@ const {
   FX_AUTO_BATCHING_TENOR_COMPATIBILITY_MODE_DEFAULT,
   fxAutoBatchingSettings: validatedFxAutoBatchingSettings
 } = require("./backend/fx-batching/domain/fx-auto-batching-settings");
+const {
+  FX_BATCHING_ALLOW_CROSS_TENOR_BATCHING_DEFAULT,
+  fxBatchingSettings: validatedFxBatchingSettings
+} = require("./backend/fx-batching/domain/fx-batching-settings");
 const {
   FX_BATCH_MEMBER_ROLE,
   FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES,
@@ -276,6 +283,7 @@ ensureClientFxDealTriggers(database);
 rebuildLegacyCounterpartyConstraintNames(database);
 ensureFxBatchFormationTiming(database);
 ensureFxBatchFormationReason(database);
+dropManualBatchFormationIntegrityTriggers(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 ensureHedgeFxDealTriggers(database);
 
@@ -330,6 +338,7 @@ migrateTradingCounterpartyExecutionContexts(database);
 ensureTradingCounterpartyExecutionContextIntegrityTriggers(database);
 ensureUiTableColumnSettings(database);
 ensureUiColorTokens(database);
+ensureFxBatchingSettings(database);
 ensureFxAutoBatchingSettings(database);
 ensureFxBatchFormationReason(database);
 
@@ -351,6 +360,39 @@ function runInImmediateTransaction(sqlite, operation) {
 
     throw error;
   }
+}
+
+function ensureFxBatchingSettings(sqlite) {
+  runInImmediateTransaction(sqlite, () => {
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS fx_batching_settings
+      (
+        settings_id INTEGER PRIMARY KEY,
+        allow_cross_tenor_batching INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+          DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        CONSTRAINT chk_fx_batching_settings_singleton
+          CHECK (settings_id = 1),
+        CONSTRAINT chk_fx_batching_settings_cross_tenor
+          CHECK (
+            typeof(allow_cross_tenor_batching) = 'integer'
+            AND allow_cross_tenor_batching = 0
+          ),
+        CONSTRAINT chk_fx_batching_settings_updated_at
+          CHECK (
+            length(updated_at) = 24
+            AND updated_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
+          )
+      )
+    `);
+
+    sqlite.prepare(`
+      INSERT OR IGNORE INTO fx_batching_settings
+        (settings_id, allow_cross_tenor_batching)
+      VALUES (1, ?)
+    `).run(FX_BATCHING_ALLOW_CROSS_TENOR_BATCHING_DEFAULT ? 1 : 0);
+  });
 }
 
 function ensureFxAutoBatchingSettings(sqlite) {
@@ -3553,6 +3595,13 @@ function dropBatchIntegrityTriggers(sqlite) {
 
     sqlite.exec(`DROP TRIGGER ${triggerName}`);
   }
+}
+
+function dropManualBatchFormationIntegrityTriggers(sqlite) {
+  sqlite.exec(`
+    DROP TRIGGER IF EXISTS trg_fx_manual_batch_formation_batches_validate_insert;
+    DROP TRIGGER IF EXISTS trg_fx_manual_batch_formations_validate_completion;
+  `);
 }
 
 function dropLegacyDemoHiddenBatches(sqlite) {
@@ -7361,6 +7410,42 @@ function deleteHedgeQuickModeSetting(ccyPairCode) {
   `).run(ccyPairCode).changes === 1;
 }
 
+function fxBatchingSettings() {
+  const row = database.prepare(`
+    SELECT
+      allow_cross_tenor_batching AS allowCrossTenorBatching,
+      updated_at AS updatedAt
+    FROM fx_batching_settings
+    WHERE settings_id = 1
+  `).get();
+
+  if (!row) {
+    throw new Error("FX Batching Settings are not configured.");
+  }
+
+  return {
+    ...validatedFxBatchingSettings({
+      allowCrossTenorBatching: row.allowCrossTenorBatching === 1
+    }),
+    updatedAt: row.updatedAt
+  };
+}
+
+function updateFxBatchingSettings(payload) {
+  const result = database.prepare(`
+    UPDATE fx_batching_settings
+    SET allow_cross_tenor_batching = ?,
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE settings_id = 1
+  `).run(payload.allowCrossTenorBatching ? 1 : 0);
+
+  if (result.changes !== 1) {
+    throw new Error("FX Batching Settings are not configured.");
+  }
+
+  return fxBatchingSettings();
+}
+
 function fxAutoBatchingSettings() {
   const settings = database.prepare(`
     SELECT
@@ -8491,6 +8576,30 @@ function fxBatchSourceTrades(tradeIds) {
   return sourceTrades;
 }
 
+function fxBatchSelectionTrades(tradeIds) {
+  const placeholders = tradeIds.map(() => "?").join(", ");
+  const trades = database.prepare(`
+    SELECT
+      trade_id AS tradeId,
+      tenor
+    FROM fx_trade_exposure
+    WHERE trade_id IN (${placeholders})
+    ORDER BY trade_id
+  `).all(...tradeIds);
+  const foundTradeIds = new Set(trades.map(trade => Number(trade.tradeId)));
+  const missingTradeIds = tradeIds.filter(tradeId => !foundTradeIds.has(tradeId));
+
+  if (missingTradeIds.length > 0) {
+    const error = new Error(
+      `Trade ${missingTradeIds.join(", ")} was not found for manual FX batching.`
+    );
+    error.code = "BATCH_SOURCE_TRADE_NOT_FOUND";
+    throw error;
+  }
+
+  return trades;
+}
+
 function saveFormedFxBatch({
   idempotencyKey,
   sourceTrades,
@@ -8758,6 +8867,106 @@ function formedBatchByIdempotencyKey(idempotencyKey) {
   return batch ? completedBatchResult(batch.batchId) : null;
 }
 
+function completedBatchById(batchId) {
+  const batch = database.prepare(`
+    SELECT batch_id AS batchId
+    FROM fx_batches
+    WHERE batch_id = ?
+      AND batch_status IN ('FORMED', 'ROLLED_BACK')
+  `).get(batchId);
+
+  return batch ? completedBatchResult(batch.batchId) : null;
+}
+
+function manualBatchFormationByIdempotencyKey(idempotencyKey) {
+  const formation = database.prepare(`
+    SELECT
+      formation_id AS formationId,
+      idempotency_key AS idempotencyKey,
+      selection_mode AS selectionMode,
+      trade_ids_json AS tradeIdsJson,
+      batch_count AS batchCount,
+      operation_status AS operationStatus,
+      created_at AS createdAt,
+      completed_at AS completedAt
+    FROM fx_manual_batch_formations
+    WHERE idempotency_key = ?
+  `).get(idempotencyKey);
+
+  if (!formation) {
+    return null;
+  }
+
+  return {
+    ...formation,
+    formationId: Number(formation.formationId),
+    tradeIds: JSON.parse(formation.tradeIdsJson).map(Number),
+    batchCount: Number(formation.batchCount),
+    batches: database.prepare(`
+      SELECT
+        batch_ordinal AS batchOrdinal,
+        tenor,
+        batch_id AS batchId
+      FROM fx_manual_batch_formation_batches
+      WHERE formation_id = ?
+      ORDER BY batch_ordinal
+    `).all(formation.formationId).map(link => ({
+      ...link,
+      batchOrdinal: Number(link.batchOrdinal),
+      batchId: Number(link.batchId)
+    }))
+  };
+}
+
+function createManualBatchFormation({
+  idempotencyKey,
+  selectionMode,
+  tradeIds,
+  batchCount
+}) {
+  return Number(database.prepare(`
+    INSERT INTO fx_manual_batch_formations
+      (idempotency_key, selection_mode, trade_ids_json, batch_count)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    idempotencyKey,
+    selectionMode,
+    JSON.stringify(tradeIds),
+    batchCount
+  ).lastInsertRowid);
+}
+
+function addManualBatchFormationBatch({
+  formationId,
+  batchOrdinal,
+  tenor,
+  batchId
+}) {
+  database.prepare(`
+    INSERT INTO fx_manual_batch_formation_batches
+      (formation_id, batch_ordinal, tenor, batch_id)
+    VALUES (?, ?, ?, ?)
+  `).run(formationId, batchOrdinal, tenor, batchId);
+}
+
+function completeManualBatchFormation(formationId) {
+  const result = database.prepare(`
+    UPDATE fx_manual_batch_formations
+    SET operation_status = 'COMPLETED',
+        completed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE formation_id = ?
+      AND operation_status = 'BUILDING'
+  `).run(formationId);
+
+  if (Number(result.changes) !== 1) {
+    const error = new Error(
+      `Manual batching operation ${formationId} could not be completed.`
+    );
+    error.code = "MANUAL_FORMATION_INTEGRITY_ERROR";
+    throw error;
+  }
+}
+
 function fxBatchMemberTradeIds(batchId) {
   return database.prepare(`
     SELECT trade_id AS tradeId
@@ -8836,6 +9045,29 @@ const formFxBatchUseCase = new FormFxBatchUseCase({
   },
   fxTradeExposureRepository: {
     findBatchSources: fxBatchSourceTrades
+  }
+});
+
+const formManualFxBatchesUseCase = new FormManualFxBatchesUseCase({
+  transactionRunner: {
+    run: operation => runInImmediateTransaction(database, operation)
+  },
+  formFxBatchUseCase,
+  fxTradeSelectionRepository: {
+    findByIds: fxBatchSelectionTrades
+  },
+  batchingSettingsProvider: {
+    get: fxBatchingSettings
+  },
+  manualBatchFormationRepository: {
+    findByIdempotencyKey: manualBatchFormationByIdempotencyKey,
+    create: createManualBatchFormation,
+    addBatch: addManualBatchFormationBatch,
+    complete: completeManualBatchFormation
+  },
+  fxBatchResultRepository: {
+    findCompletedById: completedBatchById,
+    findCompletedByIdempotencyKey: formedBatchByIdempotencyKey
   }
 });
 
@@ -9284,6 +9516,8 @@ const clientDealGenerationProcess = new ClientDealGenerationProcess({
 
 const DEMO_TRADE_RESET_CONFIRMATION = "RESET_ALL_TRADES";
 const DEMO_TRADE_RESET_DELETE_TRIGGERS = Object.freeze([
+  "trg_fx_manual_batch_formation_batches_immutable_delete",
+  "trg_fx_manual_batch_formations_immutable_delete",
   "trg_fx_batch_members_immutable_delete",
   "trg_fx_batch_position_output_immutable_delete",
   "trg_fx_batch_quote_cash_output_immutable_delete",
@@ -9299,6 +9533,15 @@ function demoTradeTableCounts() {
       database.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count
     ),
     batches: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count),
+    manualBatchFormations: Number(
+      database.prepare("SELECT COUNT(*) AS count FROM fx_manual_batch_formations").get().count
+    ),
+    manualBatchFormationBatches: Number(
+      database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM fx_manual_batch_formation_batches
+      `).get().count
+    ),
     batchMembers: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count),
     batchOutputs: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count),
     batchQuoteCashMembers: Number(
@@ -9342,12 +9585,15 @@ function resetDemoTrades() {
       DELETE FROM fx_batch_quote_cash_output;
       DELETE FROM fx_batch_position_output;
       DELETE FROM fx_batch_members;
+      DELETE FROM fx_manual_batch_formation_batches;
+      DELETE FROM fx_manual_batch_formations;
       DELETE FROM fx_batches;
       DELETE FROM fx_trade_market_snapshot;
       DELETE FROM client_fx_deals;
       DELETE FROM fx_hedge_deals;
       DELETE FROM fx_trade_exposure;
-      DELETE FROM sqlite_sequence WHERE name = 'fx_batches';
+      DELETE FROM sqlite_sequence
+      WHERE name IN ('fx_batches', 'fx_manual_batch_formations');
     `);
 
     for (const trigger of triggerDefinitions) {
@@ -10540,6 +10786,19 @@ function pricingRuleReferenceError(payload) {
   return "";
 }
 
+function validateFxBatchingSettingsPayload(body) {
+  try {
+    return validatedFxBatchingSettings(body);
+  } catch (error) {
+    return {
+      error: String(error?.code || "").includes("FX_BATCHING_SETTINGS")
+        || error?.code === "IN_DEVELOPMENT"
+        ? error.message
+        : "FX Batching Settings are invalid."
+    };
+  }
+}
+
 function validateFxAutoBatchingSettingsPayload(body) {
   try {
     const settings = validatedFxAutoBatchingSettings(body);
@@ -10921,6 +11180,7 @@ async function handleApi(request, response, url) {
         ...autoPricedHedgeDealPricingRules()
       ],
       hedgeQuickModeSettings: hedgeQuickModeSettings(),
+      fxBatchingSettings: fxBatchingSettings(),
       fxAutoBatchingSettings: fxAutoBatchingSettings(),
       fxAutoBatchingProcess: fxAutoBatchingProcess.status(),
       clientFxDeals: clientFxDeals(),
@@ -11189,6 +11449,29 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (pathname === "/api/v1/fx-batching-settings" && method === "GET") {
+    sendJson(response, 200, fxBatchingSettings());
+    return true;
+  }
+
+  if (pathname === "/api/v1/fx-batching-settings" && method === "PUT") {
+    const body = await readJsonBody(request);
+    const payload = validateFxBatchingSettingsPayload(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_FX_BATCHING_SETTINGS", payload.error);
+      return true;
+    }
+
+    try {
+      sendJson(response, 200, updateFxBatchingSettings(payload));
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
+    return true;
+  }
+
   if (pathname === "/api/v1/fx-auto-batching-settings" && method === "GET") {
     sendJson(response, 200, fxAutoBatchingSettings());
     return true;
@@ -11265,14 +11548,18 @@ async function handleApi(request, response, url) {
     const body = await readJsonBody(request);
 
     try {
-      const result = formFxBatchUseCase.execute({
+      const result = formManualFxBatchesUseCase.execute({
         idempotencyKey: request.headers?.["idempotency-key"] ?? body.idempotencyKey,
-        tradeIds: body.tradeIds
+        tradeIds: body.tradeIds,
+        mode: body.mode
       });
       fxAutoBatchingProcess.requestEvaluation();
       sendJson(response, result.replayed ? 200 : 201, result);
     } catch (error) {
-      if (error?.code === "INVALID_BATCH_COMMAND") {
+      if (
+        error?.code === "INVALID_BATCH_COMMAND"
+        || error?.code === "INVALID_FX_MANUAL_BATCH_SELECTION"
+      ) {
         apiError(response, 400, error.code, error.message);
       } else if (error?.code === "BATCH_SOURCE_TRADE_NOT_FOUND") {
         apiError(response, 404, error.code, error.message);

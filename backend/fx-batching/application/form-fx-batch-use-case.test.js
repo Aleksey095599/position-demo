@@ -89,6 +89,27 @@ test("forms a batch through one transaction boundary", () => {
   });
 });
 
+test("forms a batch inside an existing transaction without opening another one", () => {
+  let transactions = 0;
+  const useCase = useCaseWith({
+    transactionRunner: {
+      run() {
+        transactions += 1;
+        throw new Error("A nested transaction must not be opened.");
+      }
+    }
+  });
+
+  const result = useCase.executeWithinTransaction({
+    idempotencyKey: "one-batch-within-transaction-1",
+    tradeIds: [1]
+  });
+
+  assert.equal(transactions, 0);
+  assert.equal(result.batchId, 7);
+  assert.equal(result.replayed, false);
+});
+
 test("preserves an automatic formation reason with its structured values", () => {
   let savedBatch;
   const useCase = useCaseWith({

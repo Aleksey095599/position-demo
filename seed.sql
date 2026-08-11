@@ -499,6 +499,13 @@ INSERT OR IGNORE INTO client_deal_generation_process_settings
     )
 VALUES (1, 1, 3, 3, 7);
 
+INSERT OR IGNORE INTO fx_batching_settings
+    (
+        settings_id,
+        allow_cross_tenor_batching
+    )
+VALUES (1, 0);
+
 INSERT OR IGNORE INTO fx_auto_batching_settings
     (
         settings_id,

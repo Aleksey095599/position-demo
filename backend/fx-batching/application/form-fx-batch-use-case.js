@@ -96,49 +96,57 @@ class FormFxBatchUseCase {
   execute(command) {
     const normalized = normalizedCommand(command);
 
-    return this.transactionRunner.run(() => {
-      const existing = this.fxBatchRepository.findFormedByIdempotencyKey(
-        normalized.idempotencyKey
-      );
+    return this.transactionRunner.run(
+      () => this.#executeNormalizedWithinTransaction(normalized)
+    );
+  }
 
-      if (existing) {
-        const existingTradeIds = [...existing.sourceTradeIds]
-          .sort((left, right) => left - right);
+  executeWithinTransaction(command) {
+    return this.#executeNormalizedWithinTransaction(normalizedCommand(command));
+  }
 
-        if (!sameTradeIds(existingTradeIds, normalized.tradeIds)) {
-          throw applicationError(
-            "BATCH_IDEMPOTENCY_CONFLICT",
-            "Idempotency Key was already used for a different trade selection."
-          );
-        }
+  #executeNormalizedWithinTransaction(normalized) {
+    const existing = this.fxBatchRepository.findFormedByIdempotencyKey(
+      normalized.idempotencyKey
+    );
 
-        return {
-          ...existing,
-          replayed: true
-        };
+    if (existing) {
+      const existingTradeIds = [...existing.sourceTradeIds]
+        .sort((left, right) => left - right);
+
+      if (!sameTradeIds(existingTradeIds, normalized.tradeIds)) {
+        throw applicationError(
+          "BATCH_IDEMPOTENCY_CONFLICT",
+          "Idempotency Key was already used for a different trade selection."
+        );
       }
 
-      const sourceTrades = this.fxTradeExposureRepository.findBatchSources(
-        normalized.tradeIds
-      );
-      const formation = formFxBatch({
-        trades: sourceTrades,
-        rateFractionDigits: sourceTrades[0]?.rateFractionDigits,
-        now: this.clock
-      });
-      const result = this.fxBatchRepository.saveFormed({
-        idempotencyKey: normalized.idempotencyKey,
-        sourceTrades,
-        formation,
-        formationReason: normalized.formationReason,
-        formationTiming: normalized.formationTiming
-      });
-
       return {
-        ...result,
-        replayed: false
+        ...existing,
+        replayed: true
       };
+    }
+
+    const sourceTrades = this.fxTradeExposureRepository.findBatchSources(
+      normalized.tradeIds
+    );
+    const formation = formFxBatch({
+      trades: sourceTrades,
+      rateFractionDigits: sourceTrades[0]?.rateFractionDigits,
+      now: this.clock
     });
+    const result = this.fxBatchRepository.saveFormed({
+      idempotencyKey: normalized.idempotencyKey,
+      sourceTrades,
+      formation,
+      formationReason: normalized.formationReason,
+      formationTiming: normalized.formationTiming
+    });
+
+    return {
+      ...result,
+      replayed: false
+    };
   }
 }
 

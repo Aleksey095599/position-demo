@@ -601,6 +601,28 @@ CREATE TABLE IF NOT EXISTS client_deal_generation_process_settings
         )
 );
 
+CREATE TABLE IF NOT EXISTS fx_batching_settings
+(
+    settings_id                    INTEGER PRIMARY KEY,
+    allow_cross_tenor_batching     INTEGER NOT NULL DEFAULT 0,
+    updated_at                     TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT chk_fx_batching_settings_singleton
+        CHECK (settings_id = 1),
+    CONSTRAINT chk_fx_batching_settings_cross_tenor
+        CHECK (
+            typeof(allow_cross_tenor_batching) = 'integer'
+            AND allow_cross_tenor_batching = 0
+        ),
+    CONSTRAINT chk_fx_batching_settings_updated_at
+        CHECK (
+            length(updated_at) = 24
+            AND updated_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
+        )
+);
+
 CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
 (
     settings_id                           INTEGER PRIMARY KEY,
@@ -1065,6 +1087,96 @@ CREATE TABLE IF NOT EXISTS fx_batches
                 AND length(rolled_back_at) = 24
                 AND rolled_back_at GLOB '????-??-??T??:??:??.???Z'
                 AND strftime('%Y-%m-%dT%H:%M:%fZ', rolled_back_at) = rolled_back_at
+            )
+        )
+);
+
+CREATE TABLE IF NOT EXISTS fx_manual_batch_formations
+(
+    formation_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    idempotency_key  TEXT    NOT NULL,
+    selection_mode   TEXT    NOT NULL,
+    trade_ids_json   TEXT    NOT NULL,
+    batch_count      INTEGER NOT NULL,
+    operation_status TEXT    NOT NULL DEFAULT 'BUILDING',
+    created_at       TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    completed_at     TEXT,
+
+    CONSTRAINT uq_fx_manual_batch_formations_idempotency_key
+        UNIQUE (idempotency_key),
+    CONSTRAINT chk_fx_manual_batch_formations_id
+        CHECK (formation_id > 0),
+    CONSTRAINT chk_fx_manual_batch_formations_idempotency_key
+        CHECK (
+            length(idempotency_key) BETWEEN 1 AND 100
+            AND idempotency_key = trim(idempotency_key)
+            AND idempotency_key NOT LIKE '__fx_manual_batch__:%'
+        ),
+    CONSTRAINT chk_fx_manual_batch_formations_selection_mode
+        CHECK (selection_mode IN ('SINGLE_BATCH', 'SEPARATE_BY_TENOR')),
+    CONSTRAINT chk_fx_manual_batch_formations_trade_ids
+        CHECK (
+            length(trade_ids_json) BETWEEN 3 AND 4000
+            AND json_valid(trade_ids_json) = 1
+            AND json_type(trade_ids_json) = 'array'
+            AND json_array_length(trade_ids_json) BETWEEN 1 AND 200
+        ),
+    CONSTRAINT chk_fx_manual_batch_formations_batch_count
+        CHECK (typeof(batch_count) = 'integer' AND batch_count BETWEEN 1 AND 200),
+    CONSTRAINT chk_fx_manual_batch_formations_status
+        CHECK (operation_status IN ('BUILDING', 'COMPLETED')),
+    CONSTRAINT chk_fx_manual_batch_formations_timing
+        CHECK (
+            (
+                operation_status = 'BUILDING'
+                AND completed_at IS NULL
+            )
+            OR (
+                operation_status = 'COMPLETED'
+                AND length(completed_at) = 24
+                AND completed_at GLOB '????-??-??T??:??:??.???Z'
+                AND strftime('%Y-%m-%dT%H:%M:%fZ', completed_at) = completed_at
+                AND created_at <= completed_at
+            )
+        ),
+    CONSTRAINT chk_fx_manual_batch_formations_created_at
+        CHECK (
+            length(created_at) = 24
+            AND created_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
+        )
+);
+
+CREATE TABLE IF NOT EXISTS fx_manual_batch_formation_batches
+(
+    formation_id INTEGER NOT NULL,
+    batch_ordinal INTEGER NOT NULL,
+    tenor         TEXT,
+    batch_id      INTEGER NOT NULL,
+
+    CONSTRAINT pk_fx_manual_batch_formation_batches
+        PRIMARY KEY (formation_id, batch_ordinal),
+    CONSTRAINT uq_fx_manual_batch_formation_batches_batch
+        UNIQUE (batch_id),
+    CONSTRAINT fk_fx_manual_batch_formation_batches_formation
+        FOREIGN KEY (formation_id)
+            REFERENCES fx_manual_batch_formations (formation_id)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT fk_fx_manual_batch_formation_batches_batch
+        FOREIGN KEY (batch_id)
+            REFERENCES fx_batches (batch_id)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT chk_fx_manual_batch_formation_batches_ordinal
+        CHECK (typeof(batch_ordinal) = 'integer' AND batch_ordinal > 0),
+    CONSTRAINT chk_fx_manual_batch_formation_batches_tenor
+        CHECK (
+            tenor IS NULL
+            OR (
+                length(tenor) BETWEEN 1 AND 16
+                AND tenor = upper(trim(tenor))
             )
         )
 );
@@ -1777,6 +1889,122 @@ WHEN
     )
 BEGIN
     SELECT RAISE(ABORT, 'batch formation timing is inconsistent');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_manual_batch_formation_batches_validate_insert
+BEFORE INSERT ON fx_manual_batch_formation_batches
+FOR EACH ROW
+WHEN NOT EXISTS (
+    SELECT 1
+    FROM fx_manual_batch_formations f
+    WHERE f.formation_id = NEW.formation_id
+      AND f.operation_status = 'BUILDING'
+      AND NEW.batch_ordinal <= f.batch_count
+)
+OR NOT EXISTS (
+    SELECT 1
+    FROM fx_batches b
+    WHERE b.batch_id = NEW.batch_id
+      AND b.batch_status IN ('FORMED', 'ROLLED_BACK')
+      AND b.formation_reason_code = 'MANUAL_SELECTION'
+      AND b.idempotency_key =
+          '__fx_manual_batch__:' || NEW.formation_id || ':' || NEW.batch_ordinal
+)
+BEGIN
+    SELECT RAISE(ABORT, 'manual batching operation does not accept this batch');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_manual_batch_formations_validate_completion
+BEFORE UPDATE OF operation_status ON fx_manual_batch_formations
+FOR EACH ROW
+WHEN NEW.operation_status = 'COMPLETED'
+  AND (
+      OLD.operation_status <> 'BUILDING'
+      OR (
+          SELECT COUNT(*)
+          FROM fx_manual_batch_formation_batches b
+          WHERE b.formation_id = OLD.formation_id
+      ) <> OLD.batch_count
+      OR EXISTS (
+          SELECT 1
+          FROM json_each(OLD.trade_ids_json) expected
+          WHERE expected.type <> 'integer'
+             OR CAST(expected.value AS INTEGER) <= 0
+             OR NOT EXISTS (
+                 SELECT 1
+                 FROM fx_manual_batch_formation_batches linked_batch
+                 INNER JOIN fx_batch_members member
+                     ON member.batch_id = linked_batch.batch_id
+                    AND member.member_role = 'TRADE'
+                 WHERE linked_batch.formation_id = OLD.formation_id
+                   AND member.trade_id = CAST(expected.value AS INTEGER)
+             )
+      )
+      OR EXISTS (
+          SELECT 1
+          FROM fx_manual_batch_formation_batches linked_batch
+          INNER JOIN fx_batch_members member
+              ON member.batch_id = linked_batch.batch_id
+             AND member.member_role = 'TRADE'
+          WHERE linked_batch.formation_id = OLD.formation_id
+            AND NOT EXISTS (
+                SELECT 1
+                FROM json_each(OLD.trade_ids_json) expected
+                WHERE expected.type = 'integer'
+                  AND CAST(expected.value AS INTEGER) = member.trade_id
+            )
+      )
+      OR (
+          SELECT COUNT(*)
+          FROM fx_manual_batch_formation_batches linked_batch
+          INNER JOIN fx_batch_members member
+              ON member.batch_id = linked_batch.batch_id
+             AND member.member_role = 'TRADE'
+          WHERE linked_batch.formation_id = OLD.formation_id
+      ) <> json_array_length(OLD.trade_ids_json)
+  )
+BEGIN
+    SELECT RAISE(ABORT, 'manual batching operation has incomplete batch results');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_manual_batch_formations_immutable_update
+BEFORE UPDATE ON fx_manual_batch_formations
+FOR EACH ROW
+WHEN NOT (
+    OLD.operation_status = 'BUILDING'
+    AND NEW.operation_status = 'COMPLETED'
+    AND NEW.formation_id = OLD.formation_id
+    AND NEW.idempotency_key = OLD.idempotency_key
+    AND NEW.selection_mode = OLD.selection_mode
+    AND NEW.trade_ids_json = OLD.trade_ids_json
+    AND NEW.batch_count = OLD.batch_count
+    AND NEW.created_at = OLD.created_at
+    AND OLD.completed_at IS NULL
+    AND NEW.completed_at IS NOT NULL
+)
+BEGIN
+    SELECT RAISE(ABORT, 'manual batching operation is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_manual_batch_formations_immutable_delete
+BEFORE DELETE ON fx_manual_batch_formations
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'manual batching operation is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_manual_batch_formation_batches_immutable_update
+BEFORE UPDATE ON fx_manual_batch_formation_batches
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'manual batching operation result is immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_manual_batch_formation_batches_immutable_delete
+BEFORE DELETE ON fx_manual_batch_formation_batches
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'manual batching operation result is immutable');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_batches_immutable_update
