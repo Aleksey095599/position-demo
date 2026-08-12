@@ -1793,8 +1793,8 @@ function verifyFrontendStructure() {
   const autoBatchingProcessFlowDialogMarkup = html.match(
     /<dialog class="market-bootstrap-dialog auto-batching-flow-dialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
-  const manualBatchingProcessFlowDialogMarkup = html.match(
-    /<dialog class="market-bootstrap-dialog auto-batching-flow-dialog manual-batching-flow-dialog"[\s\S]*?<\/dialog>/
+  const manualBatchFormationProcessPageMarkup = html.match(
+    /<main class="settings-shell profile-shell processes-shell unified-bootstrap-workspace workbench-page" id="processesPage"[\s\S]*?<\/main>/
   )?.[0] || "";
   const oneBatchTenorDialogMarkup = html.match(
     /<dialog class="market-bootstrap-dialog one-batch-tenor-dialog"[\s\S]*?<\/dialog>/
@@ -2150,7 +2150,7 @@ function verifyFrontendStructure() {
       && batchingSettingsPageMarkup.includes(">Batching Settings</h1>")
       && batchingSettingsPageMarkup.includes(">Manual Batch Settings</span>")
       && batchingSettingsPageMarkup.includes(">Auto Batching Settings</span>")
-      && batchingSettingsPageMarkup.includes('id="manualBatchingProcessFlowButton"')
+      && batchingSettingsPageMarkup.includes('id="manualBatchingProcessFlowLink"')
       && batchingSettingsPageMarkup.includes('name="allowCrossTenorBatching"')
       && batchingSettingsPageMarkup.includes('value="true" disabled>Yes (In Development)</option>')
       && batchingSettingsPageMarkup.includes('name="maxIntervalSeconds"')
@@ -2171,14 +2171,48 @@ function verifyFrontendStructure() {
         ">AutoBatch Process Starts</div>"
       )
       && autoBatchingProcessFlowDialogMarkup.includes(">Captured / Logged</span>")
-      && manualBatchingProcessFlowDialogMarkup.includes(
-        ">Current Manual Batch Formation Flow</h2>"
+      && manualBatchFormationProcessPageMarkup.includes(
+        ">Manual Batch Formation</h2>"
       )
-      && manualBatchingProcessFlowDialogMarkup.includes(
+      && manualBatchFormationProcessPageMarkup.includes(">Process Catalog</h2>")
+      && manualBatchFormationProcessPageMarkup.includes(
         ">Create the Manual Formation Register</div>"
       )
-      && manualBatchingProcessFlowDialogMarkup.includes("<code>selectedTradeIds</code>")
-      && manualBatchingProcessFlowDialogMarkup.includes("<code>tradeIds</code>")
+      && manualBatchFormationProcessPageMarkup.includes(
+        'aria-label="Manual Batch Formation process map"'
+      )
+      && manualBatchFormationProcessPageMarkup.includes(
+        'aria-label="Process goal"'
+      )
+      && manualBatchFormationProcessPageMarkup.includes(
+        '>Goal:</span>'
+      )
+      && manualBatchFormationProcessPageMarkup.includes(
+        '>Formed FX Batch</span>'
+      )
+      && !manualBatchFormationProcessPageMarkup.includes(
+        'Saved together or not at all'
+      )
+      && manualBatchFormationProcessPageMarkup.includes(
+        'data-manual-process-stage="select"'
+      )
+      && manualBatchFormationProcessPageMarkup.includes(
+        'data-manual-process-stage="commit"'
+      )
+      && manualBatchFormationProcessPageMarkup.includes(
+        'id="manualProcessInspector"'
+      )
+      && manualBatchFormationProcessPageMarkup.includes(
+        '>Technical Details</span>'
+      )
+      && manualBatchFormationProcessPageMarkup.includes("<code>selectedTradeIds</code>")
+      && manualBatchFormationProcessPageMarkup.includes("<code>tradeIds</code>")
+      && inlineScript.includes("const MANUAL_BATCH_PROCESS_STAGES")
+      && inlineScript.includes("function renderManualBatchProcessInspector")
+      && html.includes('data-workspace-route="processes"')
+      && !html.includes('id="manualBatchingProcessFlowDialog"')
+      && inlineScript.includes("function manualBatchFormationProcessRoute()")
+      && inlineScript.includes("function isManualBatchFormationProcessRoute()")
       && batchingSettingsPageMarkup.includes('id="autoBatchingSettingsSaveButton"')
       && inlineScript.includes("function batchingSettingsRoute()")
       && inlineScript.includes("function isBatchingSettingsRoute()")
