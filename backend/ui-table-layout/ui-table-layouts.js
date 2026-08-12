@@ -51,8 +51,8 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["id", "ID", 64],
     ["counterparty_code", "Counterparty Code", 122],
     ["counterparty_name", "Counterparty Name", 158],
-    ["ccy_pair", "Ccy Pair", 88],
     ["execution_context", "Execution Context", 596],
+    ["ccy_pair", "Ccy Pair", 88],
     ["pricing_mode", "Pricing Mode", 156],
     ["margin", "Margin", 82]
   ]),
@@ -60,8 +60,8 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["id", "ID", 64],
     ["counterparty_code", "Unit Code", 122],
     ["counterparty_name", "Counterparty Name", 158],
-    ["ccy_pair", "Ccy Pair", 88],
     ["execution_context", "Execution Context", 596],
+    ["ccy_pair", "Ccy Pair", 88],
     ["pricing_mode", "Pricing Mode", 156],
     ["margin", "Margin", 82],
     ["quick_hedge", "Quick Hedge", 112]

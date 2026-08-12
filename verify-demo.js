@@ -1793,6 +1793,9 @@ function verifyFrontendStructure() {
   const autoBatchingProcessFlowDialogMarkup = html.match(
     /<dialog class="market-bootstrap-dialog auto-batching-flow-dialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
+  const manualBatchingProcessFlowDialogMarkup = html.match(
+    /<dialog class="market-bootstrap-dialog auto-batching-flow-dialog manual-batching-flow-dialog"[\s\S]*?<\/dialog>/
+  )?.[0] || "";
   const oneBatchTenorDialogMarkup = html.match(
     /<dialog class="market-bootstrap-dialog one-batch-tenor-dialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
@@ -2145,8 +2148,9 @@ function verifyFrontendStructure() {
       && serverSource.includes('pathname === "/api/v1/fx-auto-batching-settings"')
       && serverSource.includes("fxAutoBatchingSettings: fxAutoBatchingSettings()")
       && batchingSettingsPageMarkup.includes(">Batching Settings</h1>")
-      && batchingSettingsPageMarkup.includes(">General Batching Settings</span>")
+      && batchingSettingsPageMarkup.includes(">Manual Batch Settings</span>")
       && batchingSettingsPageMarkup.includes(">Auto Batching Settings</span>")
+      && batchingSettingsPageMarkup.includes('id="manualBatchingProcessFlowButton"')
       && batchingSettingsPageMarkup.includes('name="allowCrossTenorBatching"')
       && batchingSettingsPageMarkup.includes('value="true" disabled>Yes (In Development)</option>')
       && batchingSettingsPageMarkup.includes('name="maxIntervalSeconds"')
@@ -2167,6 +2171,14 @@ function verifyFrontendStructure() {
         ">AutoBatch Process Starts</div>"
       )
       && autoBatchingProcessFlowDialogMarkup.includes(">Captured / Logged</span>")
+      && manualBatchingProcessFlowDialogMarkup.includes(
+        ">Current Manual Batch Formation Flow</h2>"
+      )
+      && manualBatchingProcessFlowDialogMarkup.includes(
+        ">Create the Manual Formation Register</div>"
+      )
+      && manualBatchingProcessFlowDialogMarkup.includes("<code>selectedTradeIds</code>")
+      && manualBatchingProcessFlowDialogMarkup.includes("<code>tradeIds</code>")
       && batchingSettingsPageMarkup.includes('id="autoBatchingSettingsSaveButton"')
       && inlineScript.includes("function batchingSettingsRoute()")
       && inlineScript.includes("function isBatchingSettingsRoute()")
@@ -2416,7 +2428,7 @@ function verifyFrontendStructure() {
       && !demoDatabaseSource.includes("clientDealGenerationSettings:"),
     usesFxBatchFormation:
       batchToolbarMarkup.includes('id="oneBatchButton"')
-      && batchToolbarMarkup.includes(">One Batch</button>")
+      && batchToolbarMarkup.includes(">Create Batch</button>")
       && serverSource.includes('pathname === "/api/v1/fx-batches"')
       && serverSource.includes("new FormFxBatchUseCase")
       && serverSource.includes("new FormManualFxBatchesUseCase")
@@ -2438,11 +2450,11 @@ function verifyFrontendStructure() {
         'oneBatchButton.addEventListener("click", formOneBatchFromSelection)'
       )
       && batchToolbarMarkup.includes('aria-keyshortcuts="G"')
-      && batchToolbarMarkup.includes('title="One Batch · Shortcut: G"')
+      && batchToolbarMarkup.includes('title="Create Batch · Shortcut: G"')
       && /key === "g" \|\| key === "\\u043f"/.test(inlineScript)
       && inlineScript.includes("if (!oneBatchButton.disabled) {")
       && inlineScript.includes("oneBatchButton.click();")
-      && inlineScript.includes("selectedDealIds")
+      && inlineScript.includes("selectedTradeIds")
       && !inlineScript.includes("deleteSelectedGeneratedBatchTrades")
       && !inlineScript.includes("generateOpenPositionByAutoBatch")
       && !inlineScript.includes("openBatchSettingsPage")
@@ -2455,7 +2467,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("oneBatchInFlight = true;")
       && inlineScript.includes("|| oneBatchInFlight")
       && inlineScript.includes("oneBatchInFlight = false;")
-      && inlineScript.includes("submittedDealIds.forEach(dealId => selectedDealIds.delete(dealId));")
+      && inlineScript.includes("submittedDealIds.forEach(dealId => selectedTradeIds.delete(dealId));")
       && inlineScript.includes("let clientDealGenerationRefreshInFlight = false;")
       && inlineScript.includes("if (clientDealGenerationRefreshInFlight) {")
       && inlineScript.includes("void refreshClientDealGenerationViews();")
@@ -6791,7 +6803,7 @@ async function main() {
         !== "table_key,column_key,column_label,display_order,default_width_px,width_px,updated_at"
       || freshSchema.uiTableColumnSettingRows.map(row =>
         `${row.column_key}:${row.default_width_px}:${row.width_px}`
-      ).join(",") !== "id:64:64,counterparty_code:122:122,counterparty_name:158:158,ccy_pair:88:88,execution_context:596:596,pricing_mode:156:156,margin:82:82"
+      ).join(",") !== "id:64:64,counterparty_code:122:122,counterparty_name:158:158,execution_context:596:596,ccy_pair:88:88,pricing_mode:156:156,margin:82:82"
       || !freshSchema.uiTableColumnSettingsConstraintsEnforced
       || freshSchema.pricingRules !== 7
       || freshSchema.legacyMonetaryColumns.length !== 0
