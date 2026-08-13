@@ -1796,6 +1796,12 @@ function verifyFrontendStructure() {
   const manualBatchFormationProcessPageMarkup = html.match(
     /<main class="settings-shell profile-shell processes-shell unified-bootstrap-workspace workbench-page" id="processesPage"[\s\S]*?<\/main>/
   )?.[0] || "";
+  const manualBatchFormationProcessViewMarkup = manualBatchFormationProcessPageMarkup.match(
+    /<article class="profile-panel processes-details" id="manualBatchFormationProcessView"[\s\S]*?<\/article>/
+  )?.[0] || "";
+  const domainGlossaryProcessViewMarkup = manualBatchFormationProcessPageMarkup.match(
+    /<article class="profile-panel processes-details" id="domainGlossaryProcessView"[\s\S]*?<\/article>/
+  )?.[0] || "";
   const oneBatchTenorDialogMarkup = html.match(
     /<dialog class="market-bootstrap-dialog one-batch-tenor-dialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
@@ -2172,23 +2178,43 @@ function verifyFrontendStructure() {
       )
       && autoBatchingProcessFlowDialogMarkup.includes(">Captured / Logged</span>")
       && manualBatchFormationProcessPageMarkup.includes(
-        ">Manual Batch Formation</h2>"
+        ">Manual Batching</h2>"
       )
-      && manualBatchFormationProcessPageMarkup.includes(">Process Catalog</h2>")
+      && manualBatchFormationProcessPageMarkup.includes(">Process Catalog</h1>")
+      && !manualBatchFormationProcessPageMarkup.includes(">Process Catalog</h2>")
       && manualBatchFormationProcessPageMarkup.includes(
         ">Create the Manual Formation Register</div>"
       )
       && manualBatchFormationProcessPageMarkup.includes(
-        'aria-label="Manual Batch Formation process map"'
+        'aria-label="Manual Batching process map"'
       )
       && manualBatchFormationProcessPageMarkup.includes(
         'aria-label="Process goal"'
       )
       && manualBatchFormationProcessPageMarkup.includes(
-        '>Goal:</span>'
+        '>Process goal:</span>'
       )
       && manualBatchFormationProcessPageMarkup.includes(
-        '>Formed FX Batch</span>'
+        'href="#processes:domain-glossary" data-process-catalog-view="glossary"'
+      )
+      && domainGlossaryProcessViewMarkup.includes(
+        'id="domainGlossaryTitle" data-process-copy="domainGlossary">Domain Glossary</h2>'
+      )
+      && domainGlossaryProcessViewMarkup.includes(
+        'class="manual-process-term-link" href="#fx-position">FX Position</a>'
+      )
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-batch"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-batching"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-trade"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-position"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-tenor"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-batching-key"')
+      && !manualBatchFormationProcessViewMarkup.includes('class="manual-process-definitions"')
+      && manualBatchFormationProcessViewMarkup.includes(
+        '>Stage goal:</span>'
+      )
+      && manualBatchFormationProcessViewMarkup.includes(
+        'data-process-term-reference="fx-batch" data-process-copy="formedFxBatch">Formed FX Batch</a>'
       )
       && !manualBatchFormationProcessPageMarkup.includes(
         'Saved together or not at all'
@@ -2197,18 +2223,48 @@ function verifyFrontendStructure() {
         'data-manual-process-stage="select"'
       )
       && manualBatchFormationProcessPageMarkup.includes(
+        'data-process-copy="selectFxTrades">FX Trade Selection for Batch Formation</span>'
+      )
+      && !manualBatchFormationProcessPageMarkup.includes(
+        'data-process-copy="eligibleTradeSnapshot"'
+      )
+      && manualBatchFormationProcessPageMarkup.includes(
         'data-manual-process-stage="commit"'
       )
       && manualBatchFormationProcessPageMarkup.includes(
         'id="manualProcessInspector"'
       )
+      && manualBatchFormationProcessPageMarkup.includes('data-process-language="en"')
+      && manualBatchFormationProcessPageMarkup.includes('data-process-language="ru"')
+      && manualBatchFormationProcessPageMarkup.includes('data-process-copy="pageTitle"')
       && manualBatchFormationProcessPageMarkup.includes(
-        '>Technical Details</span>'
+        '<details class="processes-technical-details" hidden aria-hidden="true">'
       )
       && manualBatchFormationProcessPageMarkup.includes("<code>selectedTradeIds</code>")
       && manualBatchFormationProcessPageMarkup.includes("<code>tradeIds</code>")
       && inlineScript.includes("const MANUAL_BATCH_PROCESS_STAGES")
+      && inlineScript.includes("const MANUAL_BATCH_PROCESS_STAGES_RU")
+      && inlineScript.includes("function setProcessCatalogLanguage")
+      && inlineScript.includes("position.processCatalogLanguage")
+      && inlineScript.includes('manualBatching: "Ручной Batching"')
+      && inlineScript.includes('selectFxTrades: "Выбор FX trades для создания Batch"')
+      && inlineScript.includes("Зафиксировать корректный набор FX trades, выбранных пользователем через интерфейс страницы FX Position, для создания Batch.")
+      && inlineScript.includes("Получить выбранные FX trades из FX Position.")
+      && inlineScript.includes("Сопоставить selectedTradeIds со строками, отображаемыми для выбранной валютной пары.")
       && inlineScript.includes("function renderManualBatchProcessInspector")
+      && inlineScript.includes("function setManualProcessLinkedText")
+      && inlineScript.includes("function showManualProcessDefinition")
+      && inlineScript.includes("function domainGlossaryRoute")
+      && inlineScript.includes("function isDomainGlossaryRoute")
+      && inlineScript.includes("function isProcessCatalogRoute")
+      && inlineScript.includes("function renderProcessCatalogRoute")
+      && inlineScript.includes("function isManualProcessTermBoundary")
+      && inlineScript.includes("dataset.processTermReference")
+      && !inlineScript.includes('node.addEventListener("pointerenter"')
+      && !inlineScript.includes('node.addEventListener("pointerleave"')
+      && !inlineScript.includes('node.addEventListener("focus"')
+      && !inlineScript.includes('node.addEventListener("blur"')
+      && inlineScript.includes('node.addEventListener("click"')
       && html.includes('data-workspace-route="processes"')
       && !html.includes('id="manualBatchingProcessFlowDialog"')
       && inlineScript.includes("function manualBatchFormationProcessRoute()")

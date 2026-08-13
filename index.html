@@ -5642,6 +5642,50 @@
       min-width: 900px;
     }
 
+    .processes-shell.unified-bootstrap-workspace > .settings-topbar {
+      border-bottom: 0;
+    }
+
+    .processes-language-switch {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      padding: 2px;
+      border: 1px solid var(--surface-border);
+      border-radius: 6px;
+      background: var(--palette-gray-100);
+    }
+
+    .processes-language-button {
+      min-width: 38px;
+      padding: 4px 9px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: var(--app-font-size-caption);
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.2;
+    }
+
+    .processes-language-button:hover {
+      background: var(--control-hover-bg);
+      color: var(--text-strong);
+    }
+
+    .processes-language-button.is-active {
+      background: var(--surface-card);
+      box-shadow: 0 1px 2px color-mix(in srgb, var(--palette-gray-900) 12%, transparent);
+      color: var(--selection-accent);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .processes-language-button:focus-visible {
+      outline: 2px solid var(--selection-accent);
+      outline-offset: 1px;
+    }
+
     .processes-layout {
       display: grid;
       grid-template-columns: 260px minmax(0, 1fr);
@@ -5702,7 +5746,8 @@
     .processes-list-link-copy strong {
       overflow: hidden;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.3;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
@@ -5712,17 +5757,25 @@
       font-size: 11px;
     }
 
-    .processes-detail-head {
+    .processes-shell.unified-bootstrap-workspace .processes-detail-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+      padding: 6px 16px;
+      border-bottom: 0;
     }
 
     .processes-detail-heading {
       display: grid;
       min-width: 0;
-      gap: 2px;
+      gap: 3px;
+    }
+
+    .processes-detail-heading .processes-section-title {
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.25;
     }
 
     .processes-detail-heading p {
@@ -5782,6 +5835,84 @@
 
     .manual-process-summary-result > .button-icon {
       color: var(--palette-green-700);
+    }
+
+    .manual-process-definitions {
+      margin: 0 0 14px;
+      overflow: hidden;
+      border: 1px solid var(--surface-border);
+      border-radius: var(--workbench-radius);
+      background: var(--surface-card);
+    }
+
+    .domain-glossary-definitions {
+      margin: 0;
+    }
+
+    .manual-process-definitions-title {
+      margin: 0;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--surface-border);
+      background: var(--palette-gray-100);
+      color: var(--text-strong);
+      font-size: var(--app-font-size-caption);
+      font-weight: var(--app-font-weight-semibold);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .manual-process-definition-list {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      margin: 0;
+    }
+
+    .manual-process-definition {
+      display: grid;
+      grid-template-columns: minmax(210px, 0.24fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: baseline;
+      padding: 12px 14px;
+      border-top: 1px solid var(--surface-border);
+      scroll-margin-top: 16px;
+      transition: background-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .manual-process-definition:first-child {
+      border-top: 0;
+    }
+
+    .manual-process-definition dt,
+    .manual-process-definition dd {
+      margin: 0;
+    }
+
+    .manual-process-definition dt {
+      color: var(--text-strong);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .manual-process-definition dd {
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .manual-process-definition.is-referenced {
+      background: var(--palette-blue-100);
+      box-shadow: inset 3px 0 0 var(--palette-blue-600);
+    }
+
+    .manual-process-term-link {
+      color: var(--bs-link-color);
+      font-weight: var(--app-font-weight-semibold);
+      text-decoration: none;
+      text-underline-offset: 2px;
+    }
+
+    .manual-process-term-link:hover,
+    .manual-process-term-link:focus-visible {
+      color: var(--bs-link-hover-color);
+      text-decoration: underline;
     }
 
     .manual-process-map {
@@ -5901,7 +6032,15 @@
       --process-stage-text: var(--palette-green-900);
     }
 
-    .manual-process-node.is-step-1 { grid-column: 1; grid-row: 1; }
+    .manual-process-node.is-step-1 {
+      grid-column: 1;
+      grid-row: 1;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .manual-process-node.is-step-1 .manual-process-node-main {
+      align-self: center;
+    }
     .manual-process-node.is-step-2 { grid-column: 3; grid-row: 1; }
     .manual-process-node.is-step-3 { grid-column: 5; grid-row: 1; }
     .manual-process-node.is-step-4 { grid-column: 7; grid-row: 1; }
@@ -6102,23 +6241,22 @@
 
     .manual-process-inspector {
       --process-stage-accent: var(--palette-blue-600);
-      display: grid;
-      grid-template-columns: 190px minmax(0, 1fr);
-      gap: 14px;
       margin-top: 14px;
-      padding: 14px 16px;
       border: 1px solid var(--surface-border);
       border-left: 4px solid var(--process-stage-accent);
       border-radius: var(--workbench-radius);
       background: var(--surface-card);
+      overflow: hidden;
     }
 
     .manual-process-inspector-heading {
       display: grid;
       grid-template-columns: 32px minmax(0, 1fr);
-      align-content: start;
       align-items: center;
       gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--surface-divider);
+      background: color-mix(in srgb, var(--process-stage-bg) 48%, var(--surface-card));
     }
 
     .manual-process-inspector-icon {
@@ -6146,33 +6284,38 @@
       font-weight: var(--app-font-weight-semibold);
     }
 
-    .manual-process-inspector-hint {
-      grid-column: 1 / -1;
-      margin: 2px 0 0;
-      color: var(--text-muted);
-      font-size: var(--app-font-size-caption);
-      line-height: 1.35;
-    }
-
-    .manual-process-inspector-grid {
+    .manual-process-inspector-body {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 0;
-      margin: 0;
+      gap: 14px;
+      padding: 14px 16px 16px;
     }
 
-    .manual-process-inspector-item {
-      min-width: 0;
-      padding: 2px 14px;
-      border-left: 1px solid var(--surface-divider);
+    .manual-process-stage-objective,
+    .manual-process-stage-result {
+      display: grid;
+      grid-template-columns: 132px minmax(0, 1fr);
+      align-items: baseline;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--surface-divider);
+      border-radius: 6px;
+      background: var(--palette-gray-100);
     }
 
-    .manual-process-inspector-item:first-child {
-      border-left: 0;
+    .manual-process-stage-result {
+      border-left: 3px solid var(--process-stage-accent);
+      background: color-mix(in srgb, var(--process-stage-bg) 32%, var(--surface-card));
     }
 
-    .manual-process-inspector-item dt {
-      margin: 0 0 5px;
+    .manual-process-stage-objective {
+      grid-template-columns: max-content minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .manual-process-stage-label,
+    .manual-process-detail-title,
+    .manual-process-artifacts-table th,
+    .manual-process-traceability dt {
       color: var(--text-muted);
       font-size: var(--app-font-size-micro);
       font-weight: var(--app-font-weight-semibold);
@@ -6180,11 +6323,186 @@
       text-transform: uppercase;
     }
 
-    .manual-process-inspector-item dd {
+    .manual-process-stage-objective p,
+    .manual-process-stage-result p {
+      max-width: none;
       margin: 0;
       color: var(--text-strong);
       font-size: var(--app-font-size-caption);
+      line-height: 1.5;
+    }
+
+    .manual-process-detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.75fr) minmax(260px, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .manual-process-detail-panel {
+      min-width: 0;
+      border: 1px solid var(--surface-divider);
+      border-radius: 6px;
+      background: var(--surface-card);
+      overflow: hidden;
+    }
+
+    .manual-process-detail-title {
+      margin: 0;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--surface-divider);
+      background: var(--palette-gray-100);
+    }
+
+    .manual-process-steps,
+    .manual-process-controls,
+    .manual-process-traceability {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .manual-process-step {
+      display: grid;
+      grid-template-columns: 30px 76px minmax(0, 1fr);
+      gap: 9px;
+      align-items: start;
+      padding: 10px 12px;
+      border-top: 1px solid var(--surface-divider);
+    }
+
+    .manual-process-step:first-child,
+    .manual-process-control:first-child,
+    .manual-process-traceability-row:first-child {
+      border-top: 0;
+    }
+
+    .manual-process-step-number {
+      color: var(--process-stage-accent);
+      font-size: var(--app-font-size-caption);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .manual-process-boundary {
+      display: inline-flex;
+      min-height: 22px;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 6px;
+      border: 1px solid color-mix(in srgb, var(--process-stage-accent) 28%, var(--surface-divider));
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--process-stage-bg) 54%, var(--surface-card));
+      color: var(--process-stage-text);
+      font-size: 9px;
+      font-weight: var(--app-font-weight-semibold);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .manual-process-step-copy {
+      display: grid;
+      max-width: 84ch;
+      gap: 2px;
+    }
+
+    .manual-process-step-copy strong,
+    .manual-process-control strong {
+      color: var(--text-strong);
+      font-size: var(--app-font-size-caption);
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.35;
+    }
+
+    .manual-process-step-copy span,
+    .manual-process-control span,
+    .manual-process-traceability dd {
+      color: var(--text-muted);
+      font-size: var(--app-font-size-caption);
       line-height: 1.45;
+    }
+
+    .manual-process-control {
+      display: grid;
+      gap: 3px;
+      padding: 10px 12px;
+      border-top: 1px solid var(--surface-divider);
+    }
+
+    .manual-process-control-outcome {
+      display: inline-flex;
+      align-items: flex-start;
+      gap: 5px;
+    }
+
+    .manual-process-control-outcome .button-icon {
+      flex: 0 0 auto;
+      margin-top: 1px;
+      color: var(--palette-red-600);
+      font-size: 14px;
+    }
+
+    .manual-process-artifacts-wrap {
+      overflow-x: auto;
+    }
+
+    .manual-process-artifacts-table {
+      width: 100%;
+      min-width: 620px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .manual-process-artifacts-table th,
+    .manual-process-artifacts-table td {
+      padding: 8px 10px;
+      border: 0;
+      border-top: 1px solid var(--surface-divider);
+      border-right: 1px solid var(--surface-divider);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .manual-process-artifacts-table tr > :last-child {
+      border-right: 0;
+    }
+
+    .manual-process-artifacts-table thead th {
+      border-top: 0;
+      background: var(--palette-gray-100);
+    }
+
+    .manual-process-artifacts-table th:nth-child(1) { width: 12%; }
+    .manual-process-artifacts-table th:nth-child(2) { width: 28%; }
+    .manual-process-artifacts-table th:nth-child(3) { width: 18%; }
+
+    .manual-process-artifacts-table td {
+      color: var(--text-muted);
+      font-size: var(--app-font-size-caption);
+      line-height: 1.4;
+    }
+
+    .manual-process-artifact-kind {
+      color: var(--text-strong);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .manual-process-artifacts-table code {
+      color: var(--text-strong);
+      font-size: 0.96em;
+      font-weight: var(--app-font-weight-medium);
+      white-space: normal;
+    }
+
+    .manual-process-traceability-row {
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px;
+      border-top: 1px solid var(--surface-divider);
+    }
+
+    .manual-process-traceability dt,
+    .manual-process-traceability dd {
+      margin: 0;
     }
 
     .processes-technical-details {
@@ -6247,6 +6565,20 @@
 
       .manual-process-summary-flow {
         flex-wrap: wrap;
+      }
+
+      .manual-process-definition-list {
+        grid-template-columns: 1fr;
+      }
+
+      .manual-process-definition {
+        grid-template-columns: 1fr;
+        gap: 4px;
+        border-top: 1px solid var(--surface-border);
+      }
+
+      .manual-process-definition:first-child {
+        border-top: 0;
       }
 
       .manual-process-canvas {
@@ -6326,18 +6658,26 @@
       }
 
       .manual-process-inspector {
+        margin-top: 10px;
+      }
+
+      .manual-process-detail-grid,
+      .manual-process-stage-objective,
+      .manual-process-stage-result {
         grid-template-columns: 1fr;
       }
 
-      .manual-process-inspector-grid {
-        grid-template-columns: 1fr;
+      .manual-process-step {
+        grid-template-columns: 30px minmax(0, 1fr);
       }
 
-      .manual-process-inspector-item,
-      .manual-process-inspector-item:first-child {
-        padding: 9px 0;
-        border-top: 1px solid var(--surface-divider);
-        border-left: 0;
+      .manual-process-boundary {
+        grid-column: 2;
+        justify-self: start;
+      }
+
+      .manual-process-step-copy {
+        grid-column: 2;
       }
     }
 
@@ -17967,145 +18307,176 @@
   </dialog>
 
   <main class="settings-shell profile-shell processes-shell unified-bootstrap-workspace workbench-page" id="processesPage" hidden>
-    <section class="settings-topbar workbench-page-header" aria-label="Processes header">
+    <section class="settings-topbar workbench-page-header" aria-label="Processes header" data-process-aria-label="pageHeader">
       <div class="settings-title-block">
-        <h1 class="settings-title">Processes</h1>
+        <h1 class="settings-title" data-process-copy="pageTitle">Process Catalog</h1>
+      </div>
+      <div class="processes-language-switch" role="group" aria-label="Process Catalog language" data-process-aria-label="languageSwitch">
+        <button type="button" class="processes-language-button" data-process-language="en" aria-pressed="false">EN</button>
+        <button type="button" class="processes-language-button is-active" data-process-language="ru" aria-pressed="true">RU</button>
       </div>
     </section>
 
-    <section class="processes-layout" aria-label="Process catalog">
+    <section class="processes-layout" aria-label="Process catalog" data-process-aria-label="catalog">
       <aside class="profile-panel processes-catalog">
-        <div class="profile-panel-head">
-          <h2 class="processes-section-title">Process Catalog</h2>
-        </div>
-        <nav class="processes-list" aria-label="Processes">
-          <a class="processes-list-link is-active" href="#processes:manual-batch-formation" aria-current="page">
+        <nav class="processes-list" aria-label="Processes" data-process-aria-label="processes">
+          <a class="processes-list-link is-active" href="#processes:manual-batch-formation" data-process-catalog-view="manual" aria-current="page">
             <span class="button-icon" aria-hidden="true">account_tree</span>
             <span class="processes-list-link-copy">
-              <strong>Manual Batch Formation</strong>
-              <small>One Batch</small>
+              <strong data-process-copy="manualBatching">Manual Batching</strong>
+            </span>
+          </a>
+          <a class="processes-list-link" href="#processes:domain-glossary" data-process-catalog-view="glossary">
+            <span class="button-icon" aria-hidden="true">menu_book</span>
+            <span class="processes-list-link-copy">
+              <strong data-process-copy="domainGlossary">Domain Glossary</strong>
             </span>
           </a>
         </nav>
       </aside>
 
-      <article class="profile-panel processes-details" aria-labelledby="manualBatchFormationProcessTitle">
+      <article class="profile-panel processes-details" id="manualBatchFormationProcessView" aria-labelledby="manualBatchFormationProcessTitle">
         <header class="profile-panel-head processes-detail-head">
           <div class="processes-detail-heading">
-            <h2 class="processes-section-title" id="manualBatchFormationProcessTitle">Manual Batch Formation</h2>
-            <p class="processes-detail-subtitle">One Batch &middot; Current demo implementation</p>
-            <p>One Batch · Current demo implementation</p>
+            <h2 class="processes-section-title" id="manualBatchFormationProcessTitle" data-process-copy="manualBatching">Manual Batching</h2>
           </div>
-          <span class="auto-batching-flow-version">Draft - 11.08.2026</span>
         </header>
         <div class="processes-detail-body">
-        <div class="manual-process-summary" aria-label="Process goal">
+        <div class="manual-process-summary" aria-label="Process goal" data-process-aria-label="processGoal">
           <div class="manual-process-summary-flow">
-            <span class="manual-process-summary-label">Goal:</span>
+            <span class="manual-process-summary-label" data-process-copy="goal">Process goal:</span>
             <span class="button-icon" aria-hidden="true">checklist</span>
-            <span>Selected FX Trades</span>
+            <a class="manual-process-term-link" href="#processes:domain-glossary/fx-trade" data-process-term-reference="fx-trade" data-process-copy="selectedFxTrades">Selected FX Trades</a>
             <span class="button-icon" aria-hidden="true">arrow_forward</span>
             <span class="manual-process-summary-result">
-              <span class="button-icon" aria-hidden="true">inventory_2</span>
-              <span>Formed FX Batch</span>
+              <span class="button-icon" aria-hidden="true">stacks</span>
+              <a class="manual-process-term-link" href="#processes:domain-glossary/fx-batch" data-process-term-reference="fx-batch" data-process-copy="formedFxBatch">Formed FX Batch</a>
             </span>
           </div>
         </div>
 
-        <section class="manual-process-map" aria-label="Manual Batch Formation process map">
+        <section class="manual-process-map" aria-label="Manual Batching process map" data-process-aria-label="processMap">
           <div class="manual-process-canvas">
             <button type="button" class="manual-process-node is-input is-step-1 is-current is-pinned" data-manual-process-stage="select" aria-pressed="true" aria-describedby="manualProcessInspector">
-              <span class="manual-process-node-meta"><span>01</span><span>INPUT</span></span>
+              <span class="manual-process-node-meta"><span>01</span><span data-process-copy="stageInput">INPUT</span></span>
               <span class="manual-process-node-main">
                 <span class="manual-process-node-icon button-icon" aria-hidden="true">checklist</span>
-                <span class="manual-process-node-title">Select FX Trades</span>
+                <span class="manual-process-node-title" data-process-copy="selectFxTrades">FX Trade Selection for Batch Formation</span>
               </span>
-              <span class="manual-process-node-outcome">Stable Trade ID set</span>
             </button>
             <span class="manual-process-connector is-after-select" aria-hidden="true"></span>
 
             <button type="button" class="manual-process-node is-tenor is-decision is-step-2" data-manual-process-stage="tenor" aria-pressed="false" aria-describedby="manualProcessInspector">
-              <span class="manual-process-node-meta"><span>02</span><span>DECISION</span></span>
+              <span class="manual-process-node-meta"><span>02</span><span data-process-copy="stageDecision">DECISION</span></span>
               <span class="manual-process-node-main">
                 <span class="manual-process-node-icon button-icon" aria-hidden="true">alt_route</span>
-                <span class="manual-process-node-title">Resolve Tenors</span>
+                <span class="manual-process-node-title" data-process-copy="resolveTenors">Resolve Tenors</span>
               </span>
-              <span class="manual-process-node-outcome">One group per Tenor</span>
+              <span class="manual-process-node-outcome" data-process-copy="tenorResolvedRequest">Tenor-resolved request</span>
             </button>
             <span class="manual-process-connector is-after-tenor" aria-hidden="true"></span>
 
             <button type="button" class="manual-process-node is-validation is-step-3" data-manual-process-stage="validate" aria-pressed="false" aria-describedby="manualProcessInspector">
-              <span class="manual-process-node-meta"><span>03</span><span>CONTROL</span></span>
+              <span class="manual-process-node-meta"><span>03</span><span data-process-copy="stageControl">CONTROL</span></span>
               <span class="manual-process-node-main">
                 <span class="manual-process-node-icon button-icon" aria-hidden="true">fact_check</span>
-                <span class="manual-process-node-title">Validate &amp; Plan</span>
+                <span class="manual-process-node-title" data-process-copy="validateAndPlan">Validate &amp; Plan</span>
               </span>
-              <span class="manual-process-node-outcome">Validated formation plan</span>
+              <span class="manual-process-node-outcome" data-process-copy="deterministicGroupPlan">Deterministic group plan</span>
             </button>
             <span class="manual-process-connector is-after-validation" aria-hidden="true"></span>
 
             <button type="button" class="manual-process-node is-domain is-step-4" data-manual-process-stage="form" aria-pressed="false" aria-describedby="manualProcessInspector">
-              <span class="manual-process-node-meta"><span>04</span><span>DOMAIN</span></span>
+              <span class="manual-process-node-meta"><span>04</span><span data-process-copy="stageDomain">DOMAIN</span></span>
               <span class="manual-process-node-main">
                 <span class="manual-process-node-icon button-icon" aria-hidden="true">calculate</span>
-                <span class="manual-process-node-title">Form &amp; Neutralize</span>
+                <span class="manual-process-node-title" data-process-copy="formAndNeutralize">Form &amp; Neutralize</span>
               </span>
-              <span class="manual-process-node-outcome">OVP 0 &middot; Cash neutral</span>
+              <span class="manual-process-node-outcome" data-process-copy="neutralBatchModel">Neutral Batch model</span>
             </button>
-            <span class="manual-process-connector is-atomic" aria-hidden="true"><span class="manual-process-connector-label">ONE DB TX</span></span>
+            <span class="manual-process-connector is-atomic" aria-hidden="true"><span class="manual-process-connector-label" data-process-copy="oneDbTransaction">ONE DB TX</span></span>
 
             <button type="button" class="manual-process-node is-commit is-step-5" data-manual-process-stage="commit" aria-pressed="false" aria-describedby="manualProcessInspector">
-              <span class="manual-process-node-meta"><span>05</span><span>COMMIT</span></span>
+              <span class="manual-process-node-meta"><span>05</span><span data-process-copy="stageCommit">COMMIT</span></span>
               <span class="manual-process-node-main">
                 <span class="manual-process-node-icon button-icon" aria-hidden="true">database</span>
-                <span class="manual-process-node-title">Commit &amp; Refresh</span>
+                <span class="manual-process-node-title" data-process-copy="commitAndRefresh">Commit &amp; Refresh</span>
               </span>
-              <span class="manual-process-node-outcome">Formed Batch(es)</span>
+              <span class="manual-process-node-outcome" data-process-copy="formedBatches">Formed Batch(es)</span>
             </button>
 
-            <div class="manual-process-tenor-routes" aria-label="Tenor decision outcomes">
-              <span class="manual-process-route"><strong>Same Tenor</strong><span>Continue</span></span>
-              <span class="manual-process-route"><strong>Mixed Tenors</strong><span>Choose or split</span></span>
+            <div class="manual-process-tenor-routes" aria-label="Tenor decision outcomes" data-process-aria-label="tenorOutcomes">
+              <span class="manual-process-route"><strong data-process-copy="sameTenor">Same Tenor</strong><span data-process-copy="continueAction">Continue</span></span>
+              <span class="manual-process-route"><strong data-process-copy="mixedTenors">Mixed Tenors</strong><span data-process-copy="chooseOrSplit">Choose or split</span></span>
             </div>
             <span class="manual-process-failure-drop is-validation" aria-hidden="true"></span>
             <span class="manual-process-failure-drop is-commit" aria-hidden="true"></span>
             <div class="manual-process-rollback" role="note">
               <span class="button-icon" aria-hidden="true">error</span>
-              <strong>Any failure</strong>
+              <strong data-process-copy="serverTransactionFailure">Server transaction failure</strong>
               <span class="manual-process-rollback-arrow button-icon" aria-hidden="true">arrow_forward</span>
-              <span>Full rollback</span>
+              <span data-process-copy="fullRollback">Full rollback</span>
               <span class="manual-process-rollback-arrow button-icon" aria-hidden="true">arrow_forward</span>
-              <strong>FX Position unchanged</strong>
+              <a class="manual-process-term-link" href="#processes:domain-glossary/fx-position" data-process-term-reference="fx-position" data-process-copy="fxPositionUnchanged">FX Position unchanged</a>
             </div>
           </div>
         </section>
 
-        <section class="manual-process-inspector is-input" id="manualProcessInspector" aria-label="Selected process phase details" aria-live="polite">
+        <section class="manual-process-inspector is-input" id="manualProcessInspector" aria-label="Selected process phase specification" data-process-aria-label="stageSpecification">
           <div class="manual-process-inspector-heading">
             <span class="manual-process-inspector-icon button-icon" id="manualProcessInspectorIcon" aria-hidden="true">checklist</span>
             <div>
               <div class="manual-process-inspector-kicker" id="manualProcessInspectorKicker">01 &middot; Input</div>
-              <h3 class="manual-process-inspector-title" id="manualProcessInspectorTitle">Select FX Trades</h3>
+              <h3 class="manual-process-inspector-title" id="manualProcessInspectorTitle">FX Trade Selection for Batch Formation</h3>
             </div>
-            <p class="manual-process-inspector-hint">Point to a phase for details. Click to keep it selected.</p>
           </div>
-          <dl class="manual-process-inspector-grid">
-            <div class="manual-process-inspector-item">
-              <dt>What happens</dt>
-              <dd id="manualProcessInspectorWhat">Capture the selected Trade IDs from FX Position.</dd>
+          <div class="manual-process-inspector-body">
+            <section class="manual-process-stage-objective" aria-labelledby="manualProcessInspectorObjectiveLabel">
+              <span class="manual-process-stage-label" id="manualProcessInspectorObjectiveLabel" data-process-copy="stageObjective">Stage goal:</span>
+              <p id="manualProcessInspectorObjective">Freeze the operator's eligible FX Position selection for deterministic manual batching.</p>
+            </section>
+
+            <div class="manual-process-detail-grid">
+              <section class="manual-process-detail-panel" aria-labelledby="manualProcessInspectorStepsTitle">
+                <h4 class="manual-process-detail-title" id="manualProcessInspectorStepsTitle" data-process-copy="executionSteps">Execution steps</h4>
+                <ol class="manual-process-steps" id="manualProcessInspectorSteps"></ol>
+              </section>
+              <section class="manual-process-detail-panel" aria-labelledby="manualProcessInspectorControlsTitle">
+                <h4 class="manual-process-detail-title" id="manualProcessInspectorControlsTitle" data-process-copy="controlsAndFailure">Controls &amp; failure</h4>
+                <ul class="manual-process-controls" id="manualProcessInspectorControls"></ul>
+              </section>
             </div>
-            <div class="manual-process-inspector-item">
-              <dt>Key checks</dt>
-              <dd id="manualProcessInspectorChecks">At least one eligible FX Trade is selected.</dd>
-            </div>
-            <div class="manual-process-inspector-item">
-              <dt>Result</dt>
-              <dd id="manualProcessInspectorResult">A stable, sorted source Trade list.</dd>
-            </div>
-          </dl>
+
+            <section class="manual-process-detail-panel" aria-labelledby="manualProcessInspectorArtifactsTitle">
+              <h4 class="manual-process-detail-title" id="manualProcessInspectorArtifactsTitle" data-process-copy="dataArtifacts">Data artifacts</h4>
+              <div class="manual-process-artifacts-wrap">
+                <table class="manual-process-artifacts-table">
+                  <thead>
+                    <tr>
+                      <th data-process-copy="artifactKind">Kind</th>
+                      <th data-process-copy="artifactNameType">Name / type</th>
+                      <th data-process-copy="artifactScope">Scope</th>
+                      <th data-process-copy="artifactPurpose">Purpose</th>
+                    </tr>
+                  </thead>
+                  <tbody id="manualProcessInspectorArtifacts"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="manual-process-detail-panel" aria-labelledby="manualProcessInspectorTraceabilityTitle">
+              <h4 class="manual-process-detail-title" id="manualProcessInspectorTraceabilityTitle" data-process-copy="traceability">Traceability</h4>
+              <dl class="manual-process-traceability" id="manualProcessInspectorTraceability"></dl>
+            </section>
+
+            <section class="manual-process-stage-result" aria-labelledby="manualProcessInspectorResultLabel">
+              <span class="manual-process-stage-label" id="manualProcessInspectorResultLabel" data-process-copy="stageResult">Stage result</span>
+              <p id="manualProcessInspectorResult">Eligible trade snapshot ready for Tenor resolution.</p>
+            </section>
+          </div>
         </section>
 
-        <details class="processes-technical-details">
+        <details class="processes-technical-details" hidden aria-hidden="true">
           <summary>
             <span class="button-icon" aria-hidden="true">schema</span>
             <span>Technical Details</span>
@@ -18113,7 +18484,7 @@
           </summary>
           <div class="processes-technical-body">
         <p class="auto-batching-flow-intro">&#x0421;&#x0445;&#x0435;&#x043C;&#x0430; &#x0444;&#x0438;&#x043A;&#x0441;&#x0438;&#x0440;&#x0443;&#x0435;&#x0442; &#x0442;&#x0435;&#x043A;&#x0443;&#x0449;&#x0438;&#x0439; &#x043F;&#x0440;&#x043E;&#x0446;&#x0435;&#x0441;&#x0441;, &#x0437;&#x0430;&#x043F;&#x0443;&#x0441;&#x043A;&#x0430;&#x0435;&#x043C;&#x044B;&#x0439; &#x043A;&#x043D;&#x043E;&#x043F;&#x043A;&#x043E;&#x0439; Create Batch, &#x0438; &#x043E;&#x0442;&#x0434;&#x0435;&#x043B;&#x044F;&#x0435;&#x0442; &#x0432;&#x0440;&#x0435;&#x043C;&#x0435;&#x043D;&#x043D;&#x043E;&#x0435; &#x0441;&#x043E;&#x0441;&#x0442;&#x043E;&#x044F;&#x043D;&#x0438;&#x0435; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0430; &#x043E;&#x0442; &#x0434;&#x0430;&#x043D;&#x043D;&#x044B;&#x0445;, &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x044F;&#x0435;&#x043C;&#x044B;&#x0445; &#x0441;&#x0435;&#x0440;&#x0432;&#x0435;&#x0440;&#x043E;&#x043C;.</p>
-        <div class="auto-batching-flowchart" role="group" aria-label="Current Manual Batch Formation process flow">
+        <div class="auto-batching-flowchart" role="group" aria-label="Current Manual Batching process flow">
           <div class="auto-batching-flow-step is-start">
             <div class="auto-batching-flow-step-title">Select FX Trades and click Create Batch</div>
             <div class="auto-batching-flow-step-detail">&#x0424;&#x043B;&#x0430;&#x0436;&#x043A;&#x0438; &#x043D;&#x0430; &#x0441;&#x0442;&#x0440;&#x0430;&#x043D;&#x0438;&#x0446;&#x0435; FX Position &#x043E;&#x043F;&#x0440;&#x0435;&#x0434;&#x0435;&#x043B;&#x044F;&#x044E;&#x0442; &#x0432;&#x044B;&#x0431;&#x0440;&#x0430;&#x043D;&#x043D;&#x044B;&#x0435; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0435; &#x0441;&#x0434;&#x0435;&#x043B;&#x043A;&#x0438;. &#x0414;&#x043E; &#x043D;&#x0430;&#x0436;&#x0430;&#x0442;&#x0438;&#x044F; Create Batch &#x0441;&#x043E;&#x0441;&#x0442;&#x043E;&#x044F;&#x043D;&#x0438;&#x0435; &#x0432;&#x044B;&#x0431;&#x043E;&#x0440;&#x0430; &#x0441;&#x0443;&#x0449;&#x0435;&#x0441;&#x0442;&#x0432;&#x0443;&#x0435;&#x0442; &#x0442;&#x043E;&#x043B;&#x044C;&#x043A;&#x043E; &#x0432; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0435;.</div>
@@ -18251,6 +18622,45 @@
         </p>
           </div>
         </details>
+        </div>
+      </article>
+
+      <article class="profile-panel processes-details" id="domainGlossaryProcessView" aria-labelledby="domainGlossaryTitle" hidden>
+        <header class="profile-panel-head processes-detail-head">
+          <div class="processes-detail-heading">
+            <h2 class="processes-section-title" id="domainGlossaryTitle" data-process-copy="domainGlossary">Domain Glossary</h2>
+            <p class="processes-detail-subtitle" data-process-copy="domainGlossarySubtitle">Core terms used across documented processes</p>
+          </div>
+        </header>
+        <div class="processes-detail-body">
+          <section class="manual-process-definitions domain-glossary-definitions" aria-labelledby="domainGlossaryTitle">
+            <dl class="manual-process-definition-list">
+              <div class="manual-process-definition" id="process-term-fx-batch" tabindex="-1">
+                <dt>FX Batch</dt>
+                <dd data-process-copy="fxBatchDefinition">a formed and committed set of compatible FX trades with an exact membership. Its members provide zero open currency position, while the related Cash Output provides cash neutrality.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-batching" tabindex="-1">
+                <dt data-process-copy="batchingTerm">Batching (Manual or Automatic)</dt>
+                <dd data-process-copy="batchingDefinition">a process that selects, validates and combines compatible FX trades into one or more FX Batches. A user selects trades for Manual Batching; configured rules select them for Automatic Batching.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-fx-trade" tabindex="-1">
+                <dt>FX trade</dt>
+                <dd data-process-copy="fxTradeDefinition">a regular or technical FX transaction included in currency-position calculations and eligible for Batching when it has a Transfer Rate.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-fx-position" tabindex="-1">
+                <dt><span data-process-copy="interfaceTerm">Interface</span> <a class="manual-process-term-link" href="#fx-position">FX Position</a></dt>
+                <dd data-process-copy="fxPositionDefinition">application page for monitoring the currency position and working with FX trades, including starting Manual Batching.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-tenor" tabindex="-1">
+                <dt>Tenor</dt>
+                <dd data-process-copy="tenorDefinition">the settlement term of an FX trade relative to Trade Date. The current model uses TOD, TOM and SPOT.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-batching-key" tabindex="-1">
+                <dt>Batching Key</dt>
+                <dd data-process-copy="batchingKeyDefinition">the currency pair, Trade Date, Tenor, both value dates and currency precision values used to determine which FX trades may be processed together.</dd>
+              </div>
+            </dl>
+          </section>
         </div>
       </article>
     </section>
@@ -19449,6 +19859,20 @@
     const marketPageTitle = document.getElementById("marketPageTitle");
     const databasePage = document.getElementById("databasePage");
     const processesPage = document.getElementById("processesPage");
+    const processCatalogViewLinks = Array.from(
+      document.querySelectorAll("[data-process-catalog-view]")
+    );
+    const manualBatchFormationProcessView = document.getElementById("manualBatchFormationProcessView");
+    const domainGlossaryProcessView = document.getElementById("domainGlossaryProcessView");
+    const processCatalogLanguageButtons = Array.from(
+      document.querySelectorAll("[data-process-language]")
+    );
+    const processCatalogCopyElements = Array.from(
+      document.querySelectorAll("[data-process-copy]")
+    );
+    const processCatalogAriaElements = Array.from(
+      document.querySelectorAll("[data-process-aria-label]")
+    );
     const manualProcessNodes = Array.from(
       document.querySelectorAll("[data-manual-process-stage]")
     );
@@ -19456,8 +19880,11 @@
     const manualProcessInspectorIcon = document.getElementById("manualProcessInspectorIcon");
     const manualProcessInspectorKicker = document.getElementById("manualProcessInspectorKicker");
     const manualProcessInspectorTitle = document.getElementById("manualProcessInspectorTitle");
-    const manualProcessInspectorWhat = document.getElementById("manualProcessInspectorWhat");
-    const manualProcessInspectorChecks = document.getElementById("manualProcessInspectorChecks");
+    const manualProcessInspectorObjective = document.getElementById("manualProcessInspectorObjective");
+    const manualProcessInspectorSteps = document.getElementById("manualProcessInspectorSteps");
+    const manualProcessInspectorControls = document.getElementById("manualProcessInspectorControls");
+    const manualProcessInspectorArtifacts = document.getElementById("manualProcessInspectorArtifacts");
+    const manualProcessInspectorTraceability = document.getElementById("manualProcessInspectorTraceability");
     const manualProcessInspectorResult = document.getElementById("manualProcessInspectorResult");
     const mainPage = document.getElementById("mainPage");
     const batchingSettingsPage = document.getElementById("batchingSettingsPage");
@@ -33006,51 +33433,479 @@
       return "#processes:manual-batch-formation";
     }
 
+    function domainGlossaryRoute(termKey = "") {
+      return termKey
+        ? `#processes:domain-glossary/${encodeURIComponent(termKey)}`
+        : "#processes:domain-glossary";
+    }
+
+    const PROCESS_CATALOG_GLOSSARY_TERM_KEYS = new Set([
+      "fx-batch",
+      "batching",
+      "fx-trade",
+      "fx-position",
+      "tenor",
+      "batching-key"
+    ]);
+
+    function domainGlossaryTermFromRoute() {
+      const routePrefix = `${domainGlossaryRoute()}/`;
+      if (!location.hash.startsWith(routePrefix)) {
+        return null;
+      }
+      try {
+        const termKey = decodeURIComponent(location.hash.slice(routePrefix.length));
+        return PROCESS_CATALOG_GLOSSARY_TERM_KEYS.has(termKey) ? termKey : null;
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    const PROCESS_CATALOG_LANGUAGE_STORAGE_KEY = "position.processCatalogLanguage";
+    const PROCESS_CATALOG_COPY = Object.freeze({
+      en: Object.freeze({
+        pageTitle: "Process Catalog",
+        manualBatching: "Manual Batching",
+        domainGlossary: "Domain Glossary",
+        domainGlossarySubtitle: "Core terms used across documented processes",
+        goal: "Process goal:",
+        definitions: "Core definitions",
+        interfaceTerm: "Interface",
+        fxBatchDefinition: "a formed and committed set of compatible FX trades with an exact membership. After formation, its members provide zero open currency position, while the related Cash Output provides cash neutrality.",
+        batchingTerm: "Batching (Manual or Automatic)",
+        batchingDefinition: "a manual or automatic process that selects, validates, groups and neutralizes compatible FX trades to form one or more FX Batches. A user selects trades for Manual Batching; configured rules select them for Automatic Batching.",
+        fxTradeDefinition: "a regular or technical FX transaction included in currency-position calculations. An FX trade may participate in Batching only when it has a positive Transfer Rate and satisfies the other eligibility rules.",
+        fxPositionDefinition: "application page for monitoring the currency position and working with FX trades, including starting Manual Batching.",
+        tenorDefinition: "the standard settlement term of an FX trade relative to Trade Date. The current model uses TOD, TOM and SPOT.",
+        batchingKeyDefinition: "the composite compatibility key for FX trades: currency pair, Trade Date, Tenor, both Value Dates and both currency precisions. Only trades with the same Batching Key may belong to one FX Batch.",
+        selectedFxTrades: "Selected FX Trades",
+        formedFxBatch: "Formed FX Batch",
+        stageInput: "INPUT",
+        stageDecision: "DECISION",
+        stageControl: "CONTROL",
+        stageDomain: "DOMAIN",
+        stageCommit: "COMMIT",
+        selectFxTrades: "FX Trade Selection for Batch Formation",
+        resolveTenors: "Resolve Tenors",
+        tenorResolvedRequest: "Tenor-resolved request",
+        validateAndPlan: "Validate & Plan",
+        deterministicGroupPlan: "Deterministic group plan",
+        formAndNeutralize: "Form & Neutralize",
+        neutralBatchModel: "Neutral Batch model",
+        oneDbTransaction: "ONE DB TX",
+        commitAndRefresh: "Commit & Refresh",
+        formedBatches: "Formed Batch(es)",
+        sameTenor: "Same Tenor",
+        continueAction: "Continue",
+        mixedTenors: "Mixed Tenors",
+        chooseOrSplit: "Choose or split",
+        serverTransactionFailure: "Server transaction failure",
+        fullRollback: "Full rollback",
+        fxPositionUnchanged: "FX Position unchanged",
+        stageObjective: "Stage goal:",
+        executionSteps: "Execution steps",
+        controlsAndFailure: "Controls & failure",
+        dataArtifacts: "Data artifacts",
+        artifactKind: "Kind",
+        artifactNameType: "Name / type",
+        artifactScope: "Scope",
+        artifactPurpose: "Purpose",
+        traceability: "Traceability",
+        stageResult: "Stage result"
+      }),
+      ru: Object.freeze({
+        pageTitle: "Каталог процессов",
+        manualBatching: "Ручной Batching",
+        domainGlossary: "Domain Glossary",
+        domainGlossarySubtitle: "Основные термины, используемые в описаниях процессов",
+        goal: "Цель процесса:",
+        definitions: "Основные определения",
+        interfaceTerm: "Интерфейс",
+        fxBatchDefinition: "сформированный и зафиксированный набор совместимых FX trades с точным составом. После формирования его участники обеспечивают ОВП = 0, а связанный Cash Output — нейтральность по cash.",
+        batchingTerm: "Batching (Ручной или Автоматический)",
+        batchingDefinition: "ручной или автоматический процесс выбора, проверки, группировки и нейтрализации совместимых FX trades, результатом которого становится один или несколько FX Batches. При Ручном Batching trades выбирает пользователь, при Автоматическом — система по настроенным правилам.",
+        fxTradeDefinition: "обычная или техническая валютная сделка, учитываемая при расчёте валютной позиции. FX trade может участвовать в Batching только при наличии положительного Transfer Rate и выполнении остальных правил допустимости.",
+        fxPositionDefinition: "страница приложения для контроля валютной позиции и выполнения операций с FX trades, включая запуск процесса «Ручной Batching».",
+        tenorDefinition: "стандартное обозначение срока расчётов по FX trade относительно Trade Date. В текущей модели используются TOD, TOM и SPOT.",
+        batchingKeyDefinition: "составной ключ совместимости FX trades: валютная пара, Trade Date, Tenor, обе Value Dates и точность обеих валют. В один FX Batch могут входить только trades с одинаковым Batching Key.",
+        selectedFxTrades: "Выбранные FX-сделки",
+        formedFxBatch: "Сформированный FX Batch",
+        stageInput: "ВХОД",
+        stageDecision: "РЕШЕНИЕ",
+        stageControl: "КОНТРОЛЬ",
+        stageDomain: "ДОМЕН",
+        stageCommit: "ФИКСАЦИЯ",
+        selectFxTrades: "Выбор FX trades для создания Batch",
+        resolveTenors: "Разрешить Tenor",
+        tenorResolvedRequest: "Запрос с разрешённым Tenor",
+        validateAndPlan: "Проверить и спланировать",
+        deterministicGroupPlan: "Детерминированный план групп",
+        formAndNeutralize: "Сформировать и нейтрализовать",
+        neutralBatchModel: "Нейтральная модель Batch",
+        oneDbTransaction: "ОДНА ТРАНЗАКЦИЯ БД",
+        commitAndRefresh: "Зафиксировать и обновить",
+        formedBatches: "Сформированный Batch",
+        sameTenor: "Один Tenor",
+        continueAction: "Продолжить",
+        mixedTenors: "Разные Tenor",
+        chooseOrSplit: "Выбрать или разделить",
+        serverTransactionFailure: "Ошибка серверной транзакции",
+        fullRollback: "Полный откат",
+        fxPositionUnchanged: "FX Position не изменена",
+        stageObjective: "Цель этапа:",
+        executionSteps: "Шаги выполнения",
+        controlsAndFailure: "Проверки и ошибки",
+        dataArtifacts: "Данные этапа",
+        artifactKind: "Вид",
+        artifactNameType: "Имя / тип",
+        artifactScope: "Область",
+        artifactPurpose: "Назначение",
+        traceability: "Трассируемость",
+        stageResult: "Результат этапа"
+      }),
+      aria: Object.freeze({
+        en: Object.freeze({
+          pageHeader: "Processes header",
+          languageSwitch: "Process Catalog language",
+          catalog: "Process catalog",
+          processes: "Processes",
+          processGoal: "Process goal",
+          processMap: "Manual Batching process map",
+          tenorOutcomes: "Tenor decision outcomes",
+          stageSpecification: "Selected process phase specification"
+        }),
+        ru: Object.freeze({
+          pageHeader: "Заголовок каталога процессов",
+          languageSwitch: "Язык каталога процессов",
+          catalog: "Каталог процессов",
+          processes: "Процессы",
+          processGoal: "Цель процесса",
+          processMap: "Схема процесса «Ручной Batching»",
+          tenorOutcomes: "Варианты разрешения Tenor",
+          stageSpecification: "Описание выбранного этапа процесса"
+        })
+      })
+    });
+
+    function readProcessCatalogLanguage() {
+      try {
+        const storedLanguage = window.localStorage.getItem(PROCESS_CATALOG_LANGUAGE_STORAGE_KEY);
+        return storedLanguage === "en" ? "en" : "ru";
+      } catch (_error) {
+        return "ru";
+      }
+    }
+
+    let processCatalogLanguage = readProcessCatalogLanguage();
+
     const MANUAL_BATCH_PROCESS_STAGES = Object.freeze({
       select: Object.freeze({
         theme: "is-input",
         icon: "checklist",
         kicker: "01 · Input",
-        title: "Select FX Trades",
-        what: "Capture the selected Trade IDs from FX Position.",
-        checks: "At least one eligible FX Trade is selected.",
-        result: "A stable, sorted source Trade list."
+        title: "FX Trade Selection for Batch Formation",
+        objective: "Freeze the operator's eligible FX Position selection for deterministic manual batching.",
+        steps: Object.freeze([
+          Object.freeze({ boundary: "Browser", title: "Read the current FX Position selection.", detail: "Resolve selectedTradeIds against rows currently displayed for the active currency pair." }),
+          Object.freeze({ boundary: "Browser", title: "Keep only batchable FX Trades.", detail: "Exclude synthetic rows and require a positive Trade ID, BUY or SELL side, and a positive Transfer Rate." }),
+          Object.freeze({ boundary: "Browser", title: "Create an eligible source snapshot.", detail: "Copy the matching FX Position rows into sourceDeals for the next stage. The mutable checkbox state itself remains browser-only." })
+        ]),
+        controls: Object.freeze([
+          Object.freeze({ check: "At least one eligible FX Trade remains after filtering.", failure: "Show a warning and stop before any request is sent." }),
+          Object.freeze({ check: "Every selected source exposes the minimum data required by the batching UI.", failure: "Ignore the non-batchable row; FX Position and the database remain unchanged." })
+        ]),
+        artifacts: Object.freeze([
+          Object.freeze({ kind: "Input", name: "selectedTradeIds: Set", scope: "Browser", purpose: "Mutable checkbox selection maintained by FX Position." }),
+          Object.freeze({ kind: "Runtime", name: "sourceDeals: FxPositionRow[]", scope: "Browser", purpose: "Eligible source rows captured from the current display." }),
+          Object.freeze({ kind: "Output", name: "eligible source snapshot", scope: "Stage 02", purpose: "Selection passed to Tenor resolution." })
+        ]),
+        traceability: Object.freeze([
+          Object.freeze({ label: "Persistence", value: "Not persisted. The checkbox selection exists only in browser memory." }),
+          Object.freeze({ label: "Audit", value: "No audit record is created at this stage." }),
+          Object.freeze({ label: "Application logging", value: "No stage event is emitted; only the user-facing warning/status may change." })
+        ]),
+        result: "Eligible trade snapshot ready for Tenor resolution."
       }),
       tenor: Object.freeze({
         theme: "is-tenor",
         icon: "alt_route",
         kicker: "02 · Decision",
         title: "Resolve Tenors",
-        what: "Choose how the selected Tenors will be processed.",
-        checks: "Continue with one Tenor, choose a Tenor, or create separate batches.",
-        result: "One deterministic formation group per Tenor."
+        objective: "Resolve a mixed-Tenor selection into an explicit, deterministic manual batching request.",
+        steps: Object.freeze([
+          Object.freeze({ boundary: "Browser", title: "Normalize and group the selected Tenors.", detail: "Build UI groups in TOD, TOM, SPOT, then lexical order, retaining the eligible source rows in each group." }),
+          Object.freeze({ boundary: "Browser", title: "Choose the processing path.", detail: "A single Tenor continues directly. Mixed Tenors require either one selected Tenor or independent batching by Tenor." }),
+          Object.freeze({ boundary: "Browser", title: "Prepare the immutable request identity.", detail: "Sort numeric tradeIds, choose SINGLE_BATCH or SEPARATE_BY_TENOR, and generate one idempotencyKey for the exact selection and mode." }),
+          Object.freeze({ boundary: "API", title: "Submit the manual batching command.", detail: "POST tradeIds and mode to /api/v1/fx-batches, with the idempotencyKey in the request header." })
+        ]),
+        controls: Object.freeze([
+          Object.freeze({ check: "Cross-Tenor batching is disabled by current General Batching Settings.", failure: "Mixed Tenors cannot be submitted as one batch; user resolution is required." }),
+          Object.freeze({ check: "The selected Tenor contains at least one eligible source Trade.", failure: "Do not submit an empty Tenor group." })
+        ]),
+        artifacts: Object.freeze([
+          Object.freeze({ kind: "Input", name: "sourceDeals: FxPositionRow[]", scope: "Browser", purpose: "Eligible selection received from Stage 01." }),
+          Object.freeze({ kind: "Runtime", name: "tenorGroups: Map<Tenor, Trade[]>", scope: "Browser", purpose: "UI decision model for a mixed-Tenor selection." }),
+          Object.freeze({ kind: "Output", name: "tradeIds: number[]", scope: "API command", purpose: "Sorted Trade IDs submitted to the server." }),
+          Object.freeze({ kind: "Output", name: "mode: SelectionMode", scope: "API command", purpose: "SINGLE_BATCH or SEPARATE_BY_TENOR." }),
+          Object.freeze({ kind: "Output", name: "idempotencyKey: UUID", scope: "Request header", purpose: "Stable identity reused when the exact request is retried." })
+        ]),
+        traceability: Object.freeze([
+          Object.freeze({ label: "Persistence", value: "No durable write occurs until the server transaction starts in Stage 03." }),
+          Object.freeze({ label: "Audit", value: "The selected mode and Trade IDs are recorded later in the manual formation register if the transaction commits." }),
+          Object.freeze({ label: "Application logging", value: "No separate event records the dialog choice." })
+        ]),
+        result: "A request with resolved Tenor handling, sorted Trade IDs and a stable idempotency key."
       }),
       validate: Object.freeze({
         theme: "is-validation",
         icon: "fact_check",
         kicker: "03 · Control",
         title: "Validate & Plan",
-        what: "Load the source Trades and build the complete formation plan.",
-        checks: "Availability, Transfer Rate, Batching Key and idempotency.",
-        result: "A validated plan ready for domain calculation."
+        objective: "Validate the command, resolve idempotency and build deterministic Tenor groups inside one database transaction.",
+        steps: Object.freeze([
+          Object.freeze({ boundary: "Application", title: "Normalize the command.", detail: "Require a valid idempotency key, 1–200 unique positive Trade IDs and a supported selection mode; then sort the IDs." }),
+          Object.freeze({ boundary: "DB", title: "Resolve an existing operation by idempotency key.", detail: "Replay the matching completed result, or reject reuse of the key for different Trade IDs or mode." }),
+          Object.freeze({ boundary: "DB", title: "Resolve the selected source records.", detail: "Load Trade ID and Tenor for every requested Trade and reject missing records." }),
+          Object.freeze({ boundary: "Domain", title: "Build the deterministic group plan.", detail: "Apply General Batching Settings, normalize Tenors and produce one ordered group or one group per Tenor." }),
+          Object.freeze({ boundary: "DB", title: "Open the manual formation register.", detail: "Insert a BUILDING root record with the request snapshot and expected child batch count inside the same transaction." })
+        ]),
+        controls: Object.freeze([
+          Object.freeze({ check: "Idempotency key, selection mode and sorted Trade IDs match any prior completed request.", failure: "Return the prior result on an exact replay; reject a conflicting or inconsistent operation." }),
+          Object.freeze({ check: "Every requested Trade exists and every group has one valid Tenor.", failure: "Abort the transaction; no formation register or child batch becomes durable." }),
+          Object.freeze({ check: "Full source eligibility, Transfer Rate and Batching Key checks run again per group in Stage 04.", failure: "A late group failure rolls back all earlier writes in the same server transaction." })
+        ]),
+        artifacts: Object.freeze([
+          Object.freeze({ kind: "Input", name: "{ idempotencyKey, tradeIds, mode }", scope: "Application", purpose: "Manual batching command received from the API." }),
+          Object.freeze({ kind: "Runtime", name: "normalized", scope: "Application", purpose: "Canonical command with sorted Trade IDs." }),
+          Object.freeze({ kind: "Runtime", name: "sourceTrades[]", scope: "Application", purpose: "Trade ID and Tenor records used to build groups." }),
+          Object.freeze({ kind: "Output", name: "groups[]: { tenor, trades[] }", scope: "Stage 04", purpose: "Deterministic child batch sequence." }),
+          Object.freeze({ kind: "Output", name: "formationId", scope: "DB transaction", purpose: "Identity of the BUILDING root manual operation." })
+        ]),
+        traceability: Object.freeze([
+          Object.freeze({ label: "Persistence", value: "A BUILDING row is inserted into fx_manual_batch_formations, but becomes durable only if Stage 05 commits." }),
+          Object.freeze({ label: "Audit", value: "The root record captures idempotency_key, selection_mode, trade_ids_json, batch_count and created_at." }),
+          Object.freeze({ label: "Application logging", value: "No per-check event or replay-attempt event is emitted." })
+        ]),
+        result: "Deterministic Tenor groups and a transactional manual formation register ready for batch formation."
       }),
       form: Object.freeze({
         theme: "is-domain",
         icon: "calculate",
         kicker: "04 · Domain",
         title: "Form & Neutralize",
-        what: "Calculate the neutral FX Batch and all required technical outputs.",
-        checks: "Open currency position equals zero and quote cash is neutral.",
-        result: "Members, Balance Trade, Position Out and Quote Cash Out."
+        objective: "Form a Base-position-neutral and Quote-cash-neutral FX Batch model for every planned Tenor group.",
+        steps: Object.freeze([
+          Object.freeze({ boundary: "DB", title: "Load the complete eligible source Trades for one group.", detail: "Resolve full exposure, currency and Transfer Rate data; reject missing, already-batched or unavailable technical Trades." }),
+          Object.freeze({ boundary: "Domain", title: "Validate the Batching Key and monetary inputs.", detail: "Require one pair, Trade Date, Tenor, both Value Dates, currency precision, positive amounts and positive Transfer Rates." }),
+          Object.freeze({ boundary: "Domain", title: "Calculate source balance contributions.", detail: "Compute signed Base and Quote balances plus exact Transfer Rate-based Quote amounts in minor units." }),
+          Object.freeze({ boundary: "Domain", title: "Neutralize a non-flat Base position.", detail: "Use the imbalance-producing side's Base-weighted Transfer Rate to create an opposite Balance Trade and mirrored Position Out." }),
+          Object.freeze({ boundary: "Domain", title: "Neutralize Quote cash.", detail: "Create Quote Cash Out opposite to the remaining Quote balance. This output is created even for a flat or zero-cash result." })
+        ]),
+        controls: Object.freeze([
+          Object.freeze({ check: "All members share one Batching Key and current currency precision.", failure: "Reject the group and roll back the entire manual operation." }),
+          Object.freeze({ check: "Each source amount fits safe minor-unit storage and has a positive Transfer Rate.", failure: "Reject before the batch can reach FORMED status." }),
+          Object.freeze({ check: "Batch members plus Balance Trade have Base OVP 0; Quote Cash Out brings Quote cash to 0.", failure: "Database formation guards prevent the batch from being marked FORMED." })
+        ]),
+        artifacts: Object.freeze([
+          Object.freeze({ kind: "Input", name: "sourceTrades[]", scope: "Domain", purpose: "Complete batchable FX Trades for one Tenor group." }),
+          Object.freeze({ kind: "Runtime", name: "netBaseCcyAmountMinor", scope: "Domain", purpose: "Signed Base position of source Trades." }),
+          Object.freeze({ kind: "Runtime", name: "netQuoteCcyAmountMinor", scope: "Domain", purpose: "Signed Quote cash contribution of source Trades." }),
+          Object.freeze({ kind: "Output", name: "formation.balanceTrade?", scope: "Stage 05", purpose: "Optional member created only when Base position is non-zero." }),
+          Object.freeze({ kind: "Output", name: "formation.positionOut?", scope: "Stage 05", purpose: "Optional output mirroring the Balance Trade when Base position is non-zero." }),
+          Object.freeze({ kind: "Output", name: "formation.quoteCashOut", scope: "Stage 05", purpose: "Mandatory Quote cash output, including a possible zero amount." })
+        ]),
+        traceability: Object.freeze([
+          Object.freeze({ label: "Persistence", value: "The formation object is calculated in memory; its records are inserted by the repository before the outer transaction commits." }),
+          Object.freeze({ label: "Audit", value: "Each child batch carries formation reason MANUAL_SELECTION with selectedTradeCount." }),
+          Object.freeze({ label: "Application logging", value: "Intermediate net balances and individual domain decisions are not emitted as stage events." })
+        ]),
+        result: "Neutral formation model containing source members, optional FX technical Trades and mandatory Quote Cash Out."
       }),
       commit: Object.freeze({
         theme: "is-commit",
         icon: "database",
         kicker: "05 · Commit",
         title: "Commit & Refresh",
-        what: "Persist the complete result and reload FX Position.",
-        checks: "One database transaction with no partial result.",
-        result: "Formed FX Batch(es), or the source state remains unchanged."
+        objective: "Persist every child FX Batch atomically, complete the root operation and refresh the operator's FX Position.",
+        steps: Object.freeze([
+          Object.freeze({ boundary: "DB", title: "Persist each child FX Batch.", detail: "Insert the batch, source members, optional Balance Trade and Position Out, and mandatory Quote Cash Out; then mark the child FORMED." }),
+          Object.freeze({ boundary: "DB", title: "Link every child result to the root operation.", detail: "Record batch ordinal, resolved Tenor and Batch ID in fx_manual_batch_formation_batches." }),
+          Object.freeze({ boundary: "DB", title: "Complete and commit the manual operation.", detail: "Set the root status to COMPLETED only after all expected child links exist, then commit the single outer transaction." }),
+          Object.freeze({ boundary: "API", title: "Return the formed result.", detail: "Respond with batches, batchIds, optional single batchId, separatedByTenor and replayed." }),
+          Object.freeze({ boundary: "Browser", title: "Refresh FX Position after success.", detail: "Reload DB-backed FX Position, remove only submitted rows from the UI selection and render the refreshed position." })
+        ]),
+        controls: Object.freeze([
+          Object.freeze({ check: "All expected child batches are linked before the root operation becomes COMPLETED.", failure: "A server transaction error rolls back every child and the root register; FX Position data remains unchanged." }),
+          Object.freeze({ check: "The HTTP response is received and FX Position reload succeeds.", failure: "If refresh fails after commit, the batch remains formed in the database and the UI reports an error until reloaded." })
+        ]),
+        artifacts: Object.freeze([
+          Object.freeze({ kind: "Input", name: "formation + sourceTrades[]", scope: "Repository", purpose: "Complete result for each child batch." }),
+          Object.freeze({ kind: "Output", name: "fx_batches / members / outputs", scope: "Database", purpose: "Durable batch aggregate, membership and output records." }),
+          Object.freeze({ kind: "Output", name: "fx_manual_batch_formation_batches", scope: "Database", purpose: "Immutable root-to-child links in deterministic order." }),
+          Object.freeze({ kind: "Output", name: "{ batches, batchIds, batchId, separatedByTenor, replayed }", scope: "API response", purpose: "Result returned to the browser." }),
+          Object.freeze({ kind: "Output", name: "refreshed fxPositions", scope: "Browser", purpose: "FX Position with formed batch members excluded and Position Out visible when present." })
+        ]),
+        traceability: Object.freeze([
+          Object.freeze({ label: "Persistence", value: "fx_manual_batch_formations, child links, fx_batches, fx_batch_members, fx_trade_exposure and specialized outputs are committed together." }),
+          Object.freeze({ label: "Audit", value: "Immutable formation registers, child links, batch reason/details and v_fx_batch_formation_audit provide durable traceability." }),
+          Object.freeze({ label: "Application logging", value: "There is no separate success/failure event log for each process stage or UI refresh." })
+        ]),
+        result: "Durable formed FX Batch(es) and a refreshed FX Position; an exact retry replays the same result."
+      })
+    });
+    const MANUAL_BATCH_PROCESS_STAGES_RU = Object.freeze({
+      select: Object.freeze({
+        theme: "is-input",
+        icon: "checklist",
+        kicker: "01 · Вход",
+        title: "Выбор FX trades для создания Batch",
+        objective: "Зафиксировать корректный набор FX trades, выбранных пользователем через интерфейс страницы FX Position, для создания Batch.",
+        steps: Object.freeze([
+          Object.freeze({ boundary: "Браузер", title: "Получить выбранные FX trades из FX Position.", detail: "Сопоставить selectedTradeIds со строками, отображаемыми для выбранной валютной пары." }),
+          Object.freeze({ boundary: "Браузер", title: "Оставить только допустимые FX-сделки.", detail: "Исключить синтетические строки; потребовать положительный Trade ID, сторону BUY или SELL и положительный Transfer Rate." }),
+          Object.freeze({ boundary: "Браузер", title: "Создать снимок исходных сделок.", detail: "Скопировать подходящие строки FX Position в sourceDeals для следующего этапа. Состояние флажков остаётся только в браузере." })
+        ]),
+        controls: Object.freeze([
+          Object.freeze({ check: "После фильтрации должна остаться хотя бы одна допустимая FX-сделка.", failure: "Показать предупреждение и остановить процесс до отправки запроса." }),
+          Object.freeze({ check: "Каждая выбранная строка должна содержать минимальные данные, необходимые интерфейсу пакетирования.", failure: "Пропустить недопустимую строку; FX Position и база данных остаются без изменений." })
+        ]),
+        artifacts: Object.freeze([
+          Object.freeze({ kind: "Вход", name: "selectedTradeIds: Set", scope: "Браузер", purpose: "Изменяемый набор флажков, которым управляет FX Position." }),
+          Object.freeze({ kind: "В процессе", name: "sourceDeals: FxPositionRow[]", scope: "Браузер", purpose: "Допустимые исходные строки, зафиксированные из текущего отображения." }),
+          Object.freeze({ kind: "Выход", name: "eligible source snapshot", scope: "Этап 02", purpose: "Набор сделок, передаваемый для разрешения Tenor." })
+        ]),
+        traceability: Object.freeze([
+          Object.freeze({ label: "Хранение", value: "Не сохраняется. Выделение флажками существует только в памяти браузера." }),
+          Object.freeze({ label: "Аудит", value: "На этом этапе запись аудита не создаётся." }),
+          Object.freeze({ label: "Журнал приложения", value: "Событие этапа не создаётся; может измениться только пользовательское предупреждение или статус." })
+        ]),
+        result: "Снимок допустимых сделок готов к разрешению Tenor."
+      }),
+      tenor: Object.freeze({
+        theme: "is-tenor",
+        icon: "alt_route",
+        kicker: "02 · Решение",
+        title: "Разрешить Tenor",
+        objective: "Преобразовать выбор с разными Tenor в явный и детерминированный запрос на выполнение процесса «Ручной Batching».",
+        steps: Object.freeze([
+          Object.freeze({ boundary: "Браузер", title: "Нормализовать и сгруппировать выбранные Tenor.", detail: "Создать группы интерфейса в порядке TOD, TOM, SPOT, затем лексикографически; сохранить допустимые исходные сделки каждой группы." }),
+          Object.freeze({ boundary: "Браузер", title: "Выбрать способ обработки.", detail: "Один Tenor продолжается напрямую. Для разных Tenor требуется выбрать один Tenor либо сформировать независимые Batch по Tenor." }),
+          Object.freeze({ boundary: "Браузер", title: "Подготовить неизменяемую идентичность запроса.", detail: "Отсортировать числовые tradeIds, выбрать SINGLE_BATCH или SEPARATE_BY_TENOR и создать один idempotencyKey для точного набора и режима." }),
+          Object.freeze({ boundary: "API", title: "Отправить команду процесса «Ручной Batching».", detail: "Передать tradeIds и mode запросом POST в /api/v1/fx-batches, указав idempotencyKey в заголовке." })
+        ]),
+        controls: Object.freeze([
+          Object.freeze({ check: "Cross-Tenor Batching отключён текущими General Batching Settings.", failure: "Разные Tenor нельзя отправить как один Batch; требуется решение пользователя." }),
+          Object.freeze({ check: "Выбранная группа Tenor должна содержать хотя бы одну допустимую исходную сделку.", failure: "Не отправлять пустую группу Tenor." })
+        ]),
+        artifacts: Object.freeze([
+          Object.freeze({ kind: "Вход", name: "sourceDeals: FxPositionRow[]", scope: "Браузер", purpose: "Допустимый набор, полученный с этапа 01." }),
+          Object.freeze({ kind: "В процессе", name: "tenorGroups: Map<Tenor, Trade[]>", scope: "Браузер", purpose: "Модель выбора для набора с разными Tenor." }),
+          Object.freeze({ kind: "Выход", name: "tradeIds: number[]", scope: "Команда API", purpose: "Отсортированные Trade ID, отправляемые серверу." }),
+          Object.freeze({ kind: "Выход", name: "mode: SelectionMode", scope: "Команда API", purpose: "SINGLE_BATCH или SEPARATE_BY_TENOR." }),
+          Object.freeze({ kind: "Выход", name: "idempotencyKey: UUID", scope: "Заголовок запроса", purpose: "Стабильная идентичность, повторно используемая для точного повтора запроса." })
+        ]),
+        traceability: Object.freeze([
+          Object.freeze({ label: "Хранение", value: "До начала серверной транзакции на этапе 03 долговременная запись не выполняется." }),
+          Object.freeze({ label: "Аудит", value: "Выбранный режим и Trade ID будут записаны в реестр ручного формирования, если транзакция завершится успешно." }),
+          Object.freeze({ label: "Журнал приложения", value: "Выбор в диалоговом окне отдельным событием не регистрируется." })
+        ]),
+        result: "Запрос с разрешённым Tenor, отсортированными Trade ID и стабильным ключом идемпотентности."
+      }),
+      validate: Object.freeze({
+        theme: "is-validation",
+        icon: "fact_check",
+        kicker: "03 · Контроль",
+        title: "Проверить и спланировать",
+        objective: "Проверить команду, разрешить идемпотентность и построить детерминированные группы Tenor внутри одной транзакции базы данных.",
+        steps: Object.freeze([
+          Object.freeze({ boundary: "Приложение", title: "Нормализовать команду.", detail: "Потребовать корректный idempotency key, от 1 до 200 уникальных положительных Trade ID и поддерживаемый режим выбора; затем отсортировать ID." }),
+          Object.freeze({ boundary: "БД", title: "Найти существующую операцию по ключу идемпотентности.", detail: "Повторно вернуть совпадающий завершённый результат либо отклонить использование ключа с другими Trade ID или режимом." }),
+          Object.freeze({ boundary: "БД", title: "Получить выбранные исходные записи.", detail: "Загрузить Trade ID и Tenor для каждой запрошенной сделки; отклонить запрос при отсутствии записи." }),
+          Object.freeze({ boundary: "Домен", title: "Построить детерминированный план групп.", detail: "Применить General Batching Settings, нормализовать Tenor и получить одну упорядоченную группу либо отдельную группу для каждого Tenor." }),
+          Object.freeze({ boundary: "БД", title: "Открыть реестр ручного формирования.", detail: "Вставить корневую запись BUILDING со снимком запроса и ожидаемым числом дочерних Batch внутри той же транзакции." })
+        ]),
+        controls: Object.freeze([
+          Object.freeze({ check: "Ключ идемпотентности, режим выбора и отсортированные Trade ID должны совпадать с предыдущим завершённым запросом.", failure: "Для точного повтора вернуть прежний результат; конфликтующую или несогласованную операцию отклонить." }),
+          Object.freeze({ check: "Каждая запрошенная сделка должна существовать, а каждая группа — иметь один корректный Tenor.", failure: "Прервать транзакцию; реестр формирования и дочерние Batch не становятся постоянными." }),
+          Object.freeze({ check: "Полная проверка допустимости, Transfer Rate и Batching Key повторяется для каждой группы на этапе 04.", failure: "Ошибка любой группы откатывает все более ранние записи той же серверной транзакции." })
+        ]),
+        artifacts: Object.freeze([
+          Object.freeze({ kind: "Вход", name: "{ idempotencyKey, tradeIds, mode }", scope: "Приложение", purpose: "Команда процесса «Ручной Batching», полученная от API." }),
+          Object.freeze({ kind: "В процессе", name: "normalized", scope: "Приложение", purpose: "Каноническая команда с отсортированными Trade ID." }),
+          Object.freeze({ kind: "В процессе", name: "sourceTrades[]", scope: "Приложение", purpose: "Trade ID и Tenor, используемые для построения групп." }),
+          Object.freeze({ kind: "Выход", name: "groups[]: { tenor, trades[] }", scope: "Этап 04", purpose: "Детерминированная последовательность дочерних Batch." }),
+          Object.freeze({ kind: "Выход", name: "formationId", scope: "Транзакция БД", purpose: "Идентификатор корневой ручной операции в статусе BUILDING." })
+        ]),
+        traceability: Object.freeze([
+          Object.freeze({ label: "Хранение", value: "Строка BUILDING вставляется в fx_manual_batch_formations, но становится постоянной только после фиксации этапа 05." }),
+          Object.freeze({ label: "Аудит", value: "Корневая запись содержит idempotency_key, selection_mode, trade_ids_json, batch_count и created_at." }),
+          Object.freeze({ label: "Журнал приложения", value: "События отдельных проверок и попыток повтора не создаются." })
+        ]),
+        result: "Детерминированные группы Tenor и транзакционный реестр ручного формирования готовы к созданию Batch."
+      }),
+      form: Object.freeze({
+        theme: "is-domain",
+        icon: "calculate",
+        kicker: "04 · Домен",
+        title: "Сформировать и нейтрализовать",
+        objective: "Сформировать модель FX Batch с нулевой Base-позицией и нейтральным Quote cash для каждой запланированной группы Tenor.",
+        steps: Object.freeze([
+          Object.freeze({ boundary: "БД", title: "Загрузить полный набор допустимых исходных сделок группы.", detail: "Получить полные данные exposure, валют и Transfer Rate; отклонить отсутствующие, уже пакетированные или недоступные технические сделки." }),
+          Object.freeze({ boundary: "Домен", title: "Проверить Batching Key и денежные входные данные.", detail: "Потребовать одну пару, Trade Date, Tenor, обе Value Date, точность валют, положительные суммы и положительные Transfer Rate." }),
+          Object.freeze({ boundary: "Домен", title: "Рассчитать вклад исходных сделок в баланс.", detail: "Вычислить знаковые Base- и Quote-балансы, а также точные Quote-суммы по Transfer Rate в minor units." }),
+          Object.freeze({ boundary: "Домен", title: "Нейтрализовать ненулевую Base-позицию.", detail: "По стороне, создавшей дисбаланс, рассчитать взвешенный по Base Transfer Rate и создать противоположный Balance Trade и зеркальный Position Out." }),
+          Object.freeze({ boundary: "Домен", title: "Нейтрализовать Quote cash.", detail: "Создать Quote Cash Out, противоположный оставшемуся Quote-балансу. Выход создаётся даже при плоском или нулевом cash-результате." })
+        ]),
+        controls: Object.freeze([
+          Object.freeze({ check: "Все участники должны иметь один Batching Key и актуальную точность валют.", failure: "Отклонить группу и полностью откатить ручную операцию." }),
+          Object.freeze({ check: "Каждая исходная сумма должна помещаться в безопасный диапазон minor units и иметь положительный Transfer Rate.", failure: "Отклонить операцию до перевода Batch в статус FORMED." }),
+          Object.freeze({ check: "Участники Batch вместе с Balance Trade должны дать Base OVP 0; Quote Cash Out должен привести Quote cash к 0.", failure: "Защитные ограничения формирования в БД не позволят пометить Batch как FORMED." })
+        ]),
+        artifacts: Object.freeze([
+          Object.freeze({ kind: "Вход", name: "sourceTrades[]", scope: "Домен", purpose: "Полный набор пакетируемых FX-сделок одной группы Tenor." }),
+          Object.freeze({ kind: "В процессе", name: "netBaseCcyAmountMinor", scope: "Домен", purpose: "Знаковая Base-позиция исходных сделок." }),
+          Object.freeze({ kind: "В процессе", name: "netQuoteCcyAmountMinor", scope: "Домен", purpose: "Знаковый вклад исходных сделок в Quote cash." }),
+          Object.freeze({ kind: "Выход", name: "formation.balanceTrade?", scope: "Этап 05", purpose: "Необязательный участник, создаваемый только при ненулевой Base-позиции." }),
+          Object.freeze({ kind: "Выход", name: "formation.positionOut?", scope: "Этап 05", purpose: "Необязательный выход, зеркальный Balance Trade при ненулевой Base-позиции." }),
+          Object.freeze({ kind: "Выход", name: "formation.quoteCashOut", scope: "Этап 05", purpose: "Обязательный Quote cash output, включая возможную нулевую сумму." })
+        ]),
+        traceability: Object.freeze([
+          Object.freeze({ label: "Хранение", value: "Модель формирования рассчитывается в памяти; репозиторий вставляет её записи до фиксации внешней транзакции." }),
+          Object.freeze({ label: "Аудит", value: "Каждый дочерний Batch получает причину формирования MANUAL_SELECTION и selectedTradeCount." }),
+          Object.freeze({ label: "Журнал приложения", value: "Промежуточные net-балансы и отдельные доменные решения как события этапа не публикуются." })
+        ]),
+        result: "Нейтральная модель формирования с исходными участниками, необязательными техническими FX-сделками и обязательным Quote Cash Out."
+      }),
+      commit: Object.freeze({
+        theme: "is-commit",
+        icon: "database",
+        kicker: "05 · Фиксация",
+        title: "Зафиксировать и обновить",
+        objective: "Атомарно сохранить все дочерние FX Batch, завершить корневую операцию и обновить FX Position оператора.",
+        steps: Object.freeze([
+          Object.freeze({ boundary: "БД", title: "Сохранить каждый дочерний FX Batch.", detail: "Вставить Batch, исходных участников, необязательные Balance Trade и Position Out, обязательный Quote Cash Out; затем перевести дочерний Batch в FORMED." }),
+          Object.freeze({ boundary: "БД", title: "Связать каждый дочерний результат с корневой операцией.", detail: "Записать порядковый номер Batch, разрешённый Tenor и Batch ID в fx_manual_batch_formation_batches." }),
+          Object.freeze({ boundary: "БД", title: "Завершить и зафиксировать ручную операцию.", detail: "Установить корневой статус COMPLETED только после появления всех ожидаемых дочерних связей, затем зафиксировать единую внешнюю транзакцию." }),
+          Object.freeze({ boundary: "API", title: "Вернуть сформированный результат.", detail: "Ответить значениями batches, batchIds, необязательным одиночным batchId, separatedByTenor и replayed." }),
+          Object.freeze({ boundary: "Браузер", title: "Обновить FX Position после успеха.", detail: "Повторно загрузить FX Position из БД, убрать из UI-выделения только отправленные строки и отрисовать обновлённую позицию." })
+        ]),
+        controls: Object.freeze([
+          Object.freeze({ check: "До перевода корневой операции в COMPLETED должны существовать все ожидаемые дочерние связи.", failure: "Ошибка серверной транзакции откатывает все дочерние записи и корневой реестр; данные FX Position не изменяются." }),
+          Object.freeze({ check: "HTTP-ответ должен быть получен, а повторная загрузка FX Position — завершиться успешно.", failure: "Если обновление UI завершится ошибкой уже после commit, Batch останется сформированным в БД, а интерфейс будет показывать ошибку до перезагрузки." })
+        ]),
+        artifacts: Object.freeze([
+          Object.freeze({ kind: "Вход", name: "formation + sourceTrades[]", scope: "Репозиторий", purpose: "Полный результат каждого дочернего Batch." }),
+          Object.freeze({ kind: "Выход", name: "fx_batches / members / outputs", scope: "База данных", purpose: "Постоянные записи агрегата Batch, состава и выходов." }),
+          Object.freeze({ kind: "Выход", name: "fx_manual_batch_formation_batches", scope: "База данных", purpose: "Неизменяемые связи корневой операции с дочерними Batch в детерминированном порядке." }),
+          Object.freeze({ kind: "Выход", name: "{ batches, batchIds, batchId, separatedByTenor, replayed }", scope: "Ответ API", purpose: "Результат, возвращаемый браузеру." }),
+          Object.freeze({ kind: "Выход", name: "refreshed fxPositions", scope: "Браузер", purpose: "FX Position без участников сформированного Batch и с видимым Position Out, если он существует." })
+        ]),
+        traceability: Object.freeze([
+          Object.freeze({ label: "Хранение", value: "fx_manual_batch_formations, дочерние связи, fx_batches, fx_batch_members, fx_trade_exposure и специализированные outputs фиксируются совместно." }),
+          Object.freeze({ label: "Аудит", value: "Неизменяемые реестры формирования, дочерние связи, причина и детали Batch, а также v_fx_batch_formation_audit обеспечивают долговременную трассируемость." }),
+          Object.freeze({ label: "Журнал приложения", value: "Отдельного журнала успеха или ошибки для каждого этапа процесса и обновления UI нет." })
+        ]),
+        result: "Сформированный и сохранённый FX Batch, а также обновлённая FX Position; точный повтор возвращает тот же результат."
       })
     });
     const MANUAL_BATCH_PROCESS_THEMES = Object.freeze([
@@ -33062,8 +33917,193 @@
     ]);
     let pinnedManualBatchProcessStage = "select";
 
+    function processCatalogStages() {
+      return processCatalogLanguage === "ru"
+        ? MANUAL_BATCH_PROCESS_STAGES_RU
+        : MANUAL_BATCH_PROCESS_STAGES;
+    }
+
+    function updateProcessCatalogDocumentTitle() {
+      if (processesPage && !processesPage.hidden) {
+        if (isDomainGlossaryRoute()) {
+          document.title = processCatalogLanguage === "ru"
+            ? "Domain Glossary — Каталог процессов"
+            : "Domain Glossary - Process Catalog";
+        } else {
+          document.title = processCatalogLanguage === "ru"
+            ? "Ручной Batching — Каталог процессов"
+            : "Manual Batching - Process Catalog";
+        }
+      }
+    }
+
+    function renderProcessCatalogRoute() {
+      const isGlossary = isDomainGlossaryRoute();
+      if (manualBatchFormationProcessView) {
+        manualBatchFormationProcessView.hidden = isGlossary;
+      }
+      if (domainGlossaryProcessView) {
+        domainGlossaryProcessView.hidden = !isGlossary;
+      }
+      processCatalogViewLinks.forEach(link => {
+        const isActive = link.dataset.processCatalogView === (isGlossary ? "glossary" : "manual");
+        link.classList.toggle("is-active", isActive);
+        if (isActive) {
+          link.setAttribute("aria-current", "page");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      });
+      updateProcessCatalogDocumentTitle();
+
+      const termKey = domainGlossaryTermFromRoute();
+      if (isGlossary && termKey) {
+        window.requestAnimationFrame(() => showManualProcessDefinition(termKey));
+      }
+    }
+
+    function setProcessCatalogLanguage(language, { persist = true } = {}) {
+      processCatalogLanguage = language === "en" ? "en" : "ru";
+      const copy = PROCESS_CATALOG_COPY[processCatalogLanguage];
+      const ariaCopy = PROCESS_CATALOG_COPY.aria[processCatalogLanguage];
+
+      processCatalogCopyElements.forEach(element => {
+        const key = element.dataset.processCopy;
+        if (Object.prototype.hasOwnProperty.call(copy, key)) {
+          element.textContent = copy[key];
+        }
+      });
+      processCatalogAriaElements.forEach(element => {
+        const key = element.dataset.processAriaLabel;
+        if (Object.prototype.hasOwnProperty.call(ariaCopy, key)) {
+          element.setAttribute("aria-label", ariaCopy[key]);
+        }
+      });
+      processCatalogLanguageButtons.forEach(button => {
+        const isActive = button.dataset.processLanguage === processCatalogLanguage;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+      });
+      if (processesPage) {
+        processesPage.setAttribute("lang", processCatalogLanguage);
+      }
+      if (persist) {
+        try {
+          window.localStorage.setItem(PROCESS_CATALOG_LANGUAGE_STORAGE_KEY, processCatalogLanguage);
+        } catch (_error) {}
+      }
+      renderManualBatchProcessInspector(pinnedManualBatchProcessStage);
+      renderProcessCatalogRoute();
+    }
+
+    function replaceManualProcessDetailRows(container, rows, createRow) {
+      container.replaceChildren(...rows.map(createRow));
+    }
+
+    const MANUAL_PROCESS_TERM_REFERENCES = Object.freeze([
+      Object.freeze({ text: "FX Batch(es)", key: "fx-batch" }),
+      Object.freeze({ text: "FX Batches", key: "fx-batch" }),
+      Object.freeze({ text: "FX Position", key: "fx-position" }),
+      Object.freeze({ text: "Batching Key", key: "batching-key" }),
+      Object.freeze({ text: "FX trades", key: "fx-trade" }),
+      Object.freeze({ text: "FX trade", key: "fx-trade" }),
+      Object.freeze({ text: "FX-сделками", key: "fx-trade" }),
+      Object.freeze({ text: "FX-сделок", key: "fx-trade" }),
+      Object.freeze({ text: "FX-сделки", key: "fx-trade" }),
+      Object.freeze({ text: "FX-сделка", key: "fx-trade" }),
+      Object.freeze({ text: "FX Batch", key: "fx-batch" }),
+      Object.freeze({ text: "Batching", key: "batching" }),
+      Object.freeze({ text: "Tenor", key: "tenor" }),
+      Object.freeze({ text: "Batch", key: "fx-batch" })
+    ]);
+
+    function isManualProcessTermWordCharacter(value) {
+      return Boolean(value) && /[0-9A-Za-zА-Яа-яЁё_]/.test(value);
+    }
+
+    function isManualProcessTermBoundary(value, index, length) {
+      return !isManualProcessTermWordCharacter(value[index - 1])
+        && !isManualProcessTermWordCharacter(value[index + length]);
+    }
+
+    function nextManualProcessTermReference(value, fromIndex) {
+      let nextReference = null;
+      const normalizedValue = value.toLocaleLowerCase();
+
+      MANUAL_PROCESS_TERM_REFERENCES.forEach(term => {
+        const normalizedTerm = term.text.toLocaleLowerCase();
+        let index = normalizedValue.indexOf(normalizedTerm, fromIndex);
+        while (
+          index >= 0
+          && !isManualProcessTermBoundary(value, index, term.text.length)
+        ) {
+          index = normalizedValue.indexOf(normalizedTerm, index + 1);
+        }
+        if (index < 0) {
+          return;
+        }
+        if (
+          !nextReference
+          || index < nextReference.index
+          || (index === nextReference.index && term.text.length > nextReference.term.text.length)
+        ) {
+          nextReference = { index, term };
+        }
+      });
+
+      return nextReference;
+    }
+
+    function setManualProcessLinkedText(element, value) {
+      const text = String(value ?? "");
+      const content = [];
+      let cursor = 0;
+
+      while (cursor < text.length) {
+        const reference = nextManualProcessTermReference(text, cursor);
+        if (!reference) {
+          content.push(document.createTextNode(text.slice(cursor)));
+          break;
+        }
+
+        if (reference.index > cursor) {
+          content.push(document.createTextNode(text.slice(cursor, reference.index)));
+        }
+
+        const link = document.createElement("a");
+        link.className = "manual-process-term-link";
+        link.href = domainGlossaryRoute(reference.term.key);
+        link.dataset.processTermReference = reference.term.key;
+        link.textContent = text.slice(reference.index, reference.index + reference.term.text.length);
+        content.push(link);
+        cursor = reference.index + reference.term.text.length;
+      }
+
+      element.replaceChildren(...content);
+    }
+
+    let manualProcessDefinitionHighlightTimeoutId = null;
+
+    function showManualProcessDefinition(termKey) {
+      const definition = document.getElementById(`process-term-${termKey}`);
+      if (!definition) {
+        return;
+      }
+
+      document.querySelectorAll(".manual-process-definition.is-referenced")
+        .forEach(item => item.classList.remove("is-referenced"));
+      definition.classList.add("is-referenced");
+      definition.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      definition.focus({ preventScroll: true });
+
+      window.clearTimeout(manualProcessDefinitionHighlightTimeoutId);
+      manualProcessDefinitionHighlightTimeoutId = window.setTimeout(() => {
+        definition.classList.remove("is-referenced");
+      }, 1800);
+    }
+
     function renderManualBatchProcessInspector(stageKey, { pinned = false } = {}) {
-      const stage = MANUAL_BATCH_PROCESS_STAGES[stageKey];
+      const stage = processCatalogStages()[stageKey];
 
       if (!stage || !manualProcessInspector) {
         return;
@@ -33074,9 +34114,86 @@
       manualProcessInspectorIcon.textContent = stage.icon;
       manualProcessInspectorKicker.textContent = stage.kicker;
       manualProcessInspectorTitle.textContent = stage.title;
-      manualProcessInspectorWhat.textContent = stage.what;
-      manualProcessInspectorChecks.textContent = stage.checks;
-      manualProcessInspectorResult.textContent = stage.result;
+      setManualProcessLinkedText(manualProcessInspectorObjective, stage.objective);
+      replaceManualProcessDetailRows(
+        manualProcessInspectorSteps,
+        stage.steps,
+        (step, index) => {
+          const item = document.createElement("li");
+          item.className = "manual-process-step";
+          const number = document.createElement("span");
+          number.className = "manual-process-step-number";
+          number.textContent = `${stage.kicker.slice(0, 2)}.${index + 1}`;
+          const boundary = document.createElement("span");
+          boundary.className = "manual-process-boundary";
+          boundary.textContent = step.boundary;
+          const copy = document.createElement("span");
+          copy.className = "manual-process-step-copy";
+          const title = document.createElement("strong");
+          setManualProcessLinkedText(title, step.title);
+          const detail = document.createElement("span");
+          setManualProcessLinkedText(detail, step.detail);
+          copy.append(title, detail);
+          item.append(number, boundary, copy);
+          return item;
+        }
+      );
+      replaceManualProcessDetailRows(
+        manualProcessInspectorControls,
+        stage.controls,
+        control => {
+          const item = document.createElement("li");
+          item.className = "manual-process-control";
+          const check = document.createElement("strong");
+          setManualProcessLinkedText(check, control.check);
+          const outcome = document.createElement("span");
+          outcome.className = "manual-process-control-outcome";
+          const icon = document.createElement("span");
+          icon.className = "button-icon";
+          icon.setAttribute("aria-hidden", "true");
+          icon.textContent = "error";
+          const failure = document.createElement("span");
+          setManualProcessLinkedText(failure, control.failure);
+          outcome.append(icon, failure);
+          item.append(check, outcome);
+          return item;
+        }
+      );
+      replaceManualProcessDetailRows(
+        manualProcessInspectorArtifacts,
+        stage.artifacts,
+        artifact => {
+          const row = document.createElement("tr");
+          const kind = document.createElement("td");
+          kind.className = "manual-process-artifact-kind";
+          kind.textContent = artifact.kind;
+          const name = document.createElement("td");
+          const code = document.createElement("code");
+          code.textContent = artifact.name;
+          name.append(code);
+          const scope = document.createElement("td");
+          scope.textContent = artifact.scope;
+          const purpose = document.createElement("td");
+          setManualProcessLinkedText(purpose, artifact.purpose);
+          row.append(kind, name, scope, purpose);
+          return row;
+        }
+      );
+      replaceManualProcessDetailRows(
+        manualProcessInspectorTraceability,
+        stage.traceability,
+        trace => {
+          const row = document.createElement("div");
+          row.className = "manual-process-traceability-row";
+          const label = document.createElement("dt");
+          label.textContent = trace.label;
+          const value = document.createElement("dd");
+          setManualProcessLinkedText(value, trace.value);
+          row.append(label, value);
+          return row;
+        }
+      );
+      setManualProcessLinkedText(manualProcessInspectorResult, stage.result);
 
       manualProcessNodes.forEach(node => {
         const isCurrent = node.dataset.manualProcessStage === stageKey;
@@ -33099,26 +34216,18 @@
     manualProcessNodes.forEach(node => {
       const stageKey = node.dataset.manualProcessStage;
 
-      node.addEventListener("pointerenter", () => {
-        renderManualBatchProcessInspector(stageKey);
-      });
-      node.addEventListener("pointerleave", () => {
-        if (document.activeElement !== node) {
-          renderManualBatchProcessInspector(pinnedManualBatchProcessStage);
-        }
-      });
-      node.addEventListener("focus", () => {
-        renderManualBatchProcessInspector(stageKey);
-      });
-      node.addEventListener("blur", () => {
-        renderManualBatchProcessInspector(pinnedManualBatchProcessStage);
-      });
       node.addEventListener("click", () => {
         renderManualBatchProcessInspector(stageKey, { pinned: true });
       });
     });
 
-    renderManualBatchProcessInspector(pinnedManualBatchProcessStage);
+    processCatalogLanguageButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        setProcessCatalogLanguage(button.dataset.processLanguage);
+      });
+    });
+
+    setProcessCatalogLanguage(processCatalogLanguage, { persist: false });
 
     function clientFxDealsRoute() {
       return "#client-fx-deals";
@@ -33240,6 +34349,15 @@
 
     function isManualBatchFormationProcessRoute() {
       return location.hash === manualBatchFormationProcessRoute();
+    }
+
+    function isDomainGlossaryRoute() {
+      return location.hash === domainGlossaryRoute()
+        || location.hash.startsWith(`${domainGlossaryRoute()}/`);
+    }
+
+    function isProcessCatalogRoute() {
+      return isManualBatchFormationProcessRoute() || isDomainGlossaryRoute();
     }
 
     function isClientFxDealsRoute() {
@@ -40613,7 +41731,7 @@
         return;
       }
 
-      if (isManualBatchFormationProcessRoute()) {
+      if (isProcessCatalogRoute()) {
         setWorkspaceRoute("processes");
         marketPage.hidden = true;
         mainPage.hidden = true;
@@ -40622,7 +41740,7 @@
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
         processesPage.hidden = false;
-        document.title = "Manual Batch Formation - Processes";
+        renderProcessCatalogRoute();
         return;
       }
 
