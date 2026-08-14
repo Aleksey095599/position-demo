@@ -2200,21 +2200,34 @@ function verifyFrontendStructure() {
       && domainGlossaryProcessViewMarkup.includes(
         'id="domainGlossaryTitle" data-process-copy="domainGlossary">Domain Glossary</h2>'
       )
-      && domainGlossaryProcessViewMarkup.includes(
-        'class="manual-process-term-link" href="#fx-position">FX Position</a>'
-      )
+      && domainGlossaryProcessViewMarkup.includes('<dt>FX Position</dt>')
+      && !domainGlossaryProcessViewMarkup.includes('href="#fx-position"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-batch"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-batching"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-trade"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-client-deal"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-hedge-deal"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-position"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-base-currency"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-quote-currency"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-trade-date"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-tenor"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-value-date"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-batching-key"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-cross-tenor-batching"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-batch-internal-swap"')
       && !manualBatchFormationProcessViewMarkup.includes('class="manual-process-definitions"')
       && manualBatchFormationProcessViewMarkup.includes(
         '>Stage goal:</span>'
       )
       && manualBatchFormationProcessViewMarkup.includes(
-        'data-process-term-reference="fx-batch" data-process-copy="formedFxBatch">Formed FX Batch</a>'
+        'data-process-copy="selectedFxTrades" data-process-linked-copy>Selected FX Trades</span>'
+      )
+      && manualBatchFormationProcessViewMarkup.includes(
+        'data-process-copy="formedFxBatch" data-process-linked-copy>Formed FX Batch</span>'
+      )
+      && manualBatchFormationProcessViewMarkup.includes(
+        'data-process-copy="fxPositionUnchanged" data-process-linked-copy>FX Position unchanged</span>'
       )
       && !manualBatchFormationProcessPageMarkup.includes(
         'Saved together or not at all'
@@ -2223,7 +2236,7 @@ function verifyFrontendStructure() {
         'data-manual-process-stage="select"'
       )
       && manualBatchFormationProcessPageMarkup.includes(
-        'data-process-copy="selectFxTrades">FX Trade Selection for Batch Formation</span>'
+        'data-process-copy="selectFxTrades">FX Trade Selection for FX Batch Formation</span>'
       )
       && !manualBatchFormationProcessPageMarkup.includes(
         'data-process-copy="eligibleTradeSnapshot"'
@@ -2247,12 +2260,26 @@ function verifyFrontendStructure() {
       && inlineScript.includes("function setProcessCatalogLanguage")
       && inlineScript.includes("position.processCatalogLanguage")
       && inlineScript.includes('manualBatching: "Ручной Batching"')
-      && inlineScript.includes('selectFxTrades: "Выбор FX trades для создания Batch"')
-      && inlineScript.includes("Зафиксировать корректный набор FX trades, выбранных пользователем через интерфейс страницы FX Position, для создания Batch.")
-      && inlineScript.includes("Получить выбранные FX trades из FX Position.")
+      && inlineScript.includes('selectedFxTrades: "Выбранные FX Trades"')
+      && inlineScript.includes('selectFxTrades: "Выбор FX Trades для создания FX Batch"')
+      && inlineScript.includes("Зафиксировать корректный набор FX Trades, выбранных пользователем в FX Position, для создания FX Batch.")
+      && inlineScript.includes("Получить выбранные FX Trades из FX Position.")
       && inlineScript.includes("Сопоставить selectedTradeIds со строками, отображаемыми для выбранной валютной пары.")
       && inlineScript.includes("function renderManualBatchProcessInspector")
       && inlineScript.includes("function setManualProcessLinkedText")
+      && inlineScript.includes('element.hasAttribute("data-process-linked-copy")')
+      && inlineScript.includes("function linkDomainGlossaryDefinitions")
+      && inlineScript.includes('excludeTermKey = ""')
+      && inlineScript.includes('termKey === "batching" || termKey === "value-date"')
+      && inlineScript.includes('{ text: "Cross-Tenor Batching", key: "cross-tenor-batching" }')
+      && inlineScript.includes('{ text: "Batch Internal Swap", key: "batch-internal-swap" }')
+      && inlineScript.includes('{ text: "Base Currency", key: "base-currency" }')
+      && inlineScript.includes('{ text: "Quote Currency", key: "quote-currency" }')
+      && inlineScript.includes('{ text: "Trade Date", key: "trade-date" }')
+      && inlineScript.includes('{ text: "Value Date", key: "value-date" }')
+      && !inlineScript.includes('{ text: "Batch", key: "fx-batch" }')
+      && !inlineScript.includes('{ text: "FX-сделка", key: "fx-trade" }')
+      && inlineScript.includes("linkDomainGlossaryDefinitions();")
       && inlineScript.includes("function showManualProcessDefinition")
       && inlineScript.includes("function domainGlossaryRoute")
       && inlineScript.includes("function isDomainGlossaryRoute")
