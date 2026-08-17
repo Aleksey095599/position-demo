@@ -266,11 +266,7 @@ function formFlatFxBatch({
   };
 }
 
-function formFxBatch({
-  trades,
-  rateFractionDigits = 4,
-  now = () => new Date()
-}) {
+function normalizedBatchSourceTrades(trades) {
   if (!Array.isArray(trades) || trades.length === 0) {
     throw batchFormationError(
       "EMPTY_BATCH_SELECTION",
@@ -287,6 +283,21 @@ function formFxBatch({
       "Each selected Trade ID may be included only once."
     );
   }
+
+  return normalizedTrades;
+}
+
+function assertValidFxBatchSourceTrades(trades) {
+  normalizedBatchSourceTrades(trades);
+}
+
+function formFxBatch({
+  trades,
+  rateFractionDigits = 4,
+  now = () => new Date()
+}) {
+  const normalizedTrades = normalizedBatchSourceTrades(trades);
+  const sourceTradeIds = normalizedTrades.map(trade => trade.tradeId);
 
   assertSingleBatchingKey(normalizedTrades);
 
@@ -428,5 +439,6 @@ function formFxBatch({
 }
 
 module.exports = {
+  assertValidFxBatchSourceTrades,
   formFxBatch
 };

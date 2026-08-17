@@ -54,6 +54,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["execution_context", "Execution Context", 596],
     ["ccy_pair", "Ccy Pair", 88],
     ["pricing_mode", "Pricing Mode", 156],
+    ["position_management_mode", "FX Position Mode", 232],
     ["margin", "Margin", 82]
   ]),
   internal_pricing_rules_grid: layout("Internal Unit Pricing Rules", [
@@ -63,6 +64,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["execution_context", "Execution Context", 596],
     ["ccy_pair", "Ccy Pair", 88],
     ["pricing_mode", "Pricing Mode", 156],
+    ["position_management_mode", "FX Position Mode", 232],
     ["margin", "Margin", 82],
     ["quick_hedge", "Quick Hedge", 112]
   ]),
@@ -245,6 +247,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["servicing_location", "Servicing Location", 153],
     ["accounting_system", "Accounting System", 152],
     ["execution_system", "Execution System", 149],
+    ["default_position_management_mode", "Default FX Position Mode", 176],
     ["counterparties_count", "Trading Counterparties Count", 64],
     ["actions", "Actions", 80]
   ]),

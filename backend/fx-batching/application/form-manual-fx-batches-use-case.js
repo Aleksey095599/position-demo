@@ -4,6 +4,9 @@ const {
   FX_MANUAL_BATCH_SELECTION_MODE,
   planManualBatchSelection
 } = require("../domain/fx-manual-batch-selection");
+const {
+  assertValidFxBatchSourceTrades
+} = require("../domain/fx-batch-formation");
 
 const MAX_TRADES_PER_MANUAL_FORMATION = 200;
 const MAX_BATCH_IDEMPOTENCY_KEY_LENGTH = 100;
@@ -110,14 +113,14 @@ class FormManualFxBatchesUseCase {
   constructor({
     transactionRunner,
     formFxBatchUseCase,
-    fxTradeSelectionRepository,
+    fxTradeExposureRepository,
     batchingSettingsProvider,
     manualBatchFormationRepository,
     fxBatchResultRepository
   }) {
     this.transactionRunner = transactionRunner;
     this.formFxBatchUseCase = formFxBatchUseCase;
-    this.fxTradeSelectionRepository = fxTradeSelectionRepository;
+    this.fxTradeExposureRepository = fxTradeExposureRepository;
     this.batchingSettingsProvider = batchingSettingsProvider;
     this.manualBatchFormationRepository = manualBatchFormationRepository;
     this.fxBatchResultRepository = fxBatchResultRepository;
@@ -195,7 +198,7 @@ class FormManualFxBatchesUseCase {
         );
       }
 
-      const sourceTrades = this.fxTradeSelectionRepository.findByIds(
+      const sourceTrades = this.fxTradeExposureRepository.findBatchSources(
         normalized.tradeIds
       );
       const foundTradeIds = new Set(
@@ -211,6 +214,8 @@ class FormManualFxBatchesUseCase {
           `Trade ${missingTradeIds.join(", ")} was not found for manual FX batching.`
         );
       }
+
+      assertValidFxBatchSourceTrades(sourceTrades);
 
       const settings = this.batchingSettingsProvider.get();
       const groups = planManualBatchSelection({
@@ -229,6 +234,8 @@ class FormManualFxBatchesUseCase {
         const batch = this.formFxBatchUseCase.executeWithinTransaction({
           idempotencyKey: childIdempotencyKey(formationId, batchOrdinal),
           tradeIds: group.trades.map(trade => Number(trade.tradeId))
+        }, {
+          verifiedSourceTrades: group.trades
         });
 
         this.manualBatchFormationRepository.addBatch({

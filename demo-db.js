@@ -1,5 +1,5 @@
 window.__DEMO_DB_STARTUP_DATA__ = {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "selectedCurrencyPair": "EUR/USD",
   "marketPairs": [
     {
@@ -158,31 +158,36 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "pricingContextId": 1,
       "servicingBranchCode": "002",
       "settlementSystemId": "AFINA",
-      "tradeCaptureChannelId": "CLICK_TRADE_EFX"
+      "tradeCaptureChannelId": "CLICK_TRADE_EFX",
+      "defaultPositionManagementMode": "AUTO"
     },
     {
       "pricingContextId": 2,
       "servicingBranchCode": "002",
       "settlementSystemId": "AFINA",
-      "tradeCaptureChannelId": "RFQ"
+      "tradeCaptureChannelId": "RFQ",
+      "defaultPositionManagementMode": "MANUAL"
     },
     {
       "pricingContextId": 3,
       "servicingBranchCode": "002",
       "settlementSystemId": "CTF3",
-      "tradeCaptureChannelId": "MANUAL_CLIENT_DEAL_ENTRY"
+      "tradeCaptureChannelId": "MANUAL_CLIENT_DEAL_ENTRY",
+      "defaultPositionManagementMode": "MANUAL"
     },
     {
       "pricingContextId": 4,
       "servicingBranchCode": "1234",
       "settlementSystemId": "AFINA",
-      "tradeCaptureChannelId": "RFQ"
+      "tradeCaptureChannelId": "RFQ",
+      "defaultPositionManagementMode": "MANUAL"
     },
     {
       "pricingContextId": 5,
       "servicingBranchCode": "001",
       "settlementSystemId": "CTF3",
-      "tradeCaptureChannelId": "CLICK_TRADE_EFX"
+      "tradeCaptureChannelId": "CLICK_TRADE_EFX",
+      "defaultPositionManagementMode": "AUTO"
     }
   ],
   "clientPricingRules": [
@@ -191,35 +196,40 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "inn": "7701234567",
       "currencyPair": "EUR/USD",
       "pricingContextId": 1,
-      "marginPercent": 0.1
+      "marginPercent": 0.1,
+      "positionManagementModeOverride": null
     },
     {
       "pricingRuleId": 2,
       "inn": "7701234567",
       "currencyPair": "EUR/USD",
       "pricingContextId": 2,
-      "marginPercent": 0.12
+      "marginPercent": 0.12,
+      "positionManagementModeOverride": null
     },
     {
       "pricingRuleId": 3,
       "inn": "7701234567",
       "currencyPair": "EUR/USD",
       "pricingContextId": 3,
-      "marginPercent": 0.08
+      "marginPercent": 0.08,
+      "positionManagementModeOverride": null
     },
     {
       "pricingRuleId": 4,
       "inn": "7812345678",
       "currencyPair": "EUR/USD",
       "pricingContextId": 4,
-      "marginPercent": 0.05
+      "marginPercent": 0.05,
+      "positionManagementModeOverride": null
     },
     {
       "pricingRuleId": 5,
       "inn": "5409876543",
       "currencyPair": "EUR/USD",
       "pricingContextId": 5,
-      "marginPercent": 0.2
+      "marginPercent": 0.2,
+      "positionManagementModeOverride": null
     }
   ]
 };
@@ -227,13 +237,14 @@ window.__DEMO_DB_STARTUP_DATA__ = {
 (function initializeDemoDatabase(global) {
   "use strict";
 
-  const DATABASE_STORAGE_KEY = "batching-demo.database.v4";
+  const DATABASE_STORAGE_KEY = "batching-demo.database.v5";
   const PREVIOUS_DATABASE_STORAGE_KEYS = [
+    "batching-demo.database.v4",
     "batching-demo.database.v3",
     "batching-demo.database.v2",
     "batching-demo.database.v1"
   ];
-  const SCHEMA_VERSION = 4;
+  const SCHEMA_VERSION = 5;
 
   const BUILT_IN_DEFAULT_DATABASE = {
     schemaVersion: SCHEMA_VERSION,
@@ -296,18 +307,18 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       { tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", tradeCaptureChannelName: "Manual Client Deal Entry", pricingType: "DEALER_PRICED", isActive: true }
     ],
     pricingContexts: [
-      { pricingContextId: 1, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "CLICK_TRADE_EFX" },
-      { pricingContextId: 2, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ" },
-      { pricingContextId: 3, servicingBranchCode: "002", settlementSystemId: "CTF3", tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY" },
-      { pricingContextId: 4, servicingBranchCode: "1234", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ" },
-      { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX" }
+      { pricingContextId: 1, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "CLICK_TRADE_EFX", defaultPositionManagementMode: "AUTO" },
+      { pricingContextId: 2, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", defaultPositionManagementMode: "MANUAL" },
+      { pricingContextId: 3, servicingBranchCode: "002", settlementSystemId: "CTF3", tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", defaultPositionManagementMode: "MANUAL" },
+      { pricingContextId: 4, servicingBranchCode: "1234", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", defaultPositionManagementMode: "MANUAL" },
+      { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX", defaultPositionManagementMode: "AUTO" }
     ],
     clientPricingRules: [
-      { pricingRuleId: 1, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 1, marginPercent: 0.10 },
-      { pricingRuleId: 2, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 2, marginPercent: 0.12 },
-      { pricingRuleId: 3, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 3, marginPercent: 0.08 },
-      { pricingRuleId: 4, inn: "7812345678", currencyPair: "EUR/USD", pricingContextId: 4, marginPercent: 0.05 },
-      { pricingRuleId: 5, inn: "5409876543", currencyPair: "EUR/USD", pricingContextId: 5, marginPercent: 0.20 }
+      { pricingRuleId: 1, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 1, marginPercent: 0.10, positionManagementModeOverride: null },
+      { pricingRuleId: 2, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 2, marginPercent: 0.12, positionManagementModeOverride: null },
+      { pricingRuleId: 3, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 3, marginPercent: 0.08, positionManagementModeOverride: null },
+      { pricingRuleId: 4, inn: "7812345678", currencyPair: "EUR/USD", pricingContextId: 4, marginPercent: 0.05, positionManagementModeOverride: null },
+      { pricingRuleId: 5, inn: "5409876543", currencyPair: "EUR/USD", pricingContextId: 5, marginPercent: 0.20, positionManagementModeOverride: null }
     ]
   };
 
@@ -349,6 +360,16 @@ window.__DEMO_DB_STARTUP_DATA__ = {
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function normalizedPositionManagementMode(value) {
+    const mode = String(value || "").trim().toUpperCase();
+    return mode === "AUTO" || mode === "MANUAL" ? mode : "MANUAL";
+  }
+
+  function normalizedPositionManagementModeOverride(value) {
+    const mode = String(value || "").trim().toUpperCase();
+    return mode === "AUTO" || mode === "MANUAL" ? mode : null;
   }
 
   function safeStorage() {
@@ -401,6 +422,24 @@ window.__DEMO_DB_STARTUP_DATA__ = {
           currencyPair: pair.currencyPair
         };
       });
+    }
+
+    if (Array.isArray(normalized.pricingContexts)) {
+      normalized.pricingContexts = normalized.pricingContexts.map(context => ({
+        ...clone(context),
+        defaultPositionManagementMode: normalizedPositionManagementMode(
+          context?.defaultPositionManagementMode
+        )
+      }));
+    }
+
+    if (Array.isArray(normalized.clientPricingRules)) {
+      normalized.clientPricingRules = normalized.clientPricingRules.map(rule => ({
+        ...clone(rule),
+        positionManagementModeOverride: normalizedPositionManagementModeOverride(
+          rule?.positionManagementModeOverride
+        )
+      }));
     }
 
     normalized.schemaVersion = SCHEMA_VERSION;

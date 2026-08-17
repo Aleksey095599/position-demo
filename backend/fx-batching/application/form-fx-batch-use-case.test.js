@@ -110,6 +110,29 @@ test("forms a batch inside an existing transaction without opening another one",
   assert.equal(result.replayed, false);
 });
 
+test("uses provided verified source trades without reading them again", () => {
+  let sourceReads = 0;
+  const useCase = useCaseWith({
+    fxTradeExposureRepository: {
+      findBatchSources() {
+        sourceReads += 1;
+        return [commonTrade];
+      }
+    }
+  });
+
+  const result = useCase.executeWithinTransaction({
+    idempotencyKey: "one-batch-verified-sources-1",
+    tradeIds: [1]
+  }, {
+    verifiedSourceTrades: [commonTrade]
+  });
+
+  assert.equal(sourceReads, 0);
+  assert.equal(result.batchId, 7);
+  assert.equal(result.replayed, false);
+});
+
 test("preserves an automatic formation reason with its structured values", () => {
   let savedBatch;
   const useCase = useCaseWith({

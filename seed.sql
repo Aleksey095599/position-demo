@@ -53,13 +53,18 @@ VALUES
     ('MANUAL_CLIENT_DEAL_ENTRY', 'Manual Client Deal Entry', 'DEALER_PRICED', 1);
 
 INSERT INTO execution_contexts
-    (servicing_location_id, accounting_system_id, execution_system_id)
+    (
+        servicing_location_id,
+        accounting_system_id,
+        execution_system_id,
+        default_position_management_mode
+    )
 VALUES
-    ('002', 'AFINA', 'CLICK_TRADE_EFX'),
-    ('002', 'AFINA', 'RFQ'),
-    ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY'),
-    ('1234', 'AFINA', 'RFQ'),
-    ('001', 'CTF3', 'CLICK_TRADE_EFX');
+    ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO'),
+    ('002', 'AFINA', 'RFQ', 'MANUAL'),
+    ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL'),
+    ('1234', 'AFINA', 'RFQ', 'MANUAL'),
+    ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO');
 
 INSERT INTO trading_counterparties
     (counterparty_name, is_active)
@@ -185,15 +190,17 @@ VALUES
     ('pricing_rules_grid', 'execution_context', 'Execution Context', 3, 596, 596),
     ('pricing_rules_grid', 'ccy_pair', 'Ccy Pair', 4, 88, 88),
     ('pricing_rules_grid', 'pricing_mode', 'Pricing Mode', 5, 156, 156),
-    ('pricing_rules_grid', 'margin', 'Margin', 6, 82, 82),
+    ('pricing_rules_grid', 'position_management_mode', 'FX Position Mode', 6, 232, 232),
+    ('pricing_rules_grid', 'margin', 'Margin', 7, 82, 82),
     ('internal_pricing_rules_grid', 'id', 'ID', 0, 64, 64),
     ('internal_pricing_rules_grid', 'counterparty_code', 'Unit Code', 1, 122, 122),
     ('internal_pricing_rules_grid', 'counterparty_name', 'Counterparty Name', 2, 158, 158),
     ('internal_pricing_rules_grid', 'execution_context', 'Execution Context', 3, 596, 596),
     ('internal_pricing_rules_grid', 'ccy_pair', 'Ccy Pair', 4, 88, 88),
     ('internal_pricing_rules_grid', 'pricing_mode', 'Pricing Mode', 5, 156, 156),
-    ('internal_pricing_rules_grid', 'margin', 'Margin', 6, 82, 82),
-    ('internal_pricing_rules_grid', 'quick_hedge', 'Quick Hedge', 7, 112, 112),
+    ('internal_pricing_rules_grid', 'position_management_mode', 'FX Position Mode', 6, 232, 232),
+    ('internal_pricing_rules_grid', 'margin', 'Margin', 7, 82, 82),
+    ('internal_pricing_rules_grid', 'quick_hedge', 'Quick Hedge', 8, 112, 112),
     ('market_stream_grid', 'currency_pair', 'Ccy Pair', 0, 94, 94),
     ('market_stream_grid', 'bid', 'Bid', 1, 83, 83),
     ('market_stream_grid', 'offer', 'Offer', 2, 83, 83),
@@ -340,8 +347,9 @@ VALUES
     ('execution_contexts_grid', 'servicing_location', 'Servicing Location', 1, 153, 153),
     ('execution_contexts_grid', 'accounting_system', 'Accounting System', 2, 152, 152),
     ('execution_contexts_grid', 'execution_system', 'Execution System', 3, 149, 149),
-    ('execution_contexts_grid', 'counterparties_count', 'Trading Counterparties Count', 4, 64, 64),
-    ('execution_contexts_grid', 'actions', 'Actions', 5, 80, 80),
+    ('execution_contexts_grid', 'default_position_management_mode', 'Default FX Position Mode', 4, 176, 176),
+    ('execution_contexts_grid', 'counterparties_count', 'Trading Counterparties Count', 5, 64, 64),
+    ('execution_contexts_grid', 'actions', 'Actions', 6, 80, 80),
     ('servicing_locations_grid', 'id', 'ID', 0, 64, 64),
     ('servicing_locations_grid', 'name', 'Name', 1, 153, 153),
     ('servicing_locations_grid', 'region', 'Region', 2, 134, 134),
@@ -409,24 +417,40 @@ INNER JOIN execution_contexts context
     AND context.execution_system_id = seed.execution_system_id;
 
 WITH pricing_rule_seed
-    (counterparty_code, servicing_location_id, accounting_system_id, execution_system_id, ccy_pair_code, margin_percent)
+    (
+        counterparty_code,
+        servicing_location_id,
+        accounting_system_id,
+        execution_system_id,
+        ccy_pair_code,
+        margin_percent,
+        position_management_mode_override
+    )
 AS
 (
     VALUES
-        ('7701234567', '002', 'AFINA', 'CLICK_TRADE_EFX', 'EUR_USD', 0.10),
-        ('7701234567', '002', 'AFINA', 'RFQ', 'EUR_USD', 0.12),
-        ('7701234567', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'EUR_USD', 0.08),
-        ('7812345678', '1234', 'AFINA', 'RFQ', 'EUR_USD', 0.05),
-        ('5409876543', '001', 'CTF3', 'CLICK_TRADE_EFX', 'EUR_USD', 0.20),
-        ('7707000001', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'EUR_USD', 0.03),
-        ('7707000001', '002', 'AFINA', 'CLICK_TRADE_EFX', 'EUR_USD', 0.03)
+        ('7701234567', '002', 'AFINA', 'CLICK_TRADE_EFX', 'EUR_USD', 0.10, NULL),
+        ('7701234567', '002', 'AFINA', 'RFQ', 'EUR_USD', 0.12, NULL),
+        ('7701234567', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'EUR_USD', 0.08, NULL),
+        ('7812345678', '1234', 'AFINA', 'RFQ', 'EUR_USD', 0.05, NULL),
+        ('5409876543', '001', 'CTF3', 'CLICK_TRADE_EFX', 'EUR_USD', 0.20, NULL),
+        ('7707000001', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'EUR_USD', 0.03, NULL),
+        ('7707000001', '002', 'AFINA', 'CLICK_TRADE_EFX', 'EUR_USD', 0.03, NULL)
 )
-INSERT INTO pricing_rules (counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
+INSERT INTO pricing_rules
+    (
+        counterparty_id,
+        execution_context_id,
+        ccy_pair_code,
+        margin_percent,
+        position_management_mode_override
+    )
 SELECT
     p.counterparty_id,
     e.execution_context_id,
     seed.ccy_pair_code,
-    seed.margin_percent
+    seed.margin_percent,
+    seed.position_management_mode_override
 FROM pricing_rule_seed seed
 INNER JOIN external_counterparties external
     ON external.counterparty_code_type = 'INN'

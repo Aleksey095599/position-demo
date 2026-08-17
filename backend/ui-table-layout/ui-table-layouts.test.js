@@ -13,8 +13,8 @@ const {
 } = require("./ui-table-layouts");
 
 const EXPECTED_COLUMN_COUNTS = Object.freeze({
-  pricing_rules_grid: 7,
-  internal_pricing_rules_grid: 8,
+  pricing_rules_grid: 8,
+  internal_pricing_rules_grid: 9,
   market_stream_grid: 4,
   ccy_options_grid: 6,
   ccy_pair_options_grid: 6,
@@ -31,7 +31,7 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   external_counterparties_grid: 8,
   internal_units_grid: 8,
   users_grid: 7,
-  execution_contexts_grid: 6,
+  execution_contexts_grid: 7,
   servicing_locations_grid: 7,
   accounting_systems_grid: 5,
   execution_systems_grid: 6,
@@ -69,7 +69,7 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 199);
+  assert.equal(fullyQualifiedColumnKeys.size, 202);
 });
 
 test("keeps fresh-database defaults aligned with the UI layout registry", () => {

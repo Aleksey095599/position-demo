@@ -101,11 +101,14 @@ class FormFxBatchUseCase {
     );
   }
 
-  executeWithinTransaction(command) {
-    return this.#executeNormalizedWithinTransaction(normalizedCommand(command));
+  executeWithinTransaction(command, options = {}) {
+    return this.#executeNormalizedWithinTransaction(
+      normalizedCommand(command),
+      options?.verifiedSourceTrades
+    );
   }
 
-  #executeNormalizedWithinTransaction(normalized) {
+  #executeNormalizedWithinTransaction(normalized, providedSourceTrades) {
     const existing = this.fxBatchRepository.findFormedByIdempotencyKey(
       normalized.idempotencyKey
     );
@@ -127,9 +130,22 @@ class FormFxBatchUseCase {
       };
     }
 
-    const sourceTrades = this.fxTradeExposureRepository.findBatchSources(
-      normalized.tradeIds
-    );
+    const sourceTrades = providedSourceTrades === undefined
+      ? this.fxTradeExposureRepository.findBatchSources(normalized.tradeIds)
+      : providedSourceTrades;
+    const sourceTradeIds = Array.isArray(sourceTrades)
+      ? sourceTrades
+        .map(trade => Number(trade?.tradeId))
+        .sort((left, right) => left - right)
+      : [];
+
+    if (!sameTradeIds(sourceTradeIds, normalized.tradeIds)) {
+      throw applicationError(
+        "INVALID_BATCH_COMMAND",
+        "Provided source FX Trades must match the command Trade IDs."
+      );
+    }
+
     const formation = formFxBatch({
       trades: sourceTrades,
       rateFractionDigits: sourceTrades[0]?.rateFractionDigits,

@@ -169,10 +169,11 @@ CREATE TABLE IF NOT EXISTS execution_systems
 
 CREATE TABLE IF NOT EXISTS execution_contexts
 (
-    execution_context_id  INTEGER PRIMARY KEY,
-    servicing_location_id TEXT NOT NULL,
-    accounting_system_id  TEXT,
-    execution_system_id   TEXT NOT NULL,
+    execution_context_id             INTEGER PRIMARY KEY,
+    servicing_location_id            TEXT NOT NULL,
+    accounting_system_id             TEXT,
+    execution_system_id              TEXT NOT NULL,
+    default_position_management_mode TEXT NOT NULL DEFAULT 'MANUAL',
 
     CONSTRAINT fk_execution_contexts_servicing_location
         FOREIGN KEY (servicing_location_id)
@@ -188,7 +189,9 @@ CREATE TABLE IF NOT EXISTS execution_contexts
         FOREIGN KEY (execution_system_id)
             REFERENCES execution_systems (execution_system_id)
             ON UPDATE RESTRICT
-            ON DELETE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT chk_execution_contexts_default_position_management_mode
+        CHECK (default_position_management_mode IN ('MANUAL', 'AUTO'))
 );
 
 CREATE TABLE IF NOT EXISTS trading_counterparties
@@ -438,11 +441,12 @@ CREATE TABLE IF NOT EXISTS ui_color_tokens
 
 CREATE TABLE IF NOT EXISTS pricing_rules
 (
-    pricing_rule_id     INTEGER PRIMARY KEY,
-    counterparty_id            INTEGER NOT NULL,
-    execution_context_id INTEGER NOT NULL,
-    ccy_pair_code       TEXT    NOT NULL,
-    margin_percent      REAL    NOT NULL,
+    pricing_rule_id                  INTEGER PRIMARY KEY,
+    counterparty_id                  INTEGER NOT NULL,
+    execution_context_id             INTEGER NOT NULL,
+    ccy_pair_code                    TEXT    NOT NULL,
+    margin_percent                   REAL    NOT NULL,
+    position_management_mode_override TEXT,
 
     CONSTRAINT fk_pricing_rules_counterparty
         FOREIGN KEY (counterparty_id)
@@ -462,7 +466,12 @@ CREATE TABLE IF NOT EXISTS pricing_rules
     CONSTRAINT uq_pricing_rules_scope
         UNIQUE (counterparty_id, execution_context_id, ccy_pair_code),
     CONSTRAINT chk_pricing_rules_margin
-        CHECK (margin_percent >= 0 AND margin_percent < 100)
+        CHECK (margin_percent >= 0 AND margin_percent < 100),
+    CONSTRAINT chk_pricing_rules_position_management_mode_override
+        CHECK (
+            position_management_mode_override IS NULL
+            OR position_management_mode_override IN ('MANUAL', 'AUTO')
+        )
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_reference
@@ -818,6 +827,40 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
             AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
             AND quote_ccy_value_date GLOB '????-??-??'
             AND strftime('%Y-%m-%d', quote_ccy_value_date) = quote_ccy_value_date
+    )
+);
+
+CREATE TABLE IF NOT EXISTS fx_trade_position_management
+(
+    trade_id                 INTEGER NOT NULL,
+    trade_type               TEXT    NOT NULL,
+    position_management_mode TEXT    NOT NULL DEFAULT 'MANUAL',
+    created_at               TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at               TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT pk_fx_trade_position_management
+        PRIMARY KEY (trade_id, trade_type),
+    CONSTRAINT fk_fx_trade_position_management_trade
+        FOREIGN KEY (trade_id, trade_type)
+            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            ON UPDATE RESTRICT
+            ON DELETE CASCADE,
+    CONSTRAINT chk_fx_trade_position_management_mode
+        CHECK (position_management_mode IN ('MANUAL', 'AUTO')),
+    CONSTRAINT chk_fx_trade_position_management_created_at
+        CHECK (
+            length(created_at) = 24
+            AND created_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
+        ),
+    CONSTRAINT chk_fx_trade_position_management_updated_at
+        CHECK (
+            length(updated_at) = 24
+            AND updated_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
+            AND updated_at >= created_at
         )
 );
 
@@ -1359,6 +1402,19 @@ CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_ccy_pair
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_trade_exposure_identity
     ON fx_trade_exposure (trade_id, trade_type);
+
+CREATE INDEX IF NOT EXISTS idx_fx_trade_position_management_mode
+    ON fx_trade_position_management (position_management_mode, trade_id);
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_trade_position_management_initialize
+AFTER INSERT ON fx_trade_exposure
+FOR EACH ROW
+BEGIN
+    INSERT INTO fx_trade_position_management
+        (trade_id, trade_type, position_management_mode)
+    VALUES
+        (NEW.trade_id, NEW.trade_type, 'MANUAL');
+END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_trade_exposure_require_dealt_ccy_insert
 BEFORE INSERT ON fx_trade_exposure

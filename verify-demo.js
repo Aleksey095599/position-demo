@@ -1341,6 +1341,15 @@ function verifyFreshSchemaAndSeed() {
     executionContexts: database.prepare("SELECT COUNT(*) AS count FROM execution_contexts").get().count,
     executionContextIdType: database.prepare("PRAGMA table_info(execution_contexts)").all()
       .find(column => column.name === "execution_context_id")?.type,
+    executionContextDefaultPositionManagementModeColumn:
+      database.prepare("PRAGMA table_info(execution_contexts)").all()
+        .find(column => column.name === "default_position_management_mode"),
+    executionContextPositionManagementModeCounts: database.prepare(`
+      SELECT default_position_management_mode AS mode, COUNT(*) AS count
+      FROM execution_contexts
+      GROUP BY default_position_management_mode
+      ORDER BY default_position_management_mode
+    `).all(),
     tradingCounterparties: database.prepare("SELECT COUNT(*) AS count FROM trading_counterparties").get().count,
     tradingCounterpartyRoles: database.prepare(`
       SELECT DISTINCT role_code
@@ -1419,6 +1428,14 @@ function verifyFreshSchemaAndSeed() {
       ORDER BY display_order
     `).all(),
     pricingRules: database.prepare("SELECT COUNT(*) AS count FROM pricing_rules").get().count,
+    pricingRulePositionManagementModeOverrideColumn:
+      database.prepare("PRAGMA table_info(pricing_rules)").all()
+        .find(column => column.name === "position_management_mode_override"),
+    pricingRuleNullPositionManagementModeOverrides: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM pricing_rules
+      WHERE position_management_mode_override IS NULL
+    `).get().count,
     legacyMonetaryColumns: database.prepare(`
       SELECT
         schema_entry.name AS table_name,
@@ -1506,6 +1523,44 @@ function verifyFreshSchemaAndSeed() {
       .some(index => index.name === "uq_fx_trade_exposure_identity" && index.unique === 1),
     fxTradeExposureIdentityIndexColumns: database.prepare("PRAGMA index_info(uq_fx_trade_exposure_identity)").all()
       .map(column => column.name),
+    fxTradePositionManagementRows: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM fx_trade_position_management
+    `).get().count,
+    fxTradePositionManagementColumns: database.prepare(`
+      PRAGMA table_info(fx_trade_position_management)
+    `).all().map(column => column.name),
+    fxTradePositionManagementForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(fx_trade_position_management)
+    `).all(),
+    fxTradePositionManagementModeCounts: database.prepare(`
+      SELECT position_management_mode AS mode, COUNT(*) AS count
+      FROM fx_trade_position_management
+      GROUP BY position_management_mode
+      ORDER BY position_management_mode
+    `).all(),
+    fxTradePositionManagementMissingRows: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM fx_trade_exposure exposure
+      LEFT JOIN fx_trade_position_management management
+        ON management.trade_id = exposure.trade_id
+        AND management.trade_type = exposure.trade_type
+      WHERE management.trade_id IS NULL
+    `).get().count,
+    fxTradePositionManagementOrphanRows: database.prepare(`
+      SELECT COUNT(*) AS count
+      FROM fx_trade_position_management management
+      LEFT JOIN fx_trade_exposure exposure
+        ON exposure.trade_id = management.trade_id
+        AND exposure.trade_type = management.trade_type
+      WHERE exposure.trade_id IS NULL
+    `).get().count,
+    fxTradePositionManagementTrigger: database.prepare(`
+      SELECT name, sql
+      FROM sqlite_master
+      WHERE type = 'trigger'
+        AND name = 'trg_fx_trade_position_management_initialize'
+    `).get(),
     fxTradeMarketSnapshots: database.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count,
     fxTradeMarketSnapshotColumns: database.prepare("PRAGMA table_info(fx_trade_market_snapshot)").all()
       .map(column => column.name),
@@ -1812,6 +1867,24 @@ function verifyFrontendStructure() {
   const fxPositionPageMarkup = html.match(
     /<main class="shell fx-position-bootstrap workbench-page" id="mainPage"[\s\S]*?<\/main>/
   )?.[0] || "";
+  const fxPositionModeTabsMarkup = fxPositionPageMarkup.match(
+    /<nav\b[^>]*id="fxPositionModeTabs"[\s\S]*?<\/nav>/
+  )?.[0] || "";
+  const fxPositionGridMarkup = fxPositionPageMarkup.match(
+    /<table\b[^>]*class="[^"]*\bfx-position-grid\b[^"]*"[^>]*>[\s\S]*?<\/table>/
+  )?.[0] || "";
+  const fxPositionModeRoutingSource = inlineScript.match(
+    /function fxPositionRoute\([\s\S]*?function batchingHistoryRoute/
+  )?.[0] || "";
+  const fxPositionModeViewSource = inlineScript.match(
+    /function fxPositionRowsForMode\([\s\S]*?function updateSortButtons/
+  )?.[0] || "";
+  const selectedBatchSourceTradesSource = inlineScript.match(
+    /function selectedBatchSourceTrades\([\s\S]*?function oneBatchTenorGroups/
+  )?.[0] || "";
+  const fxPositionsEndpointSource = serverSource.match(
+    /if \(pathname === "\/api\/v1\/fx-positions" && method === "GET"\) \{[\s\S]*?return true;\s*\}/
+  )?.[0] || "";
   const fxPositionDealToolbarMarkup = fxPositionPageMarkup.match(
     /<section class="deal-toolbar\b[^"]*"[\s\S]*?<\/section>/
   )?.[0] || "";
@@ -1844,6 +1917,67 @@ function verifyFrontendStructure() {
   const databaseTableSectionsSource = inlineScript.match(
     /const DATABASE_TABLE_SECTIONS = Object\.freeze\(\[[\s\S]*?\n    \]\);/
   )?.[0] || "";
+  const clientPricingRuleFormMarkup = html.match(
+    /<form\b[^>]*\bid="clientPricingRuleForm"[\s\S]*?<\/form>/
+  )?.[0] || "";
+  const pricingRulePositionModeOptionsSource = inlineScript.match(
+    /function positionManagementModeOptions\([\s\S]*?function positionManagementModeOverrideFromControls/
+  )?.[0] || "";
+  const positionModeOverrideControlSource = inlineScript.match(
+    /function positionManagementModeOverrideFromControls\([\s\S]*?function pricingTypePresentation/
+  )?.[0] || "";
+  const globalPricingRuleEditorSource = inlineScript.match(
+    /function renderPricingRuleEditRow\([\s\S]*?function renderPricingRuleViewRow/
+  )?.[0] || "";
+  const globalPricingRulePositionModeSource = inlineScript.match(
+    /function pricingRuleRowPositionManagementModeOverride\([\s\S]*?function syncPricingRuleRowPreview/
+  )?.[0] || "";
+  const clientPricingRuleDialogPositionModeSource = inlineScript.match(
+    /function clientPricingRuleDialogPositionManagementModeOverride\([\s\S]*?function clientPricingRuleDraftFromDialog/
+  )?.[0] || "";
+  const clientPricingRuleInlineEditorSource = inlineScript.match(
+    /function clientPricingRuleInlineEditorMarkup\([\s\S]*?function renderClientExecutionContextsPanel/
+  )?.[0] || "";
+  const clientPricingRuleInlinePositionModeSource = inlineScript.match(
+    /function clientPricingRuleInlinePositionManagementModeOverride\([\s\S]*?function clientPricingRuleFromInlineEditorRow/
+  )?.[0] || "";
+  const usesPricingRulePositionModeInheritanceControls =
+    (html.match(/>Use Execution Context default<\/span>/g) || []).length === 3
+    && clientPricingRuleFormMarkup.includes('id="clientPricingRuleUseExecutionContextDefault"')
+    && clientPricingRuleFormMarkup.includes('name="useExecutionContextDefault"')
+    && clientPricingRuleFormMarkup.includes('aria-controls="clientPricingRulePositionManagementModeOverride"')
+    && clientPricingRuleFormMarkup.includes('id="clientPricingRulePositionManagementModeOverride"')
+    && clientPricingRuleFormMarkup.includes('name="positionManagementModeOverride"')
+    && clientPricingRuleFormMarkup.includes('>Use Execution Context default</span>')
+    && globalPricingRuleEditorSource.includes('data-pricing-rule-field="useExecutionContextDefault"')
+    && globalPricingRuleEditorSource.includes('data-pricing-rule-field="positionManagementModeOverride"')
+    && globalPricingRuleEditorSource.includes('>Use Execution Context default</span>')
+    && clientPricingRuleInlineEditorSource.includes('data-client-pricing-rule-inline-field="useExecutionContextDefault"')
+    && clientPricingRuleInlineEditorSource.includes('data-client-pricing-rule-inline-field="positionManagementModeOverride"')
+    && clientPricingRuleInlineEditorSource.includes('>Use Execution Context default</span>')
+    && pricingRulePositionModeOptionsSource.includes('<option value="MANUAL"')
+    && pricingRulePositionModeOptionsSource.includes('<option value="AUTO"')
+    && !pricingRulePositionModeOptionsSource.includes('<option value=""')
+    && positionModeOverrideControlSource.includes('return inherited ? null : override || undefined;')
+    && positionModeOverrideControlSource.includes('overrideControl.required = !inherited;')
+    && globalPricingRulePositionModeSource.includes(
+      'return positionManagementModeOverrideFromControls(inheritControl, overrideControl);'
+    )
+    && globalPricingRulePositionModeSource.includes('overrideControl.disabled = inherited;')
+    && clientPricingRuleDialogPositionModeSource.includes(
+      'return positionManagementModeOverrideFromControls(inheritControl, overrideControl);'
+    )
+    && clientPricingRuleDialogPositionModeSource.includes('overrideControl.disabled = inherited;')
+    && clientPricingRuleInlinePositionModeSource.includes(
+      'return positionManagementModeOverrideFromControls(inheritControl, overrideControl);'
+    )
+    && clientPricingRuleInlinePositionModeSource.includes(
+      'positionManagementModeOverrideControl.disabled = state.saving || inherited;'
+    )
+    && inlineScript.includes('positionManagementModeOverride: normalizedPositionManagementModeOverride(')
+    && schemaSource.includes('position_management_mode_override TEXT')
+    && !schemaSource.includes('use_execution_context_default')
+    && !serverSource.includes('useExecutionContextDefault');
 
   return {
     inlineJavaScript: "OK",
@@ -1881,6 +2015,18 @@ function verifyFrontendStructure() {
       && inlineScript.includes('<span class="button-icon" aria-hidden="true">delete</span>'),
     usesPricingRulesEndpoint: inlineScript.includes("/api/v1/pricing-rules"),
     usesPricingRulesBootstrap: inlineScript.includes("DEMO_API_BOOTSTRAP.pricingRules"),
+    usesPricingRulePositionModeInheritanceControls,
+    usesFxPositionManagementPolicyConfiguration:
+      schemaSource.includes("default_position_management_mode")
+      && schemaSource.includes("position_management_mode_override")
+      && serverSource.includes("ensureFxPositionManagementPolicyColumns(database)")
+      && serverSource.includes("effectivePositionManagementMode: resolveFxPositionManagementMode")
+      && html.includes('data-ui-column-key="default_position_management_mode"')
+      && html.includes('data-ui-column-key="position_management_mode"')
+      && html.includes('name="positionManagementModeOverride"')
+      && inlineScript.includes("function effectivePositionManagementModeForRule(rule, context = null)")
+      && inlineScript.includes("defaultPositionManagementMode: context.defaultPositionManagementMode")
+      && inlineScript.includes("positionManagementModeOverride: normalizedPositionManagementModeOverride"),
     usesUiColorTokenPalette:
       schemaSource.includes("CREATE TABLE IF NOT EXISTS ui_color_tokens")
       && databaseTableSectionsSource.includes('"ui_color_tokens"')
@@ -1920,6 +2066,7 @@ function verifyFrontendStructure() {
       && html.includes('data-ui-column-key="execution_context"')
       && html.includes('id="pricingRulesTableLayoutDialog"')
       && html.includes('id="pricingRulesTableLayoutSaveDefaultButton"')
+      && html.includes('class="btn btn-sm btn-outline-primary with-icon" id="pricingRulesTableLayoutSaveButton"')
       && inlineScript.includes("function applyNativeUiTableLayout(tableKey, tableLayout)")
       && inlineScript.includes("function applyFxPositionGridLayout(tableLayout)")
       && inlineScript.includes("function saveUiTableLayoutAsDefault(event)")
@@ -1971,6 +2118,7 @@ function verifyFrontendStructure() {
       && addHedgeDealDialogMarkup.includes('name="side"')
       && addHedgeDealDialogMarkup.includes('for="addHedgeDealSide">Our Side</label>')
       && addHedgeDealDialogMarkup.includes('<select class="form-select" id="addHedgeDealSide" required>')
+      && addHedgeDealDialogMarkup.includes('<option value="">Select...</option>')
       && addHedgeDealDialogMarkup.includes('name="baseCcyAmount"')
       && addHedgeDealDialogMarkup.includes('name="quoteCcyAmount"')
       && addHedgeDealDialogMarkup.includes('name="tradeRate"')
@@ -1995,6 +2143,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("addHedgeDealPricingModeControl.value = normalizedPricingMode;")
       && inlineScript.includes("function selectedAddHedgeDealPricingMode()")
       && inlineScript.includes("const ourSide = oppositeFxSide(positionSide);")
+      && inlineScript.includes("addHedgeDealSideControl.innerHTML = `\n        <option value=\"\">Select...</option>")
       && inlineScript.includes("addHedgeDealForm.elements.side.value = oppositeFxSide(normalizedOurSide);")
       && inlineScript.includes("oppositeFxSide(addHedgeDealSideControl.value)")
       && inlineScript.includes('"/api/v1/hedge-fx-deals/auto-priced"')
@@ -2085,7 +2234,13 @@ function verifyFrontendStructure() {
         '<h1 class="settings-title">Hedging Settings</h1>'
       )
       && hedgingSettingsPageMarkup.includes(
+        'id="hedgeQuickModeSettingsHeader" hidden'
+      )
+      && !hedgingSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsTitle">Quick Hedge Settings</h2>'
+      )
+      && hedgingSettingsPageMarkup.includes(
+        '<h3 class="table-panel__title">Quick Hedge Settings</h3>'
       )
       && hedgingSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsCurrencyPair" name="currencyPair"'
@@ -2434,7 +2589,8 @@ function verifyFrontendStructure() {
         "Other"
       ].every(label => databaseTableSectionsSource.includes(`label: "${label}"`))
       && databaseTableSectionsSource.includes('"fx_trade_exposure"')
-      && /id: "fx-trading",[\s\S]*?label: "FX Trades",[\s\S]*?tables: \[\s*"client_fx_deals",\s*"fx_hedge_deals",\s*"fx_trade_exposure"\s*\]/.test(
+      && databaseTableSectionsSource.includes('"fx_trade_position_management"')
+      && /id: "fx-trading",[\s\S]*?label: "FX Trades",[\s\S]*?tables: \[\s*"client_fx_deals",\s*"fx_hedge_deals",\s*"fx_trade_exposure",\s*"fx_trade_position_management"\s*\]/.test(
         databaseTableSectionsSource
       )
       && databaseTableSectionsSource.includes('"fx_batch_quote_cash_output"')
@@ -2459,10 +2615,11 @@ function verifyFrontendStructure() {
       )
       && databaseTableSectionsSource.includes('label: "Audit"')
       && databaseTableSectionsSource.includes('icon: "policy"')
-      && /id: "audit",[\s\S]*?tables: \[\s*"fx_trade_market_snapshot"\s*\]/.test(
+      && /id: "audit",[\s\S]*?tables: \[\s*"fx_trade_market_snapshot",\s*"v_fx_batch_formation_audit"\s*\]/.test(
         databaseTableSectionsSource
       )
       && (databaseTableSectionsSource.match(/"fx_trade_market_snapshot"/g) || []).length === 1
+      && (databaseTableSectionsSource.match(/"v_fx_batch_formation_audit"/g) || []).length === 1
       && inlineScript.includes('function databaseTableGroups(query = "")')
       && inlineScript.includes('data-database-section="${escapeHtml(section.id)}"')
       && inlineScript.includes('databaseTableSearchEl.addEventListener("input"')
@@ -2473,6 +2630,10 @@ function verifyFrontendStructure() {
       && inlineScript.includes('demoApiRequest("/api/v1/fx-positions")')
       && serverSource.includes("function fxPositions()")
       && serverSource.includes('pathname === "/api/v1/fx-positions"')
+      && serverSource.includes("COALESCE(management.position_management_mode, 'MANUAL') AS fxPositionMode")
+      && serverSource.includes("LEFT JOIN fx_trade_position_management management")
+      && inlineScript.includes("fxPositionMode: normalizedPositionManagementMode(")
+      && inlineScript.includes("record?.fxPositionMode ?? record?.fx_position_mode")
       && serverSource.includes("NOT EXISTS")
       && !inlineScript.includes('DemoDb.get("fxPositions")')
       && !inlineScript.includes('DemoDb.get("technicalFxDeals")')
@@ -2484,6 +2645,51 @@ function verifyFrontendStructure() {
       && serverSource.includes("a.market_pulse_stream_status AS marketPulseStreamStatus")
       && serverSource.includes("a.market_pulse_bid AS marketPulseBid")
       && serverSource.includes("a.market_pulse_offer AS marketPulseOffer"),
+    usesModeSeparatedFxPositionWorkspace:
+      fxPositionModeTabsMarkup.includes('id="fxPositionManualTab"')
+      && fxPositionModeTabsMarkup.includes('href="#fx-position:manual"')
+      && fxPositionModeTabsMarkup.includes('data-fx-position-mode="MANUAL"')
+      && fxPositionModeTabsMarkup.includes('id="fxPositionManualCount"')
+      && fxPositionModeTabsMarkup.includes('>FX Position Manual</span>')
+      && fxPositionModeTabsMarkup.includes('id="fxPositionAutoTab"')
+      && fxPositionModeTabsMarkup.includes('href="#fx-position:auto"')
+      && fxPositionModeTabsMarkup.includes('data-fx-position-mode="AUTO"')
+      && fxPositionModeTabsMarkup.includes('id="fxPositionAutoCount"')
+      && fxPositionModeTabsMarkup.includes('>FX Position Auto</span>')
+      && fxPositionModeTabsMarkup.includes('aria-controls="fxPositionGridPanel"')
+      && fxPositionPageMarkup.includes('id="fxPositionGridPanel"')
+      && (fxPositionPageMarkup.match(/<table\b[^>]*\bfx-position-grid\b/g) || []).length === 1
+      && (fxPositionPageMarkup.match(/\bid="dealRows"/g) || []).length === 1
+      && !/data-ui-column-key="(?:fx_)?position_management_mode"|>\s*FX Position Mode\s*</i
+        .test(fxPositionGridMarkup)
+      && html.includes('class="workspace-nav-link" href="#fx-position:manual" data-workspace-route="batching"')
+      && fxPositionModeRoutingSource.includes("function fxPositionRoute(")
+      && fxPositionModeRoutingSource.includes("#fx-position:${")
+      && fxPositionModeRoutingSource.includes("function fxPositionModeFromLocation(")
+      && fxPositionModeRoutingSource.includes("(manual|auto)")
+      && fxPositionModeRoutingSource.includes('? "AUTO" : "MANUAL"')
+      && fxPositionModeViewSource.includes("function fxPositionRowsForMode(")
+      && fxPositionModeViewSource.includes(
+        "source.filter(deal => deal?.fxPositionMode === normalizedMode)"
+      )
+      && fxPositionModeViewSource.includes("function fxPositionModeCounts(")
+      && fxPositionModeViewSource.includes('fxPositionRowsForMode(source, "MANUAL").length')
+      && fxPositionModeViewSource.includes('fxPositionRowsForMode(source, "AUTO").length')
+      && fxPositionModeViewSource.includes("fxPositionManualCount.textContent = String(counts.MANUAL)")
+      && fxPositionModeViewSource.includes("fxPositionAutoCount.textContent = String(counts.AUTO)")
+      && fxPositionModeViewSource.includes("function clearHiddenFxPositionSelection(")
+      && fxPositionModeViewSource.includes("selectedTradeIds.delete(tradeId)")
+      && fxPositionModeViewSource.includes("function setActiveFxPositionMode(")
+      && fxPositionModeViewSource.includes("clearHiddenFxPositionSelection()")
+      && inlineScript.includes(
+        "return sortedDeals(activeCurrencyPairRows(fxPositionRowsForMode(fxPositions)))"
+      )
+      && inlineScript.includes("setActiveFxPositionMode(fxPositionModeFromLocation())")
+      && inlineScript.includes('demoApiRequest("/api/v1/fx-positions")')
+      && selectedBatchSourceTradesSource.includes("currentDisplayRows().filter")
+      && !selectedBatchSourceTradesSource.includes("fxPositionMode")
+      && fxPositionsEndpointSource.includes("sendJson(response, 200, fxPositions())")
+      && !fxPositionsEndpointSource.includes("searchParams"),
     usesClientDealCommentOnlyEditing:
       html.includes('id="editDealButton" disabled>Edit Comment</button>')
       && editClientDealDialogMarkup.includes(">Edit Client Deal Comment</h2>")
@@ -2613,9 +2819,9 @@ function verifyFrontendStructure() {
        && inlineScript.includes('title: "Formed At"')
        && html.includes('#fxBatchesPage:not([hidden])')
        && html.includes('height: calc(100vh - var(--workspace-nav-height));')
-       && html.includes(':is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content')
-       && html.includes(':is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid')
-       && /function initializeBatchingHistoryGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: "100%",/.test(inlineScript)
+      && html.includes(':is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content')
+      && html.includes(':is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid')
+      && /function initializeBatchingHistoryGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: "calc\(100vh - var\(--workspace-nav-height\) - 170px\)",/.test(inlineScript)
       && /tabulatorSizedColumn\("timestamp", \{[\s\S]*?title: "Formed At",[\s\S]*?field: "formedAt",/.test(inlineScript)
       && serverSource.includes("function fxBatches()")
       && serverSource.includes("function fxBatchFormationReasonDescription(")
@@ -2624,6 +2830,11 @@ function verifyFrontendStructure() {
       && serverSource.includes(
         'pathname === "/api/v1/fx-batches" && method === "GET"'
       ),
+    usesUnifiedBatchHeaderFilterFocus: html.includes(
+      ':is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator .tabulator-header-filter :is(input, select):focus {'
+    )
+      && html.includes('border-color: var(--bs-primary);')
+      && html.includes('box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);'),
     usesBatchFormationAudit:
       html.includes('href="#batching:formation-audit"')
       && html.includes('data-fx-batches-route="batch-formation-audit"')
@@ -2641,7 +2852,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes('title: "Duration"')
        && inlineScript.includes('title: "Source Trades"')
        && inlineScript.includes('data-batch-formation-audit-action="view"')
-       && /function initializeBatchFormationAuditGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: "100%",/.test(inlineScript)
+       && /function initializeBatchFormationAuditGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: "calc\(100vh - var\(--workspace-nav-height\) - 170px\)",/.test(inlineScript)
        && serverSource.includes("function fxBatchFormationAudit()")
       && serverSource.includes(
         'pathname === "/api/v1/fx-batch-formation-audit" && method === "GET"'
@@ -2723,6 +2934,9 @@ function verifyFrontendStructure() {
       && batchDetailsGridInitializerSource.includes("headerSort: false")
       && inlineScript.includes(
         'tabulatorSizedColumn("tradeSummary", {\n          title: "Trade Type"'
+      )
+      && /tabulatorSizedColumn\("tradeSummary", \{[\s\S]*?formatter: batchStructureTradeTypeFormatter,[\s\S]*?tooltip: false/.test(
+        batchStructureColumnsSource
       )
       && inlineScript.includes(
         'batchDetailsSummaryTitle.textContent = `Batch #${details.batchId}`;'
@@ -2931,7 +3145,7 @@ function verifyFrontendStructure() {
       && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid tfoot tr:last-child td \{[\s\S]*?border-bottom: 0;[\s\S]*?\}/.test(html)
       && html.includes("--fx-position-section-rule-width: 2px;")
       && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid \.section-name::before \{[\s\S]*?position: absolute;[\s\S]*?top: 7px;[\s\S]*?height: var\(--fx-position-section-rule-width\);[\s\S]*?margin: 0;/.test(html)
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid \.batching-summary-total td \{[\s\S]*?border-top: var\(--fx-position-section-rule-width\) solid var\(--bs-emphasis-color\);[\s\S]*?border-bottom: 0;/.test(html)
+      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid \.batching-summary-total td \{[\s\S]*?border-top: 3px solid var\(--palette-gray-500\);[\s\S]*?border-bottom: 0;/.test(html)
       && html.includes(".sell-check-zone .select-all-checkbox:is(:checked, :indeterminate)")
       && html.includes(".buy-check-zone .select-all-checkbox:is(:checked, :indeterminate)")
       && fxPositionPageMarkup.includes('title="Select all SELL deals · Shortcut: S"')
@@ -2953,7 +3167,14 @@ function verifyFrontendStructure() {
       && generationSettingsDialogMarkup.includes('class="dialog-close btn-close"')
       && html.includes('class="btn btn-sm btn-outline-primary generation-settings-save"')
       && html.includes(".generation-dialog .modal-header")
+      && /\.generation-dialog \{\s*width: fit-content;\s*max-width: calc\(100vw - 32px\);/.test(html)
       && html.includes("font-family: var(--bs-body-font-family);")
+      && /\.generation-cycle-settings-range-label\s*\{[\s\S]*?color: var\(--bs-emphasis-color, #212529\);[\s\S]*?font-size: 11px;[\s\S]*?font-weight: 500;[\s\S]*?text-transform: none;[\s\S]*?\}/.test(
+        html
+      )
+      && !inlineScript.includes(
+        'document.getElementById("generationMinIntervalSeconds")?.focus()'
+      )
       && html.includes(".generation-settings-table tbody tr:nth-child(even)")
       && inlineScript.includes("settings.counterpartyName")
       && !inlineScript.includes("generation-settings-client-code")
@@ -3022,7 +3243,7 @@ function verifyFrontendStructure() {
       && !html.includes('data-workspace-route="home"')
       && html.includes('<title>FX Position</title>')
       && inlineScript.includes('function batchingBlotterRoute()')
-      && inlineScript.includes('return "#fx-position";')
+      && inlineScript.includes('return fxPositionRoute("MANUAL");')
       && inlineScript.includes('location.hash = batchingBlotterRoute();'),
     usesImmutableClientFxDealEdit: editClientDealDialogMarkup.includes(">Edit Client Deal Comment</h2>")
       && editClientDealDialogMarkup.includes('class="modal-content"')
@@ -3289,7 +3510,7 @@ function verifyFrontendStructure() {
       && html.includes('color: var(--bs-primary);')
       && (addClientDealDialogMarkup.match(/data-add-client-deal-loss-field/g) || []).length === 3
       && addClientDealDialogMarkup.includes('id="addClientDealLossConfirmation"')
-      && addClientDealDialogMarkup.includes("Hold Ctrl and click Create Deal")
+      && addClientDealDialogMarkup.includes("Hold Ctrl and click Client Deal")
       && html.includes(".client-deal-loss-sensitive-field.is-negative-pnl")
       && inlineScript.includes("function syncAddClientDealLossState(analyticalPnl)")
       && inlineScript.includes('analyticalPnl < 0 && !controlConfirmed')
@@ -3324,7 +3545,7 @@ function verifyFrontendStructure() {
     usesClientDealDuplicateCheck: clientDealDuplicateCheckMarkup.includes('id="clientDealDuplicateCheckDialog"')
       && clientDealDuplicateCheckMarkup.includes('id="clientDealDuplicateCheckGrid"')
       && clientDealDuplicateCheckMarkup.includes('>Check Existing Client Deals</h2>')
-      && clientDealDuplicateCheckMarkup.includes('>Create Deal</span>')
+      && clientDealDuplicateCheckMarkup.includes('>Client Deal</span>')
       && clientDealDuplicateCheckMarkup.includes('>Cancel</button>')
       && html.includes('.client-deal-duplicate-dialog .tabulator')
       && inlineScript.includes('async function currentClientDealsForDuplicateCheck()')
@@ -3437,18 +3658,25 @@ function verifyFrontendStructure() {
       && html.includes('class="dialog-actions modal-footer"')
       && html.includes(".pricing-rule-bootstrap-dialog .pricing-rule-bootstrap-section")
       && html.includes(".pricing-rule-bootstrap-dialog .modal-footer .btn"),
-    usesMarginOnlyPricingRuleEditing:
+    usesPolicyAwarePricingRuleEditing:
       html.includes('id="clientPricingRuleContextSearchSection" aria-label="Find Execution Context"')
       && html.includes('id="clientPricingRuleFixedTermsSection" aria-label="Pricing Rule fixed terms" hidden')
       && html.includes('id="clientPricingRuleCurrencyPairField"')
-      && inlineScript.includes('clientPricingRuleContextSearchSection.hidden = editing;')
-      && inlineScript.includes('clientPricingRuleFixedTermsSection.hidden = !editing;')
+      && html.includes('name="positionManagementModeOverride"')
+      && inlineScript.includes('clientPricingRuleContextSearchSection.hidden = contextFixed;')
+      && inlineScript.includes('clientPricingRuleFixedTermsSection.hidden = !contextFixed;')
       && inlineScript.includes('clientPricingRuleCurrencyPairField.hidden = editing;')
+      && inlineScript.includes('function clientPricingRulePositionManagementModeMarkup(rule, context = null)')
+      && inlineScript.includes('class="client-pricing-configuration-position-mode-source"')
+      && usesPricingRulePositionModeInheritanceControls
+      && clientPricingRuleInlineEditorSource.includes('data-client-pricing-rule-inline-effective-position-mode')
+      && clientPricingRuleInlineEditorSource.includes('(Effective:')
       && inlineScript.includes('? savedRule.currencyPair')
-      && serverSource.includes('function validatePricingRuleMarginPayload(body)')
+      && serverSource.includes('function validatePricingRuleUpdatePayload(body, current)')
       && serverSource.includes('function pricingRuleImmutableTermsChanged(body, current)')
       && serverSource.includes('"PRICING_RULE_TERMS_IMMUTABLE"')
-      && serverSource.includes('SET margin_percent = ?'),
+      && serverSource.includes('SET margin_percent = ?,')
+      && serverSource.includes('position_management_mode_override = ?'),
     usesMutedUnavailablePricingContextOptions: inlineScript.includes('option.matchCount === 0 ? " is-unavailable" : ""')
       && html.includes(".pricing-rule-bootstrap-dialog .client-pricing-context-option.is-unavailable")
       && html.includes("color: var(--bs-tertiary-color, #6c757d)")
@@ -3623,7 +3851,7 @@ function verifyFrontendStructure() {
       && !html.includes(">Execution Context List<"),
     usesExecutionContextHeaderFiltersAndSort: html.includes('id="pricingContextIdSort"')
       && html.includes('id="pricingContextIdHeader" aria-sort="ascending"')
-      && (html.match(/data-pricing-context-header-filter=/g) || []).length === 4
+      && (html.match(/data-pricing-context-header-filter=/g) || []).length === 5
       && inlineScript.includes('pricingContextIdSortDirection = "asc"')
       && inlineScript.includes("pricingContextMatchesHeaderFilters"),
     usesConciseIntegerIdHeaders: html.includes('class="profile-table pricing-context-table unified-data-table"')
@@ -3727,7 +3955,9 @@ function verifyFrontendStructure() {
     usesUnifiedFilterFocus: html.includes('Header filters and inline Reference Data editors share one non-shifting Bootstrap focus treatment.')
       && html.includes('.tabulator-header-filter input:focus,')
       && html.includes('.reference-header-filter:focus,')
-      && html.includes('.inline-edit-control:focus {'),
+      && html.includes('.inline-edit-control:focus {')
+      && html.includes(':is(#pricingPage, #referenceDataPage).unified-bootstrap-workspace.workbench-page .inline-edit-control {')
+      && html.includes('border-radius: var(--workbench-radius);'),
     disablesTabulatorColumnMoving: !inlineScript.includes('movableColumns: true')
       && (inlineScript.match(/movableColumns: false/g) || []).length >= 2,
     disablesTabulatorColumnResizing: !inlineScript.includes('resizable: true')
@@ -3753,6 +3983,7 @@ function verifyFrontendStructure() {
     usesSemanticMarketCommands: html.includes('class="btn btn-sm btn-outline-primary" id="marketCcyOptionNewButton"')
       && html.includes('class="btn btn-sm btn-outline-primary" id="marketPairOptionNewButton"')
       && html.includes('class="btn btn-sm btn-outline-primary process-toggle-button" id="marketStreamToggleButton"')
+      && !html.includes('id="marketStreamToggleButton" aria-label="Start stream" title="Start stream"')
       && inlineScript.includes('marketStreamToggleButton.classList.toggle("is-running", marketStreamRunning)')
       && html.includes('#marketPage.market-bootstrap #marketStreamToggleButton.is-running {')
       && html.includes('background: var(--app-process-running);'),
@@ -3842,6 +4073,11 @@ function verifyFrontendStructure() {
     usesFxPositionTradeAttributes: html.includes('<th class="section-name sell-title" colspan="3">SELL SIDE</th>')
       && html.includes('<th class="section-name buy-title" colspan="3">BUY SIDE</th>')
       && (html.match(/>Base Ccy Amount<\/th>/g) || []).length === 2
+      && inlineScript.includes('class="identity client position-label-cell">${tradeCell}</td>')
+      && !inlineScript.includes('class="identity client position-label-cell" title="${safeTradeLabel}"')
+      && inlineScript.includes('function syncSmartCellTooltip(cell, ellipsize)')
+      && inlineScript.includes('cell.querySelector("[data-smart-tooltip-content]") || cell')
+      && inlineScript.includes('class="position-label-text" data-smart-tooltip-content')
       && (html.match(/data-sort-key="tradeRate" title="Trade Rate">Trade<\/button>/g) || []).length === 2
       && (html.match(/data-sort-key="transferRate" title="Transfer Rate">Transfer<\/button>/g) || []).length === 2
       && inlineScript.includes("function fxPositionTradeRate(deal)")
@@ -4064,6 +4300,48 @@ function verifyFrontendStructure() {
       && html.includes('class="nav nav-tabs workbench-section-tabs reference-switcher"')
       && html.includes('class="nav nav-tabs workbench-section-tabs trading-counterparty-scope-tabs"')
       && html.includes('.workbench-section-tabs .nav-link:is(.active, .is-active) {'),
+    usesHoverTabWithoutBottomBorder:
+      html.includes(
+        '.workbench-section-tabs .nav-link:not(.active):not(.is-active):hover {'
+      )
+      && html.includes('border-color: var(--palette-gray-400) var(--palette-gray-400) transparent;')
+      && html.includes('background: var(--palette-gray-100);')
+      && html.includes('color: var(--bs-secondary-color);')
+      && html.includes(
+        '#marketPage.market-bootstrap .market-tabs .nav-link:hover {'
+      )
+      && html.includes('border-bottom-color: transparent;'),
+    usesUnifiedTableHeaderAndSortContract:
+      html.includes('--table-sort-arrow-width: 3px;')
+      && html.includes('--table-sort-arrow-height: 4px;')
+      && html.includes(
+        '.tabulator .tabulator-header .tabulator-col.tabulator-sortable.tabulator-col-sorter-element:hover {'
+      )
+      && html.includes('background: var(--workbench-grid-hover-bg) !important;')
+      && html.includes('.workbench-page .batching-table th:has(.sort-button):hover {')
+      && html.includes('.fx-position-grid .column-title :is(.common-head, .market-head):has(.sort-button):hover {')
+      && html.includes('background: var(--palette-gray-200) !important;')
+      && html.includes('.fx-position-grid .column-title .sell-head:has(.sort-button):hover {')
+      && html.includes('background: rgba(var(--bs-danger-rgb), 0.12) !important;')
+      && html.includes('.fx-position-grid .column-title .buy-head:has(.sort-button):hover {')
+      && html.includes('background: rgba(var(--bs-success-rgb), 0.12) !important;')
+      && html.includes(
+        '.tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-sorter {'
+      )
+      && inlineScript.includes(
+        'column.headerHozAlign || !column.hozAlign'
+      )
+      && inlineScript.includes('headerHozAlign: "right"'),
+    usesUnifiedTableRowInteractionContract:
+      html.includes('--app-table-action-bg: var(--bs-body-bg);')
+      && html.includes('--app-table-action-hover-bg: var(--palette-gray-300);')
+      && html.includes('Tables share one hover and neutral row-action contract across the application.')
+      && html.includes('.tabulator-row:hover:not(.tabulator-selected):not(.market-inline-edit-row) {')
+      && html.includes('tr:hover:not(.is-selected):not(.is-editing):not(.fx-position-grid-fill)')
+      && html.includes('.icon-action:not(.profile-danger-action)')
+      && html.includes('background: var(--app-table-action-hover-bg) !important;')
+      && html.includes('.generation-settings-table tbody tr:hover {\n      background: var(--workbench-grid-hover-bg);')
+      && html.includes('.hedge-quick-settings-grid .tabulator-row:hover {\n      background: var(--workbench-grid-hover-bg);'),
     separatesUsersFromTradingCounterpartyTabs: inlineScript.includes('tradingCounterpartyScopeTabs.hidden = usersVisible;'),
     usesUnifiedDataGridLineSystem: html.includes('--data-grid-line-width: 1px;')
       && html.includes('--data-grid-line-color: var(--bs-border-color, #dee2e6);')
@@ -4073,6 +4351,8 @@ function verifyFrontendStructure() {
     usesOwnedRoundedTableFrames: html.includes('Keep a single, clipping owner for every rounded data-grid outline.')
       && html.includes(':is(#pricingPage, #pricingRulesPage, #databasePage).unified-bootstrap-workspace.workbench-page .profile-table-wrap')
       && html.includes('#pricingRulesPage.unified-bootstrap-workspace.workbench-page .profile-table-wrap,')
+      && html.includes('#databasePage.unified-bootstrap-workspace.workbench-page .database-details > .profile-table-panel')
+      && html.includes('justify-self: start;')
       && html.includes('width: fit-content;'),
     usesCentralWorkbenchDesignContract: html.includes('--app-font-size-page-title: 22px;')
       && html.includes('--app-font-size-dialog-title: 18px;')
@@ -4230,6 +4510,10 @@ async function verifyApiAndMigration() {
       "/api/database/tables/client_deal_generation_settings"
     );
     const fxTradeExposureTable = await request("GET", "/api/database/tables/fx_trade_exposure");
+    const fxTradePositionManagementTable = await request(
+      "GET",
+      "/api/database/tables/fx_trade_position_management"
+    );
     const fxTradeMarketSnapshotTable = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
     const clientFxDealsTable = await request("GET", "/api/database/tables/client_fx_deals");
     const hedgeFxDealsTable = await request("GET", "/api/database/tables/fx_hedge_deals");
@@ -4264,6 +4548,7 @@ async function verifyApiAndMigration() {
     const tradingCounterparties = await request("GET", "/api/v1/trading-counterparties");
     const users = await request("GET", "/api/v1/users");
     const pricingRules = await request("GET", "/api/v1/pricing-rules");
+    const migratedFxPositions = await request("GET", "/api/v1/fx-positions");
     const migratedClient1ExecutionContexts = await request(
       "GET",
       "/api/v1/trading-counterparties/1/execution-contexts"
@@ -5145,6 +5430,10 @@ async function verifyApiAndMigration() {
     const createdTradeId = Number(createClientFxDeal.body?.tradeId);
     const createdHedgeTradeId = Number(createHedgeFxDeal.body?.tradeId);
     const migratedExposureRow = fxTradeExposureTable.body?.rows?.find(row => row.trade_id === 41) || null;
+    const migratedPositionManagementRow = fxTradePositionManagementTable.body?.rows
+      ?.find(row => row.trade_id === 41 && row.trade_type === "CLIENT_DEAL") || null;
+    const migratedFxPosition = migratedFxPositions.body
+      ?.find(row => row.tradeId === 41 && row.tradeType === "CLIENT_DEAL") || null;
     const migratedClientRow = clientFxDealsTable.body?.rows?.find(row => row.trade_id === 41) || null;
     const createdExposureRow = fxTradeExposureAfterCreate.body?.rows
       ?.find(row => row.trade_id === createdTradeId) || null;
@@ -5642,6 +5931,7 @@ async function verifyApiAndMigration() {
     demoResetProbe.exec("PRAGMA foreign_keys = ON");
     const demoResetTradeTableCounts = [
       "fx_trade_exposure",
+      "fx_trade_position_management",
       "client_fx_deals",
       "fx_hedge_deals",
       "fx_trade_market_snapshot",
@@ -5742,6 +6032,9 @@ async function verifyApiAndMigration() {
       executionContexts: {
         count: executionContexts.body?.length ?? -1,
         migratedIdsAreIntegers: executionContexts.body?.every(context => Number.isInteger(context.executionContextId)),
+        migratedModesUseSafeManualDefault: executionContexts.body?.every(
+          context => context.defaultPositionManagementMode === "MANUAL"
+        ) === true,
         assignedCounterpartyCounts: (executionContexts.body || []).map(context => ({
           executionContextId: context.executionContextId,
           servicingLocationId: context.servicingLocationId,
@@ -5751,7 +6044,11 @@ async function verifyApiAndMigration() {
         })),
         createdId: createExecutionContext.body?.executionContextId,
         createdAccountingSystemId: createExecutionContext.body?.accountingSystemId,
+        createdDefaultPositionManagementMode:
+          createExecutionContext.body?.defaultPositionManagementMode,
         updatedId: updateExecutionContext.body?.executionContextId,
+        updatedDefaultPositionManagementMode:
+          updateExecutionContext.body?.defaultPositionManagementMode,
         usageAfterCreate: servicingLocationsAfterContextCreate.body
           ?.find(location => location.servicingLocationId === "SITE-998")?.executionContextCount,
         usageAfterDelete: servicingLocationsAfterContextDelete.body
@@ -5830,6 +6127,18 @@ async function verifyApiAndMigration() {
       fxTradeExposures: {
         count: fxTradeExposureTable.body?.rowCount ?? -1,
         migratedRow: migratedExposureRow
+      },
+      fxTradePositionManagementColumns:
+        fxTradePositionManagementTable.body?.columns?.map(column => column.name) || [],
+      fxTradePositionManagementForeignKeys:
+        fxTradePositionManagementTable.body?.foreignKeys || [],
+      fxTradePositionManagementCreateSql:
+        fxTradePositionManagementTable.body?.createSql || "",
+      fxTradePositionManagement: {
+        status: fxTradePositionManagementTable.statusCode,
+        count: fxTradePositionManagementTable.body?.rowCount ?? -1,
+        migratedRow: migratedPositionManagementRow,
+        projectedMode: migratedFxPosition?.fxPositionMode
       },
       fxTradeMarketSnapshotColumns: fxTradeMarketSnapshotTable.body?.columns?.map(column => column.name) || [],
       fxTradeMarketSnapshotForeignKeys: fxTradeMarketSnapshotTable.body?.foreignKeys || [],
@@ -6622,15 +6931,27 @@ async function verifyApiAndMigration() {
         ) === true,
         migratedIdsPreserved: pricingRules.body?.map(rule => rule.pricingRuleId).sort((left, right) => left - right).join(",") === "1,2,3,4,5",
         migratedContextIdsAreIntegers: pricingRules.body?.every(rule => Number.isInteger(rule.executionContextId)),
+        migratedOverridesAreNull: pricingRules.body?.every(
+          rule => rule.positionManagementModeOverride === null
+        ) === true,
+        migratedEffectiveModesUseSafeManualDefault: pricingRules.body?.every(
+          rule => rule.effectivePositionManagementMode === "MANUAL"
+        ) === true,
         createdId: createPricingRule.body?.pricingRuleId,
         createdCounterpartyId: createPricingRule.body?.counterpartyId,
         createdCounterpartyType: createPricingRule.body?.counterpartyType,
         createdPairCode: createPricingRule.body?.ccyPairCode,
         createdCurrencyPair: createPricingRule.body?.currencyPair,
+        createdPositionManagementModeOverride:
+          createPricingRule.body?.positionManagementModeOverride,
+        createdEffectivePositionManagementMode:
+          createPricingRule.body?.effectivePositionManagementMode,
         updatedId: updatePricingRule.body?.pricingRuleId,
         updatedContextId: updatePricingRule.body?.executionContextId,
         expectedUpdatedContextId: emeraldClickContextId,
         updatedMargin: updatePricingRule.body?.marginPercent,
+        updatedPositionManagementModeOverride:
+          updatePricingRule.body?.positionManagementModeOverride,
         immutableUpdateStatus: immutablePricingRuleUpdate.statusCode,
         immutableUpdateCode: immutablePricingRuleUpdate.body?.code,
         immutableUpdateContextId: pricingRuleAfterImmutableUpdate?.executionContextId,
@@ -6852,6 +7173,7 @@ async function main() {
       "fx_hedge_quick_mode_settings",
       "fx_trade_exposure",
       "fx_trade_market_snapshot",
+      "fx_trade_position_management",
       "internal_units",
       "market_quote_simulation_settings",
       "pricing_rules",
@@ -6879,6 +7201,10 @@ async function main() {
       || freshSchema.executionSystems !== 3
       || freshSchema.executionContexts !== 5
       || freshSchema.executionContextIdType !== "INTEGER"
+      || freshSchema.executionContextDefaultPositionManagementModeColumn?.notnull !== 1
+      || freshSchema.executionContextDefaultPositionManagementModeColumn?.dflt_value !== "'MANUAL'"
+      || freshSchema.executionContextPositionManagementModeCounts
+        .map(row => `${row.mode}:${row.count}`).join(",") !== "AUTO:2,MANUAL:3"
       || freshSchema.tradingCounterparties !== 5
       || freshSchema.tradingCounterpartyRoles.join(",") !== "CLIENT,HEDGE_COUNTERPARTY"
       || freshSchema.tradingCounterpartyColumns.join(",") !== "counterparty_id,counterparty_name,is_active"
@@ -6912,17 +7238,19 @@ async function main() {
         !== "BLUE,CYAN,GRAY,GREEN,INDIGO,ORANGE,PINK,PURPLE,RED,TEAL,YELLOW"
       || freshSchema.uiColorTokenSamples.map(row => `${row.token_code}:${row.color_value}`).join(",")
         !== "blue_500:#0D6EFD,red_100:#F8D7DA,green_100:#D1E7DD"
-      || freshSchema.uiTableColumnSettings !== 199
+      || freshSchema.uiTableColumnSettings !== 202
       || freshSchema.uiTableColumnLayoutKeys.map(row =>
         `${row.table_key}:${row.column_count}`
-      ).join(",") !== "accounting_systems_grid:5,analytical_pnl_report_grid:12,analytical_pnl_summary_grid:3,batch_cash_output_grid:3,batch_formation_audit_grid:10,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:6,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:19,deal_generation_settings_grid:11,execution_contexts_grid:6,execution_systems_grid:6,external_counterparties_grid:8,fx_position_grid:12,hedge_fx_deals_grid:20,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:8,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:7,servicing_locations_grid:7,users_grid:7"
+      ).join(",") !== "accounting_systems_grid:5,analytical_pnl_report_grid:12,analytical_pnl_summary_grid:3,batch_cash_output_grid:3,batch_formation_audit_grid:10,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:6,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:19,deal_generation_settings_grid:11,execution_contexts_grid:7,execution_systems_grid:6,external_counterparties_grid:8,fx_position_grid:12,hedge_fx_deals_grid:20,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:9,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:8,servicing_locations_grid:7,users_grid:7"
       || freshSchema.uiTableColumnSettingColumns.join(",")
         !== "table_key,column_key,column_label,display_order,default_width_px,width_px,updated_at"
       || freshSchema.uiTableColumnSettingRows.map(row =>
         `${row.column_key}:${row.default_width_px}:${row.width_px}`
-      ).join(",") !== "id:64:64,counterparty_code:122:122,counterparty_name:158:158,execution_context:596:596,ccy_pair:88:88,pricing_mode:156:156,margin:82:82"
+      ).join(",") !== "id:64:64,counterparty_code:122:122,counterparty_name:158:158,execution_context:596:596,ccy_pair:88:88,pricing_mode:156:156,position_management_mode:232:232,margin:82:82"
       || !freshSchema.uiTableColumnSettingsConstraintsEnforced
       || freshSchema.pricingRules !== 7
+      || freshSchema.pricingRulePositionManagementModeOverrideColumn?.notnull !== 0
+      || freshSchema.pricingRuleNullPositionManagementModeOverrides !== 7
       || freshSchema.legacyMonetaryColumns.length !== 0
       || freshSchema.clientDealGenerationProcessSettingsColumns.join(",")
         !== "settings_id,min_interval_seconds,max_interval_seconds,min_deals_per_cycle,max_deals_per_cycle"
@@ -6967,6 +7295,34 @@ async function main() {
       || freshSchema.fxTradeExposureForeignKeys.length !== 2
       || !freshSchema.fxTradeExposureIdentityIndex
       || freshSchema.fxTradeExposureIdentityIndexColumns.join(",") !== "trade_id,trade_type"
+      || freshSchema.fxTradePositionManagementRows !== freshSchema.fxTradeExposures
+      || freshSchema.fxTradePositionManagementColumns.join(",")
+        !== "trade_id,trade_type,position_management_mode,created_at,updated_at"
+      || freshSchema.fxTradePositionManagementModeCounts.length !== 1
+      || freshSchema.fxTradePositionManagementModeCounts[0]?.mode !== "MANUAL"
+      || freshSchema.fxTradePositionManagementModeCounts[0]?.count
+        !== freshSchema.fxTradeExposures
+      || freshSchema.fxTradePositionManagementMissingRows !== 0
+      || freshSchema.fxTradePositionManagementOrphanRows !== 0
+      || freshSchema.fxTradePositionManagementForeignKeys.length !== 2
+      || !freshSchema.fxTradePositionManagementForeignKeys.every(foreignKey =>
+        foreignKey.table === "fx_trade_exposure"
+        && foreignKey.on_update === "RESTRICT"
+        && foreignKey.on_delete === "CASCADE"
+      )
+      || freshSchema.fxTradePositionManagementForeignKeys
+        .slice()
+        .sort((left, right) => left.seq - right.seq)
+        .map(foreignKey => `${foreignKey.from}:${foreignKey.to}`).join(",")
+        !== "trade_id:trade_id,trade_type:trade_type"
+      || freshSchema.fxTradePositionManagementTrigger?.name
+        !== "trg_fx_trade_position_management_initialize"
+      || !freshSchema.fxTradePositionManagementTrigger?.sql
+        ?.includes("AFTER INSERT ON fx_trade_exposure")
+      || !freshSchema.fxTradePositionManagementTrigger?.sql
+        ?.includes("INSERT INTO fx_trade_position_management")
+      || !freshSchema.fxTradePositionManagementTrigger?.sql
+        ?.includes("(NEW.trade_id, NEW.trade_type, 'MANUAL')")
       || freshSchema.fxTradeMarketSnapshots !== 2
       || freshSchema.fxTradeMarketSnapshotColumns.join(",") !== "trade_id,trade_type,market_pulse_stream_status,market_pulse_bid,market_pulse_offer,market_pulse_timestamp"
       || freshSchema.fxTradeMarketSnapshotForeignKeys.length !== 2
@@ -7149,12 +7505,14 @@ async function main() {
       || !frontend.usesUiColorTokenPalette
       || !frontend.usesFxPositionColorPalette
       || !frontend.usesDatabaseBackedFxPositions
+      || !frontend.usesModeSeparatedFxPositionWorkspace
       || !frontend.usesClientDealCommentOnlyEditing
       || !frontend.usesDatabaseBackedClientDealGeneration
       || !frontend.removesBrowserClientDealGeneration
       || !frontend.usesFxBatchFormation
       || !frontend.serializesFxBatchUiRequests
       || !frontend.usesBatchingHistory
+      || !frontend.usesUnifiedBatchHeaderFilterFocus
       || !frontend.usesBatchFormationAudit
       || !frontend.usesBatchStructure
       || !frontend.removesBatchingPositionsWorkspace
@@ -7185,6 +7543,8 @@ async function main() {
       || !frontend.usesInlineUsersEditor
       || !frontend.usesPricingRulesEndpoint
       || !frontend.usesPricingRulesBootstrap
+      || !frontend.usesPricingRulePositionModeInheritanceControls
+      || !frontend.usesFxPositionManagementPolicyConfiguration
       || !frontend.usesDatabaseBackedUiTableColumnLayouts
       || !frontend.displaysPricingRuleCounterpartyType
       || !frontend.displaysPricingRulePricingMode
@@ -7221,7 +7581,7 @@ async function main() {
       || !frontend.usesInlineTradingCounterpartyCreate
       || !frontend.usesUnifiedConstrainedTableSizing
       || !frontend.usesBootstrapPricingRuleDialog
-      || !frontend.usesMarginOnlyPricingRuleEditing
+      || !frontend.usesPolicyAwarePricingRuleEditing
       || !frontend.usesMutedUnavailablePricingContextOptions
       || !frontend.usesFilterAwareSmartSizing
       || !frontend.usesTradingCounterpartyExecutionContextAssignments
@@ -7299,6 +7659,9 @@ async function main() {
       || !frontend.usesExecutionContextRoute
       || !frontend.usesBootstrapReferenceDataControls
       || !frontend.usesUniformReferenceDataGrid
+      || !frontend.usesHoverTabWithoutBottomBorder
+      || !frontend.usesUnifiedTableHeaderAndSortContract
+      || !frontend.usesUnifiedTableRowInteractionContract
       || !frontend.separatesUsersFromTradingCounterpartyTabs
       || !frontend.usesUnifiedDataGridLineSystem
       || !frontend.usesOwnedRoundedTableFrames
@@ -7348,7 +7711,7 @@ async function main() {
       || apiAndMigration.executionSystemColumns.join(",") !== "execution_system_id,name,pricing_mode,is_active"
       || apiAndMigration.executionSystems.count !== 3
       || apiAndMigration.executionSystems.clickTradeContextCount !== 2
-      || apiAndMigration.executionContextColumns.join(",") !== "execution_context_id,servicing_location_id,accounting_system_id,execution_system_id"
+      || apiAndMigration.executionContextColumns.join(",") !== "execution_context_id,servicing_location_id,accounting_system_id,execution_system_id,default_position_management_mode"
       || apiAndMigration.executionContextIdType !== "INTEGER"
       || apiAndMigration.executionContextForeignKeys.length !== 3
       || !apiAndMigration.executionContextForeignKeys.every(foreignKey => foreignKey.onDelete === "RESTRICT")
@@ -7357,10 +7720,13 @@ async function main() {
       )
       || apiAndMigration.executionContexts.count !== 5
       || !apiAndMigration.executionContexts.migratedIdsAreIntegers
+      || !apiAndMigration.executionContexts.migratedModesUseSafeManualDefault
       || !Number.isInteger(apiAndMigration.executionContexts.createdId)
       || apiAndMigration.executionContexts.createdId <= 0
       || apiAndMigration.executionContexts.createdAccountingSystemId !== "NOT_APPLICABLE"
+      || apiAndMigration.executionContexts.createdDefaultPositionManagementMode !== "MANUAL"
       || apiAndMigration.executionContexts.updatedId !== apiAndMigration.executionContexts.createdId
+      || apiAndMigration.executionContexts.updatedDefaultPositionManagementMode !== "MANUAL"
       || apiAndMigration.executionContexts.usageAfterCreate !== 1
       || apiAndMigration.executionContexts.usageAfterDelete !== 0
       || apiAndMigration.tradingCounterpartyColumns.join(",") !== "counterparty_id,counterparty_name,is_active"
@@ -7442,13 +7808,18 @@ async function main() {
       || apiAndMigration.counterpartyExecutionContextLifecycle.blockedDetachCode
         !== "COUNTERPARTY_EXECUTION_CONTEXT_IN_USE"
       || apiAndMigration.counterpartyExecutionContextLifecycle.detachAfterRuleDeleteStatus !== 204
-      || apiAndMigration.pricingRuleColumns.join(",") !== "pricing_rule_id,counterparty_id,execution_context_id,ccy_pair_code,margin_percent"
+      || apiAndMigration.pricingRuleColumns.join(",") !== "pricing_rule_id,counterparty_id,execution_context_id,ccy_pair_code,margin_percent,position_management_mode_override"
       || apiAndMigration.pricingRuleExecutionContextIdType !== "INTEGER"
       || apiAndMigration.pricingRuleForeignKeys.length !== 3
       || !apiAndMigration.pricingRuleForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
       || !["trading_counterparties", "execution_contexts", "ccy_pair_options"].every(referencedTable =>
         apiAndMigration.pricingRuleForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
+      || !apiAndMigration.pricingRules.migratedOverridesAreNull
+      || !apiAndMigration.pricingRules.migratedEffectiveModesUseSafeManualDefault
+      || apiAndMigration.pricingRules.createdPositionManagementModeOverride !== null
+      || apiAndMigration.pricingRules.createdEffectivePositionManagementMode !== "MANUAL"
+      || apiAndMigration.pricingRules.updatedPositionManagementModeOverride !== null
       || apiAndMigration.clientDealGenerationProcessSettingsColumns.join(",")
         !== "settings_id,min_interval_seconds,max_interval_seconds,min_deals_per_cycle,max_deals_per_cycle"
       || apiAndMigration.clientDealGenerationProcessSettingsRows.length !== 1
@@ -7533,6 +7904,28 @@ async function main() {
       || apiAndMigration.fxTradeExposures.migratedRow?.quote_ccy_amount_minor !== 168450000
       || apiAndMigration.fxTradeExposures.migratedRow?.quote_ccy_fraction_digits !== 2
       || apiAndMigration.fxTradeExposures.migratedRow?.tenor !== "TOM"
+      || apiAndMigration.fxTradePositionManagement.status !== 200
+      || apiAndMigration.fxTradePositionManagementColumns.join(",")
+        !== "trade_id,trade_type,position_management_mode,created_at,updated_at"
+      || apiAndMigration.fxTradePositionManagementForeignKeys.length !== 2
+      || !apiAndMigration.fxTradePositionManagementForeignKeys.every(foreignKey =>
+        foreignKey.referencedTable === "fx_trade_exposure"
+        && foreignKey.onUpdate === "RESTRICT"
+        && foreignKey.onDelete === "CASCADE"
+      )
+      || apiAndMigration.fxTradePositionManagementForeignKeys
+        .map(foreignKey => `${foreignKey.from}:${foreignKey.referencedColumn}`).join(",")
+        !== "trade_id:trade_id,trade_type:trade_type"
+      || !apiAndMigration.fxTradePositionManagementCreateSql
+        .includes("position_management_mode IN ('MANUAL', 'AUTO')")
+      || apiAndMigration.fxTradePositionManagement.count !== 1
+      || apiAndMigration.fxTradePositionManagement.count
+        !== apiAndMigration.fxTradeExposures.count
+      || apiAndMigration.fxTradePositionManagement.migratedRow?.trade_id !== 41
+      || apiAndMigration.fxTradePositionManagement.migratedRow?.trade_type !== "CLIENT_DEAL"
+      || apiAndMigration.fxTradePositionManagement.migratedRow?.position_management_mode
+        !== "MANUAL"
+      || apiAndMigration.fxTradePositionManagement.projectedMode !== "MANUAL"
       || apiAndMigration.fxTradeMarketSnapshotColumns.join(",") !== "trade_id,trade_type,market_pulse_stream_status,market_pulse_bid,market_pulse_offer,market_pulse_timestamp"
       || apiAndMigration.fxTradeMarketSnapshotForeignKeys.length !== 2
       || !apiAndMigration.fxTradeMarketSnapshotForeignKeys.every(foreignKey =>

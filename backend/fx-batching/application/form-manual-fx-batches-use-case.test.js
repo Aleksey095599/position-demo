@@ -9,8 +9,27 @@ const {
   FormManualFxBatchesUseCase
 } = require("./form-manual-fx-batches-use-case");
 
-function trade(tradeId, tenor) {
-  return { tradeId, tenor };
+function trade(tradeId, tenor, overrides = {}) {
+  return {
+    tradeId,
+    tradeType: "CLIENT_DEAL",
+    ccyPairCode: "EUR_USD",
+    baseCcyCode: "EUR",
+    quoteCcyCode: "USD",
+    tradeDate: "2026-07-27",
+    side: "SELL",
+    dealtCcyCode: "EUR",
+    baseCcyAmountMinor: 10000,
+    baseCcyFractionDigits: 2,
+    quoteCcyAmountMinor: 11200,
+    quoteCcyFractionDigits: 2,
+    transferRate: 1.12,
+    tenor,
+    baseCcyValueDate: "2026-07-27",
+    quoteCcyValueDate: "2026-07-27",
+    rateFractionDigits: 4,
+    ...overrides
+  };
 }
 
 function useCaseWith({
@@ -34,8 +53,8 @@ function useCaseWith({
         replayed: false
       })
     },
-    fxTradeSelectionRepository: {
-      findByIds: tradeIds => sourceTrades.filter(sourceTrade =>
+    fxTradeExposureRepository: {
+      findBatchSources: tradeIds => sourceTrades.filter(sourceTrade =>
         tradeIds.includes(sourceTrade.tradeId)
       )
     },
@@ -58,6 +77,7 @@ function useCaseWith({
 test("forms one manual FX Batch through one outer transaction", () => {
   let transactions = 0;
   const commands = [];
+  const verifiedGroups = [];
   const useCase = useCaseWith({
     sourceTrades: [trade(2, "TOD"), trade(1, "TOD")],
     transactionRunner: {
@@ -67,8 +87,11 @@ test("forms one manual FX Batch through one outer transaction", () => {
       }
     },
     formFxBatchUseCase: {
-      executeWithinTransaction(command) {
+      executeWithinTransaction(command, options) {
         commands.push(command);
+        verifiedGroups.push(
+          options.verifiedSourceTrades.map(sourceTrade => sourceTrade.tradeId)
+        );
         return { batchId: 41, replayed: false };
       }
     }
@@ -85,6 +108,7 @@ test("forms one manual FX Batch through one outer transaction", () => {
     idempotencyKey: "__fx_manual_batch__:1:1",
     tradeIds: [1, 2]
   }]);
+  assert.deepEqual(verifiedGroups, [[1, 2]]);
   assert.deepEqual(result.batchIds, [41]);
   assert.equal(result.batchId, 41);
   assert.equal(result.separatedByTenor, false);
@@ -165,6 +189,37 @@ test("rejects a selection when a requested trade cannot be resolved", () => {
     }),
     error => error?.code === "BATCH_SOURCE_TRADE_NOT_FOUND"
   );
+});
+
+test("rejects an invalid source trade before planning or child formation", () => {
+  let formations = 0;
+  let registers = 0;
+  const useCase = useCaseWith({
+    sourceTrades: [trade(1, "TOD", { transferRate: 0 })],
+    formFxBatchUseCase: {
+      executeWithinTransaction() {
+        formations += 1;
+      }
+    },
+    manualBatchFormationRepository: {
+      findByIdempotencyKey: () => null,
+      create() {
+        registers += 1;
+      },
+      addBatch: () => {},
+      complete: () => {}
+    }
+  });
+
+  assert.throws(
+    () => useCase.execute({
+      idempotencyKey: "manual-selection-invalid-source",
+      tradeIds: [1]
+    }),
+    error => error?.code === "INVALID_BATCH_SOURCE_TRADE"
+  );
+  assert.equal(formations, 0);
+  assert.equal(registers, 0);
 });
 
 test("rolls back every child batch when one Tenor group fails", () => {
