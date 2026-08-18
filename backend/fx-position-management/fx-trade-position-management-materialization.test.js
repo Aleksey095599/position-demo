@@ -101,7 +101,8 @@ function managementRows(database) {
     SELECT
       trade_id AS tradeId,
       trade_type AS tradeType,
-      position_management_mode AS positionManagementMode,
+      initial_position_management_mode AS initialPositionManagementMode,
+      current_position_management_mode AS currentPositionManagementMode,
       created_at AS createdAt,
       updated_at AS updatedAt
     FROM fx_trade_position_management
@@ -114,7 +115,8 @@ function managementRow(databasePath, tradeId, tradeType) {
     SELECT
       trade_id AS tradeId,
       trade_type AS tradeType,
-      position_management_mode AS positionManagementMode,
+      initial_position_management_mode AS initialPositionManagementMode,
+      current_position_management_mode AS currentPositionManagementMode,
       created_at AS createdAt,
       updated_at AS updatedAt
     FROM fx_trade_position_management
@@ -218,7 +220,47 @@ function prepareLegacyDatabase(databasePath) {
     `).get()?.mode;
     assert.equal(effectivePolicyBeforeMigration, "AUTO");
 
-    database.exec("DROP TABLE IF EXISTS fx_trade_position_management");
+    database.prepare(`
+      UPDATE fx_trade_position_management
+      SET initial_position_management_mode = 'AUTO',
+          current_position_management_mode = 'AUTO'
+      WHERE trade_id = (SELECT MIN(trade_id) FROM fx_trade_position_management)
+    `).run();
+    database.exec("PRAGMA foreign_keys = OFF");
+    database.exec(`
+      DROP TRIGGER IF EXISTS trg_fx_trade_position_management_initialize;
+      DROP INDEX IF EXISTS idx_fx_trade_position_management_current_mode;
+
+      CREATE TABLE fx_trade_position_management_legacy
+      (
+        trade_id INTEGER NOT NULL,
+        trade_type TEXT NOT NULL,
+        position_management_mode TEXT NOT NULL DEFAULT 'MANUAL',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (trade_id, trade_type),
+        FOREIGN KEY (trade_id, trade_type)
+          REFERENCES fx_trade_exposure (trade_id, trade_type)
+          ON UPDATE RESTRICT
+          ON DELETE CASCADE,
+        CHECK (position_management_mode IN ('MANUAL', 'AUTO'))
+      );
+
+      INSERT INTO fx_trade_position_management_legacy
+        (trade_id, trade_type, position_management_mode, created_at, updated_at)
+      SELECT
+        trade_id,
+        trade_type,
+        current_position_management_mode,
+        created_at,
+        updated_at
+      FROM fx_trade_position_management;
+
+      DROP TABLE fx_trade_position_management;
+      ALTER TABLE fx_trade_position_management_legacy
+        RENAME TO fx_trade_position_management;
+    `);
+    database.exec("PRAGMA foreign_keys = ON");
     return legacyTrades;
   } finally {
     database.close();
@@ -263,11 +305,12 @@ test("fx_trade_position_management has a constrained composite trade identity", 
     assert.deepEqual(columns.map(column => column.name), [
       "trade_id",
       "trade_type",
-      "position_management_mode",
+      "initial_position_management_mode",
+      "current_position_management_mode",
       "created_at",
       "updated_at"
     ]);
-    assert.deepEqual(columns.map(column => column.pk), [1, 2, 0, 0, 0]);
+    assert.deepEqual(columns.map(column => column.pk), [1, 2, 0, 0, 0, 0]);
     assert.ok(columns.every(column => column.notnull === 1));
 
     const foreignKeys = database.prepare(
@@ -303,25 +346,34 @@ test("fx_trade_position_management has a constrained composite trade identity", 
     assert.equal(seededManagementRows.length, exposureCount);
     assert.ok(seededManagementRows.length > 0);
     assert.ok(seededManagementRows.every(
-      row => row.positionManagementMode === "MANUAL"
+      row => row.initialPositionManagementMode === "MANUAL"
+        && row.currentPositionManagementMode === "MANUAL"
     ));
     seededManagementRows.forEach(assertValidManagementTimestamp);
 
     const firstRow = seededManagementRows[0];
     assert.throws(() => database.prepare(`
       INSERT INTO fx_trade_position_management
-        (trade_id, trade_type, position_management_mode, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?)
+        (
+          trade_id,
+          trade_type,
+          initial_position_management_mode,
+          current_position_management_mode,
+          created_at,
+          updated_at
+        )
+      VALUES (?, ?, ?, ?, ?, ?)
     `).run(
       firstRow.tradeId,
       firstRow.tradeType,
-      firstRow.positionManagementMode,
+      firstRow.initialPositionManagementMode,
+      firstRow.currentPositionManagementMode,
       firstRow.createdAt,
       firstRow.updatedAt
     ), /UNIQUE constraint failed/i);
     assert.throws(() => database.prepare(`
       UPDATE fx_trade_position_management
-      SET position_management_mode = 'UNVERIFIED'
+      SET current_position_management_mode = 'UNVERIFIED'
       WHERE trade_id = ? AND trade_type = ?
     `).run(firstRow.tradeId, firstRow.tradeType), /CHECK constraint failed/i);
     assert.throws(() => database.prepare(`
@@ -331,17 +383,27 @@ test("fx_trade_position_management has a constrained composite trade identity", 
     `).run(firstRow.tradeId, firstRow.tradeType), /CHECK constraint failed/i);
     assert.throws(() => database.prepare(`
       INSERT INTO fx_trade_position_management
-        (trade_id, trade_type, position_management_mode, created_at, updated_at)
-      VALUES (9007199254740000, 'CLIENT_DEAL', 'MANUAL', ?, ?)
+        (
+          trade_id,
+          trade_type,
+          initial_position_management_mode,
+          current_position_management_mode,
+          created_at,
+          updated_at
+        )
+      VALUES (9007199254740000, 'CLIENT_DEAL', 'MANUAL', 'MANUAL', ?, ?)
     `).run(firstRow.createdAt, firstRow.updatedAt), /FOREIGN KEY constraint failed/i);
 
     const clonedTradeId = cloneSeedExposure(database);
     const clonedManagement = database.prepare(`
-      SELECT position_management_mode AS mode
+      SELECT
+        initial_position_management_mode AS initialMode,
+        current_position_management_mode AS currentMode
       FROM fx_trade_position_management
       WHERE trade_id = ?
     `).get(clonedTradeId);
-    assert.equal(clonedManagement?.mode, "MANUAL");
+    assert.equal(clonedManagement?.initialMode, "MANUAL");
+    assert.equal(clonedManagement?.currentMode, "MANUAL");
     database.prepare("DELETE FROM fx_trade_exposure WHERE trade_id = ?")
       .run(clonedTradeId);
     assert.equal(database.prepare(`
@@ -391,8 +453,12 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
   });
   assert.equal(legacyBackfill.rows.length, legacyBackfill.exposures);
   assert.ok(legacyBackfill.rows.every(
-    row => row.positionManagementMode === "MANUAL"
+    row => row.initialPositionManagementMode === row.currentPositionManagementMode
   ));
+  assert.deepEqual(
+    new Set(legacyBackfill.rows.map(row => row.currentPositionManagementMode)),
+    new Set(["AUTO", "MANUAL"])
+  );
   legacyBackfill.rows.forEach(assertValidManagementTimestamp);
   assert.deepEqual(
     legacyBackfill.rows.map(row => [row.tradeId, row.tradeType]),
@@ -441,7 +507,8 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
     inheritedAutoClient.tradeId,
     "CLIENT_DEAL"
   );
-  assert.equal(inheritedAutoSnapshot.positionManagementMode, "AUTO");
+  assert.equal(inheritedAutoSnapshot.initialPositionManagementMode, "AUTO");
+  assert.equal(inheritedAutoSnapshot.currentPositionManagementMode, "AUTO");
 
   successfulBody(await request(
     "PUT",
@@ -466,8 +533,95 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
       databasePath,
       overriddenManualClient.tradeId,
       "CLIENT_DEAL"
-    ).positionManagementMode,
+    ).currentPositionManagementMode,
     "MANUAL"
+  );
+  assert.equal(
+    managementRow(
+      databasePath,
+      overriddenManualClient.tradeId,
+      "CLIENT_DEAL"
+    ).initialPositionManagementMode,
+    "MANUAL"
+  );
+
+  const sentToAuto = successfulBody(await request(
+    "POST",
+    "/api/v1/fx-positions/send-to-auto-batching",
+    {
+      trades: [{
+        tradeId: overriddenManualClient.tradeId,
+        tradeType: "CLIENT_DEAL"
+      }]
+    }
+  ), 200);
+  assert.equal(sentToAuto.transitionedCount, 1);
+  assert.equal(sentToAuto.replayed, false);
+  assert.equal(
+    sentToAuto.transitions[0].initialPositionManagementMode,
+    "MANUAL"
+  );
+  assert.equal(
+    sentToAuto.transitions[0].currentPositionManagementMode,
+    "AUTO"
+  );
+  const reviewedClientState = managementRow(
+    databasePath,
+    overriddenManualClient.tradeId,
+    "CLIENT_DEAL"
+  );
+  assert.equal(reviewedClientState.initialPositionManagementMode, "MANUAL");
+  assert.equal(reviewedClientState.currentPositionManagementMode, "AUTO");
+  assertValidManagementTimestamp(reviewedClientState);
+
+  const transitionAudit = withDatabase(databasePath, database => database.prepare(`
+    SELECT
+      from_position_management_mode AS fromMode,
+      to_position_management_mode AS toMode,
+      reason_code AS reasonCode,
+      transition_source AS transitionSource,
+      transitioned_at AS transitionedAt
+    FROM fx_trade_position_management_transitions
+    WHERE trade_id = ? AND trade_type = ?
+  `).all(overriddenManualClient.tradeId, "CLIENT_DEAL"));
+  assert.equal(transitionAudit.length, 1);
+  assert.equal(transitionAudit[0].fromMode, "MANUAL");
+  assert.equal(transitionAudit[0].toMode, "AUTO");
+  assert.equal(transitionAudit[0].reasonCode, "MANUAL_REVIEW_COMPLETED");
+  assert.equal(transitionAudit[0].transitionSource, "OPERATOR");
+  assert.equal(
+    transitionAudit[0].transitionedAt,
+    sentToAuto.transitions[0].transitionedAt
+  );
+
+  const replayedTransition = successfulBody(await request(
+    "POST",
+    "/api/v1/fx-positions/send-to-auto-batching",
+    {
+      trades: [{
+        tradeId: overriddenManualClient.tradeId,
+        tradeType: "CLIENT_DEAL"
+      }]
+    }
+  ), 200);
+  assert.equal(replayedTransition.transitionedCount, 0);
+  assert.equal(replayedTransition.replayedCount, 1);
+  assert.equal(replayedTransition.replayed, true);
+
+  const rejectedInitialAuto = await request(
+    "POST",
+    "/api/v1/fx-positions/send-to-auto-batching",
+    {
+      trades: [{
+        tradeId: inheritedAutoClient.tradeId,
+        tradeType: "CLIENT_DEAL"
+      }]
+    }
+  );
+  assert.equal(rejectedInitialAuto.statusCode, 409);
+  assert.equal(
+    rejectedInitialAuto.body.code,
+    "FX_POSITION_MODE_TRANSITION_REJECTED"
   );
 
   const manualFallbackPayload = {
@@ -486,7 +640,7 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
       databasePath,
       manualFallbackClient.tradeId,
       "CLIENT_DEAL"
-    ).positionManagementMode,
+    ).currentPositionManagementMode,
     "MANUAL"
   );
 
@@ -529,7 +683,8 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
     overriddenAutoHedge.tradeId,
     "HEDGE_DEAL"
   );
-  assert.equal(overriddenAutoHedgeSnapshot.positionManagementMode, "AUTO");
+  assert.equal(overriddenAutoHedgeSnapshot.initialPositionManagementMode, "AUTO");
+  assert.equal(overriddenAutoHedgeSnapshot.currentPositionManagementMode, "AUTO");
 
   successfulBody(await request(
     "PUT",
@@ -547,20 +702,26 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
   );
   assert.ok(fxPositions.length > 0);
   assert.ok(fxPositions.every(position =>
-    position.fxPositionMode === "MANUAL" || position.fxPositionMode === "AUTO"
+    position.currentFxPositionMode === "MANUAL"
+      || position.currentFxPositionMode === "AUTO"
+  ));
+  assert.ok(fxPositions.every(position =>
+    position.fxPositionMode === position.currentFxPositionMode
   ));
 
   const expectedModes = new Map([
-    [`${inheritedAutoClient.tradeId}:CLIENT_DEAL`, "AUTO"],
-    [`${overriddenManualClient.tradeId}:CLIENT_DEAL`, "MANUAL"],
-    [`${manualFallbackClient.tradeId}:CLIENT_DEAL`, "MANUAL"],
-    [`${overriddenAutoHedge.tradeId}:HEDGE_DEAL`, "AUTO"]
+    [`${inheritedAutoClient.tradeId}:CLIENT_DEAL`, ["AUTO", "AUTO"]],
+    [`${overriddenManualClient.tradeId}:CLIENT_DEAL`, ["MANUAL", "AUTO"]],
+    [`${manualFallbackClient.tradeId}:CLIENT_DEAL`, ["MANUAL", "MANUAL"]],
+    [`${overriddenAutoHedge.tradeId}:HEDGE_DEAL`, ["AUTO", "AUTO"]]
   ]);
   fxPositions.forEach(position => {
     const key = `${position.tradeId}:${position.tradeType}`;
 
     if (expectedModes.has(key)) {
-      assert.equal(position.fxPositionMode, expectedModes.get(key));
+      const [initialMode, currentMode] = expectedModes.get(key);
+      assert.equal(position.initialFxPositionMode, initialMode);
+      assert.equal(position.currentFxPositionMode, currentMode);
       expectedModes.delete(key);
     }
   });

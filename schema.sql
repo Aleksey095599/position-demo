@@ -832,12 +832,13 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
 
 CREATE TABLE IF NOT EXISTS fx_trade_position_management
 (
-    trade_id                 INTEGER NOT NULL,
-    trade_type               TEXT    NOT NULL,
-    position_management_mode TEXT    NOT NULL DEFAULT 'MANUAL',
-    created_at               TEXT    NOT NULL
+    trade_id                        INTEGER NOT NULL,
+    trade_type                      TEXT    NOT NULL,
+    initial_position_management_mode TEXT    NOT NULL DEFAULT 'MANUAL',
+    current_position_management_mode TEXT    NOT NULL DEFAULT 'MANUAL',
+    created_at                      TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-    updated_at               TEXT    NOT NULL
+    updated_at                      TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
     CONSTRAINT pk_fx_trade_position_management
@@ -847,8 +848,10 @@ CREATE TABLE IF NOT EXISTS fx_trade_position_management
             REFERENCES fx_trade_exposure (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE CASCADE,
-    CONSTRAINT chk_fx_trade_position_management_mode
-        CHECK (position_management_mode IN ('MANUAL', 'AUTO')),
+    CONSTRAINT chk_fx_trade_position_management_initial_mode
+        CHECK (initial_position_management_mode IN ('MANUAL', 'AUTO')),
+    CONSTRAINT chk_fx_trade_position_management_current_mode
+        CHECK (current_position_management_mode IN ('MANUAL', 'AUTO')),
     CONSTRAINT chk_fx_trade_position_management_created_at
         CHECK (
             length(created_at) = 24
@@ -861,6 +864,49 @@ CREATE TABLE IF NOT EXISTS fx_trade_position_management
             AND updated_at GLOB '????-??-??T??:??:??.???Z'
             AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
             AND updated_at >= created_at
+        )
+);
+
+CREATE TABLE IF NOT EXISTS fx_trade_position_management_transitions
+(
+    transition_id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    trade_id                     INTEGER NOT NULL,
+    trade_type                   TEXT    NOT NULL,
+    from_position_management_mode TEXT    NOT NULL,
+    to_position_management_mode   TEXT    NOT NULL,
+    reason_code                  TEXT    NOT NULL,
+    transition_source            TEXT    NOT NULL,
+    transitioned_at              TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT fk_fx_trade_position_management_transition_trade
+        FOREIGN KEY (trade_id, trade_type)
+            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            ON UPDATE RESTRICT
+            ON DELETE CASCADE,
+    CONSTRAINT uq_fx_trade_position_management_transition
+        UNIQUE
+        (
+            trade_id,
+            trade_type,
+            from_position_management_mode,
+            to_position_management_mode,
+            reason_code
+        ),
+    CONSTRAINT chk_fx_trade_position_management_transition_modes
+        CHECK (
+            from_position_management_mode = 'MANUAL'
+            AND to_position_management_mode = 'AUTO'
+        ),
+    CONSTRAINT chk_fx_trade_position_management_transition_reason
+        CHECK (reason_code = 'MANUAL_REVIEW_COMPLETED'),
+    CONSTRAINT chk_fx_trade_position_management_transition_source
+        CHECK (transition_source = 'OPERATOR'),
+    CONSTRAINT chk_fx_trade_position_management_transitioned_at
+        CHECK (
+            length(transitioned_at) = 24
+            AND transitioned_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', transitioned_at) = transitioned_at
         )
 );
 
@@ -1403,17 +1449,25 @@ CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_ccy_pair
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_trade_exposure_identity
     ON fx_trade_exposure (trade_id, trade_type);
 
-CREATE INDEX IF NOT EXISTS idx_fx_trade_position_management_mode
-    ON fx_trade_position_management (position_management_mode, trade_id);
+CREATE INDEX IF NOT EXISTS idx_fx_trade_position_management_current_mode
+    ON fx_trade_position_management (current_position_management_mode, trade_id);
+
+CREATE INDEX IF NOT EXISTS idx_fx_trade_position_management_transition_trade
+    ON fx_trade_position_management_transitions (trade_id, trade_type, transitioned_at);
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_trade_position_management_initialize
 AFTER INSERT ON fx_trade_exposure
 FOR EACH ROW
 BEGIN
     INSERT INTO fx_trade_position_management
-        (trade_id, trade_type, position_management_mode)
+        (
+            trade_id,
+            trade_type,
+            initial_position_management_mode,
+            current_position_management_mode
+        )
     VALUES
-        (NEW.trade_id, NEW.trade_type, 'MANUAL');
+        (NEW.trade_id, NEW.trade_type, 'MANUAL', 'MANUAL');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_fx_trade_exposure_require_dealt_ccy_insert

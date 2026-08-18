@@ -19,8 +19,8 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   ccy_options_grid: 6,
   ccy_pair_options_grid: 6,
   fx_position_grid: 12,
-  client_fx_deals_grid: 19,
-  hedge_fx_deals_grid: 20,
+  client_fx_deals_grid: 21,
+  hedge_fx_deals_grid: 22,
   analytical_pnl_report_grid: 12,
   analytical_pnl_summary_grid: 3,
   batching_history_grid: 6,
@@ -69,7 +69,28 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 202);
+  assert.equal(fullyQualifiedColumnKeys.size, 206);
+});
+
+test("keeps Initial and Current FX Position Mode together in FX deal layouts", () => {
+  ["client_fx_deals_grid", "hedge_fx_deals_grid"].forEach(tableKey => {
+    const columns = UI_TABLE_LAYOUTS[tableKey].columns;
+    const modeColumns = columns.filter(column =>
+      ["initial_fx_position_mode", "current_fx_position_mode"].includes(column.columnKey)
+    );
+
+    assert.deepEqual(
+      modeColumns.map(column => [column.columnKey, column.columnLabel]),
+      [
+        ["initial_fx_position_mode", "Initial FX Position Mode"],
+        ["current_fx_position_mode", "Current FX Position Mode"]
+      ]
+    );
+    assert.equal(
+      columns.findIndex(column => column.columnKey === "current_fx_position_mode") + 1,
+      columns.findIndex(column => column.columnKey === "transfer_rate")
+    );
+  });
 });
 
 test("keeps fresh-database defaults aligned with the UI layout registry", () => {

@@ -104,6 +104,9 @@ const {
   normalizeFxPositionManagementMode,
   resolveFxPositionManagementMode
 } = require("./backend/fx-position-management/domain/fx-position-management-policy");
+const {
+  SendFxTradesToAutoPositionManagementUseCase
+} = require("./backend/fx-position-management/application/send-fx-trades-to-auto-position-management-use-case");
 
 const HOST = "127.0.0.1";
 const UI_TABLE_DEFAULT_CONFIRMATION = "SAVE_AS_DEFAULT";
@@ -238,6 +241,7 @@ if (sqliteTableExists(database, "fx_batches")) {
   ensureFxBatchFormationTiming(database);
   ensureFxBatchFormationReason(database);
 }
+migrateFxTradePositionManagementState(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 if (!fxTradePositionManagementAlreadyInitialized) {
   database.exec(`
@@ -726,6 +730,154 @@ function ensureFxPositionManagementPolicyColumns(sqlite) {
   }
 }
 
+function migrateFxTradePositionManagementState(sqlite) {
+  if (!sqliteTableExists(sqlite, "fx_trade_position_management")) {
+    return;
+  }
+
+  const columns = tableColumnNames(sqlite, "fx_trade_position_management");
+  const canonicalColumns = [
+    "trade_id",
+    "trade_type",
+    "initial_position_management_mode",
+    "current_position_management_mode",
+    "created_at",
+    "updated_at"
+  ];
+
+  if (
+    columns.size === canonicalColumns.length
+    && canonicalColumns.every(column => columns.has(column))
+  ) {
+    return;
+  }
+
+  const legacyCurrentColumn = columns.has("current_position_management_mode")
+    ? "current_position_management_mode"
+    : columns.has("position_management_mode")
+      ? "position_management_mode"
+      : null;
+  const initialColumn = columns.has("initial_position_management_mode")
+    ? "initial_position_management_mode"
+    : legacyCurrentColumn;
+  const requiredColumns = ["trade_id", "trade_type", "created_at", "updated_at"];
+
+  if (
+    !legacyCurrentColumn
+    || !initialColumn
+    || requiredColumns.some(column => !columns.has(column))
+  ) {
+    throw new Error(
+      "FX Trade Position Management schema cannot be migrated safely."
+    );
+  }
+
+  const originalRowCount = Number(sqlite.prepare(`
+    SELECT COUNT(*) AS count
+    FROM fx_trade_position_management
+  `).get().count);
+
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    sqlite.exec(`
+      DROP TRIGGER IF EXISTS trg_fx_trade_position_management_initialize;
+      DROP INDEX IF EXISTS idx_fx_trade_position_management_mode;
+      DROP INDEX IF EXISTS idx_fx_trade_position_management_current_mode;
+
+      CREATE TABLE fx_trade_position_management_migrated
+      (
+          trade_id                          INTEGER NOT NULL,
+          trade_type                        TEXT    NOT NULL,
+          initial_position_management_mode  TEXT    NOT NULL DEFAULT 'MANUAL',
+          current_position_management_mode  TEXT    NOT NULL DEFAULT 'MANUAL',
+          created_at                        TEXT    NOT NULL
+              DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          updated_at                        TEXT    NOT NULL
+              DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+          CONSTRAINT pk_fx_trade_position_management
+              PRIMARY KEY (trade_id, trade_type),
+          CONSTRAINT fk_fx_trade_position_management_trade
+              FOREIGN KEY (trade_id, trade_type)
+                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  ON UPDATE RESTRICT
+                  ON DELETE CASCADE,
+          CONSTRAINT chk_fx_trade_position_management_initial_mode
+              CHECK (initial_position_management_mode IN ('MANUAL', 'AUTO')),
+          CONSTRAINT chk_fx_trade_position_management_current_mode
+              CHECK (current_position_management_mode IN ('MANUAL', 'AUTO')),
+          CONSTRAINT chk_fx_trade_position_management_created_at
+              CHECK (
+                  length(created_at) = 24
+                  AND created_at GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
+              ),
+          CONSTRAINT chk_fx_trade_position_management_updated_at
+              CHECK (
+                  length(updated_at) = 24
+                  AND updated_at GLOB '????-??-??T??:??:??.???Z'
+                  AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
+                  AND updated_at >= created_at
+              )
+      );
+
+      INSERT INTO fx_trade_position_management_migrated
+        (
+          trade_id,
+          trade_type,
+          initial_position_management_mode,
+          current_position_management_mode,
+          created_at,
+          updated_at
+        )
+      SELECT
+        trade_id,
+        trade_type,
+        ${initialColumn},
+        ${legacyCurrentColumn},
+        created_at,
+        updated_at
+      FROM fx_trade_position_management
+      ORDER BY trade_id, trade_type;
+
+      DROP TABLE fx_trade_position_management;
+      ALTER TABLE fx_trade_position_management_migrated
+        RENAME TO fx_trade_position_management;
+    `);
+
+    const migratedRowCount = Number(sqlite.prepare(`
+      SELECT COUNT(*) AS count
+      FROM fx_trade_position_management
+    `).get().count);
+
+    if (migratedRowCount !== originalRowCount) {
+      throw new Error(
+        "FX Trade Position Management migration did not preserve every row."
+      );
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+
+  const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+  if (foreignKeyViolations.length > 0) {
+    throw new Error(
+      "FX Trade Position Management migration produced foreign key violations."
+    );
+  }
+}
+
 function ensureFxTradePositionManagementRows(sqlite) {
   if (!sqliteTableExists(sqlite, "fx_trade_position_management")) {
     return;
@@ -733,10 +885,16 @@ function ensureFxTradePositionManagementRows(sqlite) {
 
   sqlite.exec(`
     INSERT INTO fx_trade_position_management
-      (trade_id, trade_type, position_management_mode)
+      (
+        trade_id,
+        trade_type,
+        initial_position_management_mode,
+        current_position_management_mode
+      )
     SELECT
       exposure.trade_id,
       exposure.trade_type,
+      'MANUAL',
       'MANUAL'
     FROM fx_trade_exposure exposure
     WHERE NOT EXISTS
@@ -7799,6 +7957,15 @@ function clientFxDeals() {
     SELECT
       e.trade_id AS tradeId,
       e.trade_id AS clientDealId,
+      COALESCE(
+        management.initial_position_management_mode,
+        management.current_position_management_mode,
+        'MANUAL'
+      ) AS initialFxPositionMode,
+      COALESCE(
+        management.current_position_management_mode,
+        'MANUAL'
+      ) AS currentFxPositionMode,
       e.execution_timestamp AS executionTimestamp,
       e.received_timestamp AS receivedTimestamp,
       d.counterparty_id AS counterpartyId,
@@ -7832,6 +7999,9 @@ function clientFxDeals() {
     FROM client_fx_deals d
     INNER JOIN fx_trade_exposure e
       ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
+    LEFT JOIN fx_trade_position_management management
+      ON management.trade_id = e.trade_id
+      AND management.trade_type = e.trade_type
     INNER JOIN trading_counterparties p ON p.counterparty_id = d.counterparty_id
     LEFT JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
     LEFT JOIN internal_units internal ON internal.counterparty_id = p.counterparty_id
@@ -7852,6 +8022,15 @@ function hedgeFxDeals() {
     SELECT
       e.trade_id AS tradeId,
       e.trade_id AS hedgeDealId,
+      COALESCE(
+        management.initial_position_management_mode,
+        management.current_position_management_mode,
+        'MANUAL'
+      ) AS initialFxPositionMode,
+      COALESCE(
+        management.current_position_management_mode,
+        'MANUAL'
+      ) AS currentFxPositionMode,
       e.execution_timestamp AS executionTimestamp,
       e.received_timestamp AS receivedTimestamp,
       d.request_timestamp AS requestTimestamp,
@@ -7885,6 +8064,9 @@ function hedgeFxDeals() {
     FROM fx_hedge_deals d
     INNER JOIN fx_trade_exposure e
       ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
+    LEFT JOIN fx_trade_position_management management
+      ON management.trade_id = e.trade_id
+      AND management.trade_type = e.trade_type
     INNER JOIN trading_counterparties p ON p.counterparty_id = d.counterparty_id
     LEFT JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
     LEFT JOIN internal_units internal ON internal.counterparty_id = p.counterparty_id
@@ -7989,7 +8171,20 @@ function fxPositions() {
     SELECT
       e.trade_id AS tradeId,
       e.trade_type AS tradeType,
-      COALESCE(management.position_management_mode, 'MANUAL') AS fxPositionMode,
+      COALESCE(
+        management.initial_position_management_mode,
+        management.current_position_management_mode,
+        'MANUAL'
+      ) AS initialFxPositionMode,
+      COALESCE(
+        management.current_position_management_mode,
+        'MANUAL'
+      ) AS currentFxPositionMode,
+      COALESCE(
+        management.current_position_management_mode,
+        'MANUAL'
+      ) AS fxPositionMode,
+      management.updated_at AS positionManagementModeChangedAt,
       e.execution_timestamp AS executionTimestamp,
       e.received_timestamp AS receivedTimestamp,
       e.trade_date AS tradeDate,
@@ -8779,6 +8974,17 @@ function saveFormedFxBatch({
       );
       const tradeId = Number(exposureResult.lastInsertRowid);
 
+      if (trade.tradeType === "BATCH_POSITION_OUT") {
+        materializeFxTradePositionModeState(database, {
+          tradeId,
+          tradeType: trade.tradeType,
+          positionManagementMode: formationReason.reasonCode
+            === FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION
+            ? FX_POSITION_MANAGEMENT_MODE.MANUAL
+            : FX_POSITION_MANAGEMENT_MODE.AUTO
+        });
+      }
+
       if (trade.tradeType === "BATCH_BALANCE_TRADE") {
         insertMember.run(
           batchId,
@@ -9169,6 +9375,32 @@ function initialFxPositionMode(sqlite, {
   return resolveFxPositionManagementMode(policy);
 }
 
+function materializeFxTradePositionModeState(sqlite, {
+  tradeId,
+  tradeType,
+  positionManagementMode
+}) {
+  const fxPositionMode = normalizeFxPositionManagementMode(
+    positionManagementMode,
+    "Initial FX Position Mode"
+  );
+  const result = sqlite.prepare(`
+    UPDATE fx_trade_position_management
+    SET initial_position_management_mode = ?,
+        current_position_management_mode = ?,
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE trade_id = ? AND trade_type = ?
+  `).run(fxPositionMode, fxPositionMode, tradeId, tradeType);
+
+  if (result.changes !== 1) {
+    throw new Error(
+      `FX Position Mode state was not initialized for ${tradeType} ${tradeId}.`
+    );
+  }
+
+  return fxPositionMode;
+}
+
 function materializeFxTradePositionMode(sqlite, {
   tradeId,
   tradeType,
@@ -9179,21 +9411,113 @@ function materializeFxTradePositionMode(sqlite, {
     pricingRuleId,
     executionContextId
   });
-  const result = sqlite.prepare(`
-    UPDATE fx_trade_position_management
-    SET position_management_mode = ?,
-        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-    WHERE trade_id = ? AND trade_type = ?
-  `).run(fxPositionMode, tradeId, tradeType);
 
-  if (result.changes !== 1) {
-    throw new Error(
-      `FX Position Mode state was not initialized for ${tradeType} ${tradeId}.`
+  return materializeFxTradePositionModeState(sqlite, {
+    tradeId,
+    tradeType,
+    positionManagementMode: fxPositionMode
+  });
+}
+
+function fxTradePositionManagementStates(identities) {
+  const findState = database.prepare(`
+    SELECT
+      management.trade_id AS tradeId,
+      management.trade_type AS tradeType,
+      management.initial_position_management_mode AS initialPositionManagementMode,
+      management.current_position_management_mode AS currentPositionManagementMode,
+      EXISTS
+      (
+        SELECT 1
+        FROM fx_batch_members member
+        INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+        WHERE member.trade_id = management.trade_id
+          AND member.trade_type = management.trade_type
+          AND batch.batch_status IN
+            (${FX_BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS})
+      ) AS batchBlocked,
+      transition.transitioned_at AS transitionedAt
+    FROM fx_trade_position_management management
+    LEFT JOIN fx_trade_position_management_transitions transition
+      ON transition.trade_id = management.trade_id
+      AND transition.trade_type = management.trade_type
+      AND transition.reason_code = 'MANUAL_REVIEW_COMPLETED'
+    WHERE management.trade_id = ?
+      AND management.trade_type = ?
+  `);
+
+  return identities.map(identity => findState.get(
+    ...FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES,
+    identity.tradeId,
+    identity.tradeType
+  )).filter(Boolean);
+}
+
+function saveFxTradePositionManagementTransition({
+  identity,
+  initialPositionManagementMode,
+  previousPositionManagementMode,
+  currentPositionManagementMode,
+  transitionReason,
+  transitionedAt
+}) {
+  const update = database.prepare(`
+    UPDATE fx_trade_position_management
+    SET current_position_management_mode = ?,
+        updated_at = ?
+    WHERE trade_id = ?
+      AND trade_type = ?
+      AND initial_position_management_mode = ?
+      AND current_position_management_mode = ?
+  `).run(
+    currentPositionManagementMode,
+    transitionedAt,
+    identity.tradeId,
+    identity.tradeType,
+    initialPositionManagementMode,
+    previousPositionManagementMode
+  );
+
+  if (update.changes !== 1) {
+    const error = new Error(
+      `FX Trade ${identity.tradeId} (${identity.tradeType}) changed during the FX Position Mode transition.`
     );
+    error.code = "FX_POSITION_MODE_TRANSITION_CONFLICT";
+    throw error;
   }
 
-  return fxPositionMode;
+  database.prepare(`
+    INSERT INTO fx_trade_position_management_transitions
+      (
+        trade_id,
+        trade_type,
+        from_position_management_mode,
+        to_position_management_mode,
+        reason_code,
+        transition_source,
+        transitioned_at
+      )
+    VALUES (?, ?, ?, ?, ?, 'OPERATOR', ?)
+  `).run(
+    identity.tradeId,
+    identity.tradeType,
+    previousPositionManagementMode,
+    currentPositionManagementMode,
+    transitionReason,
+    transitionedAt
+  );
 }
+
+const sendFxTradesToAutoPositionManagementUseCase =
+  new SendFxTradesToAutoPositionManagementUseCase({
+    transactionRunner: {
+      run: operation => runInImmediateTransaction(database, operation)
+    },
+    fxTradePositionManagementRepository: {
+      findByIdentities: fxTradePositionManagementStates,
+      saveTransition: saveFxTradePositionManagementTransition
+    }
+  });
 
 function nextFxAutoBatchPlan({
   afterTradeId = 0,
@@ -9663,6 +9987,15 @@ function demoTradeTableCounts() {
     marketSnapshots: Number(
       database.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count
     ),
+    positionManagementStates: Number(
+      database.prepare("SELECT COUNT(*) AS count FROM fx_trade_position_management").get().count
+    ),
+    positionManagementTransitions: Number(
+      database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM fx_trade_position_management_transitions
+      `).get().count
+    ),
     batches: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count),
     manualBatchFormations: Number(
       database.prepare("SELECT COUNT(*) AS count FROM fx_manual_batch_formations").get().count
@@ -9724,7 +10057,12 @@ function resetDemoTrades() {
       DELETE FROM fx_hedge_deals;
       DELETE FROM fx_trade_exposure;
       DELETE FROM sqlite_sequence
-      WHERE name IN ('fx_batches', 'fx_manual_batch_formations');
+      WHERE name IN
+        (
+          'fx_batches',
+          'fx_manual_batch_formations',
+          'fx_trade_position_management_transitions'
+        );
     `);
 
     for (const trigger of triggerDefinitions) {
@@ -11670,6 +12008,42 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (
+    pathname === "/api/v1/fx-positions/send-to-auto-batching"
+    && method === "POST"
+  ) {
+    const body = await readJsonBody(request);
+
+    try {
+      const result = sendFxTradesToAutoPositionManagementUseCase.execute(body);
+
+      if (result.transitionedCount > 0) {
+        fxAutoBatchingProcess.requestEvaluation();
+      }
+
+      sendJson(response, 200, result);
+    } catch (error) {
+      if (
+        error?.code === "INVALID_FX_POSITION_MODE_TRANSITION_COMMAND"
+        || error?.code === "INVALID_FX_TRADE_IDENTITY"
+      ) {
+        apiError(response, 400, error.code, error.message);
+      } else if (error?.code === "FX_POSITION_TRADE_NOT_FOUND") {
+        apiError(response, 404, error.code, error.message);
+      } else if (
+        error?.code === "FX_POSITION_MODE_TRANSITION_REJECTED"
+        || error?.code === "FX_POSITION_MODE_TRANSITION_BLOCKED"
+        || error?.code === "FX_POSITION_MODE_TRANSITION_CONFLICT"
+      ) {
+        apiError(response, 409, error.code, error.message);
+      } else {
+        handleDatabaseError(response, error);
+      }
+    }
+
+    return true;
+  }
+
   if (pathname === "/api/v1/fx-batching-settings" && method === "GET") {
     sendJson(response, 200, fxBatchingSettings());
     return true;
@@ -13553,6 +13927,7 @@ const MIME_TYPES = {
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
   ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
   ".ico": "image/x-icon"
 };
 

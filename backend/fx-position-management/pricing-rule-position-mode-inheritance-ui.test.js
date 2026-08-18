@@ -41,7 +41,7 @@ function queryRow(controls) {
   };
 }
 
-test("global and client editors expose the same explicit inheritance control", () => {
+test("global and client editors expose explicit inheritance controls", () => {
   const dialogMarkup = html.match(
     /<form\b[^>]*\bid="clientPricingRuleForm"[\s\S]*?<\/form>/
   )?.[0] || "";
@@ -49,7 +49,7 @@ test("global and client editors expose the same explicit inheritance control", (
   const inlineEditorSource = topLevelFunctionSource("clientPricingRuleInlineEditorMarkup");
 
   assert.equal(
-    (html.match(/>Use Execution Context default<\/span>/g) || []).length,
+    (html.match(/>Execution Context Default<\/span>/g) || []).length,
     3
   );
 
@@ -61,12 +61,12 @@ test("global and client editors expose the same explicit inheritance control", (
     globalEditorSource,
     /data-pricing-rule-field="positionManagementModeOverride"/
   );
-  assert.match(globalEditorSource, />Use Execution Context default<\/span>/);
+  assert.match(globalEditorSource, />Execution Context Default<\/span>/);
 
   assert.match(dialogMarkup, /id="clientPricingRuleUseExecutionContextDefault"/);
   assert.match(dialogMarkup, /name="useExecutionContextDefault"/);
   assert.match(dialogMarkup, /aria-controls="clientPricingRulePositionManagementModeOverride"/);
-  assert.match(dialogMarkup, />Use Execution Context default<\/span>/);
+  assert.match(dialogMarkup, />Execution Context Default<\/span>/);
   assert.match(
     dialogMarkup,
     /id="clientPricingRulePositionManagementModeOverride"[^>]*name="positionManagementModeOverride"[^>]*disabled/
@@ -80,18 +80,127 @@ test("global and client editors expose the same explicit inheritance control", (
     inlineEditorSource,
     /data-client-pricing-rule-inline-field="positionManagementModeOverride"/
   );
-  assert.match(inlineEditorSource, />Use Execution Context default<\/span>/);
+  assert.match(inlineEditorSource, />Execution Context Default<\/span>/);
+  assert.doesNotMatch(inlineEditorSource, /positionManagementModeChoice/);
+
+  const positionManagementModeLabelsSource = inlineScript.match(
+    /const POSITION_MANAGEMENT_MODE_LABELS = Object\.freeze\(\{[\s\S]*?\}\);/
+  )?.[0] || "";
+  assert.ok(positionManagementModeLabelsSource);
+  const positionManagementModeLabel = new Function(
+    "normalizedPositionManagementMode",
+    `${positionManagementModeLabelsSource}
+     ${topLevelFunctionSource("positionManagementModeLabel")};
+     return positionManagementModeLabel;`
+  )(normalizedMode);
+  assert.equal(positionManagementModeLabel("MANUAL"), "Manual Control");
+  assert.equal(positionManagementModeLabel("AUTO"), "Auto Batching & Hedging");
 
   const options = new Function(
     "normalizedPositionManagementMode",
+    "escapeHtml",
+    "positionManagementModeLabel",
     `${topLevelFunctionSource("positionManagementModeOptions")}; return positionManagementModeOptions;`
-  )(normalizedMode);
-  assert.match(options("MANUAL"), /<option value="MANUAL" selected>Manual<\/option>/);
-  assert.match(options("AUTO"), /<option value="AUTO" selected>Auto<\/option>/);
+  )(
+    normalizedMode,
+    value => value,
+    positionManagementModeLabel
+  );
+  assert.match(options("MANUAL"), /<option value="MANUAL" selected>Manual Control<\/option>/);
+  assert.match(options("AUTO"), /<option value="AUTO" selected>Auto Batching & Hedging<\/option>/);
   assert.doesNotMatch(options("AUTO"), /<option value="">/);
+
 });
 
-test("checked maps to null and unchecked maps only to MANUAL or AUTO on every editor", () => {
+test("read-only client branches show only the effective FX Position Mode", () => {
+  const globalViewSource = topLevelFunctionSource("pricingRulePositionManagementModeMarkup");
+  const clientViewSource = topLevelFunctionSource("clientPricingRulePositionManagementModeMarkup");
+  const clientView = new Function(
+    "effectivePositionManagementModeForRule",
+    "positionManagementModeLabel",
+    "escapeHtml",
+    `${clientViewSource}; return clientPricingRulePositionManagementModeMarkup;`
+  )(
+    rule => rule.positionManagementModeOverride || "AUTO",
+    value => value === "AUTO" ? "Auto Batching & Hedging" : "Manual Control",
+    value => value
+  );
+
+  assert.doesNotMatch(globalViewSource, /Execution Context default|Pricing Rule override|Effective:/);
+  const inheritedMarkup = clientView({ positionManagementModeOverride: null });
+  assert.match(inheritedMarkup, /client-pricing-configuration-node-copy is-read-only/);
+  assert.match(inheritedMarkup, /Auto Batching & Hedging/);
+  assert.doesNotMatch(inheritedMarkup, /checkbox|Execution Context Default|client-pricing-configuration-inheritance-indicator|>link<\/span>/);
+
+  const explicitMarkup = clientView({ positionManagementModeOverride: "MANUAL" });
+  assert.match(explicitMarkup, /Manual Control/);
+  assert.doesNotMatch(explicitMarkup, /checkbox|Execution Context Default|Pricing Rule override|Effective:|client-pricing-configuration-inheritance-indicator|>edit<\/span>/);
+});
+
+test("client Pricing Rules use one context strip with lightweight branches", () => {
+  const panelSource = topLevelFunctionSource("renderClientExecutionContextsPanel");
+  const attachButtonMarkup = html.match(
+    /<button\b[^>]*\bid="clientExecutionContextsAttachButton"[\s\S]*?<\/button>/
+  )?.[0] || "";
+
+  assert.match(
+    panelSource,
+    /client-pricing-configuration-rule-piece is-pair[\s\S]*?data-tooltip="Ccy Pair">swap_horiz<\/span>[\s\S]*?client-pricing-configuration-rule-pair/
+  );
+  assert.match(
+    panelSource,
+    /client-pricing-configuration-rule-separator[\s\S]*?client-pricing-configuration-rule-piece is-mode[\s\S]*?data-tooltip="FX Position Mode">table_chart<\/span>[\s\S]*?clientPricingRulePositionManagementModeMarkup/
+  );
+  assert.match(
+    panelSource,
+    /client-pricing-configuration-rule-piece is-margin[\s\S]*?data-tooltip="Margin">savings<\/span>[\s\S]*?client-pricing-configuration-margin/
+  );
+  assert.match(
+    panelSource,
+    /client-pricing-configuration-context-title[\s\S]*?data-tooltip="Execution Context">hub<\/span>[\s\S]*?>Execution Context<\/span>/
+  );
+  assert.match(
+    panelSource,
+    /client-pricing-configuration-context-relation[\s\S]*?data-tooltip="Pricing Mode">price_change<\/span>[\s\S]*?>Pricing Mode<\/span>/
+  );
+  assert.doesNotMatch(panelSource, /Pricing Context|with Pricing Mode =/);
+  assert.match(
+    html,
+    /\.client-pricing-configuration-tree > \.client-pricing-configuration-context \{[\s\S]*?border: 0;[\s\S]*?background: transparent;/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-context-head \{[\s\S]*?border: 1px solid var\(--bs-border-color\);[\s\S]*?background: var\(--workbench-grid-header-bg\);/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-branch \{[\s\S]*?border-left: 1px solid var\(--bs-border-color\);/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-node \{[\s\S]*?display: flex;[\s\S]*?border: 0;[\s\S]*?background: transparent;/
+  );
+  assert.doesNotMatch(
+    html,
+    /\.client-pricing-configuration-rule-piece\.is-(?:pair|mode|margin) \{[\s\S]*?min-width:/
+  );
+  assert.match(
+    html,
+    /#clientProfilePage\.unified-bootstrap-workspace\.workbench-page \.reference-new-button \{[\s\S]*?min-height: 34px;[\s\S]*?padding: 0 14px;/
+  );
+  assert.match(attachButtonMarkup, /class="btn btn-sm btn-primary reference-new-button"/);
+  assert.match(attachButtonMarkup, />Attach Execution Context<\/span>/);
+  assert.match(
+    panelSource,
+    /class="btn btn-sm btn-primary reference-new-button client-pricing-configuration-add-rule"/
+  );
+  assert.match(panelSource, /data-tooltip="Edit Pricing Rule"/);
+  assert.match(panelSource, /data-tooltip="Delete Pricing Rule"/);
+  assert.doesNotMatch(attachButtonMarkup, /btn-outline-primary|>\+ Attach/);
+  assert.doesNotMatch(panelSource, /btn-outline-primary with-icon client-pricing-configuration-add-rule/);
+});
+
+test("inheritance controls map only to null, MANUAL or AUTO", () => {
   const globalResolver = new Function(
     "normalizedPositionManagementModeOverride",
     "normalizedPositionManagementMode",
@@ -121,46 +230,41 @@ test("checked maps to null and unchecked maps only to MANUAL or AUTO on every ed
      return clientPricingRuleInlinePositionManagementModeOverride;`
   )(normalizedOverride, normalizedMode);
 
-  const cases = [
-    {
-      resolve: globalResolver,
-      row: queryRow({
-        "[data-pricing-rule-field='useExecutionContextDefault']": { checked: true },
-        "[data-pricing-rule-field='positionManagementModeOverride']": { value: "AUTO" }
-      })
-    },
-    { resolve: dialogResolver, row: undefined, form: dialogForm },
-    {
-      resolve: inlineResolver,
-      row: queryRow({
-        '[data-client-pricing-rule-inline-field="useExecutionContextDefault"]': { checked: true },
-        '[data-client-pricing-rule-inline-field="positionManagementModeOverride"]': { value: "AUTO" }
-      })
-    }
-  ];
+  const globalControls = {
+    "[data-pricing-rule-field='useExecutionContextDefault']": { checked: true },
+    "[data-pricing-rule-field='positionManagementModeOverride']": { value: "AUTO" }
+  };
+  const globalRow = queryRow(globalControls);
+  assert.equal(globalResolver(globalRow), null);
+  globalControls["[data-pricing-rule-field='useExecutionContextDefault']"].checked = false;
+  globalControls["[data-pricing-rule-field='positionManagementModeOverride']"].value = "MANUAL";
+  assert.equal(globalResolver(globalRow), "MANUAL");
+  globalControls["[data-pricing-rule-field='positionManagementModeOverride']"].value = "AUTO";
+  assert.equal(globalResolver(globalRow), "AUTO");
 
-  cases.forEach(entry => {
-    assert.equal(entry.resolve(entry.row), null);
+  assert.equal(dialogResolver(), null);
+  dialogForm.elements.useExecutionContextDefault.checked = false;
+  dialogForm.elements.positionManagementModeOverride.value = "MANUAL";
+  assert.equal(dialogResolver(), "MANUAL");
+  dialogForm.elements.positionManagementModeOverride.value = "AUTO";
+  assert.equal(dialogResolver(), "AUTO");
 
-    if (entry.form) {
-      entry.form.elements.useExecutionContextDefault.checked = false;
-      entry.form.elements.positionManagementModeOverride.value = "MANUAL";
-      assert.equal(entry.resolve(), "MANUAL");
-      entry.form.elements.positionManagementModeOverride.value = "AUTO";
-      assert.equal(entry.resolve(), "AUTO");
-      return;
-    }
-
-    const selectorPrefix = entry.resolve === globalResolver
-      ? "[data-pricing-rule-field='"
-      : '[data-client-pricing-rule-inline-field="';
-    const selectorSuffix = entry.resolve === globalResolver ? "']" : '"]';
-    entry.row.querySelector(`${selectorPrefix}useExecutionContextDefault${selectorSuffix}`).checked = false;
-    entry.row.querySelector(`${selectorPrefix}positionManagementModeOverride${selectorSuffix}`).value = "MANUAL";
-    assert.equal(entry.resolve(entry.row), "MANUAL");
-    entry.row.querySelector(`${selectorPrefix}positionManagementModeOverride${selectorSuffix}`).value = "AUTO";
-    assert.equal(entry.resolve(entry.row), "AUTO");
+  const inlineInherit = { checked: true };
+  const inlineOverride = {
+    value: "AUTO",
+    dataset: { positionManagementModeInherited: "true" },
+    setCustomValidity() {}
+  };
+  const inlineRow = queryRow({
+    '[data-client-pricing-rule-inline-field="useExecutionContextDefault"]': inlineInherit,
+    '[data-client-pricing-rule-inline-field="positionManagementModeOverride"]': inlineOverride
   });
+  assert.equal(inlineResolver(inlineRow), null);
+  inlineInherit.checked = false;
+  inlineOverride.value = "MANUAL";
+  assert.equal(inlineResolver(inlineRow), "MANUAL");
+  inlineOverride.value = "AUTO";
+  assert.equal(inlineResolver(inlineRow), "AUTO");
 });
 
 test("temporarily using the context default preserves the explicit draft", () => {
@@ -197,7 +301,7 @@ test("temporarily using the context default preserves the explicit draft", () =>
   overrideControl.value = "";
   assert.equal(resolveOverride(inheritControl, overrideControl), undefined);
   assert.equal(overrideControl.required, true);
-  assert.equal(overrideControl.validityMessage, "Select Manual or Auto.");
+  assert.equal(overrideControl.validityMessage, "Select an FX Position mode.");
 });
 
 test("inheritance disables selectors and explicit mode re-enables them", () => {
@@ -237,40 +341,33 @@ test("inheritance disables selectors and explicit mode re-enables them", () => {
       pricingContextId: { value: "42" }
     }
   };
-  const effectiveLabel = { textContent: "" };
-  const updateDialog = new Function(
+  const syncDialog = new Function(
     "clientPricingRuleForm",
     "clientPricingRuleEditState",
     "clientPricingRules",
     "normalizedPositionManagementModeOverride",
     "normalizedPositionManagementMode",
     "effectivePositionManagementModeForRule",
-    "clientPricingRuleEffectivePositionMode",
-    "positionManagementModeLabel",
     `${topLevelFunctionSource("positionManagementModeOverrideFromControls")}
      ${topLevelFunctionSource("clientPricingRuleDialogPositionManagementModeOverride")}
-     ${topLevelFunctionSource("updateClientPricingRuleEffectivePositionMode")};
-     return updateClientPricingRuleEffectivePositionMode;`
+     ${topLevelFunctionSource("syncClientPricingRulePositionManagementModeControls")};
+     return syncClientPricingRulePositionManagementModeControls;`
   )(
     dialogForm,
     { mode: "create" },
     [],
     normalizedOverride,
     normalizedMode,
-    ({ positionManagementModeOverride }) => positionManagementModeOverride || "AUTO",
-    effectiveLabel,
-    value => value === "AUTO" ? "Auto" : "Manual"
+    ({ positionManagementModeOverride }) => positionManagementModeOverride || "AUTO"
   );
 
-  updateDialog();
+  syncDialog();
   assert.equal(dialogForm.elements.positionManagementModeOverride.value, "AUTO");
   assert.equal(dialogForm.elements.positionManagementModeOverride.disabled, true);
-  assert.match(effectiveLabel.textContent, /Execution Context default/);
   dialogForm.elements.useExecutionContextDefault.checked = false;
   dialogForm.elements.positionManagementModeOverride.value = "MANUAL";
-  updateDialog();
+  syncDialog();
   assert.equal(dialogForm.elements.positionManagementModeOverride.disabled, false);
-  assert.match(effectiveLabel.textContent, /Pricing Rule override/);
 
   const inlineControls = {
     '[data-client-pricing-rule-inline-action="save"]': { disabled: true, title: "" },
@@ -281,10 +378,11 @@ test("inheritance disables selectors and explicit mode re-enables them", () => {
     },
     '[data-client-pricing-rule-inline-field="positionManagementModeOverride"]': {
       value: "MANUAL",
-      disabled: false
+      disabled: false,
+      dataset: { positionManagementModeInherited: "true" },
+      setCustomValidity() {}
     },
-    '[data-client-pricing-rule-inline-field="marginPercent"]': { value: "1.25" },
-    "[data-client-pricing-rule-inline-effective-position-mode]": { textContent: "" }
+    '[data-client-pricing-rule-inline-field="marginPercent"]': { value: "1.25" }
   };
   const inlineState = {
     mode: "create",
@@ -298,7 +396,6 @@ test("inheritance disables selectors and explicit mode re-enables them", () => {
     "normalizedPositionManagementMode",
     "effectivePositionManagementModeForRule",
     "normalizeNumber",
-    "positionManagementModeLabel",
     `${topLevelFunctionSource("positionManagementModeOverrideFromControls")}
      ${topLevelFunctionSource("clientPricingRuleInlinePositionManagementModeOverride")}
      ${topLevelFunctionSource("updateClientPricingRuleInlineEditorAvailability")};
@@ -309,8 +406,7 @@ test("inheritance disables selectors and explicit mode re-enables them", () => {
     normalizedOverride,
     normalizedMode,
     ({ positionManagementModeOverride }) => positionManagementModeOverride || "AUTO",
-    value => Number.isFinite(Number(value)) ? Number(value) : null,
-    value => value === "AUTO" ? "Auto" : "Manual"
+    value => Number.isFinite(Number(value)) ? Number(value) : null
   );
   const inlineRow = queryRow(inlineControls);
 

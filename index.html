@@ -4,10 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FX Position</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,500,0,0">
   <link rel="stylesheet" href="./vendor/bootstrap/bootstrap.min.css">
   <link rel="stylesheet" href="./vendor/tabulator/tabulator_bootstrap5.min.css">
   <style>
+    @font-face {
+      font-family: "Material Symbols Outlined";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("./vendor/material-symbols/material-symbols-outlined.woff2") format("woff2");
+    }
+
     :root {
       /* Canonical Bootstrap 5 palette; values mirror ui_color_tokens. */
       --palette-blue-100: #CFE2FF;
@@ -9242,26 +9249,20 @@
 
     .fx-deals-view-switch {
       display: inline-flex;
-      gap: 6px;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      padding-left: 2.5em;
+      white-space: nowrap;
     }
 
-    .fx-deals-view-switch .btn {
-      min-width: 72px;
-      justify-content: center;
-      margin-left: 0;
-      border-radius: var(--workbench-radius);
+    .fx-deals-view-switch .form-check-input {
+      margin-top: 0;
     }
 
-    .client-deals-bootstrap .fx-deals-view-switch .btn.active {
-      border-color: rgba(var(--bs-primary-rgb), 0.55);
-      background: rgba(var(--bs-primary-rgb), 0.1);
-      color: var(--bs-primary);
-    }
-
-    .client-deals-bootstrap .fx-deals-view-switch .btn:not(.active):hover {
-      border-color: var(--bs-secondary-color);
-      background: var(--bs-tertiary-bg);
+    .fx-deals-view-switch .form-check-label {
       color: var(--bs-body-color);
+      font-weight: var(--app-font-weight-medium);
     }
 
     .client-deals-column-picker {
@@ -9834,13 +9835,8 @@
     }
 
     #fxDealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] {
-      border-right: 2px solid var(--palette-blue-600);
-      background:
-        color-mix(
-          in srgb,
-          var(--palette-blue-100) 32%,
-          var(--bs-tertiary-bg)
-        );
+      border-right: 2px solid var(--palette-gray-400);
+      background: var(--palette-gray-200);
     }
 
     #fxDealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] > .tabulator-col-content {
@@ -12641,6 +12637,7 @@
 
     #fxDealsPage.workbench-page .trades-tab-panel {
       min-width: 0;
+      margin-top: 12px;
     }
 
     #fxDealsPage.workbench-page .fx-deals-grid {
@@ -12979,9 +12976,10 @@
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .reference-new-button {
       display: inline-flex;
-      min-height: 30px;
+      min-height: 34px;
       align-items: center;
       gap: 5px;
+      padding: 0 14px;
       border-radius: var(--workbench-radius);
       font-size: 12px;
       font-weight: 500;
@@ -13581,14 +13579,7 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page #clientExecutionContextsAttachButton {
-      display: inline-flex;
-      min-height: 30px;
       flex: 0 0 auto;
-      align-items: center;
-      gap: 5px;
-      border-radius: var(--workbench-radius);
-      font-size: var(--app-font-size-table);
-      font-weight: 500;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-table-head,
@@ -13682,20 +13673,20 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-tree > .client-pricing-configuration-context {
       display: block;
       min-height: 0;
-      overflow: hidden;
+      overflow: visible;
       padding: 0;
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--workbench-radius);
-      background: var(--bs-body-bg);
+      border: 0;
+      border-radius: 0;
+      background: transparent;
       font-size: 12px;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-tree > .client-pricing-configuration-context:last-child {
-      border-bottom: 1px solid var(--bs-border-color);
+      border-bottom: 0;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-tree > .client-pricing-configuration-context:hover {
-      background: var(--bs-body-bg);
+      background: transparent;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-head {
@@ -13705,12 +13696,13 @@
       min-height: 42px;
       align-items: center;
       padding: 6px 8px;
-      border-bottom: 1px solid var(--bs-border-color);
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
       background: var(--workbench-grid-header-bg);
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context.is-collapsed .client-pricing-configuration-context-head {
-      border-bottom: 0;
+      border-bottom: 1px solid var(--bs-border-color);
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-toggle {
@@ -13751,18 +13743,32 @@
       overflow: visible;
     }
 
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-title,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-relation {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-label,
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-relation {
       color: var(--bs-secondary-color);
-      font-size: 11px;
-      font-weight: 400;
+      font-size: 12px;
+      font-weight: 600;
       white-space: nowrap;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-title > .button-icon,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-relation > .button-icon {
+      color: currentColor;
+      font-size: 18px;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-meta {
       display: inline-flex;
       align-items: center;
-      flex-wrap: wrap;
+      flex: 0 0 auto;
+      flex-wrap: nowrap;
       gap: 6px;
       margin-left: 5px;
       padding-left: 12px;
@@ -13770,6 +13776,9 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-mode {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       white-space: nowrap;
     }
 
@@ -13780,9 +13789,9 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-branch {
       position: relative;
       display: grid;
-      gap: 2px;
-      margin: 0 10px 8px 30px;
-      padding: 7px 0 0 18px;
+      gap: 4px;
+      margin: 0 10px 10px 30px;
+      padding: 9px 0 0 18px;
       border-left: 1px solid var(--bs-border-color);
     }
 
@@ -13790,35 +13799,18 @@
       display: none;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rules {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-rule-tree {
       display: grid;
+      min-width: 0;
       gap: 2px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-rule,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-empty,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-add-row {
       position: relative;
-      display: grid;
-      grid-template-columns: minmax(90px, 118px) minmax(170px, 1fr) minmax(110px, 0.6fr) auto;
-      gap: 10px;
-      min-height: 34px;
-      align-items: center;
-      padding: 5px 7px;
-      border: 0;
-      background: transparent;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-rule:hover {
-      border-radius: var(--workbench-radius);
-      background: var(--workbench-grid-hover-bg);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule::before,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-empty::before,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node::before,
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-add-row::before {
       content: "";
       position: absolute;
@@ -13828,35 +13820,85 @@
       border-top: 1px solid var(--bs-border-color);
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-pair {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node {
+      display: flex;
+      flex-wrap: wrap;
+      min-width: 0;
+      align-items: center;
+      gap: 10px;
+      min-height: 46px;
+      padding: 5px 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node:not(.is-editing):hover {
+      background: transparent;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node-field {
+      display: inline-flex;
+      min-width: 0;
+      min-height: 32px;
+      align-items: center;
+      gap: 7px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-separator {
+      flex: 0 0 auto;
+      color: var(--bs-border-color);
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node-icon {
+      flex: 0 0 auto;
+      color: var(--bs-secondary-color);
+      font-size: 18px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node-copy {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      gap: 7px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node-label {
+      color: var(--bs-secondary-color);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.045em;
+      line-height: 1.15;
+      text-transform: uppercase;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node-value {
+      min-width: 0;
       color: var(--bs-emphasis-color);
-      font-weight: 500;
+      font-size: 12px;
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.25;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-pair {
+      white-space: nowrap;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-margin {
       display: inline-flex;
       align-items: baseline;
       gap: 6px;
-      color: var(--bs-body-color);
+      color: var(--bs-emphasis-color);
       font-variant-numeric: tabular-nums;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-position-mode {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      white-space: nowrap;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-position-mode-label {
-      color: var(--bs-secondary-color);
-      font-size: 11px;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-position-mode-source {
-      color: var(--bs-secondary-color);
-      font-size: 11px;
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-position-mode-choice {
       white-space: nowrap;
     }
 
@@ -13867,71 +13909,116 @@
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-actions {
       display: inline-flex;
+      margin-left: auto;
       justify-content: flex-end;
       gap: 5px;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-empty {
-      display: block;
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-rule-actions
+    .reference-grid-action {
+      background: var(--app-table-action-bg) !important;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-rule-actions
+    .reference-grid-action:hover:not(:disabled) {
+      background: var(--app-table-action-hover-bg) !important;
+      color: var(--bs-btn-color) !important;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-rule-actions
+    .reference-grid-action.btn-outline-danger:hover:not(:disabled) {
+      border-color: var(--bs-btn-hover-border-color) !important;
+      background: var(--bs-btn-hover-bg) !important;
+      color: var(--bs-btn-hover-color) !important;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-rule-actions
+    .reference-grid-action:active:not(:disabled) {
+      background: var(--app-table-action-active-bg) !important;
+      color: var(--bs-btn-color) !important;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-rule-actions
+    .reference-grid-action.btn-outline-danger:active:not(:disabled) {
+      border-color: var(--bs-btn-active-border-color) !important;
+      background: var(--bs-btn-active-bg) !important;
+      color: var(--bs-btn-active-color) !important;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-empty {
+      display: flex;
+      min-height: 40px;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 0;
+      border: 0;
+      border-radius: 0;
       color: var(--bs-secondary-color);
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row {
+      position: relative;
       display: flex;
       justify-content: flex-start;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row.is-editing {
-      display: grid;
-      grid-template-columns: 118px minmax(390px, 420px) minmax(0, 1fr) auto;
-      gap: 8px;
+      min-height: 30px;
+      align-items: center;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-field,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-position-mode,
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin {
       min-width: 0;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-position-mode {
-      display: grid;
-      gap: 3px;
-      margin: 0;
-      border: 0;
-      padding: 0;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-position-mode legend {
-      float: none;
-      width: auto;
-      margin: 0;
-      padding: 0;
-      font: inherit;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-position-mode-controls {
-      display: flex;
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-field {
+      display: inline-flex;
       min-width: 0;
       align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
+      gap: 7px;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-position-mode .form-select {
-      width: 92px;
-      min-width: 92px;
-      flex: 0 0 92px;
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-mode-control {
+      display: grid;
+      width: 100%;
+      grid-template-columns: max-content minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-position-mode .position-management-mode-effective {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-inline-mode-control
+    .position-management-mode-inherit {
       white-space: nowrap;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-inline-mode-control.is-read-only
+    .form-check-input:disabled {
+      opacity: 1;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-mode-help {
+      color: var(--bs-secondary-color);
+      font-size: 10px;
+      line-height: 1.2;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-editor {
+      display: grid;
+      grid-template-columns: minmax(130px, 0.75fr) minmax(330px, 1.55fr) minmax(145px, 0.8fr) auto;
+      background: transparent;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin {
       display: inline-flex;
+      min-width: 0;
       align-items: center;
-      gap: 6px;
-      width: max-content;
+      gap: 7px;
+      width: auto;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin .input-group {
@@ -13939,7 +14026,6 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-field .form-select,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-position-mode .form-select,
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin .form-control,
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin .input-group-text {
       min-height: 30px;
@@ -13948,16 +14034,10 @@
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-actions {
       display: inline-flex;
+      margin-left: auto;
+      justify-content: flex-end;
       align-items: center;
       gap: 5px;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-add-rule {
-      min-height: 28px;
-      gap: 5px;
-      border-radius: var(--workbench-radius);
-      font-size: 11px;
-      font-weight: 500;
     }
 
     @media (max-width: 860px) {
@@ -13976,16 +14056,41 @@
         grid-row: 1;
       }
 
-      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row.is-editing {
-        grid-template-columns: 118px minmax(380px, 400px) minmax(0, 1fr) auto;
-      }
-
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin {
         width: 100%;
       }
 
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin .input-group {
         width: min(118px, 100%);
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-editor {
+        grid-template-columns: minmax(120px, 0.8fr) minmax(280px, 1.35fr) minmax(135px, 0.75fr) auto;
+      }
+    }
+
+    @media (max-width: 680px) {
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-editor {
+        grid-template-columns: 1fr;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule {
+        align-items: flex-start;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-piece,
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-field,
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin {
+        width: 100%;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-separator {
+        display: none;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-actions,
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-actions {
+        justify-content: flex-start;
       }
     }
 
@@ -14097,41 +14202,99 @@
     }
 
     .client-context-attach-table thead th {
+      height: 65px;
+      padding: 6px 8px;
       background: var(--workbench-grid-header-bg);
       color: var(--bs-body-color);
       font-weight: 600;
       text-align: left;
     }
 
-    .client-context-attach-table .client-context-attach-heading-row th {
-      height: 34px;
-      padding: 6px 8px;
+    .client-context-attach-table .reference-column-head {
+      display: flex;
+      min-width: 0;
+      min-height: 53px;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 5px;
+    }
+
+    .client-context-attach-table .reference-column-head-static {
+      justify-content: center;
+    }
+
+    .client-context-attach-table .reference-column-head-centered {
+      align-items: center;
+      text-align: center;
+    }
+
+    .client-context-attach-table .reference-column-title {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      gap: 3px;
+      line-height: 17px;
       white-space: nowrap;
     }
 
-    .client-context-attach-table .client-context-attach-filter-row th {
-      height: 44px;
-      padding: 6px;
-      background: var(--bs-body-bg);
-    }
-
-    .client-context-attach-table .client-context-attach-filter-row .reference-header-filter {
+    .client-context-attach-table .reference-header-filter {
+      display: block;
       width: 100%;
       min-width: 0;
-      min-height: 30px;
-      height: 30px;
+      min-height: 28px;
+      height: 28px;
       margin: 0;
-      font-size: 12px;
+      padding: 3px 7px;
+      border: 1px solid var(--palette-gray-400);
+      border-radius: var(--workbench-radius);
+      background-color: rgba(var(--bs-white-rgb), 0.95);
+      color: var(--bs-body-color);
+      font-family: var(--bs-body-font-family);
+      font-size: 11px;
+      font-weight: 400;
+      line-height: 20px;
+    }
+
+    .client-context-attach-table select.reference-header-filter {
+      padding-right: 28px;
+      background-size: 12px 9px;
+    }
+
+    .client-context-attach-table .reference-header-filter:focus {
+      border-color: var(--bs-primary);
+      outline: 0;
+      box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);
     }
 
     .client-context-attach-table .reference-sort-control {
-      width: auto;
+      width: max-content;
       min-width: 0;
+      margin: 0;
       padding: 0;
       border: 0;
       background: transparent;
       color: inherit;
       font: inherit;
+      cursor: pointer;
+    }
+
+    .client-context-attach-table .reference-sort-control:hover,
+    .client-context-attach-table .reference-sort-control:focus-visible {
+      text-decoration: none;
+    }
+
+    .client-context-attach-table .reference-sort-indicator {
+      width: 0;
+      height: 0;
+      margin-left: 4px;
+      border-right: var(--table-sort-arrow-width) solid transparent;
+      border-bottom: var(--table-sort-arrow-height) solid var(--bs-secondary-color);
+      border-left: var(--table-sort-arrow-width) solid transparent;
+    }
+
+    .client-context-attach-table .reference-sort-indicator.is-descending {
+      border-top: var(--table-sort-arrow-height) solid var(--bs-secondary-color);
+      border-bottom: 0;
     }
 
     .client-context-attach-table tbody tr:hover {
@@ -15068,10 +15231,12 @@
       gap: 8px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar-settings {
+    #mainPage.fx-position-bootstrap.workbench-page .batch-control.batch-toolbar-settings {
       display: flex;
       align-items: center;
       justify-self: end;
+      padding-left: 12px;
+      border-left: 1px solid var(--bs-border-color);
     }
 
     #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar-settings {
@@ -17701,11 +17866,11 @@
       <div class="batching-workspace-main">
         <nav class="nav nav-tabs fx-position-mode-tabs" id="fxPositionModeTabs" aria-label="FX Position mode" role="tablist">
           <a class="nav-link active" id="fxPositionManualTab" href="#fx-position:manual" data-fx-position-mode="MANUAL" role="tab" aria-controls="fxPositionGridPanel" aria-selected="true">
-            <span>FX Position Manual</span>
+            <span>Manual Control</span>
             <span class="fx-position-mode-count" id="fxPositionManualCount">0</span>
           </a>
           <a class="nav-link" id="fxPositionAutoTab" href="#fx-position:auto" data-fx-position-mode="AUTO" role="tab" aria-controls="fxPositionGridPanel" aria-selected="false">
-            <span>FX Position Auto</span>
+            <span>Auto Batching &amp; Hedging</span>
             <span class="fx-position-mode-count" id="fxPositionAutoCount">0</span>
           </a>
         </nav>
@@ -17847,13 +18012,17 @@
               </span>
               <div class="batch-control" aria-label="Batching actions">
                 <button type="button" class="action-button primary btn btn-sm btn-primary batch-main" id="oneBatchButton" aria-label="Create Batch" aria-keyshortcuts="G" title="Create Batch · Shortcut: G" disabled>Create Batch</button>
-                <button type="button" class="action-button btn btn-sm btn-primary batch-process process-toggle-button with-icon" id="autoBatchButton" aria-label="Start Auto Batching" aria-pressed="false" disabled>
-                  <span class="button-icon" aria-hidden="true" id="autoBatchIcon">play_arrow</span>
-                  <span id="autoBatchLabel">Auto Batch</span>
-                </button>
               </div>
             </div>
-            <div class="batch-control batch-toolbar-settings" aria-label="Batching settings">
+            <div class="batch-control batch-toolbar-settings" aria-label="Automatic Batching actions and settings">
+              <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary with-icon" id="sendToAutoPositionModeButton" aria-label="Send selected Trades to Auto Batching &amp; Hedging" disabled>
+                <span class="button-icon" aria-hidden="true">move_down</span>
+                <span>Send to Auto</span>
+              </button>
+              <button type="button" class="action-button btn btn-sm btn-primary batch-process process-toggle-button with-icon" id="autoBatchButton" aria-label="Start Auto Batching" aria-pressed="false" disabled>
+                <span class="button-icon" aria-hidden="true" id="autoBatchIcon">play_arrow</span>
+                <span id="autoBatchLabel">Auto Batch</span>
+              </button>
               <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-settings-toggle" id="autoBatchingSettingsButton" aria-label="Batching Settings">
                 <span class="button-icon" aria-hidden="true">settings</span>
               </button>
@@ -18075,6 +18244,23 @@
     </section>
   </main>
 
+  <dialog class="market-bootstrap-dialog batch-rollback-dialog" id="sendToAutoPositionModeDialog" aria-labelledby="sendToAutoPositionModeDialogTitle">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2 class="modal-title" id="sendToAutoPositionModeDialogTitle">Send to Auto Batching &amp; Hedging</h2>
+        <button type="button" class="btn-close" id="sendToAutoPositionModeDialogClose" aria-label="Close"></button>
+      </header>
+      <div class="modal-body">
+        <p class="batch-rollback-summary" id="sendToAutoPositionModeSummary"></p>
+        <div class="alert alert-danger batch-rollback-status mt-3 mb-0" id="sendToAutoPositionModeStatus" role="alert" hidden></div>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="sendToAutoPositionModeCancelButton">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="sendToAutoPositionModeConfirmButton">Send to Auto</button>
+      </footer>
+    </div>
+  </dialog>
+
   <dialog class="market-bootstrap-dialog one-batch-tenor-dialog" id="oneBatchTenorDialog" aria-labelledby="oneBatchTenorDialogTitle">
     <div class="modal-content">
       <header class="modal-header">
@@ -18164,9 +18350,9 @@
     <section class="trades-tab-panel table-panel table-panel--standalone" id="clientFxDealsPage" role="tabpanel" aria-labelledby="clientFxDealsTab" hidden>
       <section class="client-deals-toolbar table-panel__head" data-ui-table-layout-host="client_fx_deals_grid" aria-label="Client FX Deals table layout">
         <h2 class="table-panel__title">Client FX Deals</h2>
-        <div class="fx-deals-view-switch" role="group" aria-label="Client FX Deals view">
-          <button type="button" class="btn btn-outline-secondary active" data-fx-deals-view-scope="client" data-fx-deals-view-mode="STANDARD" aria-pressed="true">Standard</button>
-          <button type="button" class="btn btn-outline-secondary" data-fx-deals-view-scope="client" data-fx-deals-view-mode="AUDIT" aria-pressed="false">Audit</button>
+        <div class="form-check form-switch fx-deals-view-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="clientFxDealsAuditView" data-fx-deals-audit-toggle data-fx-deals-view-scope="client">
+          <label class="form-check-label" for="clientFxDealsAuditView">Audit View</label>
         </div>
         <span class="client-deals-count" id="clientFxDealsCount">0 deals</span>
       </section>
@@ -18178,9 +18364,9 @@
     <section class="trades-tab-panel table-panel table-panel--standalone" id="hedgeFxDealsPage" role="tabpanel" aria-labelledby="hedgeFxDealsTab" hidden>
       <section class="client-deals-toolbar table-panel__head" data-ui-table-layout-host="hedge_fx_deals_grid" aria-label="Hedge FX Deals table layout">
         <h2 class="table-panel__title">Hedge FX Deals</h2>
-        <div class="fx-deals-view-switch" role="group" aria-label="Hedge FX Deals view">
-          <button type="button" class="btn btn-outline-secondary active" data-fx-deals-view-scope="hedge" data-fx-deals-view-mode="STANDARD" aria-pressed="true">Standard</button>
-          <button type="button" class="btn btn-outline-secondary" data-fx-deals-view-scope="hedge" data-fx-deals-view-mode="AUDIT" aria-pressed="false">Audit</button>
+        <div class="form-check form-switch fx-deals-view-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="hedgeFxDealsAuditView" data-fx-deals-audit-toggle data-fx-deals-view-scope="hedge">
+          <label class="form-check-label" for="hedgeFxDealsAuditView">Audit View</label>
         </div>
         <span class="client-deals-count" id="hedgeFxDealsCount">0 deals</span>
       </section>
@@ -18436,9 +18622,9 @@
                 <h2 class="client-execution-contexts-title">Pricing Rules</h2>
                 <span class="pricing-filter-chip" id="clientExecutionContextsCount">0 contexts · 0 rules</span>
               </span>
-              <button type="button" class="btn btn-sm btn-outline-primary with-icon" id="clientExecutionContextsAttachButton">
+              <button type="button" class="btn btn-sm btn-primary reference-new-button" id="clientExecutionContextsAttachButton">
                 <span class="button-icon" id="clientExecutionContextsAttachButtonIcon" aria-hidden="true">add_link</span>
-                <span id="clientExecutionContextsAttachButtonLabel">Attach Context</span>
+                <span id="clientExecutionContextsAttachButtonLabel">Attach Execution Context</span>
               </button>
             </div>
             <div class="client-pricing-configuration-body">
@@ -18667,29 +18853,41 @@
                 </th>
                 <th>
                   <div class="reference-column-head">
-                    <span class="reference-column-title">Servicing Location</span>
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">location_on</span>
+                      <span>Servicing Location</span>
+                    </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="servicingBranchCode" aria-label="Filter execution contexts by servicing location">
                   </div>
                 </th>
                 <th>
                   <div class="reference-column-head">
-                    <span class="reference-column-title">Accounting System</span>
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">account_balance</span>
+                      <span>Accounting System</span>
+                    </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="settlementSystemId" aria-label="Filter execution contexts by accounting system">
                   </div>
                 </th>
                 <th>
                   <div class="reference-column-head">
-                    <span class="reference-column-title">Execution System</span>
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">terminal</span>
+                      <span>Execution System</span>
+                    </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="tradeCaptureChannelId" aria-label="Filter execution contexts by execution system">
                   </div>
                 </th>
                 <th>
                   <div class="reference-column-head">
-                    <span class="reference-column-title">Default FX Position Mode</span>
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true" data-disable-overflow-tooltip>table_chart</span>
+                      <span>Default FX Position Mode</span>
+                    </span>
                     <select class="reference-header-filter" data-pricing-context-header-filter="defaultPositionManagementMode" aria-label="Filter execution contexts by default FX position mode">
                       <option value="">All</option>
-                      <option value="MANUAL">Manual</option>
-                      <option value="AUTO">Auto</option>
+                      <option value="MANUAL">Manual Control</option>
+                      <option value="AUTO">Auto Batching &amp; Hedging</option>
                     </select>
                   </div>
                 </th>
@@ -18929,7 +19127,10 @@
                 </th>
                 <th>
                   <div class="reference-column-head">
-                    <span class="reference-column-title">Pricing Mode</span>
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">price_change</span>
+                      <span>Pricing Mode</span>
+                    </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="pricingType" aria-label="Filter execution systems by pricing mode">
                   </div>
                 </th>
@@ -19035,7 +19236,10 @@
                 </th>
                 <th class="pricing-rule-context-column">
                   <div class="reference-column-head">
-                    <span class="reference-column-title">Execution Context</span>
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">hub</span>
+                      <span>Execution Context</span>
+                    </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="pricingContextId" aria-label="Filter pricing rules by execution context">
                   </div>
                 </th>
@@ -19047,19 +19251,28 @@
                 </th>
                 <th>
                   <div class="reference-column-head">
-                    <span class="reference-column-title">Pricing Mode</span>
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">price_change</span>
+                      <span>Pricing Mode</span>
+                    </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="pricingMode" aria-label="Filter pricing rules by pricing mode">
                   </div>
                 </th>
                 <th>
                   <div class="reference-column-head">
-                    <span class="reference-column-title">FX Position Mode</span>
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">table_chart</span>
+                      <span>FX Position Mode</span>
+                    </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="effectivePositionManagementMode" aria-label="Filter pricing rules by effective FX position mode or source">
                   </div>
                 </th>
                 <th>
                   <div class="reference-column-head reference-column-head-static reference-column-head-right">
-                    <span class="reference-column-title">Margin</span>
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">savings</span>
+                      <span>Margin</span>
+                    </span>
                   </div>
                 </th>
                 <th class="pricing-rule-quick-hedge-column" id="pricingRuleQuickHedgeHeader" hidden>
@@ -20563,42 +20776,61 @@
               <col class="client-context-attach-mode-col" data-client-context-attach-fixed-width="184">
             </colgroup>
             <thead>
-              <tr class="client-context-attach-heading-row">
-                <th class="client-context-attach-select-cell"><span class="visually-hidden">Selection</span></th>
-                <th>
-                  <button type="button" class="reference-column-title reference-sort-control" id="clientExecutionContextAttachIdSort" aria-label="Sort available execution contexts by ID ascending" aria-pressed="true">
-                    <span>ID</span>
-                    <span class="reference-sort-indicator" aria-hidden="true"></span>
-                  </button>
-                </th>
-                <th><span class="reference-column-title">Servicing Location</span></th>
-                <th><span class="reference-column-title">Accounting System</span></th>
-                <th><span class="reference-column-title">Execution System</span></th>
-                <th><span class="reference-column-title">Pricing Mode</span></th>
-              </tr>
-              <tr class="client-context-attach-filter-row">
+              <tr>
                 <th class="client-context-attach-select-cell">
-                  <input type="checkbox" class="form-check-input" id="clientExecutionContextAttachSelectAll" aria-label="Select all visible Execution Contexts">
+                  <div class="reference-column-head reference-column-head-static reference-column-head-centered">
+                    <input type="checkbox" class="form-check-input" id="clientExecutionContextAttachSelectAll" aria-label="Select all visible Execution Contexts">
+                  </div>
                 </th>
                 <th>
-                  <input class="reference-header-filter" type="text" id="clientExecutionContextAttachIdFilter" autocomplete="off" data-client-context-attach-filter="pricingContextId" aria-label="Filter available execution contexts by ID">
+                  <div class="reference-column-head">
+                    <button type="button" class="reference-column-title reference-sort-control" id="clientExecutionContextAttachIdSort" aria-label="Sort available execution contexts by ID ascending" aria-pressed="true">
+                      <span>ID</span>
+                      <span class="reference-sort-indicator" aria-hidden="true"></span>
+                    </button>
+                    <input class="reference-header-filter" type="text" id="clientExecutionContextAttachIdFilter" autocomplete="off" data-client-context-attach-filter="pricingContextId" aria-label="Filter available execution contexts by ID">
+                  </div>
                 </th>
                 <th>
-                  <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="servicingBranchCode" aria-label="Filter available execution contexts by servicing location">
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">location_on</span>
+                      <span>Servicing Location</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="servicingBranchCode" aria-label="Filter available execution contexts by servicing location">
+                  </div>
                 </th>
                 <th>
-                  <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="settlementSystemId" aria-label="Filter available execution contexts by accounting system">
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">account_balance</span>
+                      <span>Accounting System</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="settlementSystemId" aria-label="Filter available execution contexts by accounting system">
+                  </div>
                 </th>
                 <th>
-                  <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="tradeCaptureChannelId" aria-label="Filter available execution contexts by execution system">
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">terminal</span>
+                      <span>Execution System</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="tradeCaptureChannelId" aria-label="Filter available execution contexts by execution system">
+                  </div>
                 </th>
                 <th>
-                  <select class="reference-header-filter form-select" data-client-context-attach-filter="pricingMode" aria-label="Filter available execution contexts by pricing mode">
-                    <option value="">All</option>
-                    <option value="AUTO_PRICED">AUTO_PRICED</option>
-                    <option value="DEALER_PRICED">DEALER_PRICED</option>
-                    <option value="DEALER_APPROVED">DEALER_APPROVED</option>
-                  </select>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">price_change</span>
+                      <span>Pricing Mode</span>
+                    </span>
+                    <select class="reference-header-filter form-select" data-client-context-attach-filter="pricingMode" aria-label="Filter available execution contexts by pricing mode">
+                      <option value="">All</option>
+                      <option value="AUTO_PRICED">AUTO_PRICED</option>
+                      <option value="DEALER_PRICED">DEALER_PRICED</option>
+                      <option value="DEALER_APPROVED">DEALER_APPROVED</option>
+                    </select>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -20715,13 +20947,12 @@
               <legend>FX Position Mode</legend>
               <label class="position-management-mode-inherit" for="clientPricingRuleUseExecutionContextDefault">
                 <input class="form-check-input" type="checkbox" id="clientPricingRuleUseExecutionContextDefault" name="useExecutionContextDefault" aria-controls="clientPricingRulePositionManagementModeOverride" checked>
-                <span>Use Execution Context default</span>
+                <span>Execution Context Default</span>
               </label>
-              <select class="form-select form-select-sm" id="clientPricingRulePositionManagementModeOverride" name="positionManagementModeOverride" data-position-management-mode-inherited="true" aria-label="FX Position Mode override" aria-describedby="clientPricingRuleEffectivePositionMode" disabled>
-                <option value="MANUAL">Manual</option>
-                <option value="AUTO">Auto</option>
+              <select class="form-select form-select-sm" id="clientPricingRulePositionManagementModeOverride" name="positionManagementModeOverride" data-position-management-mode-inherited="true" aria-label="FX Position Mode" disabled>
+                <option value="MANUAL">Manual Control</option>
+                <option value="AUTO">Auto Batching &amp; Hedging</option>
               </select>
-              <span class="position-management-mode-effective" id="clientPricingRuleEffectivePositionMode" aria-live="polite"></span>
             </fieldset>
             <label class="form-field">
               Margin %
@@ -20816,6 +21047,10 @@
     const NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID = "NOT_APPLICABLE";
     const PRICING_TYPES = ["AUTO_PRICED", "DEALER_PRICED", "DEALER_APPROVED"];
     const POSITION_MANAGEMENT_MODES = Object.freeze(["MANUAL", "AUTO"]);
+    const POSITION_MANAGEMENT_MODE_LABELS = Object.freeze({
+      MANUAL: "Manual Control",
+      AUTO: "Auto Batching & Hedging"
+    });
     const HEDGE_DEAL_PRICING_MODES = ["AUTO_PRICED", "DEALER_PRICED"];
     const PRICING_TYPE_PRESENTATION = Object.freeze({
       AUTO_PRICED: Object.freeze({
@@ -20948,6 +21183,8 @@
     let fxAutoBatchingToggleInFlight = false;
     let fxPositionsRequestSequence = 0;
     let oneBatchInFlight = false;
+    let sendToAutoPositionModeInFlight = false;
+    let pendingSendToAutoTrades = [];
     let pendingOneBatchRequest = null;
     let pendingOneBatchTenorSelection = null;
     const fxPositions = [];
@@ -21466,25 +21703,92 @@
       });
     }
 
-    function syncSmartCellTooltip(cell, ellipsize) {
-      const overflowSource = cell.querySelector("[data-smart-tooltip-content]") || cell;
+    function tableContentIsClipped(source, boundary = source) {
+      if (!(source instanceof Element) || !(boundary instanceof Element)) {
+        return false;
+      }
 
-      if (
-        !ellipsize
-        || cell.hasAttribute("data-tooltip")
-        || cell.querySelector("input, select, textarea")
-        || overflowSource.scrollWidth <= overflowSource.clientWidth + 1
-      ) {
+      const sourceRect = source.getBoundingClientRect();
+      const boundaryRect = boundary.getBoundingClientRect();
+
+      return source.scrollWidth > source.clientWidth + 1
+        || source.scrollHeight > source.clientHeight + 1
+        || sourceRect.left < boundaryRect.left - 1
+        || sourceRect.right > boundaryRect.right + 1
+        || sourceRect.top < boundaryRect.top - 1
+        || sourceRect.bottom > boundaryRect.bottom + 1;
+    }
+
+    function clearTableOverflowTooltip(cell) {
+      if (cell?.dataset.smartSizingTooltip !== "true") {
         return;
       }
 
-      const text = smartCellText(cell);
+      if (activeTooltipTarget === cell) {
+        hideAppTooltip();
+      }
+
+      cell.removeAttribute("data-tooltip");
+      delete cell.dataset.smartSizingTooltip;
+    }
+
+    function tableCellOverflowSource(cell) {
+      if (cell.tagName === "TH") {
+        return cell.querySelector(
+          ".reference-column-title, .sort-button, [data-column-label]"
+        ) || cell;
+      }
+
+      return cell.querySelector(
+        "[data-smart-tooltip-content], [data-smart-width-content], .position-label-text"
+      ) || cell;
+    }
+
+    function syncSmartCellTooltip(cell) {
+      if (cell.hasAttribute("data-disable-overflow-tooltip") || cell.querySelector("[data-disable-overflow-tooltip]")) {
+        clearTableOverflowTooltip(cell);
+        return;
+      }
+
+      const managedTooltip = cell.dataset.smartSizingTooltip === "true";
+
+      if (managedTooltip) {
+        clearTableOverflowTooltip(cell);
+      } else if (cell.hasAttribute("data-tooltip")) {
+        return;
+      }
+
+      const isHeader = cell.tagName === "TH";
+
+      if (!isHeader && cell.querySelector("input, select, textarea")) {
+        return;
+      }
+
+      const overflowSource = tableCellOverflowSource(cell);
+
+      if (!tableContentIsClipped(overflowSource, cell)) {
+        return;
+      }
+
+      const text = isHeader ? smartHeaderLabel(cell) : smartCellText(cell);
 
       if (text) {
         cell.dataset.tooltip = text;
         cell.dataset.smartSizingTooltip = "true";
         initializeTooltipElement(cell);
       }
+    }
+
+    function syncNativeTableOverflowTooltips(table) {
+      if (
+        !(table instanceof HTMLTableElement)
+        || table.hidden
+        || table.closest("[hidden]")
+      ) {
+        return;
+      }
+
+      table.querySelectorAll("th, td").forEach(syncSmartCellTooltip);
     }
 
     function applySmartTableSizing(table) {
@@ -21557,7 +21861,7 @@
           cell.style.setProperty("min-width", width, "important");
           cell.style.setProperty("max-width", width, "important");
           cell.classList.toggle("smart-cell-ellipsis", column.ellipsize);
-          syncSmartCellTooltip(cell, column.ellipsize);
+          syncSmartCellTooltip(cell);
         });
       });
     }
@@ -21568,6 +21872,8 @@
           ".batching-table, .blotter-table, .profile-table, .generation-settings-table"
         )
         .forEach(applySmartTableSizing);
+
+      document.querySelectorAll("table").forEach(syncNativeTableOverflowTooltips);
     }
 
     function scheduleSmartColumnSizing() {
@@ -21693,8 +21999,8 @@
     const batchRollbackConfirmButton = document.getElementById("batchRollbackConfirmButton");
     const fxDealsPage = document.getElementById("fxDealsPage");
     const fxDealsTabs = Array.from(document.querySelectorAll("[data-fx-deals-route]"));
-    const fxDealsViewModeButtons = Array.from(
-      document.querySelectorAll("[data-fx-deals-view-mode]")
+    const fxDealsAuditToggles = Array.from(
+      document.querySelectorAll("[data-fx-deals-audit-toggle]")
     );
     const clientFxDealsPage = document.getElementById("clientFxDealsPage");
     const clientFxDealsGridEl = document.getElementById("clientFxDealsGrid");
@@ -21807,6 +22113,13 @@
     const runClientDealGenerationIcon = document.getElementById("runClientDealGenerationIcon");
     const runClientDealGenerationLabel = document.getElementById("runClientDealGenerationLabel");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
+    const sendToAutoPositionModeButton = document.getElementById("sendToAutoPositionModeButton");
+    const sendToAutoPositionModeDialog = document.getElementById("sendToAutoPositionModeDialog");
+    const sendToAutoPositionModeDialogClose = document.getElementById("sendToAutoPositionModeDialogClose");
+    const sendToAutoPositionModeSummary = document.getElementById("sendToAutoPositionModeSummary");
+    const sendToAutoPositionModeStatus = document.getElementById("sendToAutoPositionModeStatus");
+    const sendToAutoPositionModeCancelButton = document.getElementById("sendToAutoPositionModeCancelButton");
+    const sendToAutoPositionModeConfirmButton = document.getElementById("sendToAutoPositionModeConfirmButton");
     const oneBatchButton = document.getElementById("oneBatchButton");
     const oneBatchTenorDialog = document.getElementById("oneBatchTenorDialog");
     const oneBatchTenorDialogClose = document.getElementById("oneBatchTenorDialogClose");
@@ -21875,7 +22188,6 @@
     const clientPricingRuleFixedPair = document.getElementById("clientPricingRuleFixedPair");
     const clientPricingRuleFixedContext = document.getElementById("clientPricingRuleFixedContext");
     const clientPricingRuleCurrencyPairField = document.getElementById("clientPricingRuleCurrencyPairField");
-    const clientPricingRuleEffectivePositionMode = document.getElementById("clientPricingRuleEffectivePositionMode");
     const clientPricingRuleCancelButton = document.getElementById("clientPricingRuleCancelButton");
     const clientPricingRuleDeleteButton = document.getElementById("clientPricingRuleDeleteButton");
     const clientPricingRuleSubmitButton = document.getElementById("clientPricingRuleSubmitButton");
@@ -22088,6 +22400,7 @@
         label: "Audit",
         icon: "policy",
         tables: [
+          "fx_trade_position_management_transitions",
           "fx_trade_market_snapshot",
           "v_fx_batch_formation_audit"
         ]
@@ -23491,7 +23804,7 @@
     }
 
     function positionManagementModeLabel(value) {
-      return normalizedPositionManagementMode(value) === "AUTO" ? "Auto" : "Manual";
+      return POSITION_MANAGEMENT_MODE_LABELS[normalizedPositionManagementMode(value)];
     }
 
     function effectivePositionManagementModeForRule(rule, context = null) {
@@ -23517,28 +23830,21 @@
     }
 
     function pricingRulePositionManagementModeMarkup(rule, context = null) {
-      const override = normalizedPositionManagementModeOverride(rule?.positionManagementModeOverride);
       const effectiveMode = effectivePositionManagementModeForRule(rule, context);
-      const source = override ? "Pricing Rule override" : "Execution Context default";
 
       return `
         <span class="position-management-mode-value" data-smart-width-content>
           ${positionManagementModeBadgeMarkup(effectiveMode)}
-          <span class="position-management-mode-source">${escapeHtml(source)}</span>
         </span>
       `;
     }
 
     function clientPricingRulePositionManagementModeMarkup(rule, context = null) {
-      const override = normalizedPositionManagementModeOverride(rule?.positionManagementModeOverride);
       const effectiveMode = effectivePositionManagementModeForRule(rule, context);
-      const source = override ? "Pricing Rule override" : "Execution Context default";
 
       return `
-        <span class="client-pricing-configuration-position-mode">
-          <span class="client-pricing-configuration-position-mode-label">FX Position Mode</span>
-          ${positionManagementModeBadgeMarkup(effectiveMode)}
-          <span class="client-pricing-configuration-position-mode-source">(${escapeHtml(source)})</span>
+        <span class="client-pricing-configuration-node-copy is-read-only">
+          <span class="client-pricing-configuration-node-value client-pricing-configuration-position-mode-choice">${escapeHtml(positionManagementModeLabel(effectiveMode))}</span>
         </span>
       `;
     }
@@ -23547,8 +23853,8 @@
       const selected = normalizedPositionManagementMode(selectedValue);
 
       return `
-        <option value="MANUAL"${selected === "MANUAL" ? " selected" : ""}>Manual</option>
-        <option value="AUTO"${selected === "AUTO" ? " selected" : ""}>Auto</option>
+        <option value="MANUAL"${selected === "MANUAL" ? " selected" : ""}>${escapeHtml(positionManagementModeLabel("MANUAL"))}</option>
+        <option value="AUTO"${selected === "AUTO" ? " selected" : ""}>${escapeHtml(positionManagementModeLabel("AUTO"))}</option>
       `;
     }
 
@@ -23583,7 +23889,7 @@
 
       overrideControl.required = !inherited;
       overrideControl.setCustomValidity?.(
-        !inherited && !override ? "Select Manual or Auto." : ""
+        !inherited && !override ? "Select an FX Position mode." : ""
       );
 
       return inherited ? null : override || undefined;
@@ -24484,10 +24790,23 @@
       ).trim();
 
       const tradeId = Number(source.tradeId ?? source.clientDealId ?? source.clientFxDealId ?? source.id);
+      const currentFxPositionMode = normalizedPositionManagementMode(
+        source.currentFxPositionMode
+        ?? source.current_fx_position_mode
+        ?? source.fxPositionMode
+        ?? source.fx_position_mode
+      );
+      const initialFxPositionMode = normalizedPositionManagementMode(
+        source.initialFxPositionMode
+        ?? source.initial_fx_position_mode,
+        currentFxPositionMode
+      );
 
       return {
         tradeId,
         clientDealId: tradeId,
+        initialFxPositionMode,
+        currentFxPositionMode,
         executionTimestamp,
         receivedTimestamp,
         counterpartyId: Number(source.counterpartyId) || null,
@@ -25697,10 +26016,9 @@
       const inn = row.querySelector("[data-pricing-rule-field='inn']")?.value.trim() || "";
       const currencyPairValue = normalizedPricingRuleCurrencyPair(row.querySelector("[data-pricing-rule-field='currencyPair']")?.value);
       const pricingContextIdValue = row.querySelector("[data-pricing-rule-field='pricingContextId']")?.value.trim().toUpperCase() || "";
-      const positionManagementModeOverride = syncPricingRuleRowPositionManagementModeControls(row);
+      syncPricingRuleRowPositionManagementModeControls(row);
       const preview = row.querySelector("[data-pricing-rule-preview]");
       const clientNameCell = row.querySelector("[data-pricing-rule-client-name]");
-      const effectivePositionMode = row.querySelector("[data-pricing-rule-effective-position-mode]");
 
       if (preview) {
         preview.textContent = pricingRulePreview(
@@ -25713,20 +26031,6 @@
 
       if (clientNameCell) {
         clientNameCell.textContent = clientNameForInn(inn);
-      }
-
-      if (effectivePositionMode) {
-        const effectiveMode = effectivePositionManagementModeForRule({
-          pricingContextId: pricingContextIdValue,
-          positionManagementModeOverride
-        });
-        const source = positionManagementModeOverride === null
-          ? "Execution Context default"
-          : positionManagementModeOverride
-            ? "Pricing Rule override"
-            : "Select Manual or Auto";
-
-        effectivePositionMode.textContent = `Effective: ${positionManagementModeLabel(effectiveMode)} (${source})`;
       }
 
       updatePricingRuleRowSaveAvailability(row);
@@ -26000,7 +26304,6 @@
         rule.pricingRuleId || (index === null ? "new" : index)
       ).replace(/[^a-zA-Z0-9_-]/g, "-");
       const positionModeSelectId = `pricing-rule-position-mode-${positionModeControlKey}`;
-      const positionModeEffectiveId = `${positionModeSelectId}-effective`;
 
       return `
         <tr class="is-selected is-editing"${indexAttribute}${pricingRuleIdAttribute} data-pricing-rule-edit-row data-pricing-rule-context-status="${escapeHtml(contextState.status)}">
@@ -26031,12 +26334,11 @@
             <span class="position-management-mode-control">
               <label class="position-management-mode-inherit">
                 <input class="form-check-input" type="checkbox" data-pricing-rule-field="useExecutionContextDefault" aria-controls="${escapeHtml(positionModeSelectId)}"${inheritedPositionManagementMode ? " checked" : ""}>
-                <span>Use Execution Context default</span>
+                <span>Execution Context Default</span>
               </label>
-              <select class="inline-edit-control" id="${escapeHtml(positionModeSelectId)}" data-pricing-rule-field="positionManagementModeOverride" data-position-management-mode-inherited="${inheritedPositionManagementMode}"${positionManagementModeOverride ? ` data-explicit-position-management-mode="${escapeHtml(positionManagementModeOverride)}"` : ""} aria-label="FX Position Mode override" aria-describedby="${escapeHtml(positionModeEffectiveId)}"${inheritedPositionManagementMode ? " disabled" : " required"}>
+              <select class="inline-edit-control" id="${escapeHtml(positionModeSelectId)}" data-pricing-rule-field="positionManagementModeOverride" data-position-management-mode-inherited="${inheritedPositionManagementMode}"${positionManagementModeOverride ? ` data-explicit-position-management-mode="${escapeHtml(positionManagementModeOverride)}"` : ""} aria-label="FX Position Mode"${inheritedPositionManagementMode ? " disabled" : " required"}>
                 ${positionManagementModeOptions(selectedPositionManagementMode)}
               </select>
-              <span class="position-management-mode-effective" id="${escapeHtml(positionModeEffectiveId)}" data-pricing-rule-effective-position-mode aria-live="polite">Effective: ${escapeHtml(positionManagementModeLabel(effectivePositionManagementModeForRule(rule)))} (${inheritedPositionManagementMode ? "Execution Context default" : "Pricing Rule override"})</span>
             </span>
           </td>
           <td>
@@ -26228,6 +26530,8 @@
         table.style.setProperty("max-width", `${totalWidth}px`, "important");
         table.style.setProperty("table-layout", "fixed", "important");
       }
+
+      window.requestAnimationFrame(() => syncNativeTableOverflowTooltips(table));
     }
 
     function applyFxPositionGridLayout(tableLayout) {
@@ -26266,6 +26570,7 @@
       table.style.setProperty("table-layout", "fixed", "important");
       scheduleFxPositionGridFillHeight();
       scheduleHedgeQuickModeQuoteAlignment();
+      window.requestAnimationFrame(() => syncNativeTableOverflowTooltips(table));
     }
 
     function applyTabulatorUiTableLayout(tableKey, tableLayout) {
@@ -26334,6 +26639,7 @@
         "--client-context-attach-table-width",
         `${totalWidth}px`
       );
+      window.requestAnimationFrame(() => syncNativeTableOverflowTooltips(table));
     }
 
     function applyUiTableLayout(tableKey) {
@@ -27820,7 +28126,7 @@
       const contextIdControl = clientPricingRuleForm.elements.pricingContextId;
 
       contextIdControl.value = resolvedContext?.pricingContextId || "";
-      updateClientPricingRuleEffectivePositionMode();
+      syncClientPricingRulePositionManagementModeControls();
       clientPricingContextResults.classList.toggle("is-selected", Boolean(resolvedContext));
       clientPricingContextResults.classList.toggle("is-error", hasSearch && matches.length === 0);
       clientPricingContextResults.classList.toggle(
@@ -27966,7 +28272,7 @@
       return positionManagementModeOverrideFromControls(inheritControl, overrideControl);
     }
 
-    function updateClientPricingRuleEffectivePositionMode() {
+    function syncClientPricingRulePositionManagementModeControls() {
       const overrideControl = clientPricingRuleForm.elements.positionManagementModeOverride;
 
       if (!overrideControl) {
@@ -27989,20 +28295,7 @@
       }
 
       overrideControl.disabled = inherited;
-      const effectiveMode = effectivePositionManagementModeForRule({
-        pricingContextId: pricingContextIdValue,
-        positionManagementModeOverride
-      });
-      const source = inherited
-        ? "Execution Context default"
-        : positionManagementModeOverride
-          ? "Pricing Rule override"
-          : "Select Manual or Auto";
-
-      if (clientPricingRuleEffectivePositionMode) {
-        clientPricingRuleEffectivePositionMode.textContent =
-          `Effective: ${positionManagementModeLabel(effectiveMode)} (${source})`;
-      }
+      return positionManagementModeOverride;
     }
 
     function clientPricingRuleDraftFromDialog() {
@@ -28122,7 +28415,7 @@
       );
       clientPricingRuleFixedPair.textContent = rule.currencyPair || "";
       clientPricingRuleFixedContext.innerHTML = pricingContextFacetsMarkup(fixedPricingContextId);
-      updateClientPricingRuleEffectivePositionMode();
+      syncClientPricingRulePositionManagementModeControls();
       updateClientPricingRuleSubmitAvailability();
     }
 
@@ -28200,20 +28493,19 @@
     function updateClientPricingRuleInlineEditorAvailability(row) {
       const saveButton = row?.querySelector('[data-client-pricing-rule-inline-action="save"]');
       const currencyPairControl = row?.querySelector('[data-client-pricing-rule-inline-field="currencyPair"]');
-      const useExecutionContextDefaultControl = row?.querySelector(
+      const positionManagementModeInheritControl = row?.querySelector(
         '[data-client-pricing-rule-inline-field="useExecutionContextDefault"]'
       );
       const positionManagementModeOverrideControl = row?.querySelector(
         '[data-client-pricing-rule-inline-field="positionManagementModeOverride"]'
       );
       const marginControl = row?.querySelector('[data-client-pricing-rule-inline-field="marginPercent"]');
-      const effectivePositionMode = row?.querySelector('[data-client-pricing-rule-inline-effective-position-mode]');
       const state = clientPricingRuleInlineEditorState;
 
       if (
         !saveButton ||
         !currencyPairControl ||
-        !useExecutionContextDefaultControl ||
+        !positionManagementModeInheritControl ||
         !positionManagementModeOverrideControl ||
         !marginControl ||
         !state
@@ -28232,7 +28524,7 @@
         });
       }
 
-      useExecutionContextDefaultControl.disabled = state.saving;
+      positionManagementModeInheritControl.disabled = state.saving;
       positionManagementModeOverrideControl.disabled = state.saving || inherited;
       state.marginPercent = marginControl.value;
       const margin = normalizeNumber(marginControl.value);
@@ -28244,21 +28536,6 @@
       const canSave = state.positionManagementModeOverride !== undefined &&
         Boolean(currencyPairControl.value) && margin !== null &&
         margin >= 0 && margin < 100 && changed;
-
-      if (effectivePositionMode) {
-        const source = inherited
-          ? "Execution Context default"
-          : state.positionManagementModeOverride
-            ? "Pricing Rule override"
-            : "Select Manual or Auto";
-
-        effectivePositionMode.textContent = `(Effective: ${positionManagementModeLabel(
-          effectivePositionManagementModeForRule({
-            pricingContextId: state.pricingContextId,
-            positionManagementModeOverride: state.positionManagementModeOverride
-          })
-        )}; ${source})`;
-      }
 
       saveButton.disabled = state.saving || !canSave;
       saveButton.title = canSave
@@ -28886,42 +29163,38 @@
         pricingContextId: contextId,
         positionManagementModeOverride: normalizedOverride
       });
-      const selectedMode = normalizedOverride || effectiveMode;
-      const positionModeControlKey = `${contextId}-${editing ? `edit-${index}` : "create"}`
-        .replace(/[^a-zA-Z0-9_-]/g, "-");
-      const positionModeSelectId = `client-pricing-rule-inline-position-mode-${positionModeControlKey}`;
-      const positionModeEffectiveId = `${positionModeSelectId}-effective`;
+      const selectedPositionManagementMode = normalizedOverride || effectiveMode;
+      const positionModeSelectId = `client-pricing-rule-inline-position-mode-${contextId}`;
 
       return `
-        <li
-          class="client-pricing-configuration-add-row is-editing"
+        <div
+          class="client-pricing-configuration-node client-pricing-configuration-inline-editor is-editing"
           data-client-pricing-rule-inline-editor="${escapeHtml(contextId)}"
           data-client-pricing-rule-inline-mode="${editing ? "edit" : "create"}"
           ${editing ? `data-client-pricing-rule-index="${index}"` : ""}
         >
           <label class="client-pricing-configuration-inline-field">
-            <span class="visually-hidden">Ccy Pair</span>
+            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
             <select class="form-select form-select-sm" data-client-pricing-rule-inline-field="currencyPair" aria-label="Ccy Pair"${saving || editing ? " disabled" : ""}>
               ${currencyPairs.map(currencyPair => `
                 <option value="${escapeHtml(currencyPair)}"${currencyPair === selectedCurrencyPair ? " selected" : ""}>${escapeHtml(currencyPair)}</option>
               `).join("")}
             </select>
           </label>
-          <fieldset class="client-pricing-configuration-inline-position-mode">
-            <legend class="client-pricing-configuration-position-mode-label">FX Position Mode</legend>
-            <span class="client-pricing-configuration-inline-position-mode-controls">
-              <label class="position-management-mode-inherit">
-                <input class="form-check-input" type="checkbox" data-client-pricing-rule-inline-field="useExecutionContextDefault" aria-controls="${escapeHtml(positionModeSelectId)}"${inherited ? " checked" : ""}${saving ? " disabled" : ""}>
-                <span>Use Execution Context default</span>
+          <div class="client-pricing-configuration-inline-field">
+            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="FX Position Mode" data-tooltip="FX Position Mode">table_chart</span>
+            <span class="client-pricing-configuration-node-copy client-pricing-configuration-inline-mode-control">
+              <label class="position-management-mode-inherit" for="${escapeHtml(positionModeSelectId)}-default">
+                <input class="form-check-input" type="checkbox" id="${escapeHtml(positionModeSelectId)}-default" data-client-pricing-rule-inline-field="useExecutionContextDefault" aria-controls="${escapeHtml(positionModeSelectId)}"${inherited ? " checked" : ""}${saving ? " disabled" : ""}>
+                <span>Execution Context Default</span>
               </label>
-              <select class="form-select form-select-sm" id="${escapeHtml(positionModeSelectId)}" data-client-pricing-rule-inline-field="positionManagementModeOverride" data-position-management-mode-inherited="${inherited}"${normalizedOverride ? ` data-explicit-position-management-mode="${escapeHtml(normalizedOverride)}"` : ""} aria-label="FX Position Mode override" aria-describedby="${escapeHtml(positionModeEffectiveId)}"${saving || inherited ? " disabled" : " required"}>
-                ${positionManagementModeOptions(selectedMode)}
+              <select class="form-select form-select-sm" id="${escapeHtml(positionModeSelectId)}" data-client-pricing-rule-inline-field="positionManagementModeOverride" data-position-management-mode-inherited="${inherited}"${normalizedOverride ? ` data-explicit-position-management-mode="${escapeHtml(normalizedOverride)}"` : ""} aria-label="FX Position Mode"${saving || inherited ? " disabled" : " required"}>
+                ${positionManagementModeOptions(selectedPositionManagementMode)}
               </select>
             </span>
-            <span class="position-management-mode-effective" id="${escapeHtml(positionModeEffectiveId)}" data-client-pricing-rule-inline-effective-position-mode aria-live="polite">(Effective: ${escapeHtml(positionManagementModeLabel(effectiveMode))}; ${inherited ? "Execution Context default" : "Pricing Rule override"})</span>
-          </fieldset>
+          </div>
           <label class="client-pricing-configuration-inline-margin">
-            <span class="client-pricing-configuration-margin-label">Margin</span>
+            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Margin" data-tooltip="Margin">savings</span>
             <span class="input-group input-group-sm">
               <input class="form-control form-control-sm" type="text" inputmode="decimal" value="${escapeHtml(marginValue)}" data-client-pricing-rule-inline-field="marginPercent" aria-label="Margin percent"${saving ? " disabled" : ""}>
               <span class="input-group-text">%</span>
@@ -28935,7 +29208,7 @@
               <span class="button-icon" aria-hidden="true">close</span>
             </button>
           </span>
-        </li>
+        </div>
       `;
     }
 
@@ -28944,15 +29217,16 @@
         return;
       }
 
+      clientExecutionContextsAttachButton.removeAttribute("title");
+
       if (!profile) {
         clientPricingRuleInlineEditorState = null;
         clientExecutionContextsPanel.hidden = true;
         clientExecutionContextsList.innerHTML = "";
         clientExecutionContextsCount.textContent = "0 contexts · 0 rules";
         clientExecutionContextsAttachButton.disabled = true;
-        clientExecutionContextsAttachButton.title = "Save the Trading Counterparty before attaching an Execution Context";
         clientExecutionContextsAttachButtonIcon.textContent = "add_link";
-        clientExecutionContextsAttachButtonLabel.textContent = "Attach Context";
+        clientExecutionContextsAttachButtonLabel.textContent = "Attach Execution Context";
         return;
       }
 
@@ -28986,14 +29260,7 @@
       clientExecutionContextsCount.textContent = `${contexts.length} ${contexts.length === 1 ? "context" : "contexts"} · ${pricingRuleEntries.length} ${pricingRuleEntries.length === 1 ? "rule" : "rules"}`;
       clientExecutionContextsAttachButton.disabled = loading || (!loadFailed && availableCount === 0);
       clientExecutionContextsAttachButtonIcon.textContent = loadFailed ? "refresh" : "add_link";
-      clientExecutionContextsAttachButtonLabel.textContent = loadFailed ? "Retry" : "Attach Context";
-      clientExecutionContextsAttachButton.title = loading
-        ? "Loading Execution Context assignments"
-        : loadFailed
-          ? "Retry loading Execution Context assignments"
-          : availableCount === 0
-            ? "All available Execution Contexts are already attached"
-            : "Attach one or more existing Execution Contexts";
+      clientExecutionContextsAttachButtonLabel.textContent = loadFailed ? "Retry" : "Attach Execution Context";
 
       if (loading) {
         clientExecutionContextsList.innerHTML = '<li class="client-execution-contexts-empty">Loading Execution Context assignments...</li>';
@@ -29045,7 +29312,12 @@
           const expanded = !collapsedContexts.has(contextKey);
           const branchId = `client-pricing-context-${counterpartyId}-${contextKey}`;
           const rulesMarkup = ruleEntries.length === 0
-            ? '<li class="client-pricing-configuration-empty">No Pricing Rules configured</li>'
+            ? `
+                <div class="client-pricing-configuration-node client-pricing-configuration-empty" role="listitem">
+                  <span class="button-icon" aria-hidden="true">rule</span>
+                  <span>No Pricing Rules configured</span>
+                </div>
+              `
             : ruleEntries.map(({ rule, index }) => {
                 const editing = clientPricingRuleInlineEditorMatches(
                   profile,
@@ -29081,22 +29353,30 @@
                 }
 
                 return `
-                  <li class="client-pricing-configuration-rule" data-client-pricing-rule-index="${index}">
-                    <strong class="client-pricing-configuration-rule-pair">${escapeHtml(rule.currencyPair)}</strong>
-                    ${clientPricingRulePositionManagementModeMarkup(rule, context)}
-                    <span class="client-pricing-configuration-margin">
-                      <span class="client-pricing-configuration-margin-label">Margin</span>
-                      <span>${escapeHtml(editNumber(rule.marginPercent, 4))}%</span>
+                  <div class="client-pricing-configuration-node client-pricing-configuration-rule" data-client-pricing-rule-index="${index}" role="listitem">
+                    <span class="client-pricing-configuration-node-field client-pricing-configuration-rule-piece is-pair">
+                      <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
+                      <span class="client-pricing-configuration-node-value client-pricing-configuration-rule-pair">${escapeHtml(rule.currencyPair)}</span>
+                    </span>
+                    <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
+                    <span class="client-pricing-configuration-node-field client-pricing-configuration-rule-piece is-mode">
+                      <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="FX Position Mode" data-tooltip="FX Position Mode">table_chart</span>
+                      ${clientPricingRulePositionManagementModeMarkup(rule, context)}
+                    </span>
+                    <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
+                    <span class="client-pricing-configuration-node-field client-pricing-configuration-rule-piece is-margin">
+                      <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Margin" data-tooltip="Margin">savings</span>
+                      <span class="client-pricing-configuration-node-value client-pricing-configuration-margin">${escapeHtml(editNumber(rule.marginPercent, 4))}%</span>
                     </span>
                     <span class="client-pricing-configuration-rule-actions">
                       <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-pricing-rule-action="edit" data-client-pricing-rule-index="${index}" aria-label="Edit Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Edit Pricing Rule">
                         <span class="button-icon" aria-hidden="true">edit</span>
                       </button>
-                      <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action profile-danger-action" data-client-pricing-rule-action="delete" data-client-pricing-rule-index="${index}" aria-label="Delete Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Delete Pricing Rule">
+                      <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action" data-client-pricing-rule-action="delete" data-client-pricing-rule-index="${index}" aria-label="Delete Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Delete Pricing Rule">
                         <span class="button-icon" aria-hidden="true">delete</span>
                       </button>
                     </span>
-                  </li>
+                  </div>
                 `;
               }).join("");
           const inlineCreateActive = clientPricingRuleInlineEditorMatches(
@@ -29122,7 +29402,7 @@
           const inlineCanSave = Boolean(inlineCurrencyPair) && inlineMarginNumber !== null
             && inlineMarginNumber >= 0 && inlineMarginNumber < 100;
           const inlineSaving = inlineCreateActive && clientPricingRuleInlineEditorState.saving;
-          const addRuleRowMarkup = inlineCreateActive
+          const inlineCreateRowMarkup = inlineCreateActive
             ? clientPricingRuleInlineEditorMarkup({
                 contextId: context.pricingContextId,
                 currencyPairs: availableCurrencyPairs,
@@ -29135,32 +29415,37 @@
                 saving: inlineSaving,
                 canSave: inlineCanSave
               })
-            : !inlineEditActive && availableCurrencyPairs.length > 0
+            : "";
+          const addRuleRowMarkup = !inlineCreateActive && !inlineEditActive && availableCurrencyPairs.length > 0
               ? `
-                  <li class="client-pricing-configuration-add-row">
-                    <button type="button" class="btn btn-sm btn-outline-primary with-icon client-pricing-configuration-add-rule" data-client-execution-context-action="add-rule" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}">
+                  <div class="client-pricing-configuration-add-row">
+                    <button type="button" class="btn btn-sm btn-primary reference-new-button client-pricing-configuration-add-rule" data-client-execution-context-action="add-rule" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}">
                       <span class="button-icon" aria-hidden="true">add</span>
                       <span>Pricing Rule</span>
                     </button>
-                  </li>
+                  </div>
                 `
               : "";
+          const visibleRulesMarkup = inlineCreateActive && ruleEntries.length === 0
+            ? ""
+            : rulesMarkup;
 
           return `
             <li class="client-pricing-configuration-context${expanded ? "" : " is-collapsed"}" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}">
               <div class="client-pricing-configuration-context-head">
                 <button type="button" class="client-pricing-configuration-context-toggle" data-client-execution-context-action="toggle" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}" aria-expanded="${String(expanded)}" aria-controls="${escapeHtml(branchId)}" aria-label="${expanded ? "Collapse" : "Expand"} ${escapeHtml(pricingContextDisplayPath(context))}">
                   <span class="button-icon" aria-hidden="true">${expanded ? "expand_more" : "chevron_right"}</span>
-                  <span class="client-pricing-configuration-context-label">Pricing Context</span>
-                  <span class="client-pricing-context-candidate-path" title="${escapeHtml(pricingContextDisplayPath(context))}">${pricingContextFacetsMarkup(context)}</span>
+                  <span class="client-pricing-configuration-context-title">
+                    <span class="button-icon" aria-hidden="true" data-tooltip="Execution Context">hub</span>
+                    <span class="client-pricing-configuration-context-label">Execution Context</span>
+                  </span>
+                  <span class="client-pricing-context-candidate-path">${pricingContextFacetsMarkup(context)}</span>
                   <span class="client-pricing-configuration-context-meta">
-                    <span class="client-pricing-configuration-context-relation">Execution System Pricing Mode</span>
-                    <span class="client-pricing-configuration-mode">${pricingModeIndicatorMarkup(pricingMode, escapeHtml(pricingMode))}</span>
-                    <span class="client-pricing-configuration-context-relation">Default FX Position Mode</span>
-                    ${positionManagementModeBadgeMarkup(
-                      pricingContextById(context.pricingContextId)?.defaultPositionManagementMode ??
-                      context.defaultPositionManagementMode
-                    )}
+                    <span class="client-pricing-configuration-context-relation">
+                      <span class="button-icon" aria-hidden="true" data-tooltip="Pricing Mode">price_change</span>
+                      <span>Pricing Mode</span>
+                    </span>
+                    <span class="client-pricing-configuration-mode">${pricingModeIndicatorMarkup(pricingMode, escapeHtml(pricingMode), false)}</span>
                   </span>
                 </button>
                 <span class="client-pricing-configuration-context-actions profile-row-actions">
@@ -29170,10 +29455,11 @@
                 </span>
               </div>
               <div class="client-pricing-configuration-branch" id="${escapeHtml(branchId)}"${expanded ? "" : " hidden"}>
-                <ul class="client-pricing-configuration-rules" aria-label="Pricing Rules for ${escapeHtml(pricingContextDisplayPath(context))}">
-                  ${rulesMarkup}
-                  ${addRuleRowMarkup}
-                </ul>
+                <div class="client-pricing-rule-tree" role="list" aria-label="Pricing Rules for ${escapeHtml(pricingContextDisplayPath(context))}">
+                  ${visibleRulesMarkup}
+                  ${inlineCreateRowMarkup}
+                </div>
+                ${addRuleRowMarkup}
               </div>
             </li>
           `;
@@ -29894,7 +30180,7 @@
           <td>${activeBooleanTokenMarkup(profile.isActive)}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
-              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-profile-action="edit" data-profile-index="${index}" aria-label="Edit ${escapeHtml(profile.counterpartyId ?? profile.inn)}" title="Edit">
+              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-profile-action="edit" data-profile-index="${index}" aria-label="Edit ${escapeHtml(profile.counterpartyId ?? profile.inn)}">
                 <span class="button-icon" aria-hidden="true">edit</span>
               </button>
             </span>
@@ -31573,8 +31859,8 @@
           </td>
           <td>
             <select class="inline-edit-control" data-pricing-context-field="defaultPositionManagementMode" aria-label="Default FX Position Mode" required>
-              <option value="MANUAL"${normalizedPositionManagementMode(context.defaultPositionManagementMode) === "MANUAL" ? " selected" : ""}>Manual</option>
-              <option value="AUTO"${normalizedPositionManagementMode(context.defaultPositionManagementMode) === "AUTO" ? " selected" : ""}>Auto</option>
+              <option value="MANUAL"${normalizedPositionManagementMode(context.defaultPositionManagementMode) === "MANUAL" ? " selected" : ""}>${escapeHtml(positionManagementModeLabel("MANUAL"))}</option>
+              <option value="AUTO"${normalizedPositionManagementMode(context.defaultPositionManagementMode) === "AUTO" ? " selected" : ""}>${escapeHtml(positionManagementModeLabel("AUTO"))}</option>
             </select>
           </td>
           <td>${usage}</td>
@@ -32767,13 +33053,72 @@
       return marketPairs.filter(pair => pair.baseCcy === code || pair.quoteCcy === code).length;
     }
 
+    function tabulatorTooltipTargetsInteractiveElement(event, boundary) {
+      const target = event?.target;
+
+      if (!(target instanceof Element)) {
+        return false;
+      }
+
+      const interactiveTarget = target.closest(
+        "[data-tooltip], button, input, select, textarea, a"
+      );
+
+      return Boolean(interactiveTarget && boundary?.contains(interactiveTarget));
+    }
+
+    function tabulatorCellOverflowTooltip(event, cell) {
+      const element = cell?.getElement?.();
+
+      if (
+        !(element instanceof Element)
+        || tabulatorTooltipTargetsInteractiveElement(event, element)
+      ) {
+        return "";
+      }
+
+      const overflowSource = element.querySelector(
+        "[data-smart-tooltip-content], [data-smart-width-content], .position-label-text"
+      ) || element;
+
+      if (!tableContentIsClipped(overflowSource, element)) {
+        return "";
+      }
+
+      const text = smartCellText(element);
+
+      return text ? escapeHtml(text) : "";
+    }
+
+    function tabulatorHeaderOverflowTooltip(event, column) {
+      const element = column?.getElement?.();
+
+      if (
+        !(element instanceof Element)
+        || tabulatorTooltipTargetsInteractiveElement(event, element)
+      ) {
+        return "";
+      }
+
+      const overflowSource = element.querySelector(".tabulator-col-title") || element;
+
+      if (!tableContentIsClipped(overflowSource, element)) {
+        return "";
+      }
+
+      const text = smartHeaderLabel(overflowSource);
+
+      return text ? escapeHtml(text) : "";
+    }
+
     function tabulatorSizedColumn(size, definition) {
       const policy = tableColumnPolicy(size);
 
       return {
         minWidth: policy.min,
         maxWidth: policy.max,
-        tooltip: policy.ellipsize,
+        tooltip: tabulatorCellOverflowTooltip,
+        headerTooltip: tabulatorHeaderOverflowTooltip,
         ...definition
       };
     }
@@ -32804,7 +33149,9 @@
         headerFilterLiveFilterDelay: 250,
         columnDefaults: {
           resizable: false,
-          vertAlign: "middle"
+          vertAlign: "middle",
+          tooltip: tabulatorCellOverflowTooltip,
+          headerTooltip: tabulatorHeaderOverflowTooltip
         },
         columns: configuredColumns
       };
@@ -32997,7 +33344,8 @@
         columnDefaults: {
           resizable: false,
           vertAlign: "middle",
-          tooltip: false,
+          tooltip: tabulatorCellOverflowTooltip,
+          headerTooltip: tabulatorHeaderOverflowTooltip,
           headerSort: false
         },
         columns: uiTableColumns("batching_history_grid", [
@@ -33246,7 +33594,8 @@
         columnDefaults: {
           resizable: false,
           vertAlign: "middle",
-          tooltip: false,
+          tooltip: tabulatorCellOverflowTooltip,
+          headerTooltip: tabulatorHeaderOverflowTooltip,
           headerSort: false
         },
         columns: uiTableColumns("batch_formation_audit_grid", [
@@ -33633,8 +33982,7 @@
           field: "tradeType",
           headerSort: isMemberTable,
           ...memberTextFilter,
-          formatter: batchStructureTradeTypeFormatter,
-          tooltip: false
+          formatter: batchStructureTradeTypeFormatter
         }),
         tabulatorSizedColumn("type", {
           title: roleField === "memberRole" ? "Member Role" : "Output Role",
@@ -33728,7 +34076,8 @@
         columnDefaults: {
           resizable: false,
           vertAlign: "middle",
-          tooltip: false,
+          tooltip: tabulatorCellOverflowTooltip,
+          headerTooltip: tabulatorHeaderOverflowTooltip,
           headerSort: false
         },
         columns: uiTableColumns(tableKey, columns)
@@ -37091,11 +37440,27 @@
               );
             }
 
+            const currentFxPositionMode = normalizedPositionManagementMode(
+              record?.currentFxPositionMode
+              ?? record?.current_fx_position_mode
+              ?? record?.fxPositionMode
+              ?? record?.fx_position_mode
+            );
+
             return {
               ...position,
-              fxPositionMode: normalizedPositionManagementMode(
-                record?.fxPositionMode ?? record?.fx_position_mode
-              )
+              initialFxPositionMode: normalizedPositionManagementMode(
+                record?.initialFxPositionMode
+                ?? record?.initial_fx_position_mode,
+                currentFxPositionMode
+              ),
+              currentFxPositionMode,
+              fxPositionMode: currentFxPositionMode,
+              positionManagementModeChangedAt: String(
+                record?.positionManagementModeChangedAt
+                ?? record?.position_management_mode_changed_at
+                ?? ""
+              ).trim()
             };
           })
         : [];
@@ -37555,13 +37920,17 @@
 
     function fxPositionRowsForMode(source, mode = activeFxPositionMode) {
       const normalizedMode = normalizedPositionManagementMode(mode);
-      return source.filter(deal => deal?.fxPositionMode === normalizedMode);
+      return source.filter(deal => normalizedPositionManagementMode(
+        deal?.currentFxPositionMode ?? deal?.fxPositionMode
+      ) === normalizedMode);
     }
 
     function fxPositionModeCounts(source) {
+      const pairRows = activeCurrencyPairRows(source);
+
       return Object.freeze({
-        MANUAL: fxPositionRowsForMode(source, "MANUAL").length,
-        AUTO: fxPositionRowsForMode(source, "AUTO").length
+        MANUAL: fxPositionRowsForMode(pairRows, "MANUAL").length,
+        AUTO: fxPositionRowsForMode(pairRows, "AUTO").length
       });
     }
 
@@ -37641,6 +38010,7 @@
       }
 
       activeFxPositionMode = nextMode;
+      closeSendToAutoPositionModeDialog();
       closeOneBatchTenorDialog({ restoreFocus: false });
       clearHiddenFxPositionSelection();
       setBatchStatus("");
@@ -37721,6 +38091,159 @@
       return currentDisplayRows().filter(deal =>
         selectedTradeIds.has(deal.id) && isBatchableFxPositionTrade(deal)
       );
+    }
+
+    function isManualReviewTradeEligibleForAuto(deal) {
+      const tradeType = fxPositionType(deal);
+      const initialMode = normalizedPositionManagementMode(
+        deal?.initialFxPositionMode,
+        deal?.currentFxPositionMode ?? deal?.fxPositionMode
+      );
+      const currentMode = normalizedPositionManagementMode(
+        deal?.currentFxPositionMode ?? deal?.fxPositionMode
+      );
+
+      return initialMode === "MANUAL"
+        && currentMode === "MANUAL"
+        && ["CLIENT_DEAL", "HEDGE_DEAL"].includes(tradeType)
+        && isBatchableFxPositionTrade(deal);
+    }
+
+    function selectedManualReviewTradesForAuto() {
+      if (activeFxPositionMode !== "MANUAL") {
+        return [];
+      }
+
+      const selectedRows = currentDisplayRows().filter(deal =>
+        selectedTradeIds.has(deal.id)
+      );
+
+      return selectedRows.length > 0
+        && selectedRows.every(isManualReviewTradeEligibleForAuto)
+        ? selectedRows
+        : [];
+    }
+
+    function closeSendToAutoPositionModeDialog() {
+      if (sendToAutoPositionModeInFlight) {
+        return;
+      }
+
+      pendingSendToAutoTrades = [];
+      sendToAutoPositionModeStatus.textContent = "";
+      sendToAutoPositionModeStatus.hidden = true;
+      sendToAutoPositionModeDialogClose.disabled = false;
+      sendToAutoPositionModeCancelButton.disabled = false;
+      sendToAutoPositionModeConfirmButton.disabled = false;
+
+      if (typeof sendToAutoPositionModeDialog.close === "function") {
+        sendToAutoPositionModeDialog.close();
+      } else {
+        sendToAutoPositionModeDialog.removeAttribute("open");
+      }
+    }
+
+    function openSendToAutoPositionModeDialog() {
+      if (!DEMO_API_ENABLED || sendToAutoPositionModeInFlight) {
+        return;
+      }
+
+      const selectedTrades = selectedManualReviewTradesForAuto();
+
+      if (selectedTrades.length === 0) {
+        setBatchStatus(
+          "Select one or more eligible Manual Control Client or Hedge Deals.",
+          "warning"
+        );
+        return;
+      }
+
+      pendingSendToAutoTrades = selectedTrades.map(deal => Object.freeze({
+        tradeId: Number(fxPositionTradeId(deal)),
+        tradeType: fxPositionType(deal)
+      }));
+      const count = pendingSendToAutoTrades.length;
+      sendToAutoPositionModeSummary.textContent =
+        `Send ${count} selected FX Trade${count === 1 ? "" : "s"} to Auto Batching & Hedging?`;
+      sendToAutoPositionModeStatus.textContent = "";
+      sendToAutoPositionModeStatus.hidden = true;
+
+      if (typeof sendToAutoPositionModeDialog.showModal === "function") {
+        sendToAutoPositionModeDialog.showModal();
+      } else {
+        sendToAutoPositionModeDialog.setAttribute("open", "");
+      }
+
+      sendToAutoPositionModeCancelButton.focus();
+    }
+
+    async function confirmSendToAutoPositionMode() {
+      if (
+        sendToAutoPositionModeInFlight
+        || pendingSendToAutoTrades.length === 0
+      ) {
+        return;
+      }
+
+      const submittedTrades = [...pendingSendToAutoTrades];
+      const count = submittedTrades.length;
+      sendToAutoPositionModeInFlight = true;
+      sendToAutoPositionModeDialogClose.disabled = true;
+      sendToAutoPositionModeCancelButton.disabled = true;
+      sendToAutoPositionModeConfirmButton.disabled = true;
+      sendToAutoPositionModeStatus.textContent =
+        `Sending ${count} FX Trade${count === 1 ? "" : "s"} to Auto Batching & Hedging...`;
+      sendToAutoPositionModeStatus.className =
+        "alert alert-secondary batch-rollback-status mt-3 mb-0";
+      sendToAutoPositionModeStatus.hidden = false;
+      updateActionButtons();
+
+      try {
+        const result = await demoApiRequest(
+          "/api/v1/fx-positions/send-to-auto-batching",
+          {
+            method: "POST",
+            body: JSON.stringify({ trades: submittedTrades })
+          }
+        );
+
+        submittedTrades.forEach(trade => {
+          selectedTradeIds.delete(String(trade.tradeId));
+        });
+        await Promise.all([
+          reloadClientFxDealsFromApi(),
+          reloadHedgeFxDealsFromApi(),
+          reloadFxPositionsFromApi()
+        ]);
+        renderClientFxDeals(clientFxDeals);
+        renderHedgeFxDeals(hedgeFxDeals);
+        render(fxPositions);
+        sendToAutoPositionModeInFlight = false;
+        closeSendToAutoPositionModeDialog();
+
+        const replayedCount = Number(result?.replayedCount || 0);
+        setBatchStatus(
+          `${count} FX Trade${count === 1 ? " is" : "s are"} now in Auto Batching & Hedging.`
+          + (replayedCount > 0
+            ? ` ${replayedCount} already had the requested Current Mode.`
+            : ""),
+          "success"
+        );
+      } catch (error) {
+        const message = error.message
+          || "Unable to send selected FX Trades to Auto Batching & Hedging.";
+        sendToAutoPositionModeStatus.textContent = message;
+        sendToAutoPositionModeStatus.className =
+          "alert alert-danger batch-rollback-status mt-3 mb-0";
+        sendToAutoPositionModeStatus.hidden = false;
+        setBatchStatus(message, "error");
+      } finally {
+        sendToAutoPositionModeInFlight = false;
+        sendToAutoPositionModeDialogClose.disabled = false;
+        sendToAutoPositionModeCancelButton.disabled = false;
+        sendToAutoPositionModeConfirmButton.disabled = false;
+        updateActionButtons();
+      }
     }
 
     function oneBatchTenorGroups(sourceDeals) {
@@ -38317,6 +38840,13 @@
 
     function updateActionButtons() {
       editDealButton.disabled = selectedEditableDeal() === null;
+
+      const manualReviewTrades = selectedManualReviewTradesForAuto();
+      sendToAutoPositionModeButton.hidden = activeFxPositionMode !== "MANUAL";
+      sendToAutoPositionModeButton.disabled =
+        !DEMO_API_ENABLED
+        || sendToAutoPositionModeInFlight
+        || manualReviewTrades.length === 0;
 
       oneBatchButton.disabled =
         !DEMO_API_ENABLED
@@ -39710,7 +40240,8 @@
         columnDefaults: {
           resizable: false,
           vertAlign: "middle",
-          tooltip: false,
+          tooltip: tabulatorCellOverflowTooltip,
+          headerTooltip: tabulatorHeaderOverflowTooltip,
           headerSort: false
         },
         columns: uiTableColumns("hedge_quick_mode_settings_grid", [
@@ -41335,7 +41866,8 @@
         columnDefaults: {
           resizable: false,
           vertAlign: "middle",
-          tooltip: false
+          tooltip: tabulatorCellOverflowTooltip,
+          headerTooltip: tabulatorHeaderOverflowTooltip
         },
         columns: clientDealDuplicateCheckColumns()
       });
@@ -43012,6 +43544,10 @@
       return `<span class="${tone.trim()}">${escapeHtml(formattedValue)}</span>`;
     }
 
+    function clientFxDealsPositionManagementModeFormatter(cell) {
+      return positionManagementModeBadgeMarkup(cell.getValue());
+    }
+
     function clientFxDealsExecutionContextLabel(executionContextId) {
       const normalizedId = Number(executionContextId);
 
@@ -43047,8 +43583,12 @@
       `;
     }
 
+    function clientFxDealsValueColumn(size, definition) {
+      return tabulatorSizedColumn(size, definition);
+    }
+
     function clientFxDealsFilterableColumn(size, definition) {
-      return tabulatorSizedColumn(size, {
+      return clientFxDealsValueColumn(size, {
         headerFilter: "input",
         headerFilterFunc: "like",
         ...definition
@@ -43059,15 +43599,13 @@
       return scope === "hedge" ? hedgeFxDealsViewMode : clientFxDealsViewMode;
     }
 
-    function syncFxDealsViewModeButtons(scope) {
-      const activeMode = fxDealsViewMode(scope);
+    function syncFxDealsAuditToggle(scope) {
+      const auditViewEnabled = fxDealsViewMode(scope) === FX_DEALS_VIEW_MODE_AUDIT;
 
-      fxDealsViewModeButtons
-        .filter(button => button.dataset.fxDealsViewScope === scope)
-        .forEach(button => {
-          const isActive = button.dataset.fxDealsViewMode === activeMode;
-          button.classList.toggle("active", isActive);
-          button.setAttribute("aria-pressed", String(isActive));
+      fxDealsAuditToggles
+        .filter(toggle => toggle.dataset.fxDealsViewScope === scope)
+        .forEach(toggle => {
+          toggle.checked = auditViewEnabled;
         });
     }
 
@@ -43089,7 +43627,7 @@
       });
 
       table?.redraw(true);
-      syncFxDealsViewModeButtons(scope);
+      syncFxDealsAuditToggle(scope);
     }
 
     function setFxDealsViewMode(scope, mode) {
@@ -43150,9 +43688,9 @@
             clientFxDealsFilterableColumn("date", { title: "Trade Date", field: "tradeDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-terms" }),
             clientFxDealsFilterableColumn("pair", { title: "Ccy Pair", field: "currencyPair", cssClass: "client-deals-col-terms" }),
             clientFxDealsFilterableColumn("shortText", { title: "Client Side", field: "side", headerSort: false, formatter: clientFxDealsSideFormatter, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" }),
-            tabulatorSizedColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            tabulatorSizedColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            tabulatorSizedColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientFxDealsValueColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientFxDealsValueColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientFxDealsValueColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
             clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" })
           ]
         },
@@ -43168,16 +43706,18 @@
           title: "Pricing Details",
           cssClass: "client-deals-group-pricing",
           columns: [
-            clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, tooltip: true, cssClass: "client-deals-col-pricing" }),
-            tabulatorSizedColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number" })
+            clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, cssClass: "client-deals-col-pricing" }),
+            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number" })
           ]
         },
         {
           title: "FX Position Processing",
           cssClass: "client-deals-group-position-processing",
           columns: [
-            tabulatorSizedColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
-            tabulatorSizedColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientFxDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
+            clientFxDealsFilterableColumn("shortText", { title: "Initial FX Position Mode", field: "initialFxPositionMode", headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientFxDealsFilterableColumn("shortText", { title: "Current FX Position Mode", field: "currentFxPositionMode", headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientFxDealsValueColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
+            clientFxDealsValueColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientFxDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
           ]
         }
       ];
@@ -43223,7 +43763,8 @@
         columnDefaults: {
           resizable: false,
           vertAlign: "middle",
-          tooltip: false
+          tooltip: tabulatorCellOverflowTooltip,
+          headerTooltip: tabulatorHeaderOverflowTooltip
         },
         columns
       });
@@ -43357,9 +43898,9 @@
             clientFxDealsFilterableColumn("date", { title: "Trade Date", field: "tradeDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-terms" }),
             clientFxDealsFilterableColumn("pair", { title: "Ccy Pair", field: "currencyPair", cssClass: "client-deals-col-terms" }),
             clientFxDealsFilterableColumn("shortText", { title: "Hedge Side", field: "side", headerSort: false, formatter: clientFxDealsSideFormatter, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" }),
-            tabulatorSizedColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            tabulatorSizedColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            tabulatorSizedColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientFxDealsValueColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientFxDealsValueColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientFxDealsValueColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
             clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" })
           ]
         },
@@ -43375,16 +43916,18 @@
           title: "Pricing Details",
           cssClass: "client-deals-group-pricing",
           columns: [
-            clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, tooltip: true, cssClass: "client-deals-col-pricing" }),
-            tabulatorSizedColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number" })
+            clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, cssClass: "client-deals-col-pricing" }),
+            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number" })
           ]
         },
         {
           title: "FX Position Processing",
           cssClass: "client-deals-group-position-processing",
           columns: [
-            tabulatorSizedColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
-            tabulatorSizedColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientFxDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
+            clientFxDealsFilterableColumn("shortText", { title: "Initial FX Position Mode", field: "initialFxPositionMode", headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientFxDealsFilterableColumn("shortText", { title: "Current FX Position Mode", field: "currentFxPositionMode", headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientFxDealsValueColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
+            clientFxDealsValueColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientFxDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
           ]
         }
       ];
@@ -43430,7 +43973,8 @@
         columnDefaults: {
           resizable: false,
           vertAlign: "middle",
-          tooltip: false
+          tooltip: tabulatorCellOverflowTooltip,
+          headerTooltip: tabulatorHeaderOverflowTooltip
         },
         columns
       });
@@ -43638,7 +44182,8 @@
         columnDefaults: {
           resizable: false,
           vertAlign: "middle",
-          tooltip: false,
+          tooltip: tabulatorCellOverflowTooltip,
+          headerTooltip: tabulatorHeaderOverflowTooltip,
           headerSort: false
         },
         columns: analyticalPnlReportColumns()
@@ -43732,7 +44277,8 @@
         columnDefaults: {
           resizable: false,
           vertAlign: "middle",
-          tooltip: false,
+          tooltip: tabulatorCellOverflowTooltip,
+          headerTooltip: tabulatorHeaderOverflowTooltip,
           headerSort: false
         },
         columns: uiTableColumns("analytical_pnl_summary_grid", [
@@ -44398,6 +44944,23 @@
     });
     generateClientDealButton.addEventListener("click", generateClientDeal);
     runClientDealGenerationButton.addEventListener("click", toggleClientDealGenerationProcess);
+    sendToAutoPositionModeButton.addEventListener("click", openSendToAutoPositionModeDialog);
+    sendToAutoPositionModeDialogClose.addEventListener(
+      "click",
+      closeSendToAutoPositionModeDialog
+    );
+    sendToAutoPositionModeCancelButton.addEventListener(
+      "click",
+      closeSendToAutoPositionModeDialog
+    );
+    sendToAutoPositionModeConfirmButton.addEventListener(
+      "click",
+      confirmSendToAutoPositionMode
+    );
+    sendToAutoPositionModeDialog.addEventListener("cancel", event => {
+      event.preventDefault();
+      closeSendToAutoPositionModeDialog();
+    });
     oneBatchButton.addEventListener("click", formOneBatchFromSelection);
     oneBatchTenorDialogClose.addEventListener("click", () => closeOneBatchTenorDialog());
     oneBatchTenorCancelButton.addEventListener("click", () => closeOneBatchTenorDialog());
@@ -45131,7 +45694,7 @@
         renderClientPricingContextBuilder();
       }
 
-      updateClientPricingRuleEffectivePositionMode();
+      syncClientPricingRulePositionManagementModeControls();
       updateClientPricingRuleSubmitAvailability();
     });
     clientPricingRuleForm.addEventListener("change", event => {
@@ -45143,7 +45706,7 @@
         renderClientPricingContextBuilder();
       }
 
-      updateClientPricingRuleEffectivePositionMode();
+      syncClientPricingRulePositionManagementModeControls();
       updateClientPricingRuleSubmitAvailability();
     });
     clientPricingRuleForm.addEventListener("click", event => {
@@ -45750,16 +46313,16 @@
       clearFormValidity();
     });
 
-    fxDealsViewModeButtons.forEach(button => {
-      button.addEventListener("click", () => {
+    fxDealsAuditToggles.forEach(toggle => {
+      toggle.addEventListener("change", () => {
         setFxDealsViewMode(
-          button.dataset.fxDealsViewScope,
-          button.dataset.fxDealsViewMode
+          toggle.dataset.fxDealsViewScope,
+          toggle.checked ? FX_DEALS_VIEW_MODE_AUDIT : FX_DEALS_VIEW_MODE_STANDARD
         );
       });
     });
-    syncFxDealsViewModeButtons("client");
-    syncFxDealsViewModeButtons("hedge");
+    syncFxDealsAuditToggle("client");
+    syncFxDealsAuditToggle("hedge");
 
     fxPositionModeTabs.forEach(tab => {
       tab.addEventListener("keydown", handleFxPositionModeTabKeydown);
@@ -45861,6 +46424,7 @@
     });
     window.addEventListener("beforeunload", () => marketStreamEventSource?.close());
     window.addEventListener("resize", repositionAppTooltip);
+    window.addEventListener("resize", scheduleSmartColumnSizing);
     window.addEventListener("resize", scheduleHedgeQuickModeQuoteAlignment);
     window.addEventListener("resize", scheduleFxPositionGridFillHeight);
     window.addEventListener("scroll", repositionAppTooltip, true);

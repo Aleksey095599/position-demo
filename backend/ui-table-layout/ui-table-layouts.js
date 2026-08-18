@@ -122,6 +122,8 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["quote_ccy_value_date", "Quote Ccy Value Date", 168],
     ["execution_context_label", "Execution Context", 435],
     ["pricing_rule_margin", "Margin", 102],
+    ["initial_fx_position_mode", "Initial FX Position Mode", 232],
+    ["current_fx_position_mode", "Current FX Position Mode", 232],
     ["transfer_rate", "Transfer Rate", 122],
     ["analytical_pnl", "Analytical PnL", 126]
   ]),
@@ -144,6 +146,8 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["quote_ccy_value_date", "Quote Ccy Value Date", 168],
     ["execution_context_label", "Execution Context", 435],
     ["pricing_rule_margin", "Margin", 102],
+    ["initial_fx_position_mode", "Initial FX Position Mode", 232],
+    ["current_fx_position_mode", "Current FX Position Mode", 232],
     ["transfer_rate", "Transfer Rate", 122],
     ["analytical_pnl", "Analytical PnL", 126]
   ]),

@@ -21,6 +21,8 @@ function trade(
   return {
     tradeId,
     tradeType: "CLIENT_DEAL",
+    initialFxPositionMode: "AUTO",
+    currentFxPositionMode: "AUTO",
     receivedTimestamp,
     ccyPairCode: "EUR_USD",
     side: "SELL",

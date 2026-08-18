@@ -27,7 +27,10 @@ function elementMarkup(id, tagName) {
 }
 
 function topLevelFunctionSource(name) {
-  const marker = `function ${name}(`;
+  const asyncMarker = `async function ${name}(`;
+  const marker = inlineScript.includes(asyncMarker)
+    ? asyncMarker
+    : `function ${name}(`;
   const start = inlineScript.indexOf(marker);
   assert.notEqual(start, -1, `Expected inline function ${name}.`);
   const remainingSource = inlineScript.slice(start + marker.length);
@@ -38,11 +41,18 @@ function topLevelFunctionSource(name) {
   return inlineScript.slice(start, end).trim();
 }
 
-function normalizedMode(value) {
-  return String(value || "").trim().toUpperCase() === "AUTO" ? "AUTO" : "MANUAL";
+function normalizedMode(value, fallback = "MANUAL") {
+  const mode = String(value || "").trim().toUpperCase();
+  const fallbackMode = String(fallback || "").trim().toUpperCase();
+
+  if (["MANUAL", "AUTO"].includes(mode)) {
+    return mode;
+  }
+
+  return ["MANUAL", "AUTO"].includes(fallbackMode) ? fallbackMode : "MANUAL";
 }
 
-test("Manual and Auto routes control one shared FX Position grid", () => {
+test("Manual Control and Auto Batching & Hedging routes control one shared FX Position grid", () => {
   const tabsMarkup = elementMarkup("fxPositionModeTabs", "nav");
   const manualTabMarkup = elementMarkup("fxPositionManualTab", "a");
   const autoTabMarkup = elementMarkup("fxPositionAutoTab", "a");
@@ -52,12 +62,12 @@ test("Manual and Auto routes control one shared FX Position grid", () => {
   assert.match(manualTabMarkup, /href="#fx-position:manual"/);
   assert.match(manualTabMarkup, /data-fx-position-mode="MANUAL"/);
   assert.match(manualTabMarkup, /aria-controls="fxPositionGridPanel"/);
-  assert.match(manualTabMarkup, />FX Position Manual</);
+  assert.match(manualTabMarkup, />Manual Control</);
   assert.match(manualTabMarkup, /id="fxPositionManualCount"/);
   assert.match(autoTabMarkup, /href="#fx-position:auto"/);
   assert.match(autoTabMarkup, /data-fx-position-mode="AUTO"/);
   assert.match(autoTabMarkup, /aria-controls="fxPositionGridPanel"/);
-  assert.match(autoTabMarkup, />FX Position Auto</);
+  assert.match(autoTabMarkup, />Auto Batching &amp; Hedging</);
   assert.match(autoTabMarkup, /id="fxPositionAutoCount"/);
   assert.match(sharedPanelMarkup, /role="tabpanel"/);
 
@@ -71,6 +81,19 @@ test("Manual and Auto routes control one shared FX Position grid", () => {
     fxPositionGridMarkup,
     /data-ui-column-key="(?:fx_)?position_management_mode"|>\s*FX Position Mode\s*</i
   );
+});
+
+test("Manual Control exposes an explicit confirmation before sending Trades to Auto", () => {
+  const buttonMarkup = elementMarkup("sendToAutoPositionModeButton", "button");
+  const dialogMarkup = elementMarkup("sendToAutoPositionModeDialog", "dialog");
+
+  assert.match(buttonMarkup, /class="[^"]*\bbtn-outline-secondary\b[^"]*"/);
+  assert.match(buttonMarkup, /disabled/);
+  assert.match(buttonMarkup, /aria-label="Send selected Trades to Auto Batching &amp; Hedging"/);
+  assert.match(buttonMarkup, />Send to Auto</);
+  assert.match(dialogMarkup, /id="sendToAutoPositionModeDialogTitle"/);
+  assert.doesNotMatch(dialogMarkup, /Initial FX Position Mode|Current FX Position Mode/);
+  assert.match(dialogMarkup, /id="sendToAutoPositionModeConfirmButton"/);
 });
 
 test("route helpers preserve the legacy Manual default and explicit mode state", () => {
@@ -100,7 +123,7 @@ test("route helpers preserve the legacy Manual default and explicit mode state",
   );
 });
 
-test("persisted fxPositionMode drives rows and mode-specific counts", () => {
+test("persisted currentFxPositionMode drives rows and selected-Ccy-Pair counts", () => {
   const rowsFunctionSource = topLevelFunctionSource("fxPositionRowsForMode");
   const countsFunctionSource = topLevelFunctionSource("fxPositionModeCounts");
   const fxPositionRowsForMode = new Function(
@@ -109,24 +132,53 @@ test("persisted fxPositionMode drives rows and mode-specific counts", () => {
   )(normalizedMode);
   const fxPositionModeCounts = new Function(
     "normalizedPositionManagementMode",
+    "activeCurrencyPairRows",
     `${rowsFunctionSource}\n${countsFunctionSource}; return fxPositionModeCounts;`
-  )(normalizedMode);
+  )(
+    normalizedMode,
+    source => source.filter(record => record.currencyPair === "EUR/USD")
+  );
   const records = [
-    { id: "manual-1", fxPositionMode: "MANUAL", pricingMode: "AUTO_PRICED" },
-    { id: "auto-1", fxPositionMode: "AUTO", pricingMode: "DEALER_PRICED" },
-    { id: "auto-2", fxPositionMode: "AUTO", pricingMode: "DEALER_PRICED" },
-    { id: "missing-mode", pricingMode: "AUTO_PRICED" }
+    {
+      id: "manual-1",
+      initialFxPositionMode: "MANUAL",
+      currentFxPositionMode: "MANUAL",
+      currencyPair: "EUR/USD"
+    },
+    {
+      id: "auto-1",
+      initialFxPositionMode: "AUTO",
+      currentFxPositionMode: "AUTO",
+      currencyPair: "EUR/USD"
+    },
+    {
+      id: "promoted-to-auto",
+      initialFxPositionMode: "MANUAL",
+      currentFxPositionMode: "AUTO",
+      currencyPair: "EUR/USD"
+    },
+    {
+      id: "current-mode-wins",
+      currentFxPositionMode: "AUTO",
+      fxPositionMode: "MANUAL",
+      currencyPair: "GBP/USD"
+    },
+    { id: "legacy-auto", fxPositionMode: "AUTO", currencyPair: "GBP/USD" },
+    { id: "missing-mode", pricingMode: "AUTO_PRICED", currencyPair: "GBP/USD" }
   ];
 
   assert.deepEqual(
     fxPositionRowsForMode(records, "MANUAL").map(record => record.id),
-    ["manual-1"]
+    ["manual-1", "missing-mode"]
   );
   assert.deepEqual(
     fxPositionRowsForMode(records, "AUTO").map(record => record.id),
-    ["auto-1", "auto-2"]
+    ["auto-1", "promoted-to-auto", "current-mode-wins", "legacy-auto"]
   );
   assert.deepEqual(fxPositionModeCounts(records), { MANUAL: 1, AUTO: 2 });
+
+  assert.match(rowsFunctionSource, /deal\?\.currentFxPositionMode \?\? deal\?\.fxPositionMode/);
+  assert.match(countsFunctionSource, /const pairRows = activeCurrencyPairRows\(source\)/);
 
   const displayRowsSource = topLevelFunctionSource("currentDisplayRows");
   const tabRendererSource = topLevelFunctionSource("renderFxPositionModeTabs");
@@ -154,9 +206,11 @@ test("switching mode removes selections hidden by the new route", () => {
   assert.deepEqual([...selectedTradeIds], ["manual-visible"]);
 
   let clearCalls = 0;
+  let closeSendToAutoCalls = 0;
   const modeHarness = new Function(
     "normalizedPositionManagementMode",
     "closeOneBatchTenorDialog",
+    "closeSendToAutoPositionModeDialog",
     "clearHiddenFxPositionSelection",
     "setBatchStatus",
     `let activeFxPositionMode = "MANUAL";
@@ -168,6 +222,7 @@ test("switching mode removes selections hidden by the new route", () => {
   )(
     normalizedMode,
     () => {},
+    () => { closeSendToAutoCalls += 1; },
     () => { clearCalls += 1; },
     () => {}
   );
@@ -175,8 +230,127 @@ test("switching mode removes selections hidden by the new route", () => {
   assert.equal(modeHarness.setActiveFxPositionMode("AUTO"), true);
   assert.equal(modeHarness.activeMode(), "AUTO");
   assert.equal(clearCalls, 1);
+  assert.equal(closeSendToAutoCalls, 1);
   assert.equal(modeHarness.setActiveFxPositionMode("AUTO"), false);
   assert.equal(clearCalls, 1);
+  assert.equal(closeSendToAutoCalls, 1);
+});
+
+test("Send to Auto accepts only a fully eligible Manual Client/Hedge selection", () => {
+  const eligibilitySource = topLevelFunctionSource("isManualReviewTradeEligibleForAuto");
+  const selectionSource = topLevelFunctionSource("selectedManualReviewTradesForAuto");
+  const eligibility = new Function(
+    "normalizedPositionManagementMode",
+    "fxPositionType",
+    "isBatchableFxPositionTrade",
+    `${eligibilitySource}; return isManualReviewTradeEligibleForAuto;`
+  )(
+    normalizedMode,
+    deal => deal.tradeType,
+    deal => deal.batchable === true
+  );
+
+  assert.equal(eligibility({
+    tradeType: "CLIENT_DEAL",
+    initialFxPositionMode: "MANUAL",
+    currentFxPositionMode: "MANUAL",
+    batchable: true
+  }), true);
+  assert.equal(eligibility({
+    tradeType: "HEDGE_DEAL",
+    initialFxPositionMode: "MANUAL",
+    currentFxPositionMode: "MANUAL",
+    batchable: true
+  }), true);
+  assert.equal(eligibility({
+    tradeType: "CLIENT_DEAL",
+    initialFxPositionMode: "AUTO",
+    currentFxPositionMode: "MANUAL",
+    batchable: true
+  }), false);
+  assert.equal(eligibility({
+    tradeType: "CLIENT_DEAL",
+    initialFxPositionMode: "MANUAL",
+    currentFxPositionMode: "AUTO",
+    batchable: true
+  }), false);
+  assert.equal(eligibility({
+    tradeType: "BATCH_POSITION_OUT",
+    initialFxPositionMode: "MANUAL",
+    currentFxPositionMode: "MANUAL",
+    batchable: true
+  }), false);
+  assert.equal(eligibility({
+    tradeType: "HEDGE_DEAL",
+    initialFxPositionMode: "MANUAL",
+    currentFxPositionMode: "MANUAL",
+    batchable: false
+  }), false);
+
+  assert.match(selectionSource, /activeFxPositionMode !== "MANUAL"/);
+  assert.match(selectionSource, /selectedRows\.length > 0/);
+  assert.match(selectionSource, /selectedRows\.every\(isManualReviewTradeEligibleForAuto\)/);
+
+  const updateButtonsSource = topLevelFunctionSource("updateActionButtons");
+  assert.match(
+    updateButtonsSource,
+    /sendToAutoPositionModeButton\.hidden = activeFxPositionMode !== "MANUAL"/
+  );
+  assert.match(updateButtonsSource, /selectedManualReviewTradesForAuto\(\)/);
+  assert.match(updateButtonsSource, /sendToAutoPositionModeInFlight/);
+});
+
+test("Send to Auto posts composite identities and protects success/error/in-flight state", () => {
+  const openSource = topLevelFunctionSource("openSendToAutoPositionModeDialog");
+  const closeSource = topLevelFunctionSource("closeSendToAutoPositionModeDialog");
+  const confirmSource = topLevelFunctionSource("confirmSendToAutoPositionMode");
+
+  assert.match(openSource, /tradeId: Number\(fxPositionTradeId\(deal\)\)/);
+  assert.match(openSource, /tradeType: fxPositionType\(deal\)/);
+  assert.match(openSource, /to Auto Batching & Hedging\?`/);
+  assert.doesNotMatch(openSource, /from Manual Control/);
+  assert.match(closeSource, /if \(sendToAutoPositionModeInFlight\)/);
+  assert.match(confirmSource, /sendToAutoPositionModeInFlight = true/);
+  assert.match(confirmSource, /sendToAutoPositionModeDialogClose\.disabled = true/);
+  assert.match(confirmSource, /sendToAutoPositionModeCancelButton\.disabled = true/);
+  assert.match(confirmSource, /sendToAutoPositionModeConfirmButton\.disabled = true/);
+  assert.match(confirmSource, /"\/api\/v1\/fx-positions\/send-to-auto-batching"/);
+  assert.match(confirmSource, /method: "POST"/);
+  assert.match(confirmSource, /body: JSON\.stringify\(\{ trades: submittedTrades \}\)/);
+  assert.match(confirmSource, /selectedTradeIds\.delete\(String\(trade\.tradeId\)\)/);
+  assert.match(confirmSource, /await Promise\.all\(\[/);
+  assert.match(confirmSource, /reloadClientFxDealsFromApi\(\)/);
+  assert.match(confirmSource, /reloadHedgeFxDealsFromApi\(\)/);
+  assert.match(confirmSource, /reloadFxPositionsFromApi\(\)/);
+  assert.match(confirmSource, /renderClientFxDeals\(clientFxDeals\)/);
+  assert.match(confirmSource, /renderHedgeFxDeals\(hedgeFxDeals\)/);
+  assert.match(confirmSource, /render\(fxPositions\)/);
+  assert.match(confirmSource, /closeSendToAutoPositionModeDialog\(\)/);
+  assert.match(confirmSource, /catch \(error\)/);
+  assert.match(confirmSource, /sendToAutoPositionModeStatus\.textContent = message/);
+  assert.match(confirmSource, /setBatchStatus\(message, "error"\)/);
+  assert.match(confirmSource, /finally \{/);
+  assert.match(confirmSource, /sendToAutoPositionModeInFlight = false/);
+  assert.match(confirmSource, /sendToAutoPositionModeDialogClose\.disabled = false/);
+  assert.match(confirmSource, /sendToAutoPositionModeCancelButton\.disabled = false/);
+  assert.match(confirmSource, /sendToAutoPositionModeConfirmButton\.disabled = false/);
+});
+
+test("Client and Hedge deal grids expose Initial and Current FX Position modes", () => {
+  ["clientFxDealColumnDefinitions", "hedgeFxDealColumnDefinitions"].forEach(name => {
+    const source = topLevelFunctionSource(name);
+
+    assert.match(source, /title: "FX Position Processing"/);
+    assert.match(
+      source,
+      /title: "Initial FX Position Mode", field: "initialFxPositionMode"/
+    );
+    assert.match(
+      source,
+      /title: "Current FX Position Mode", field: "currentFxPositionMode"/
+    );
+    assert.match(source, /formatter: clientFxDealsPositionManagementModeFormatter/);
+  });
 });
 
 test("the UI split leaves batching and the FX Position backend selector mode-agnostic", () => {
