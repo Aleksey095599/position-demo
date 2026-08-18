@@ -82,6 +82,53 @@ test("global and client editors expose explicit inheritance controls", () => {
   );
   assert.match(inlineEditorSource, />Execution Context Default<\/span>/);
   assert.doesNotMatch(inlineEditorSource, /positionManagementModeChoice/);
+  assert.equal(
+    (inlineEditorSource.match(/client-pricing-configuration-rule-separator/g) || []).length,
+    2
+  );
+
+  const inlineEditorMarkup = new Function(
+    "normalizedPositionManagementModeOverride",
+    "effectivePositionManagementModeForRule",
+    "escapeHtml",
+    "positionManagementModeOptions",
+    `${inlineEditorSource}; return clientPricingRuleInlineEditorMarkup;`
+  )(
+    normalizedOverride,
+    () => "MANUAL",
+    value => String(value),
+    value => `<option value="${value}">${value}</option>`
+  );
+  const editorArguments = {
+    contextId: 42,
+    currencyPairs: ["EUR/USD", "USD/KZT"],
+    selectedCurrencyPair: "EUR/USD",
+    positionManagementModeOverride: null,
+    marginValue: "0.2000",
+    index: 3,
+    saving: false,
+    canSave: true
+  };
+  const editMarkup = inlineEditorMarkup({ ...editorArguments, editing: true });
+  assert.match(
+    editMarkup,
+    /<input type="hidden" value="EUR\/USD" data-client-pricing-rule-inline-field="currencyPair">/
+  );
+  assert.match(
+    editMarkup,
+    /client-pricing-configuration-node-value client-pricing-configuration-rule-pair">EUR\/USD<\/span>/
+  );
+  assert.doesNotMatch(
+    editMarkup,
+    /<select[^>]*data-client-pricing-rule-inline-field="currencyPair"/
+  );
+
+  const createMarkup = inlineEditorMarkup({ ...editorArguments, editing: false });
+  assert.match(
+    createMarkup,
+    /<select[^>]*data-client-pricing-rule-inline-field="currencyPair"/
+  );
+  assert.doesNotMatch(createMarkup, /<input type="hidden"[^>]*data-client-pricing-rule-inline-field="currencyPair"/);
 
   const positionManagementModeLabelsSource = inlineScript.match(
     /const POSITION_MANAGEMENT_MODE_LABELS = Object\.freeze\(\{[\s\S]*?\}\);/
@@ -175,6 +222,38 @@ test("client Pricing Rules use one context strip with lightweight branches", () 
   assert.match(
     html,
     /\.client-pricing-configuration-branch \{[\s\S]*?border-left: 1px solid var\(--bs-border-color\);/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-add-row::after \{[\s\S]*?top: calc\(50% \+ 1px\);[\s\S]*?background: var\(--bs-body-bg\);/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-rule-separator \{[\s\S]*?color: var\(--palette-gray-400\);/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-inline-mode-control \{[\s\S]*?grid-template-columns: max-content minmax\(220px, 1fr\);[\s\S]*?gap: 0;[\s\S]*?border: 1px solid var\(--bs-border-color\);/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-inline-mode-control[\s\S]*?\.form-select \{[\s\S]*?border-left: 1px solid var\(--bs-border-color\);[\s\S]*?border-radius: 0;/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-inline-mode-control[\s\S]*?\.position-management-mode-inherit \{[\s\S]*?background: var\(--bs-tertiary-bg\);/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-inline-mode-control[\s\S]*?\.form-select:disabled \{[\s\S]*?background-color: var\(--bs-secondary-bg\);[\s\S]*?opacity: 1;/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-inline-editor \{[\s\S]*?display: flex;[\s\S]*?flex-wrap: wrap;[\s\S]*?gap: 10px;/
+  );
+  assert.match(
+    html,
+    /\.client-pricing-configuration-inline-field\.is-mode \{[\s\S]*?flex: 0 1 460px;/
   );
   assert.match(
     html,

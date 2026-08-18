@@ -11822,6 +11822,13 @@
       letter-spacing: 0;
     }
 
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-column-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-row {
       min-height: var(--workbench-grid-row-height);
       border: 0;
@@ -13851,7 +13858,7 @@
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-separator {
       flex: 0 0 auto;
-      color: var(--bs-border-color);
+      color: var(--palette-gray-400);
       font-size: 15px;
       line-height: 1;
     }
@@ -13969,6 +13976,16 @@
       align-items: center;
     }
 
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row::after {
+      content: "";
+      position: absolute;
+      top: calc(50% + 1px);
+      bottom: 0;
+      left: -19px;
+      width: 2px;
+      background: var(--bs-body-bg);
+    }
+
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-field,
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin {
       min-width: 0;
@@ -13984,15 +14001,45 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-mode-control {
       display: grid;
       width: 100%;
-      grid-template-columns: max-content minmax(0, 1fr);
+      grid-template-columns: max-content minmax(220px, 1fr);
       align-items: center;
-      gap: 8px;
+      gap: 0;
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-body-bg);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-mode-control:focus-within {
+      border-color: var(--bs-primary);
+      box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.16);
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
     .client-pricing-configuration-inline-mode-control
     .position-management-mode-inherit {
+      min-height: 30px;
+      padding: 0 9px;
+      background: var(--bs-tertiary-bg);
       white-space: nowrap;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-inline-mode-control
+    .form-select {
+      min-height: 30px;
+      border: 0;
+      border-left: 1px solid var(--bs-border-color);
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-inline-mode-control
+    .form-select:disabled {
+      background-color: var(--bs-secondary-bg);
+      color: var(--bs-secondary-color);
+      opacity: 1;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
@@ -14008,9 +14055,26 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-editor {
-      display: grid;
-      grid-template-columns: minmax(130px, 0.75fr) minmax(330px, 1.55fr) minmax(145px, 0.8fr) auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
       background: transparent;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-inline-editor
+    .client-pricing-configuration-inline-field.is-pair,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-inline-editor
+    .client-pricing-configuration-inline-margin {
+      flex: 0 0 auto;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-inline-editor
+    .client-pricing-configuration-inline-field.is-mode {
+      flex: 0 1 460px;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin {
@@ -14082,6 +14146,17 @@
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-field,
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin {
         width: 100%;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page
+      .client-pricing-configuration-inline-editor
+      > .client-pricing-configuration-rule-separator {
+        display: none;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page
+      .client-pricing-configuration-inline-mode-control {
+        grid-template-columns: max-content minmax(0, 1fr);
       }
 
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-separator {
@@ -14700,6 +14775,11 @@
       color: var(--bs-primary);
     }
 
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-mode-tabs .fx-position-mode-icon {
+      flex: 0 0 auto;
+      font-size: 17px;
+    }
+
     #mainPage.fx-position-bootstrap.workbench-page .fx-position-mode-count {
       display: inline-flex;
       min-width: 20px;
@@ -14726,6 +14806,7 @@
       width: 100%;
       max-width: 100%;
       min-height: 0;
+      margin-top: 12px;
       flex: 1 1 auto;
       overflow: auto;
       border: var(--data-grid-line-width) solid var(--data-grid-line-color);
@@ -17866,10 +17947,12 @@
       <div class="batching-workspace-main">
         <nav class="nav nav-tabs fx-position-mode-tabs" id="fxPositionModeTabs" aria-label="FX Position mode" role="tablist">
           <a class="nav-link active" id="fxPositionManualTab" href="#fx-position:manual" data-fx-position-mode="MANUAL" role="tab" aria-controls="fxPositionGridPanel" aria-selected="true">
+            <span class="button-icon fx-position-mode-icon" aria-hidden="true">touch_app</span>
             <span>Manual Control</span>
             <span class="fx-position-mode-count" id="fxPositionManualCount">0</span>
           </a>
           <a class="nav-link" id="fxPositionAutoTab" href="#fx-position:auto" data-fx-position-mode="AUTO" role="tab" aria-controls="fxPositionGridPanel" aria-selected="false">
+            <span class="button-icon fx-position-mode-icon" aria-hidden="true">automation</span>
             <span>Auto Batching &amp; Hedging</span>
             <span class="fx-position-mode-count" id="fxPositionAutoCount">0</span>
           </a>
@@ -29165,6 +29248,24 @@
       });
       const selectedPositionManagementMode = normalizedOverride || effectiveMode;
       const positionModeSelectId = `client-pricing-rule-inline-position-mode-${contextId}`;
+      const currencyPairMarkup = editing
+        ? `
+          <span class="client-pricing-configuration-inline-field is-pair">
+            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
+            <input type="hidden" value="${escapeHtml(selectedCurrencyPair)}" data-client-pricing-rule-inline-field="currencyPair">
+            <span class="client-pricing-configuration-node-value client-pricing-configuration-rule-pair">${escapeHtml(selectedCurrencyPair)}</span>
+          </span>
+        `
+        : `
+          <label class="client-pricing-configuration-inline-field is-pair">
+            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
+            <select class="form-select form-select-sm" data-client-pricing-rule-inline-field="currencyPair" aria-label="Ccy Pair"${saving ? " disabled" : ""}>
+              ${currencyPairs.map(currencyPair => `
+                <option value="${escapeHtml(currencyPair)}"${currencyPair === selectedCurrencyPair ? " selected" : ""}>${escapeHtml(currencyPair)}</option>
+              `).join("")}
+            </select>
+          </label>
+        `;
 
       return `
         <div
@@ -29173,15 +29274,9 @@
           data-client-pricing-rule-inline-mode="${editing ? "edit" : "create"}"
           ${editing ? `data-client-pricing-rule-index="${index}"` : ""}
         >
-          <label class="client-pricing-configuration-inline-field">
-            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
-            <select class="form-select form-select-sm" data-client-pricing-rule-inline-field="currencyPair" aria-label="Ccy Pair"${saving || editing ? " disabled" : ""}>
-              ${currencyPairs.map(currencyPair => `
-                <option value="${escapeHtml(currencyPair)}"${currencyPair === selectedCurrencyPair ? " selected" : ""}>${escapeHtml(currencyPair)}</option>
-              `).join("")}
-            </select>
-          </label>
-          <div class="client-pricing-configuration-inline-field">
+          ${currencyPairMarkup}
+          <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
+          <div class="client-pricing-configuration-inline-field is-mode">
             <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="FX Position Mode" data-tooltip="FX Position Mode">table_chart</span>
             <span class="client-pricing-configuration-node-copy client-pricing-configuration-inline-mode-control">
               <label class="position-management-mode-inherit" for="${escapeHtml(positionModeSelectId)}-default">
@@ -29193,6 +29288,7 @@
               </select>
             </span>
           </div>
+          <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
           <label class="client-pricing-configuration-inline-margin">
             <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Margin" data-tooltip="Margin">savings</span>
             <span class="input-group input-group-sm">
@@ -30886,10 +30982,10 @@
           <td>${activeBooleanTokenMarkup(item.active)}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
-              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-user-action="edit" data-user-index="${index}" aria-label="Edit ${escapeHtml(item.userCode)}" title="Edit">
+              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-user-action="edit" data-user-index="${index}" aria-label="Edit ${escapeHtml(item.userCode)}">
                 <span class="button-icon" aria-hidden="true">edit</span>
               </button>
-              <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action" data-user-action="remove" data-user-index="${index}" aria-label="Delete ${escapeHtml(item.userCode)}" title="Delete">
+              <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action" data-user-action="remove" data-user-index="${index}" aria-label="Delete ${escapeHtml(item.userCode)}">
                 <span class="button-icon" aria-hidden="true">delete</span>
               </button>
             </span>
@@ -31808,9 +31904,6 @@
       const executionSystemName = tradeCaptureChannelDisplayName(context.tradeCaptureChannelId);
       const dependencyDescription = executionContextDependencyDescription(context.pricingContextId);
       const removeDisabled = dependencyDescription ? " disabled" : "";
-      const removeTitle = dependencyDescription
-        ? `Used by ${dependencyDescription}`
-        : "Delete";
 
       return `
         <tr data-pricing-context-index="${index}">
@@ -31822,10 +31915,10 @@
           <td>${usage}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
-              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-pricing-context-action="edit" data-pricing-context-index="${index}" aria-label="Edit ${escapeHtml(context.pricingContextId)}" title="Edit">
+              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-pricing-context-action="edit" data-pricing-context-index="${index}" aria-label="Edit ${escapeHtml(context.pricingContextId)}">
                 <span class="button-icon" aria-hidden="true">edit</span>
               </button>
-              <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action" data-pricing-context-action="remove" data-pricing-context-index="${index}" aria-label="Delete ${escapeHtml(context.pricingContextId)}" title="${escapeHtml(removeTitle)}"${removeDisabled}>
+              <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action" data-pricing-context-action="remove" data-pricing-context-index="${index}" aria-label="Delete ${escapeHtml(context.pricingContextId)}"${removeDisabled}>
                 <span class="button-icon" aria-hidden="true">delete</span>
               </button>
             </span>
@@ -32315,9 +32408,6 @@
       const key = referenceDataKey(kind, item);
       const usageCount = referenceDataUsageCount(kind, item);
       const removeDisabled = usageCount > 0 ? " disabled" : "";
-      const removeTitle = usageCount > 0
-        ? `Used by ${usageCount} Execution ${usageCount === 1 ? "Context" : "Contexts"}`
-        : "Delete";
       let cells = "";
 
       if (kind === "servicingBranch") {
@@ -32353,10 +32443,10 @@
           <td>${usageCount}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
-              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-reference-action="edit" data-reference-kind="${kind}" data-reference-index="${index}" aria-label="Edit ${escapeHtml(key)}" title="Edit">
+              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-reference-action="edit" data-reference-kind="${kind}" data-reference-index="${index}" aria-label="Edit ${escapeHtml(key)}">
                 <span class="button-icon" aria-hidden="true">edit</span>
               </button>
-              <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action" data-reference-action="remove" data-reference-kind="${kind}" data-reference-index="${index}" aria-label="Delete ${escapeHtml(key)}" title="${escapeHtml(removeTitle)}"${removeDisabled}>
+              <button type="button" class="btn btn-sm btn-outline-danger reference-grid-action" data-reference-action="remove" data-reference-kind="${kind}" data-reference-index="${index}" aria-label="Delete ${escapeHtml(key)}"${removeDisabled}>
                 <span class="button-icon" aria-hidden="true">delete</span>
               </button>
             </span>
@@ -34318,7 +34408,9 @@
 
     function marketGridActionMarkup(action, icon, label, { danger = false, primary = false, disabled = false } = {}) {
       const variant = danger ? "btn-outline-danger" : primary ? "btn-outline-primary" : "btn-outline-secondary";
-      const tooltipAttribute = action === "simulation" ? "" : ` title="${escapeHtml(label)}"`;
+      const tooltipAttribute = ["edit", "delete", "simulation"].includes(action)
+        ? ""
+        : ` title="${escapeHtml(label)}"`;
       return `
         <button type="button" class="btn btn-sm ${variant} market-grid-action"
           data-market-grid-action="${escapeHtml(action)}" aria-label="${escapeHtml(label)}"${tooltipAttribute} ${disabled ? "disabled" : ""}>
@@ -40255,7 +40347,12 @@
             field: "counterpartyName"
           }),
           tabulatorSizedColumn("contextPath", {
-            title: "Execution Context",
+            title: `
+              <span class="hedge-quick-settings-column-title">
+                <span class="button-icon" aria-hidden="true">hub</span>
+                <span>Execution Context</span>
+              </span>
+            `,
             field: "contextPath",
             formatter: hedgeQuickModeSettingsContextFormatter
           }),

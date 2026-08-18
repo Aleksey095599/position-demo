@@ -62,14 +62,20 @@ test("Manual Control and Auto Batching & Hedging routes control one shared FX Po
   assert.match(manualTabMarkup, /href="#fx-position:manual"/);
   assert.match(manualTabMarkup, /data-fx-position-mode="MANUAL"/);
   assert.match(manualTabMarkup, /aria-controls="fxPositionGridPanel"/);
+  assert.match(manualTabMarkup, /class="button-icon fx-position-mode-icon" aria-hidden="true">touch_app<\/span>/);
   assert.match(manualTabMarkup, />Manual Control</);
   assert.match(manualTabMarkup, /id="fxPositionManualCount"/);
   assert.match(autoTabMarkup, /href="#fx-position:auto"/);
   assert.match(autoTabMarkup, /data-fx-position-mode="AUTO"/);
   assert.match(autoTabMarkup, /aria-controls="fxPositionGridPanel"/);
+  assert.match(autoTabMarkup, /class="button-icon fx-position-mode-icon" aria-hidden="true">automation<\/span>/);
   assert.match(autoTabMarkup, />Auto Batching &amp; Hedging</);
   assert.match(autoTabMarkup, /id="fxPositionAutoCount"/);
   assert.match(sharedPanelMarkup, /role="tabpanel"/);
+  assert.match(
+    html,
+    /\.fx-position-grid-frame \{[\s\S]*?margin-top: 12px;/
+  );
 
   assert.equal(
     (fxPositionPageMarkup.match(/<table\b[^>]*\bfx-position-grid\b/g) || []).length,
