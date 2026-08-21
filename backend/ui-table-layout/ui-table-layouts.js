@@ -53,7 +53,6 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["counterparty_name", "Counterparty Name", 158],
     ["execution_context", "Execution Context", 596],
     ["ccy_pair", "Ccy Pair", 88],
-    ["pricing_mode", "Pricing Mode", 156],
     ["position_management_mode", "FX Position Mode", 232],
     ["margin", "Margin", 82]
   ]),
@@ -63,7 +62,6 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["counterparty_name", "Counterparty Name", 158],
     ["execution_context", "Execution Context", 596],
     ["ccy_pair", "Ccy Pair", 88],
-    ["pricing_mode", "Pricing Mode", 156],
     ["position_management_mode", "FX Position Mode", 232],
     ["margin", "Margin", 82],
     ["quick_hedge", "Quick Hedge", 112]
@@ -91,6 +89,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["actions", "Actions", 80]
   ]),
   fx_position_grid: layout("FX Position", [
+    ["ccy_pair_selector", "Ccy Pair Selector", 136],
     ["trade_id", "ID", 48],
     ["trade", "Trade", 280],
     ["trade_date", "Trade Date", 100],
@@ -248,9 +247,9 @@ const UI_TABLE_LAYOUTS = Object.freeze({
   ]),
   execution_contexts_grid: layout("Execution Context", [
     ["id", "ID", 64],
-    ["servicing_location", "Servicing Location", 153],
-    ["accounting_system", "Accounting System", 152],
-    ["execution_system", "Execution System", 149],
+    ["servicing_location", "Servicing Location", 250],
+    ["accounting_system", "Accounting System", 300],
+    ["execution_system", "Execution System", 250],
     ["default_position_management_mode", "Default FX Position Mode", 176],
     ["counterparties_count", "Trading Counterparties Count", 64],
     ["actions", "Actions", 80]
@@ -268,15 +267,16 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["id", "ID", 64],
     ["name", "Name", 152],
     ["active", "Active", 72],
-    ["execution_context_count", "Exec. Context Count", 64],
+    ["execution_context_count", "Execution Context Count", 64],
     ["actions", "Actions", 80]
   ]),
   execution_systems_grid: layout("Execution Systems", [
     ["id", "ID", 183],
     ["name", "Name", 149],
     ["pricing_mode", "Pricing Mode", 156],
+    ["execution_system_label", "Execution System Label", 250],
     ["active", "Active", 72],
-    ["execution_context_count", "Exec. Context Count", 64],
+    ["execution_context_count", "Execution Context Count", 64],
     ["actions", "Actions", 80]
   ]),
   hedge_quick_mode_settings_grid: layout("Quick Hedge Settings", [

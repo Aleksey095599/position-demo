@@ -1265,7 +1265,7 @@
       background: var(--palette-gray-100);
     }
 
-    .pricing-rules-table td:nth-child(8) {
+    .pricing-rules-table td:nth-child(7) {
       text-align: right;
     }
 
@@ -2367,7 +2367,7 @@
 
     .reference-table.servicing-branch-table td:nth-child(6),
     .reference-table.settlement-system-table td:nth-child(4),
-    .reference-table.trade-capture-channel-table td:nth-child(5) {
+    .reference-table.trade-capture-channel-table td:nth-child(6) {
       text-align: right;
     }
 
@@ -4221,6 +4221,11 @@
       border: 1px solid;
       border-radius: 3px;
       color: var(--palette-gray-800);
+    }
+
+    .pricing-context-table .client-pricing-context-candidate-facet {
+      max-width: 100%;
+      vertical-align: middle;
     }
 
     .client-pricing-context-candidate-facet[data-pricing-context-candidate-facet="servicingBranchCode"] {
@@ -8531,6 +8536,58 @@
       gap: 6px;
     }
 
+    .execution-system-label {
+      display: inline-flex;
+      max-width: 100%;
+      height: 30px;
+      align-items: stretch;
+      overflow: hidden;
+      border: 1px solid var(--palette-purple-200);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--palette-purple-100);
+      color: var(--palette-gray-800);
+      vertical-align: middle;
+    }
+
+    .execution-system-label__system,
+    .execution-system-label__pricing {
+      display: inline-flex;
+      flex: 0 0 32px;
+      width: 32px;
+      align-items: center;
+      justify-content: center;
+      color: var(--palette-purple-700);
+    }
+
+    .execution-system-label__system {
+      border-right: 1px solid var(--palette-purple-700);
+      background: rgba(var(--bs-white-rgb), 0.52);
+    }
+
+    .execution-system-label__name {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      overflow: hidden;
+      padding: 0 10px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .execution-system-label__name.is-placeholder {
+      color: var(--bs-secondary-color);
+      font-weight: 400;
+    }
+
+    .execution-system-label__pricing {
+      border-left: 1px solid var(--palette-purple-200);
+    }
+
+    .execution-system-label .button-icon {
+      font-size: 18px;
+    }
+
     .pricing-mode-indicator {
       display: inline-flex;
       flex: 0 0 28px;
@@ -10619,6 +10676,15 @@
       font-size: 15px;
     }
 
+    #pricingPage.unified-bootstrap-workspace [data-pricing-context-action="save"] {
+      --bs-btn-color: var(--app-primary);
+      --bs-btn-border-color: var(--app-primary);
+      --bs-btn-hover-color: var(--app-primary);
+      --bs-btn-hover-border-color: var(--app-primary);
+      --bs-btn-active-color: var(--app-primary);
+      --bs-btn-active-border-color: var(--app-primary);
+    }
+
     #referenceDataPage.unified-bootstrap-workspace .reference-usage-info {
       width: auto;
       height: auto;
@@ -12668,6 +12734,7 @@
       display: grid;
       width: fit-content;
       max-width: 100%;
+      flex: 0 0 auto;
       align-items: start;
       justify-items: start;
       gap: 12px;
@@ -12739,21 +12806,6 @@
       font-size: 12px;
     }
 
-    .analytical-pnl-report-summary-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .analytical-pnl-report-summary-header .analytical-pnl-report-panel-title {
-      margin: 0;
-    }
-
-    .analytical-pnl-report-summary-header .ui-table-layout-button {
-      margin-left: auto;
-    }
-
     .analytical-pnl-report-summary-grid-shell {
       max-width: 100%;
       overflow-x: auto;
@@ -12767,7 +12819,9 @@
     }
 
     .analytical-pnl-report-summary-note {
-      margin: 8px 0 0;
+      margin: 0;
+      padding: 8px 10px;
+      border-top: 1px solid var(--bs-border-color);
       color: var(--bs-secondary-color);
       font-size: 11px;
     }
@@ -12779,78 +12833,6 @@
 
     .analytical-pnl-report-total-value.is-negative {
       color: var(--bs-danger-text-emphasis);
-    }
-
-    #analyticalPnlReportPage .client-deals-toolbar {
-      width: 100%;
-      flex: 0 0 auto;
-      margin-top: 0;
-    }
-
-    #analyticalPnlReportPage .analytical-pnl-report-table-title {
-      margin: 0;
-      font-size: var(--app-font-size-section-title);
-      font-weight: var(--app-font-weight-semibold);
-    }
-
-    #analyticalPnlReportPage .analytical-pnl-report-table-region {
-      display: grid;
-      width: fit-content;
-      max-width: 100%;
-      min-width: 0;
-      grid-template-rows: auto minmax(0, 1fr);
-      margin-top: 8px;
-    }
-
-    #analyticalPnlReportPage .analytical-pnl-report-grid-shell {
-      width: 100%;
-      max-width: 100%;
-      min-width: 0;
-      overflow-x: auto;
-      overflow-y: hidden;
-    }
-
-    #analyticalPnlReportGrid {
-      width: max-content;
-      max-width: 100%;
-      height: auto;
-      max-height: calc(100vh - 260px);
-    }
-
-    .analytical-pnl-trade-type {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      white-space: nowrap;
-    }
-
-    .analytical-pnl-trade-type .button-icon {
-      color: var(--bs-secondary-color);
-      font-size: 16px;
-    }
-
-    .analytical-pnl-identifier {
-      display: inline-flex;
-      max-width: 100%;
-      align-items: center;
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--workbench-radius);
-      overflow: hidden;
-      white-space: nowrap;
-    }
-
-    .analytical-pnl-identifier > span {
-      min-width: 0;
-      padding: 2px 7px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .analytical-pnl-identifier-type {
-      border-right: 1px solid var(--bs-border-color);
-      background: var(--bs-tertiary-bg);
-      color: var(--bs-secondary-color);
-      font-size: 11px;
     }
 
     @media (max-width: 980px) {
@@ -13771,24 +13753,6 @@
       font-size: 18px;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-meta {
-      display: inline-flex;
-      align-items: center;
-      flex: 0 0 auto;
-      flex-wrap: nowrap;
-      gap: 6px;
-      margin-left: 5px;
-      padding-left: 12px;
-      border-left: 1px solid var(--bs-border-color);
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-mode {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      white-space: nowrap;
-    }
-
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-actions {
       justify-content: center;
     }
@@ -14107,12 +14071,6 @@
     @media (max-width: 860px) {
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-head {
         grid-template-columns: minmax(0, 1fr) auto;
-      }
-
-      #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-meta {
-        margin-left: 26px;
-        padding-left: 0;
-        border-left: 0;
       }
 
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-actions {
@@ -14544,6 +14502,10 @@
       font-size: var(--workbench-body-size);
     }
 
+    body:has(#mainPage.fx-position-bootstrap.workbench-page:not([hidden])) {
+      overflow: hidden;
+    }
+
     #mainPage.fx-position-bootstrap.workbench-page .action-bar {
       flex: 0 0 auto;
       min-height: 42px;
@@ -14585,7 +14547,7 @@
       display: grid;
       min-height: 0;
       flex: 1 1 auto;
-      grid-template-columns: 136px minmax(0, 1fr);
+      grid-template-columns: var(--fx-position-ccy-pair-selector-width, 136px) minmax(0, 1fr);
       grid-template-rows: minmax(0, 1fr) auto;
       align-items: stretch;
       gap: 10px;
@@ -14610,7 +14572,7 @@
       display: grid;
       min-width: 0;
       grid-column: 1 / -1;
-      grid-template-columns: 136px minmax(0, 1fr);
+      grid-template-columns: var(--fx-position-ccy-pair-selector-width, 136px) minmax(0, 1fr);
       align-items: center;
       gap: 10px;
       padding-top: 0;
@@ -14809,6 +14771,7 @@
       margin-top: 12px;
       flex: 1 1 auto;
       overflow: auto;
+      overscroll-behavior: contain;
       border: var(--data-grid-line-width) solid var(--data-grid-line-color);
       border-radius: var(--workbench-radius);
       background: var(--bs-body-bg);
@@ -16480,25 +16443,25 @@
       padding: 10px;
     }
 
-    #batchDetailsPage .semantic-table-section {
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section {
       overflow: hidden;
     }
 
-    #batchDetailsPage .semantic-table-section-body {
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section-body {
       padding: 0;
     }
 
-    #batchDetailsPage .semantic-table-section .client-deals-grid-shell,
-    #batchDetailsPage .semantic-table-section .tabulator {
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section .client-deals-grid-shell,
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section .tabulator {
       border-radius: 0;
     }
 
-    #batchDetailsPage .semantic-table-section .tabulator {
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section .tabulator {
       border: 0;
       vertical-align: top;
     }
 
-    #batchDetailsPage .semantic-table-section
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section
     .tabulator-footer .tabulator-calcs-holder {
       border-top: 0;
       border-bottom: 0;
@@ -16523,25 +16486,6 @@
       margin: -12px -12px 12px;
       padding: 9px 12px;
       border-bottom: 1px solid var(--bs-border-color);
-    }
-
-    #analyticalPnlReportPage .analytical-pnl-report-summary.semantic-section {
-      padding: 12px;
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--workbench-radius);
-      background: var(--bs-body-bg);
-    }
-
-    #analyticalPnlReportPage .analytical-pnl-report-summary-header.semantic-section-head {
-      min-height: 38px;
-      margin: -12px -12px 10px;
-      padding: 9px 12px;
-      border-bottom: 1px solid var(--bs-border-color);
-    }
-
-    #analyticalPnlReportPage .semantic-table-section > .client-deals-toolbar {
-      justify-content: flex-start;
-      width: 100%;
     }
 
     dialog .semantic-section > .semantic-section-head {
@@ -17939,7 +17883,7 @@
     </section>
 
     <section class="batching-workspace" aria-label="FX Position workspace">
-      <section class="currency-pair-panel" aria-label="Ccy pair selector">
+      <section class="currency-pair-panel" aria-label="Ccy pair selector" data-ui-table-layout-key="fx_position_grid" data-ui-table-layout-column-key="ccy_pair_selector">
         <h2 class="currency-pair-title">Ccy Pair</h2>
         <div class="currency-pair-list" id="currencyPairList"></div>
       </section>
@@ -18347,25 +18291,21 @@
   <dialog class="market-bootstrap-dialog one-batch-tenor-dialog" id="oneBatchTenorDialog" aria-labelledby="oneBatchTenorDialogTitle">
     <div class="modal-content">
       <header class="modal-header">
-        <h2 class="modal-title" id="oneBatchTenorDialogTitle">Different Tenors Selected</h2>
+        <h2 class="modal-title" id="oneBatchTenorDialogTitle">Incompatible Batching Keys Selected</h2>
         <button type="button" class="btn-close" id="oneBatchTenorDialogClose" aria-label="Close"></button>
       </header>
       <div class="modal-body">
-        <p>Cross-Tenor Batching is disabled. Choose one Tenor for a single FX Batch, or form independent FX Batches for each Tenor.</p>
-        <ul class="one-batch-tenor-summary" id="oneBatchTenorSummary" aria-label="Selected Tenors"></ul>
+        <p>Until FX Swap neutralization is available, one FX Batch can contain only trades with the same complete Batching Key. Choose one compatible group.</p>
+        <ul class="one-batch-tenor-summary" id="oneBatchTenorSummary" aria-label="Compatible Batching Key groups"></ul>
         <div class="mt-3 one-batch-tenor-choice">
-          <label class="form-label" for="oneBatchTenorSelect">Tenor for a single FX Batch</label>
+          <label class="form-label" for="oneBatchTenorSelect">Compatible group for a single FX Batch</label>
           <select class="form-select" id="oneBatchTenorSelect"></select>
         </div>
         <div class="alert alert-danger mt-3 mb-0" id="oneBatchTenorStatus" role="alert" hidden></div>
       </div>
       <footer class="modal-footer">
         <button type="button" class="btn btn-sm btn-outline-secondary" id="oneBatchTenorCancelButton">Cancel</button>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="oneBatchSelectedTenorButton">Create Selected Tenor Batch</button>
-        <button type="button" class="btn btn-sm btn-primary" id="oneBatchSeparateTenorsButton">
-          <span class="button-icon" aria-hidden="true">call_split</span>
-          <span>Create Independent Batches</span>
-        </button>
+        <button type="button" class="btn btn-sm btn-primary" id="oneBatchSelectedTenorButton">Create Selected Batch</button>
       </footer>
     </div>
   </dialog>
@@ -18509,17 +18449,6 @@
       </section>
     </div>
 
-    <div class="analytical-pnl-report-table-region semantic-section semantic-table-section table-panel table-panel--semantic">
-      <section class="client-deals-toolbar semantic-section-head semantic-table-section-head table-panel__head" data-ui-table-layout-host="analytical_pnl_report_grid" aria-label="Analytical PnL Report table layout">
-        <h2 class="analytical-pnl-report-table-title table-panel__title">Analytical PnL by Deal</h2>
-        <span class="client-deals-count" id="analyticalPnlReportCount">0 deals</span>
-      </section>
-      <div class="semantic-table-section-body table-panel__body">
-        <section class="client-deals-grid-shell analytical-pnl-report-grid-shell table-panel__viewport" aria-label="Analytical PnL Report">
-          <div class="fx-deals-grid" id="analyticalPnlReportGrid" aria-label="Analytical PnL Report table"></div>
-        </section>
-      </div>
-    </div>
   </main>
 
   <main class="settings-shell profile-shell client-profile-shell unified-bootstrap-workspace workbench-page" id="clientProfilePage" hidden>
@@ -19187,6 +19116,7 @@
               <col class="trade-capture-channel-id-col" data-ui-column-key="id">
               <col class="trade-capture-channel-name-col" data-ui-column-key="name">
               <col class="trade-capture-channel-type-col" data-ui-column-key="pricing_mode">
+              <col class="trade-capture-channel-label-col" data-ui-column-key="execution_system_label" data-ui-fallback-width="250">
               <col class="trade-capture-channel-active-col" data-ui-column-key="active">
               <col class="trade-capture-channel-count-col" data-ui-column-key="execution_context_count">
               <col class="trade-capture-channel-actions-col" data-ui-column-key="actions">
@@ -19211,10 +19141,18 @@
                 <th>
                   <div class="reference-column-head">
                     <span class="reference-column-title">
-                      <span class="button-icon" aria-hidden="true">price_change</span>
                       <span>Pricing Mode</span>
                     </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="pricingType" aria-label="Filter execution systems by pricing mode">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">label</span>
+                      <span>Execution System Label</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="executionSystemLabel" aria-label="Filter execution systems by label">
                   </div>
                 </th>
                 <th>
@@ -19289,7 +19227,6 @@
               <col data-ui-column-key="counterparty_name">
               <col data-ui-column-key="execution_context">
               <col data-ui-column-key="ccy_pair">
-              <col data-ui-column-key="pricing_mode">
               <col data-ui-column-key="position_management_mode">
               <col data-ui-column-key="margin">
               <col class="pricing-rule-quick-hedge-column" data-ui-column-key="quick_hedge" hidden>
@@ -19330,15 +19267,6 @@
                   <div class="reference-column-head">
                     <span class="reference-column-title">Ccy Pair</span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="currencyPair" aria-label="Filter pricing rules by currency pair">
-                  </div>
-                </th>
-                <th>
-                  <div class="reference-column-head">
-                    <span class="reference-column-title">
-                      <span class="button-icon" aria-hidden="true">price_change</span>
-                      <span>Pricing Mode</span>
-                    </span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="pricingMode" aria-label="Filter pricing rules by pricing mode">
                   </div>
                 </th>
                 <th>
@@ -20355,7 +20283,7 @@
               <span class="manual-process-node-meta"><span>02</span><span data-process-copy="stageDecision">DECISION</span></span>
               <span class="manual-process-node-main">
                 <span class="manual-process-node-icon button-icon" aria-hidden="true">alt_route</span>
-                <span class="manual-process-node-title" data-process-copy="resolveTenors">Resolve Tenors</span>
+                <span class="manual-process-node-title" data-process-copy="resolveTenors">Resolve Batching Key</span>
               </span>
             </button>
             <span class="manual-process-connector is-after-tenor" aria-hidden="true"></span>
@@ -20388,7 +20316,7 @@
 
             <div class="manual-process-tenor-routes" aria-label="Tenor decision outcomes" data-process-aria-label="tenorOutcomes">
               <span class="manual-process-route"><strong data-process-copy="sameTenor">Same Tenor</strong><span data-process-copy="continueAction">Continue</span></span>
-              <span class="manual-process-route"><strong data-process-copy="mixedTenors">Mixed Tenors</strong><span data-process-copy="chooseOrSplit">Choose or split</span></span>
+              <span class="manual-process-route"><strong data-process-copy="mixedTenors">Mixed Batching Key</strong><span data-process-copy="chooseOrSplit">Choose one Group</span></span>
             </div>
             <span class="manual-process-failure-drop is-validation" aria-hidden="true"></span>
             <span class="manual-process-failure-drop is-commit" aria-hidden="true"></span>
@@ -20493,14 +20421,14 @@
             </div>
             <div class="auto-batching-flow-branch">
               <span class="auto-batching-flow-branch-label">&#x0414;&#x0430;</span>
-              <div class="auto-batching-flow-step-title">Resolve the Tenor mode</div>
-              <div class="auto-batching-flow-step-detail">&#x041E;&#x0434;&#x0438;&#x043D; Tenor &#x043F;&#x043E;&#x0437;&#x0432;&#x043E;&#x043B;&#x044F;&#x0435;&#x0442; &#x043F;&#x0440;&#x043E;&#x0434;&#x043E;&#x043B;&#x0436;&#x0438;&#x0442;&#x044C; &#x0441;&#x0440;&#x0430;&#x0437;&#x0443;. &#x041F;&#x0440;&#x0438; &#x0440;&#x0430;&#x0437;&#x043D;&#x044B;&#x0445; Tenor &#x043E;&#x0442;&#x043A;&#x0440;&#x044B;&#x0432;&#x0430;&#x0435;&#x0442;&#x0441;&#x044F; &#x043E;&#x043A;&#x043D;&#x043E; &#x0432;&#x044B;&#x0431;&#x043E;&#x0440;&#x0430; &#x0434;&#x0430;&#x043B;&#x044C;&#x043D;&#x0435;&#x0439;&#x0448;&#x0435;&#x0433;&#x043E; &#x0434;&#x0435;&#x0439;&#x0441;&#x0442;&#x0432;&#x0438;&#x044F;.</div>
+              <div class="auto-batching-flow-step-title">Resolve a compatible selection</div>
+              <div class="auto-batching-flow-step-detail">One Batching Key continues immediately. If the selection is mixed, the dealer chooses one compatible group for this FX Batch.</div>
             </div>
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step">
             <div class="auto-batching-flow-step-title">Prepare the Manual Batch Request</div>
-            <div class="auto-batching-flow-step-detail">&#x0414;&#x043B;&#x044F; &#x043E;&#x0434;&#x043D;&#x043E;&#x0433;&#x043E; &#x0432;&#x044B;&#x0431;&#x0440;&#x0430;&#x043D;&#x043D;&#x043E;&#x0433;&#x043E; Tenor &#x0438;&#x0441;&#x043F;&#x043E;&#x043B;&#x044C;&#x0437;&#x0443;&#x0435;&#x0442;&#x0441;&#x044F; SINGLE_BATCH. &#x0415;&#x0441;&#x043B;&#x0438; &#x043D;&#x0443;&#x0436;&#x043D;&#x044B; &#x043E;&#x0442;&#x0434;&#x0435;&#x043B;&#x044C;&#x043D;&#x044B;&#x0435; &#x0431;&#x0430;&#x0442;&#x0447;&#x0438; &#x043F;&#x043E; Tenor, &#x0438;&#x0441;&#x043F;&#x043E;&#x043B;&#x044C;&#x0437;&#x0443;&#x0435;&#x0442;&#x0441;&#x044F; SEPARATE_BY_TENOR.</div>
+            <div class="auto-batching-flow-step-detail">The browser submits one compatible Trade selection. Mixed Batching Keys are never split into independent FX Batches.</div>
             <details class="auto-batching-flow-capture">
               <summary>
                 <span class="button-icon" aria-hidden="true">data_object</span>
@@ -20510,19 +20438,18 @@
               <div class="auto-batching-flow-capture-list">
                 <div class="auto-batching-flow-capture-item"><code>idempotencyKey</code><span>&#x0421;&#x043E;&#x0437;&#x0434;&#x0430;&#x0451;&#x0442;&#x0441;&#x044F; &#x0432; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0435; &#x0438; &#x043F;&#x0435;&#x0440;&#x0435;&#x0434;&#x0430;&#x0451;&#x0442;&#x0441;&#x044F; &#x0432; &#x0437;&#x0430;&#x0433;&#x043E;&#x043B;&#x043E;&#x0432;&#x043A;&#x0435; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0441;&#x0430;.</span></div>
                 <div class="auto-batching-flow-capture-item"><code>tradeIds</code><span>&#x041E;&#x0442;&#x0441;&#x043E;&#x0440;&#x0442;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043D;&#x044B;&#x0435; &#x0447;&#x0438;&#x0441;&#x043B;&#x043E;&#x0432;&#x044B;&#x0435; Trade ID, &#x043F;&#x0435;&#x0440;&#x0435;&#x0434;&#x0430;&#x0432;&#x0430;&#x0435;&#x043C;&#x044B;&#x0435; &#x0432; &#x0442;&#x0435;&#x043B;&#x0435; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0441;&#x0430;.</span></div>
-                <div class="auto-batching-flow-capture-item"><code>mode</code><span>&#x0412;&#x044B;&#x0431;&#x0440;&#x0430;&#x043D;&#x043D;&#x044B;&#x0439; &#x0440;&#x0435;&#x0436;&#x0438;&#x043C;: SINGLE_BATCH &#x0438;&#x043B;&#x0438; SEPARATE_BY_TENOR.</span></div>
               </div>
             </details>
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step">
             <div class="auto-batching-flow-step-title">Validate the command and resolve idempotency</div>
-            <div class="auto-batching-flow-step-detail">&#x0421;&#x0435;&#x0440;&#x0432;&#x0435;&#x0440; &#x043F;&#x0440;&#x0438;&#x043D;&#x0438;&#x043C;&#x0430;&#x0435;&#x0442; &#x043E;&#x0442; 1 &#x0434;&#x043E; 200 &#x0443;&#x043D;&#x0438;&#x043A;&#x0430;&#x043B;&#x044C;&#x043D;&#x044B;&#x0445; &#x043F;&#x043E;&#x043B;&#x043E;&#x0436;&#x0438;&#x0442;&#x0435;&#x043B;&#x044C;&#x043D;&#x044B;&#x0445; Trade ID &#x0438; &#x0434;&#x043E;&#x043F;&#x0443;&#x0441;&#x0442;&#x0438;&#x043C;&#x044B;&#x0439; &#x0440;&#x0435;&#x0436;&#x0438;&#x043C;. &#x0421;&#x043E;&#x0432;&#x043F;&#x0430;&#x0434;&#x0430;&#x044E;&#x0449;&#x0438;&#x0439; &#x0437;&#x0430;&#x0432;&#x0435;&#x0440;&#x0448;&#x0451;&#x043D;&#x043D;&#x044B;&#x0439; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0441; &#x0432;&#x043E;&#x0437;&#x0432;&#x0440;&#x0430;&#x0449;&#x0430;&#x0435;&#x0442;&#x0441;&#x044F; &#x043F;&#x043E;&#x0432;&#x0442;&#x043E;&#x0440;&#x043D;&#x043E;, &#x0430; &#x043A;&#x043E;&#x043D;&#x0444;&#x043B;&#x0438;&#x043A;&#x0442;&#x0443;&#x044E;&#x0449;&#x0435;&#x0435; &#x043F;&#x043E;&#x0432;&#x0442;&#x043E;&#x0440;&#x043D;&#x043E;&#x0435; &#x0438;&#x0441;&#x043F;&#x043E;&#x043B;&#x044C;&#x0437;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x0435; &#x043E;&#x0442;&#x043A;&#x043B;&#x043E;&#x043D;&#x044F;&#x0435;&#x0442;&#x0441;&#x044F;.</div>
+            <div class="auto-batching-flow-step-detail">The server accepts 1 to 200 unique positive Trade IDs. A matching completed request is replayed; reuse of the same key for a different command is rejected.</div>
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step">
-            <div class="auto-batching-flow-step-title">Resolve source Trades and plan Tenor groups</div>
-            <div class="auto-batching-flow-step-detail">&#x041F;&#x0440;&#x043E;&#x0432;&#x0435;&#x0440;&#x0438;&#x0442;&#x044C; &#x0441;&#x0443;&#x0449;&#x0435;&#x0441;&#x0442;&#x0432;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x0435; &#x043A;&#x0430;&#x0436;&#x0434;&#x043E;&#x0439; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0448;&#x0435;&#x043D;&#x043D;&#x043E;&#x0439; &#x0441;&#x0434;&#x0435;&#x043B;&#x043A;&#x0438;, &#x0437;&#x0430;&#x0433;&#x0440;&#x0443;&#x0437;&#x0438;&#x0442;&#x044C; Manual Batch Settings, &#x043E;&#x0442;&#x0441;&#x043E;&#x0440;&#x0442;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x0442;&#x044C; &#x0441;&#x0434;&#x0435;&#x043B;&#x043A;&#x0438; &#x043F;&#x043E; Trade ID &#x0438; &#x0441;&#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x0442;&#x044C; &#x043E;&#x0434;&#x043D;&#x0443; &#x0438;&#x043B;&#x0438; &#x043D;&#x0435;&#x0441;&#x043A;&#x043E;&#x043B;&#x044C;&#x043A;&#x043E; &#x043E;&#x0434;&#x043D;&#x043E;&#x0437;&#x043D;&#x0430;&#x0447;&#x043D;&#x043E; &#x043E;&#x043F;&#x0440;&#x0435;&#x0434;&#x0435;&#x043B;&#x0451;&#x043D;&#x043D;&#x044B;&#x0445; &#x0433;&#x0440;&#x0443;&#x043F;&#x043F;.</div>
+            <div class="auto-batching-flow-step-title">Resolve and validate source Trades</div>
+            <div class="auto-batching-flow-step-detail">The server loads the exact requested Trade set, sorts it by Trade ID, and validates one common Batching Key. It never plans multiple manual FX Batches.</div>
             <details class="auto-batching-flow-capture">
               <summary>
                 <span class="button-icon" aria-hidden="true">data_object</span>
@@ -20530,15 +20457,15 @@
                 <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
               </summary>
               <div class="auto-batching-flow-capture-list">
-                <div class="auto-batching-flow-capture-item"><code>allowCrossTenorBatching</code><span>&#x0422;&#x0435;&#x043A;&#x0443;&#x0449;&#x0430;&#x044F; &#x0441;&#x0435;&#x0440;&#x0432;&#x0435;&#x0440;&#x043D;&#x0430;&#x044F; &#x043D;&#x0430;&#x0441;&#x0442;&#x0440;&#x043E;&#x0439;&#x043A;&#x0430;, &#x0438;&#x0441;&#x043F;&#x043E;&#x043B;&#x044C;&#x0437;&#x0443;&#x0435;&#x043C;&#x0430;&#x044F; &#x043F;&#x0440;&#x0438; &#x043F;&#x043E;&#x0434;&#x0433;&#x043E;&#x0442;&#x043E;&#x0432;&#x043A;&#x0435; &#x0433;&#x0440;&#x0443;&#x043F;&#x043F;.</span></div>
-                <div class="auto-batching-flow-capture-item"><code>tenor groups</code><span>&#x041E;&#x0434;&#x043D;&#x043E;&#x0437;&#x043D;&#x0430;&#x0447;&#x043D;&#x043E; &#x043E;&#x043F;&#x0440;&#x0435;&#x0434;&#x0435;&#x043B;&#x0451;&#x043D;&#x043D;&#x044B;&#x0439; &#x043F;&#x043B;&#x0430;&#x043D; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F; &#x0432; &#x043F;&#x0430;&#x043C;&#x044F;&#x0442;&#x0438; &#x0441;&#x0435;&#x0440;&#x0432;&#x0435;&#x0440;&#x0430;; &#x043E;&#x0442;&#x0434;&#x0435;&#x043B;&#x044C;&#x043D;&#x043E; &#x043D;&#x0435; &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x044F;&#x0435;&#x0442;&#x0441;&#x044F;.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>sourceTradeIds</code><span>The exact sorted source selection used by the domain calculation and idempotent replay.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>Batching Key</code><span>Ccy Pair, Trade Date, Tenor and both Value Dates must be compatible until technical FX Swap neutralization is implemented.</span></div>
               </div>
             </details>
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step">
-            <div class="auto-batching-flow-step-title">Create the Manual Formation Register</div>
-            <div class="auto-batching-flow-step-detail">&#x0414;&#x043E; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F; &#x0434;&#x043E;&#x0447;&#x0435;&#x0440;&#x043D;&#x0438;&#x0445; &#x0431;&#x0430;&#x0442;&#x0447;&#x0435;&#x0439; &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x0438;&#x0442;&#x044C; &#x043D;&#x0435;&#x0438;&#x0437;&#x043C;&#x0435;&#x043D;&#x044F;&#x0435;&#x043C;&#x0443;&#x044E; &#x043A;&#x043E;&#x0440;&#x043D;&#x0435;&#x0432;&#x0443;&#x044E; &#x043E;&#x043F;&#x0435;&#x0440;&#x0430;&#x0446;&#x0438;&#x044E; &#x0441;&#x043E; &#x0441;&#x0442;&#x0430;&#x0442;&#x0443;&#x0441;&#x043E;&#x043C; BUILDING.</div>
+            <div class="auto-batching-flow-step-title">Create the FX Batch Aggregate</div>
+            <div class="auto-batching-flow-step-detail">Create the single immutable FX Batch aggregate under the public request idempotency key.</div>
             <details class="auto-batching-flow-capture">
               <summary>
                 <span class="button-icon" aria-hidden="true">database</span>
@@ -20546,18 +20473,16 @@
                 <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
               </summary>
               <div class="auto-batching-flow-capture-list">
-                <div class="auto-batching-flow-capture-item"><code>formation_id</code><span>&#x041E;&#x0441;&#x043D;&#x043E;&#x0432;&#x043D;&#x043E;&#x0439; &#x0438;&#x0434;&#x0435;&#x043D;&#x0442;&#x0438;&#x0444;&#x0438;&#x043A;&#x0430;&#x0442;&#x043E;&#x0440; &#x0437;&#x0430;&#x043F;&#x0438;&#x0441;&#x0438; &#x0432; fx_manual_batch_formations.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>batch_id</code><span>Primary identifier of the single record created in fx_batches.</span></div>
                 <div class="auto-batching-flow-capture-item"><code>idempotency_key</code><span>&#x041D;&#x0435;&#x0438;&#x0437;&#x043C;&#x0435;&#x043D;&#x044F;&#x0435;&#x043C;&#x044B;&#x0439; &#x0438;&#x0434;&#x0435;&#x043D;&#x0442;&#x0438;&#x0444;&#x0438;&#x043A;&#x0430;&#x0442;&#x043E;&#x0440; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0441;&#x0430;.</span></div>
-                <div class="auto-batching-flow-capture-item"><code>selection_mode</code><span>&#x041E;&#x043F;&#x0440;&#x0435;&#x0434;&#x0435;&#x043B;&#x0451;&#x043D;&#x043D;&#x044B;&#x0439; &#x0440;&#x0435;&#x0436;&#x0438;&#x043C; &#x0440;&#x0443;&#x0447;&#x043D;&#x043E;&#x0433;&#x043E; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F;.</span></div>
-                <div class="auto-batching-flow-capture-item"><code>trade_ids_json</code><span>&#x0418;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0439; &#x0441;&#x043D;&#x0438;&#x043C;&#x043E;&#x043A; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0448;&#x0435;&#x043D;&#x043D;&#x044B;&#x0445; Trade ID.</span></div>
-                <div class="auto-batching-flow-capture-item"><code>batch_count</code><span>&#x041E;&#x0436;&#x0438;&#x0434;&#x0430;&#x0435;&#x043C;&#x043E;&#x0435; &#x043A;&#x043E;&#x043B;&#x0438;&#x0447;&#x0435;&#x0441;&#x0442;&#x0432;&#x043E; &#x0434;&#x043E;&#x0447;&#x0435;&#x0440;&#x043D;&#x0438;&#x0445; &#x0431;&#x0430;&#x0442;&#x0447;&#x0435;&#x0439;.</span></div>
-                <div class="auto-batching-flow-capture-item"><code>operation_status</code><span>&#x0421;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x044F;&#x0435;&#x0442; &#x0437;&#x043D;&#x0430;&#x0447;&#x0435;&#x043D;&#x0438;&#x0435; BUILDING &#x0434;&#x043E; &#x0437;&#x0430;&#x0432;&#x0435;&#x0440;&#x0448;&#x0435;&#x043D;&#x0438;&#x044F; &#x0432;&#x0441;&#x0435;&#x0445; &#x0434;&#x043E;&#x0447;&#x0435;&#x0440;&#x043D;&#x0438;&#x0445; &#x0431;&#x0430;&#x0442;&#x0447;&#x0435;&#x0439;.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>fx_batch_members</code><span>The exact immutable source Trade selection used for idempotent replay.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>batch_status</code><span>Transitions atomically from BUILDING to FORMED when the aggregate is complete.</span></div>
               </div>
             </details>
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step">
-            <div class="auto-batching-flow-step-title">Form each FX Batch</div>
+            <div class="auto-batching-flow-step-title">Form the FX Batch</div>
             <div class="auto-batching-flow-step-detail">&#x0417;&#x0430;&#x0433;&#x0440;&#x0443;&#x0437;&#x0438;&#x0442;&#x044C; &#x043F;&#x043E;&#x043B;&#x043D;&#x043E;&#x0441;&#x0442;&#x044C;&#x044E; &#x0434;&#x043E;&#x0441;&#x0442;&#x0443;&#x043F;&#x043D;&#x044B;&#x0435; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0435; &#x0441;&#x0434;&#x0435;&#x043B;&#x043A;&#x0438;, &#x043F;&#x0440;&#x043E;&#x0432;&#x0435;&#x0440;&#x0438;&#x0442;&#x044C; &#x043D;&#x0430;&#x043B;&#x0438;&#x0447;&#x0438;&#x0435; Transfer Rate &#x0438; &#x0441;&#x043E;&#x0432;&#x043C;&#x0435;&#x0441;&#x0442;&#x0438;&#x043C;&#x043E;&#x0441;&#x0442;&#x044C; &#x043A;&#x043B;&#x044E;&#x0447;&#x0435;&#x0432;&#x044B;&#x0445; &#x043F;&#x0430;&#x0440;&#x0430;&#x043C;&#x0435;&#x0442;&#x0440;&#x043E;&#x0432;, &#x0440;&#x0430;&#x0441;&#x0441;&#x0447;&#x0438;&#x0442;&#x0430;&#x0442;&#x044C; &#x0447;&#x0438;&#x0441;&#x0442;&#x044B;&#x0435; &#x043E;&#x0441;&#x0442;&#x0430;&#x0442;&#x043A;&#x0438; &#x0438; &#x043F;&#x0440;&#x0438; &#x043D;&#x0435;&#x043E;&#x0431;&#x0445;&#x043E;&#x0434;&#x0438;&#x043C;&#x043E;&#x0441;&#x0442;&#x0438; &#x0441;&#x043E;&#x0437;&#x0434;&#x0430;&#x0442;&#x044C; Balance Trade, Position Out &#x0438; Quote Cash Out.</div>
             <details class="auto-batching-flow-capture">
               <summary>
@@ -20575,7 +20500,7 @@
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step">
             <div class="auto-batching-flow-step-title">Persist all results atomically</div>
-            <div class="auto-batching-flow-step-detail">&#x0421;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x0438;&#x0442;&#x044C; Batch, Members &#x0438; Outputs, &#x0441;&#x0432;&#x044F;&#x0437;&#x0430;&#x0442;&#x044C; &#x043A;&#x0430;&#x0436;&#x0434;&#x044B;&#x0439; &#x0434;&#x043E;&#x0447;&#x0435;&#x0440;&#x043D;&#x0438;&#x0439; Batch &#x0441; &#x0440;&#x0435;&#x0435;&#x0441;&#x0442;&#x0440;&#x043E;&#x043C; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F;, &#x0437;&#x0430;&#x0442;&#x0435;&#x043C; &#x043F;&#x0440;&#x0438;&#x0441;&#x0432;&#x043E;&#x0438;&#x0442;&#x044C; &#x043A;&#x043E;&#x0440;&#x043D;&#x0435;&#x0432;&#x043E;&#x0439; &#x043E;&#x043F;&#x0435;&#x0440;&#x0430;&#x0446;&#x0438;&#x0438; &#x0441;&#x0442;&#x0430;&#x0442;&#x0443;&#x0441; COMPLETED. &#x041B;&#x044E;&#x0431;&#x0430;&#x044F; &#x043E;&#x0448;&#x0438;&#x0431;&#x043A;&#x0430; &#x043E;&#x0442;&#x043A;&#x0430;&#x0442;&#x044B;&#x0432;&#x0430;&#x0435;&#x0442; &#x0432;&#x0435;&#x0441;&#x044C; &#x0440;&#x0443;&#x0447;&#x043D;&#x043E;&#x0439; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0441;.</div>
+            <div class="auto-batching-flow-step-detail">Persist the Batch, all Trade members and technical outputs in one transaction. Any error rolls back the entire manual command.</div>
             <details class="auto-batching-flow-capture">
               <summary>
                 <span class="button-icon" aria-hidden="true">database</span>
@@ -20586,15 +20511,13 @@
                 <div class="auto-batching-flow-capture-item"><code>fx_batches</code><span>&#x0417;&#x0430;&#x0433;&#x043E;&#x043B;&#x043E;&#x0432;&#x043E;&#x043A; &#x0441;&#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043D;&#x043E;&#x0433;&#x043E; &#x0431;&#x0430;&#x0442;&#x0447;&#x0430; &#x0438; &#x043F;&#x0440;&#x0438;&#x0447;&#x0438;&#x043D;&#x0430; &#x0435;&#x0433;&#x043E; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F;.</span></div>
                 <div class="auto-batching-flow-capture-item"><code>fx_batch_members</code><span>&#x0421;&#x043D;&#x0438;&#x043C;&#x043E;&#x043A; &#x0441;&#x043E;&#x0441;&#x0442;&#x0430;&#x0432;&#x0430; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0445; &#x0441;&#x0434;&#x0435;&#x043B;&#x043E;&#x043A; &#x0431;&#x0430;&#x0442;&#x0447;&#x0430;.</span></div>
                 <div class="auto-batching-flow-capture-item"><code>batch outputs</code><span>Position Out &#x0438; Quote Cash Out, &#x043A;&#x043E;&#x0433;&#x0434;&#x0430; &#x043E;&#x043D;&#x0438; &#x0442;&#x0440;&#x0435;&#x0431;&#x0443;&#x044E;&#x0442;&#x0441;&#x044F;.</span></div>
-                <div class="auto-batching-flow-capture-item"><code>formation links</code><span>&#x041F;&#x043E;&#x0440;&#x044F;&#x0434;&#x043A;&#x043E;&#x0432;&#x044B;&#x0439; &#x043D;&#x043E;&#x043C;&#x0435;&#x0440; &#x0431;&#x0430;&#x0442;&#x0447;&#x0430;, Tenor &#x0438; Batch ID.</span></div>
-                <div class="auto-batching-flow-capture-item"><code>completed_at</code><span>&#x0412;&#x0440;&#x0435;&#x043C;&#x044F; &#x0437;&#x0430;&#x0432;&#x0435;&#x0440;&#x0448;&#x0435;&#x043D;&#x0438;&#x044F; &#x0440;&#x0435;&#x0435;&#x0441;&#x0442;&#x0440;&#x0430; &#x0440;&#x0443;&#x0447;&#x043D;&#x043E;&#x0433;&#x043E; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F;.</span></div>
               </div>
             </details>
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step is-result">
             <div class="auto-batching-flow-step-title">Return the result and refresh FX Position</div>
-            <div class="auto-batching-flow-step-detail">&#x0412;&#x0435;&#x0440;&#x043D;&#x0443;&#x0442;&#x044C; &#x0441;&#x043E;&#x0437;&#x0434;&#x0430;&#x043D;&#x043D;&#x044B;&#x0435; Batch ID, &#x0437;&#x0430;&#x043D;&#x043E;&#x0432;&#x043E; &#x0437;&#x0430;&#x0433;&#x0440;&#x0443;&#x0437;&#x0438;&#x0442;&#x044C; &#x043F;&#x043E;&#x0437;&#x0438;&#x0446;&#x0438;&#x0438;, &#x043E;&#x0447;&#x0438;&#x0441;&#x0442;&#x0438;&#x0442;&#x044C; &#x043E;&#x0442;&#x043F;&#x0440;&#x0430;&#x0432;&#x043B;&#x0435;&#x043D;&#x043D;&#x044B;&#x0439; &#x0432;&#x044B;&#x0431;&#x043E;&#x0440; &#x0438; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0441;&#x0438;&#x0442;&#x044C; &#x043F;&#x043E;&#x0432;&#x0442;&#x043E;&#x0440;&#x043D;&#x0443;&#x044E; &#x043E;&#x0446;&#x0435;&#x043D;&#x043A;&#x0443; Auto Batch.</div>
+            <div class="auto-batching-flow-step-detail">Return the single Batch ID, reload FX Position, clear the submitted selection and request another Auto Batch evaluation.</div>
           </div>
         </div>
         <p class="auto-batching-flow-note" role="note">
@@ -22097,8 +22020,6 @@
     const analyticalPnlReportClearFiltersButton = document.getElementById("analyticalPnlReportClearFilters");
     const analyticalPnlReportSummaryGridEl = document.getElementById("analyticalPnlReportSummaryGrid");
     const analyticalPnlReportSummaryNoteEl = document.getElementById("analyticalPnlReportSummaryNote");
-    const analyticalPnlReportCountEl = document.getElementById("analyticalPnlReportCount");
-    const analyticalPnlReportGridEl = document.getElementById("analyticalPnlReportGrid");
     const clientProfilePage = document.getElementById("clientProfilePage");
     const clientProfileTopbar = document.getElementById("clientProfileTopbar");
     const clientProfileLayout = document.getElementById("clientProfileLayout");
@@ -22211,7 +22132,6 @@
     const oneBatchTenorStatus = document.getElementById("oneBatchTenorStatus");
     const oneBatchTenorCancelButton = document.getElementById("oneBatchTenorCancelButton");
     const oneBatchSelectedTenorButton = document.getElementById("oneBatchSelectedTenorButton");
-    const oneBatchSeparateTenorsButton = document.getElementById("oneBatchSeparateTenorsButton");
     const autoBatchButton = document.getElementById("autoBatchButton");
     const autoBatchIcon = document.getElementById("autoBatchIcon");
     const autoBatchLabel = document.getElementById("autoBatchLabel");
@@ -22405,6 +22325,15 @@
           "client_fx_deals",
           "fx_hedge_deals",
           "fx_trade_exposure",
+          "fx_batch_balance_trade",
+          "fx_batch_position_output"
+        ]
+      },
+      {
+        id: "fx-position",
+        label: "FX Position",
+        icon: "table_chart",
+        tables: [
           "fx_trade_position_management"
         ]
       },
@@ -22414,10 +22343,7 @@
         icon: "stacks",
         tables: [
           "fx_batches",
-          "fx_manual_batch_formations",
-          "fx_manual_batch_formation_batches",
           "fx_batch_members",
-          "fx_batch_position_output",
           "fx_batch_quote_cash_output"
         ]
       },
@@ -22526,11 +22452,7 @@
     let hedgeFxDealsPendingData = [];
     let hedgeFxDealsTotalCount = 0;
     let hedgeFxDealsViewMode = FX_DEALS_VIEW_MODE_STANDARD;
-    let analyticalPnlReportGrid = null;
-    let analyticalPnlReportGridReady = false;
-    let analyticalPnlReportPendingData = null;
     let analyticalPnlReportRequestSequence = 0;
-    let analyticalPnlReportTotalCount = 0;
     let analyticalPnlReportSummaryGrid = null;
     let analyticalPnlReportSummaryGridReady = false;
     let analyticalPnlReportSummaryPendingData = null;
@@ -24002,6 +23924,30 @@
             <span class="button-icon" aria-hidden="true">${escapeHtml(presentation.icon)}</span>
           </span>
           ${labelMarkup ? `<span class="reference-pricing-mode-label">${labelMarkup}</span>` : ""}
+        </span>
+      `;
+    }
+
+    function executionSystemLabelMarkup(name, pricingType) {
+      const normalizedName = String(name || "").trim();
+      const presentation = pricingTypePresentation(pricingType);
+      const displayName = normalizedName || "Enter name";
+      const nameClass = normalizedName ? "" : " is-placeholder";
+
+      return `
+        <span
+          class="execution-system-label"
+          data-smart-width-content
+          data-disable-overflow-tooltip
+          aria-label="Execution System ${escapeHtml(displayName)}; Pricing Mode ${escapeHtml(presentation.label)}"
+        >
+          <span class="execution-system-label__system" aria-hidden="true">
+            <span class="button-icon">terminal</span>
+          </span>
+          <span class="execution-system-label__name${nameClass}">${escapeHtml(displayName)}</span>
+          <span class="execution-system-label__pricing" aria-hidden="true">
+            <span class="button-icon">${escapeHtml(presentation.icon)}</span>
+          </span>
         </span>
       `;
     }
@@ -26322,6 +26268,12 @@
       return rule;
     }
 
+    function pricingRuleExecutionContextSearchText(rule) {
+      const pricingMode = pricingModeForRule(rule);
+
+      return `${rule.pricingContextId} ${pricingContextDisplayPath(rule.pricingContextId)} ${pricingMode} ${pricingTypePresentation(pricingMode).label}`;
+    }
+
     function pricingRuleMatchesColumnFilters(rule) {
       return pricingRuleHeaderFilterControls.every(control => {
         const query = control.value.trim().toLowerCase();
@@ -26331,12 +26283,10 @@
         }
 
         const field = control.dataset.pricingRuleHeaderFilter;
-        const value = field === "clientName"
+          const value = field === "clientName"
           ? clientNameForInn(rule.inn)
           : field === "pricingContextId"
-            ? `${rule.pricingContextId} ${pricingContextDisplayPath(rule.pricingContextId)}`
-            : field === "pricingMode"
-              ? pricingModeForRule(rule)
+            ? pricingRuleExecutionContextSearchText(rule)
             : field === "effectivePositionManagementMode"
               ? `${effectivePositionManagementModeForRule(rule)} ${
                   rule.positionManagementModeOverride ? "Pricing Rule override" : "Execution Context default"
@@ -26408,11 +26358,6 @@
           <td>
             <input class="inline-edit-control" type="text" data-pricing-rule-field="currencyPair" value="${escapeHtml(rule.currencyPair)}" maxlength="7" required>
           </td>
-          <td>${pricingModeIndicatorMarkup(
-            pricingModeForRule(rule),
-            escapeHtml(pricingModeForRule(rule)),
-            false
-          )}</td>
           <td>
             <span class="position-management-mode-control">
               <label class="position-management-mode-inherit">
@@ -26442,7 +26387,6 @@
     }
 
     function renderPricingRuleViewRow(rule, index) {
-      const pricingMode = pricingModeForRule(rule);
       const quickHedgeSettingsCount = Math.max(0, Number(rule.quickHedgeSettingsCount) || 0);
       const quickHedgeMarkup = quickHedgeSettingsCount > 0
         ? `
@@ -26458,17 +26402,12 @@
           <td>${escapeHtml(rule.pricingRuleId)}</td>
           <td>${escapeHtml(rule.inn)}</td>
           <td>${escapeHtml(clientNameForInn(rule.inn))}</td>
-          <td title="${escapeHtml(pricingContextDisplayPath(rule.pricingContextId))}">
+          <td>
             <span class="client-pricing-context-candidate-path pricing-rules-context-path">
-              ${pricingContextFacetsMarkup(rule.pricingContextId)}
+              ${pricingContextFacetsMarkup(rule.pricingContextId, { executionSystemLabel: true })}
             </span>
           </td>
           <td>${escapeHtml(rule.currencyPair)}</td>
-          <td>${pricingModeIndicatorMarkup(
-            pricingMode,
-            escapeHtml(pricingMode),
-            false
-          )}</td>
           <td>${pricingRulePositionManagementModeMarkup(rule)}</td>
           <td>${escapeHtml(editNumber(rule.marginPercent, 2))}%</td>
           <td class="pricing-rule-quick-hedge-column"${activePricingRulesScope === "INTERNAL" ? "" : " hidden"}>${quickHedgeMarkup}</td>
@@ -26568,6 +26507,12 @@
         .find(table => table.dataset.uiTableLayoutKey === tableKey) || null;
     }
 
+    function auxiliaryUiTableLayoutColumnKeys(tableKey) {
+      return Array.from(document.querySelectorAll("[data-ui-table-layout-column-key]"))
+        .filter(element => element.dataset.uiTableLayoutKey === tableKey)
+        .map(element => element.dataset.uiTableLayoutColumnKey);
+    }
+
     function applyNativeUiTableLayout(tableKey, tableLayout) {
       const table = nativeUiTable(tableKey);
 
@@ -26594,13 +26539,18 @@
 
         const setting = settingsByKey.get(column.dataset.uiColumnKey);
         column.style.removeProperty("width");
-        const fallbackWidth = Math.min(
-          240,
-          Math.max(
-            120,
-            Math.ceil(headerCell?.scrollWidth || 0) + 24
-          )
-        );
+        const requestedFallbackWidth = Number(column.dataset.uiFallbackWidth);
+        const fallbackWidth = Number.isInteger(requestedFallbackWidth)
+          && requestedFallbackWidth >= UI_TABLE_COLUMN_WIDTH_MIN_PX
+          && requestedFallbackWidth <= UI_TABLE_COLUMN_WIDTH_MAX_PX
+          ? requestedFallbackWidth
+          : Math.min(
+              240,
+              Math.max(
+                120,
+                Math.ceil(headerCell?.scrollWidth || 0) + 24
+              )
+            );
         const width = setting?.widthPx || fallbackWidth;
 
         column.style.setProperty("width", `${width}px`, "important");
@@ -26618,15 +26568,32 @@
     }
 
     function applyFxPositionGridLayout(tableLayout) {
-      const table = nativeUiTable("fx_position_grid");
-
-      if (!table || !tableLayout) {
+      if (!tableLayout) {
         return;
       }
 
       const settingsByKey = new Map(
         tableLayout.columns.map(setting => [setting.columnKey, setting])
       );
+      const ccyPairSelectorWidth = Number(
+        settingsByKey.get("ccy_pair_selector")?.widthPx
+      );
+
+      if (Number.isInteger(ccyPairSelectorWidth)
+        && ccyPairSelectorWidth >= UI_TABLE_COLUMN_WIDTH_MIN_PX
+        && ccyPairSelectorWidth <= UI_TABLE_COLUMN_WIDTH_MAX_PX) {
+        mainPage.style.setProperty(
+          "--fx-position-ccy-pair-selector-width",
+          `${ccyPairSelectorWidth}px`
+        );
+      }
+
+      const table = nativeUiTable("fx_position_grid");
+
+      if (!table) {
+        return;
+      }
+
       let totalWidth = 0;
 
       table.querySelectorAll("col").forEach(column => {
@@ -26825,9 +26792,12 @@
       const nativeTable = nativeUiTable(tableLayout.tableKey);
       const visibleColumnKeys = activeUiTableLayoutColumnKeys || (nativeTable
         ? new Set(
-            Array.from(nativeTable.querySelectorAll("col[data-ui-column-key]"))
-              .filter(column => !column.hidden)
-              .map(column => column.dataset.uiColumnKey)
+            [
+              ...Array.from(nativeTable.querySelectorAll("col[data-ui-column-key]"))
+                .filter(column => !column.hidden)
+                .map(column => column.dataset.uiColumnKey),
+              ...auxiliaryUiTableLayoutColumnKeys(tableLayout.tableKey)
+            ]
           )
         : null);
       const editableColumns = visibleColumnKeys
@@ -27117,7 +27087,7 @@
       const scopeRules = clientPricingRules.filter(rule =>
         rule.counterpartyScope === activePricingRulesScope
       );
-      const columnCount = activePricingRulesScope === "INTERNAL" ? 9 : 8;
+      const columnCount = activePricingRulesScope === "INTERNAL" ? 8 : 7;
       const layoutKey = activePricingRulesLayoutKey();
 
       if (scopeRules.length === 0) {
@@ -28069,7 +28039,22 @@
       }
     }
 
-    function pricingContextFacetsMarkup(contextOrId) {
+    function pricingContextFacetMarkup(context, field) {
+      const definition = pricingContextFacetDefinition(field);
+
+      if (!context || !definition) {
+        return "";
+      }
+
+      return `
+        <span class="client-pricing-context-candidate-facet" data-pricing-context-candidate-facet="${escapeHtml(field)}">
+          <span class="button-icon client-pricing-context-candidate-facet-icon" aria-hidden="true">${escapeHtml(definition.icon)}</span>
+          <span class="client-pricing-context-candidate-name">${escapeHtml(pricingContextFacetDisplayName(field, context[field]))}</span>
+        </span>
+      `;
+    }
+
+    function pricingContextFacetsMarkup(contextOrId, options = {}) {
       const context = typeof contextOrId === "object" && contextOrId
         ? contextOrId
         : pricingContextById(String(contextOrId || ""));
@@ -28079,12 +28064,18 @@
       }
 
       return PRICING_CONTEXT_FACETS
-        .map(({ field, icon }) => `
-          <span class="client-pricing-context-candidate-facet" data-pricing-context-candidate-facet="${escapeHtml(field)}">
-            <span class="button-icon client-pricing-context-candidate-facet-icon" aria-hidden="true">${escapeHtml(icon)}</span>
-            <span class="client-pricing-context-candidate-name">${escapeHtml(pricingContextFacetDisplayName(field, context[field]))}</span>
-          </span>
-        `)
+        .map(({ field }) => {
+          if (options.executionSystemLabel === true && field === "tradeCaptureChannelId") {
+            const executionSystem = tradeCaptureChannelById(context[field]);
+
+            return executionSystemLabelMarkup(
+              pricingContextFacetDisplayName(field, context[field]),
+              executionSystem?.pricingType
+            );
+          }
+
+          return pricingContextFacetMarkup(context, field);
+        })
         .join("");
     }
 
@@ -29403,7 +29394,6 @@
             : detachLocked
               ? `Detach unavailable while used by ${pricingRuleCount} ${pricingRuleCount === 1 ? "Pricing Rule" : "Pricing Rules"}`
               : "Detach Execution Context";
-          const pricingMode = executionContextPricingMode(context);
           const contextKey = String(context.pricingContextId);
           const expanded = !collapsedContexts.has(contextKey);
           const branchId = `client-pricing-context-${counterpartyId}-${contextKey}`;
@@ -29532,17 +29522,10 @@
                 <button type="button" class="client-pricing-configuration-context-toggle" data-client-execution-context-action="toggle" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}" aria-expanded="${String(expanded)}" aria-controls="${escapeHtml(branchId)}" aria-label="${expanded ? "Collapse" : "Expand"} ${escapeHtml(pricingContextDisplayPath(context))}">
                   <span class="button-icon" aria-hidden="true">${expanded ? "expand_more" : "chevron_right"}</span>
                   <span class="client-pricing-configuration-context-title">
-                    <span class="button-icon" aria-hidden="true" data-tooltip="Execution Context">hub</span>
+                    <span class="button-icon" aria-hidden="true">hub</span>
                     <span class="client-pricing-configuration-context-label">Execution Context</span>
                   </span>
-                  <span class="client-pricing-context-candidate-path">${pricingContextFacetsMarkup(context)}</span>
-                  <span class="client-pricing-configuration-context-meta">
-                    <span class="client-pricing-configuration-context-relation">
-                      <span class="button-icon" aria-hidden="true" data-tooltip="Pricing Mode">price_change</span>
-                      <span>Pricing Mode</span>
-                    </span>
-                    <span class="client-pricing-configuration-mode">${pricingModeIndicatorMarkup(pricingMode, escapeHtml(pricingMode), false)}</span>
-                  </span>
+                  <span class="client-pricing-context-candidate-path">${pricingContextFacetsMarkup(context, { executionSystemLabel: true })}</span>
                 </button>
                 <span class="client-pricing-configuration-context-actions profile-row-actions">
                   <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-execution-context-action="detach" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}" aria-label="${escapeHtml(detachTitle)}" aria-disabled="${String(detachLocked || detachPending)}" data-tooltip="${escapeHtml(detachTitle)}"${detachPending ? " disabled" : ""}>
@@ -31868,7 +31851,15 @@
         ];
       }
 
-      return [context.tradeCaptureChannelId, tradeCaptureChannelDisplayName(context.tradeCaptureChannelId)];
+      const executionSystem = tradeCaptureChannelById(context.tradeCaptureChannelId);
+      const pricingMode = normalizedPricingType(executionSystem?.pricingType);
+
+      return [
+        context.tradeCaptureChannelId,
+        tradeCaptureChannelDisplayName(context.tradeCaptureChannelId),
+        pricingMode,
+        pricingTypePresentation(pricingMode).label
+      ];
     }
 
     function pricingContextMatchesHeaderFilters(context) {
@@ -31897,20 +31888,17 @@
 
     function renderPricingContextViewRow(context, index) {
       const usage = pricingContextUsageCount(context.pricingContextId);
-      const servicingLocationName = servicingBranchDisplayName(context.servicingBranchCode);
-      const accountingSystemName = context.settlementSystemId === NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID
-        ? "Not Applicable"
-        : settlementSystemDisplayName(context.settlementSystemId);
-      const executionSystemName = tradeCaptureChannelDisplayName(context.tradeCaptureChannelId);
+      const executionSystem = tradeCaptureChannelById(context.tradeCaptureChannelId);
+      const executionSystemName = executionSystem?.tradeCaptureChannelName || context.tradeCaptureChannelId;
       const dependencyDescription = executionContextDependencyDescription(context.pricingContextId);
       const removeDisabled = dependencyDescription ? " disabled" : "";
 
       return `
         <tr data-pricing-context-index="${index}">
           <td>${escapeHtml(context.pricingContextId)}</td>
-          <td>${escapeHtml(servicingLocationName)}</td>
-          <td>${escapeHtml(accountingSystemName)}</td>
-          <td>${escapeHtml(executionSystemName)}</td>
+          <td>${pricingContextFacetMarkup(context, "servicingBranchCode")}</td>
+          <td>${pricingContextFacetMarkup(context, "settlementSystemId")}</td>
+          <td>${executionSystemLabelMarkup(executionSystemName, executionSystem?.pricingType)}</td>
           <td>${positionManagementModeBadgeMarkup(context.defaultPositionManagementMode)}</td>
           <td>${usage}</td>
           <td class="profile-actions-cell">
@@ -32235,7 +32223,7 @@
         return 7;
       }
 
-      return kind === "settlementSystem" ? 5 : 6;
+      return kind === "settlementSystem" ? 5 : 7;
     }
 
     function highlightedReferenceDataText(kind, value) {
@@ -32261,7 +32249,11 @@
           const field = control.dataset.referenceFilterField;
           const rawValue = field === "isActive"
             ? String(item.isActive !== false)
-            : String(item[field] ?? "");
+            : field === "pricingType"
+              ? `${item.pricingType || ""} ${pricingTypePresentation(item.pricingType).label}`
+            : field === "executionSystemLabel"
+              ? `${item.tradeCaptureChannelName || ""} ${item.pricingType || ""} ${pricingTypePresentation(item.pricingType).label}`
+              : String(item[field] ?? "");
 
           return rawValue.toLowerCase().includes(query);
         });
@@ -32335,7 +32327,7 @@
 
     function pricingTypeOptions(selectedValue) {
       return PRICING_TYPES
-        .map(value => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(value)}</option>`)
+        .map(value => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(pricingTypePresentation(value).label)}</option>`)
         .join("");
     }
 
@@ -32381,6 +32373,7 @@
           <td><input class="inline-edit-control" type="text" data-reference-field="tradeCaptureChannelId" value="${escapeHtml(item.tradeCaptureChannelId)}" maxlength="30" pattern="[A-Z0-9_-]{2,30}" required${keyReadonly}></td>
           <td><input class="inline-edit-control" type="text" data-reference-field="tradeCaptureChannelName" value="${escapeHtml(item.tradeCaptureChannelName)}" maxlength="50" required></td>
           <td><select class="inline-edit-control" data-reference-field="pricingType" required>${pricingTypeOptions(item.pricingType)}</select></td>
+          <td data-execution-system-label-preview>${executionSystemLabelMarkup(item.tradeCaptureChannelName, item.pricingType)}</td>
           <td><select class="inline-edit-control" data-reference-field="isActive">${activeBooleanOptions(item.isActive)}</select></td>
         `;
       }
@@ -32425,14 +32418,17 @@
           <td>${activeLabel(item.isActive)}</td>
         `;
       } else {
+        const pricingTypeLabel = pricingTypePresentation(item.pricingType).label;
+
         cells = `
           <td>${highlightedReferenceDataText(kind, item.tradeCaptureChannelId)}</td>
           <td>${highlightedReferenceDataText(kind, item.tradeCaptureChannelName)}</td>
           <td>${pricingModeIndicatorMarkup(
             item.pricingType,
-            highlightedReferenceDataText(kind, item.pricingType),
+            highlightedReferenceDataText(kind, pricingTypeLabel),
             false
           )}</td>
+          <td>${executionSystemLabelMarkup(item.tradeCaptureChannelName, item.pricingType)}</td>
           <td>${activeLabel(item.isActive)}</td>
         `;
       }
@@ -32725,9 +32721,26 @@
         referenceActiveValue(left) === referenceActiveValue(right);
     }
 
+    function syncExecutionSystemLabelPreview(row) {
+      const preview = row.querySelector("[data-execution-system-label-preview]");
+
+      if (!preview) {
+        return;
+      }
+
+      const name = row.querySelector("[data-reference-field='tradeCaptureChannelName']")?.value || "";
+      const pricingType = row.querySelector("[data-reference-field='pricingType']")?.value || "";
+      preview.innerHTML = executionSystemLabelMarkup(name, pricingType);
+    }
+
     function updateReferenceDataRowSaveAvailability(row) {
       const kind = row.dataset.referenceKind;
       const button = row.querySelector("[data-reference-action='save']");
+
+      if (kind === "tradeCaptureChannel") {
+        syncExecutionSystemLabelPreview(row);
+      }
+
       const item = referenceDataDraftFromRow(kind, row);
 
       if (!item) {
@@ -33449,7 +33462,8 @@
           tabulatorSizedColumn("pair", {
             title: "Ccy Pair Code",
             field: "ccyPairCode",
-            headerFilter: "input"
+            headerFilter: "input",
+            formatter: cell => escapeHtml(String(cell.getValue() || "").replace("_", "/"))
           }),
           tabulatorSizedColumn("type", {
             title: "Batch Status",
@@ -36138,7 +36152,7 @@
         stageDomain: "DOMAIN",
         stageCommit: "COMMIT",
         selectFxTrades: "FX Trade Selection for FX Batch Formation",
-        resolveTenors: "Resolve Tenors",
+        resolveTenors: "Resolve Batching Key",
         tenorResolvedRequest: "Tenor-resolved request",
         validateAndPlan: "Verify Command & Selection",
         deterministicGroupPlan: "Deterministic group plan",
@@ -36149,8 +36163,8 @@
         formedBatches: "Formed FX Batches",
         sameTenor: "Same Tenor",
         continueAction: "Continue",
-        mixedTenors: "Mixed Tenors",
-        chooseOrSplit: "Choose or split",
+        mixedTenors: "Mixed Batching Key",
+        chooseOrSplit: "Choose one Group",
         serverTransactionFailure: "Server transaction failure",
         fullRollback: "Full rollback",
         fxPositionUnchanged: "FX Position unchanged",
@@ -36196,7 +36210,7 @@
         stageDomain: "ДОМЕН",
         stageCommit: "ФИКСАЦИЯ",
         selectFxTrades: "Выбор FX Trades для создания FX Batch",
-        resolveTenors: "Разрешить Tenor",
+        resolveTenors: "Разрешить Batching Key",
         tenorResolvedRequest: "Запрос с разрешённым Tenor",
         validateAndPlan: "Проверить команду и выборку",
         deterministicGroupPlan: "Детерминированный план групп",
@@ -36207,8 +36221,8 @@
         formedBatches: "Сформированные FX Batches",
         sameTenor: "Один Tenor",
         continueAction: "Продолжить",
-        mixedTenors: "Разные Tenor",
-        chooseOrSplit: "Выбрать или разделить",
+        mixedTenors: "Разные Batching Key",
+        chooseOrSplit: "Выбрать одну группу",
         serverTransactionFailure: "Ошибка серверной транзакции",
         fullRollback: "Полный откат",
         fxPositionUnchanged: "FX Position не изменена",
@@ -36290,73 +36304,68 @@
         theme: "is-tenor",
         icon: "alt_route",
         kicker: "02 · Decision",
-        title: "Resolve Tenors",
-        objective: "Resolve a mixed-Tenor selection into an explicit, deterministic Manual Batching request.",
+        title: "Resolve Batching Key",
+        objective: "Resolve a mixed Batching Key selection to one compatible Trade set for one FX Batch.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "Browser", title: "Normalize and group the selected Tenors.", detail: "Build UI groups in TOD, TOM, SPOT, then lexical order, retaining the eligible source rows in each group." }),
-          Object.freeze({ boundary: "Browser", title: "Choose the processing path.", detail: "A single Tenor continues directly. Mixed Tenors require either one selected Tenor or independent Batching by Tenor." }),
-          Object.freeze({ boundary: "Browser", title: "Prepare the immutable request identity.", detail: "Sort numeric tradeIds, choose SINGLE_BATCH or SEPARATE_BY_TENOR, and generate one idempotencyKey for the exact selection and mode." }),
-          Object.freeze({ boundary: "API", title: "Submit the Manual Batching command.", detail: "POST tradeIds and mode to /api/v1/fx-batches, with the idempotencyKey in the request header." })
+          Object.freeze({ boundary: "Browser", title: "Group by the complete Batching Key.", detail: "Use Ccy Pair, currency precision, Trade Date, Tenor and both Value Dates while retaining the eligible source rows in each group." }),
+          Object.freeze({ boundary: "Browser", title: "Choose one compatible group.", detail: "A single Batching Key continues directly. For a mixed selection, the dealer chooses one group; the browser never creates independent batches for the remaining groups." }),
+          Object.freeze({ boundary: "Browser", title: "Prepare the immutable request identity.", detail: "Sort numeric tradeIds and generate one idempotencyKey for the exact selection." }),
+          Object.freeze({ boundary: "API", title: "Submit the Manual Batching command.", detail: "POST tradeIds to /api/v1/fx-batches, with the idempotencyKey in the request header." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "Cross-Tenor Batching is disabled by current General Batching Settings.", failure: "Mixed Tenors cannot be submitted as one FX Batch; user resolution is required." }),
-          Object.freeze({ check: "The selected Tenor contains at least one eligible source FX Trade.", failure: "Do not submit an empty Tenor group." })
+          Object.freeze({ check: "Technical FX Swap neutralization is not implemented and Cross-Tenor Batching remains disabled.", failure: "A mixed Batching Key cannot be submitted as one FX Batch; user resolution is required." }),
+          Object.freeze({ check: "The selected Batching Key group contains at least one eligible source FX Trade.", failure: "Do not submit an empty compatibility group." })
         ]),
         artifacts: Object.freeze([
           Object.freeze({ kind: "Input", name: "sourceDeals: FxPositionRow[]", scope: "Browser", purpose: "Eligible FX Trades received from Stage 01." }),
-          Object.freeze({ kind: "Runtime", name: "tenorGroups: Map<Tenor, Trade[]>", scope: "Browser", purpose: "UI decision model for a mixed-Tenor selection." }),
+          Object.freeze({ kind: "Runtime", name: "compatibilityGroups: Map<BatchingKey, Trade[]>", scope: "Browser", purpose: "UI decision model for a mixed Batching Key selection." }),
           Object.freeze({ kind: "Output", name: "tradeIds: number[]", scope: "API command", purpose: "Sorted Trade IDs submitted to the server." }),
-          Object.freeze({ kind: "Output", name: "mode: SelectionMode", scope: "API command", purpose: "SINGLE_BATCH or SEPARATE_BY_TENOR." }),
           Object.freeze({ kind: "Output", name: "idempotencyKey: UUID", scope: "Request header", purpose: "Stable identity reused when the exact request is retried." })
         ]),
         traceability: Object.freeze([
           Object.freeze({ label: "Persistence", value: "No durable write occurs until the server transaction starts in Stage 03." }),
-          Object.freeze({ label: "Audit", value: "The selected mode and Trade IDs are recorded later in the manual formation register if the transaction commits." }),
+          Object.freeze({ label: "Audit", value: "The exact Trade selection is recorded later as FX Batch membership if the transaction commits." }),
           Object.freeze({ label: "Application logging", value: "No separate event records the dialog choice." })
         ]),
-        result: "A request with resolved Tenor handling, sorted Trade IDs and a stable idempotency key."
+        result: "One compatible Trade selection with sorted Trade IDs and a stable idempotency key."
       }),
       validate: Object.freeze({
         theme: "is-validation",
         icon: "fact_check",
         kicker: "03 · Control",
         title: "Verify Command & Selection",
-        objective: "Verify the command and rebuild an authoritative eligible FX Trade selection before building deterministic Tenor groups inside one database transaction.",
+        objective: "Verify the command and rebuild one authoritative eligible FX Trade selection inside one database transaction.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "Application", title: "Normalize the command.", detail: "Require a valid idempotency key, 1–200 unique positive Trade IDs and a supported selection mode; then sort the IDs." }),
-          Object.freeze({ boundary: "DB", title: "Resolve an existing operation by idempotency key.", detail: "Replay the matching completed result, or reject reuse of the key for different Trade IDs or mode." }),
+          Object.freeze({ boundary: "Application", title: "Normalize the command.", detail: "Require a valid idempotency key and 1–200 unique positive Trade IDs; then sort the IDs." }),
+          Object.freeze({ boundary: "DB", title: "Resolve an existing FX Batch by idempotency key.", detail: "Replay the matching completed FX Batch, or reject reuse of the key for different Trade IDs or a different formation reason." }),
           Object.freeze({ boundary: "DB", title: "Rebuild the authoritative source selection.", detail: "Load the complete current FX Trade records for every requested ID; reject missing, unavailable, already batched and unsupported technical FX Trades." }),
-          Object.freeze({ boundary: "Domain", title: "Verify every source FX Trade before planning.", detail: "Require a positive Trade ID, Side BUY or SELL, complete trade terms, positive amounts, a positive Transfer Rate and a Tenor." }),
-          Object.freeze({ boundary: "Domain", title: "Build the deterministic group plan.", detail: "Apply General Batching Settings, normalize Tenors and produce one ordered group or one group per Tenor." }),
-          Object.freeze({ boundary: "DB", title: "Open the manual formation register.", detail: "Insert a BUILDING root record with the request snapshot and expected child FX Batch count inside the same transaction." })
+          Object.freeze({ boundary: "Domain", title: "Verify the complete Batching Key.", detail: "Require one currency pair, Trade Date, Tenor, both Value Dates and compatible currency precision for the entire selection." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "Idempotency key, selection mode and sorted Trade IDs match any prior completed request.", failure: "Return the prior result on an exact replay; reject a conflicting or inconsistent operation." }),
-          Object.freeze({ check: "Every requested FX Trade is currently eligible and has valid baseline source data, including Side, Tenor and Transfer Rate.", failure: "Abort before planning; no formation register or child FX Batch becomes durable." }),
-          Object.freeze({ check: "Stage 04 revalidates every planned group and its Batching Key at the domain boundary.", failure: "A domain failure rolls back the complete server transaction." })
+          Object.freeze({ check: "Idempotency key, formation reason and sorted Trade IDs match any prior completed FX Batch.", failure: "Return the prior FX Batch on an exact replay; reject a conflicting command." }),
+          Object.freeze({ check: "Every requested FX Trade is currently eligible and has valid baseline source data, including Side, Tenor and Transfer Rate.", failure: "Abort before persistence; no FX Batch becomes durable." }),
+          Object.freeze({ check: "Stage 04 revalidates the single selection and its Batching Key at the domain boundary.", failure: "A domain failure rolls back the transaction." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Input", name: "{ idempotencyKey, tradeIds, mode }", scope: "Application", purpose: "Manual batching command received from the API." }),
+          Object.freeze({ kind: "Input", name: "{ idempotencyKey, tradeIds }", scope: "Application", purpose: "Manual batching command received from the API." }),
           Object.freeze({ kind: "Runtime", name: "normalized", scope: "Application", purpose: "Canonical command with sorted Trade IDs." }),
-          Object.freeze({ kind: "Runtime", name: "sourceTrades[]", scope: "Application", purpose: "Complete authoritative FX Trade selection verified before Tenor planning." }),
-          Object.freeze({ kind: "Output", name: "groups[]: { tenor, trades[] }", scope: "Stage 04", purpose: "Deterministic child FX Batch sequence." }),
-          Object.freeze({ kind: "Output", name: "formationId", scope: "DB transaction", purpose: "Identity of the BUILDING root manual operation." })
+          Object.freeze({ kind: "Output", name: "sourceTrades[]", scope: "Stage 04", purpose: "One complete authoritative selection for one FX Batch." })
         ]),
         traceability: Object.freeze([
-          Object.freeze({ label: "Persistence", value: "A BUILDING row is inserted into fx_manual_batch_formations, but becomes durable only if Stage 05 commits." }),
-          Object.freeze({ label: "Audit", value: "The root record captures idempotency_key, selection_mode, trade_ids_json, batch_count and created_at." }),
+          Object.freeze({ label: "Persistence", value: "No durable row exists until the FX Batch aggregate is persisted in Stage 05." }),
+          Object.freeze({ label: "Audit", value: "fx_batches stores the public idempotency key; fx_batch_members stores the exact source Trade selection." }),
           Object.freeze({ label: "Application logging", value: "No per-check event or replay-attempt event is emitted." })
         ]),
-        result: "A verified authoritative FX Trade selection, deterministic Tenor groups and a transactional manual formation register ready for FX Batch formation."
+        result: "One verified authoritative FX Trade selection ready for FX Batch formation."
       }),
       form: Object.freeze({
         theme: "is-domain",
         icon: "calculate",
         kicker: "04 · Domain",
         title: "Form & Neutralize",
-        objective: "Form an FX Batch model with zero Base Currency position and neutral Quote Currency cash for every planned Tenor group.",
+        objective: "Form one FX Batch model with zero Base Currency position and neutral Quote Currency cash.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "Application", title: "Pass one verified source group to the domain.", detail: "Use the authoritative records rebuilt in Stage 03 without a second database read." }),
+          Object.freeze({ boundary: "Application", title: "Pass the verified source selection to the domain.", detail: "Use the authoritative records rebuilt in Stage 03 without a second database read." }),
           Object.freeze({ boundary: "Domain", title: "Revalidate the group and its Batching Key.", detail: "Recheck every source invariant and require one pair, Trade Date, Tenor, both Value Dates, currency precision, positive amounts and positive Transfer Rates." }),
           Object.freeze({ boundary: "Domain", title: "Calculate source FX Trade balance contributions.", detail: "Compute signed Base Currency and Quote Currency balances plus exact Transfer Rate-based Quote Currency amounts in minor units." }),
           Object.freeze({ boundary: "Domain", title: "Neutralize a non-zero Base Currency position.", detail: "Use the imbalance-producing side's Base Currency-weighted Transfer Rate to create an opposite Balance Trade and mirrored Position Out." }),
@@ -36368,7 +36377,7 @@
           Object.freeze({ check: "FX Batch members plus Balance Trade have Base Currency OVP 0; Quote Cash Out brings Quote Currency cash to 0.", failure: "Database formation guards prevent the FX Batch from being marked FORMED." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Input", name: "sourceTrades[]", scope: "Domain", purpose: "Complete FX Trades eligible for Batching in one Tenor group." }),
+          Object.freeze({ kind: "Input", name: "sourceTrades[]", scope: "Domain", purpose: "Complete FX Trades sharing one Batching Key." }),
           Object.freeze({ kind: "Runtime", name: "netBaseCcyAmountMinor", scope: "Domain", purpose: "Signed Base Currency position of source FX Trades." }),
           Object.freeze({ kind: "Runtime", name: "netQuoteCcyAmountMinor", scope: "Domain", purpose: "Signed Quote Currency cash contribution of source FX Trades." }),
           Object.freeze({ kind: "Output", name: "formation.balanceTrade?", scope: "Stage 05", purpose: "Optional member created only when the Base Currency position is non-zero." }),
@@ -36377,7 +36386,7 @@
         ]),
         traceability: Object.freeze([
           Object.freeze({ label: "Persistence", value: "The formation object is calculated in memory; its records are inserted by the repository before the outer transaction commits." }),
-          Object.freeze({ label: "Audit", value: "Each child FX Batch carries formation reason MANUAL_SELECTION with selectedTradeCount." }),
+          Object.freeze({ label: "Audit", value: "The FX Batch carries formation reason MANUAL_SELECTION with selectedTradeCount." }),
           Object.freeze({ label: "Application logging", value: "Intermediate net balances and individual domain decisions are not emitted as stage events." })
         ]),
         result: "Neutral formation model containing source members, optional technical FX Trades and mandatory Quote Cash Out."
@@ -36387,31 +36396,29 @@
         icon: "database",
         kicker: "05 · Commit",
         title: "Commit & Refresh",
-        objective: "Persist every child FX Batch atomically, complete the root operation and refresh the operator's FX Position.",
+        objective: "Persist one FX Batch atomically and refresh the operator's FX Position.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "DB", title: "Persist each child FX Batch.", detail: "Insert the FX Batch, source members, optional Balance Trade and Position Out, and mandatory Quote Cash Out; then mark the child FX Batch FORMED." }),
-          Object.freeze({ boundary: "DB", title: "Link every child result to the root operation.", detail: "Record FX Batch ordinal, resolved Tenor and FX Batch ID in fx_manual_batch_formation_batches." }),
-          Object.freeze({ boundary: "DB", title: "Complete and commit the manual operation.", detail: "Set the root status to COMPLETED only after all expected child links exist, then commit the single outer transaction." }),
-          Object.freeze({ boundary: "API", title: "Return the formed result.", detail: "Respond with batches, batchIds, optional single batchId, separatedByTenor and replayed." }),
+          Object.freeze({ boundary: "DB", title: "Persist the FX Batch aggregate.", detail: "Insert fx_batches, all members, optional technical Trade extensions and mandatory Quote Cash Out; then mark the FX Batch FORMED." }),
+          Object.freeze({ boundary: "DB", title: "Commit one aggregate transaction.", detail: "Commit only after the complete FX Batch passes all database integrity checks." }),
+          Object.freeze({ boundary: "API", title: "Return the formed FX Batch.", detail: "Respond with the single batchId, formation data and replayed flag." }),
           Object.freeze({ boundary: "Browser", title: "Refresh FX Position after success.", detail: "Reload DB-backed FX Position, remove only submitted rows from the UI selection and render the refreshed position." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "All expected child FX Batches are linked before the root operation becomes COMPLETED.", failure: "A server transaction error rolls back every child FX Batch and the root register; FX Position data remains unchanged." }),
+          Object.freeze({ check: "The complete FX Batch aggregate reaches FORMED before commit.", failure: "A server transaction error rolls back the aggregate; FX Position data remains unchanged." }),
           Object.freeze({ check: "The HTTP response is received and FX Position reload succeeds.", failure: "If refresh fails after commit, the FX Batch remains formed in the database and the UI reports an error until reloaded." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Input", name: "formation + sourceTrades[]", scope: "Repository", purpose: "Complete result for each child FX Batch." }),
+          Object.freeze({ kind: "Input", name: "formation + sourceTrades[]", scope: "Repository", purpose: "Complete result for the single FX Batch." }),
           Object.freeze({ kind: "Output", name: "fx_batches / members / outputs", scope: "Database", purpose: "Durable FX Batch aggregate, membership and output records." }),
-          Object.freeze({ kind: "Output", name: "fx_manual_batch_formation_batches", scope: "Database", purpose: "Immutable root-to-child links in deterministic order." }),
-          Object.freeze({ kind: "Output", name: "{ batches, batchIds, batchId, separatedByTenor, replayed }", scope: "API response", purpose: "Result returned to the browser." }),
+          Object.freeze({ kind: "Output", name: "{ batchId, replayed, ...batch }", scope: "API response", purpose: "Single FX Batch result returned to the browser." }),
           Object.freeze({ kind: "Output", name: "refreshed fxPositions", scope: "Browser", purpose: "FX Position with formed batch members excluded and Position Out visible when present." })
         ]),
         traceability: Object.freeze([
-          Object.freeze({ label: "Persistence", value: "fx_manual_batch_formations, child links, fx_batches, fx_batch_members, fx_trade_exposure and specialized outputs are committed together." }),
-          Object.freeze({ label: "Audit", value: "Immutable formation registers, child links, batch reason/details and v_fx_batch_formation_audit provide durable traceability." }),
+          Object.freeze({ label: "Persistence", value: "fx_batches, fx_batch_members, fx_trade_exposure and specialized technical records are committed together." }),
+          Object.freeze({ label: "Audit", value: "The public idempotency key, immutable membership, formation reason/details and v_fx_batch_formation_audit provide durable traceability." }),
           Object.freeze({ label: "Application logging", value: "There is no separate success/failure event log for each process stage or UI refresh." })
         ]),
-        result: "One or more durable formed FX Batches and a refreshed FX Position; an exact retry replays the same result."
+        result: "One durable formed FX Batch and a refreshed FX Position; an exact retry replays the same result."
       })
     });
     const MANUAL_BATCH_PROCESS_STAGES_RU = Object.freeze({
@@ -36446,73 +36453,68 @@
         theme: "is-tenor",
         icon: "alt_route",
         kicker: "02 · Решение",
-        title: "Разрешить Tenor",
-        objective: "Преобразовать набор FX Trades с разными Tenor в явный и детерминированный запрос на выполнение процесса «Ручной Batching».",
+        title: "Разрешить Batching Key",
+        objective: "Выделить из смешанной выборки один набор FX Trades с общим Batching Key для одного FX Batch.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "Браузер", title: "Нормализовать и сгруппировать выбранные Tenor.", detail: "Создать группы интерфейса в порядке TOD, TOM, SPOT, затем лексикографически; сохранить допустимые исходные FX Trades каждой группы." }),
-          Object.freeze({ boundary: "Браузер", title: "Выбрать способ обработки.", detail: "Один Tenor продолжается напрямую. Для разных Tenor требуется выбрать один Tenor либо сформировать независимые FX Batches по Tenor." }),
-          Object.freeze({ boundary: "Браузер", title: "Подготовить неизменяемую идентичность запроса.", detail: "Отсортировать числовые tradeIds, выбрать SINGLE_BATCH или SEPARATE_BY_TENOR и создать один idempotencyKey для точного набора и режима." }),
-          Object.freeze({ boundary: "API", title: "Отправить команду процесса «Ручной Batching».", detail: "Передать tradeIds и mode запросом POST в /api/v1/fx-batches, указав idempotencyKey в заголовке." })
+          Object.freeze({ boundary: "Браузер", title: "Сгруппировать по полному Batching Key.", detail: "Учесть Ccy Pair, точность валют, Trade Date, Tenor и обе Value Dates; сохранить допустимые FX Trades каждой группы." }),
+          Object.freeze({ boundary: "Браузер", title: "Выбрать одну совместимую группу.", detail: "Единый Batching Key продолжается напрямую. Для смешанной выборки дилер выбирает одну группу; браузер не создаёт независимые FX Batches для остальных групп." }),
+          Object.freeze({ boundary: "Браузер", title: "Подготовить неизменяемую идентичность запроса.", detail: "Отсортировать числовые tradeIds и создать один idempotencyKey для точного набора." }),
+          Object.freeze({ boundary: "API", title: "Отправить команду процесса «Ручной Batching».", detail: "Передать tradeIds запросом POST в /api/v1/fx-batches, указав idempotencyKey в заголовке." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "Cross-Tenor Batching отключён текущими General Batching Settings.", failure: "FX Trades с разными Tenor нельзя отправить как один FX Batch; требуется решение пользователя." }),
-          Object.freeze({ check: "Выбранная группа Tenor должна содержать хотя бы один допустимый исходный FX Trade.", failure: "Не отправлять пустую группу Tenor." })
+          Object.freeze({ check: "Нейтрализация техническими FX Swap ещё не реализована, поэтому Cross-Tenor Batching остаётся отключён.", failure: "Смешанный Batching Key нельзя отправить как один FX Batch; требуется решение пользователя." }),
+          Object.freeze({ check: "Выбранная группа Batching Key должна содержать хотя бы один допустимый исходный FX Trade.", failure: "Не отправлять пустую совместимую группу." })
         ]),
         artifacts: Object.freeze([
           Object.freeze({ kind: "Вход", name: "sourceDeals: FxPositionRow[]", scope: "Браузер", purpose: "Набор допустимых FX Trades, полученный с этапа 01." }),
-          Object.freeze({ kind: "В процессе", name: "tenorGroups: Map<Tenor, Trade[]>", scope: "Браузер", purpose: "Модель выбора для набора с разными Tenor." }),
+          Object.freeze({ kind: "В процессе", name: "compatibilityGroups: Map<BatchingKey, Trade[]>", scope: "Браузер", purpose: "Модель выбора для смешанной выборки Batching Key." }),
           Object.freeze({ kind: "Выход", name: "tradeIds: number[]", scope: "Команда API", purpose: "Отсортированные Trade ID, отправляемые серверу." }),
-          Object.freeze({ kind: "Выход", name: "mode: SelectionMode", scope: "Команда API", purpose: "SINGLE_BATCH или SEPARATE_BY_TENOR." }),
           Object.freeze({ kind: "Выход", name: "idempotencyKey: UUID", scope: "Заголовок запроса", purpose: "Стабильная идентичность, повторно используемая для точного повтора запроса." })
         ]),
         traceability: Object.freeze([
           Object.freeze({ label: "Хранение", value: "До начала серверной транзакции на этапе 03 долговременная запись не выполняется." }),
-          Object.freeze({ label: "Аудит", value: "Выбранный режим и Trade ID будут записаны в реестр ручного формирования, если транзакция завершится успешно." }),
+          Object.freeze({ label: "Аудит", value: "Точный набор Trade будет записан как состав FX Batch, если транзакция завершится успешно." }),
           Object.freeze({ label: "Журнал приложения", value: "Выбор в диалоговом окне отдельным событием не регистрируется." })
         ]),
-        result: "Запрос с разрешённым Tenor, отсортированными Trade ID и стабильным ключом идемпотентности."
+        result: "Один совместимый набор с отсортированными Trade ID и стабильным ключом идемпотентности."
       }),
       validate: Object.freeze({
         theme: "is-validation",
         icon: "fact_check",
         kicker: "03 · Контроль",
         title: "Проверить команду и выборку",
-        objective: "Проверить команду и заново построить по данным БД актуальную допустимую выборку FX Trades до формирования детерминированных групп Tenor внутри одной транзакции.",
+        objective: "Проверить команду и заново построить по данным БД одну актуальную допустимую выборку FX Trades внутри одной транзакции.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "Приложение", title: "Нормализовать команду.", detail: "Потребовать корректный idempotency key, от 1 до 200 уникальных положительных Trade ID и поддерживаемый режим выбора; затем отсортировать ID." }),
-          Object.freeze({ boundary: "БД", title: "Найти существующую операцию по ключу идемпотентности.", detail: "Повторно вернуть совпадающий завершённый результат либо отклонить использование ключа с другими Trade ID или режимом." }),
+          Object.freeze({ boundary: "Приложение", title: "Нормализовать команду.", detail: "Потребовать корректный idempotency key и от 1 до 200 уникальных положительных Trade ID; затем отсортировать ID." }),
+          Object.freeze({ boundary: "БД", title: "Найти существующий FX Batch по ключу идемпотентности.", detail: "Повторно вернуть совпадающий FX Batch либо отклонить использование ключа с другими Trade ID или другой причиной формирования." }),
           Object.freeze({ boundary: "БД", title: "Заново построить актуальную серверную выборку.", detail: "Загрузить полные актуальные данные FX Trade для каждого запрошенного ID; отклонить отсутствующие, недоступные, уже включённые в FX Batch и неподдерживаемые технические FX Trades." }),
-          Object.freeze({ boundary: "Домен", title: "Проверить каждый исходный FX Trade до планирования.", detail: "Потребовать положительный Trade ID, Side BUY или SELL, полный набор параметров сделки, положительные суммы, положительный Transfer Rate и Tenor." }),
-          Object.freeze({ boundary: "Домен", title: "Построить детерминированный план групп.", detail: "Применить General Batching Settings, нормализовать Tenor и получить одну упорядоченную группу либо отдельную группу для каждого Tenor." }),
-          Object.freeze({ boundary: "БД", title: "Открыть реестр ручного формирования.", detail: "Вставить корневую запись BUILDING со снимком запроса и ожидаемым числом дочерних FX Batches внутри той же транзакции." })
+          Object.freeze({ boundary: "Домен", title: "Проверить полный Batching Key.", detail: "Потребовать одну валютную пару, Trade Date, Tenor, обе Value Dates и совместимую точность валют для всей выборки." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "Ключ идемпотентности, режим выбора и отсортированные Trade ID должны совпадать с предыдущим завершённым запросом.", failure: "Для точного повтора вернуть прежний результат; конфликтующую или несогласованную операцию отклонить." }),
-          Object.freeze({ check: "Каждый запрошенный FX Trade должен быть актуально допустим и содержать корректные базовые данные, включая Side, Tenor и Transfer Rate.", failure: "Прервать обработку до планирования; реестр формирования и дочерние FX Batches не становятся постоянными." }),
-          Object.freeze({ check: "На этапе 04 каждая запланированная группа и её Batching Key повторно проверяются на границе домена.", failure: "Доменная ошибка откатывает серверную транзакцию целиком." })
+          Object.freeze({ check: "Ключ идемпотентности, причина формирования и отсортированные Trade ID должны совпадать с предыдущим FX Batch.", failure: "Для точного повтора вернуть прежний FX Batch; конфликтующую команду отклонить." }),
+          Object.freeze({ check: "Каждый запрошенный FX Trade должен быть актуально допустим и содержать корректные базовые данные, включая Side, Tenor и Transfer Rate.", failure: "Прервать обработку до сохранения; FX Batch не становится постоянным." }),
+          Object.freeze({ check: "На этапе 04 единая выборка и её Batching Key повторно проверяются на границе домена.", failure: "Доменная ошибка откатывает транзакцию целиком." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Вход", name: "{ idempotencyKey, tradeIds, mode }", scope: "Приложение", purpose: "Команда процесса «Ручной Batching», полученная от API." }),
+          Object.freeze({ kind: "Вход", name: "{ idempotencyKey, tradeIds }", scope: "Приложение", purpose: "Команда процесса «Ручной Batching», полученная от API." }),
           Object.freeze({ kind: "В процессе", name: "normalized", scope: "Приложение", purpose: "Каноническая команда с отсортированными Trade ID." }),
-          Object.freeze({ kind: "В процессе", name: "sourceTrades[]", scope: "Приложение", purpose: "Полная актуальная серверная выборка FX Trades, проверенная до планирования Tenor." }),
-          Object.freeze({ kind: "Выход", name: "groups[]: { tenor, trades[] }", scope: "Этап 04", purpose: "Детерминированная последовательность дочерних FX Batches." }),
-          Object.freeze({ kind: "Выход", name: "formationId", scope: "Транзакция БД", purpose: "Идентификатор корневой ручной операции в статусе BUILDING." })
+          Object.freeze({ kind: "Выход", name: "sourceTrades[]", scope: "Этап 04", purpose: "Одна полная актуальная выборка для одного FX Batch." })
         ]),
         traceability: Object.freeze([
-          Object.freeze({ label: "Хранение", value: "Строка BUILDING вставляется в fx_manual_batch_formations, но становится постоянной только после фиксации этапа 05." }),
-          Object.freeze({ label: "Аудит", value: "Корневая запись содержит idempotency_key, selection_mode, trade_ids_json, batch_count и created_at." }),
+          Object.freeze({ label: "Хранение", value: "Постоянная запись не появляется до сохранения агрегата FX Batch на этапе 05." }),
+          Object.freeze({ label: "Аудит", value: "fx_batches хранит публичный idempotency key, а fx_batch_members — точный набор исходных Trade." }),
           Object.freeze({ label: "Журнал приложения", value: "События отдельных проверок и попыток повтора не создаются." })
         ]),
-        result: "Проверенная актуальная серверная выборка FX Trades, детерминированные группы Tenor и транзакционный реестр ручного формирования готовы к созданию FX Batches."
+        result: "Одна проверенная актуальная серверная выборка FX Trades готова к формированию FX Batch."
       }),
       form: Object.freeze({
         theme: "is-domain",
         icon: "calculate",
         kicker: "04 · Домен",
         title: "Сформировать и нейтрализовать",
-        objective: "Сформировать модель FX Batch с нулевой позицией в Base Currency и нейтральным cash в Quote Currency для каждой запланированной группы Tenor.",
+        objective: "Сформировать одну модель FX Batch с нулевой позицией в Base Currency и нейтральным cash в Quote Currency.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "Приложение", title: "Передать в домен одну проверенную исходную группу.", detail: "Использовать актуальные записи, восстановленные на этапе 03, без повторного чтения базы данных." }),
+          Object.freeze({ boundary: "Приложение", title: "Передать в домен проверенную исходную выборку.", detail: "Использовать актуальные записи, восстановленные на этапе 03, без повторного чтения базы данных." }),
           Object.freeze({ boundary: "Домен", title: "Повторно проверить группу и её Batching Key.", detail: "Повторить проверку каждого исходного инварианта и потребовать одну валютную пару, Trade Date, Tenor, обе Value Dates, точность валют, положительные суммы и положительные Transfer Rate." }),
           Object.freeze({ boundary: "Домен", title: "Рассчитать вклад исходных FX Trades в баланс.", detail: "Вычислить знаковые балансы в Base Currency и Quote Currency, а также точные суммы в Quote Currency по Transfer Rate в minor units." }),
           Object.freeze({ boundary: "Домен", title: "Нейтрализовать ненулевую позицию в Base Currency.", detail: "По стороне, создавшей дисбаланс, рассчитать взвешенный по Base Currency Transfer Rate и создать противоположный Balance Trade и зеркальный Position Out." }),
@@ -36524,7 +36526,7 @@
           Object.freeze({ check: "Участники FX Batch вместе с Balance Trade должны дать ОВП в Base Currency, равную 0; Quote Cash Out должен привести cash в Quote Currency к 0.", failure: "Защитные ограничения формирования в БД не позволят пометить FX Batch как FORMED." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Вход", name: "sourceTrades[]", scope: "Домен", purpose: "Полный набор FX Trades одной группы Tenor, включаемых в FX Batch." }),
+          Object.freeze({ kind: "Вход", name: "sourceTrades[]", scope: "Домен", purpose: "Полный совместимый набор FX Trades, включаемых в один FX Batch." }),
           Object.freeze({ kind: "В процессе", name: "netBaseCcyAmountMinor", scope: "Домен", purpose: "Знаковая позиция исходных FX Trades в Base Currency." }),
           Object.freeze({ kind: "В процессе", name: "netQuoteCcyAmountMinor", scope: "Домен", purpose: "Знаковый вклад исходных FX Trades в cash в Quote Currency." }),
           Object.freeze({ kind: "Выход", name: "formation.balanceTrade?", scope: "Этап 05", purpose: "Необязательный участник, создаваемый только при ненулевой позиции в Base Currency." }),
@@ -36533,7 +36535,7 @@
         ]),
         traceability: Object.freeze([
           Object.freeze({ label: "Хранение", value: "Модель формирования рассчитывается в памяти; репозиторий вставляет её записи до фиксации внешней транзакции." }),
-          Object.freeze({ label: "Аудит", value: "Каждый дочерний FX Batch получает причину формирования MANUAL_SELECTION и selectedTradeCount." }),
+          Object.freeze({ label: "Аудит", value: "FX Batch получает причину формирования MANUAL_SELECTION и selectedTradeCount." }),
           Object.freeze({ label: "Журнал приложения", value: "Промежуточные net-балансы и отдельные доменные решения как события этапа не публикуются." })
         ]),
         result: "Нейтральная модель формирования с исходными участниками, необязательными техническими FX Trades и обязательным Quote Cash Out."
@@ -36543,28 +36545,26 @@
         icon: "database",
         kicker: "05 · Фиксация",
         title: "Зафиксировать и обновить",
-        objective: "Атомарно сохранить все дочерние FX Batches, завершить корневую операцию и обновить FX Position оператора.",
+        objective: "Атомарно сохранить один FX Batch и обновить FX Position оператора.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "БД", title: "Сохранить каждый дочерний FX Batch.", detail: "Вставить записи FX Batch, исходных участников, необязательных Balance Trade и Position Out, обязательного Quote Cash Out; затем перевести дочерний FX Batch в FORMED." }),
-          Object.freeze({ boundary: "БД", title: "Связать каждый дочерний результат с корневой операцией.", detail: "Записать порядковый номер FX Batch, разрешённый Tenor и FX Batch ID в fx_manual_batch_formation_batches." }),
-          Object.freeze({ boundary: "БД", title: "Завершить и зафиксировать ручную операцию.", detail: "Установить корневой статус COMPLETED только после появления всех ожидаемых дочерних связей, затем зафиксировать единую внешнюю транзакцию." }),
-          Object.freeze({ boundary: "API", title: "Вернуть сформированный результат.", detail: "Ответить значениями batches, batchIds, необязательным одиночным batchId, separatedByTenor и replayed." }),
+          Object.freeze({ boundary: "БД", title: "Сохранить агрегат FX Batch.", detail: "Вставить fx_batches, всех участников, необязательные расширения технических Trade и обязательный Quote Cash Out; затем перевести FX Batch в FORMED." }),
+          Object.freeze({ boundary: "БД", title: "Зафиксировать одну транзакцию агрегата.", detail: "Выполнить commit только после прохождения всех проверок целостности полного FX Batch." }),
+          Object.freeze({ boundary: "API", title: "Вернуть сформированный FX Batch.", detail: "Ответить одиночным batchId, данными формирования и признаком replayed." }),
           Object.freeze({ boundary: "Браузер", title: "Обновить FX Position после успеха.", detail: "Повторно загрузить FX Position из БД, убрать из UI-выделения только отправленные строки и отрисовать обновлённую позицию." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "До перевода корневой операции в COMPLETED должны существовать все ожидаемые дочерние связи.", failure: "Ошибка серверной транзакции откатывает все дочерние FX Batches и корневой реестр; данные FX Position не изменяются." }),
+          Object.freeze({ check: "Полный агрегат FX Batch должен достичь статуса FORMED до commit.", failure: "Ошибка серверной транзакции откатывает агрегат; данные FX Position не изменяются." }),
           Object.freeze({ check: "HTTP-ответ должен быть получен, а повторная загрузка FX Position — завершиться успешно.", failure: "Если обновление UI завершится ошибкой уже после фиксации транзакции, FX Batch останется сформированным в БД, а интерфейс будет показывать ошибку до перезагрузки." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Вход", name: "formation + sourceTrades[]", scope: "Репозиторий", purpose: "Полный результат каждого дочернего FX Batch." }),
+          Object.freeze({ kind: "Вход", name: "formation + sourceTrades[]", scope: "Репозиторий", purpose: "Полный результат единственного FX Batch." }),
           Object.freeze({ kind: "Выход", name: "fx_batches / members / outputs", scope: "База данных", purpose: "Постоянные записи агрегата FX Batch, его состава и выходов." }),
-          Object.freeze({ kind: "Выход", name: "fx_manual_batch_formation_batches", scope: "База данных", purpose: "Неизменяемые связи корневой операции с дочерними FX Batches в детерминированном порядке." }),
-          Object.freeze({ kind: "Выход", name: "{ batches, batchIds, batchId, separatedByTenor, replayed }", scope: "Ответ API", purpose: "Результат, возвращаемый браузеру." }),
+          Object.freeze({ kind: "Выход", name: "{ batchId, replayed, ...batch }", scope: "Ответ API", purpose: "Результат одного FX Batch, возвращаемый браузеру." }),
           Object.freeze({ kind: "Выход", name: "refreshed fxPositions", scope: "Браузер", purpose: "FX Position без участников сформированного FX Batch и с видимым Position Out, если он существует." })
         ]),
         traceability: Object.freeze([
-          Object.freeze({ label: "Хранение", value: "fx_manual_batch_formations, дочерние связи, fx_batches, fx_batch_members, fx_trade_exposure и специализированные outputs фиксируются совместно." }),
-          Object.freeze({ label: "Аудит", value: "Неизменяемые реестры формирования, дочерние связи, причина и детали FX Batch, а также v_fx_batch_formation_audit обеспечивают долговременную трассируемость." }),
+          Object.freeze({ label: "Хранение", value: "fx_batches, fx_batch_members, fx_trade_exposure и специализированные технические записи фиксируются совместно." }),
+          Object.freeze({ label: "Аудит", value: "Публичный idempotency key, неизменяемый состав, причина и детали FX Batch, а также v_fx_batch_formation_audit обеспечивают долговременную трассируемость." }),
           Object.freeze({ label: "Журнал приложения", value: "Отдельного журнала успеха или ошибки для каждого этапа процесса и обновления UI нет." })
         ]),
         result: "Сформированный и сохранённый FX Batch, а также обновлённая FX Position; точный повтор возвращает тот же результат."
@@ -38026,6 +38026,10 @@
       });
     }
 
+    function fxPositionTradeCountForPair(source, pair) {
+      return source.filter(deal => currencyPair(deal) === pair).length;
+    }
+
     function renderFxPositionModeTabs(source) {
       const counts = fxPositionModeCounts(source);
       fxPositionManualCount.textContent = String(counts.MANUAL);
@@ -38045,7 +38049,6 @@
 
     function renderCurrencyPairList(source) {
       const pairs = availableCurrencyPairs(source);
-      const modeRows = fxPositionRowsForMode(source);
 
       if (pairs.length === 0) {
         currencyPairListEl.innerHTML = `<span class="currency-pair-empty">No pairs</span>`;
@@ -38054,14 +38057,20 @@
 
       currencyPairListEl.innerHTML = pairs
         .map(pair => {
-          const count = modeRows.filter(deal => currencyPair(deal) === pair).length;
+          const count = fxPositionTradeCountForPair(source, pair);
           const safePair = escapeHtml(pair);
           const active = pair === selectedCurrencyPair;
+          const countLabel = escapeHtml(
+            `Total: ${count} trade${count === 1 ? "" : "s"}`
+          );
 
           return `
             <button type="button" class="btn btn-sm currency-pair-button${active ? " is-active" : ""}" data-currency-pair="${safePair}" aria-pressed="${active ? "true" : "false"}">
               <span class="currency-pair-name">${safePair}</span>
-              <span class="currency-pair-count">${count}</span>
+              <span class="currency-pair-count" title="${countLabel}">
+                <span class="visually-hidden">Total trades: ${count}</span>
+                <span aria-hidden="true">${count}</span>
+              </span>
             </button>
           `;
         })
@@ -38338,34 +38347,69 @@
       }
     }
 
-    function oneBatchTenorGroups(sourceDeals) {
+    function oneBatchCompatibilityKey(deal) {
+      return JSON.stringify([
+        String(deal?.ccyPairCode || currencyPair(deal) || "").trim().toUpperCase(),
+        String(baseCurrency(deal) || "").trim().toUpperCase(),
+        String(quoteCurrency(deal) || "").trim().toUpperCase(),
+        fxPositionBaseCcyFractionDigits(deal),
+        fxPositionQuoteCcyFractionDigits(deal),
+        String(positionTradeDate(deal) || "").trim(),
+        String(positionTenor(deal) || "").trim().toUpperCase(),
+        String(baseCurrencyValueDate(deal) || "").trim(),
+        String(quoteCurrencyValueDate(deal) || "").trim()
+      ]);
+    }
+
+    function oneBatchCompatibilityGroups(sourceDeals) {
       const groups = new Map();
       const tenorOrder = new Map([["TOD", 0], ["TOM", 1], ["SPOT", 2]]);
 
       sourceDeals.forEach(deal => {
+        const key = oneBatchCompatibilityKey(deal);
         const tenor = String(positionTenor(deal) || "").trim().toUpperCase();
 
-        if (!groups.has(tenor)) {
-          groups.set(tenor, []);
+        if (!groups.has(key)) {
+          groups.set(key, {
+            key,
+            pair: currencyPair(deal),
+            tradeDate: positionTradeDate(deal),
+            tenor,
+            baseValueDate: baseCurrencyValueDate(deal),
+            quoteValueDate: quoteCurrencyValueDate(deal),
+            deals: []
+          });
         }
 
-        groups.get(tenor).push(deal);
+        groups.get(key).deals.push(deal);
       });
 
-      return Array.from(groups, ([tenor, deals]) => ({ tenor, deals }))
+      return Array.from(groups.values())
         .sort((left, right) => {
           const leftOrder = tenorOrder.get(left.tenor) ?? Number.MAX_SAFE_INTEGER;
           const rightOrder = tenorOrder.get(right.tenor) ?? Number.MAX_SAFE_INTEGER;
 
-          return leftOrder - rightOrder || left.tenor.localeCompare(right.tenor);
+          return leftOrder - rightOrder
+            || left.tenor.localeCompare(right.tenor)
+            || left.key.localeCompare(right.key);
         });
+    }
+
+    function oneBatchCompatibilityGroupLabel(group) {
+      const pair = group.pair || "Pair not set";
+      const tenor = group.tenor || "Tenor not set";
+      const tradeDate = group.tradeDate || "not set";
+      const valueDates = group.baseValueDate === group.quoteValueDate
+        ? group.baseValueDate || "not set"
+        : `${group.baseValueDate || "not set"} / ${group.quoteValueDate || "not set"}`;
+
+      return `${pair} · ${tenor} · Trade ${tradeDate} · Value ${valueDates}`;
     }
 
     function setOneBatchTenorDialogBusy(busy) {
       oneBatchTenorDialogClose.disabled = busy;
       oneBatchTenorCancelButton.disabled = busy;
       oneBatchSelectedTenorButton.disabled = busy;
-      oneBatchSeparateTenorsButton.disabled = busy;
       oneBatchTenorSelect.disabled = busy;
     }
 
@@ -38375,14 +38419,13 @@
     }
 
     function updateOneBatchSelectedTenorButton() {
-      const tenor = oneBatchTenorSelect.value;
-      oneBatchSelectedTenorButton.textContent = tenor
-        ? `Create ${tenor} Batch`
-        : "Create Selected Tenor Batch";
+      oneBatchSelectedTenorButton.textContent = oneBatchTenorSelect.value
+        ? "Create Selected Batch"
+        : "Select a Compatible Group";
     }
 
     function openOneBatchTenorDialog(sourceDeals) {
-      const groups = oneBatchTenorGroups(sourceDeals);
+      const groups = oneBatchCompatibilityGroups(sourceDeals);
       pendingOneBatchTenorSelection = [...sourceDeals];
       oneBatchTenorSummary.replaceChildren();
       oneBatchTenorSelect.replaceChildren();
@@ -38390,16 +38433,16 @@
       setOneBatchTenorDialogBusy(false);
 
       groups.forEach(group => {
-        const tenorLabel = group.tenor || "Tenor not set";
+        const groupLabel = oneBatchCompatibilityGroupLabel(group);
         const summaryItem = document.createElement("li");
         const option = document.createElement("option");
         const tradeLabel = group.deals.length === 1 ? "trade" : "trades";
 
         summaryItem.className = "one-batch-tenor-summary-item";
-        summaryItem.innerHTML = `<strong>${escapeHtml(tenorLabel)}</strong><span class="one-batch-tenor-count">${group.deals.length} ${tradeLabel}</span>`;
+        summaryItem.innerHTML = `<strong>${escapeHtml(groupLabel)}</strong><span class="one-batch-tenor-count">${group.deals.length} ${tradeLabel}</span>`;
         oneBatchTenorSummary.append(summaryItem);
-        option.value = group.tenor;
-        option.textContent = `${tenorLabel} — ${group.deals.length} ${tradeLabel}`;
+        option.value = group.key;
+        option.textContent = `${groupLabel} — ${group.deals.length} ${tradeLabel}`;
         oneBatchTenorSelect.append(option);
       });
 
@@ -38435,12 +38478,12 @@
       }
     }
 
-    async function submitOneBatchSelection(sourceDeals, mode = "SINGLE_BATCH") {
+    async function submitOneBatchSelection(sourceDeals) {
       const tradeIds = sourceDeals
         .map(deal => Number(fxPositionTradeId(deal)))
         .sort((left, right) => left - right);
       const submittedDealIds = sourceDeals.map(deal => deal.id);
-      const selectionKey = `${mode}:${tradeIds.join(",")}`;
+      const selectionKey = tradeIds.join(",");
 
       if (pendingOneBatchRequest?.selectionKey !== selectionKey) {
         pendingOneBatchRequest = {
@@ -38454,9 +38497,7 @@
       setOneBatchTenorDialogBusy(true);
       updateActionButtons();
       setBatchStatus(
-        mode === "SEPARATE_BY_TENOR"
-          ? `Forming independent FX Batches by Tenor from ${tradeIds.length} selected trades...`
-          : `Forming FX Batch from ${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}...`
+        `Forming FX Batch from ${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}...`
       );
 
       try {
@@ -38467,7 +38508,7 @@
             headers: {
               "Idempotency-Key": batchRequest.idempotencyKey
             },
-            body: JSON.stringify({ tradeIds, mode })
+            body: JSON.stringify({ tradeIds })
           }
         );
         await reloadFxPositionsFromApi();
@@ -38481,23 +38522,11 @@
         closeOneBatchTenorDialog({ restoreFocus: false });
         render(fxPositions);
 
-        const batchIds = Array.isArray(result.batchIds)
-          ? result.batchIds
-          : [result.batchId].filter(Boolean);
-
-        if (batchIds.length > 1) {
-          setBatchStatus(
-            `${batchIds.length} independent FX Batches (${batchIds.join(", ")}) were formed successfully `
-              + `from ${tradeIds.length} selected trades.`,
-            "success"
-          );
-        } else {
-          setBatchStatus(
-            `FX Batch ${batchIds[0]} was formed successfully from `
-              + `${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}.`,
-            "success"
-          );
-        }
+        setBatchStatus(
+          `FX Batch ${result.batchId} was formed successfully from `
+            + `${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}.`,
+          "success"
+        );
       } catch (error) {
         const message = error.message || "Unable to form FX Batch.";
         setBatchStatus(message, "error");
@@ -38528,8 +38557,7 @@
       }
 
       if (
-        batchingSettings.allowCrossTenorBatching !== true
-        && oneBatchTenorGroups(sourceDeals).length > 1
+        oneBatchCompatibilityGroups(sourceDeals).length > 1
       ) {
         openOneBatchTenorDialog(sourceDeals);
         return;
@@ -39376,11 +39404,19 @@
           .localeCompare(String(right.context.pricingContextId), "en", { numeric: true }));
     }
 
-    function addClientDealPricingRuleContentMarkup(rule, context) {
+    function addClientDealPricingRuleContentMarkup(rule, context, options = {}) {
+      const contextMarkup = pricingContextFacetsMarkup(
+        context,
+        options.executionSystemLabel === true ? { executionSystemLabel: true } : {}
+      );
+      const pricingModeIndicator = options.showPricingModeIndicator === false
+        ? ""
+        : pricingModeIndicatorMarkup(pricingModeForRule(rule, context));
+
       return `
-        <span class="client-pricing-context-candidate-path">${pricingContextFacetsMarkup(context)}</span>
+        <span class="client-pricing-context-candidate-path">${contextMarkup}</span>
         <span class="client-deal-pricing-rule-metadata">
-          ${pricingModeIndicatorMarkup(pricingModeForRule(rule, context))}
+          ${pricingModeIndicator}
           ${marginIndicatorMarkup(rule.marginPercent)}
         </span>
       `;
@@ -39416,7 +39452,11 @@
         <div class="input-group client-deal-pricing-rule-select${pickerAvailable ? "" : " is-disabled"}">
           <div class="form-control client-deal-pricing-rule-select-value" aria-labelledby="addClientDealPricingRuleLabel">
             ${selectedOption
-              ? addClientDealPricingRuleContentMarkup(selectedOption.rule, selectedOption.context)
+              ? addClientDealPricingRuleContentMarkup(
+                  selectedOption.rule,
+                  selectedOption.context,
+                  { executionSystemLabel: true, showPricingModeIndicator: false }
+                )
               : onboardingPricing && onboardingAvailable
                 ? `
                   <span class="client-deal-onboarding-selection">
@@ -39441,7 +39481,11 @@
                 const selected = String(rule.pricingRuleId) === effectiveSelectedRuleId;
                 return `
                   <button type="button" class="client-pricing-context-candidate${selected ? " is-selected" : ""}" data-add-client-deal-pricing-rule-id="${escapeHtml(rule.pricingRuleId)}" role="option" aria-selected="${selected}">
-                    ${addClientDealPricingRuleContentMarkup(rule, context)}
+                    ${addClientDealPricingRuleContentMarkup(
+                      rule,
+                      context,
+                      { executionSystemLabel: true, showPricingModeIndicator: false }
+                    )}
                   </button>
                 `;
               }).join("")}
@@ -40262,7 +40306,7 @@
 
       return `
         <span class="client-pricing-context-candidate-path">
-          ${pricingContextFacetsMarkup(setting.context)}
+          ${pricingContextFacetsMarkup(setting.context, { executionSystemLabel: true })}
         </span>
       `;
     }
@@ -41261,7 +41305,11 @@
     }
 
     function addHedgeDealPricingRuleContentMarkup(rule, context) {
-      return addClientDealPricingRuleContentMarkup(rule, context);
+      return addClientDealPricingRuleContentMarkup(
+        rule,
+        context,
+        { executionSystemLabel: true, showPricingModeIndicator: false }
+      );
     }
 
     function renderAddHedgeDealPricingRules() {
@@ -43709,8 +43757,8 @@
     function applyFxDealsViewMode(scope) {
       const table = scope === "hedge" ? hedgeFxDealsGrid : clientFxDealsGrid;
       const auditFields = scope === "hedge"
-        ? ["requestTimestamp", "executionTimestamp"]
-        : ["executionTimestamp"];
+        ? ["requestTimestamp", "executionTimestamp", "initialFxPositionMode", "currentFxPositionMode"]
+        : ["executionTimestamp", "initialFxPositionMode", "currentFxPositionMode"];
       const showAuditFields = fxDealsViewMode(scope) === FX_DEALS_VIEW_MODE_AUDIT;
 
       auditFields.forEach(field => {
@@ -43811,8 +43859,8 @@
           title: "FX Position Processing",
           cssClass: "client-deals-group-position-processing",
           columns: [
-            clientFxDealsFilterableColumn("shortText", { title: "Initial FX Position Mode", field: "initialFxPositionMode", headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
-            clientFxDealsFilterableColumn("shortText", { title: "Current FX Position Mode", field: "currentFxPositionMode", headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientFxDealsFilterableColumn("shortText", { title: "Initial FX Position Mode", field: "initialFxPositionMode", visible: clientFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientFxDealsFilterableColumn("shortText", { title: "Current FX Position Mode", field: "currentFxPositionMode", visible: clientFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
             clientFxDealsValueColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
             clientFxDealsValueColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientFxDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
           ]
@@ -44021,8 +44069,8 @@
           title: "FX Position Processing",
           cssClass: "client-deals-group-position-processing",
           columns: [
-            clientFxDealsFilterableColumn("shortText", { title: "Initial FX Position Mode", field: "initialFxPositionMode", headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
-            clientFxDealsFilterableColumn("shortText", { title: "Current FX Position Mode", field: "currentFxPositionMode", headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientFxDealsFilterableColumn("shortText", { title: "Initial FX Position Mode", field: "initialFxPositionMode", visible: hedgeFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientFxDealsFilterableColumn("shortText", { title: "Current FX Position Mode", field: "currentFxPositionMode", visible: hedgeFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
             clientFxDealsValueColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
             clientFxDealsValueColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientFxDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
           ]
@@ -44114,191 +44162,6 @@
 
     function setAnalyticalPnlReportStatus(message = "", tone = "") {
       setWorkbenchPageStatus(analyticalPnlReportStatusEl, message, tone);
-    }
-
-    function analyticalPnlReportTradeTypeFormatter(cell) {
-      const tradeType = String(cell.getValue() || "").toUpperCase();
-      const isHedge = tradeType === "HEDGE_DEAL";
-
-      return `
-        <span class="analytical-pnl-trade-type">
-          <span class="button-icon" aria-hidden="true">${isHedge ? "shield" : "handshake"}</span>
-          <span>${isHedge ? "Hedge" : "Client"}</span>
-        </span>
-      `;
-    }
-
-    function analyticalPnlReportIdentifierFormatter(cell) {
-      const row = cell.getRow().getData();
-      const codeType = String(row.counterpartyCodeType || "").toUpperCase();
-      const code = String(row.counterpartyCode || "");
-      const typeLabel = codeType === "INTERNAL_UNIT_CODE" ? "UNIT" : codeType;
-
-      if (!code) {
-        return "";
-      }
-
-      return `
-        <span class="analytical-pnl-identifier">
-          <span class="analytical-pnl-identifier-type">${escapeHtml(typeLabel)}</span>
-          <span>${escapeHtml(code)}</span>
-        </span>
-      `;
-    }
-
-    function analyticalPnlReportPnlFormatter(cell) {
-      const row = cell.getRow().getData();
-      const minor = row.analyticalPnlQuoteMinor;
-      const fractionDigits = Number(row.analyticalPnlQuoteFractionDigits);
-
-      if (!Number.isSafeInteger(minor)
-        || !Number.isInteger(fractionDigits)
-        || fractionDigits < 0
-        || fractionDigits > 10) {
-        return '<span class="text-secondary">Not calculated</span>';
-      }
-
-      const signedMinor = BigInt(minor);
-      const sign = signedMinor > 0n ? "+" : "";
-      const tone = signedMinor < 0n ? " text-danger" : "";
-      const value = `${sign}${formattedMinorAmount(signedMinor.toString(), fractionDigits)}`;
-
-      return `<span class="${tone.trim()}">${escapeHtml(value)} ${escapeHtml(row.quoteCcyCode)}</span>`;
-    }
-
-    function analyticalPnlReportColumns() {
-      return uiTableColumns("analytical_pnl_report_grid", [
-        clientFxDealsFilterableColumn("referenceId", {
-          title: "Trade ID",
-          field: "tradeId",
-          sorter: "number",
-          headerSort: true
-        }),
-        clientFxDealsFilterableColumn("type", {
-          title: "Trade Type",
-          field: "tradeType",
-          formatter: analyticalPnlReportTradeTypeFormatter
-        }),
-        clientFxDealsFilterableColumn("date", {
-          title: "Trade Date",
-          field: "tradeDate",
-          formatter: clientFxDealsDateFormatter,
-          headerSort: true
-        }),
-        clientFxDealsFilterableColumn("text", {
-          title: "Identifier",
-          field: "identifier",
-          formatter: analyticalPnlReportIdentifierFormatter
-        }),
-        clientFxDealsFilterableColumn("name", {
-          title: "Counterparty Name",
-          field: "counterpartyName",
-          headerSort: true
-        }),
-        clientFxDealsFilterableColumn("pair", {
-          title: "Ccy Pair",
-          field: "currencyPair",
-          headerSort: true
-        }),
-        clientFxDealsFilterableColumn("side", {
-          title: "Side",
-          field: "side",
-          formatter: clientFxDealsSideFormatter,
-          hozAlign: "center",
-          headerHozAlign: "center"
-        }),
-        tabulatorSizedColumn("amount", {
-          title: "Base Ccy Amount",
-          field: "baseCcyAmount",
-          sorter: "number",
-          headerSort: true,
-          formatter: clientFxDealsAmountFormatter,
-          hozAlign: "right",
-          headerHozAlign: "right"
-        }),
-        tabulatorSizedColumn("amount", {
-          title: "Quote Ccy Amount",
-          field: "quoteCcyAmount",
-          sorter: "number",
-          headerSort: true,
-          formatter: clientFxDealsAmountFormatter,
-          hozAlign: "right",
-          headerHozAlign: "right"
-        }),
-        tabulatorSizedColumn("rate", {
-          title: "Trade Rate",
-          field: "tradeRate",
-          sorter: "number",
-          headerSort: true,
-          formatter: clientFxDealsRateFormatter,
-          hozAlign: "right",
-          headerHozAlign: "right"
-        }),
-        tabulatorSizedColumn("transferRate", {
-          title: "Transfer Rate",
-          field: "transferRate",
-          sorter: "number",
-          headerSort: true,
-          formatter: clientFxDealsRateFormatter,
-          hozAlign: "right",
-          headerHozAlign: "right"
-        }),
-        tabulatorSizedColumn("positionAmount", {
-          title: "Analytical PnL",
-          field: "analyticalPnl",
-          sorter: "number",
-          headerSort: true,
-          formatter: analyticalPnlReportPnlFormatter,
-          hozAlign: "right",
-          headerHozAlign: "right"
-        })
-      ]);
-    }
-
-    function updateAnalyticalPnlReportCount(filteredCount = analyticalPnlReportTotalCount) {
-      const total = analyticalPnlReportTotalCount;
-      const label = total === 1 ? "deal" : "deals";
-      analyticalPnlReportCountEl.textContent = filteredCount === total
-        ? `${total} ${label}`
-        : `${filteredCount} of ${total} deals`;
-    }
-
-    function initializeAnalyticalPnlReportGrid(data) {
-      analyticalPnlReportGrid = new Tabulator(analyticalPnlReportGridEl, {
-        data,
-        index: "tradeId",
-        layout: "fitDataTable",
-        renderVertical: "virtual",
-        renderVerticalBuffer: 320,
-        maxHeight: "calc(100vh - 260px)",
-        placeholder: "No deals match the report filters.",
-        movableColumns: false,
-        resizableColumns: false,
-        columnHeaderVertAlign: "bottom",
-        headerFilterLiveFilterDelay: 300,
-        columnDefaults: {
-          resizable: false,
-          vertAlign: "middle",
-          tooltip: tabulatorCellOverflowTooltip,
-          headerTooltip: tabulatorHeaderOverflowTooltip,
-          headerSort: false
-        },
-        columns: analyticalPnlReportColumns()
-      });
-      registerUiTableTabulator("analytical_pnl_report_grid", analyticalPnlReportGrid);
-      analyticalPnlReportGrid.on("tableBuilt", () => {
-        analyticalPnlReportGridReady = true;
-        updateAnalyticalPnlReportCount(data.length);
-
-        if (analyticalPnlReportPendingData) {
-          const pendingData = analyticalPnlReportPendingData;
-          analyticalPnlReportPendingData = null;
-          analyticalPnlReportGrid.replaceData(pendingData);
-        }
-      });
-      analyticalPnlReportGrid.on("dataFiltered", (_filters, rows) => {
-        updateAnalyticalPnlReportCount(rows.length);
-      });
     }
 
     function analyticalPnlReportSummaryAmountFormatter(cell) {
@@ -44492,24 +44355,7 @@
           return;
         }
 
-        const rows = Array.isArray(report?.rows)
-          ? report.rows.map(row => ({
-              ...row,
-              identifier: `${row.counterpartyCodeType || ""}:${row.counterpartyCode || ""}`
-            }))
-          : [];
-        analyticalPnlReportTotalCount = rows.length;
-        updateAnalyticalPnlReportCount(rows.length);
         renderAnalyticalPnlReportSummary(report?.summary);
-        analyticalPnlReportPendingData = rows;
-
-        if (!analyticalPnlReportGrid) {
-          initializeAnalyticalPnlReportGrid(rows);
-        } else if (analyticalPnlReportGridReady) {
-          await analyticalPnlReportGrid.replaceData(rows);
-          analyticalPnlReportPendingData = null;
-          analyticalPnlReportGrid.redraw(true);
-        }
 
         setAnalyticalPnlReportStatus("");
       } catch (error) {
@@ -45063,27 +44909,19 @@
     oneBatchTenorCancelButton.addEventListener("click", () => closeOneBatchTenorDialog());
     oneBatchTenorSelect.addEventListener("change", updateOneBatchSelectedTenorButton);
     oneBatchSelectedTenorButton.addEventListener("click", async () => {
-      const selectedTenor = oneBatchTenorSelect.value;
+      const selectedCompatibilityKey = oneBatchTenorSelect.value;
       const sourceDeals = (pendingOneBatchTenorSelection || []).filter(deal =>
-        String(positionTenor(deal) || "").trim().toUpperCase() === selectedTenor
+        oneBatchCompatibilityKey(deal) === selectedCompatibilityKey
       );
 
       if (sourceDeals.length === 0) {
-        setOneBatchTenorStatus("Select a Tenor containing at least one FX Trade.");
+        setOneBatchTenorStatus(
+          "Select a compatible Batching Key group containing at least one FX Trade."
+        );
         return;
       }
 
-      await submitOneBatchSelection(sourceDeals, "SINGLE_BATCH");
-    });
-    oneBatchSeparateTenorsButton.addEventListener("click", async () => {
-      const sourceDeals = [...(pendingOneBatchTenorSelection || [])];
-
-      if (sourceDeals.length === 0) {
-        setOneBatchTenorStatus("No FX Trades remain selected for batching.");
-        return;
-      }
-
-      await submitOneBatchSelection(sourceDeals, "SEPARATE_BY_TENOR");
+      await submitOneBatchSelection(sourceDeals);
     });
     oneBatchTenorDialog.addEventListener("cancel", event => {
       event.preventDefault();

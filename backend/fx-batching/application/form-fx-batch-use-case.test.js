@@ -89,50 +89,6 @@ test("forms a batch through one transaction boundary", () => {
   });
 });
 
-test("forms a batch inside an existing transaction without opening another one", () => {
-  let transactions = 0;
-  const useCase = useCaseWith({
-    transactionRunner: {
-      run() {
-        transactions += 1;
-        throw new Error("A nested transaction must not be opened.");
-      }
-    }
-  });
-
-  const result = useCase.executeWithinTransaction({
-    idempotencyKey: "one-batch-within-transaction-1",
-    tradeIds: [1]
-  });
-
-  assert.equal(transactions, 0);
-  assert.equal(result.batchId, 7);
-  assert.equal(result.replayed, false);
-});
-
-test("uses provided verified source trades without reading them again", () => {
-  let sourceReads = 0;
-  const useCase = useCaseWith({
-    fxTradeExposureRepository: {
-      findBatchSources() {
-        sourceReads += 1;
-        return [commonTrade];
-      }
-    }
-  });
-
-  const result = useCase.executeWithinTransaction({
-    idempotencyKey: "one-batch-verified-sources-1",
-    tradeIds: [1]
-  }, {
-    verifiedSourceTrades: [commonTrade]
-  });
-
-  assert.equal(sourceReads, 0);
-  assert.equal(result.batchId, 7);
-  assert.equal(result.replayed, false);
-});
-
 test("preserves an automatic formation reason with its structured values", () => {
   let savedBatch;
   const useCase = useCaseWith({
@@ -183,6 +139,12 @@ test("returns an idempotent replay for the same selection", () => {
       findFormedByIdempotencyKey: () => ({
         batchId: 7,
         batchStatus: "FORMED",
+        formationReasonCode: "MANUAL_SELECTION",
+        formationReasonDetails: {
+          selectedTradeCount: 2
+        },
+        windowOpenedAt: null,
+        windowClosedAt: null,
         sourceTradeIds: [2, 1]
       })
     }
@@ -203,6 +165,7 @@ test("rejects reuse of an idempotency key for another selection", () => {
       findFormedByIdempotencyKey: () => ({
         batchId: 7,
         batchStatus: "FORMED",
+        formationReasonCode: "MANUAL_SELECTION",
         sourceTradeIds: [1]
       })
     }
@@ -214,5 +177,121 @@ test("rejects reuse of an idempotency key for another selection", () => {
       tradeIds: [2]
     }),
     error => error.code === "BATCH_IDEMPOTENCY_CONFLICT"
+  );
+});
+
+test("rejects reuse of an automatic Batch key by a manual command", () => {
+  const useCase = useCaseWith({
+    fxBatchRepository: {
+      findFormedByIdempotencyKey: () => ({
+        batchId: 7,
+        batchStatus: "FORMED",
+        formationReasonCode: "MAX_INTERVAL_REACHED",
+        sourceTradeIds: [1]
+      })
+    }
+  });
+
+  assert.throws(
+    () => useCase.execute({
+      idempotencyKey: "auto-batch-1",
+      tradeIds: [1]
+    }),
+    error => error.code === "BATCH_IDEMPOTENCY_CONFLICT"
+  );
+});
+
+test("rejects replay when automatic formation details or timing differ", () => {
+  const useCase = useCaseWith({
+    fxBatchRepository: {
+      findFormedByIdempotencyKey: () => ({
+        batchId: 7,
+        batchStatus: "FORMED",
+        formationReasonCode: "MAX_INTERVAL_REACHED",
+        formationReasonDetails: {
+          maxIntervalSeconds: 60,
+          selectedTradeCount: 1
+        },
+        windowOpenedAt: "2026-07-27T09:59:00.000Z",
+        windowClosedAt: "2026-07-27T10:00:00.000Z",
+        sourceTradeIds: [1]
+      })
+    }
+  });
+
+  assert.throws(
+    () => useCase.execute({
+      idempotencyKey: "auto-batch-details-1",
+      tradeIds: [1],
+      formationReasonCode: "MAX_INTERVAL_REACHED",
+      formationReasonDetails: {
+        maxIntervalSeconds: 90
+      },
+      windowOpenedAt: "2026-07-27T09:59:00.000Z",
+      windowClosedAt: "2026-07-27T10:00:00.000Z"
+    }),
+    error => error.code === "BATCH_IDEMPOTENCY_CONFLICT"
+  );
+});
+
+test("replays the same automatic command with canonicalized reason details", () => {
+  const useCase = useCaseWith({
+    fxBatchRepository: {
+      findFormedByIdempotencyKey: () => ({
+        batchId: 7,
+        batchStatus: "FORMED",
+        formationReasonCode: "MAX_INTERVAL_REACHED",
+        formationReasonDetails: {
+          selectedTradeCount: 1,
+          maxIntervalSeconds: 60
+        },
+        windowOpenedAt: "2026-07-27T09:59:00.000Z",
+        windowClosedAt: "2026-07-27T10:00:00.000Z",
+        sourceTradeIds: [1]
+      })
+    }
+  });
+
+  const result = useCase.execute({
+    idempotencyKey: "auto-batch-details-2",
+    tradeIds: [1],
+    formationReasonCode: "MAX_INTERVAL_REACHED",
+    formationReasonDetails: {
+      maxIntervalSeconds: 60
+    },
+    windowOpenedAt: "2026-07-27T09:59:00.000Z",
+    windowClosedAt: "2026-07-27T10:00:00.000Z"
+  });
+
+  assert.equal(result.batchId, 7);
+  assert.equal(result.replayed, true);
+});
+
+test("reports source Trade IDs that were not found", () => {
+  const useCase = useCaseWith({
+    fxTradeExposureRepository: {
+      findBatchSources: () => [commonTrade]
+    }
+  });
+
+  assert.throws(
+    () => useCase.execute({
+      idempotencyKey: "one-batch-missing-source",
+      tradeIds: [1, 2]
+    }),
+    error => error.code === "BATCH_SOURCE_TRADE_NOT_FOUND"
+      && error.message.includes("2")
+  );
+});
+
+test("rejects the retired internal manual batching key namespace", () => {
+  const useCase = useCaseWith();
+
+  assert.throws(
+    () => useCase.execute({
+      idempotencyKey: "__fx_manual_batch__:8:1",
+      tradeIds: [1]
+    }),
+    error => error.code === "INVALID_BATCH_COMMAND"
   );
 });

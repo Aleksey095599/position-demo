@@ -8,7 +8,8 @@ const FX_BATCH_STATUS = Object.freeze({
 
 const FX_BATCH_MEMBER_ROLE = Object.freeze({
   SOURCE_TRADE: "TRADE",
-  BALANCE_TRADE: "BALANCE_TRADE"
+  BALANCE_TRADE: "BALANCE_TRADE",
+  POSITION_OUT: "POSITION_OUT"
 });
 
 const FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES = Object.freeze([
@@ -25,10 +26,23 @@ function batchStatusOf(membership) {
   ).trim().toUpperCase();
 }
 
+function memberRoleOf(membership) {
+  return String(
+    membership && typeof membership === "object"
+      ? membership.memberRole
+      : ""
+  ).trim().toUpperCase();
+}
+
+function isBlockingMembership(membership) {
+  return memberRoleOf(membership) !== FX_BATCH_MEMBER_ROLE.POSITION_OUT;
+}
+
 function isTradeBatched(memberships) {
   return Array.isArray(memberships)
     && memberships.some(
       membership => batchStatusOf(membership) === FX_BATCH_STATUS.FORMED
+        && isBlockingMembership(membership)
     );
 }
 
@@ -36,6 +50,7 @@ function hasBlockingBatchMembership(memberships) {
   return Array.isArray(memberships)
     && memberships.some(membership =>
       blockingStatusSet.has(batchStatusOf(membership))
+      && isBlockingMembership(membership)
     );
 }
 

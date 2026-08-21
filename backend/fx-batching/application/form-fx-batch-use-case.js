@@ -27,6 +27,13 @@ function normalizedCommand(command) {
     );
   }
 
+  if (idempotencyKey.startsWith("__fx_manual_batch__:")) {
+    throw applicationError(
+      "INVALID_BATCH_COMMAND",
+      "Idempotency Key uses a reserved internal namespace."
+    );
+  }
+
   if (!Array.isArray(source.tradeIds) || source.tradeIds.length === 0) {
     throw applicationError(
       "INVALID_BATCH_COMMAND",
@@ -80,6 +87,21 @@ function sameTradeIds(left, right) {
     && left.every((tradeId, index) => tradeId === right[index]);
 }
 
+function canonicalJson(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value)
+      .sort()
+      .map(key => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
 class FormFxBatchUseCase {
   constructor({
     transactionRunner,
@@ -101,14 +123,7 @@ class FormFxBatchUseCase {
     );
   }
 
-  executeWithinTransaction(command, options = {}) {
-    return this.#executeNormalizedWithinTransaction(
-      normalizedCommand(command),
-      options?.verifiedSourceTrades
-    );
-  }
-
-  #executeNormalizedWithinTransaction(normalized, providedSourceTrades) {
+  #executeNormalizedWithinTransaction(normalized) {
     const existing = this.fxBatchRepository.findFormedByIdempotencyKey(
       normalized.idempotencyKey
     );
@@ -117,10 +132,19 @@ class FormFxBatchUseCase {
       const existingTradeIds = [...existing.sourceTradeIds]
         .sort((left, right) => left - right);
 
-      if (!sameTradeIds(existingTradeIds, normalized.tradeIds)) {
+      if (
+        existing.formationReasonCode !== normalized.formationReason.reasonCode
+        || canonicalJson(existing.formationReasonDetails)
+          !== canonicalJson(normalized.formationReason.details)
+        || (existing.windowOpenedAt ?? null)
+          !== normalized.formationTiming.windowOpenedAt
+        || (existing.windowClosedAt ?? null)
+          !== normalized.formationTiming.windowClosedAt
+        || !sameTradeIds(existingTradeIds, normalized.tradeIds)
+      ) {
         throw applicationError(
           "BATCH_IDEMPOTENCY_CONFLICT",
-          "Idempotency Key was already used for a different trade selection."
+          "Idempotency Key was already used for a different FX Batch command."
         );
       }
 
@@ -130,9 +154,9 @@ class FormFxBatchUseCase {
       };
     }
 
-    const sourceTrades = providedSourceTrades === undefined
-      ? this.fxTradeExposureRepository.findBatchSources(normalized.tradeIds)
-      : providedSourceTrades;
+    const sourceTrades = this.fxTradeExposureRepository.findBatchSources(
+      normalized.tradeIds
+    );
     const sourceTradeIds = Array.isArray(sourceTrades)
       ? sourceTrades
         .map(trade => Number(trade?.tradeId))
@@ -140,6 +164,18 @@ class FormFxBatchUseCase {
       : [];
 
     if (!sameTradeIds(sourceTradeIds, normalized.tradeIds)) {
+      const sourceTradeIdSet = new Set(sourceTradeIds);
+      const missingTradeIds = normalized.tradeIds.filter(
+        tradeId => !sourceTradeIdSet.has(tradeId)
+      );
+
+      if (missingTradeIds.length > 0) {
+        throw applicationError(
+          "BATCH_SOURCE_TRADE_NOT_FOUND",
+          `FX Trade IDs unavailable for Batch formation: ${missingTradeIds.join(", ")}.`
+        );
+      }
+
       throw applicationError(
         "INVALID_BATCH_COMMAND",
         "Provided source FX Trades must match the command Trade IDs."

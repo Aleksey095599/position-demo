@@ -76,6 +76,14 @@ test("Manual Control and Auto Batching & Hedging routes control one shared FX Po
     html,
     /\.fx-position-grid-frame \{[\s\S]*?margin-top: 12px;/
   );
+  assert.match(
+    html,
+    /body:has\(#mainPage\.fx-position-bootstrap\.workbench-page:not\(\[hidden\]\)\) \{\s*overflow: hidden;/
+  );
+  assert.match(
+    html,
+    /\.fx-position-grid-frame \{[\s\S]*?overflow: auto;[\s\S]*?overscroll-behavior: contain;/
+  );
 
   assert.equal(
     (fxPositionPageMarkup.match(/<table\b[^>]*\bfx-position-grid\b/g) || []).length,
@@ -129,9 +137,10 @@ test("route helpers preserve the legacy Manual default and explicit mode state",
   );
 });
 
-test("persisted currentFxPositionMode drives rows and selected-Ccy-Pair counts", () => {
+test("persisted currentFxPositionMode drives rows and selected-Ccy-Pair tab counts", () => {
   const rowsFunctionSource = topLevelFunctionSource("fxPositionRowsForMode");
   const countsFunctionSource = topLevelFunctionSource("fxPositionModeCounts");
+  const pairTradeCountFunctionSource = topLevelFunctionSource("fxPositionTradeCountForPair");
   const fxPositionRowsForMode = new Function(
     "normalizedPositionManagementMode",
     `${rowsFunctionSource}; return fxPositionRowsForMode;`
@@ -143,6 +152,12 @@ test("persisted currentFxPositionMode drives rows and selected-Ccy-Pair counts",
   )(
     normalizedMode,
     source => source.filter(record => record.currencyPair === "EUR/USD")
+  );
+  const fxPositionTradeCountForPair = new Function(
+    "currencyPair",
+    `${pairTradeCountFunctionSource}; return fxPositionTradeCountForPair;`
+  )(
+    record => record.currencyPair
   );
   const records = [
     {
@@ -182,12 +197,18 @@ test("persisted currentFxPositionMode drives rows and selected-Ccy-Pair counts",
     ["auto-1", "promoted-to-auto", "current-mode-wins", "legacy-auto"]
   );
   assert.deepEqual(fxPositionModeCounts(records), { MANUAL: 1, AUTO: 2 });
+  assert.equal(fxPositionTradeCountForPair(records, "GBP/USD"), 3);
 
   assert.match(rowsFunctionSource, /deal\?\.currentFxPositionMode \?\? deal\?\.fxPositionMode/);
   assert.match(countsFunctionSource, /const pairRows = activeCurrencyPairRows\(source\)/);
+  assert.match(
+    pairTradeCountFunctionSource,
+    /source\.filter\(deal => currencyPair\(deal\) === pair\)/
+  );
 
   const displayRowsSource = topLevelFunctionSource("currentDisplayRows");
   const tabRendererSource = topLevelFunctionSource("renderFxPositionModeTabs");
+  const pairListRendererSource = topLevelFunctionSource("renderCurrencyPairList");
   assert.match(
     displayRowsSource,
     /activeCurrencyPairRows\(fxPositionRowsForMode\(fxPositions\)\)/
@@ -195,6 +216,34 @@ test("persisted currentFxPositionMode drives rows and selected-Ccy-Pair counts",
   assert.match(tabRendererSource, /fxPositionModeCounts\(source\)/);
   assert.match(tabRendererSource, /fxPositionManualCount\.textContent = String\(counts\.MANUAL\)/);
   assert.match(tabRendererSource, /fxPositionAutoCount\.textContent = String\(counts\.AUTO\)/);
+  assert.match(pairListRendererSource, /fxPositionTradeCountForPair\(source, pair\)/);
+  assert.match(pairListRendererSource, /class="currency-pair-count"/);
+  assert.match(pairListRendererSource, /Total trades: \$\{count\}/);
+  assert.doesNotMatch(pairListRendererSource, /activeFxPositionMode/);
+  assert.doesNotMatch(pairListRendererSource, />touch_app<\/span>|>automation<\/span>/);
+});
+
+test("FX Position Table Layout controls the Ccy Pair selector width", () => {
+  const pairPanelMarkup = fxPositionPageMarkup.match(
+    /<section class="currency-pair-panel"[^>]*>/
+  )?.[0] || "";
+  const auxiliaryKeysSource = topLevelFunctionSource("auxiliaryUiTableLayoutColumnKeys");
+  const applyLayoutSource = topLevelFunctionSource("applyFxPositionGridLayout");
+  const editorSource = topLevelFunctionSource("renderUiTableLayoutEditor");
+
+  assert.match(pairPanelMarkup, /data-ui-table-layout-key="fx_position_grid"/);
+  assert.match(pairPanelMarkup, /data-ui-table-layout-column-key="ccy_pair_selector"/);
+  assert.match(
+    html,
+    /grid-template-columns: var\(--fx-position-ccy-pair-selector-width, 136px\) minmax\(0, 1fr\)/
+  );
+  assert.match(auxiliaryKeysSource, /data-ui-table-layout-column-key/);
+  assert.match(editorSource, /auxiliaryUiTableLayoutColumnKeys\(tableLayout\.tableKey\)/);
+  assert.match(applyLayoutSource, /settingsByKey\.get\("ccy_pair_selector"\)\?\.widthPx/);
+  assert.match(
+    applyLayoutSource,
+    /mainPage\.style\.setProperty\([\s\S]*?--fx-position-ccy-pair-selector-width/
+  );
 });
 
 test("switching mode removes selections hidden by the new route", () => {
@@ -342,21 +391,31 @@ test("Send to Auto posts composite identities and protects success/error/in-flig
   assert.match(confirmSource, /sendToAutoPositionModeConfirmButton\.disabled = false/);
 });
 
-test("Client and Hedge deal grids expose Initial and Current FX Position modes", () => {
+test("Client and Hedge deal grids show Initial and Current FX Position modes only in Audit view", () => {
   ["clientFxDealColumnDefinitions", "hedgeFxDealColumnDefinitions"].forEach(name => {
     const source = topLevelFunctionSource(name);
+    const viewMode = name === "clientFxDealColumnDefinitions"
+      ? "clientFxDealsViewMode"
+      : "hedgeFxDealsViewMode";
 
     assert.match(source, /title: "FX Position Processing"/);
     assert.match(
       source,
-      /title: "Initial FX Position Mode", field: "initialFxPositionMode"/
+      new RegExp(
+        `title: "Initial FX Position Mode", field: "initialFxPositionMode", visible: ${viewMode} === FX_DEALS_VIEW_MODE_AUDIT`
+      )
     );
     assert.match(
       source,
-      /title: "Current FX Position Mode", field: "currentFxPositionMode"/
+      new RegExp(
+        `title: "Current FX Position Mode", field: "currentFxPositionMode", visible: ${viewMode} === FX_DEALS_VIEW_MODE_AUDIT`
+      )
     );
     assert.match(source, /formatter: clientFxDealsPositionManagementModeFormatter/);
   });
+
+  const viewModeSource = topLevelFunctionSource("applyFxDealsViewMode");
+  assert.match(viewModeSource, /"initialFxPositionMode", "currentFxPositionMode"/);
 });
 
 test("the UI split leaves batching and the FX Position backend selector mode-agnostic", () => {

@@ -13,12 +13,12 @@ const {
 } = require("./ui-table-layouts");
 
 const EXPECTED_COLUMN_COUNTS = Object.freeze({
-  pricing_rules_grid: 8,
-  internal_pricing_rules_grid: 9,
+  pricing_rules_grid: 7,
+  internal_pricing_rules_grid: 8,
   market_stream_grid: 4,
   ccy_options_grid: 6,
   ccy_pair_options_grid: 6,
-  fx_position_grid: 12,
+  fx_position_grid: 13,
   client_fx_deals_grid: 21,
   hedge_fx_deals_grid: 22,
   analytical_pnl_report_grid: 12,
@@ -34,7 +34,7 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   execution_contexts_grid: 7,
   servicing_locations_grid: 7,
   accounting_systems_grid: 5,
-  execution_systems_grid: 6,
+  execution_systems_grid: 7,
   hedge_quick_mode_settings_grid: 7,
   deal_generation_settings_grid: 11
 });
@@ -72,6 +72,25 @@ test("defines a valid default width for every managed UI table column", () => {
   assert.equal(fullyQualifiedColumnKeys.size, 206);
 });
 
+test("includes the Ccy Pair selector width in the FX Position layout", () => {
+  const selector = UI_TABLE_LAYOUTS.fx_position_grid.columns[0];
+
+  assert.deepEqual(selector, {
+    columnKey: "ccy_pair_selector",
+    columnLabel: "Ccy Pair Selector",
+    defaultWidthPx: 136
+  });
+});
+
+test("keeps Pricing Mode inside Execution Context for pricing rule layouts", () => {
+  ["pricing_rules_grid", "internal_pricing_rules_grid"].forEach(tableKey => {
+    const columnKeys = UI_TABLE_LAYOUTS[tableKey].columns.map(column => column.columnKey);
+
+    assert.ok(columnKeys.includes("execution_context"));
+    assert.equal(columnKeys.includes("pricing_mode"), false);
+  });
+});
+
 test("keeps Initial and Current FX Position Mode together in FX deal layouts", () => {
   ["client_fx_deals_grid", "hedge_fx_deals_grid"].forEach(tableKey => {
     const columns = UI_TABLE_LAYOUTS[tableKey].columns;
@@ -91,6 +110,40 @@ test("keeps Initial and Current FX Position Mode together in FX deal layouts", (
       columns.findIndex(column => column.columnKey === "transfer_rate")
     );
   });
+});
+
+test("places the derived Execution System Label after Pricing Mode", () => {
+  const columns = UI_TABLE_LAYOUTS.execution_systems_grid.columns;
+
+  assert.deepEqual(
+    columns.slice(1, 4).map(column => [column.columnKey, column.columnLabel]),
+    [
+      ["name", "Name"],
+      ["pricing_mode", "Pricing Mode"],
+      ["execution_system_label", "Execution System Label"]
+    ]
+  );
+  assert.equal(
+    columns.find(column => column.columnKey === "execution_system_label")?.defaultWidthPx,
+    250
+  );
+});
+
+test("reserves label widths for reference fields in Execution Contexts", () => {
+  const columns = UI_TABLE_LAYOUTS.execution_contexts_grid.columns;
+
+  assert.deepEqual(
+    Object.fromEntries(
+      columns
+        .filter(column => ["servicing_location", "accounting_system", "execution_system"].includes(column.columnKey))
+        .map(column => [column.columnKey, column.defaultWidthPx])
+    ),
+    {
+      servicing_location: 250,
+      accounting_system: 300,
+      execution_system: 250
+    }
+  );
 });
 
 test("keeps fresh-database defaults aligned with the UI layout registry", () => {
