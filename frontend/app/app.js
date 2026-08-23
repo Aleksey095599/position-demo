@@ -64,8 +64,8 @@
       MANUAL: "Manual Control",
       AUTO: "Auto Hedging"
     });
-    const AUTO_HEDGING_ADMISSION_POLICIES = Object.freeze(["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED", "MANUAL_ONLY"]);
-    const AUTO_HEDGING_ADMISSION_POLICY_LABELS = Object.freeze({
+    const AUTO_HEDGING_ADMISSION_MODES = Object.freeze(["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED", "MANUAL_ONLY"]);
+    const AUTO_HEDGING_ADMISSION_MODE_LABELS = Object.freeze({
       AUTO_IF_ELIGIBLE: "Auto if eligible",
       REVIEW_REQUIRED: "Review required",
       MANUAL_ONLY: "Manual only"
@@ -130,6 +130,7 @@
     let pricingContexts = loadPricingContexts();
     let clientPricingRules = loadClientPricingRules();
     let hedgeQuickModeSettings = loadHedgeQuickModeSettings();
+    let autoHedgingAdmissionPolicy = loadAutoHedgingAdmissionPolicy();
     let batchingSettings = loadFxBatchingSettings();
     let autoBatchingSettings = loadFxAutoBatchingSettings();
     let clientFxDeals = loadClientFxDeals();
@@ -934,8 +935,6 @@
       document.querySelectorAll("[data-process-catalog-view]")
     );
     const manualBatchFormationProcessView = document.getElementById("manualBatchFormationProcessView");
-    const autoHedgingProcessView = document.getElementById("autoHedgingProcessView");
-    const automationAdmissionProcessView = document.getElementById("automationAdmissionProcessView");
     const domainGlossaryProcessView = document.getElementById("domainGlossaryProcessView");
     const processCatalogLanguageButtons = Array.from(
       document.querySelectorAll("[data-process-language]")
@@ -1280,6 +1279,29 @@
     );
     const quickHedgeSettingsPanel = document.getElementById("quickHedgeSettingsPanel");
     const autoHedgingAdmissionSettingsPanel = document.getElementById("autoHedgingAdmissionSettingsPanel");
+    const autoHedgingSettingsRouteControls = Array.from(
+      document.querySelectorAll("[data-auto-hedging-settings-route]")
+    );
+    const autoHedgingSettingsRoutePanels = Array.from(
+      document.querySelectorAll("[data-auto-hedging-settings-route-panel]")
+    );
+    const autoHedgingSettingsSegmentToggles = Array.from(
+      document.querySelectorAll("[data-auto-hedging-segment-toggle]")
+    );
+    const autoHedgingAdmissionPolicyForm = document.getElementById("autoHedgingAdmissionPolicyForm");
+    const autoHedgingAdmissionPolicyRevision = document.getElementById("autoHedgingAdmissionPolicyRevision");
+    const autoHedgingMaxTransferRateDeviationPercent = document.getElementById("autoHedgingMaxTransferRateDeviationPercent");
+    const autoHedgingAdmissionPairSummary = document.getElementById("autoHedgingAdmissionPairSummary");
+    const autoHedgingAdmissionPairSearch = document.getElementById("autoHedgingAdmissionPairSearch");
+    const autoHedgingAdmissionPairSearchClear = document.getElementById("autoHedgingAdmissionPairSearchClear");
+    const autoHedgingAdmissionPairFilter = document.getElementById("autoHedgingAdmissionPairFilter");
+    const autoHedgingAdmissionPairRows = document.getElementById("autoHedgingAdmissionPairRows");
+    const autoHedgingAdmissionPairEmpty = document.getElementById("autoHedgingAdmissionPairEmpty");
+    const autoHedgingAdmissionPolicyStatus = document.getElementById("autoHedgingAdmissionPolicyStatus");
+    const autoHedgingAdmissionPolicySaveButton = document.getElementById("autoHedgingAdmissionPolicySaveButton");
+    const autoHedgingManualReleaseSharedRevision = document.getElementById("autoHedgingManualReleaseSharedRevision");
+    const autoHedgingManualReleaseSharedPairSummary = document.getElementById("autoHedgingManualReleaseSharedPairSummary");
+    const autoHedgingManualReleaseSharedDeviation = document.getElementById("autoHedgingManualReleaseSharedDeviation");
     const batchingSettingsTabs = Array.from(
       document.querySelectorAll("[data-batching-settings-tab]")
     );
@@ -1401,7 +1423,10 @@
           "fx_hedge_quick_mode_settings",
           "fx_batching_settings",
           "fx_auto_batching_settings",
-          "fx_auto_batching_ccy_pairs"
+          "fx_auto_batching_ccy_pairs",
+          "auto_hedging_admission_policy_current",
+          "auto_hedging_admission_policy_revisions",
+          "auto_hedging_admission_policy_pair_rules"
         ]
       },
       {
@@ -1443,6 +1468,7 @@
         tables: [
           "fx_trade_position_management_transitions",
           "fx_trade_market_snapshot",
+          "fx_auto_hedging_admission_decisions",
           "v_fx_batch_formation_audit"
         ]
       },
@@ -1527,6 +1553,9 @@
     let hedgeQuickModeSettingsGridReady = false;
     let hedgeQuickModeSettingsView = "overview";
     let hedgeQuickModeSettingsSaving = false;
+    let autoHedgingAdmissionPolicySaving = false;
+    let autoHedgingAdmissionPolicyLoaded = false;
+    let autoHedgingAdmissionPolicyEventsBound = false;
     let hedgeQuickModeDealCreating = false;
     let addClientDealSubmitWithControl = false;
     let clientDealDuplicateCheckGrid = null;
@@ -2643,7 +2672,10 @@
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        throw new Error(errorBody.message || `Request failed with HTTP ${response.status}.`);
+        const error = new Error(errorBody.message || `Request failed with HTTP ${response.status}.`);
+        error.status = response.status;
+        error.code = String(errorBody.code || "");
+        throw error;
       }
 
       return response.status === 204 ? null : response.json();
@@ -2850,11 +2882,11 @@
       return POSITION_MANAGEMENT_MODE_LABELS[normalizedPositionManagementMode(value)];
     }
 
-    function normalizedAutoHedgingAdmissionPolicy(value, defaultPositionManagementMode = "MANUAL") {
-      const policy = normalizedReferenceCode(value);
+    function normalizedAutoHedgingAdmissionMode(value, defaultPositionManagementMode = "MANUAL") {
+      const mode = normalizedReferenceCode(value);
 
-      if (AUTO_HEDGING_ADMISSION_POLICIES.includes(policy)) {
-        return policy;
+      if (AUTO_HEDGING_ADMISSION_MODES.includes(mode)) {
+        return mode;
       }
 
       return normalizedPositionManagementMode(defaultPositionManagementMode) === "AUTO"
@@ -2862,17 +2894,17 @@
         : "MANUAL_ONLY";
     }
 
-    function autoHedgingAdmissionPolicyLabel(value) {
-      return AUTO_HEDGING_ADMISSION_POLICY_LABELS[normalizedAutoHedgingAdmissionPolicy(value)];
+    function autoHedgingAdmissionModeLabel(value) {
+      return AUTO_HEDGING_ADMISSION_MODE_LABELS[normalizedAutoHedgingAdmissionMode(value)];
     }
 
-    function autoHedgingAdmissionPolicyBadgeMarkup(value) {
-      const policy = normalizedAutoHedgingAdmissionPolicy(value);
-      const toneClass = policy === "AUTO_IF_ELIGIBLE"
+    function autoHedgingAdmissionModeBadgeMarkup(value) {
+      const mode = normalizedAutoHedgingAdmissionMode(value);
+      const toneClass = mode === "AUTO_IF_ELIGIBLE"
         ? " is-auto"
-        : policy === "REVIEW_REQUIRED" ? " is-review-required" : " is-manual-only";
+        : mode === "REVIEW_REQUIRED" ? " is-review-required" : " is-manual-only";
 
-      return `<span class="position-management-mode-badge auto-hedging-admission-policy-badge${toneClass}">${escapeHtml(autoHedgingAdmissionPolicyLabel(policy))}</span>`;
+      return `<span class="position-management-mode-badge auto-hedging-admission-mode-badge${toneClass}">${escapeHtml(autoHedgingAdmissionModeLabel(mode))}</span>`;
     }
 
     function effectivePositionManagementModeForRule(rule, context = null) {
@@ -3355,8 +3387,9 @@
           const defaultPositionManagementMode = normalizedPositionManagementMode(
             item?.defaultPositionManagementMode ?? item?.default_position_management_mode
           );
-          const autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(
-            item?.autoHedgingAdmissionPolicy ?? item?.auto_hedging_admission_policy,
+          const autoHedgingAdmissionMode = normalizedAutoHedgingAdmissionMode(
+            item?.autoHedgingAdmissionMode ??
+            item?.auto_hedging_admission_mode,
             defaultPositionManagementMode
           );
           let pricingContextIdValue = normalizedIntegerId(
@@ -3393,7 +3426,7 @@
             settlementSystemId,
             tradeCaptureChannelId,
             defaultPositionManagementMode,
-            autoHedgingAdmissionPolicy,
+            autoHedgingAdmissionMode,
             assignedCounterpartyCount,
             pricingRulesCount
           };
@@ -3654,6 +3687,83 @@
     function loadHedgeQuickModeSettings() {
       return normalizedHedgeQuickModeSettings(
         DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.hedgeQuickModeSettings : []
+      );
+    }
+
+    function normalizedAutoHedgingAdmissionPolicyPair(source) {
+      const ccyPairCode = String(source?.ccyPairCode || "").trim().toUpperCase();
+      const currencyPair = normalizedPricingRuleCurrencyPair(
+        source?.currencyPair || ccyPairCode.replace("_", "/")
+      );
+      const baseCcyCode = String(
+        source?.baseCcyCode || currenciesFromPair(currencyPair).base
+      ).trim().toUpperCase();
+      const fractionDigits = Number(source?.baseCcyFractionDigits);
+      const maxBaseCcyAmount = positiveDecimalInputText(source?.maxBaseCcyAmount);
+
+      if (
+        !/^[A-Z]{3}_[A-Z]{3}$/.test(ccyPairCode)
+        || !/^[A-Z]{3}\/[A-Z]{3}$/.test(currencyPair)
+        || !/^[A-Z]{3}$/.test(baseCcyCode)
+      ) {
+        return null;
+      }
+
+      return {
+        ccyPairCode,
+        currencyPair,
+        baseCcyCode,
+        baseCcyFractionDigits: Number.isInteger(fractionDigits)
+          && fractionDigits >= 0
+          && fractionDigits <= 10
+          ? fractionDigits
+          : 2,
+        enabled: source?.enabled === true || Number(source?.enabled) === 1,
+        maxBaseCcyAmount
+      };
+    }
+
+    function normalizedAutoHedgingAdmissionPolicy(source) {
+      const revision = Number(source?.revision);
+      const deviation = normalizedDecimalInputText(
+        source?.maxTransferRateDeviationPercent
+      );
+      let maxTransferRateDeviationPercent = "0";
+
+      try {
+        if (
+          deviation !== null
+          && new Big(deviation).gte(0)
+          && new Big(deviation).lte(100)
+        ) {
+          maxTransferRateDeviationPercent = deviation;
+        }
+      } catch {}
+
+      const seenCodes = new Set();
+      const currencyPairs = (Array.isArray(source?.currencyPairs)
+        ? source.currencyPairs
+        : [])
+        .map(normalizedAutoHedgingAdmissionPolicyPair)
+        .filter(pair => {
+          if (!pair || seenCodes.has(pair.ccyPairCode)) {
+            return false;
+          }
+          seenCodes.add(pair.ccyPairCode);
+          return true;
+        })
+        .sort((left, right) => left.currencyPair.localeCompare(right.currencyPair));
+
+      return {
+        revision: Number.isInteger(revision) && revision >= 0 ? revision : 0,
+        maxTransferRateDeviationPercent,
+        currencyPairs
+      };
+    }
+
+    function loadAutoHedgingAdmissionPolicy() {
+      return normalizedAutoHedgingAdmissionPolicy(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.autoHedgingAdmissionPolicy : null
       );
     }
 
@@ -10821,7 +10931,7 @@
         settlementSystemId: "",
         tradeCaptureChannelId: "",
         defaultPositionManagementMode: "MANUAL",
-        autoHedgingAdmissionPolicy: "MANUAL_ONLY"
+        autoHedgingAdmissionMode: "MANUAL_ONLY"
       };
     }
 
@@ -10836,8 +10946,8 @@
       return samePricingContextIdentity(left, right) &&
         normalizedPositionManagementMode(left.defaultPositionManagementMode) ===
           normalizedPositionManagementMode(right.defaultPositionManagementMode) &&
-        normalizedAutoHedgingAdmissionPolicy(left.autoHedgingAdmissionPolicy) ===
-          normalizedAutoHedgingAdmissionPolicy(right.autoHedgingAdmissionPolicy);
+        normalizedAutoHedgingAdmissionMode(left.autoHedgingAdmissionMode) ===
+          normalizedAutoHedgingAdmissionMode(right.autoHedgingAdmissionMode);
     }
 
     function pricingContextRowControl(row, name) {
@@ -10851,8 +10961,8 @@
       const defaultPositionManagementMode = normalizedPositionManagementMode(
         pricingContextRowControl(row, "defaultPositionManagementMode")?.value
       );
-      const autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(
-        pricingContextRowControl(row, "autoHedgingAdmissionPolicy")?.value
+      const autoHedgingAdmissionMode = normalizedAutoHedgingAdmissionMode(
+        pricingContextRowControl(row, "autoHedgingAdmissionMode")?.value
       );
 
       if (!servicingBranchCode || !settlementSystemId || !tradeCaptureChannelId) {
@@ -10874,7 +10984,7 @@
         settlementSystemId,
         tradeCaptureChannelId,
         defaultPositionManagementMode,
-        autoHedgingAdmissionPolicy
+        autoHedgingAdmissionMode
       };
     }
 
@@ -10908,15 +11018,15 @@
       const executionSystemSelect = pricingContextRowControl(row, "tradeCaptureChannelId");
       const defaultPositionManagementModeSelect = pricingContextRowControl(row, "defaultPositionManagementMode");
       const servicingBranchCode = parseBranchCode(servicingLocationSelect);
-      const autoHedgingAdmissionPolicySelect = pricingContextRowControl(row, "autoHedgingAdmissionPolicy");
+      const autoHedgingAdmissionModeSelect = pricingContextRowControl(row, "autoHedgingAdmissionMode");
       const settlementSystemId = parseContextCode(accountingSystemSelect, "Accounting System");
       const tradeCaptureChannelId = parseContextCode(executionSystemSelect, "Execution System");
       const defaultPositionManagementMode = normalizedPositionManagementMode(
         defaultPositionManagementModeSelect?.value
       );
 
-      const autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(
-        autoHedgingAdmissionPolicySelect?.value
+      const autoHedgingAdmissionMode = normalizedAutoHedgingAdmissionMode(
+        autoHedgingAdmissionModeSelect?.value
       );
       if (servicingBranchCode === null || settlementSystemId === null || tradeCaptureChannelId === null) {
         updatePricingContextRowSaveAvailability(row);
@@ -10954,7 +11064,7 @@
         settlementSystemId,
         tradeCaptureChannelId,
         defaultPositionManagementMode,
-        autoHedgingAdmissionPolicy
+        autoHedgingAdmissionMode
       };
       const currentIndex = pricingContextEditStateIndex();
       const duplicateIndex = pricingContexts.findIndex((item, index) =>
@@ -11245,10 +11355,10 @@
         ];
       }
 
-      if (field === "autoHedgingAdmissionPolicy") {
+      if (field === "autoHedgingAdmissionMode") {
         return [
-          context.autoHedgingAdmissionPolicy,
-          autoHedgingAdmissionPolicyLabel(context.autoHedgingAdmissionPolicy)
+          context.autoHedgingAdmissionMode,
+          autoHedgingAdmissionModeLabel(context.autoHedgingAdmissionMode)
         ];
       }
 
@@ -11337,7 +11447,7 @@
           <td>${pricingContextFacetMarkup(context, "settlementSystemId")}</td>
           <td>${executionSystemLabelMarkup(executionSystemName, executionSystem?.pricingType)}</td>
           <td>${positionManagementModeBadgeMarkup(context.defaultPositionManagementMode)}</td>
-          <td>${autoHedgingAdmissionPolicyBadgeMarkup(context.autoHedgingAdmissionPolicy)}</td>
+          <td>${autoHedgingAdmissionModeBadgeMarkup(context.autoHedgingAdmissionMode)}</td>
           <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index)}</td>
           <td class="profile-actions-cell" data-pricing-context-actions-column>
             <span class="profile-row-actions">
@@ -11382,10 +11492,10 @@
             </select>
           </td>
           <td>
-            <select class="inline-edit-control" data-pricing-context-field="autoHedgingAdmissionPolicy" aria-label="Auto Hedging Admission Policy" required>
-              <option value="AUTO_IF_ELIGIBLE"${normalizedAutoHedgingAdmissionPolicy(context.autoHedgingAdmissionPolicy) === "AUTO_IF_ELIGIBLE" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionPolicyLabel("AUTO_IF_ELIGIBLE"))}</option>
-              <option value="REVIEW_REQUIRED"${normalizedAutoHedgingAdmissionPolicy(context.autoHedgingAdmissionPolicy) === "REVIEW_REQUIRED" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionPolicyLabel("REVIEW_REQUIRED"))}</option>
-              <option value="MANUAL_ONLY"${normalizedAutoHedgingAdmissionPolicy(context.autoHedgingAdmissionPolicy) === "MANUAL_ONLY" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionPolicyLabel("MANUAL_ONLY"))}</option>
+            <select class="inline-edit-control" data-pricing-context-field="autoHedgingAdmissionMode" aria-label="Auto Hedging Admission" required>
+              <option value="AUTO_IF_ELIGIBLE"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "AUTO_IF_ELIGIBLE" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("AUTO_IF_ELIGIBLE"))}</option>
+              <option value="REVIEW_REQUIRED"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "REVIEW_REQUIRED" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("REVIEW_REQUIRED"))}</option>
+              <option value="MANUAL_ONLY"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "MANUAL_ONLY" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("MANUAL_ONLY"))}</option>
             </select>
           </td>
           <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index, true)}</td>
@@ -11570,7 +11680,7 @@
                 accountingSystemId: context.settlementSystemId,
                 executionSystemId: context.tradeCaptureChannelId,
                 defaultPositionManagementMode: context.defaultPositionManagementMode,
-                autoHedgingAdmissionPolicy: context.autoHedgingAdmissionPolicy
+                autoHedgingAdmissionMode: context.autoHedgingAdmissionMode
               })
             }
           );
@@ -15882,18 +15992,6 @@
       return "#processes:manual-batch-formation";
     }
 
-    function autoHedgingRoute() {
-      return "#processes:auto-hedging";
-    }
-
-    function automationAdmissionRoute() {
-      return "#processes:auto-hedging-admission";
-    }
-
-    function legacyAutomationAdmissionRoute() {
-      return "#processes:automation-admission";
-    }
-
     function domainGlossaryRoute(termKey = "") {
       return termKey
         ? `#processes:domain-glossary/${encodeURIComponent(termKey)}`
@@ -15902,6 +16000,12 @@
 
     const PROCESS_CATALOG_GLOSSARY_TERM_KEYS = new Set([
       "auto-hedging",
+      "auto-hedging-admission",
+      "execution-context-admission-mode",
+      "auto-hedging-admission-policy",
+      "eligibility-check",
+      "admission-state",
+      "ccy-pair",
       "fx-batch",
       "batching",
       "market-pulse",
@@ -15943,30 +16047,13 @@
       en: Object.freeze({
         pageTitle: "Process Catalog",
         manualBatching: "Manual Batching",
-        autoHedging: "Auto Hedging",
-        autoHedgingSubtitle: "Automated FX risk management",
         autoHedgingDefinition: "An automated FX risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.",
-        autoHedgingFxPositionPresentation: "In FX Position, FX Trades admitted to the Auto Hedging process are displayed on the “Auto Hedging” tab. FX Trades not admitted to Auto Hedging remain on the “Manual Control” tab.",
-        subcatalogs: "Subcatalogs",
-        automationAdmissionCatalogDescription: "Controls which FX Trades may participate in Auto Hedging.",
-        automationAdmission: "Auto Hedging Admission",
-        automationAdmissionSubtitle: "The boundary for admitting an FX Trade to the Auto Hedging process",
-        automationAdmissionSummary: "Auto Hedging Admission controls which FX Trades may participate in Auto Hedging.",
-        automationAdmissionPolicyDefinition: "Defines the permitted admission path for an FX Trade: automatic release after checks, release after review, or manual control only.",
-        autoIfEligibleDefinition: "Release automatically when all required eligibility checks pass.",
-        reviewRequiredDefinition: "Hold first; release only after review.",
-        manualOnlyDefinition: "Keep under manual control; admission to Auto Hedging is not allowed.",
+        autoHedgingAdmissionDefinition: "The domain decision boundary that determines whether an FX Trade remains held under manual control or may be released to Auto Hedging.",
+        executionContextAdmissionModeDefinition: "A mandatory Execution Context setting that defines the permitted admission path for its FX Trades.",
+        autoHedgingAdmissionPolicyDefinition: "The complete set of mandatory rules that combines the Execution Context Admission Mode with configured Eligibility Checks to decide the Admission State.",
+        eligibilityCheckDefinition: "A safety condition evaluated from FX Trade, reference, or market data to determine eligibility for Auto Hedging. Every applicable check must pass before release.",
+        ccyPairDefinition: "An ordered pair of currencies defining the Base Currency and Quote Currency used to express an FX Trade amount and exchange rate.",
         automationAdmissionStateDefinition: "Shows whether a specific FX Trade is currently held for manual control or released to Auto Hedging.",
-        heldDefinition: "Held for manual control and does not participate in Auto Hedging.",
-        releasedDefinition: "Admitted to Auto Hedging.",
-        automationAdmissionRule: "Policy answers “which admission path is allowed?” State answers “where is this FX Trade now?”",
-        domainFunctions: "Domain Functions",
-        domainFunctionsDescription: "These pure domain functions do not persist data. They return the planned state or transition and its reason; additional admission conditions can be added later without changing the calling workflow.",
-        determineInitialAdmissionStateTitle: "Determine Initial Admission State",
-        determineInitialAdmissionStateDescription: "Demo baseline for an FX Trade with an Execution Context: if the Execution System referenced by that context has Pricing Mode AUTO_PRICED, Policy AUTO_IF_ELIGIBLE applies and the function returns State RELEASED; otherwise it returns HELD. Technical FX Trades without an Execution Context are outside this baseline and will be defined separately. Future checks may include Transfer Rate deviation from Market Pulse and trade amount limits.",
-        decideReleaseToAutoHedgingTitle: "Decide Release to Auto Hedging",
-        decideReleaseToAutoHedgingDescription: "Called when a HELD FX Trade is proposed for Auto Hedging. It returns whether HELD → RELEASED is allowed, together with the next State and reason.",
-        automationAdmissionFutureExample: "Future extension example—not implemented: release may additionally require the Transfer Rate to remain within a configured deviation corridor from current Market Pulse quotes.",
         domainGlossary: "Domain Glossary",
         domainGlossarySubtitle: "Core terms used across documented processes",
         goal: "Process goal:",
@@ -16032,30 +16119,13 @@
         transferRateDefinition: "\u0412\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u0443\u0447\u0451\u0442\u043d\u044b\u0439 \u043a\u0443\u0440\u0441 FX Trade, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u044b\u0439 \u0434\u043b\u044f \u0440\u0430\u0441\u0447\u0451\u0442\u0430 \u0432\u0430\u043b\u044e\u0442\u043d\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0434\u043e\u0445\u043e\u0434\u0430. \u0418\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u044d\u0442\u043e\u043c\u0443 \u043a\u0443\u0440\u0441\u0443 \u043a\u043b\u0438\u0435\u043d\u0442\u0441\u043a\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043b\u0430\u0441\u044c \u0438\u0437 \u043a\u043d\u0438\u0433\u0438 Sales \u0432 \u043a\u043d\u0438\u0433\u0443 \u043f\u043e\u0434\u0440\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u044f, \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0438 \u043f\u0435\u0440\u0435\u043a\u0440\u044b\u0432\u0430\u044e\u0449\u0435\u0433\u043e \u043f\u043e\u0437\u0438\u0446\u0438\u044e. \u0412 \u0442\u0435\u043a\u0443\u0449\u0435\u043c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438 \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0438 \u043c\u0435\u0436\u0434\u0443 \u043a\u043d\u0438\u0433\u0430\u043c\u0438 \u0438\u043b\u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0430\u043c\u0438 \u043d\u0435\u0442; \u043e\u0442\u0440\u0430\u0441\u043b\u0435\u0432\u043e\u0439 \u0442\u0435\u0440\u043c\u0438\u043d \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u043b\u044f \u043e\u0431\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f \u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0433\u043e \u0440\u0430\u0441\u0447\u0451\u0442\u043d\u043e\u0433\u043e \u043a\u0443\u0440\u0441\u0430.",
         pageTitle: "Каталог процессов",
         manualBatching: "Ручной Batching",
-        autoHedging: "Auto Hedging",
-        autoHedgingSubtitle: "Автоматизированное управление валютным риском",
         autoHedgingDefinition: "Автоматизированный процесс управления валютным риском, который контролирует открытую валютную позицию и применяет настроенные алгоритмы и ограничения для удержания валютного риска в утверждённых пределах.",
-        autoHedgingFxPositionPresentation: "В FX Position FX Trades, допущенные к процессу Auto Hedging, отображаются на вкладке «Auto Hedging». FX Trades, не допущенные к Auto Hedging, остаются на вкладке «Manual Control».",
-        subcatalogs: "Подкаталоги",
-        automationAdmissionCatalogDescription: "Определяет, какие FX Trades могут участвовать в Auto Hedging.",
-        automationAdmission: "Auto Hedging Admission",
-        automationAdmissionSubtitle: "Границы допуска FX Trade к процессу Auto Hedging",
-        automationAdmissionSummary: "Auto Hedging Admission определяет, какие FX Trades могут участвовать в Auto Hedging.",
-        automationAdmissionPolicyDefinition: "Определяет допустимый порядок допуска FX Trade: автоматический допуск после проверок, допуск после ручной проверки либо только ручной контроль.",
-        autoIfEligibleDefinition: "Допустить автоматически, если пройдены все обязательные проверки.",
-        reviewRequiredDefinition: "Сначала удержать; допустить только после проверки.",
-        manualOnlyDefinition: "Оставить под ручным контролем; допуск к Auto Hedging запрещён.",
+        autoHedgingAdmissionDefinition: "Доменная граница принятия решения, определяющая, остаётся ли FX Trade под ручным контролем или может быть допущена к Auto Hedging.",
+        executionContextAdmissionModeDefinition: "Обязательная настройка Execution Context, определяющая допустимый путь допуска связанных с ним FX Trades.",
+        autoHedgingAdmissionPolicyDefinition: "Полный набор обязательных правил, объединяющий Execution Context Admission Mode с настроенными Eligibility Checks для определения Admission State.",
+        eligibilityCheckDefinition: "Условие безопасности, проверяемое по данным FX Trade, справочным или рыночным данным для определения возможности участия в Auto Hedging. Перед допуском должны быть пройдены все применимые проверки.",
+        ccyPairDefinition: "Упорядоченная пара валют, определяющая Base Currency и Quote Currency, в которых выражаются сумма и обменный курс FX Trade.",
         automationAdmissionStateDefinition: "Показывает, удерживается ли конкретная FX Trade для ручного контроля или уже допущена к Auto Hedging.",
-        heldDefinition: "Удерживается для ручного контроля и не участвует в Auto Hedging.",
-        releasedDefinition: "Допущена к Auto Hedging.",
-        automationAdmissionRule: "Policy отвечает на вопрос «какой путь допуска разрешён?». State — «где находится конкретная FX Trade сейчас?».",
-        domainFunctions: "Доменные функции",
-        domainFunctionsDescription: "Эти чистые доменные функции не сохраняют данные. Они возвращают запланированное состояние или переход и его причину; в дальнейшем в них можно добавлять новые условия допуска, не меняя вызывающий сценарий.",
-        determineInitialAdmissionStateTitle: "Determine Initial Admission State",
-        determineInitialAdmissionStateDescription: "Базовая реализация демо для FX Trade с Execution Context: если связанная с этим контекстом Execution System имеет Pricing Mode AUTO_PRICED, применяется Policy AUTO_IF_ELIGIBLE и функция возвращает State RELEASED; в остальных случаях — HELD. Правила для технических FX Trades без Execution Context будут определены отдельно. В будущем могут добавиться проверки отклонения Transfer Rate от Market Pulse и лимита суммы сделки.",
-        decideReleaseToAutoHedgingTitle: "Decide Release to Auto Hedging",
-        decideReleaseToAutoHedgingDescription: "Вызывается, когда удерживаемую FX Trade предлагается допустить к Auto Hedging. Возвращает, разрешён ли переход HELD → RELEASED, а также следующее состояние и причину решения.",
-        automationAdmissionFutureExample: "Пример будущего расширения — пока не реализовано: для допуска может дополнительно требоваться, чтобы Transfer Rate находился в настроенном диапазоне отклонения от текущих котировок Market Pulse.",
         domainGlossary: "Domain Glossary",
         domainGlossarySubtitle: "Основные термины, используемые в описаниях процессов",
         goal: "Цель процесса:",
@@ -16122,7 +16192,6 @@
           languageSwitch: "Process Catalog language",
           catalog: "Process catalog",
           processes: "Processes",
-          autoHedgingSubcatalogs: "Auto Hedging subcatalogs",
           processGoal: "Process goal",
           processMap: "Manual Batching process map",
           tenorOutcomes: "Tenor decision outcomes",
@@ -16133,7 +16202,6 @@
           languageSwitch: "Язык каталога процессов",
           catalog: "Каталог процессов",
           processes: "Процессы",
-          autoHedgingSubcatalogs: "Подкаталоги Auto Hedging",
           processGoal: "Цель процесса",
           processMap: "Схема процесса «Ручной Batching»",
           tenorOutcomes: "Варианты разрешения Tenor",
@@ -16467,15 +16535,7 @@
 
     function updateProcessCatalogDocumentTitle() {
       if (processesPage && !processesPage.hidden) {
-        if (isAutomationAdmissionRoute()) {
-          document.title = processCatalogLanguage === "ru"
-            ? "Auto Hedging Admission — Каталог процессов"
-            : "Auto Hedging Admission - Process Catalog";
-        } else if (isAutoHedgingRoute()) {
-          document.title = processCatalogLanguage === "ru"
-            ? "Auto Hedging — Каталог процессов"
-            : "Auto Hedging - Process Catalog";
-        } else if (isDomainGlossaryRoute()) {
+        if (isDomainGlossaryRoute()) {
           document.title = processCatalogLanguage === "ru"
             ? "Domain Glossary — Каталог процессов"
             : "Domain Glossary - Process Catalog";
@@ -16488,23 +16548,11 @@
     }
 
     function renderProcessCatalogRoute() {
-      const isAutoHedging = isAutoHedgingRoute();
-      const isAdmission = isAutomationAdmissionRoute();
       const isGlossary = isDomainGlossaryRoute();
-      const activeView = isAdmission
-        ? "admission"
-        : isAutoHedging
-          ? "auto-hedging"
-          : (isGlossary ? "glossary" : "manual");
+      const activeView = isGlossary ? "glossary" : "manual";
 
       if (manualBatchFormationProcessView) {
-        manualBatchFormationProcessView.hidden = isAutoHedging || isAdmission || isGlossary;
-      }
-      if (autoHedgingProcessView) {
-        autoHedgingProcessView.hidden = !isAutoHedging;
-      }
-      if (automationAdmissionProcessView) {
-        automationAdmissionProcessView.hidden = !isAdmission;
+        manualBatchFormationProcessView.hidden = isGlossary;
       }
       if (domainGlossaryProcessView) {
         domainGlossaryProcessView.hidden = !isGlossary;
@@ -16512,9 +16560,7 @@
       processCatalogViewLinks.forEach(link => {
         const view = link.dataset.processCatalogView;
         const isActive = view === activeView;
-        const isAncestor = activeView === "admission" && view === "auto-hedging";
         link.classList.toggle("is-active", isActive);
-        link.classList.toggle("is-ancestor", isAncestor);
         if (isActive) {
           link.setAttribute("aria-current", "page");
         } else {
@@ -16545,7 +16591,6 @@
         }
       });
       linkDomainGlossaryDefinitions();
-      highlightAutomationAdmissionTechnicalTokens();
       processCatalogAriaElements.forEach(element => {
         const key = element.dataset.processAriaLabel;
         if (Object.prototype.hasOwnProperty.call(ariaCopy, key)) {
@@ -16574,6 +16619,13 @@
     }
 
     const MANUAL_PROCESS_TERM_REFERENCES = Object.freeze([
+      Object.freeze({ text: "Execution Context Admission Mode", key: "execution-context-admission-mode" }),
+      Object.freeze({ text: "Auto Hedging Admission Policy", key: "auto-hedging-admission-policy" }),
+      Object.freeze({ text: "Auto Hedging Admission", key: "auto-hedging-admission" }),
+      Object.freeze({ text: "Eligibility Checks", key: "eligibility-check" }),
+      Object.freeze({ text: "Eligibility Check", key: "eligibility-check" }),
+      Object.freeze({ text: "Admission State", key: "admission-state" }),
+      Object.freeze({ text: "Ccy Pair", key: "ccy-pair" }),
       Object.freeze({ text: "Auto Hedging", key: "auto-hedging" }),
       Object.freeze({ text: "Servicing Location", key: "servicing-location" }),
       Object.freeze({ text: "Accounting System", key: "accounting-system" }),
@@ -16793,70 +16845,6 @@
             { excludeTermKey }
           );
         });
-    }
-
-    const AUTOMATION_ADMISSION_TECHNICAL_TOKENS = Object.freeze([
-      "AUTO_IF_ELIGIBLE",
-      "REVIEW_REQUIRED",
-      "MANUAL_ONLY",
-      "AUTO_PRICED",
-      "DEALER_PRICED",
-      "DEALER_APPROVED",
-      "RELEASED",
-      "HELD"
-    ]);
-    const automationAdmissionTechnicalTokenPattern = new RegExp(
-      `\\b(?:${AUTOMATION_ADMISSION_TECHNICAL_TOKENS.join("|")})\\b`,
-      "g"
-    );
-
-    function highlightAutomationAdmissionTechnicalTokens() {
-      if (!automationAdmissionProcessView) {
-        return;
-      }
-
-      const textNodes = [];
-      automationAdmissionProcessView
-        .querySelectorAll(
-          ".automation-admission-values dt, .automation-admission-function-description"
-        )
-        .forEach(root => {
-          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-          while (walker.nextNode()) {
-            const textNode = walker.currentNode;
-            if (textNode.parentElement?.closest("code")) {
-              continue;
-            }
-            automationAdmissionTechnicalTokenPattern.lastIndex = 0;
-            if (automationAdmissionTechnicalTokenPattern.test(textNode.nodeValue || "")) {
-              textNodes.push(textNode);
-            }
-          }
-        });
-
-      textNodes.forEach(textNode => {
-        const value = textNode.nodeValue || "";
-        const fragment = document.createDocumentFragment();
-        let cursor = 0;
-        automationAdmissionTechnicalTokenPattern.lastIndex = 0;
-
-        for (const match of value.matchAll(automationAdmissionTechnicalTokenPattern)) {
-          const index = match.index ?? 0;
-          if (index > cursor) {
-            fragment.append(document.createTextNode(value.slice(cursor, index)));
-          }
-          const token = document.createElement("code");
-          token.className = "automation-admission-technical-token";
-          token.dataset.automationAdmissionToken = match[0];
-          token.textContent = match[0];
-          fragment.append(token);
-          cursor = index + match[0].length;
-        }
-        if (cursor < value.length) {
-          fragment.append(document.createTextNode(value.slice(cursor)));
-        }
-        textNode.replaceWith(fragment);
-      });
     }
 
     let manualProcessDefinitionHighlightTimeoutId = null;
@@ -17251,15 +17239,6 @@
       return location.hash === manualBatchFormationProcessRoute();
     }
 
-    function isAutoHedgingRoute() {
-      return location.hash === autoHedgingRoute();
-    }
-
-    function isAutomationAdmissionRoute() {
-      return location.hash === automationAdmissionRoute()
-        || location.hash === legacyAutomationAdmissionRoute();
-    }
-
     function isDomainGlossaryRoute() {
       return location.hash === domainGlossaryRoute()
         || location.hash.startsWith(`${domainGlossaryRoute()}/`);
@@ -17267,8 +17246,6 @@
 
     function isProcessCatalogRoute() {
       return isManualBatchFormationProcessRoute()
-        || isAutoHedgingRoute()
-        || isAutomationAdmissionRoute()
         || isDomainGlossaryRoute();
     }
 
@@ -18351,7 +18328,7 @@
 
       if (selectedTrades.length === 0) {
         setBatchStatus(
-          "Select one or more eligible Manual Control Client or Hedge Deals.",
+          "Select one or more eligible Manual Review Client or Hedge Deals.",
           "warning"
         );
         return;
@@ -20359,6 +20336,515 @@
       setWorkbenchPageStatus(hedgeQuickModeSettingsStatus, message, tone);
     }
 
+    function setAutoHedgingAdmissionPolicyStatus(message = "", tone = "") {
+      setWorkbenchPageStatus(autoHedgingAdmissionPolicyStatus, message, tone);
+    }
+
+    function setAutoHedgingSettingsRoute(routeName, { focus = false } = {}) {
+      const normalizedRoute = routeName === "manual-release"
+        ? "manual-release"
+        : "initial";
+      let activeControl = null;
+
+      autoHedgingSettingsRouteControls.forEach(control => {
+        const active = control.dataset.autoHedgingSettingsRoute === normalizedRoute;
+        control.classList.toggle("is-active", active);
+        control.setAttribute("aria-pressed", String(active));
+        if (active) {
+          activeControl = control;
+        }
+      });
+
+      autoHedgingSettingsRoutePanels.forEach(panel => {
+        panel.hidden = panel.dataset.autoHedgingSettingsRoutePanel !== normalizedRoute;
+      });
+
+      if (focus) {
+        activeControl?.focus();
+      }
+    }
+
+    function setAutoHedgingSettingsSegmentExpanded(toggle, expanded) {
+      const panelId = toggle?.getAttribute("aria-controls");
+      const panel = panelId ? document.getElementById(panelId) : null;
+      const segment = toggle?.closest(".auto-hedging-trade-segment");
+
+      if (!toggle || !panel || !segment) {
+        return;
+      }
+
+      toggle.setAttribute("aria-expanded", String(expanded));
+      panel.hidden = !expanded;
+      segment.classList.toggle("is-expanded", expanded);
+    }
+
+    function toggleAutoHedgingSettingsSegment(toggle) {
+      const expand = toggle.getAttribute("aria-expanded") !== "true";
+      const segmentList = toggle.closest("[data-auto-hedging-settings-segments]");
+
+      if (expand && segmentList) {
+        segmentList.querySelectorAll("[data-auto-hedging-segment-toggle]")
+          .forEach(otherToggle => {
+            if (otherToggle !== toggle) {
+              setAutoHedgingSettingsSegmentExpanded(otherToggle, false);
+            }
+          });
+      }
+
+      setAutoHedgingSettingsSegmentExpanded(toggle, expand);
+    }
+
+    function setAutoHedgingAdmissionPolicyBusy(busy) {
+      const isBusy = busy === true;
+      autoHedgingAdmissionPolicyForm.setAttribute("aria-busy", String(isBusy));
+      autoHedgingMaxTransferRateDeviationPercent.disabled =
+        isBusy || !autoHedgingAdmissionPolicyLoaded;
+      autoHedgingAdmissionPairRows
+        .querySelectorAll("[data-auto-hedging-admission-pair-enabled]")
+        .forEach(control => {
+          control.disabled = isBusy || !autoHedgingAdmissionPolicyLoaded;
+        });
+      autoHedgingAdmissionPairRows
+        .querySelectorAll("[data-auto-hedging-admission-pair-limit]")
+        .forEach(control => {
+          const row = control.closest("[data-auto-hedging-admission-pair-code]");
+          const enabledControl = row?.querySelector(
+            "[data-auto-hedging-admission-pair-enabled]"
+          );
+          control.disabled = isBusy
+            || !autoHedgingAdmissionPolicyLoaded
+            || !enabledControl?.checked;
+        });
+
+      if (isBusy || !autoHedgingAdmissionPolicyLoaded) {
+        autoHedgingAdmissionPolicySaveButton.disabled = true;
+      }
+    }
+
+    function autoHedgingAdmissionPairRowMarkup(pair) {
+      const controlSuffix = pair.ccyPairCode.toLowerCase();
+      const switchId = `autoHedgingAdmissionEnabled_${controlSuffix}`;
+      const limitId = `autoHedgingAdmissionLimit_${controlSuffix}`;
+      const amountValue = pair.maxBaseCcyAmount === null
+        ? ""
+        : groupedDecimalText(pair.maxBaseCcyAmount);
+
+      return `
+        <tr
+          data-auto-hedging-admission-pair-code="${escapeHtml(pair.ccyPairCode)}"
+          data-auto-hedging-admission-pair-search="${escapeHtml(`${pair.currencyPair} ${pair.ccyPairCode} ${pair.baseCcyCode}`.toUpperCase())}"
+        >
+          <td>
+            <strong>${escapeHtml(pair.currencyPair)}</strong>
+          </td>
+          <td class="text-center">
+            <div class="form-check form-switch auto-hedging-admission-pair-enabled">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="${escapeHtml(switchId)}"
+                aria-label="Enable automatic admission for ${escapeHtml(pair.currencyPair)}"
+                data-auto-hedging-admission-pair-enabled
+                ${pair.enabled ? "checked" : ""}
+                ${autoHedgingAdmissionPolicyLoaded ? "" : "disabled"}
+              >
+            </div>
+          </td>
+          <td>
+            <div class="input-group input-group-sm auto-hedging-admission-pair-limit">
+              <label class="visually-hidden" for="${escapeHtml(limitId)}">Maximum Trade Amount for ${escapeHtml(pair.currencyPair)} in ${escapeHtml(pair.baseCcyCode)}</label>
+              <input
+                class="form-control"
+                type="text"
+                id="${escapeHtml(limitId)}"
+                value="${escapeHtml(amountValue)}"
+                inputmode="decimal"
+                aria-label="Maximum Trade Amount for ${escapeHtml(pair.currencyPair)} in ${escapeHtml(pair.baseCcyCode)}"
+                data-auto-hedging-admission-pair-limit
+                ${pair.enabled && autoHedgingAdmissionPolicyLoaded ? "" : "disabled"}
+              >
+              <span class="input-group-text">${escapeHtml(pair.baseCcyCode)}</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    function updateAutoHedgingAdmissionPairSummary() {
+      const total = autoHedgingAdmissionPolicy.currencyPairs.length;
+      const enabled = autoHedgingAdmissionPairRows.querySelectorAll(
+        "[data-auto-hedging-admission-pair-enabled]:checked"
+      ).length;
+      autoHedgingAdmissionPairSummary.textContent = `${enabled} of ${total} enabled`;
+    }
+
+    function filterAutoHedgingAdmissionPairs() {
+      const query = String(autoHedgingAdmissionPairSearch.value || "")
+        .trim()
+        .toUpperCase();
+      const statusFilter = String(autoHedgingAdmissionPairFilter.value || "ALL")
+        .trim()
+        .toUpperCase();
+      let visibleCount = 0;
+
+      autoHedgingAdmissionPairRows
+        .querySelectorAll("[data-auto-hedging-admission-pair-code]")
+        .forEach(row => {
+          const enabled = row.querySelector(
+            "[data-auto-hedging-admission-pair-enabled]"
+          )?.checked === true;
+          const matchesQuery = !query
+            || String(row.dataset.autoHedgingAdmissionPairSearch || "").includes(query);
+          const matchesStatus = statusFilter === "ALL"
+            || (statusFilter === "ENABLED" && enabled)
+            || (statusFilter === "DISABLED" && !enabled);
+          const visible = matchesQuery && matchesStatus;
+
+          row.hidden = !visible;
+          if (visible) {
+            visibleCount += 1;
+          }
+        });
+
+      autoHedgingAdmissionPairSearchClear.hidden = query.length === 0;
+      autoHedgingAdmissionPairEmpty.textContent =
+        autoHedgingAdmissionPolicy.currencyPairs.length === 0
+          ? "No Currency Pairs are available in the policy."
+          : "No Currency Pairs match the current filters.";
+      autoHedgingAdmissionPairEmpty.hidden = visibleCount > 0;
+    }
+
+    function renderAutoHedgingAdmissionPolicy() {
+      const enabledPairCount = autoHedgingAdmissionPolicy.currencyPairs
+        .filter(pair => pair.enabled)
+        .length;
+
+      autoHedgingAdmissionPolicyRevision.textContent =
+        `Revision ${autoHedgingAdmissionPolicy.revision}`;
+      autoHedgingManualReleaseSharedRevision.textContent =
+        `Revision ${autoHedgingAdmissionPolicy.revision}`;
+      autoHedgingManualReleaseSharedPairSummary.textContent =
+        `${enabledPairCount} of ${autoHedgingAdmissionPolicy.currencyPairs.length} enabled`;
+      autoHedgingManualReleaseSharedDeviation.textContent =
+        `${autoHedgingAdmissionPolicy.maxTransferRateDeviationPercent}%`;
+      autoHedgingMaxTransferRateDeviationPercent.value =
+        autoHedgingAdmissionPolicy.maxTransferRateDeviationPercent;
+      autoHedgingAdmissionPairRows.innerHTML = autoHedgingAdmissionPolicy.currencyPairs
+        .map(autoHedgingAdmissionPairRowMarkup)
+        .join("");
+      updateAutoHedgingAdmissionPairSummary();
+      filterAutoHedgingAdmissionPairs();
+      setAutoHedgingAdmissionPolicyBusy(autoHedgingAdmissionPolicySaving);
+      updateAutoHedgingAdmissionPolicySaveAvailability();
+    }
+
+    function decimalFractionDigitCount(value) {
+      const decimal = String(value || "").split(".")[1] || "";
+      return decimal.length;
+    }
+
+    function autoHedgingAdmissionPolicyDraft() {
+      const deviationInput = autoHedgingMaxTransferRateDeviationPercent;
+      const deviation = normalizedDecimalInputText(deviationInput.value);
+      let validDeviation = false;
+
+      try {
+        validDeviation = deviation !== null
+          && new Big(deviation).gte(0)
+          && new Big(deviation).lte(100);
+      } catch {}
+
+      deviationInput.setCustomValidity(
+        validDeviation
+          ? ""
+          : "Enter a percentage from 0 through 100."
+      );
+
+      let pairsValid = true;
+      const currencyPairs = autoHedgingAdmissionPolicy.currencyPairs.map(pair => {
+        const row = autoHedgingAdmissionPairRows.querySelector(
+          `[data-auto-hedging-admission-pair-code="${pair.ccyPairCode}"]`
+        );
+        const enabled = row?.querySelector(
+          "[data-auto-hedging-admission-pair-enabled]"
+        )?.checked === true;
+        const amountInput = row?.querySelector(
+          "[data-auto-hedging-admission-pair-limit]"
+        );
+        const parsedMaxBaseCcyAmount = positiveDecimalInputText(amountInput?.value);
+        const maxBaseCcyAmount = enabled ? parsedMaxBaseCcyAmount : null;
+        const validAmount = !enabled || (
+          parsedMaxBaseCcyAmount !== null
+          && decimalFractionDigitCount(parsedMaxBaseCcyAmount)
+            <= pair.baseCcyFractionDigits
+        );
+
+        if (amountInput) {
+          amountInput.setCustomValidity(
+            validAmount
+              ? ""
+              : `Enter a positive ${pair.baseCcyCode} amount with no more than ${pair.baseCcyFractionDigits} decimal places.`
+          );
+        }
+        pairsValid = pairsValid && validAmount;
+
+        return {
+          ccyPairCode: pair.ccyPairCode,
+          enabled,
+          maxBaseCcyAmount
+        };
+      });
+
+      if (!validDeviation || !pairsValid) {
+        return null;
+      }
+
+      return {
+        expectedRevision: autoHedgingAdmissionPolicy.revision,
+        maxTransferRateDeviationPercent: deviation,
+        currencyPairs
+      };
+    }
+
+    function sameAutoHedgingAdmissionPolicyDraft(draft) {
+      if (!draft) {
+        return false;
+      }
+
+      try {
+        if (!new Big(draft.maxTransferRateDeviationPercent).eq(
+          autoHedgingAdmissionPolicy.maxTransferRateDeviationPercent
+        )) {
+          return false;
+        }
+      } catch {
+        return false;
+      }
+
+      return draft.currencyPairs.every((draftPair, index) => {
+        const savedPair = autoHedgingAdmissionPolicy.currencyPairs[index];
+
+        if (
+          !savedPair
+          || draftPair.ccyPairCode !== savedPair.ccyPairCode
+          || draftPair.enabled !== savedPair.enabled
+        ) {
+          return false;
+        }
+
+        if (draftPair.maxBaseCcyAmount === null || savedPair.maxBaseCcyAmount === null) {
+          return draftPair.maxBaseCcyAmount === savedPair.maxBaseCcyAmount;
+        }
+
+        try {
+          return new Big(draftPair.maxBaseCcyAmount).eq(savedPair.maxBaseCcyAmount);
+        } catch {
+          return false;
+        }
+      });
+    }
+
+    function updateAutoHedgingAdmissionPolicySaveAvailability() {
+      if (
+        autoHedgingAdmissionPolicySaving
+        || !autoHedgingAdmissionPolicyLoaded
+      ) {
+        setSaveButtonAvailability(
+          autoHedgingAdmissionPolicySaveButton,
+          false,
+          autoHedgingAdmissionPolicySaving ? "Saving Policy" : "Policy is not loaded"
+        );
+        return;
+      }
+
+      const draft = autoHedgingAdmissionPolicyDraft();
+      setSaveButtonAvailability(
+        autoHedgingAdmissionPolicySaveButton,
+        Boolean(draft) && !sameAutoHedgingAdmissionPolicyDraft(draft),
+        draft ? "No changes to save" : "Enter valid eligibility settings"
+      );
+    }
+
+    function syncAutoHedgingAdmissionPairControl(row) {
+      const enabledControl = row?.querySelector(
+        "[data-auto-hedging-admission-pair-enabled]"
+      );
+      const limitControl = row?.querySelector(
+        "[data-auto-hedging-admission-pair-limit]"
+      );
+
+      if (!enabledControl || !limitControl) {
+        return;
+      }
+
+      limitControl.disabled = autoHedgingAdmissionPolicySaving
+        || !autoHedgingAdmissionPolicyLoaded
+        || !enabledControl.checked;
+      if (!enabledControl.checked) {
+        limitControl.setCustomValidity("");
+      }
+      updateAutoHedgingAdmissionPairSummary();
+      filterAutoHedgingAdmissionPairs();
+      updateAutoHedgingAdmissionPolicySaveAvailability();
+    }
+
+    async function reloadAutoHedgingAdmissionPolicyFromApi() {
+      const response = await demoApiRequest(
+        "/api/v1/auto-hedging-admission-policy"
+      );
+      autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(response);
+      autoHedgingAdmissionPolicyLoaded = true;
+      renderAutoHedgingAdmissionPolicy();
+      return autoHedgingAdmissionPolicy;
+    }
+
+    async function loadAutoHedgingAdmissionPolicySettings() {
+      autoHedgingAdmissionPolicyLoaded = false;
+      setAutoHedgingAdmissionPolicyBusy(true);
+
+      if (!DEMO_API_ENABLED) {
+        renderAutoHedgingAdmissionPolicy();
+        setAutoHedgingAdmissionPolicyStatus(
+          "SQLite API is unavailable. Start the demo to configure the policy.",
+          "error"
+        );
+        return;
+      }
+
+      setAutoHedgingAdmissionPolicyStatus("Loading Auto Hedging Admission Policy...");
+
+      try {
+        await reloadAutoHedgingAdmissionPolicyFromApi();
+        setAutoHedgingAdmissionPolicyStatus();
+      } catch (error) {
+        autoHedgingAdmissionPolicyLoaded = false;
+        renderAutoHedgingAdmissionPolicy();
+        setAutoHedgingAdmissionPolicyStatus(
+          error.message || "Unable to load Auto Hedging Admission Policy.",
+          "error"
+        );
+      } finally {
+        setAutoHedgingAdmissionPolicyBusy(false);
+      }
+    }
+
+    async function saveAutoHedgingAdmissionPolicy(event) {
+      event.preventDefault();
+
+      if (autoHedgingAdmissionPolicySaving) {
+        return;
+      }
+
+      const draft = autoHedgingAdmissionPolicyDraft();
+
+      if (!draft) {
+        autoHedgingAdmissionPolicyForm.reportValidity();
+        updateAutoHedgingAdmissionPolicySaveAvailability();
+        return;
+      }
+
+      autoHedgingAdmissionPolicySaving = true;
+      setAutoHedgingAdmissionPolicyBusy(true);
+      setAutoHedgingAdmissionPolicyStatus("Saving Auto Hedging Admission Policy...");
+
+      try {
+        const response = await demoApiRequest(
+          "/api/v1/auto-hedging-admission-policy",
+          {
+            method: "PUT",
+            body: JSON.stringify(draft)
+          }
+        );
+        autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(response);
+        autoHedgingAdmissionPolicyLoaded = true;
+        renderAutoHedgingAdmissionPolicy();
+        setAutoHedgingAdmissionPolicyStatus(
+          "Auto Hedging Admission Policy was saved successfully.",
+          "success"
+        );
+      } catch (error) {
+        if (error.status === 409) {
+          try {
+            await reloadAutoHedgingAdmissionPolicyFromApi();
+            setAutoHedgingAdmissionPolicyStatus(
+              "The policy was updated elsewhere. The latest revision has been loaded; review it before saving again.",
+              "error"
+            );
+          } catch (reloadError) {
+            autoHedgingAdmissionPolicyLoaded = false;
+            setAutoHedgingAdmissionPolicyStatus(
+              reloadError.message || "The policy changed, but its latest revision could not be loaded.",
+              "error"
+            );
+          }
+        } else {
+          setAutoHedgingAdmissionPolicyStatus(
+            error.message || "Unable to save Auto Hedging Admission Policy.",
+            "error"
+          );
+        }
+      } finally {
+        autoHedgingAdmissionPolicySaving = false;
+        setAutoHedgingAdmissionPolicyBusy(false);
+        updateAutoHedgingAdmissionPolicySaveAvailability();
+      }
+    }
+
+    function ensureAutoHedgingAdmissionPolicyEventBindings() {
+      if (autoHedgingAdmissionPolicyEventsBound) {
+        return;
+      }
+
+      autoHedgingAdmissionPolicyEventsBound = true;
+      autoHedgingAdmissionPolicyForm.addEventListener(
+        "submit",
+        saveAutoHedgingAdmissionPolicy
+      );
+      autoHedgingMaxTransferRateDeviationPercent.addEventListener(
+        "input",
+        updateAutoHedgingAdmissionPolicySaveAvailability
+      );
+      autoHedgingAdmissionPairRows.addEventListener("change", event => {
+        if (!event.target.matches("[data-auto-hedging-admission-pair-enabled]")) {
+          return;
+        }
+        syncAutoHedgingAdmissionPairControl(
+          event.target.closest("[data-auto-hedging-admission-pair-code]")
+        );
+      });
+      autoHedgingAdmissionPairRows.addEventListener("input", event => {
+        if (event.target.matches("[data-auto-hedging-admission-pair-limit]")) {
+          updateAutoHedgingAdmissionPolicySaveAvailability();
+        }
+      });
+      autoHedgingAdmissionPairSearch.addEventListener(
+        "input",
+        filterAutoHedgingAdmissionPairs
+      );
+      autoHedgingAdmissionPairFilter.addEventListener(
+        "change",
+        filterAutoHedgingAdmissionPairs
+      );
+      autoHedgingAdmissionPairSearchClear.addEventListener("click", () => {
+        autoHedgingAdmissionPairSearch.value = "";
+        filterAutoHedgingAdmissionPairs();
+        autoHedgingAdmissionPairSearch.focus();
+      });
+      autoHedgingSettingsRouteControls.forEach(control => {
+        control.addEventListener("click", () => {
+          setAutoHedgingSettingsRoute(
+            control.dataset.autoHedgingSettingsRoute
+          );
+        });
+      });
+      autoHedgingSettingsSegmentToggles.forEach(toggle => {
+        toggle.addEventListener("click", () => {
+          toggleAutoHedgingSettingsSegment(toggle);
+        });
+      });
+    }
+
     function setHedgingSettingsTab(tabName) {
       const normalizedTab = tabName === "auto-admission" ? "auto-admission" : "quick";
 
@@ -21028,6 +21514,11 @@
     }
 
     async function loadHedgingSettingsPage() {
+      ensureAutoHedgingAdmissionPolicyEventBindings();
+      renderAutoHedgingAdmissionPolicy();
+      const autoHedgingAdmissionPolicyLoad =
+        loadAutoHedgingAdmissionPolicySettings();
+
       hedgeQuickModeSettingsForm.reset();
       hedgeQuickModeCounterpartyPickerExpanded = false;
       hedgeQuickModePricingRulesExpanded = false;
@@ -21049,6 +21540,8 @@
       } finally {
         hedgeQuickModeSettingsSaveButton.disabled = false;
       }
+
+      await autoHedgingAdmissionPolicyLoad;
     }
 
     function validateHedgeQuickModeSettingsForm() {

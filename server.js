@@ -107,9 +107,12 @@ const {
   resolveFxPositionManagementMode
 } = require("./backend/fx-position-management/domain/fx-position-management-policy");
 const {
-  AUTO_HEDGING_ADMISSION_POLICY,
-  normalizeAutoHedgingAdmissionPolicy
-} = require("./backend/auto-hedging-admission/domain/auto-hedging-admission-policy");
+  AUTO_HEDGING_ADMISSION_MODE,
+  normalizeAutoHedgingAdmissionMode
+} = require("./backend/auto-hedging-admission/domain/auto-hedging-admission-mode");
+const {
+  determineInitialAdmissionState
+} = require("./backend/auto-hedging-admission/domain/auto-hedging-admission-decision");
 const {
   SendFxTradesToAutoPositionManagementUseCase
 } = require("./backend/fx-position-management/application/send-fx-trades-to-auto-position-management-use-case");
@@ -248,6 +251,9 @@ if (sqliteTableExists(database, "fx_batches")) {
   ensureFxBatchFormationReason(database);
 }
 migrateFxTradePositionManagementState(database);
+// Upgrade the Execution Context columns before schema.sql creates triggers that
+// reference their current names on an already initialized SQLite database.
+ensureFxPositionManagementPolicyColumns(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 if (!fxTradePositionManagementAlreadyInitialized) {
   database.exec(`
@@ -371,6 +377,7 @@ ensureUiTableColumnSettings(database);
 ensureUiColorTokens(database);
 ensureFxBatchingSettings(database);
 ensureFxAutoBatchingSettings(database);
+ensureAutoHedgingAdmissionPolicy(database);
 ensureFxBatchFormationReason(database);
 
 function tableColumnNames(sqlite, tableName) {
@@ -529,6 +536,73 @@ function ensureFxAutoBatchingSettings(sqlite) {
       `).run();
     }
   }
+}
+
+function ensureAutoHedgingAdmissionPolicy(sqlite) {
+  runInImmediateTransaction(sqlite, () => {
+    const current = sqlite.prepare(`
+      SELECT revision
+      FROM auto_hedging_admission_policy_current
+      WHERE policy_id = 1
+    `).get();
+
+    if (current) {
+      return;
+    }
+
+    let revision = Number(sqlite.prepare(`
+      SELECT COALESCE(MAX(revision), 0) AS revision
+      FROM auto_hedging_admission_policy_revisions
+    `).get().revision);
+
+    if (revision === 0) {
+      revision = 1;
+      sqlite.prepare(`
+        INSERT INTO auto_hedging_admission_policy_revisions
+          (revision, max_transfer_rate_deviation_percent)
+        VALUES (?, '1.00')
+      `).run(revision);
+
+      const seedPair = sqlite.prepare(`
+        INSERT INTO auto_hedging_admission_policy_pair_rules
+          (
+            revision,
+            ccy_pair_code,
+            max_base_ccy_amount_minor,
+            base_ccy_fraction_digits
+          )
+        SELECT ?, pair.ccy_pair_code, ?, base_ccy.fraction_digits
+        FROM ccy_pair_options pair
+        INNER JOIN ccy_options base_ccy
+          ON base_ccy.ccy_code = pair.base_ccy_code
+        WHERE pair.ccy_pair_code = ?
+      `);
+      const defaultPairs = sqlite.prepare(`
+        SELECT
+          pair.ccy_pair_code AS ccyPairCode,
+          base_ccy.fraction_digits AS baseCcyFractionDigits
+        FROM ccy_pair_options pair
+        INNER JOIN ccy_options base_ccy
+          ON base_ccy.ccy_code = pair.base_ccy_code
+        WHERE pair.ccy_pair_code IN ('EUR_USD', 'GBP_USD')
+        ORDER BY pair.ccy_pair_code
+      `).all();
+
+      defaultPairs.forEach(pair => {
+        const amountMinor = minorToSafeInteger(
+          majorToMinorExact("100000000", pair.baseCcyFractionDigits),
+          `Default ${pair.ccyPairCode} Auto Hedging amount limit`
+        );
+        seedPair.run(revision, amountMinor, pair.ccyPairCode);
+      });
+    }
+
+    sqlite.prepare(`
+      INSERT INTO auto_hedging_admission_policy_current
+        (policy_id, revision)
+      VALUES (1, ?)
+    `).run(revision);
+  });
 }
 
 function ensureFxBatchFormationTiming(sqlite) {
@@ -753,22 +827,41 @@ function ensureFxPositionManagementPolicyColumns(sqlite) {
     `);
   }
 
+  if (sqliteTableExists(sqlite, "execution_contexts")) {
+    const contextColumns = tableColumnNames(sqlite, "execution_contexts");
+
+    if (contextColumns.has("auto_hedging_admission_policy")
+      && !contextColumns.has("auto_hedging_admission_mode")) {
+      sqlite.exec(`
+        ALTER TABLE execution_contexts
+        RENAME COLUMN auto_hedging_admission_policy TO auto_hedging_admission_mode
+      `);
+    }
+  }
+
   if (
     sqliteTableExists(sqlite, "execution_contexts")
     && !tableColumnNames(sqlite, "execution_contexts")
-      .has("auto_hedging_admission_policy")
+      .has("auto_hedging_admission_mode")
   ) {
     sqlite.exec(`
       ALTER TABLE execution_contexts
-      ADD COLUMN auto_hedging_admission_policy TEXT NOT NULL DEFAULT 'MANUAL_ONLY'
+      ADD COLUMN auto_hedging_admission_mode TEXT NOT NULL DEFAULT 'MANUAL_ONLY'
         CHECK (
-          auto_hedging_admission_policy IN
+          auto_hedging_admission_mode IN
             ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
         );
 
       UPDATE execution_contexts
-      SET auto_hedging_admission_policy = 'AUTO_IF_ELIGIBLE'
-      WHERE default_position_management_mode = 'AUTO';
+      SET auto_hedging_admission_mode = 'AUTO_IF_ELIGIBLE'
+      WHERE default_position_management_mode = 'AUTO'
+        AND EXISTS
+        (
+          SELECT 1
+          FROM execution_systems system
+          WHERE system.execution_system_id = execution_contexts.execution_system_id
+            AND system.pricing_mode = 'AUTO_PRICED'
+        );
     `);
   }
 
@@ -6224,10 +6317,36 @@ function migrateLegacyExecutionContextIds(sqlite) {
   }
 
   const preserveIntegerIds = String(idColumn?.type || "").toUpperCase() === "INTEGER";
-  const contextInsertColumns = preserveIntegerIds
-    ? "execution_context_id, servicing_location_id, accounting_system_id, execution_system_id"
-    : "servicing_location_id, accounting_system_id, execution_system_id";
-  const contextSelectColumns = contextInsertColumns;
+  const legacyDefaultModeExpression = columnByName.has("default_position_management_mode")
+    ? `CASE
+        WHEN default_position_management_mode IN ('MANUAL', 'AUTO')
+          THEN default_position_management_mode
+        ELSE 'MANUAL'
+      END`
+    : "'MANUAL'";
+  const legacyAdmissionColumn = columnByName.has("auto_hedging_admission_mode")
+    ? "auto_hedging_admission_mode"
+    : columnByName.has("auto_hedging_admission_policy")
+      ? "auto_hedging_admission_policy"
+      : null;
+  const legacyAdmissionModeExpression = legacyAdmissionColumn
+    ? `CASE
+        WHEN ${legacyAdmissionColumn} IN
+          ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
+          THEN ${legacyAdmissionColumn}
+        WHEN ${legacyDefaultModeExpression} = 'AUTO' THEN 'AUTO_IF_ELIGIBLE'
+        ELSE 'MANUAL_ONLY'
+      END`
+    : `CASE
+        WHEN ${legacyDefaultModeExpression} = 'AUTO' THEN 'AUTO_IF_ELIGIBLE'
+        ELSE 'MANUAL_ONLY'
+      END`;
+  const contextInsertColumns = `${preserveIntegerIds ? "execution_context_id, " : ""}`
+    + "servicing_location_id, accounting_system_id, execution_system_id, "
+    + "default_position_management_mode, auto_hedging_admission_mode";
+  const contextSelectColumns = `${preserveIntegerIds ? "execution_context_id, " : ""}`
+    + "servicing_location_id, accounting_system_id, execution_system_id, "
+    + `${legacyDefaultModeExpression}, ${legacyAdmissionModeExpression}`;
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
 
@@ -6243,6 +6362,8 @@ function migrateLegacyExecutionContextIds(sqlite) {
           servicing_location_id TEXT NOT NULL,
           accounting_system_id  TEXT,
           execution_system_id   TEXT NOT NULL,
+          default_position_management_mode TEXT NOT NULL DEFAULT 'MANUAL',
+          auto_hedging_admission_mode TEXT NOT NULL DEFAULT 'MANUAL_ONLY',
 
           CONSTRAINT fk_execution_contexts_servicing_location
               FOREIGN KEY (servicing_location_id)
@@ -6258,7 +6379,14 @@ function migrateLegacyExecutionContextIds(sqlite) {
               FOREIGN KEY (execution_system_id)
                   REFERENCES execution_systems (execution_system_id)
                   ON UPDATE RESTRICT
-                  ON DELETE RESTRICT
+                  ON DELETE RESTRICT,
+          CONSTRAINT chk_execution_contexts_default_position_management_mode
+              CHECK (default_position_management_mode IN ('MANUAL', 'AUTO')),
+          CONSTRAINT chk_execution_contexts_auto_hedging_admission_mode
+              CHECK (
+                  auto_hedging_admission_mode IN
+                      ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
+              )
       );
 
       INSERT INTO execution_contexts_migrated
@@ -7211,7 +7339,7 @@ function seedInitialExecutionContexts(sqlite) {
         accounting_system_id,
         execution_system_id,
         default_position_management_mode,
-        auto_hedging_admission_policy
+        auto_hedging_admission_mode
       )
     VALUES
       ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE'),
@@ -7582,6 +7710,330 @@ function ccyPairOption(pairCode) {
   `).get(pairCode) || null;
 }
 
+function executionContextAdmissionMode(executionContextId) {
+  const normalizedId = normalizedExecutionContextId(executionContextId);
+
+  if (normalizedId === null) {
+    return null;
+  }
+
+  return database.prepare(`
+    SELECT auto_hedging_admission_mode AS autoHedgingAdmissionMode
+    FROM execution_contexts
+    WHERE execution_context_id = ?
+  `).get(normalizedId)?.autoHedgingAdmissionMode ?? null;
+}
+
+function autoHedgingAdmissionPolicy() {
+  const current = database.prepare(`
+    SELECT
+      revision.revision,
+      revision.max_transfer_rate_deviation_percent AS maxTransferRateDeviationPercent
+    FROM auto_hedging_admission_policy_current current
+    INNER JOIN auto_hedging_admission_policy_revisions revision
+      ON revision.revision = current.revision
+    WHERE current.policy_id = 1
+  `).get();
+
+  if (!current) {
+    throw new Error("Auto Hedging Admission Policy is not configured.");
+  }
+
+  const currencyPairs = database.prepare(`
+    SELECT
+      pair.ccy_pair_code AS ccyPairCode,
+      pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
+      pair.base_ccy_code AS baseCcyCode,
+      COALESCE(rule.base_ccy_fraction_digits, base_ccy.fraction_digits)
+        AS baseCcyFractionDigits,
+      CASE WHEN rule.ccy_pair_code IS NULL THEN 0 ELSE 1 END AS enabled,
+      rule.max_base_ccy_amount_minor AS maxBaseCcyAmountMinor
+    FROM ccy_pair_options pair
+    INNER JOIN ccy_options base_ccy
+      ON base_ccy.ccy_code = pair.base_ccy_code
+    LEFT JOIN auto_hedging_admission_policy_pair_rules rule
+      ON rule.revision = ?
+      AND rule.ccy_pair_code = pair.ccy_pair_code
+    ORDER BY pair.base_ccy_code, pair.quote_ccy_code
+  `).all(current.revision).map(pair => ({
+    ccyPairCode: pair.ccyPairCode,
+    currencyPair: pair.currencyPair,
+    baseCcyCode: pair.baseCcyCode,
+    baseCcyFractionDigits: pair.baseCcyFractionDigits,
+    enabled: pair.enabled === 1,
+    maxBaseCcyAmount: pair.enabled === 1
+      ? minorToMajor(pair.maxBaseCcyAmountMinor, pair.baseCcyFractionDigits)
+      : null
+  }));
+
+  return {
+    revision: current.revision,
+    maxTransferRateDeviationPercent: current.maxTransferRateDeviationPercent,
+    currencyPairs
+  };
+}
+
+function normalizedMaxTransferRateDeviationPercent(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const text = value.trim();
+
+  if (text.length < 1
+    || text.length > 32
+    || !/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(text)
+    || Number(text) > 100) {
+    return null;
+  }
+
+  return text;
+}
+
+function validateAutoHedgingAdmissionPolicyPayload(body) {
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return { error: "Auto Hedging Admission Policy payload must be a JSON object." };
+  }
+
+  const expectedRevision = body.expectedRevision;
+  const maxTransferRateDeviationPercent =
+    normalizedMaxTransferRateDeviationPercent(body.maxTransferRateDeviationPercent);
+
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+    return { error: "Expected revision must be a positive integer." };
+  }
+
+  if (maxTransferRateDeviationPercent === null) {
+    return {
+      error: "Maximum Transfer Rate deviation must be a decimal string from 0 through 100 percent."
+    };
+  }
+
+  if (!Array.isArray(body.currencyPairs)) {
+    return { error: "Currency Pairs must be provided as an array." };
+  }
+
+  const pairCatalog = new Map(database.prepare(`
+    SELECT
+      pair.ccy_pair_code AS ccyPairCode,
+      base_ccy.fraction_digits AS baseCcyFractionDigits
+    FROM ccy_pair_options pair
+    INNER JOIN ccy_options base_ccy
+      ON base_ccy.ccy_code = pair.base_ccy_code
+  `).all().map(pair => [pair.ccyPairCode, pair]));
+  const seenPairCodes = new Set();
+  const enabledPairRules = [];
+
+  for (const item of body.currencyPairs) {
+    if (item === null || typeof item !== "object" || Array.isArray(item)) {
+      return { error: "Every Currency Pair rule must be a JSON object." };
+    }
+
+    const ccyPairCode = normalizedText(item.ccyPairCode).toUpperCase();
+    const pair = pairCatalog.get(ccyPairCode);
+
+    if (!pair) {
+      return { error: `Ccy Pair ${ccyPairCode || "<empty>"} was not found.` };
+    }
+
+    if (seenPairCodes.has(ccyPairCode)) {
+      return { error: `Ccy Pair ${ccyPairCode} is duplicated.` };
+    }
+
+    seenPairCodes.add(ccyPairCode);
+
+    if (typeof item.enabled !== "boolean") {
+      return { error: `Enabled must be a boolean value for ${ccyPairCode}.` };
+    }
+
+    if (!item.enabled) {
+      continue;
+    }
+
+    if (typeof item.maxBaseCcyAmount !== "string") {
+      return { error: `Maximum Base Ccy amount for ${ccyPairCode} must be a decimal string.` };
+    }
+
+    let maxBaseCcyAmountMinor;
+
+    try {
+      maxBaseCcyAmountMinor = minorToSafeInteger(
+        majorToMinorExact(item.maxBaseCcyAmount.trim(), pair.baseCcyFractionDigits),
+        `Maximum Base Ccy amount for ${ccyPairCode}`
+      );
+    } catch (error) {
+      return { error: error.message };
+    }
+
+    if (maxBaseCcyAmountMinor <= 0) {
+      return { error: `Maximum Base Ccy amount for ${ccyPairCode} must be greater than zero.` };
+    }
+
+    enabledPairRules.push({
+      ccyPairCode,
+      baseCcyFractionDigits: pair.baseCcyFractionDigits,
+      maxBaseCcyAmountMinor
+    });
+  }
+
+  if (seenPairCodes.size !== pairCatalog.size) {
+    const missingPairCodes = [...pairCatalog.keys()]
+      .filter(ccyPairCode => !seenPairCodes.has(ccyPairCode))
+      .sort();
+    return {
+      error: `Currency Pairs must be a full replacement. Missing Ccy Pairs: ${missingPairCodes.join(", ")}.`
+    };
+  }
+
+  return {
+    expectedRevision,
+    maxTransferRateDeviationPercent,
+    enabledPairRules
+  };
+}
+
+function saveAutoHedgingAdmissionPolicy(payload) {
+  runInImmediateTransaction(database, () => {
+    const currentRevision = Number(database.prepare(`
+      SELECT revision
+      FROM auto_hedging_admission_policy_current
+      WHERE policy_id = 1
+    `).get()?.revision || 0);
+
+    if (payload.expectedRevision !== currentRevision) {
+      const error = new Error(
+        `Auto Hedging Admission Policy revision ${payload.expectedRevision} is stale; current revision is ${currentRevision}.`
+      );
+      error.code = "AUTO_HEDGING_ADMISSION_POLICY_REVISION_CONFLICT";
+      error.currentRevision = currentRevision;
+      throw error;
+    }
+
+    const nextRevision = Number(database.prepare(`
+      SELECT COALESCE(MAX(revision), 0) + 1 AS nextRevision
+      FROM auto_hedging_admission_policy_revisions
+    `).get().nextRevision);
+
+    database.prepare(`
+      INSERT INTO auto_hedging_admission_policy_revisions
+        (revision, max_transfer_rate_deviation_percent)
+      VALUES (?, ?)
+    `).run(nextRevision, payload.maxTransferRateDeviationPercent);
+
+    const insertPairRule = database.prepare(`
+      INSERT INTO auto_hedging_admission_policy_pair_rules
+        (
+          revision,
+          ccy_pair_code,
+          max_base_ccy_amount_minor,
+          base_ccy_fraction_digits
+        )
+      VALUES (?, ?, ?, ?)
+    `);
+
+    payload.enabledPairRules.forEach(rule => {
+      insertPairRule.run(
+        nextRevision,
+        rule.ccyPairCode,
+        rule.maxBaseCcyAmountMinor,
+        rule.baseCcyFractionDigits
+      );
+    });
+
+    database.prepare(`
+      UPDATE auto_hedging_admission_policy_current
+      SET revision = ?,
+          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE policy_id = 1
+    `).run(nextRevision);
+  });
+
+  return autoHedgingAdmissionPolicy();
+}
+
+function autoHedgingAdmissionEvaluationPolicy(ccyPairCode) {
+  const normalizedPairCode = normalizedText(ccyPairCode).toUpperCase();
+  const policy = database.prepare(`
+    SELECT
+      revision.revision,
+      revision.max_transfer_rate_deviation_percent
+        AS maxTransferRateDeviationPercent,
+      rule.ccy_pair_code AS ruleCcyPairCode,
+      rule.max_base_ccy_amount_minor AS maxBaseCcyAmountMinor
+    FROM auto_hedging_admission_policy_current current
+    INNER JOIN auto_hedging_admission_policy_revisions revision
+      ON revision.revision = current.revision
+    LEFT JOIN auto_hedging_admission_policy_pair_rules rule
+      ON rule.revision = revision.revision
+      AND rule.ccy_pair_code = ?
+    WHERE current.policy_id = 1
+  `).get(normalizedPairCode);
+
+  if (!policy) {
+    throw new Error("Auto Hedging Admission Policy is not configured.");
+  }
+
+  return {
+    revision: policy.revision,
+    maxTransferRateDeviationPercent: policy.maxTransferRateDeviationPercent,
+    pairRule: policy.ruleCcyPairCode
+      ? {
+          ccyPairCode: policy.ruleCcyPairCode,
+          enabled: true,
+          maxBaseCcyAmountMinor: policy.maxBaseCcyAmountMinor
+        }
+      : null
+  };
+}
+
+function recordClientFxDealShadowAdmissionDecision({
+  tradeId,
+  payload,
+  exposureAmounts
+}) {
+  const policy = autoHedgingAdmissionEvaluationPolicy(payload.ccyPairCode);
+  const decision = determineInitialAdmissionState({
+    admissionMode: executionContextAdmissionMode(payload.executionContextId),
+    ccyPairCode: payload.ccyPairCode,
+    baseCcyAmountMinor: exposureAmounts.baseCcyAmountMinor,
+    pairRule: policy.pairRule,
+    side: payload.side,
+    transferRate: payload.transferRate,
+    marketPulseStatus: payload.marketPulseStreamStatus,
+    marketBid: payload.marketPulseBid,
+    marketOffer: payload.marketPulseOffer,
+    maxTransferRateDeviationPercent: policy.maxTransferRateDeviationPercent
+  });
+
+  database.prepare(`
+    INSERT INTO fx_auto_hedging_admission_decisions
+      (
+        trade_id,
+        trade_type,
+        decision_sequence,
+        decision_stage,
+        policy_revision,
+        admission_mode,
+        admission_state,
+        releasable,
+        reason_codes_json,
+        checks_json,
+        is_enforced
+      )
+    VALUES (?, 'CLIENT_DEAL', 1, 'INITIAL', ?, ?, ?, ?, ?, ?, 0)
+  `).run(
+    tradeId,
+    policy.revision,
+    decision.admissionMode,
+    decision.state,
+    decision.releasable ? 1 : 0,
+    JSON.stringify(decision.reasonCodes),
+    JSON.stringify(decision.checks)
+  );
+
+  return decision;
+}
+
 function fxTradeExposureAmounts(payload, generatedAmounts = null) {
   const pair = ccyPairOption(payload.ccyPairCode);
 
@@ -7855,7 +8307,7 @@ function executionContexts() {
       COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
       context.execution_system_id AS executionSystemId,
       context.default_position_management_mode AS defaultPositionManagementMode,
-      context.auto_hedging_admission_policy AS autoHedgingAdmissionPolicy,
+      context.auto_hedging_admission_mode AS autoHedgingAdmissionMode,
       (
         SELECT COUNT(*)
         FROM trading_counterparty_execution_contexts assignment
@@ -7934,7 +8386,7 @@ function tradingCounterpartyExecutionContexts(counterpartyId) {
       COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
       context.execution_system_id AS executionSystemId,
       context.default_position_management_mode AS defaultPositionManagementMode,
-      context.auto_hedging_admission_policy AS autoHedgingAdmissionPolicy,
+      context.auto_hedging_admission_mode AS autoHedgingAdmissionMode,
       (
         SELECT COUNT(*)
         FROM trading_counterparty_execution_contexts context_assignment
@@ -10070,8 +10522,10 @@ function clientFxDealWithCalculatedEconomics(payload, exposureAmounts) {
 
 function createClientFxDeal(payload, suppliedExposureAmounts = null) {
   const receivedTimestamp = new Date().toISOString();
+  let shadowExposureAmounts = suppliedExposureAmounts;
   const tradeId = runInImmediateTransaction(database, () => {
     const exposureAmounts = suppliedExposureAmounts || fxTradeExposureAmounts(payload);
+    shadowExposureAmounts = exposureAmounts;
     const exposureResult = database.prepare(`
       INSERT INTO fx_trade_exposure
         (
@@ -10163,6 +10617,18 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
 
     return tradeId;
   });
+
+  try {
+    recordClientFxDealShadowAdmissionDecision({
+      tradeId,
+      payload,
+      exposureAmounts: shadowExposureAmounts
+    });
+  } catch {
+    // Shadow evaluation is deliberately outside the trade transaction. Until
+    // enforcement is enabled, neither an evaluator nor an audit failure may
+    // reject an otherwise valid Client FX Deal.
+  }
 
   fxAutoBatchingProcess.notifyTradeCreated();
   return tradeId;
@@ -10447,6 +10913,7 @@ const clientDealGenerationProcess = new ClientDealGenerationProcess({
 
 const DEMO_TRADE_RESET_CONFIRMATION = "RESET_ALL_TRADES";
 const DEMO_TRADE_RESET_DELETE_TRIGGERS = Object.freeze([
+  "trg_fx_auto_hedging_admission_decisions_immutable_delete",
   "trg_fx_batch_members_immutable_delete",
   "trg_fx_batch_balance_trade_immutable_delete",
   "trg_fx_batch_position_output_immutable_delete",
@@ -10461,6 +10928,12 @@ function demoTradeTableCounts() {
     hedgeDeals: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_hedge_deals").get().count),
     marketSnapshots: Number(
       database.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count
+    ),
+    autoHedgingAdmissionDecisions: Number(
+      database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM fx_auto_hedging_admission_decisions
+      `).get().count
     ),
     positionManagementStates: Number(
       database.prepare("SELECT COUNT(*) AS count FROM fx_trade_position_management").get().count
@@ -10500,7 +10973,7 @@ function resetDemoTrades() {
     triggerDefinitions.length !== DEMO_TRADE_RESET_DELETE_TRIGGERS.length
     || triggerDefinitions.some(trigger => !trigger.sql)
   ) {
-    throw new Error("Demo Trade reset requires all Batch delete integrity triggers.");
+    throw new Error("Demo Trade reset requires all Trade delete integrity triggers.");
   }
 
   const removed = runInImmediateTransaction(database, () => {
@@ -10520,6 +10993,7 @@ function resetDemoTrades() {
       DELETE FROM fx_batch_position_output;
       DELETE FROM fx_batch_balance_trade;
       DELETE FROM fx_batches;
+      DELETE FROM fx_auto_hedging_admission_decisions;
       DELETE FROM fx_trade_market_snapshot;
       DELETE FROM client_fx_deals;
       DELETE FROM fx_hedge_deals;
@@ -10896,13 +11370,13 @@ function validatedPositionManagementMode(value, label, { nullable = false } = {}
   }
 }
 
-function validatedAutoHedgingAdmissionPolicy(value) {
+function validatedAutoHedgingAdmissionMode(value) {
   try {
-    return { value: normalizeAutoHedgingAdmissionPolicy(value) };
+    return { value: normalizeAutoHedgingAdmissionMode(value) };
   } catch (error) {
-    if (error?.code === "INVALID_AUTO_HEDGING_ADMISSION_POLICY") {
+    if (error?.code === "INVALID_AUTO_HEDGING_ADMISSION_MODE") {
       return {
-        error: "Auto Hedging Admission Policy must be AUTO_IF_ELIGIBLE, REVIEW_REQUIRED or MANUAL_ONLY."
+        error: "Auto Hedging Admission must be AUTO_IF_ELIGIBLE, REVIEW_REQUIRED or MANUAL_ONLY."
       };
     }
 
@@ -10929,15 +11403,15 @@ function validateExecutionContextPayload(body, current = null) {
     requestedDefaultPositionManagementMode,
     "Default FX Position Mode"
   );
-  const requestedAutoHedgingAdmissionPolicy = Object.prototype.hasOwnProperty.call(
+  const requestedAutoHedgingAdmissionMode = Object.prototype.hasOwnProperty.call(
     body,
-    "autoHedgingAdmissionPolicy"
+    "autoHedgingAdmissionMode"
   )
-    ? body.autoHedgingAdmissionPolicy
-    : current?.autoHedgingAdmissionPolicy
-      ?? AUTO_HEDGING_ADMISSION_POLICY.MANUAL_ONLY;
-  const autoHedgingAdmissionPolicy = validatedAutoHedgingAdmissionPolicy(
-    requestedAutoHedgingAdmissionPolicy
+    ? body.autoHedgingAdmissionMode
+    : current?.autoHedgingAdmissionMode
+      ?? AUTO_HEDGING_ADMISSION_MODE.MANUAL_ONLY;
+  const autoHedgingAdmissionMode = validatedAutoHedgingAdmissionMode(
+    requestedAutoHedgingAdmissionMode
   );
 
   if (!isValidServicingLocationId(servicingLocationId)) {
@@ -10956,8 +11430,18 @@ function validateExecutionContextPayload(body, current = null) {
     return defaultPositionManagementMode;
   }
 
-  if (autoHedgingAdmissionPolicy.error) {
-    return autoHedgingAdmissionPolicy;
+  if (autoHedgingAdmissionMode.error) {
+    return autoHedgingAdmissionMode;
+  }
+
+  const referencedExecutionSystem = executionSystem(executionSystemId);
+
+  if (autoHedgingAdmissionMode.value === AUTO_HEDGING_ADMISSION_MODE.AUTO_IF_ELIGIBLE
+    && referencedExecutionSystem
+    && referencedExecutionSystem.pricingMode !== "AUTO_PRICED") {
+    return {
+      error: "AUTO_IF_ELIGIBLE requires an Execution System with AUTO_PRICED Pricing Mode."
+    };
   }
 
   return {
@@ -10968,7 +11452,7 @@ function validateExecutionContextPayload(body, current = null) {
       : accountingSystemId,
     executionSystemId,
     defaultPositionManagementMode: defaultPositionManagementMode.value,
-    autoHedgingAdmissionPolicy: autoHedgingAdmissionPolicy.value
+    autoHedgingAdmissionMode: autoHedgingAdmissionMode.value
   };
 }
 
@@ -12279,6 +12763,7 @@ async function handleApi(request, response, url) {
       hedgeQuickModeSettings: hedgeQuickModeSettings(),
       fxBatchingSettings: fxBatchingSettings(),
       fxAutoBatchingSettings: fxAutoBatchingSettings(),
+      autoHedgingAdmissionPolicy: autoHedgingAdmissionPolicy(),
       fxAutoBatchingProcess: fxAutoBatchingProcess.status(),
       clientFxDeals: clientFxDeals(),
       hedgeFxDeals: hedgeFxDeals(),
@@ -14042,6 +14527,37 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (pathname === "/api/v1/auto-hedging-admission-policy" && method === "GET") {
+    sendJson(response, 200, autoHedgingAdmissionPolicy());
+    return true;
+  }
+
+  if (pathname === "/api/v1/auto-hedging-admission-policy" && method === "PUT") {
+    const body = await readJsonBody(request);
+    const payload = validateAutoHedgingAdmissionPolicyPayload(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_AUTO_HEDGING_ADMISSION_POLICY", payload.error);
+      return true;
+    }
+
+    try {
+      sendJson(response, 200, saveAutoHedgingAdmissionPolicy(payload));
+    } catch (error) {
+      if (error?.code === "AUTO_HEDGING_ADMISSION_POLICY_REVISION_CONFLICT") {
+        sendJson(response, 409, {
+          code: error.code,
+          message: error.message,
+          currentRevision: error.currentRevision
+        });
+      } else {
+        handleDatabaseError(response, error);
+      }
+    }
+
+    return true;
+  }
+
   if (pathname === "/api/v1/execution-contexts" && method === "GET") {
     sendJson(response, 200, executionContexts());
     return true;
@@ -14071,7 +14587,7 @@ async function handleApi(request, response, url) {
             accounting_system_id,
             execution_system_id,
             default_position_management_mode,
-            auto_hedging_admission_policy
+            auto_hedging_admission_mode
           )
         VALUES (?, ?, ?, ?, ?)
       `).run(
@@ -14079,7 +14595,7 @@ async function handleApi(request, response, url) {
         payload.accountingSystemDatabaseId,
         payload.executionSystemId,
         payload.defaultPositionManagementMode,
-        payload.autoHedgingAdmissionPolicy
+        payload.autoHedgingAdmissionMode
       );
       sendJson(response, 201, executionContext(Number(result.lastInsertRowid)));
     } catch (error) {
@@ -14137,14 +14653,14 @@ async function handleApi(request, response, url) {
               accounting_system_id = ?,
               execution_system_id = ?,
               default_position_management_mode = ?,
-              auto_hedging_admission_policy = ?
+              auto_hedging_admission_mode = ?
           WHERE execution_context_id = ?
         `).run(
           payload.servicingLocationId,
           payload.accountingSystemDatabaseId,
           payload.executionSystemId,
           payload.defaultPositionManagementMode,
-          payload.autoHedgingAdmissionPolicy,
+          payload.autoHedgingAdmissionMode,
           currentExecutionContextId
         );
         synchronizeClientDealGenerationSettings(database);
@@ -14612,6 +15128,8 @@ if (require.main === module) {
 
 module.exports = {
   handleApi,
+  autoHedgingAdmissionPolicy,
+  executionContextAdmissionMode,
   closeDatabase: () => {
     clientDealGenerationProcess.dispose();
     fxAutoBatchingProcess.dispose();

@@ -2468,13 +2468,13 @@
       color: var(--bs-success-text-emphasis);
     }
 
-    .auto-hedging-admission-policy-badge.is-review-required {
+    .auto-hedging-admission-mode-badge.is-review-required {
       border-color: var(--bs-warning-border-subtle);
       background: var(--bs-warning-bg-subtle);
       color: var(--bs-warning-text-emphasis);
     }
 
-    .auto-hedging-admission-policy-badge.is-manual-only {
+    .auto-hedging-admission-mode-badge.is-manual-only {
       border-color: var(--bs-secondary-border-subtle);
       background: var(--bs-secondary-bg-subtle);
       color: var(--bs-secondary-text-emphasis);
@@ -5821,20 +5821,6 @@
       gap: 6px;
       padding: 12px;
     }
-    .processes-list-group,
-    .processes-sublist {
-      display: grid;
-      gap: 4px;
-    }
-
-    .processes-sublist {
-      margin-left: 21px;
-      padding-left: 10px;
-      border-left: 1px solid var(--surface-border);
-    }
-
-
-
     .processes-list-link {
       display: flex;
       min-height: 52px;
@@ -5849,19 +5835,10 @@
     }
 
     .processes-list-link:hover,
-    .processes-list-link.is-active,
-    .processes-list-link.is-ancestor {
+    .processes-list-link.is-active {
       border-color: var(--selection-accent);
       background: var(--control-soft-bg);
       color: var(--text-strong);
-    }
-
-    .processes-list-sublink {
-      min-height: 44px;
-    }
-
-    .processes-list-sublink > .button-icon {
-      font-size: 18px;
     }
 
     .processes-list-link > .button-icon {
@@ -5923,319 +5900,6 @@
 
     .processes-detail-body {
       padding: 16px;
-    }
-
-    .automation-admission-body {
-      display: grid;
-      gap: 12px;
-    }
-
-    .auto-hedging-note {
-      margin: 0;
-      padding: 10px 12px;
-      border-left: 3px solid var(--palette-blue-600);
-      border-radius: 0 var(--workbench-radius) var(--workbench-radius) 0;
-      background: var(--palette-blue-100);
-      color: var(--text-strong);
-      line-height: 1.45;
-    }
-
-    .auto-hedging-subcatalogs {
-      display: grid;
-      gap: 8px;
-    }
-
-    .auto-hedging-subcatalogs-title {
-      margin: 0;
-      color: var(--text-strong);
-      font-size: var(--app-font-size-control);
-      font-weight: var(--app-font-weight-semibold);
-    }
-
-    .auto-hedging-subcatalog-link {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border: 1px solid var(--surface-border);
-      border-radius: var(--workbench-radius);
-      background: var(--surface-card);
-      color: var(--text-strong);
-      text-decoration: none;
-    }
-
-    .auto-hedging-subcatalog-link:hover,
-    .auto-hedging-subcatalog-link:focus-visible {
-      border-color: var(--selection-accent);
-      background: var(--control-soft-bg);
-      color: var(--text-strong);
-    }
-
-    .auto-hedging-subcatalog-link > .button-icon {
-      flex: 0 0 auto;
-      color: var(--palette-blue-700);
-      font-size: 20px;
-    }
-
-    .auto-hedging-subcatalog-copy {
-      display: grid;
-      gap: 2px;
-    }
-
-    .auto-hedging-subcatalog-copy small {
-      color: var(--text-muted);
-      line-height: 1.4;
-    }
-
-
-
-    .automation-admission-summary {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      margin: 0;
-      padding: 10px 12px;
-      border: 1px solid color-mix(in srgb, var(--palette-blue-600) 28%, var(--surface-border));
-      border-radius: var(--workbench-radius);
-      background: var(--palette-blue-100);
-      color: var(--text-strong);
-      line-height: 1.45;
-    }
-
-    .automation-admission-summary > .button-icon {
-      flex: 0 0 auto;
-      color: var(--palette-blue-700);
-      font-size: 19px;
-    }
-
-    .automation-admission-concepts {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .automation-admission-concept {
-      overflow: hidden;
-      border: 1px solid var(--surface-border);
-      border-radius: var(--workbench-radius);
-      background: var(--surface-card);
-    }
-
-    .automation-admission-concept-head {
-      display: grid;
-      gap: 4px;
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--surface-border);
-      background: var(--palette-gray-100);
-    }
-
-    .automation-admission-concept-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 0;
-      color: var(--text-strong);
-      font-size: var(--app-font-size-control);
-      font-weight: var(--app-font-weight-semibold);
-    }
-
-    .automation-admission-concept-title > .button-icon {
-      color: var(--bs-secondary-color);
-      font-size: 18px;
-    }
-
-    .automation-admission-concept-description {
-      margin: 0;
-      color: var(--text-muted);
-      line-height: 1.45;
-    }
-
-    .automation-admission-values {
-      display: grid;
-      margin: 0;
-    }
-
-    .automation-admission-value {
-      display: grid;
-      grid-template-columns: max-content minmax(0, 1fr);
-      gap: 12px;
-      align-items: baseline;
-      padding: 10px 14px;
-      border-top: 1px solid var(--surface-border);
-    }
-
-    .automation-admission-value:first-child {
-      border-top: 0;
-    }
-
-    .automation-admission-value dt,
-    .automation-admission-value dd {
-      margin: 0;
-    }
-
-    .automation-admission-value dt {
-      color: var(--text-strong);
-      font-family: var(--bs-font-monospace);
-      font-size: var(--app-font-size-caption);
-      font-weight: var(--app-font-weight-semibold);
-    }
-
-    .automation-admission-value dd {
-      color: var(--text-muted);
-      line-height: 1.45;
-    }
-
-    .automation-admission-rule {
-      margin: 0;
-      padding: 10px 12px;
-      border-left: 3px solid var(--palette-green-600);
-      border-radius: 0 var(--workbench-radius) var(--workbench-radius) 0;
-      background: color-mix(in srgb, var(--palette-green-100) 72%, var(--surface-card));
-      color: var(--text-strong);
-      line-height: 1.45;
-    }
-
-    .automation-admission-functions {
-      display: grid;
-      gap: 10px;
-      padding-top: 12px;
-      border-top: 1px solid var(--surface-border);
-    }
-
-    .automation-admission-functions-head {
-      display: grid;
-      gap: 3px;
-    }
-
-    .automation-admission-functions-title {
-      margin: 0;
-      color: var(--text-strong);
-      font-size: var(--app-font-size-control);
-      font-weight: var(--app-font-weight-semibold);
-    }
-
-    .automation-admission-functions-description {
-      margin: 0;
-      color: var(--text-muted);
-      line-height: 1.45;
-    }
-
-    .automation-admission-function-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .automation-admission-function {
-      overflow: hidden;
-      border: 1px solid var(--surface-border);
-      border-radius: var(--workbench-radius);
-      background: var(--surface-card);
-    }
-
-    .automation-admission-function-head {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--surface-border);
-      background: var(--palette-gray-100);
-    }
-
-    .automation-admission-function-head > .button-icon {
-      color: var(--palette-blue-700);
-      font-size: 19px;
-    }
-
-    .automation-admission-function-name {
-      display: grid;
-      gap: 2px;
-    }
-
-    .automation-admission-function-name strong {
-      color: var(--text-strong);
-      font-size: var(--app-font-size-control);
-      font-weight: var(--app-font-weight-semibold);
-    }
-
-    .automation-admission-function-name code {
-      display: inline-block;
-      width: max-content;
-      padding: 2px 6px;
-      border: 1px solid var(--palette-blue-300);
-      border-radius: 4px;
-      background: color-mix(in srgb, var(--palette-blue-100) 58%, var(--surface-card));
-      color: var(--palette-blue-800);
-      font-size: var(--app-font-size-caption);
-      font-weight: var(--app-font-weight-medium);
-      white-space: nowrap;
-    }
-
-    .automation-admission-technical-token {
-      display: inline-block;
-      padding: 1px 5px;
-      border: 1px solid var(--palette-indigo-300);
-      border-radius: 4px;
-      background: color-mix(in srgb, var(--palette-indigo-100) 48%, var(--surface-card));
-      color: var(--palette-indigo-800);
-      font-family: var(--bs-font-monospace);
-      font-size: 0.94em;
-      font-weight: var(--app-font-weight-medium);
-      line-height: 1.25;
-      white-space: nowrap;
-    }
-
-    .automation-admission-technical-token[data-automation-admission-token="AUTO_IF_ELIGIBLE"],
-    .automation-admission-technical-token[data-automation-admission-token="RELEASED"] {
-      border-color: var(--palette-green-300);
-      background: color-mix(in srgb, var(--palette-green-100) 54%, var(--surface-card));
-      color: var(--palette-green-800);
-    }
-
-    .automation-admission-technical-token[data-automation-admission-token="REVIEW_REQUIRED"],
-    .automation-admission-technical-token[data-automation-admission-token="HELD"] {
-      border-color: var(--palette-yellow-300);
-      background: color-mix(in srgb, var(--palette-yellow-100) 58%, var(--surface-card));
-      color: var(--palette-yellow-800);
-    }
-
-    .automation-admission-technical-token[data-automation-admission-token="MANUAL_ONLY"] {
-      border-color: var(--palette-gray-300);
-      background: var(--palette-gray-100);
-      color: var(--palette-gray-800);
-    }
-
-    .automation-admission-technical-token[data-automation-admission-token$="_PRICED"],
-    .automation-admission-technical-token[data-automation-admission-token="DEALER_APPROVED"] {
-      border-color: var(--palette-blue-300);
-      background: color-mix(in srgb, var(--palette-blue-100) 52%, var(--surface-card));
-      color: var(--palette-blue-800);
-    }
-
-    .automation-admission-function-description {
-      margin: 0;
-      padding: 12px 14px;
-      color: var(--text-muted);
-      line-height: 1.45;
-    }
-
-    .automation-admission-future {
-      display: flex;
-      align-items: flex-start;
-      gap: 9px;
-      margin: 0;
-      padding: 10px 12px;
-      border: 1px solid var(--palette-yellow-400);
-      border-radius: var(--workbench-radius);
-      background: var(--palette-yellow-100);
-      color: var(--text-strong);
-      line-height: 1.45;
-    }
-
-    .automation-admission-future > .button-icon {
-      flex: 0 0 auto;
-      color: var(--palette-yellow-700);
-      font-size: 19px;
     }
 
     .manual-process-summary {
@@ -7060,15 +6724,6 @@
     }
 
     @media (max-width: 899.98px) {
-      .automation-admission-concepts {
-        grid-template-columns: 1fr;
-      }
-      .automation-admission-function-grid {
-        grid-template-columns: 1fr;
-      }
-
-
-
       .manual-process-summary,
       .manual-process-summary-flow {
         align-items: flex-start;
@@ -14877,35 +14532,680 @@
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-panel {
+    .auto-hedging-settings-workspace {
       width: min(1180px, 100%);
-      overflow: hidden;
-      border-color: var(--hedging-settings-border);
+      display: grid;
+      gap: 16px;
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-panel
-    > .table-panel__head {
-      border-bottom-color: var(--hedging-settings-border);
-      background: var(--hedging-settings-accent-soft);
+    .auto-hedging-settings-workspace-head {
+      padding: 4px 0 0;
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-empty {
-      display: flex;
-      min-height: 160px;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+    .auto-hedging-settings-workspace-head h2,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-head h3 {
+      margin: 0;
+      color: var(--bs-body-color);
+      font-weight: 700;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-settings-workspace-head h2 {
+      font-size: var(--app-font-size-page-title);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-settings-workspace-head p,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-head p,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-client-policy-head p,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-policy-block-copy p,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy-heading p {
+      margin: 4px 0 0;
       color: var(--bs-secondary-color);
-      font-size: var(--app-font-size-control);
+      font-size: var(--app-font-size-caption);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-empty
-    .button-icon {
-      color: var(--hedging-settings-accent-text);
-      font-size: 24px;
+    .auto-hedging-entry-route-switch {
+      width: min(760px, 100%);
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: calc(var(--bs-border-radius) + 4px);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-option {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      min-height: 58px;
+      padding: 9px 12px;
+      border: 1px solid transparent;
+      border-radius: var(--bs-border-radius);
+      background: transparent;
+      color: var(--bs-secondary-color);
+      text-align: left;
+      transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-option:hover {
+      color: var(--bs-body-color);
+      background: color-mix(in srgb, var(--bs-body-bg) 72%, transparent);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-option:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--bs-primary) 24%, transparent);
+      outline-offset: 1px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-option.is-active {
+      border-color: color-mix(in srgb, var(--bs-primary) 42%, var(--bs-border-color));
+      background: var(--bs-body-bg);
+      color: var(--bs-primary-text-emphasis);
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-option > .button-icon {
+      color: var(--bs-primary);
+      font-size: 22px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-option-copy {
+      display: grid;
+      gap: 1px;
+      min-width: 0;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-option-copy strong {
+      color: currentColor;
+      font-size: var(--app-font-size-control);
+      font-weight: 700;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-option-copy small {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      line-height: 1.25;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-panel[hidden],
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-body[hidden] {
+      display: none;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-panel {
+      display: grid;
+      gap: 12px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-entry-route-head h3 {
+      font-size: var(--app-font-size-section-title);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment {
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: calc(var(--bs-border-radius) + 2px);
+      background: var(--bs-body-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment.is-expanded {
+      border-color: color-mix(in srgb, var(--bs-primary) 32%, var(--bs-border-color));
+      box-shadow: -4px 0 0 var(--palette-blue-500);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-heading {
+      margin: 0;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-toggle {
+      width: 100%;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 16px;
+      border: 0;
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      text-align: left;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-toggle:hover,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-toggle:focus-visible {
+      background: var(--bs-tertiary-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-toggle:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--bs-primary) 22%, transparent);
+      outline-offset: -3px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-icon {
+      color: var(--palette-blue-600);
+      font-size: 22px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-copy {
+      display: grid;
+      gap: 1px;
+      min-width: 0;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-copy strong {
+      font-size: var(--app-font-size-control);
+      font-weight: 700;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-copy small {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-toggle .badge {
+      font-size: var(--app-font-size-caption);
+      font-weight: 600;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-chevron {
+      color: var(--bs-secondary-color);
+      transition: transform 120ms ease;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-toggle[aria-expanded="true"]
+    .auto-hedging-trade-segment-chevron {
+      transform: rotate(180deg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-trade-segment-body {
+      border-top: 1px solid var(--bs-border-color);
+      background: color-mix(in srgb, var(--bs-tertiary-bg) 42%, var(--bs-body-bg));
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-panel {
+      display: block;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-client-policy-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--bs-border-color);
+      background: var(--bs-body-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-client-policy-head strong {
+      font-size: var(--app-font-size-section-title);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-body {
+      display: grid;
+      gap: 16px;
+      padding: 20px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-body > .semantic-section {
+      --semantic-section-accent: var(--palette-blue-500);
+      --semantic-section-border-color: var(--bs-border-color);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-policy-block-copy h5,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy-heading h5 {
+      margin: 0;
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-section-title);
+      font-weight: 700;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-policy-block {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--bs-body-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-policy-block-icon {
+      flex: 0 0 auto;
+      color: var(--palette-blue-600);
+      font-size: 22px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-policy-block-copy {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-core-rule-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-deviation-field {
+      width: min(220px, 100%);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-deviation-field > .input-group {
+      width: 100%;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy {
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy-heading,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy-heading-copy {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-toolbar {
+      background: var(--bs-tertiary-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-search {
+      width: min(360px, 100%);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-filter {
+      width: 150px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-table-viewport {
+      position: relative;
+      max-height: min(56vh, 620px);
+      overflow: auto;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-table {
+      min-width: 720px;
+      margin: 0;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 10px 12px;
+      border-bottom-width: 1px;
+      background: var(--bs-secondary-bg);
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      white-space: nowrap;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-table tbody td {
+      padding: 9px 12px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-table th:nth-child(1) {
+      width: 24%;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-table th:nth-child(2) {
+      width: 25%;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-enabled {
+      display: flex;
+      justify-content: center;
+      margin: 0;
+      min-height: 24px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-enabled .form-check-input {
+      margin-top: 0;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-limit {
+      width: min(320px, 100%);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-limit .input-group-text {
+      min-width: 54px;
+      justify-content: center;
+      font-weight: 600;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-empty {
+      padding: 24px 16px;
+      color: var(--bs-secondary-color);
+      text-align: center;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-policy-empty-state,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-shared-policy-note {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: flex-start;
+      margin: 16px;
+      padding: 14px 16px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-policy-empty-state > .button-icon,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-shared-policy-note > .button-icon {
+      color: var(--palette-blue-600);
+      font-size: 22px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-policy-empty-state p,
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-shared-policy-note p {
+      margin: 3px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-shared-policy-note {
+      border-left: 4px solid var(--palette-blue-500);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-shared-policy-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin: 0;
+      padding: 0 16px 16px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-shared-policy-summary > div {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--bs-border-color);
+      border-right: 0;
+      background: var(--bs-body-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-shared-policy-summary > div:first-child {
+      border-radius: var(--bs-border-radius) 0 0 var(--bs-border-radius);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-shared-policy-summary > div:last-child {
+      border-right: 1px solid var(--bs-border-color);
+      border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-shared-policy-summary dt {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      font-weight: 500;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-shared-policy-summary dd {
+      margin: 0;
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-control);
+      font-weight: 700;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-technical-trade-types {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-technical-trade-types > div {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-technical-trade-types > div > .button-icon {
+      color: var(--palette-blue-600);
+      font-size: 21px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-technical-trade-types > div > span:nth-child(2) {
+      display: grid;
+      gap: 2px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-technical-trade-types small {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-status {
+      min-height: 20px;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-status:empty {
+      display: none;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-status.is-error {
+      color: var(--bs-danger-text-emphasis);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-status.is-success {
+      color: var(--bs-success-text-emphasis);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-footer {
+      display: flex;
+      justify-content: flex-end;
+      padding: 12px 20px;
+      border-top: 1px solid var(--hedging-settings-border);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-panel[aria-busy="true"]
+    .auto-hedging-admission-settings-body {
+      opacity: 0.68;
+      pointer-events: none;
+    }
+
+    @media (max-width: 720px) {
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-client-policy-head,
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-pair-policy-heading,
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-pair-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-entry-route-switch {
+        grid-template-columns: 1fr;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-trade-segment-toggle {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-trade-segment-toggle .badge {
+        grid-column: 2;
+        justify-self: start;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-trade-segment-chevron {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-shared-policy-summary {
+        grid-template-columns: 1fr;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-shared-policy-summary > div {
+        border-right: 1px solid var(--bs-border-color);
+        border-bottom: 0;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-shared-policy-summary > div:first-child {
+        border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-shared-policy-summary > div:last-child {
+        border-bottom: 1px solid var(--bs-border-color);
+        border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius);
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-policy-block {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-deviation-field,
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-core-rule-badges {
+        grid-column: 1 / -1;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-deviation-field {
+        width: 100%;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-core-rule-badges {
+        justify-content: flex-start;
+      }
+
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-pair-filter {
+        width: 100%;
+      }
     }
     /* FX Position keeps its mirrored domain layout while following the Bootstrap 5 + Tabulator workbench contract. */
     #mainPage.fx-position-bootstrap.workbench-page {
@@ -17803,6 +18103,8 @@
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor > .client-deal-create-section.semantic-section {
       --semantic-section-accent: var(--hedging-settings-border);
+      border-left: 5px solid var(--semantic-section-accent);
+      box-shadow: none;
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page

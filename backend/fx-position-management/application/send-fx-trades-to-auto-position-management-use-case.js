@@ -32,7 +32,7 @@ function normalizedCommand(command) {
 
   if (!Array.isArray(source.trades) || source.trades.length === 0) {
     throw invalidCommand(
-      "Select at least one FX Trade from Manual Control."
+      "Select at least one FX Trade from Manual Review."
     );
   }
 

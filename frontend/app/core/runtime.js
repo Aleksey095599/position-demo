@@ -64,8 +64,8 @@
       MANUAL: "Manual Control",
       AUTO: "Auto Hedging"
     });
-    const AUTO_HEDGING_ADMISSION_POLICIES = Object.freeze(["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED", "MANUAL_ONLY"]);
-    const AUTO_HEDGING_ADMISSION_POLICY_LABELS = Object.freeze({
+    const AUTO_HEDGING_ADMISSION_MODES = Object.freeze(["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED", "MANUAL_ONLY"]);
+    const AUTO_HEDGING_ADMISSION_MODE_LABELS = Object.freeze({
       AUTO_IF_ELIGIBLE: "Auto if eligible",
       REVIEW_REQUIRED: "Review required",
       MANUAL_ONLY: "Manual only"
@@ -130,6 +130,7 @@
     let pricingContexts = loadPricingContexts();
     let clientPricingRules = loadClientPricingRules();
     let hedgeQuickModeSettings = loadHedgeQuickModeSettings();
+    let autoHedgingAdmissionPolicy = loadAutoHedgingAdmissionPolicy();
     let batchingSettings = loadFxBatchingSettings();
     let autoBatchingSettings = loadFxAutoBatchingSettings();
     let clientFxDeals = loadClientFxDeals();
@@ -934,8 +935,6 @@
       document.querySelectorAll("[data-process-catalog-view]")
     );
     const manualBatchFormationProcessView = document.getElementById("manualBatchFormationProcessView");
-    const autoHedgingProcessView = document.getElementById("autoHedgingProcessView");
-    const automationAdmissionProcessView = document.getElementById("automationAdmissionProcessView");
     const domainGlossaryProcessView = document.getElementById("domainGlossaryProcessView");
     const processCatalogLanguageButtons = Array.from(
       document.querySelectorAll("[data-process-language]")
@@ -1280,6 +1279,29 @@
     );
     const quickHedgeSettingsPanel = document.getElementById("quickHedgeSettingsPanel");
     const autoHedgingAdmissionSettingsPanel = document.getElementById("autoHedgingAdmissionSettingsPanel");
+    const autoHedgingSettingsRouteControls = Array.from(
+      document.querySelectorAll("[data-auto-hedging-settings-route]")
+    );
+    const autoHedgingSettingsRoutePanels = Array.from(
+      document.querySelectorAll("[data-auto-hedging-settings-route-panel]")
+    );
+    const autoHedgingSettingsSegmentToggles = Array.from(
+      document.querySelectorAll("[data-auto-hedging-segment-toggle]")
+    );
+    const autoHedgingAdmissionPolicyForm = document.getElementById("autoHedgingAdmissionPolicyForm");
+    const autoHedgingAdmissionPolicyRevision = document.getElementById("autoHedgingAdmissionPolicyRevision");
+    const autoHedgingMaxTransferRateDeviationPercent = document.getElementById("autoHedgingMaxTransferRateDeviationPercent");
+    const autoHedgingAdmissionPairSummary = document.getElementById("autoHedgingAdmissionPairSummary");
+    const autoHedgingAdmissionPairSearch = document.getElementById("autoHedgingAdmissionPairSearch");
+    const autoHedgingAdmissionPairSearchClear = document.getElementById("autoHedgingAdmissionPairSearchClear");
+    const autoHedgingAdmissionPairFilter = document.getElementById("autoHedgingAdmissionPairFilter");
+    const autoHedgingAdmissionPairRows = document.getElementById("autoHedgingAdmissionPairRows");
+    const autoHedgingAdmissionPairEmpty = document.getElementById("autoHedgingAdmissionPairEmpty");
+    const autoHedgingAdmissionPolicyStatus = document.getElementById("autoHedgingAdmissionPolicyStatus");
+    const autoHedgingAdmissionPolicySaveButton = document.getElementById("autoHedgingAdmissionPolicySaveButton");
+    const autoHedgingManualReleaseSharedRevision = document.getElementById("autoHedgingManualReleaseSharedRevision");
+    const autoHedgingManualReleaseSharedPairSummary = document.getElementById("autoHedgingManualReleaseSharedPairSummary");
+    const autoHedgingManualReleaseSharedDeviation = document.getElementById("autoHedgingManualReleaseSharedDeviation");
     const batchingSettingsTabs = Array.from(
       document.querySelectorAll("[data-batching-settings-tab]")
     );
@@ -1401,7 +1423,10 @@
           "fx_hedge_quick_mode_settings",
           "fx_batching_settings",
           "fx_auto_batching_settings",
-          "fx_auto_batching_ccy_pairs"
+          "fx_auto_batching_ccy_pairs",
+          "auto_hedging_admission_policy_current",
+          "auto_hedging_admission_policy_revisions",
+          "auto_hedging_admission_policy_pair_rules"
         ]
       },
       {
@@ -1443,6 +1468,7 @@
         tables: [
           "fx_trade_position_management_transitions",
           "fx_trade_market_snapshot",
+          "fx_auto_hedging_admission_decisions",
           "v_fx_batch_formation_audit"
         ]
       },
@@ -1527,6 +1553,9 @@
     let hedgeQuickModeSettingsGridReady = false;
     let hedgeQuickModeSettingsView = "overview";
     let hedgeQuickModeSettingsSaving = false;
+    let autoHedgingAdmissionPolicySaving = false;
+    let autoHedgingAdmissionPolicyLoaded = false;
+    let autoHedgingAdmissionPolicyEventsBound = false;
     let hedgeQuickModeDealCreating = false;
     let addClientDealSubmitWithControl = false;
     let clientDealDuplicateCheckGrid = null;
@@ -2643,7 +2672,10 @@
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        throw new Error(errorBody.message || `Request failed with HTTP ${response.status}.`);
+        const error = new Error(errorBody.message || `Request failed with HTTP ${response.status}.`);
+        error.status = response.status;
+        error.code = String(errorBody.code || "");
+        throw error;
       }
 
       return response.status === 204 ? null : response.json();
@@ -2850,11 +2882,11 @@
       return POSITION_MANAGEMENT_MODE_LABELS[normalizedPositionManagementMode(value)];
     }
 
-    function normalizedAutoHedgingAdmissionPolicy(value, defaultPositionManagementMode = "MANUAL") {
-      const policy = normalizedReferenceCode(value);
+    function normalizedAutoHedgingAdmissionMode(value, defaultPositionManagementMode = "MANUAL") {
+      const mode = normalizedReferenceCode(value);
 
-      if (AUTO_HEDGING_ADMISSION_POLICIES.includes(policy)) {
-        return policy;
+      if (AUTO_HEDGING_ADMISSION_MODES.includes(mode)) {
+        return mode;
       }
 
       return normalizedPositionManagementMode(defaultPositionManagementMode) === "AUTO"
@@ -2862,17 +2894,17 @@
         : "MANUAL_ONLY";
     }
 
-    function autoHedgingAdmissionPolicyLabel(value) {
-      return AUTO_HEDGING_ADMISSION_POLICY_LABELS[normalizedAutoHedgingAdmissionPolicy(value)];
+    function autoHedgingAdmissionModeLabel(value) {
+      return AUTO_HEDGING_ADMISSION_MODE_LABELS[normalizedAutoHedgingAdmissionMode(value)];
     }
 
-    function autoHedgingAdmissionPolicyBadgeMarkup(value) {
-      const policy = normalizedAutoHedgingAdmissionPolicy(value);
-      const toneClass = policy === "AUTO_IF_ELIGIBLE"
+    function autoHedgingAdmissionModeBadgeMarkup(value) {
+      const mode = normalizedAutoHedgingAdmissionMode(value);
+      const toneClass = mode === "AUTO_IF_ELIGIBLE"
         ? " is-auto"
-        : policy === "REVIEW_REQUIRED" ? " is-review-required" : " is-manual-only";
+        : mode === "REVIEW_REQUIRED" ? " is-review-required" : " is-manual-only";
 
-      return `<span class="position-management-mode-badge auto-hedging-admission-policy-badge${toneClass}">${escapeHtml(autoHedgingAdmissionPolicyLabel(policy))}</span>`;
+      return `<span class="position-management-mode-badge auto-hedging-admission-mode-badge${toneClass}">${escapeHtml(autoHedgingAdmissionModeLabel(mode))}</span>`;
     }
 
     function effectivePositionManagementModeForRule(rule, context = null) {
@@ -3355,8 +3387,9 @@
           const defaultPositionManagementMode = normalizedPositionManagementMode(
             item?.defaultPositionManagementMode ?? item?.default_position_management_mode
           );
-          const autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(
-            item?.autoHedgingAdmissionPolicy ?? item?.auto_hedging_admission_policy,
+          const autoHedgingAdmissionMode = normalizedAutoHedgingAdmissionMode(
+            item?.autoHedgingAdmissionMode ??
+            item?.auto_hedging_admission_mode,
             defaultPositionManagementMode
           );
           let pricingContextIdValue = normalizedIntegerId(
@@ -3393,7 +3426,7 @@
             settlementSystemId,
             tradeCaptureChannelId,
             defaultPositionManagementMode,
-            autoHedgingAdmissionPolicy,
+            autoHedgingAdmissionMode,
             assignedCounterpartyCount,
             pricingRulesCount
           };
@@ -3654,6 +3687,83 @@
     function loadHedgeQuickModeSettings() {
       return normalizedHedgeQuickModeSettings(
         DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.hedgeQuickModeSettings : []
+      );
+    }
+
+    function normalizedAutoHedgingAdmissionPolicyPair(source) {
+      const ccyPairCode = String(source?.ccyPairCode || "").trim().toUpperCase();
+      const currencyPair = normalizedPricingRuleCurrencyPair(
+        source?.currencyPair || ccyPairCode.replace("_", "/")
+      );
+      const baseCcyCode = String(
+        source?.baseCcyCode || currenciesFromPair(currencyPair).base
+      ).trim().toUpperCase();
+      const fractionDigits = Number(source?.baseCcyFractionDigits);
+      const maxBaseCcyAmount = positiveDecimalInputText(source?.maxBaseCcyAmount);
+
+      if (
+        !/^[A-Z]{3}_[A-Z]{3}$/.test(ccyPairCode)
+        || !/^[A-Z]{3}\/[A-Z]{3}$/.test(currencyPair)
+        || !/^[A-Z]{3}$/.test(baseCcyCode)
+      ) {
+        return null;
+      }
+
+      return {
+        ccyPairCode,
+        currencyPair,
+        baseCcyCode,
+        baseCcyFractionDigits: Number.isInteger(fractionDigits)
+          && fractionDigits >= 0
+          && fractionDigits <= 10
+          ? fractionDigits
+          : 2,
+        enabled: source?.enabled === true || Number(source?.enabled) === 1,
+        maxBaseCcyAmount
+      };
+    }
+
+    function normalizedAutoHedgingAdmissionPolicy(source) {
+      const revision = Number(source?.revision);
+      const deviation = normalizedDecimalInputText(
+        source?.maxTransferRateDeviationPercent
+      );
+      let maxTransferRateDeviationPercent = "0";
+
+      try {
+        if (
+          deviation !== null
+          && new Big(deviation).gte(0)
+          && new Big(deviation).lte(100)
+        ) {
+          maxTransferRateDeviationPercent = deviation;
+        }
+      } catch {}
+
+      const seenCodes = new Set();
+      const currencyPairs = (Array.isArray(source?.currencyPairs)
+        ? source.currencyPairs
+        : [])
+        .map(normalizedAutoHedgingAdmissionPolicyPair)
+        .filter(pair => {
+          if (!pair || seenCodes.has(pair.ccyPairCode)) {
+            return false;
+          }
+          seenCodes.add(pair.ccyPairCode);
+          return true;
+        })
+        .sort((left, right) => left.currencyPair.localeCompare(right.currencyPair));
+
+      return {
+        revision: Number.isInteger(revision) && revision >= 0 ? revision : 0,
+        maxTransferRateDeviationPercent,
+        currencyPairs
+      };
+    }
+
+    function loadAutoHedgingAdmissionPolicy() {
+      return normalizedAutoHedgingAdmissionPolicy(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.autoHedgingAdmissionPolicy : null
       );
     }
 

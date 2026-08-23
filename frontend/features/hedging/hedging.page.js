@@ -348,6 +348,515 @@
       setWorkbenchPageStatus(hedgeQuickModeSettingsStatus, message, tone);
     }
 
+    function setAutoHedgingAdmissionPolicyStatus(message = "", tone = "") {
+      setWorkbenchPageStatus(autoHedgingAdmissionPolicyStatus, message, tone);
+    }
+
+    function setAutoHedgingSettingsRoute(routeName, { focus = false } = {}) {
+      const normalizedRoute = routeName === "manual-release"
+        ? "manual-release"
+        : "initial";
+      let activeControl = null;
+
+      autoHedgingSettingsRouteControls.forEach(control => {
+        const active = control.dataset.autoHedgingSettingsRoute === normalizedRoute;
+        control.classList.toggle("is-active", active);
+        control.setAttribute("aria-pressed", String(active));
+        if (active) {
+          activeControl = control;
+        }
+      });
+
+      autoHedgingSettingsRoutePanels.forEach(panel => {
+        panel.hidden = panel.dataset.autoHedgingSettingsRoutePanel !== normalizedRoute;
+      });
+
+      if (focus) {
+        activeControl?.focus();
+      }
+    }
+
+    function setAutoHedgingSettingsSegmentExpanded(toggle, expanded) {
+      const panelId = toggle?.getAttribute("aria-controls");
+      const panel = panelId ? document.getElementById(panelId) : null;
+      const segment = toggle?.closest(".auto-hedging-trade-segment");
+
+      if (!toggle || !panel || !segment) {
+        return;
+      }
+
+      toggle.setAttribute("aria-expanded", String(expanded));
+      panel.hidden = !expanded;
+      segment.classList.toggle("is-expanded", expanded);
+    }
+
+    function toggleAutoHedgingSettingsSegment(toggle) {
+      const expand = toggle.getAttribute("aria-expanded") !== "true";
+      const segmentList = toggle.closest("[data-auto-hedging-settings-segments]");
+
+      if (expand && segmentList) {
+        segmentList.querySelectorAll("[data-auto-hedging-segment-toggle]")
+          .forEach(otherToggle => {
+            if (otherToggle !== toggle) {
+              setAutoHedgingSettingsSegmentExpanded(otherToggle, false);
+            }
+          });
+      }
+
+      setAutoHedgingSettingsSegmentExpanded(toggle, expand);
+    }
+
+    function setAutoHedgingAdmissionPolicyBusy(busy) {
+      const isBusy = busy === true;
+      autoHedgingAdmissionPolicyForm.setAttribute("aria-busy", String(isBusy));
+      autoHedgingMaxTransferRateDeviationPercent.disabled =
+        isBusy || !autoHedgingAdmissionPolicyLoaded;
+      autoHedgingAdmissionPairRows
+        .querySelectorAll("[data-auto-hedging-admission-pair-enabled]")
+        .forEach(control => {
+          control.disabled = isBusy || !autoHedgingAdmissionPolicyLoaded;
+        });
+      autoHedgingAdmissionPairRows
+        .querySelectorAll("[data-auto-hedging-admission-pair-limit]")
+        .forEach(control => {
+          const row = control.closest("[data-auto-hedging-admission-pair-code]");
+          const enabledControl = row?.querySelector(
+            "[data-auto-hedging-admission-pair-enabled]"
+          );
+          control.disabled = isBusy
+            || !autoHedgingAdmissionPolicyLoaded
+            || !enabledControl?.checked;
+        });
+
+      if (isBusy || !autoHedgingAdmissionPolicyLoaded) {
+        autoHedgingAdmissionPolicySaveButton.disabled = true;
+      }
+    }
+
+    function autoHedgingAdmissionPairRowMarkup(pair) {
+      const controlSuffix = pair.ccyPairCode.toLowerCase();
+      const switchId = `autoHedgingAdmissionEnabled_${controlSuffix}`;
+      const limitId = `autoHedgingAdmissionLimit_${controlSuffix}`;
+      const amountValue = pair.maxBaseCcyAmount === null
+        ? ""
+        : groupedDecimalText(pair.maxBaseCcyAmount);
+
+      return `
+        <tr
+          data-auto-hedging-admission-pair-code="${escapeHtml(pair.ccyPairCode)}"
+          data-auto-hedging-admission-pair-search="${escapeHtml(`${pair.currencyPair} ${pair.ccyPairCode} ${pair.baseCcyCode}`.toUpperCase())}"
+        >
+          <td>
+            <strong>${escapeHtml(pair.currencyPair)}</strong>
+          </td>
+          <td class="text-center">
+            <div class="form-check form-switch auto-hedging-admission-pair-enabled">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="${escapeHtml(switchId)}"
+                aria-label="Enable automatic admission for ${escapeHtml(pair.currencyPair)}"
+                data-auto-hedging-admission-pair-enabled
+                ${pair.enabled ? "checked" : ""}
+                ${autoHedgingAdmissionPolicyLoaded ? "" : "disabled"}
+              >
+            </div>
+          </td>
+          <td>
+            <div class="input-group input-group-sm auto-hedging-admission-pair-limit">
+              <label class="visually-hidden" for="${escapeHtml(limitId)}">Maximum Trade Amount for ${escapeHtml(pair.currencyPair)} in ${escapeHtml(pair.baseCcyCode)}</label>
+              <input
+                class="form-control"
+                type="text"
+                id="${escapeHtml(limitId)}"
+                value="${escapeHtml(amountValue)}"
+                inputmode="decimal"
+                aria-label="Maximum Trade Amount for ${escapeHtml(pair.currencyPair)} in ${escapeHtml(pair.baseCcyCode)}"
+                data-auto-hedging-admission-pair-limit
+                ${pair.enabled && autoHedgingAdmissionPolicyLoaded ? "" : "disabled"}
+              >
+              <span class="input-group-text">${escapeHtml(pair.baseCcyCode)}</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    function updateAutoHedgingAdmissionPairSummary() {
+      const total = autoHedgingAdmissionPolicy.currencyPairs.length;
+      const enabled = autoHedgingAdmissionPairRows.querySelectorAll(
+        "[data-auto-hedging-admission-pair-enabled]:checked"
+      ).length;
+      autoHedgingAdmissionPairSummary.textContent = `${enabled} of ${total} enabled`;
+    }
+
+    function filterAutoHedgingAdmissionPairs() {
+      const query = String(autoHedgingAdmissionPairSearch.value || "")
+        .trim()
+        .toUpperCase();
+      const statusFilter = String(autoHedgingAdmissionPairFilter.value || "ALL")
+        .trim()
+        .toUpperCase();
+      let visibleCount = 0;
+
+      autoHedgingAdmissionPairRows
+        .querySelectorAll("[data-auto-hedging-admission-pair-code]")
+        .forEach(row => {
+          const enabled = row.querySelector(
+            "[data-auto-hedging-admission-pair-enabled]"
+          )?.checked === true;
+          const matchesQuery = !query
+            || String(row.dataset.autoHedgingAdmissionPairSearch || "").includes(query);
+          const matchesStatus = statusFilter === "ALL"
+            || (statusFilter === "ENABLED" && enabled)
+            || (statusFilter === "DISABLED" && !enabled);
+          const visible = matchesQuery && matchesStatus;
+
+          row.hidden = !visible;
+          if (visible) {
+            visibleCount += 1;
+          }
+        });
+
+      autoHedgingAdmissionPairSearchClear.hidden = query.length === 0;
+      autoHedgingAdmissionPairEmpty.textContent =
+        autoHedgingAdmissionPolicy.currencyPairs.length === 0
+          ? "No Currency Pairs are available in the policy."
+          : "No Currency Pairs match the current filters.";
+      autoHedgingAdmissionPairEmpty.hidden = visibleCount > 0;
+    }
+
+    function renderAutoHedgingAdmissionPolicy() {
+      const enabledPairCount = autoHedgingAdmissionPolicy.currencyPairs
+        .filter(pair => pair.enabled)
+        .length;
+
+      autoHedgingAdmissionPolicyRevision.textContent =
+        `Revision ${autoHedgingAdmissionPolicy.revision}`;
+      autoHedgingManualReleaseSharedRevision.textContent =
+        `Revision ${autoHedgingAdmissionPolicy.revision}`;
+      autoHedgingManualReleaseSharedPairSummary.textContent =
+        `${enabledPairCount} of ${autoHedgingAdmissionPolicy.currencyPairs.length} enabled`;
+      autoHedgingManualReleaseSharedDeviation.textContent =
+        `${autoHedgingAdmissionPolicy.maxTransferRateDeviationPercent}%`;
+      autoHedgingMaxTransferRateDeviationPercent.value =
+        autoHedgingAdmissionPolicy.maxTransferRateDeviationPercent;
+      autoHedgingAdmissionPairRows.innerHTML = autoHedgingAdmissionPolicy.currencyPairs
+        .map(autoHedgingAdmissionPairRowMarkup)
+        .join("");
+      updateAutoHedgingAdmissionPairSummary();
+      filterAutoHedgingAdmissionPairs();
+      setAutoHedgingAdmissionPolicyBusy(autoHedgingAdmissionPolicySaving);
+      updateAutoHedgingAdmissionPolicySaveAvailability();
+    }
+
+    function decimalFractionDigitCount(value) {
+      const decimal = String(value || "").split(".")[1] || "";
+      return decimal.length;
+    }
+
+    function autoHedgingAdmissionPolicyDraft() {
+      const deviationInput = autoHedgingMaxTransferRateDeviationPercent;
+      const deviation = normalizedDecimalInputText(deviationInput.value);
+      let validDeviation = false;
+
+      try {
+        validDeviation = deviation !== null
+          && new Big(deviation).gte(0)
+          && new Big(deviation).lte(100);
+      } catch {}
+
+      deviationInput.setCustomValidity(
+        validDeviation
+          ? ""
+          : "Enter a percentage from 0 through 100."
+      );
+
+      let pairsValid = true;
+      const currencyPairs = autoHedgingAdmissionPolicy.currencyPairs.map(pair => {
+        const row = autoHedgingAdmissionPairRows.querySelector(
+          `[data-auto-hedging-admission-pair-code="${pair.ccyPairCode}"]`
+        );
+        const enabled = row?.querySelector(
+          "[data-auto-hedging-admission-pair-enabled]"
+        )?.checked === true;
+        const amountInput = row?.querySelector(
+          "[data-auto-hedging-admission-pair-limit]"
+        );
+        const parsedMaxBaseCcyAmount = positiveDecimalInputText(amountInput?.value);
+        const maxBaseCcyAmount = enabled ? parsedMaxBaseCcyAmount : null;
+        const validAmount = !enabled || (
+          parsedMaxBaseCcyAmount !== null
+          && decimalFractionDigitCount(parsedMaxBaseCcyAmount)
+            <= pair.baseCcyFractionDigits
+        );
+
+        if (amountInput) {
+          amountInput.setCustomValidity(
+            validAmount
+              ? ""
+              : `Enter a positive ${pair.baseCcyCode} amount with no more than ${pair.baseCcyFractionDigits} decimal places.`
+          );
+        }
+        pairsValid = pairsValid && validAmount;
+
+        return {
+          ccyPairCode: pair.ccyPairCode,
+          enabled,
+          maxBaseCcyAmount
+        };
+      });
+
+      if (!validDeviation || !pairsValid) {
+        return null;
+      }
+
+      return {
+        expectedRevision: autoHedgingAdmissionPolicy.revision,
+        maxTransferRateDeviationPercent: deviation,
+        currencyPairs
+      };
+    }
+
+    function sameAutoHedgingAdmissionPolicyDraft(draft) {
+      if (!draft) {
+        return false;
+      }
+
+      try {
+        if (!new Big(draft.maxTransferRateDeviationPercent).eq(
+          autoHedgingAdmissionPolicy.maxTransferRateDeviationPercent
+        )) {
+          return false;
+        }
+      } catch {
+        return false;
+      }
+
+      return draft.currencyPairs.every((draftPair, index) => {
+        const savedPair = autoHedgingAdmissionPolicy.currencyPairs[index];
+
+        if (
+          !savedPair
+          || draftPair.ccyPairCode !== savedPair.ccyPairCode
+          || draftPair.enabled !== savedPair.enabled
+        ) {
+          return false;
+        }
+
+        if (draftPair.maxBaseCcyAmount === null || savedPair.maxBaseCcyAmount === null) {
+          return draftPair.maxBaseCcyAmount === savedPair.maxBaseCcyAmount;
+        }
+
+        try {
+          return new Big(draftPair.maxBaseCcyAmount).eq(savedPair.maxBaseCcyAmount);
+        } catch {
+          return false;
+        }
+      });
+    }
+
+    function updateAutoHedgingAdmissionPolicySaveAvailability() {
+      if (
+        autoHedgingAdmissionPolicySaving
+        || !autoHedgingAdmissionPolicyLoaded
+      ) {
+        setSaveButtonAvailability(
+          autoHedgingAdmissionPolicySaveButton,
+          false,
+          autoHedgingAdmissionPolicySaving ? "Saving Policy" : "Policy is not loaded"
+        );
+        return;
+      }
+
+      const draft = autoHedgingAdmissionPolicyDraft();
+      setSaveButtonAvailability(
+        autoHedgingAdmissionPolicySaveButton,
+        Boolean(draft) && !sameAutoHedgingAdmissionPolicyDraft(draft),
+        draft ? "No changes to save" : "Enter valid eligibility settings"
+      );
+    }
+
+    function syncAutoHedgingAdmissionPairControl(row) {
+      const enabledControl = row?.querySelector(
+        "[data-auto-hedging-admission-pair-enabled]"
+      );
+      const limitControl = row?.querySelector(
+        "[data-auto-hedging-admission-pair-limit]"
+      );
+
+      if (!enabledControl || !limitControl) {
+        return;
+      }
+
+      limitControl.disabled = autoHedgingAdmissionPolicySaving
+        || !autoHedgingAdmissionPolicyLoaded
+        || !enabledControl.checked;
+      if (!enabledControl.checked) {
+        limitControl.setCustomValidity("");
+      }
+      updateAutoHedgingAdmissionPairSummary();
+      filterAutoHedgingAdmissionPairs();
+      updateAutoHedgingAdmissionPolicySaveAvailability();
+    }
+
+    async function reloadAutoHedgingAdmissionPolicyFromApi() {
+      const response = await demoApiRequest(
+        "/api/v1/auto-hedging-admission-policy"
+      );
+      autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(response);
+      autoHedgingAdmissionPolicyLoaded = true;
+      renderAutoHedgingAdmissionPolicy();
+      return autoHedgingAdmissionPolicy;
+    }
+
+    async function loadAutoHedgingAdmissionPolicySettings() {
+      autoHedgingAdmissionPolicyLoaded = false;
+      setAutoHedgingAdmissionPolicyBusy(true);
+
+      if (!DEMO_API_ENABLED) {
+        renderAutoHedgingAdmissionPolicy();
+        setAutoHedgingAdmissionPolicyStatus(
+          "SQLite API is unavailable. Start the demo to configure the policy.",
+          "error"
+        );
+        return;
+      }
+
+      setAutoHedgingAdmissionPolicyStatus("Loading Auto Hedging Admission Policy...");
+
+      try {
+        await reloadAutoHedgingAdmissionPolicyFromApi();
+        setAutoHedgingAdmissionPolicyStatus();
+      } catch (error) {
+        autoHedgingAdmissionPolicyLoaded = false;
+        renderAutoHedgingAdmissionPolicy();
+        setAutoHedgingAdmissionPolicyStatus(
+          error.message || "Unable to load Auto Hedging Admission Policy.",
+          "error"
+        );
+      } finally {
+        setAutoHedgingAdmissionPolicyBusy(false);
+      }
+    }
+
+    async function saveAutoHedgingAdmissionPolicy(event) {
+      event.preventDefault();
+
+      if (autoHedgingAdmissionPolicySaving) {
+        return;
+      }
+
+      const draft = autoHedgingAdmissionPolicyDraft();
+
+      if (!draft) {
+        autoHedgingAdmissionPolicyForm.reportValidity();
+        updateAutoHedgingAdmissionPolicySaveAvailability();
+        return;
+      }
+
+      autoHedgingAdmissionPolicySaving = true;
+      setAutoHedgingAdmissionPolicyBusy(true);
+      setAutoHedgingAdmissionPolicyStatus("Saving Auto Hedging Admission Policy...");
+
+      try {
+        const response = await demoApiRequest(
+          "/api/v1/auto-hedging-admission-policy",
+          {
+            method: "PUT",
+            body: JSON.stringify(draft)
+          }
+        );
+        autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(response);
+        autoHedgingAdmissionPolicyLoaded = true;
+        renderAutoHedgingAdmissionPolicy();
+        setAutoHedgingAdmissionPolicyStatus(
+          "Auto Hedging Admission Policy was saved successfully.",
+          "success"
+        );
+      } catch (error) {
+        if (error.status === 409) {
+          try {
+            await reloadAutoHedgingAdmissionPolicyFromApi();
+            setAutoHedgingAdmissionPolicyStatus(
+              "The policy was updated elsewhere. The latest revision has been loaded; review it before saving again.",
+              "error"
+            );
+          } catch (reloadError) {
+            autoHedgingAdmissionPolicyLoaded = false;
+            setAutoHedgingAdmissionPolicyStatus(
+              reloadError.message || "The policy changed, but its latest revision could not be loaded.",
+              "error"
+            );
+          }
+        } else {
+          setAutoHedgingAdmissionPolicyStatus(
+            error.message || "Unable to save Auto Hedging Admission Policy.",
+            "error"
+          );
+        }
+      } finally {
+        autoHedgingAdmissionPolicySaving = false;
+        setAutoHedgingAdmissionPolicyBusy(false);
+        updateAutoHedgingAdmissionPolicySaveAvailability();
+      }
+    }
+
+    function ensureAutoHedgingAdmissionPolicyEventBindings() {
+      if (autoHedgingAdmissionPolicyEventsBound) {
+        return;
+      }
+
+      autoHedgingAdmissionPolicyEventsBound = true;
+      autoHedgingAdmissionPolicyForm.addEventListener(
+        "submit",
+        saveAutoHedgingAdmissionPolicy
+      );
+      autoHedgingMaxTransferRateDeviationPercent.addEventListener(
+        "input",
+        updateAutoHedgingAdmissionPolicySaveAvailability
+      );
+      autoHedgingAdmissionPairRows.addEventListener("change", event => {
+        if (!event.target.matches("[data-auto-hedging-admission-pair-enabled]")) {
+          return;
+        }
+        syncAutoHedgingAdmissionPairControl(
+          event.target.closest("[data-auto-hedging-admission-pair-code]")
+        );
+      });
+      autoHedgingAdmissionPairRows.addEventListener("input", event => {
+        if (event.target.matches("[data-auto-hedging-admission-pair-limit]")) {
+          updateAutoHedgingAdmissionPolicySaveAvailability();
+        }
+      });
+      autoHedgingAdmissionPairSearch.addEventListener(
+        "input",
+        filterAutoHedgingAdmissionPairs
+      );
+      autoHedgingAdmissionPairFilter.addEventListener(
+        "change",
+        filterAutoHedgingAdmissionPairs
+      );
+      autoHedgingAdmissionPairSearchClear.addEventListener("click", () => {
+        autoHedgingAdmissionPairSearch.value = "";
+        filterAutoHedgingAdmissionPairs();
+        autoHedgingAdmissionPairSearch.focus();
+      });
+      autoHedgingSettingsRouteControls.forEach(control => {
+        control.addEventListener("click", () => {
+          setAutoHedgingSettingsRoute(
+            control.dataset.autoHedgingSettingsRoute
+          );
+        });
+      });
+      autoHedgingSettingsSegmentToggles.forEach(toggle => {
+        toggle.addEventListener("click", () => {
+          toggleAutoHedgingSettingsSegment(toggle);
+        });
+      });
+    }
+
     function setHedgingSettingsTab(tabName) {
       const normalizedTab = tabName === "auto-admission" ? "auto-admission" : "quick";
 
@@ -1017,6 +1526,11 @@
     }
 
     async function loadHedgingSettingsPage() {
+      ensureAutoHedgingAdmissionPolicyEventBindings();
+      renderAutoHedgingAdmissionPolicy();
+      const autoHedgingAdmissionPolicyLoad =
+        loadAutoHedgingAdmissionPolicySettings();
+
       hedgeQuickModeSettingsForm.reset();
       hedgeQuickModeCounterpartyPickerExpanded = false;
       hedgeQuickModePricingRulesExpanded = false;
@@ -1038,6 +1552,8 @@
       } finally {
         hedgeQuickModeSettingsSaveButton.disabled = false;
       }
+
+      await autoHedgingAdmissionPolicyLoad;
     }
 
     function validateHedgeQuickModeSettingsForm() {

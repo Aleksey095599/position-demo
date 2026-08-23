@@ -521,6 +521,8 @@
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor > .client-deal-create-section.semantic-section {
       --semantic-section-accent: var(--hedging-settings-border);
+      border-left: 5px solid var(--semantic-section-accent);
+      box-shadow: none;
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page

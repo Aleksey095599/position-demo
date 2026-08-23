@@ -627,18 +627,6 @@
       return "#processes:manual-batch-formation";
     }
 
-    function autoHedgingRoute() {
-      return "#processes:auto-hedging";
-    }
-
-    function automationAdmissionRoute() {
-      return "#processes:auto-hedging-admission";
-    }
-
-    function legacyAutomationAdmissionRoute() {
-      return "#processes:automation-admission";
-    }
-
     function domainGlossaryRoute(termKey = "") {
       return termKey
         ? `#processes:domain-glossary/${encodeURIComponent(termKey)}`
@@ -647,6 +635,12 @@
 
     const PROCESS_CATALOG_GLOSSARY_TERM_KEYS = new Set([
       "auto-hedging",
+      "auto-hedging-admission",
+      "execution-context-admission-mode",
+      "auto-hedging-admission-policy",
+      "eligibility-check",
+      "admission-state",
+      "ccy-pair",
       "fx-batch",
       "batching",
       "market-pulse",
@@ -688,30 +682,13 @@
       en: Object.freeze({
         pageTitle: "Process Catalog",
         manualBatching: "Manual Batching",
-        autoHedging: "Auto Hedging",
-        autoHedgingSubtitle: "Automated FX risk management",
         autoHedgingDefinition: "An automated FX risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.",
-        autoHedgingFxPositionPresentation: "In FX Position, FX Trades admitted to the Auto Hedging process are displayed on the “Auto Hedging” tab. FX Trades not admitted to Auto Hedging remain on the “Manual Control” tab.",
-        subcatalogs: "Subcatalogs",
-        automationAdmissionCatalogDescription: "Controls which FX Trades may participate in Auto Hedging.",
-        automationAdmission: "Auto Hedging Admission",
-        automationAdmissionSubtitle: "The boundary for admitting an FX Trade to the Auto Hedging process",
-        automationAdmissionSummary: "Auto Hedging Admission controls which FX Trades may participate in Auto Hedging.",
-        automationAdmissionPolicyDefinition: "Defines the permitted admission path for an FX Trade: automatic release after checks, release after review, or manual control only.",
-        autoIfEligibleDefinition: "Release automatically when all required eligibility checks pass.",
-        reviewRequiredDefinition: "Hold first; release only after review.",
-        manualOnlyDefinition: "Keep under manual control; admission to Auto Hedging is not allowed.",
+        autoHedgingAdmissionDefinition: "The domain decision boundary that determines whether an FX Trade remains held under manual control or may be released to Auto Hedging.",
+        executionContextAdmissionModeDefinition: "A mandatory Execution Context setting that defines the permitted admission path for its FX Trades.",
+        autoHedgingAdmissionPolicyDefinition: "The complete set of mandatory rules that combines the Execution Context Admission Mode with configured Eligibility Checks to decide the Admission State.",
+        eligibilityCheckDefinition: "A safety condition evaluated from FX Trade, reference, or market data to determine eligibility for Auto Hedging. Every applicable check must pass before release.",
+        ccyPairDefinition: "An ordered pair of currencies defining the Base Currency and Quote Currency used to express an FX Trade amount and exchange rate.",
         automationAdmissionStateDefinition: "Shows whether a specific FX Trade is currently held for manual control or released to Auto Hedging.",
-        heldDefinition: "Held for manual control and does not participate in Auto Hedging.",
-        releasedDefinition: "Admitted to Auto Hedging.",
-        automationAdmissionRule: "Policy answers “which admission path is allowed?” State answers “where is this FX Trade now?”",
-        domainFunctions: "Domain Functions",
-        domainFunctionsDescription: "These pure domain functions do not persist data. They return the planned state or transition and its reason; additional admission conditions can be added later without changing the calling workflow.",
-        determineInitialAdmissionStateTitle: "Determine Initial Admission State",
-        determineInitialAdmissionStateDescription: "Demo baseline for an FX Trade with an Execution Context: if the Execution System referenced by that context has Pricing Mode AUTO_PRICED, Policy AUTO_IF_ELIGIBLE applies and the function returns State RELEASED; otherwise it returns HELD. Technical FX Trades without an Execution Context are outside this baseline and will be defined separately. Future checks may include Transfer Rate deviation from Market Pulse and trade amount limits.",
-        decideReleaseToAutoHedgingTitle: "Decide Release to Auto Hedging",
-        decideReleaseToAutoHedgingDescription: "Called when a HELD FX Trade is proposed for Auto Hedging. It returns whether HELD → RELEASED is allowed, together with the next State and reason.",
-        automationAdmissionFutureExample: "Future extension example—not implemented: release may additionally require the Transfer Rate to remain within a configured deviation corridor from current Market Pulse quotes.",
         domainGlossary: "Domain Glossary",
         domainGlossarySubtitle: "Core terms used across documented processes",
         goal: "Process goal:",
@@ -777,30 +754,13 @@
         transferRateDefinition: "\u0412\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u0443\u0447\u0451\u0442\u043d\u044b\u0439 \u043a\u0443\u0440\u0441 FX Trade, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u044b\u0439 \u0434\u043b\u044f \u0440\u0430\u0441\u0447\u0451\u0442\u0430 \u0432\u0430\u043b\u044e\u0442\u043d\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0434\u043e\u0445\u043e\u0434\u0430. \u0418\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u044d\u0442\u043e\u043c\u0443 \u043a\u0443\u0440\u0441\u0443 \u043a\u043b\u0438\u0435\u043d\u0442\u0441\u043a\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043b\u0430\u0441\u044c \u0438\u0437 \u043a\u043d\u0438\u0433\u0438 Sales \u0432 \u043a\u043d\u0438\u0433\u0443 \u043f\u043e\u0434\u0440\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u044f, \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0438 \u043f\u0435\u0440\u0435\u043a\u0440\u044b\u0432\u0430\u044e\u0449\u0435\u0433\u043e \u043f\u043e\u0437\u0438\u0446\u0438\u044e. \u0412 \u0442\u0435\u043a\u0443\u0449\u0435\u043c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438 \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0438 \u043c\u0435\u0436\u0434\u0443 \u043a\u043d\u0438\u0433\u0430\u043c\u0438 \u0438\u043b\u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0430\u043c\u0438 \u043d\u0435\u0442; \u043e\u0442\u0440\u0430\u0441\u043b\u0435\u0432\u043e\u0439 \u0442\u0435\u0440\u043c\u0438\u043d \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u043b\u044f \u043e\u0431\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f \u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0433\u043e \u0440\u0430\u0441\u0447\u0451\u0442\u043d\u043e\u0433\u043e \u043a\u0443\u0440\u0441\u0430.",
         pageTitle: "Каталог процессов",
         manualBatching: "Ручной Batching",
-        autoHedging: "Auto Hedging",
-        autoHedgingSubtitle: "Автоматизированное управление валютным риском",
         autoHedgingDefinition: "Автоматизированный процесс управления валютным риском, который контролирует открытую валютную позицию и применяет настроенные алгоритмы и ограничения для удержания валютного риска в утверждённых пределах.",
-        autoHedgingFxPositionPresentation: "В FX Position FX Trades, допущенные к процессу Auto Hedging, отображаются на вкладке «Auto Hedging». FX Trades, не допущенные к Auto Hedging, остаются на вкладке «Manual Control».",
-        subcatalogs: "Подкаталоги",
-        automationAdmissionCatalogDescription: "Определяет, какие FX Trades могут участвовать в Auto Hedging.",
-        automationAdmission: "Auto Hedging Admission",
-        automationAdmissionSubtitle: "Границы допуска FX Trade к процессу Auto Hedging",
-        automationAdmissionSummary: "Auto Hedging Admission определяет, какие FX Trades могут участвовать в Auto Hedging.",
-        automationAdmissionPolicyDefinition: "Определяет допустимый порядок допуска FX Trade: автоматический допуск после проверок, допуск после ручной проверки либо только ручной контроль.",
-        autoIfEligibleDefinition: "Допустить автоматически, если пройдены все обязательные проверки.",
-        reviewRequiredDefinition: "Сначала удержать; допустить только после проверки.",
-        manualOnlyDefinition: "Оставить под ручным контролем; допуск к Auto Hedging запрещён.",
+        autoHedgingAdmissionDefinition: "Доменная граница принятия решения, определяющая, остаётся ли FX Trade под ручным контролем или может быть допущена к Auto Hedging.",
+        executionContextAdmissionModeDefinition: "Обязательная настройка Execution Context, определяющая допустимый путь допуска связанных с ним FX Trades.",
+        autoHedgingAdmissionPolicyDefinition: "Полный набор обязательных правил, объединяющий Execution Context Admission Mode с настроенными Eligibility Checks для определения Admission State.",
+        eligibilityCheckDefinition: "Условие безопасности, проверяемое по данным FX Trade, справочным или рыночным данным для определения возможности участия в Auto Hedging. Перед допуском должны быть пройдены все применимые проверки.",
+        ccyPairDefinition: "Упорядоченная пара валют, определяющая Base Currency и Quote Currency, в которых выражаются сумма и обменный курс FX Trade.",
         automationAdmissionStateDefinition: "Показывает, удерживается ли конкретная FX Trade для ручного контроля или уже допущена к Auto Hedging.",
-        heldDefinition: "Удерживается для ручного контроля и не участвует в Auto Hedging.",
-        releasedDefinition: "Допущена к Auto Hedging.",
-        automationAdmissionRule: "Policy отвечает на вопрос «какой путь допуска разрешён?». State — «где находится конкретная FX Trade сейчас?».",
-        domainFunctions: "Доменные функции",
-        domainFunctionsDescription: "Эти чистые доменные функции не сохраняют данные. Они возвращают запланированное состояние или переход и его причину; в дальнейшем в них можно добавлять новые условия допуска, не меняя вызывающий сценарий.",
-        determineInitialAdmissionStateTitle: "Determine Initial Admission State",
-        determineInitialAdmissionStateDescription: "Базовая реализация демо для FX Trade с Execution Context: если связанная с этим контекстом Execution System имеет Pricing Mode AUTO_PRICED, применяется Policy AUTO_IF_ELIGIBLE и функция возвращает State RELEASED; в остальных случаях — HELD. Правила для технических FX Trades без Execution Context будут определены отдельно. В будущем могут добавиться проверки отклонения Transfer Rate от Market Pulse и лимита суммы сделки.",
-        decideReleaseToAutoHedgingTitle: "Decide Release to Auto Hedging",
-        decideReleaseToAutoHedgingDescription: "Вызывается, когда удерживаемую FX Trade предлагается допустить к Auto Hedging. Возвращает, разрешён ли переход HELD → RELEASED, а также следующее состояние и причину решения.",
-        automationAdmissionFutureExample: "Пример будущего расширения — пока не реализовано: для допуска может дополнительно требоваться, чтобы Transfer Rate находился в настроенном диапазоне отклонения от текущих котировок Market Pulse.",
         domainGlossary: "Domain Glossary",
         domainGlossarySubtitle: "Основные термины, используемые в описаниях процессов",
         goal: "Цель процесса:",
@@ -867,7 +827,6 @@
           languageSwitch: "Process Catalog language",
           catalog: "Process catalog",
           processes: "Processes",
-          autoHedgingSubcatalogs: "Auto Hedging subcatalogs",
           processGoal: "Process goal",
           processMap: "Manual Batching process map",
           tenorOutcomes: "Tenor decision outcomes",
@@ -878,7 +837,6 @@
           languageSwitch: "Язык каталога процессов",
           catalog: "Каталог процессов",
           processes: "Процессы",
-          autoHedgingSubcatalogs: "Подкаталоги Auto Hedging",
           processGoal: "Цель процесса",
           processMap: "Схема процесса «Ручной Batching»",
           tenorOutcomes: "Варианты разрешения Tenor",

@@ -34,6 +34,11 @@ const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
     tableKey: "execution_contexts_grid",
     legacyColumnKey: "pricing_rules_count",
     columnKey: "counterparties_count"
+  }),
+  Object.freeze({
+    tableKey: "execution_contexts_grid",
+    legacyColumnKey: "auto_hedging_admission_policy",
+    columnKey: "auto_hedging_admission_mode"
   })
 ]);
 
@@ -251,7 +256,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["accounting_system", "Accounting System", 300],
     ["execution_system", "Execution System", 250],
     ["default_position_management_mode", "Default FX Position Mode", 176],
-    ["auto_hedging_admission_policy", "Auto Hedging Admission Policy", 232],
+    ["auto_hedging_admission_mode", "Auto Hedging Admission", 232],
     ["counterparties_count", "Trading Counterparties Count", 64],
     ["actions", "Actions", 80]
   ]),

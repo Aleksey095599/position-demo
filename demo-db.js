@@ -160,7 +160,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "CLICK_TRADE_EFX",
       "defaultPositionManagementMode": "AUTO",
-      "autoHedgingAdmissionPolicy": "AUTO_IF_ELIGIBLE"
+      "autoHedgingAdmissionMode": "AUTO_IF_ELIGIBLE"
     },
     {
       "pricingContextId": 2,
@@ -168,7 +168,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "RFQ",
       "defaultPositionManagementMode": "MANUAL",
-      "autoHedgingAdmissionPolicy": "MANUAL_ONLY"
+      "autoHedgingAdmissionMode": "MANUAL_ONLY"
     },
     {
       "pricingContextId": 3,
@@ -176,7 +176,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "CTF3",
       "tradeCaptureChannelId": "MANUAL_CLIENT_DEAL_ENTRY",
       "defaultPositionManagementMode": "MANUAL",
-      "autoHedgingAdmissionPolicy": "MANUAL_ONLY"
+      "autoHedgingAdmissionMode": "MANUAL_ONLY"
     },
     {
       "pricingContextId": 4,
@@ -184,7 +184,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "RFQ",
       "defaultPositionManagementMode": "MANUAL",
-      "autoHedgingAdmissionPolicy": "MANUAL_ONLY"
+      "autoHedgingAdmissionMode": "MANUAL_ONLY"
     },
     {
       "pricingContextId": 5,
@@ -192,7 +192,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "CTF3",
       "tradeCaptureChannelId": "CLICK_TRADE_EFX",
       "defaultPositionManagementMode": "AUTO",
-      "autoHedgingAdmissionPolicy": "AUTO_IF_ELIGIBLE"
+      "autoHedgingAdmissionMode": "AUTO_IF_ELIGIBLE"
     }
   ],
   "clientPricingRules": [
@@ -312,11 +312,11 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       { tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", tradeCaptureChannelName: "Manual Client Deal Entry", pricingType: "DEALER_PRICED", isActive: true }
     ],
     pricingContexts: [
-      { pricingContextId: 1, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "CLICK_TRADE_EFX", defaultPositionManagementMode: "AUTO", autoHedgingAdmissionPolicy: "AUTO_IF_ELIGIBLE" },
-      { pricingContextId: 2, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", defaultPositionManagementMode: "MANUAL", autoHedgingAdmissionPolicy: "MANUAL_ONLY" },
-      { pricingContextId: 3, servicingBranchCode: "002", settlementSystemId: "CTF3", tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", defaultPositionManagementMode: "MANUAL", autoHedgingAdmissionPolicy: "MANUAL_ONLY" },
-      { pricingContextId: 4, servicingBranchCode: "1234", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", defaultPositionManagementMode: "MANUAL", autoHedgingAdmissionPolicy: "MANUAL_ONLY" },
-      { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX", defaultPositionManagementMode: "AUTO", autoHedgingAdmissionPolicy: "AUTO_IF_ELIGIBLE" }
+      { pricingContextId: 1, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "CLICK_TRADE_EFX", defaultPositionManagementMode: "AUTO", autoHedgingAdmissionMode: "AUTO_IF_ELIGIBLE" },
+      { pricingContextId: 2, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", defaultPositionManagementMode: "MANUAL", autoHedgingAdmissionMode: "MANUAL_ONLY" },
+      { pricingContextId: 3, servicingBranchCode: "002", settlementSystemId: "CTF3", tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", defaultPositionManagementMode: "MANUAL", autoHedgingAdmissionMode: "MANUAL_ONLY" },
+      { pricingContextId: 4, servicingBranchCode: "1234", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", defaultPositionManagementMode: "MANUAL", autoHedgingAdmissionMode: "MANUAL_ONLY" },
+      { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX", defaultPositionManagementMode: "AUTO", autoHedgingAdmissionMode: "AUTO_IF_ELIGIBLE" }
     ],
     clientPricingRules: [
       { pricingRuleId: 1, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 1, marginPercent: 0.10, positionManagementModeOverride: null },
@@ -372,11 +372,11 @@ window.__DEMO_DB_STARTUP_DATA__ = {
     return mode === "AUTO" || mode === "MANUAL" ? mode : "MANUAL";
   }
 
-  function normalizedAutoHedgingAdmissionPolicy(value, defaultPositionManagementMode = "MANUAL") {
-    const policy = String(value || "").trim().toUpperCase();
+  function normalizedAutoHedgingAdmissionMode(value, defaultPositionManagementMode = "MANUAL") {
+    const mode = String(value || "").trim().toUpperCase();
 
-    if (["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED", "MANUAL_ONLY"].includes(policy)) {
-      return policy;
+    if (["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED", "MANUAL_ONLY"].includes(mode)) {
+      return mode;
     }
 
     return normalizedPositionManagementMode(defaultPositionManagementMode) === "AUTO"
@@ -447,8 +447,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
         defaultPositionManagementMode: normalizedPositionManagementMode(
           context?.defaultPositionManagementMode
         ),
-        autoHedgingAdmissionPolicy: normalizedAutoHedgingAdmissionPolicy(
-          context?.autoHedgingAdmissionPolicy,
+        autoHedgingAdmissionMode: normalizedAutoHedgingAdmissionMode(
+          context?.autoHedgingAdmissionMode,
           context?.defaultPositionManagementMode
         )
       }));

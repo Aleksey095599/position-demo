@@ -3838,7 +3838,7 @@
         settlementSystemId: "",
         tradeCaptureChannelId: "",
         defaultPositionManagementMode: "MANUAL",
-        autoHedgingAdmissionPolicy: "MANUAL_ONLY"
+        autoHedgingAdmissionMode: "MANUAL_ONLY"
       };
     }
 
@@ -3853,8 +3853,8 @@
       return samePricingContextIdentity(left, right) &&
         normalizedPositionManagementMode(left.defaultPositionManagementMode) ===
           normalizedPositionManagementMode(right.defaultPositionManagementMode) &&
-        normalizedAutoHedgingAdmissionPolicy(left.autoHedgingAdmissionPolicy) ===
-          normalizedAutoHedgingAdmissionPolicy(right.autoHedgingAdmissionPolicy);
+        normalizedAutoHedgingAdmissionMode(left.autoHedgingAdmissionMode) ===
+          normalizedAutoHedgingAdmissionMode(right.autoHedgingAdmissionMode);
     }
 
     function pricingContextRowControl(row, name) {
@@ -3868,8 +3868,8 @@
       const defaultPositionManagementMode = normalizedPositionManagementMode(
         pricingContextRowControl(row, "defaultPositionManagementMode")?.value
       );
-      const autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(
-        pricingContextRowControl(row, "autoHedgingAdmissionPolicy")?.value
+      const autoHedgingAdmissionMode = normalizedAutoHedgingAdmissionMode(
+        pricingContextRowControl(row, "autoHedgingAdmissionMode")?.value
       );
 
       if (!servicingBranchCode || !settlementSystemId || !tradeCaptureChannelId) {
@@ -3891,7 +3891,7 @@
         settlementSystemId,
         tradeCaptureChannelId,
         defaultPositionManagementMode,
-        autoHedgingAdmissionPolicy
+        autoHedgingAdmissionMode
       };
     }
 
@@ -3925,15 +3925,15 @@
       const executionSystemSelect = pricingContextRowControl(row, "tradeCaptureChannelId");
       const defaultPositionManagementModeSelect = pricingContextRowControl(row, "defaultPositionManagementMode");
       const servicingBranchCode = parseBranchCode(servicingLocationSelect);
-      const autoHedgingAdmissionPolicySelect = pricingContextRowControl(row, "autoHedgingAdmissionPolicy");
+      const autoHedgingAdmissionModeSelect = pricingContextRowControl(row, "autoHedgingAdmissionMode");
       const settlementSystemId = parseContextCode(accountingSystemSelect, "Accounting System");
       const tradeCaptureChannelId = parseContextCode(executionSystemSelect, "Execution System");
       const defaultPositionManagementMode = normalizedPositionManagementMode(
         defaultPositionManagementModeSelect?.value
       );
 
-      const autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(
-        autoHedgingAdmissionPolicySelect?.value
+      const autoHedgingAdmissionMode = normalizedAutoHedgingAdmissionMode(
+        autoHedgingAdmissionModeSelect?.value
       );
       if (servicingBranchCode === null || settlementSystemId === null || tradeCaptureChannelId === null) {
         updatePricingContextRowSaveAvailability(row);
@@ -3971,7 +3971,7 @@
         settlementSystemId,
         tradeCaptureChannelId,
         defaultPositionManagementMode,
-        autoHedgingAdmissionPolicy
+        autoHedgingAdmissionMode
       };
       const currentIndex = pricingContextEditStateIndex();
       const duplicateIndex = pricingContexts.findIndex((item, index) =>
@@ -4262,10 +4262,10 @@
         ];
       }
 
-      if (field === "autoHedgingAdmissionPolicy") {
+      if (field === "autoHedgingAdmissionMode") {
         return [
-          context.autoHedgingAdmissionPolicy,
-          autoHedgingAdmissionPolicyLabel(context.autoHedgingAdmissionPolicy)
+          context.autoHedgingAdmissionMode,
+          autoHedgingAdmissionModeLabel(context.autoHedgingAdmissionMode)
         ];
       }
 
@@ -4354,7 +4354,7 @@
           <td>${pricingContextFacetMarkup(context, "settlementSystemId")}</td>
           <td>${executionSystemLabelMarkup(executionSystemName, executionSystem?.pricingType)}</td>
           <td>${positionManagementModeBadgeMarkup(context.defaultPositionManagementMode)}</td>
-          <td>${autoHedgingAdmissionPolicyBadgeMarkup(context.autoHedgingAdmissionPolicy)}</td>
+          <td>${autoHedgingAdmissionModeBadgeMarkup(context.autoHedgingAdmissionMode)}</td>
           <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index)}</td>
           <td class="profile-actions-cell" data-pricing-context-actions-column>
             <span class="profile-row-actions">
@@ -4399,10 +4399,10 @@
             </select>
           </td>
           <td>
-            <select class="inline-edit-control" data-pricing-context-field="autoHedgingAdmissionPolicy" aria-label="Auto Hedging Admission Policy" required>
-              <option value="AUTO_IF_ELIGIBLE"${normalizedAutoHedgingAdmissionPolicy(context.autoHedgingAdmissionPolicy) === "AUTO_IF_ELIGIBLE" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionPolicyLabel("AUTO_IF_ELIGIBLE"))}</option>
-              <option value="REVIEW_REQUIRED"${normalizedAutoHedgingAdmissionPolicy(context.autoHedgingAdmissionPolicy) === "REVIEW_REQUIRED" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionPolicyLabel("REVIEW_REQUIRED"))}</option>
-              <option value="MANUAL_ONLY"${normalizedAutoHedgingAdmissionPolicy(context.autoHedgingAdmissionPolicy) === "MANUAL_ONLY" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionPolicyLabel("MANUAL_ONLY"))}</option>
+            <select class="inline-edit-control" data-pricing-context-field="autoHedgingAdmissionMode" aria-label="Auto Hedging Admission" required>
+              <option value="AUTO_IF_ELIGIBLE"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "AUTO_IF_ELIGIBLE" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("AUTO_IF_ELIGIBLE"))}</option>
+              <option value="REVIEW_REQUIRED"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "REVIEW_REQUIRED" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("REVIEW_REQUIRED"))}</option>
+              <option value="MANUAL_ONLY"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "MANUAL_ONLY" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("MANUAL_ONLY"))}</option>
             </select>
           </td>
           <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index, true)}</td>
@@ -4587,7 +4587,7 @@
                 accountingSystemId: context.settlementSystemId,
                 executionSystemId: context.tradeCaptureChannelId,
                 defaultPositionManagementMode: context.defaultPositionManagementMode,
-                autoHedgingAdmissionPolicy: context.autoHedgingAdmissionPolicy
+                autoHedgingAdmissionMode: context.autoHedgingAdmissionMode
               })
             }
           );

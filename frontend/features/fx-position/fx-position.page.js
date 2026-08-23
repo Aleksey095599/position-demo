@@ -219,15 +219,6 @@
       return location.hash === manualBatchFormationProcessRoute();
     }
 
-    function isAutoHedgingRoute() {
-      return location.hash === autoHedgingRoute();
-    }
-
-    function isAutomationAdmissionRoute() {
-      return location.hash === automationAdmissionRoute()
-        || location.hash === legacyAutomationAdmissionRoute();
-    }
-
     function isDomainGlossaryRoute() {
       return location.hash === domainGlossaryRoute()
         || location.hash.startsWith(`${domainGlossaryRoute()}/`);
@@ -235,8 +226,6 @@
 
     function isProcessCatalogRoute() {
       return isManualBatchFormationProcessRoute()
-        || isAutoHedgingRoute()
-        || isAutomationAdmissionRoute()
         || isDomainGlossaryRoute();
     }
 
@@ -1319,7 +1308,7 @@
 
       if (selectedTrades.length === 0) {
         setBatchStatus(
-          "Select one or more eligible Manual Control Client or Hedge Deals.",
+          "Select one or more eligible Manual Review Client or Hedge Deals.",
           "warning"
         );
         return;

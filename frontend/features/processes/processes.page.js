@@ -324,15 +324,7 @@
 
     function updateProcessCatalogDocumentTitle() {
       if (processesPage && !processesPage.hidden) {
-        if (isAutomationAdmissionRoute()) {
-          document.title = processCatalogLanguage === "ru"
-            ? "Auto Hedging Admission — Каталог процессов"
-            : "Auto Hedging Admission - Process Catalog";
-        } else if (isAutoHedgingRoute()) {
-          document.title = processCatalogLanguage === "ru"
-            ? "Auto Hedging — Каталог процессов"
-            : "Auto Hedging - Process Catalog";
-        } else if (isDomainGlossaryRoute()) {
+        if (isDomainGlossaryRoute()) {
           document.title = processCatalogLanguage === "ru"
             ? "Domain Glossary — Каталог процессов"
             : "Domain Glossary - Process Catalog";
@@ -345,23 +337,11 @@
     }
 
     function renderProcessCatalogRoute() {
-      const isAutoHedging = isAutoHedgingRoute();
-      const isAdmission = isAutomationAdmissionRoute();
       const isGlossary = isDomainGlossaryRoute();
-      const activeView = isAdmission
-        ? "admission"
-        : isAutoHedging
-          ? "auto-hedging"
-          : (isGlossary ? "glossary" : "manual");
+      const activeView = isGlossary ? "glossary" : "manual";
 
       if (manualBatchFormationProcessView) {
-        manualBatchFormationProcessView.hidden = isAutoHedging || isAdmission || isGlossary;
-      }
-      if (autoHedgingProcessView) {
-        autoHedgingProcessView.hidden = !isAutoHedging;
-      }
-      if (automationAdmissionProcessView) {
-        automationAdmissionProcessView.hidden = !isAdmission;
+        manualBatchFormationProcessView.hidden = isGlossary;
       }
       if (domainGlossaryProcessView) {
         domainGlossaryProcessView.hidden = !isGlossary;
@@ -369,9 +349,7 @@
       processCatalogViewLinks.forEach(link => {
         const view = link.dataset.processCatalogView;
         const isActive = view === activeView;
-        const isAncestor = activeView === "admission" && view === "auto-hedging";
         link.classList.toggle("is-active", isActive);
-        link.classList.toggle("is-ancestor", isAncestor);
         if (isActive) {
           link.setAttribute("aria-current", "page");
         } else {
@@ -402,7 +380,6 @@
         }
       });
       linkDomainGlossaryDefinitions();
-      highlightAutomationAdmissionTechnicalTokens();
       processCatalogAriaElements.forEach(element => {
         const key = element.dataset.processAriaLabel;
         if (Object.prototype.hasOwnProperty.call(ariaCopy, key)) {
@@ -431,6 +408,13 @@
     }
 
     const MANUAL_PROCESS_TERM_REFERENCES = Object.freeze([
+      Object.freeze({ text: "Execution Context Admission Mode", key: "execution-context-admission-mode" }),
+      Object.freeze({ text: "Auto Hedging Admission Policy", key: "auto-hedging-admission-policy" }),
+      Object.freeze({ text: "Auto Hedging Admission", key: "auto-hedging-admission" }),
+      Object.freeze({ text: "Eligibility Checks", key: "eligibility-check" }),
+      Object.freeze({ text: "Eligibility Check", key: "eligibility-check" }),
+      Object.freeze({ text: "Admission State", key: "admission-state" }),
+      Object.freeze({ text: "Ccy Pair", key: "ccy-pair" }),
       Object.freeze({ text: "Auto Hedging", key: "auto-hedging" }),
       Object.freeze({ text: "Servicing Location", key: "servicing-location" }),
       Object.freeze({ text: "Accounting System", key: "accounting-system" }),
@@ -650,70 +634,6 @@
             { excludeTermKey }
           );
         });
-    }
-
-    const AUTOMATION_ADMISSION_TECHNICAL_TOKENS = Object.freeze([
-      "AUTO_IF_ELIGIBLE",
-      "REVIEW_REQUIRED",
-      "MANUAL_ONLY",
-      "AUTO_PRICED",
-      "DEALER_PRICED",
-      "DEALER_APPROVED",
-      "RELEASED",
-      "HELD"
-    ]);
-    const automationAdmissionTechnicalTokenPattern = new RegExp(
-      `\\b(?:${AUTOMATION_ADMISSION_TECHNICAL_TOKENS.join("|")})\\b`,
-      "g"
-    );
-
-    function highlightAutomationAdmissionTechnicalTokens() {
-      if (!automationAdmissionProcessView) {
-        return;
-      }
-
-      const textNodes = [];
-      automationAdmissionProcessView
-        .querySelectorAll(
-          ".automation-admission-values dt, .automation-admission-function-description"
-        )
-        .forEach(root => {
-          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-          while (walker.nextNode()) {
-            const textNode = walker.currentNode;
-            if (textNode.parentElement?.closest("code")) {
-              continue;
-            }
-            automationAdmissionTechnicalTokenPattern.lastIndex = 0;
-            if (automationAdmissionTechnicalTokenPattern.test(textNode.nodeValue || "")) {
-              textNodes.push(textNode);
-            }
-          }
-        });
-
-      textNodes.forEach(textNode => {
-        const value = textNode.nodeValue || "";
-        const fragment = document.createDocumentFragment();
-        let cursor = 0;
-        automationAdmissionTechnicalTokenPattern.lastIndex = 0;
-
-        for (const match of value.matchAll(automationAdmissionTechnicalTokenPattern)) {
-          const index = match.index ?? 0;
-          if (index > cursor) {
-            fragment.append(document.createTextNode(value.slice(cursor, index)));
-          }
-          const token = document.createElement("code");
-          token.className = "automation-admission-technical-token";
-          token.dataset.automationAdmissionToken = match[0];
-          token.textContent = match[0];
-          fragment.append(token);
-          cursor = index + match[0].length;
-        }
-        if (cursor < value.length) {
-          fragment.append(document.createTextNode(value.slice(cursor)));
-        }
-        textNode.replaceWith(fragment);
-      });
     }
 
     let manualProcessDefinitionHighlightTimeoutId = null;

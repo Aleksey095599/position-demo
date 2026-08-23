@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS execution_contexts
     accounting_system_id             TEXT,
     execution_system_id              TEXT NOT NULL,
     default_position_management_mode TEXT NOT NULL DEFAULT 'MANUAL',
-    auto_hedging_admission_policy     TEXT NOT NULL DEFAULT 'MANUAL_ONLY',
+    auto_hedging_admission_mode       TEXT NOT NULL DEFAULT 'MANUAL_ONLY',
 
     CONSTRAINT fk_execution_contexts_servicing_location
         FOREIGN KEY (servicing_location_id)
@@ -193,12 +193,170 @@ CREATE TABLE IF NOT EXISTS execution_contexts
             ON DELETE RESTRICT,
     CONSTRAINT chk_execution_contexts_default_position_management_mode
         CHECK (default_position_management_mode IN ('MANUAL', 'AUTO')),
-    CONSTRAINT chk_execution_contexts_auto_hedging_admission_policy
+    CONSTRAINT chk_execution_contexts_auto_hedging_admission_mode
         CHECK (
-            auto_hedging_admission_policy IN
+            auto_hedging_admission_mode IN
                 ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
         )
 );
+
+CREATE TRIGGER IF NOT EXISTS trg_execution_contexts_auto_hedging_admission_mode_insert
+BEFORE INSERT ON execution_contexts
+FOR EACH ROW
+WHEN NEW.auto_hedging_admission_mode = 'AUTO_IF_ELIGIBLE'
+    AND NOT EXISTS
+    (
+        SELECT 1
+        FROM execution_systems system
+        WHERE system.execution_system_id = NEW.execution_system_id
+            AND system.pricing_mode = 'AUTO_PRICED'
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_IF_ELIGIBLE_REQUIRES_AUTO_PRICED_EXECUTION_SYSTEM');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_execution_contexts_auto_hedging_admission_mode_update
+BEFORE UPDATE OF execution_system_id, auto_hedging_admission_mode ON execution_contexts
+FOR EACH ROW
+WHEN NEW.auto_hedging_admission_mode = 'AUTO_IF_ELIGIBLE'
+    AND NOT EXISTS
+    (
+        SELECT 1
+        FROM execution_systems system
+        WHERE system.execution_system_id = NEW.execution_system_id
+            AND system.pricing_mode = 'AUTO_PRICED'
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_IF_ELIGIBLE_REQUIRES_AUTO_PRICED_EXECUTION_SYSTEM');
+END;
+
+CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_revisions
+(
+    revision                            INTEGER PRIMARY KEY,
+    max_transfer_rate_deviation_percent TEXT    NOT NULL,
+    created_at                          TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT chk_auto_hedging_admission_policy_revision
+        CHECK (typeof(revision) = 'integer' AND revision >= 1),
+    CONSTRAINT chk_auto_hedging_admission_policy_max_deviation
+        CHECK (
+            typeof(max_transfer_rate_deviation_percent) = 'text'
+            AND length(max_transfer_rate_deviation_percent) BETWEEN 1 AND 32
+            AND max_transfer_rate_deviation_percent GLOB '[0-9]*'
+            AND max_transfer_rate_deviation_percent NOT GLOB '*[^0-9.]*'
+            AND length(max_transfer_rate_deviation_percent)
+                - length(replace(max_transfer_rate_deviation_percent, '.', '')) <= 1
+            AND substr(max_transfer_rate_deviation_percent, -1, 1) <> '.'
+            AND CAST(max_transfer_rate_deviation_percent AS REAL) BETWEEN 0 AND 100
+        ),
+    CONSTRAINT chk_auto_hedging_admission_policy_created_at
+        CHECK (
+            length(created_at) = 24
+            AND created_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
+        )
+);
+
+CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_pair_rules
+(
+    revision                    INTEGER NOT NULL,
+    ccy_pair_code               TEXT    NOT NULL,
+    max_base_ccy_amount_minor   INTEGER NOT NULL,
+    base_ccy_fraction_digits    INTEGER NOT NULL,
+
+    CONSTRAINT pk_auto_hedging_admission_policy_pair_rules
+        PRIMARY KEY (revision, ccy_pair_code),
+    CONSTRAINT fk_auto_hedging_admission_policy_pair_rules_revision
+        FOREIGN KEY (revision)
+            REFERENCES auto_hedging_admission_policy_revisions (revision)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT fk_auto_hedging_admission_policy_pair_rules_pair
+        FOREIGN KEY (ccy_pair_code)
+            REFERENCES ccy_pair_options (ccy_pair_code)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT chk_auto_hedging_admission_policy_pair_rules_amount
+        CHECK (
+            typeof(max_base_ccy_amount_minor) = 'integer'
+            AND max_base_ccy_amount_minor > 0
+        ),
+    CONSTRAINT chk_auto_hedging_admission_policy_pair_rules_fraction_digits
+        CHECK (
+            typeof(base_ccy_fraction_digits) = 'integer'
+            AND base_ccy_fraction_digits BETWEEN 0 AND 10
+        )
+) WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_current
+(
+    policy_id  INTEGER PRIMARY KEY,
+    revision   INTEGER NOT NULL UNIQUE,
+    updated_at TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT chk_auto_hedging_admission_policy_current_singleton
+        CHECK (policy_id = 1),
+    CONSTRAINT fk_auto_hedging_admission_policy_current_revision
+        FOREIGN KEY (revision)
+            REFERENCES auto_hedging_admission_policy_revisions (revision)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT chk_auto_hedging_admission_policy_current_updated_at
+        CHECK (
+            length(updated_at) = 24
+            AND updated_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
+        )
+);
+
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_revisions_immutable_update
+BEFORE UPDATE ON auto_hedging_admission_policy_revisions
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_revisions_immutable_delete
+BEFORE DELETE ON auto_hedging_admission_policy_revisions
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_rules_immutable_update
+BEFORE UPDATE ON auto_hedging_admission_policy_pair_rules
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_rules_immutable_delete
+BEFORE DELETE ON auto_hedging_admission_policy_pair_rules
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_rules_lock_published_insert
+BEFORE INSERT ON auto_hedging_admission_policy_pair_rules
+FOR EACH ROW
+WHEN NEW.revision <= COALESCE(
+    (SELECT current.revision FROM auto_hedging_admission_policy_current current WHERE current.policy_id = 1),
+    0
+)
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_current_forward_only
+BEFORE UPDATE OF revision ON auto_hedging_admission_policy_current
+FOR EACH ROW
+WHEN NEW.revision <= OLD.revision
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_MUST_ADVANCE');
+END;
 
 CREATE TABLE IF NOT EXISTS trading_counterparties
 (
@@ -959,6 +1117,95 @@ CREATE TABLE IF NOT EXISTS fx_trade_market_snapshot
             )
         )
 );
+
+CREATE TABLE IF NOT EXISTS fx_auto_hedging_admission_decisions
+(
+    decision_id       INTEGER PRIMARY KEY,
+    trade_id          INTEGER NOT NULL,
+    trade_type        TEXT    NOT NULL DEFAULT 'CLIENT_DEAL',
+    decision_sequence INTEGER NOT NULL DEFAULT 1,
+    decision_stage    TEXT    NOT NULL DEFAULT 'INITIAL',
+    policy_revision   INTEGER NOT NULL,
+    admission_mode    TEXT,
+    admission_state   TEXT    NOT NULL,
+    releasable        INTEGER NOT NULL,
+    reason_codes_json TEXT    NOT NULL,
+    checks_json       TEXT    NOT NULL,
+    is_enforced       INTEGER NOT NULL DEFAULT 0,
+    decided_at        TEXT    NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+
+    CONSTRAINT fk_fx_auto_hedging_admission_decisions_trade
+        FOREIGN KEY (trade_id, trade_type)
+            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT fk_fx_auto_hedging_admission_decisions_policy_revision
+        FOREIGN KEY (policy_revision)
+            REFERENCES auto_hedging_admission_policy_revisions (revision)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT uq_fx_auto_hedging_admission_decisions_sequence
+        UNIQUE (trade_id, trade_type, decision_sequence),
+    CONSTRAINT chk_fx_auto_hedging_admission_decisions_trade_type
+        CHECK (trade_type = 'CLIENT_DEAL'),
+    CONSTRAINT chk_fx_auto_hedging_admission_decisions_sequence
+        CHECK (typeof(decision_sequence) = 'integer' AND decision_sequence >= 1),
+    CONSTRAINT chk_fx_auto_hedging_admission_decisions_stage
+        CHECK (decision_stage IN ('INITIAL', 'RELEASE')),
+    CONSTRAINT chk_fx_auto_hedging_admission_decisions_mode
+        CHECK (
+            admission_mode IS NULL
+            OR admission_mode IN
+                ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
+        ),
+    CONSTRAINT chk_fx_auto_hedging_admission_decisions_state
+        CHECK (admission_state IN ('HELD', 'RELEASED')),
+    CONSTRAINT chk_fx_auto_hedging_admission_decisions_releasable
+        CHECK (typeof(releasable) = 'integer' AND releasable IN (0, 1)),
+    CONSTRAINT chk_fx_auto_hedging_admission_decisions_reason_codes
+        CHECK (
+            length(reason_codes_json) BETWEEN 2 AND 4000
+            AND json_valid(reason_codes_json) = 1
+            AND json_type(reason_codes_json) = 'array'
+        ),
+    CONSTRAINT chk_fx_auto_hedging_admission_decisions_checks
+        CHECK (
+            length(checks_json) BETWEEN 2 AND 16000
+            AND json_valid(checks_json) = 1
+            AND json_type(checks_json) = 'array'
+        ),
+    CONSTRAINT chk_fx_auto_hedging_admission_decisions_shadow_only
+        CHECK (typeof(is_enforced) = 'integer' AND is_enforced = 0),
+    CONSTRAINT chk_fx_auto_hedging_admission_decisions_decided_at
+        CHECK (
+            length(decided_at) = 24
+            AND decided_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', decided_at) = decided_at
+        )
+);
+
+CREATE INDEX IF NOT EXISTS idx_fx_auto_hedging_admission_decisions_trade
+    ON fx_auto_hedging_admission_decisions
+        (trade_id, trade_type, decision_sequence);
+
+CREATE INDEX IF NOT EXISTS idx_fx_auto_hedging_admission_decisions_policy_revision
+    ON fx_auto_hedging_admission_decisions
+        (policy_revision, decision_id);
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_auto_hedging_admission_decisions_immutable_update
+BEFORE UPDATE ON fx_auto_hedging_admission_decisions
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'FX_AUTO_HEDGING_ADMISSION_DECISION_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fx_auto_hedging_admission_decisions_immutable_delete
+BEFORE DELETE ON fx_auto_hedging_admission_decisions
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'FX_AUTO_HEDGING_ADMISSION_DECISION_IMMUTABLE');
+END;
 
 CREATE TABLE IF NOT EXISTS client_fx_deals
 (

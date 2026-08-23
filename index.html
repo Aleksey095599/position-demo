@@ -341,7 +341,7 @@
         <nav class="nav nav-tabs workbench-section-tabs fx-position-mode-tabs" id="fxPositionModeTabs" aria-label="FX Position mode" role="tablist">
           <a class="nav-link active" id="fxPositionManualTab" href="#fx-position:manual" data-fx-position-mode="MANUAL" role="tab" aria-controls="fxPositionGridPanel" aria-selected="true">
             <span class="button-icon fx-position-mode-icon" aria-hidden="true">touch_app</span>
-            <span>Manual Control</span>
+            <span>Manual Review</span>
             <span class="fx-position-mode-count" id="fxPositionManualCount">0</span>
           </a>
           <a class="nav-link" id="fxPositionAutoTab" href="#fx-position:auto" data-fx-position-mode="AUTO" role="tab" aria-controls="fxPositionGridPanel" aria-selected="false">
@@ -1314,7 +1314,7 @@
               <col class="pricing-context-accounting-col" data-ui-column-key="accounting_system">
               <col class="pricing-context-execution-col" data-ui-column-key="execution_system">
               <col class="pricing-context-position-mode-col" data-ui-column-key="default_position_management_mode">
-              <col class="pricing-context-admission-policy-col" data-ui-column-key="auto_hedging_admission_policy">
+              <col class="pricing-context-admission-mode-col" data-ui-column-key="auto_hedging_admission_mode">
               <col class="pricing-context-count-col" data-ui-column-key="counterparties_count">
               <col class="pricing-context-actions-col" data-ui-column-key="actions" data-pricing-context-actions-column>
             </colgroup>
@@ -1373,9 +1373,9 @@
                   <div class="reference-column-head">
                     <span class="reference-column-title">
                       <span class="button-icon" aria-hidden="true">shield</span>
-                      <span>Auto Hedging Admission Policy</span>
+                      <span>Auto Hedging Admission</span>
                     </span>
-                    <select class="reference-header-filter" data-pricing-context-header-filter="autoHedgingAdmissionPolicy" aria-label="Filter execution contexts by Auto Hedging Admission Policy">
+                    <select class="reference-header-filter" data-pricing-context-header-filter="autoHedgingAdmissionMode" aria-label="Filter execution contexts by Auto Hedging Admission">
                       <option value="">All</option>
                       <option value="AUTO_IF_ELIGIBLE">Auto if eligible</option>
                       <option value="REVIEW_REQUIRED">Review required</option>
@@ -2725,22 +2725,6 @@
               <strong data-process-copy="manualBatching">Manual Batching</strong>
             </span>
           </a>
-          <div class="processes-list-group" data-process-catalog-group="auto-hedging">
-            <a class="processes-list-link" href="#processes:auto-hedging" data-process-catalog-view="auto-hedging">
-              <span class="button-icon" aria-hidden="true">shield</span>
-              <span class="processes-list-link-copy">
-                <strong data-process-copy="autoHedging">Auto Hedging</strong>
-              </span>
-            </a>
-            <div class="processes-sublist" aria-label="Auto Hedging subcatalogs" data-process-aria-label="autoHedgingSubcatalogs">
-              <a class="processes-list-link processes-list-sublink" href="#processes:auto-hedging-admission" data-process-catalog-view="admission" data-process-catalog-parent="auto-hedging">
-                <span class="button-icon" aria-hidden="true">verified_user</span>
-                <span class="processes-list-link-copy">
-                  <strong data-process-copy="automationAdmission">Auto Hedging Admission</strong>
-                </span>
-              </a>
-            </div>
-          </div>
           <a class="processes-list-link" href="#processes:domain-glossary" data-process-catalog-view="glossary">
             <span class="button-icon" aria-hidden="true">menu_book</span>
             <span class="processes-list-link-copy">
@@ -3031,130 +3015,6 @@
         </div>
       </article>
 
-      <article class="profile-panel processes-details" id="autoHedgingProcessView" aria-labelledby="autoHedgingTitle" hidden>
-        <header class="profile-panel-head processes-detail-head">
-          <div class="processes-detail-heading">
-            <h2 class="processes-section-title" id="autoHedgingTitle" data-process-copy="autoHedging">Auto Hedging</h2>
-            <p class="processes-detail-subtitle" data-process-copy="autoHedgingSubtitle">Automated FX risk management</p>
-          </div>
-        </header>
-        <div class="processes-detail-body automation-admission-body">
-          <p class="auto-hedging-note" data-process-copy="autoHedgingFxPositionPresentation" data-process-linked-copy>In FX Position, FX Trades admitted to the Auto Hedging process are displayed on the “Auto Hedging” tab. FX Trades not admitted to Auto Hedging remain on the “Manual Control” tab.</p>
-
-          <section class="auto-hedging-subcatalogs" aria-labelledby="autoHedgingSubcatalogsTitle">
-            <h3 class="auto-hedging-subcatalogs-title" id="autoHedgingSubcatalogsTitle" data-process-copy="subcatalogs">Subcatalogs</h3>
-            <a class="auto-hedging-subcatalog-link" href="#processes:auto-hedging-admission">
-              <span class="button-icon" aria-hidden="true">verified_user</span>
-              <span class="auto-hedging-subcatalog-copy">
-                <strong data-process-copy="automationAdmission">Auto Hedging Admission</strong>
-                <small data-process-copy="automationAdmissionCatalogDescription">Controls which FX Trades may participate in Auto Hedging.</small>
-              </span>
-            </a>
-          </section>
-        </div>
-      </article>
-
-
-      <article class="profile-panel processes-details" id="automationAdmissionProcessView" aria-labelledby="automationAdmissionTitle" hidden>
-        <header class="profile-panel-head processes-detail-head">
-          <div class="processes-detail-heading">
-            <h2 class="processes-section-title" id="automationAdmissionTitle" data-process-copy="automationAdmission">Auto Hedging Admission</h2>
-            <p class="processes-detail-subtitle" data-process-copy="automationAdmissionSubtitle" data-process-linked-copy>The boundary for admitting an FX Trade to the Auto Hedging process</p>
-          </div>
-        </header>
-        <div class="processes-detail-body automation-admission-body">
-          <p class="automation-admission-summary" role="note">
-            <span class="button-icon" aria-hidden="true">shield</span>
-            <span data-process-copy="automationAdmissionSummary" data-process-linked-copy>Auto Hedging Admission controls which FX Trades may participate in Auto Hedging.</span>
-          </p>
-
-          <div class="automation-admission-concepts">
-            <section class="automation-admission-concept" aria-labelledby="automationAdmissionPolicyTitle">
-              <header class="automation-admission-concept-head">
-                <h3 class="automation-admission-concept-title" id="automationAdmissionPolicyTitle">
-                  <span class="button-icon" aria-hidden="true">rule</span>
-                  <span>Admission Policy</span>
-                </h3>
-                <p class="automation-admission-concept-description" data-process-copy="automationAdmissionPolicyDefinition" data-process-linked-copy>Defines the permitted admission path for an FX Trade: automatic release after checks, release after review, or manual control only.</p>
-              </header>
-              <dl class="automation-admission-values">
-                <div class="automation-admission-value">
-                  <dt>AUTO_IF_ELIGIBLE</dt>
-                  <dd data-process-copy="autoIfEligibleDefinition">Release automatically when all required eligibility checks pass.</dd>
-                </div>
-                <div class="automation-admission-value">
-                  <dt>REVIEW_REQUIRED</dt>
-                  <dd data-process-copy="reviewRequiredDefinition">Hold first; release only after review.</dd>
-                </div>
-                <div class="automation-admission-value">
-                  <dt>MANUAL_ONLY</dt>
-                  <dd data-process-copy="manualOnlyDefinition" data-process-linked-copy>Keep under manual control; admission to Auto Hedging is not allowed.</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section class="automation-admission-concept" aria-labelledby="automationAdmissionStateTitle">
-              <header class="automation-admission-concept-head">
-                <h3 class="automation-admission-concept-title" id="automationAdmissionStateTitle">
-                  <span class="button-icon" aria-hidden="true">toggle_on</span>
-                  <span>Admission State</span>
-                </h3>
-                <p class="automation-admission-concept-description" data-process-copy="automationAdmissionStateDefinition" data-process-linked-copy>Shows whether a specific FX Trade is currently held for manual control or released to Auto Hedging.</p>
-              </header>
-              <dl class="automation-admission-values">
-                <div class="automation-admission-value">
-                  <dt>HELD</dt>
-                  <dd data-process-copy="heldDefinition" data-process-linked-copy>Held for manual control and does not participate in Auto Hedging.</dd>
-                </div>
-                <div class="automation-admission-value">
-                  <dt>RELEASED</dt>
-                  <dd data-process-copy="releasedDefinition" data-process-linked-copy>Admitted to Auto Hedging.</dd>
-                </div>
-              </dl>
-            </section>
-          </div>
-
-          <p class="automation-admission-rule" data-process-copy="automationAdmissionRule" data-process-linked-copy>Policy answers “which admission path is allowed?” State answers “where is this FX Trade now?”</p>
-
-          <section class="automation-admission-functions" aria-labelledby="automationAdmissionFunctionsTitle">
-            <header class="automation-admission-functions-head">
-              <h3 class="automation-admission-functions-title" id="automationAdmissionFunctionsTitle" data-process-copy="domainFunctions">Domain Functions</h3>
-              <p class="automation-admission-functions-description" data-process-copy="domainFunctionsDescription">These pure domain functions do not persist data. They return the planned state or transition and its reason; additional admission conditions can be added later without changing the calling workflow.</p>
-            </header>
-
-            <div class="automation-admission-function-grid">
-              <section class="automation-admission-function">
-                <header class="automation-admission-function-head">
-                  <span class="button-icon" aria-hidden="true">move_to_inbox</span>
-                  <span class="automation-admission-function-name">
-                    <strong data-process-copy="determineInitialAdmissionStateTitle">Determine Initial Admission State</strong>
-                    <code>determineInitialAdmissionState</code>
-                  </span>
-                </header>
-                <p class="automation-admission-function-description" data-process-copy="determineInitialAdmissionStateDescription" data-process-linked-copy>Demo baseline for an FX Trade with an Execution Context: if the Execution System referenced by that context has Pricing Mode AUTO_PRICED, Policy AUTO_IF_ELIGIBLE applies and the function returns State RELEASED; otherwise it returns HELD. Technical FX Trades without an Execution Context are outside this baseline and will be defined separately. Future checks may include Transfer Rate deviation from Market Pulse and trade amount limits.</p>
-              </section>
-
-              <section class="automation-admission-function">
-                <header class="automation-admission-function-head">
-                  <span class="button-icon" aria-hidden="true">outbound</span>
-                  <span class="automation-admission-function-name">
-                    <strong data-process-copy="decideReleaseToAutoHedgingTitle">Decide Release to Auto Hedging</strong>
-                    <code>decideReleaseToAutoHedging</code>
-                  </span>
-                </header>
-                <p class="automation-admission-function-description" data-process-copy="decideReleaseToAutoHedgingDescription" data-process-linked-copy>Called when a HELD FX Trade is proposed for Auto Hedging. It returns whether HELD → RELEASED is allowed, together with the next State and reason.</p>
-              </section>
-            </div>
-
-            <p class="automation-admission-future" role="note">
-              <span class="button-icon" aria-hidden="true">timeline</span>
-              <span data-process-copy="automationAdmissionFutureExample" data-process-linked-copy>Future extension example—not implemented: release may additionally require the Transfer Rate to remain within a configured deviation corridor from current Market Pulse quotes.</span>
-            </p>
-          </section>
-        </div>
-      </article>
-
-
       <article class="profile-panel processes-details" id="domainGlossaryProcessView" aria-labelledby="domainGlossaryTitle" hidden>
         <header class="profile-panel-head processes-detail-head">
           <div class="processes-detail-heading">
@@ -3168,6 +3028,30 @@
               <div class="manual-process-definition" id="process-term-auto-hedging" tabindex="-1">
                 <dt>Auto Hedging</dt>
                 <dd data-process-copy="autoHedgingDefinition">An automated FX risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-auto-hedging-admission" tabindex="-1">
+                <dt>Auto Hedging Admission</dt>
+                <dd data-process-copy="autoHedgingAdmissionDefinition">The domain decision boundary that determines whether an FX Trade remains held under manual control or may be released to Auto Hedging.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-execution-context-admission-mode" tabindex="-1">
+                <dt>Execution Context Admission Mode</dt>
+                <dd data-process-copy="executionContextAdmissionModeDefinition">A mandatory Execution Context setting that defines the permitted admission path for its FX Trades.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-auto-hedging-admission-policy" tabindex="-1">
+                <dt>Auto Hedging Admission Policy</dt>
+                <dd data-process-copy="autoHedgingAdmissionPolicyDefinition">The complete set of mandatory rules that combines the Execution Context Admission Mode with configured Eligibility Checks to decide the Admission State.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-eligibility-check" tabindex="-1">
+                <dt>Eligibility Check</dt>
+                <dd data-process-copy="eligibilityCheckDefinition">A safety condition evaluated from FX Trade, reference, or market data to determine eligibility for Auto Hedging. Every applicable check must pass before release.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-admission-state" tabindex="-1">
+                <dt>Admission State</dt>
+                <dd data-process-copy="automationAdmissionStateDefinition">Shows whether a specific FX Trade is currently held for manual control or released to Auto Hedging.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-ccy-pair" tabindex="-1">
+                <dt>Ccy Pair</dt>
+                <dd data-process-copy="ccyPairDefinition">An ordered pair of currencies defining the Base Currency and Quote Currency used to express an FX Trade amount and exchange rate.</dd>
               </div>
 
               <div class="manual-process-definition" id="process-term-fx-batch" tabindex="-1">
@@ -3278,7 +3162,7 @@
       </button>
       <button type="button" class="nav-link" id="autoHedgingAdmissionSettingsTab" data-hedging-settings-tab="auto-admission" role="tab" aria-controls="autoHedgingAdmissionSettingsPanel" aria-selected="false">
         <span class="button-icon" aria-hidden="true">verified_user</span>
-        <span>Auto Hedging Admission Settings</span>
+        <span>Auto Hedging Settings</span>
       </button>
     </nav>
 
@@ -3409,14 +3293,286 @@
       </section>
 
       <section class="hedging-settings-tab-panel" id="autoHedgingAdmissionSettingsPanel" role="tabpanel" aria-labelledby="autoHedgingAdmissionSettingsTab" hidden>
-        <section class="profile-panel table-panel table-panel--standalone auto-hedging-admission-settings-panel" aria-labelledby="autoHedgingAdmissionSettingsTitle">
-          <div class="table-panel__head">
-            <h2 class="table-panel__title" id="autoHedgingAdmissionSettingsTitle">Auto Hedging Admission Settings</h2>
+        <section class="auto-hedging-settings-workspace" aria-labelledby="autoHedgingAdmissionSettingsTitle">
+          <header class="auto-hedging-settings-workspace-head">
+            <div>
+              <h2 id="autoHedgingAdmissionSettingsTitle">Auto Hedging Settings</h2>
+              <p>Configure how each category of FX Trades may enter Auto Hedging.</p>
+            </div>
+          </header>
+
+          <div class="auto-hedging-entry-route-switch" role="group" aria-label="Auto Hedging entry route">
+            <button type="button" class="auto-hedging-entry-route-option is-active" data-auto-hedging-settings-route="initial" aria-pressed="true" aria-controls="autoHedgingInitialAdmissionRoute">
+              <span class="button-icon" aria-hidden="true">move_to_inbox</span>
+              <span class="auto-hedging-entry-route-option-copy">
+                <strong>Initial Admission</strong>
+                <small>Automatic decision when an FX Trade enters the application.</small>
+              </span>
+            </button>
+            <button type="button" class="auto-hedging-entry-route-option" data-auto-hedging-settings-route="manual-release" aria-pressed="false" aria-controls="autoHedgingManualReleaseRoute">
+              <span class="button-icon" aria-hidden="true">approval</span>
+              <span class="auto-hedging-entry-route-option-copy">
+                <strong>Manual Release</strong>
+                <small>Dealer-initiated release of a held FX Trade to Auto Hedging.</small>
+              </span>
+            </button>
           </div>
-          <div class="table-panel__body auto-hedging-admission-settings-empty">
-            <span class="button-icon" aria-hidden="true">verified_user</span>
-            <span>No Auto Hedging Admission Settings configured.</span>
-          </div>
+
+          <section class="auto-hedging-entry-route-panel" id="autoHedgingInitialAdmissionRoute" data-auto-hedging-settings-route-panel="initial" aria-labelledby="autoHedgingInitialAdmissionTitle">
+            <header class="auto-hedging-entry-route-head">
+              <h3 id="autoHedgingInitialAdmissionTitle">Initial Admission to Auto Hedging</h3>
+              <p>Defines the first admission decision made when an FX Trade appears in the application.</p>
+            </header>
+
+            <div class="auto-hedging-trade-segment-list" data-auto-hedging-settings-segments="initial">
+              <section class="auto-hedging-trade-segment is-expanded">
+                <h4 class="auto-hedging-trade-segment-heading">
+                  <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingInitialClientToggle" data-auto-hedging-segment-toggle aria-expanded="true" aria-controls="autoHedgingInitialClientPanel">
+                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">person</span>
+                    <span class="auto-hedging-trade-segment-copy">
+                      <strong>Client FX Trades</strong>
+                      <small>FX Trades executed with clients.</small>
+                    </span>
+                    <span class="badge text-bg-primary">Configured</span>
+                    <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
+                  </button>
+                </h4>
+                <div class="auto-hedging-trade-segment-body" id="autoHedgingInitialClientPanel" role="region" aria-labelledby="autoHedgingInitialClientToggle">
+                  <form class="auto-hedging-admission-settings-panel" id="autoHedgingAdmissionPolicyForm" aria-label="Client FX Trade Initial Admission Policy" autocomplete="off">
+                    <div class="auto-hedging-client-policy-head">
+                      <div>
+                        <strong>Client FX Trade Initial Admission Policy</strong>
+                        <p>Current executable demo policy for automatic admission of Client FX Trades.</p>
+                      </div>
+                      <span class="badge text-bg-light border" id="autoHedgingAdmissionPolicyRevision" aria-label="Current policy revision">Revision —</span>
+                    </div>
+
+                    <div class="auto-hedging-admission-settings-body">
+                      <section class="auto-hedging-admission-policy-block auto-hedging-admission-core-rule semantic-section" aria-labelledby="autoHedgingAdmissionCoreRuleTitle">
+                        <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">lock</span>
+                        <div class="auto-hedging-admission-policy-block-copy">
+                          <h5 id="autoHedgingAdmissionCoreRuleTitle">Execution Context Admission Mode</h5>
+                          <p>Uses the Auto Hedging Admission value configured for the FX Trade's Execution Context.</p>
+                        </div>
+                        <div class="auto-hedging-admission-core-rule-badges" aria-label="Rule status">
+                          <span class="badge text-bg-primary">Required</span>
+                          <span class="badge text-bg-light border">Always applied</span>
+                        </div>
+                      </section>
+
+                      <section class="auto-hedging-admission-policy-block auto-hedging-admission-deviation-card semantic-section" aria-labelledby="autoHedgingEligibilityChecksTitle">
+                        <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">monitoring</span>
+                        <div class="auto-hedging-admission-policy-block-copy">
+                          <h5 id="autoHedgingEligibilityChecksTitle">Maximum Transfer Rate Deviation from Market Pulse</h5>
+                          <p id="autoHedgingMaxTransferRateDeviationHelp">Maximum permitted percentage difference between Transfer Rate and the applicable Market Pulse rate.</p>
+                        </div>
+                        <div class="auto-hedging-admission-deviation-field">
+                          <label class="visually-hidden" for="autoHedgingMaxTransferRateDeviationPercent">Maximum Transfer Rate Deviation from Market Pulse (%)</label>
+                          <div class="input-group">
+                            <input class="form-control" type="text" id="autoHedgingMaxTransferRateDeviationPercent" name="maxTransferRateDeviationPercent" inputmode="decimal" aria-describedby="autoHedgingMaxTransferRateDeviationHelp" required>
+                            <span class="input-group-text" aria-hidden="true">%</span>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section class="auto-hedging-admission-pair-policy semantic-section" aria-labelledby="autoHedgingPairEligibilityTitle">
+                        <div class="auto-hedging-admission-pair-policy-heading">
+                          <div class="auto-hedging-admission-pair-policy-heading-copy">
+                            <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">currency_exchange</span>
+                            <div>
+                              <h5 id="autoHedgingPairEligibilityTitle">Ccy Pair Eligibility and Trade Amount Limit</h5>
+                              <p>New or unlisted Currency Pairs remain disabled until they are explicitly enabled and assigned a limit.</p>
+                            </div>
+                          </div>
+                          <span class="badge text-bg-light border" id="autoHedgingAdmissionPairSummary">0 enabled</span>
+                        </div>
+
+                        <div class="auto-hedging-admission-pair-toolbar" role="search" aria-label="Filter Auto Hedging Currency Pairs">
+                          <div class="input-group auto-hedging-admission-pair-search">
+                            <span class="input-group-text" aria-hidden="true"><span class="button-icon">search</span></span>
+                            <input class="form-control" type="search" id="autoHedgingAdmissionPairSearch" placeholder="Search Ccy Pair" aria-label="Search Ccy Pair">
+                            <button class="btn btn-outline-secondary" type="button" id="autoHedgingAdmissionPairSearchClear" aria-label="Clear Ccy Pair search" hidden>
+                              <span class="button-icon" aria-hidden="true">close</span>
+                            </button>
+                          </div>
+                          <div class="auto-hedging-admission-pair-filter">
+                            <label class="form-label visually-hidden" for="autoHedgingAdmissionPairFilter">Filter Currency Pairs by Auto Hedging status</label>
+                            <select class="form-select" id="autoHedgingAdmissionPairFilter">
+                              <option value="ALL">All</option>
+                              <option value="ENABLED">Enabled</option>
+                              <option value="DISABLED">Disabled</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div class="auto-hedging-admission-pair-table-viewport">
+                          <table class="table table-sm table-hover align-middle auto-hedging-admission-pair-table">
+                            <thead>
+                              <tr>
+                                <th scope="col">Ccy Pair</th>
+                                <th scope="col" class="text-center">Automatic Admission Enabled</th>
+                                <th scope="col">Maximum Trade Amount (Base Ccy)</th>
+                              </tr>
+                            </thead>
+                            <tbody id="autoHedgingAdmissionPairRows"></tbody>
+                          </table>
+                          <div class="auto-hedging-admission-pair-empty" id="autoHedgingAdmissionPairEmpty" role="status" hidden>No Currency Pairs match the current filters.</div>
+                        </div>
+                      </section>
+
+                      <div class="auto-hedging-admission-settings-status" id="autoHedgingAdmissionPolicyStatus" role="status" aria-live="polite"></div>
+                    </div>
+                    <div class="auto-hedging-admission-settings-footer">
+                      <button type="submit" class="btn btn-primary btn-sm with-icon" id="autoHedgingAdmissionPolicySaveButton" disabled>
+                        <span class="button-icon" aria-hidden="true">save</span>
+                        <span>Save Policy</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </section>
+
+              <section class="auto-hedging-trade-segment">
+                <h4 class="auto-hedging-trade-segment-heading">
+                  <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingInitialHedgeToggle" data-auto-hedging-segment-toggle aria-expanded="false" aria-controls="autoHedgingInitialHedgePanel">
+                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">currency_exchange</span>
+                    <span class="auto-hedging-trade-segment-copy">
+                      <strong>Hedge FX Trades</strong>
+                      <small>FX Trades executed with hedge counterparties.</small>
+                    </span>
+                    <span class="badge text-bg-light border">Not configured</span>
+                    <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
+                  </button>
+                </h4>
+                <div class="auto-hedging-trade-segment-body" id="autoHedgingInitialHedgePanel" role="region" aria-labelledby="autoHedgingInitialHedgeToggle" hidden>
+                  <div class="auto-hedging-policy-empty-state">
+                    <span class="button-icon" aria-hidden="true">rule_settings</span>
+                    <div>
+                      <strong>Initial Admission Policy is not defined</strong>
+                      <p>Hedge FX Trade rules will be configured independently from Client FX Trades.</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="auto-hedging-trade-segment">
+                <h4 class="auto-hedging-trade-segment-heading">
+                  <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingInitialTechnicalToggle" data-auto-hedging-segment-toggle aria-expanded="false" aria-controls="autoHedgingInitialTechnicalPanel">
+                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">build_circle</span>
+                    <span class="auto-hedging-trade-segment-copy">
+                      <strong>Technical FX Trades</strong>
+                      <small>System-generated Balance Position and Position Out trades.</small>
+                    </span>
+                    <span class="badge text-bg-light border">Not configured</span>
+                    <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
+                  </button>
+                </h4>
+                <div class="auto-hedging-trade-segment-body" id="autoHedgingInitialTechnicalPanel" role="region" aria-labelledby="autoHedgingInitialTechnicalToggle" hidden>
+                  <div class="auto-hedging-technical-trade-types">
+                    <div>
+                      <span class="button-icon" aria-hidden="true">balance</span>
+                      <span><strong>Balance Position</strong><small>Initial Admission Policy is not defined.</small></span>
+                      <span class="badge text-bg-light border">Not configured</span>
+                    </div>
+                    <div>
+                      <span class="button-icon" aria-hidden="true">output</span>
+                      <span><strong>Position Out</strong><small>Initial Admission Policy is not defined.</small></span>
+                      <span class="badge text-bg-light border">Not configured</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="auto-hedging-entry-route-panel" id="autoHedgingManualReleaseRoute" data-auto-hedging-settings-route-panel="manual-release" aria-labelledby="autoHedgingManualReleaseTitle" hidden>
+            <header class="auto-hedging-entry-route-head">
+              <h3 id="autoHedgingManualReleaseTitle">Manual Release to Auto Hedging</h3>
+              <p>Defines the checks applied when a dealer requests release of a held FX Trade.</p>
+            </header>
+
+            <div class="auto-hedging-trade-segment-list" data-auto-hedging-settings-segments="manual-release">
+              <section class="auto-hedging-trade-segment is-expanded">
+                <h4 class="auto-hedging-trade-segment-heading">
+                  <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingManualClientToggle" data-auto-hedging-segment-toggle aria-expanded="true" aria-controls="autoHedgingManualClientPanel">
+                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">person</span>
+                    <span class="auto-hedging-trade-segment-copy">
+                      <strong>Client FX Trades</strong>
+                      <small>Manual release of held client trades.</small>
+                    </span>
+                    <span class="badge text-bg-warning">Shared in demo</span>
+                    <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
+                  </button>
+                </h4>
+                <div class="auto-hedging-trade-segment-body" id="autoHedgingManualClientPanel" role="region" aria-labelledby="autoHedgingManualClientToggle">
+                  <div class="auto-hedging-shared-policy-note" role="note">
+                    <span class="button-icon" aria-hidden="true">info</span>
+                    <div>
+                      <strong>Current demo behavior</strong>
+                      <p>Manual Release currently reuses the Client FX Trade Initial Admission eligibility settings. It does not yet have an independently editable policy.</p>
+                    </div>
+                  </div>
+                  <dl class="auto-hedging-shared-policy-summary">
+                    <div><dt>Policy source</dt><dd>Client FX Trade Initial Admission</dd></div>
+                    <div><dt>Policy revision</dt><dd id="autoHedgingManualReleaseSharedRevision">—</dd></div>
+                    <div><dt>Enabled Ccy Pairs</dt><dd id="autoHedgingManualReleaseSharedPairSummary">—</dd></div>
+                    <div><dt>Maximum Transfer Rate Deviation</dt><dd id="autoHedgingManualReleaseSharedDeviation">—</dd></div>
+                  </dl>
+                </div>
+              </section>
+
+              <section class="auto-hedging-trade-segment">
+                <h4 class="auto-hedging-trade-segment-heading">
+                  <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingManualHedgeToggle" data-auto-hedging-segment-toggle aria-expanded="false" aria-controls="autoHedgingManualHedgePanel">
+                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">currency_exchange</span>
+                    <span class="auto-hedging-trade-segment-copy">
+                      <strong>Hedge FX Trades</strong>
+                      <small>Manual release of held hedge trades.</small>
+                    </span>
+                    <span class="badge text-bg-light border">Not configured</span>
+                    <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
+                  </button>
+                </h4>
+                <div class="auto-hedging-trade-segment-body" id="autoHedgingManualHedgePanel" role="region" aria-labelledby="autoHedgingManualHedgeToggle" hidden>
+                  <div class="auto-hedging-policy-empty-state">
+                    <span class="button-icon" aria-hidden="true">rule_settings</span>
+                    <div>
+                      <strong>Manual Release Policy is not defined</strong>
+                      <p>Hedge FX Trade release checks will be configured independently.</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="auto-hedging-trade-segment">
+                <h4 class="auto-hedging-trade-segment-heading">
+                  <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingManualTechnicalToggle" data-auto-hedging-segment-toggle aria-expanded="false" aria-controls="autoHedgingManualTechnicalPanel">
+                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">build_circle</span>
+                    <span class="auto-hedging-trade-segment-copy">
+                      <strong>Technical FX Trades</strong>
+                      <small>Manual release of Balance Position and Position Out trades.</small>
+                    </span>
+                    <span class="badge text-bg-light border">Not configured</span>
+                    <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
+                  </button>
+                </h4>
+                <div class="auto-hedging-trade-segment-body" id="autoHedgingManualTechnicalPanel" role="region" aria-labelledby="autoHedgingManualTechnicalToggle" hidden>
+                  <div class="auto-hedging-technical-trade-types">
+                    <div>
+                      <span class="button-icon" aria-hidden="true">balance</span>
+                      <span><strong>Balance Position</strong><small>Manual Release Policy is not defined.</small></span>
+                      <span class="badge text-bg-light border">Not configured</span>
+                    </div>
+                    <div>
+                      <span class="button-icon" aria-hidden="true">output</span>
+                      <span><strong>Position Out</strong><small>Manual Release Policy is not defined.</small></span>
+                      <span class="badge text-bg-light border">Not configured</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </section>
         </section>
       </section>
     </section>

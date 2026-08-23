@@ -58,7 +58,7 @@ INSERT INTO execution_contexts
         accounting_system_id,
         execution_system_id,
         default_position_management_mode,
-        auto_hedging_admission_policy
+        auto_hedging_admission_mode
     )
 VALUES
     ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE'),
@@ -66,6 +66,33 @@ VALUES
     ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL', 'MANUAL_ONLY'),
     ('1234', 'AFINA', 'RFQ', 'MANUAL', 'MANUAL_ONLY'),
     ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE');
+
+INSERT INTO auto_hedging_admission_policy_revisions
+    (revision, max_transfer_rate_deviation_percent)
+VALUES
+    (1, '1.00');
+
+INSERT INTO auto_hedging_admission_policy_pair_rules
+    (
+        revision,
+        ccy_pair_code,
+        max_base_ccy_amount_minor,
+        base_ccy_fraction_digits
+    )
+SELECT
+    1,
+    pair.ccy_pair_code,
+    10000000000,
+    base_ccy.fraction_digits
+FROM ccy_pair_options pair
+INNER JOIN ccy_options base_ccy
+    ON base_ccy.ccy_code = pair.base_ccy_code
+WHERE pair.ccy_pair_code IN ('EUR_USD', 'GBP_USD');
+
+INSERT INTO auto_hedging_admission_policy_current
+    (policy_id, revision)
+VALUES
+    (1, 1);
 
 INSERT INTO trading_counterparties
     (counterparty_name, is_active)
@@ -352,7 +379,7 @@ VALUES
     ('execution_contexts_grid', 'accounting_system', 'Accounting System', 2, 300, 300),
     ('execution_contexts_grid', 'execution_system', 'Execution System', 3, 250, 250),
     ('execution_contexts_grid', 'default_position_management_mode', 'Default FX Position Mode', 4, 176, 176),
-    ('execution_contexts_grid', 'auto_hedging_admission_policy', 'Auto Hedging Admission Policy', 5, 232, 232),
+    ('execution_contexts_grid', 'auto_hedging_admission_mode', 'Auto Hedging Admission', 5, 232, 232),
     ('execution_contexts_grid', 'counterparties_count', 'Trading Counterparties Count', 6, 64, 64),
     ('execution_contexts_grid', 'actions', 'Actions', 7, 80, 80),
     ('servicing_locations_grid', 'id', 'ID', 0, 64, 64),

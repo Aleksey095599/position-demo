@@ -50,7 +50,7 @@ function normalizedMode(value, fallback = "MANUAL") {
   return ["MANUAL", "AUTO"].includes(fallbackMode) ? fallbackMode : "MANUAL";
 }
 
-test("Manual Control and Auto Hedging routes control one shared FX Position grid", () => {
+test("Manual Review and Auto Hedging routes control one shared FX Position grid", () => {
   const tabsMarkup = elementMarkup("fxPositionModeTabs", "nav");
   const manualTabMarkup = elementMarkup("fxPositionManualTab", "a");
   const autoTabMarkup = elementMarkup("fxPositionAutoTab", "a");
@@ -61,7 +61,7 @@ test("Manual Control and Auto Hedging routes control one shared FX Position grid
   assert.match(manualTabMarkup, /data-fx-position-mode="MANUAL"/);
   assert.match(manualTabMarkup, /aria-controls="fxPositionGridPanel"/);
   assert.match(manualTabMarkup, /class="button-icon fx-position-mode-icon" aria-hidden="true">touch_app<\/span>/);
-  assert.match(manualTabMarkup, />Manual Control</);
+  assert.match(manualTabMarkup, />Manual Review</);
   assert.match(manualTabMarkup, /id="fxPositionManualCount"/);
   assert.match(autoTabMarkup, /href="#fx-position:auto"/);
   assert.match(autoTabMarkup, /data-fx-position-mode="AUTO"/);
@@ -95,7 +95,7 @@ test("Manual Control and Auto Hedging routes control one shared FX Position grid
   );
 });
 
-test("Manual Control exposes an explicit confirmation before sending Trades to Auto", () => {
+test("Manual Review exposes an explicit confirmation before sending Trades to Auto", () => {
   const buttonMarkup = elementMarkup("sendToAutoPositionModeButton", "button");
   const dialogMarkup = elementMarkup("sendToAutoPositionModeDialog", "dialog");
 
@@ -361,7 +361,7 @@ test("Send to Auto posts composite identities and protects success/error/in-flig
   assert.match(openSource, /tradeId: Number\(fxPositionTradeId\(deal\)\)/);
   assert.match(openSource, /tradeType: fxPositionType\(deal\)/);
   assert.match(openSource, /to Auto Hedging\?`/);
-  assert.doesNotMatch(openSource, /from Manual Control/);
+  assert.doesNotMatch(openSource, /from Manual Review/);
   assert.match(closeSource, /if \(sendToAutoPositionModeInFlight\)/);
   assert.match(confirmSource, /sendToAutoPositionModeInFlight = true/);
   assert.match(confirmSource, /sendToAutoPositionModeDialogClose\.disabled = true/);

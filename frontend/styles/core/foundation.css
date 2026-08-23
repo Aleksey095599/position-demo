@@ -2468,13 +2468,13 @@
       color: var(--bs-success-text-emphasis);
     }
 
-    .auto-hedging-admission-policy-badge.is-review-required {
+    .auto-hedging-admission-mode-badge.is-review-required {
       border-color: var(--bs-warning-border-subtle);
       background: var(--bs-warning-bg-subtle);
       color: var(--bs-warning-text-emphasis);
     }
 
-    .auto-hedging-admission-policy-badge.is-manual-only {
+    .auto-hedging-admission-mode-badge.is-manual-only {
       border-color: var(--bs-secondary-border-subtle);
       background: var(--bs-secondary-bg-subtle);
       color: var(--bs-secondary-text-emphasis);

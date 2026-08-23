@@ -2073,17 +2073,17 @@ function verifyFrontendStructure() {
     usesPricingRulePositionModeInheritanceControls,
     usesFxPositionManagementPolicyConfiguration:
       schemaSource.includes("default_position_management_mode")
-      && schemaSource.includes("auto_hedging_admission_policy")
+      && schemaSource.includes("auto_hedging_admission_mode")
       && schemaSource.includes("position_management_mode_override")
       && serverSource.includes("ensureFxPositionManagementPolicyColumns(database)")
       && serverSource.includes("effectivePositionManagementMode: resolveFxPositionManagementMode")
       && html.includes('data-ui-column-key="default_position_management_mode"')
-      && html.includes('data-ui-column-key="auto_hedging_admission_policy"')
+      && html.includes('data-ui-column-key="auto_hedging_admission_mode"')
       && html.includes('data-ui-column-key="position_management_mode"')
       && html.includes('name="positionManagementModeOverride"')
       && inlineScript.includes("function effectivePositionManagementModeForRule(rule, context = null)")
       && inlineScript.includes("defaultPositionManagementMode: context.defaultPositionManagementMode")
-      && inlineScript.includes("autoHedgingAdmissionPolicy: context.autoHedgingAdmissionPolicy")
+      && inlineScript.includes("autoHedgingAdmissionMode: context.autoHedgingAdmissionMode")
       && inlineScript.includes("positionManagementModeOverride: normalizedPositionManagementModeOverride"),
     usesUiColorTokenPalette:
       schemaSource.includes("CREATE TABLE IF NOT EXISTS ui_color_tokens")
@@ -2408,46 +2408,15 @@ function verifyFrontendStructure() {
       && manualBatchFormationProcessPageMarkup.includes(
         '>Process goal:</span>'
       )
-      && manualBatchFormationProcessPageMarkup.includes(
-        'href="#processes:auto-hedging" data-process-catalog-view="auto-hedging"'
-      )
-      && manualBatchFormationProcessPageMarkup.includes(
-        'class="processes-list-link processes-list-sublink" href="#processes:auto-hedging-admission"'
-      )
-      && autoHedgingProcessViewMarkup.includes(
-        'id="autoHedgingTitle" data-process-copy="autoHedging">Auto Hedging</h2>'
-      )
-      && !autoHedgingProcessViewMarkup.includes('data-process-copy="autoHedgingDefinition"')
-      && autoHedgingProcessViewMarkup.includes("“Auto Hedging” tab")
-      && autoHedgingProcessViewMarkup.includes("“Manual Control” tab")
-      && autoHedgingProcessViewMarkup.includes('data-process-copy="autoHedgingFxPositionPresentation" data-process-linked-copy')
-      && autoHedgingProcessViewMarkup.includes('href="#processes:auto-hedging-admission"')
-
-      && manualBatchFormationProcessPageMarkup.includes(
-        'href="#processes:auto-hedging-admission" data-process-catalog-view="admission"'
-      )
-      && automationAdmissionProcessViewMarkup.includes(
-        'id="automationAdmissionTitle" data-process-copy="automationAdmission">Auto Hedging Admission</h2>'
-      )
-      && automationAdmissionProcessViewMarkup.includes('data-process-copy="automationAdmissionSubtitle" data-process-linked-copy')
-      && automationAdmissionProcessViewMarkup.includes('data-process-copy="automationAdmissionSummary" data-process-linked-copy')
-      && !automationAdmissionProcessViewMarkup.includes("The model separates the rule")
-      && automationAdmissionProcessViewMarkup.includes(">Admission Policy</span>")
-      && automationAdmissionProcessViewMarkup.includes(">Admission State</span>")
-      && automationAdmissionProcessViewMarkup.includes("<dt>AUTO_IF_ELIGIBLE</dt>")
-      && automationAdmissionProcessViewMarkup.includes("<dt>REVIEW_REQUIRED</dt>")
-      && automationAdmissionProcessViewMarkup.includes("<dt>MANUAL_ONLY</dt>")
-      && automationAdmissionProcessViewMarkup.includes("<dt>HELD</dt>")
-      && automationAdmissionProcessViewMarkup.includes("<dt>RELEASED</dt>")
-      && automationAdmissionProcessViewMarkup.includes('data-process-copy="automationAdmissionRule"')
-      && automationAdmissionProcessViewMarkup.includes("<code>determineInitialAdmissionState</code>")
-      && automationAdmissionProcessViewMarkup.includes("Demo baseline for an FX Trade with an Execution Context")
-      && automationAdmissionProcessViewMarkup.includes("<code>decideReleaseToAutoHedging</code>")
-      && html.includes(".automation-admission-technical-token")
-      && automationAdmissionProcessViewMarkup.includes('data-process-copy="domainFunctionsDescription"')
-      && automationAdmissionProcessViewMarkup.includes('data-process-copy="automationAdmissionFutureExample" data-process-linked-copy')
-      && automationAdmissionProcessViewMarkup.includes("Transfer Rate")
-      && automationAdmissionProcessViewMarkup.includes("Market Pulse")
+      && !manualBatchFormationProcessPageMarkup.includes('data-process-catalog-view="auto-hedging"')
+      && !manualBatchFormationProcessPageMarkup.includes('data-process-catalog-view="admission"')
+      && !manualBatchFormationProcessPageMarkup.includes('data-process-catalog-group="auto-hedging"')
+      && !manualBatchFormationProcessPageMarkup.includes('href="#processes:auto-hedging"')
+      && !manualBatchFormationProcessPageMarkup.includes('href="#processes:auto-hedging-admission"')
+      && autoHedgingProcessViewMarkup === ""
+      && automationAdmissionProcessViewMarkup === ""
+      && !html.includes(".auto-hedging-subcatalog-link")
+      && !html.includes(".automation-admission-summary")
       && manualBatchFormationProcessPageMarkup.includes(
         'href="#processes:domain-glossary" data-process-catalog-view="glossary"'
       )
@@ -2457,6 +2426,12 @@ function verifyFrontendStructure() {
       && domainGlossaryProcessViewMarkup.includes('<dt>FX Position</dt>')
       && !domainGlossaryProcessViewMarkup.includes('href="#fx-position"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-auto-hedging"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-auto-hedging-admission"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-execution-context-admission-mode"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-auto-hedging-admission-policy"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-eligibility-check"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-admission-state"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-ccy-pair"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-batch"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-batching"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-trade"')
@@ -2549,14 +2524,16 @@ function verifyFrontendStructure() {
       && !inlineScript.includes('{ text: "Batch", key: "fx-batch" }')
       && !inlineScript.includes('{ text: "FX-сделка", key: "fx-trade" }')
       && inlineScript.includes("linkDomainGlossaryDefinitions();")
-      && inlineScript.includes("function highlightAutomationAdmissionTechnicalTokens()")
-      && inlineScript.includes('"AUTO_IF_ELIGIBLE",')
-      && inlineScript.includes('"REVIEW_REQUIRED",')
-      && inlineScript.includes('"MANUAL_ONLY",')
+      && !inlineScript.includes("function highlightAutomationAdmissionTechnicalTokens()")
+      && inlineScript.includes('{ text: "Execution Context Admission Mode", key: "execution-context-admission-mode" }')
+      && inlineScript.includes('{ text: "Auto Hedging Admission Policy", key: "auto-hedging-admission-policy" }')
+      && inlineScript.includes('{ text: "Eligibility Check", key: "eligibility-check" }')
+      && inlineScript.includes('{ text: "Ccy Pair", key: "ccy-pair" }')
       && inlineScript.includes("function showManualProcessDefinition")
       && inlineScript.includes("function domainGlossaryRoute")
-      && inlineScript.includes('return "#processes:auto-hedging-admission";')
-      && inlineScript.includes('return "#processes:automation-admission";')
+      && !inlineScript.includes('return "#processes:auto-hedging";')
+      && !inlineScript.includes('return "#processes:auto-hedging-admission";')
+      && !inlineScript.includes('return "#processes:automation-admission";')
       && inlineScript.includes("function isDomainGlossaryRoute")
       && inlineScript.includes("function isProcessCatalogRoute")
       && inlineScript.includes("function renderProcessCatalogRoute")
@@ -2573,13 +2550,12 @@ function verifyFrontendStructure() {
       && !html.includes('id="manualBatchingProcessFlowDialog"')
       && inlineScript.includes("function manualBatchFormationProcessRoute()")
       && inlineScript.includes("function isManualBatchFormationProcessRoute()")
-      && inlineScript.includes("function autoHedgingRoute()")
-      && inlineScript.includes("function isAutoHedgingRoute()")
-      && inlineScript.includes("autoHedgingProcessView.hidden = !isAutoHedging;")
-      && inlineScript.includes('activeView === "admission" && view === "auto-hedging"')
-      && inlineScript.includes("function automationAdmissionRoute()")
-      && inlineScript.includes("function isAutomationAdmissionRoute()")
-      && inlineScript.includes("automationAdmissionProcessView.hidden = !isAdmission;")
+      && !inlineScript.includes("function autoHedgingRoute()")
+      && !inlineScript.includes("function isAutoHedgingRoute()")
+      && !inlineScript.includes("autoHedgingProcessView")
+      && !inlineScript.includes("function automationAdmissionRoute()")
+      && !inlineScript.includes("function isAutomationAdmissionRoute()")
+      && !inlineScript.includes("automationAdmissionProcessView")
       && batchingSettingsPageMarkup.includes('id="autoBatchingSettingsSaveButton"')
       && inlineScript.includes("function batchingSettingsRoute()")
       && inlineScript.includes("function isBatchingSettingsRoute()")
@@ -2765,7 +2741,7 @@ function verifyFrontendStructure() {
         databaseTableSectionsSource
       )
       && !databaseTableSectionsSource.includes('id: "execution-context"')
-      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"fx_hedge_quick_mode_settings",\s*"fx_batching_settings",\s*"fx_auto_batching_settings",\s*"fx_auto_batching_ccy_pairs"\s*\]/.test(
+      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"fx_hedge_quick_mode_settings",\s*"fx_batching_settings",\s*"fx_auto_batching_settings",\s*"fx_auto_batching_ccy_pairs",\s*"auto_hedging_admission_policy_current",\s*"auto_hedging_admission_policy_revisions",\s*"auto_hedging_admission_policy_pair_rules"\s*\]/.test(
         databaseTableSectionsSource
       )
       && !databaseTableSectionsSource.includes('id: "hedging-settings"')
@@ -2775,11 +2751,12 @@ function verifyFrontendStructure() {
       )
       && databaseTableSectionsSource.includes('label: "Audit"')
       && databaseTableSectionsSource.includes('icon: "policy"')
-      && /id: "audit",[\s\S]*?tables: \[\s*"fx_trade_position_management_transitions",\s*"fx_trade_market_snapshot",\s*"v_fx_batch_formation_audit"\s*\]/.test(
+      && /id: "audit",[\s\S]*?tables: \[\s*"fx_trade_position_management_transitions",\s*"fx_trade_market_snapshot",\s*"fx_auto_hedging_admission_decisions",\s*"v_fx_batch_formation_audit"\s*\]/.test(
         databaseTableSectionsSource
       )
       && (databaseTableSectionsSource.match(/"fx_trade_position_management_transitions"/g) || []).length === 1
       && (databaseTableSectionsSource.match(/"fx_trade_market_snapshot"/g) || []).length === 1
+      && (databaseTableSectionsSource.match(/"fx_auto_hedging_admission_decisions"/g) || []).length === 1
       && (databaseTableSectionsSource.match(/"v_fx_batch_formation_audit"/g) || []).length === 1
       && (databaseTableSectionsSource.match(/"fx_batch_balance_trade"/g) || []).length === 1
       && (databaseTableSectionsSource.match(/"fx_batch_position_output"/g) || []).length === 1
@@ -2822,7 +2799,7 @@ function verifyFrontendStructure() {
       && fxPositionModeTabsMarkup.includes('href="#fx-position:manual"')
       && fxPositionModeTabsMarkup.includes('data-fx-position-mode="MANUAL"')
       && fxPositionModeTabsMarkup.includes('id="fxPositionManualCount"')
-      && fxPositionModeTabsMarkup.includes('>Manual Control</span>')
+      && fxPositionModeTabsMarkup.includes('>Manual Review</span>')
       && fxPositionModeTabsMarkup.includes('id="fxPositionAutoTab"')
       && fxPositionModeTabsMarkup.includes('href="#fx-position:auto"')
       && fxPositionModeTabsMarkup.includes('data-fx-position-mode="AUTO"')
@@ -4100,7 +4077,7 @@ function verifyFrontendStructure() {
       && uiTableLayoutsSource.includes('["servicing_location", "Servicing Location", 250]')
       && uiTableLayoutsSource.includes('["accounting_system", "Accounting System", 300]')
       && uiTableLayoutsSource.includes('["execution_system", "Execution System", 250]')
-      && uiTableLayoutsSource.includes('["auto_hedging_admission_policy", "Auto Hedging Admission Policy", 232]')
+      && uiTableLayoutsSource.includes('["auto_hedging_admission_mode", "Auto Hedging Admission", 232]')
       && uiTableLayoutsSource.includes(
         '["counterparties_count", "Trading Counterparties Count", 64]'
       )
@@ -6287,6 +6264,7 @@ async function verifyApiAndMigration() {
       "client_fx_deals",
       "fx_hedge_deals",
       "fx_trade_market_snapshot",
+      "fx_auto_hedging_admission_decisions",
       "fx_batches",
       "fx_batch_members",
       "fx_batch_balance_trade",
@@ -6301,6 +6279,7 @@ async function verifyApiAndMigration() {
       WHERE type = 'trigger'
         AND name IN
         (
+          'trg_fx_auto_hedging_admission_decisions_immutable_delete',
           'trg_fx_batch_members_immutable_delete',
           'trg_fx_batch_balance_trade_immutable_delete',
           'trg_fx_batch_position_output_immutable_delete',
@@ -6904,7 +6883,7 @@ async function verifyApiAndMigration() {
         referenceDataPreserved:
           JSON.stringify(demoResetReferenceBefore.map(result => result.body))
           === JSON.stringify(demoResetReferenceAfter.map(result => result.body)),
-        deleteTriggersRestored: demoResetDeleteTriggers.length === 5,
+        deleteTriggersRestored: demoResetDeleteTriggers.length === 6,
         tradeSequencesCleared: demoResetBatchSequences.length === 0,
         foreignKeyViolations: demoResetForeignKeyViolations
       },
@@ -7558,6 +7537,9 @@ async function main() {
     const apiAndMigration = await verifyApiAndMigration();
     const expectedTables = [
       "accounting_systems",
+      "auto_hedging_admission_policy_current",
+      "auto_hedging_admission_policy_pair_rules",
+      "auto_hedging_admission_policy_revisions",
       "ccy_options",
       "ccy_pair_options",
       "client_deal_generation_process_settings",
@@ -7568,6 +7550,7 @@ async function main() {
       "external_counterparties",
       "fx_auto_batching_ccy_pairs",
       "fx_auto_batching_settings",
+      "fx_auto_hedging_admission_decisions",
       "fx_batch_balance_trade",
       "fx_batch_members",
       "fx_batch_position_output",
@@ -8166,7 +8149,7 @@ async function main() {
       || apiAndMigration.executionSystemColumns.join(",") !== "execution_system_id,name,pricing_mode,is_active"
       || apiAndMigration.executionSystems.count !== 3
       || apiAndMigration.executionSystems.clickTradeContextCount !== 2
-      || apiAndMigration.executionContextColumns.join(",") !== "execution_context_id,servicing_location_id,accounting_system_id,execution_system_id,default_position_management_mode,auto_hedging_admission_policy"
+      || apiAndMigration.executionContextColumns.join(",") !== "execution_context_id,servicing_location_id,accounting_system_id,execution_system_id,default_position_management_mode,auto_hedging_admission_mode"
       || apiAndMigration.executionContextIdType !== "INTEGER"
       || apiAndMigration.executionContextForeignKeys.length !== 3
       || !apiAndMigration.executionContextForeignKeys.every(foreignKey => foreignKey.onDelete === "RESTRICT")
