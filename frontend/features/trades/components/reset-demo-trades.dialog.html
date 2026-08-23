@@ -1,0 +1,23 @@
+  <dialog class="market-bootstrap-dialog batch-rollback-dialog demo-trade-reset-dialog" id="resetDemoTradesDialog" aria-labelledby="resetDemoTradesDialogTitle">
+    <div class="modal-content">
+      <header class="modal-header">
+          <h2 class="modal-title" id="resetDemoTradesDialogTitle">Reset Trading Demo</h2>
+        <button type="button" class="btn-close" id="resetDemoTradesDialogClose" aria-label="Close"></button>
+      </header>
+      <div class="modal-body">
+        <p class="batch-rollback-summary">Clear all Trades and FX Batches?</p>
+        <div class="alert alert-warning mt-3 mb-0" role="note">
+          <div><strong>Will be cleared:</strong> Client Deals, Hedge Deals, Batch Balance Trades, Position Outs, and FX Batches.</div>
+          <div class="mt-2"><strong>Will be preserved:</strong> Trading Counterparties, Execution Contexts, Pricing Rules, reference data, and settings.</div>
+        </div>
+        <div class="alert alert-danger batch-rollback-status" id="resetDemoTradesStatus" role="alert" hidden></div>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="resetDemoTradesCancelButton">Cancel</button>
+        <button type="button" class="btn btn-sm btn-danger" id="resetDemoTradesConfirmButton">
+          <span class="button-icon" aria-hidden="true">restart_alt</span>
+          <span>Reset trades</span>
+        </button>
+      </footer>
+    </div>
+  </dialog>

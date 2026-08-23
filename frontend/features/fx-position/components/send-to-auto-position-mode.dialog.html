@@ -1,0 +1,16 @@
+  <dialog class="market-bootstrap-dialog batch-rollback-dialog" id="sendToAutoPositionModeDialog" aria-labelledby="sendToAutoPositionModeDialogTitle">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2 class="modal-title" id="sendToAutoPositionModeDialogTitle">Send to Auto Hedging</h2>
+        <button type="button" class="btn-close" id="sendToAutoPositionModeDialogClose" aria-label="Close"></button>
+      </header>
+      <div class="modal-body">
+        <p class="batch-rollback-summary" id="sendToAutoPositionModeSummary"></p>
+        <div class="alert alert-danger batch-rollback-status mt-3 mb-0" id="sendToAutoPositionModeStatus" role="alert" hidden></div>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="sendToAutoPositionModeCancelButton">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="sendToAutoPositionModeConfirmButton">Send to Auto</button>
+      </footer>
+    </div>
+  </dialog>

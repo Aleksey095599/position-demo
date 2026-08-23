@@ -1799,7 +1799,10 @@ function verifyFrontendStructure() {
   const normalizedSource = fileName => fs
     .readFileSync(path.join(root, fileName), "utf8")
     .replace(/\r\n?/g, "\n");
-  const html = normalizedSource("index.html");
+  const documentHtml = normalizedSource("index.html");
+  const frontendStyle = normalizedSource(path.join("frontend", "styles", "app.css"));
+  const inlineScript = normalizedSource(path.join("frontend", "app", "app.js"));
+  const html = `${documentHtml}\n${frontendStyle}\n${inlineScript}`;
   const serverSource = normalizedSource("server.js");
   const schemaSource = normalizedSource("schema.sql");
   const uiTableLayoutsSource = normalizedSource(
@@ -1851,10 +1854,8 @@ function verifyFrontendStructure() {
     path.join("backend", "money", "money.js")
   );
   const startScript = normalizedSource("start-demo.bat");
-  const scripts = [...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/g)];
-  const inlineScript = scripts.at(-1)?.[1] || "";
-  const nativeTableOpenings = html.match(/<table\b[^>]*>/g) || [];
-  const dialogCount = (html.match(/<dialog\b/g) || []).length;
+  const nativeTableOpenings = documentHtml.match(/<table\b[^>]*>/g) || [];
+  const dialogCount = (documentHtml.match(/<dialog\b/g) || []).length;
   const dialogCloseButtonCount = (
     html.match(/class="[^"]*btn-close[^"]*"[^>]*aria-label="Close"/g) || []
   ).length;
@@ -1872,7 +1873,7 @@ function verifyFrontendStructure() {
     /async function loadBatchDetailsPage\(\)[\s\S]*?function marketGridActionMarkup/
   )?.[0] || "";
 
-  const ids = [...html.matchAll(/\bid="([^"]+)"/g)]
+  const ids = [...documentHtml.matchAll(/\bid="([^"]+)"/g)]
     .map(match => match[1])
     .filter(id => !id.includes("${"));
   const duplicateIds = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];

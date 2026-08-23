@@ -1,0 +1,102 @@
+  <main class="settings-shell profile-shell database-shell unified-bootstrap-workspace workbench-page" id="databasePage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Database header">
+      <div class="settings-title-block">
+        <h1 class="settings-title">Database</h1>
+      </div>
+      <div class="profile-status workbench-page-status" id="databaseStatus" role="status" aria-live="polite"></div>
+      <button type="button" class="action-button with-icon" id="databaseRefreshButton">
+        <span class="button-icon" aria-hidden="true">refresh</span>
+        <span>Refresh</span>
+      </button>
+    </section>
+
+    <section class="database-layout" aria-label="SQLite database explorer">
+      <aside class="profile-panel">
+        <div class="profile-panel-head">
+          <h2 class="database-section-title">Tables</h2>
+        </div>
+        <div class="database-table-search">
+          <label class="sr-only" for="databaseTableSearch">Find a database table</label>
+          <div class="profile-search-control">
+            <span class="button-icon" aria-hidden="true">search</span>
+            <input
+              type="search"
+              id="databaseTableSearch"
+              placeholder="Find table..."
+              autocomplete="off"
+              spellcheck="false"
+            >
+          </div>
+        </div>
+        <div class="database-table-list" id="databaseTableList"></div>
+      </aside>
+
+      <section class="database-details" id="databaseDetails">
+        <article class="profile-panel profile-table-panel semantic-section semantic-table-section table-panel table-panel--semantic">
+          <div class="profile-panel-head semantic-section-head semantic-table-section-head table-panel__head">
+            <h2 class="database-section-title table-panel__title" id="databaseTableTitle">Select a table</h2>
+          </div>
+          <div class="profile-table-wrap semantic-table-section-body table-panel__body table-panel__viewport">
+            <table class="profile-table unified-data-table">
+              <thead>
+                <tr>
+                  <th>Column</th>
+                  <th>Type</th>
+                  <th>Not Null</th>
+                  <th>Primary Key</th>
+                  <th>Default</th>
+                </tr>
+              </thead>
+              <tbody id="databaseSchemaRows"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="profile-panel profile-table-panel semantic-section semantic-table-section table-panel table-panel--semantic">
+          <div class="profile-panel-head semantic-section-head semantic-table-section-head table-panel__head">
+            <h2 class="database-section-title table-panel__title">Foreign Keys</h2>
+          </div>
+          <div class="profile-table-wrap semantic-table-section-body table-panel__body table-panel__viewport">
+            <table class="profile-table unified-data-table">
+              <thead>
+                <tr>
+                  <th>Column</th>
+                  <th>Referenced Table</th>
+                  <th>Referenced Column</th>
+                  <th>On Update</th>
+                  <th>On Delete</th>
+                </tr>
+              </thead>
+              <tbody id="databaseForeignKeyRows"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="profile-panel semantic-section" id="databaseColorPalettePanel" hidden>
+          <div class="profile-panel-head semantic-section-head">
+            <h2 class="database-section-title">Color Palette</h2>
+          </div>
+          <div class="database-color-palette" id="databaseColorPalette"></div>
+        </article>
+
+        <article class="profile-panel profile-table-panel semantic-section semantic-table-section table-panel table-panel--semantic">
+          <div class="profile-panel-head semantic-section-head semantic-table-section-head table-panel__head">
+            <h2 class="database-section-title table-panel__title">Rows</h2>
+          </div>
+          <div class="profile-table-wrap semantic-table-section-body table-panel__body table-panel__viewport">
+            <table class="profile-table database-data-table unified-data-table">
+              <thead id="databaseDataHead"></thead>
+              <tbody id="databaseDataRows"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="profile-panel semantic-section">
+          <div class="profile-panel-head semantic-section-head">
+            <h2 class="database-section-title">CREATE TABLE</h2>
+          </div>
+          <pre class="database-sql" id="databaseCreateSql"></pre>
+        </article>
+      </section>
+    </section>
+  </main>

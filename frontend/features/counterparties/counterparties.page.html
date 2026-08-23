@@ -1,0 +1,378 @@
+  <main class="settings-shell profile-shell client-profile-shell unified-bootstrap-workspace workbench-page" id="clientProfilePage" hidden>
+    <section class="settings-topbar client-profile-topbar workbench-page-header" id="clientProfileTopbar" aria-label="Trading Counterparties header">
+      <div class="client-profile-page-heading workbench-detail-heading">
+        <button type="button" class="btn btn-sm btn-outline-secondary client-profile-back-button workbench-detail-back-button" id="clientProfileBackButton" aria-label="Back to Trading Counterparties" hidden>
+          <span class="button-icon" aria-hidden="true">arrow_back</span>
+          <span>Trading Counterparties</span>
+        </button>
+        <div class="settings-title-block workbench-detail-title-block">
+          <nav class="workbench-breadcrumb" id="clientProfileBreadcrumb" aria-label="breadcrumb" hidden>
+            <ol class="breadcrumb mb-0">
+              <li class="breadcrumb-item">
+                <a id="clientProfileBreadcrumbBackLink" href="#execution-context">Execution Contexts</a>
+              </li>
+              <li class="breadcrumb-item active" id="clientProfileBreadcrumbCurrent" aria-current="page">Trading Counterparties</li>
+            </ol>
+          </nav>
+          <h1 class="settings-title" id="clientProfilePageTitle">Trading Counterparties</h1>
+        </div>
+      </div>
+      <div class="profile-status workbench-page-status" id="clientProfileStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <nav class="nav nav-tabs workbench-section-tabs trading-counterparty-scope-tabs" id="tradingCounterpartyScopeTabs" aria-label="Trading Counterparty scope">
+      <button type="button" class="nav-link active" data-trading-counterparty-scope="EXTERNAL" aria-selected="true">
+        <span class="button-icon" aria-hidden="true">domain</span>
+        <span>External Counterparties</span>
+      </button>
+      <button type="button" class="nav-link" data-trading-counterparty-scope="INTERNAL" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">account_tree</span>
+        <span>Internal Units</span>
+      </button>
+    </nav>
+
+    <section class="profile-layout client-profile-layout" id="clientProfileLayout" aria-label="Trading counterparties editor">
+      <section class="profile-panel profile-table-panel table-panel table-panel--standalone" id="clientProfileListView" aria-label="Trading counterparties">
+        <div class="profile-panel-head table-panel__head">
+          <h2 class="table-panel__title">Trading Counterparties</h2>
+          <div class="profile-panel-head-actions table-panel__tools" data-ui-table-layout-host="external_counterparties_grid">
+            <button type="button" class="btn btn-sm btn-primary reference-new-button" id="clientProfileNewButton">
+              <span class="button-icon" aria-hidden="true">add</span>
+              <span id="clientProfileNewButtonLabel">New external counterparty</span>
+            </button>
+          </div>
+        </div>
+        <div class="profile-table-wrap table-panel__body table-panel__viewport">
+          <table class="profile-table reference-table client-profile-table unified-data-table" id="tradingCounterpartiesTable" data-ui-table-layout-key="external_counterparties_grid">
+            <colgroup>
+              <col class="client-profile-id-col" data-ui-column-key="id">
+              <col class="client-profile-party-type-col" data-ui-column-key="counterparty_type">
+              <col class="client-profile-business-id-type-col" data-ui-column-key="business_id_type">
+              <col class="client-profile-business-id-col" data-ui-column-key="business_id">
+              <col class="client-profile-name-col" data-ui-column-key="counterparty_name">
+              <col class="client-profile-counterparty-role-col" data-ui-column-key="role">
+              <col class="client-profile-status-col" data-ui-column-key="active">
+              <col class="client-profile-actions-col" data-ui-column-key="actions" data-client-profile-actions-column>
+            </colgroup>
+            <thead>
+              <tr>
+                <th id="tradingCounterpartyIdHeader" aria-sort="ascending">
+                  <div class="reference-column-head">
+                    <button type="button" class="reference-column-title reference-sort-control" id="tradingCounterpartyIdSort" aria-label="Sort trading counterparties by ID ascending" aria-pressed="true">
+                      <span>ID</span>
+                      <span class="reference-sort-indicator" aria-hidden="true"></span>
+                    </button>
+                    <input class="reference-header-filter" id="tradingCounterpartyIdFilter" type="text" inputmode="numeric" autocomplete="off" data-trading-counterparty-header-filter="counterpartyId" aria-label="Filter trading counterparties by ID">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title" id="tradingCounterpartyProfileTypeHeaderLabel">Counterparty Type</span>
+                    <select class="reference-header-filter form-select" id="tradingCounterpartyExternalKindFilter" data-trading-counterparty-header-filter="partyType" aria-label="Filter external counterparties by counterparty type">
+                      <option value="">All</option>
+                      <option value="CORPORATE">Corporate</option>
+                      <option value="INDIVIDUAL">Individual</option>
+                      <option value="BANK">Bank</option>
+                      <option value="NON_BANK_FINANCIAL_INSTITUTION">Financial Institution</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Business ID Type</span>
+                    <select class="reference-header-filter form-select" id="tradingCounterpartyCodeTypeFilter" data-trading-counterparty-header-filter="clientCodeType" aria-label="Filter trading counterparties by Business ID Type">
+                      <option value="">All</option>
+                      <option value="INN">INN</option>
+                      <option value="OTHER">OTHER</option>
+                    </select>
+                  </div>
+                </th>
+                <th data-smart-min-text="00000000000000000000" data-smart-extra-width="24">
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Business ID</span>
+                    <input class="reference-header-filter" id="tradingCounterpartyCodeFilter" type="text" autocomplete="off" data-trading-counterparty-header-filter="counterpartyCode" aria-label="Filter trading counterparties by Business ID">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title" id="tradingCounterpartyNameHeaderLabel">Counterparty Name</span>
+                    <input class="reference-header-filter" id="tradingCounterpartyNameFilter" type="text" autocomplete="off" data-trading-counterparty-header-filter="counterpartyName" aria-label="Filter trading counterparties by counterparty name">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Role</span>
+                    <select class="reference-header-filter form-select" id="tradingCounterpartyTypeFilter" data-trading-counterparty-header-filter="counterpartyType" aria-label="Filter trading counterparties by role">
+                      <option value="">All</option>
+                      <option value="CLIENT">CLIENT</option>
+                      <option value="HEDGE_COUNTERPARTY">HEDGE_COUNTERPARTY</option>
+                    </select>
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Active</span>
+                    <select class="reference-header-filter form-select" id="tradingCounterpartyActiveFilter" data-trading-counterparty-header-filter="active" aria-label="Filter trading counterparties by active state">
+                      <option value="">All</option>
+                      <option value="YES">Yes</option>
+                      <option value="NO">No</option>
+                    </select>
+                  </div>
+                </th>
+                <th class="profile-actions-cell" data-client-profile-actions-column>
+                  <div class="reference-column-head reference-column-head-static reference-column-head-centered">
+                    <span class="reference-column-title">Actions</span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="clientProfileRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="profile-panel profile-detail-panel" id="clientProfileDetailView" aria-label="Trading counterparty card" hidden>
+        <div class="profile-detail-hint" id="clientProfileDetailHint" hidden>
+          <div>
+            <span class="button-icon" aria-hidden="true">badge</span>
+            Select a trading counterparty from the list or create a new one.
+          </div>
+        </div>
+        <form class="profile-form" id="clientProfileForm" autocomplete="off" hidden>
+          <section class="counterparty-card-section semantic-section" aria-labelledby="clientProfileFormTitle">
+            <div class="counterparty-card-section-head semantic-section-head">
+              <h2 class="counterparty-card-section-title" id="clientProfileFormTitle">General Details</h2>
+            </div>
+            <div class="counterparty-general-details-body">
+              <div class="trading-counterparty-fields">
+                <label class="form-field">
+                  Counterparty Scope
+                  <select name="counterpartyScope" required>
+                    <option value="EXTERNAL">EXTERNAL</option>
+                    <option value="INTERNAL">INTERNAL</option>
+                  </select>
+                </label>
+                <label class="form-field" id="clientProfileKindField">
+                  <span id="clientProfileKindLabel">External Counterparty Type</span>
+                  <select name="profileKind" required></select>
+                </label>
+                <fieldset class="form-field trading-counterparty-role-field">
+                  <legend>Role</legend>
+                  <span class="trading-counterparty-role-options">
+                    <label><input type="checkbox" name="counterpartyRole" value="CLIENT"> CLIENT</label>
+                    <label><input type="checkbox" name="counterpartyRole" value="HEDGE_COUNTERPARTY"> HEDGE_COUNTERPARTY</label>
+                  </span>
+                </fieldset>
+                <label class="form-field" id="clientProfileCodeTypeField">
+                  <span id="clientProfileCodeLabel">Business ID Type</span>
+                  <select name="clientCodeType" aria-label="Business ID Type" required></select>
+                </label>
+                <label class="form-field">
+                  Business ID
+                  <input type="text" name="inn" aria-label="Business ID" maxlength="20" required>
+                </label>
+                <label class="form-field counterparty-name-field">
+                  <span id="clientProfileNameLabel">Counterparty Name</span>
+                  <input type="text" name="clientName" maxlength="200" required>
+                </label>
+                <label class="form-field counterparty-active-field">
+                  <input type="checkbox" name="isActive" checked>
+                  <span>Active</span>
+                </label>
+              </div>
+            </div>
+          </section>
+          <section class="client-execution-contexts-panel client-pricing-configuration-panel counterparty-card-section semantic-section" id="clientExecutionContextsPanel" aria-label="Trading counterparty pricing rules" hidden>
+            <div class="client-execution-contexts-head counterparty-card-section-head semantic-section-head">
+              <span class="client-execution-contexts-heading">
+                <h2 class="client-execution-contexts-title">Pricing Rules</h2>
+                <span class="pricing-filter-chip" id="clientExecutionContextsCount">0 contexts · 0 rules</span>
+              </span>
+              <button type="button" class="btn btn-sm btn-primary reference-new-button" id="clientExecutionContextsAttachButton">
+                <span class="button-icon" id="clientExecutionContextsAttachButtonIcon" aria-hidden="true">add_link</span>
+                <span id="clientExecutionContextsAttachButtonLabel">Attach Execution Context</span>
+              </button>
+            </div>
+            <div class="client-pricing-configuration-body">
+              <ul class="client-execution-contexts-list client-pricing-configuration-tree" id="clientExecutionContextsList" aria-label="Attached Execution Contexts and Pricing Rules"></ul>
+              <div class="client-pricing-rule-editor" id="clientPricingRuleEditor" hidden></div>
+            </div>
+          </section>
+          <div class="profile-form-actions profile-detail-actions">
+            <button type="button" class="btn btn-sm btn-outline-danger with-icon profile-danger-action" id="clientProfileDeleteButton" hidden>
+              <span class="button-icon" aria-hidden="true">delete</span>
+              <span>Delete counterparty</span>
+            </button>
+            <span class="profile-row-actions">
+              <button type="button" class="btn btn-sm btn-outline-secondary with-icon" id="clientProfileResetButton">
+                <span class="button-icon" aria-hidden="true">arrow_back</span>
+                <span>Back</span>
+              </button>
+              <button type="submit" class="btn btn-sm btn-primary with-icon" id="clientProfileSubmitButton" formnovalidate>
+                <span class="button-icon" aria-hidden="true">save</span>
+                <span>Save counterparty</span>
+              </button>
+            </span>
+          </div>
+        </form>
+      </section>
+    </section>
+
+    <section id="usersView" hidden>
+      <section class="settings-topbar client-profile-topbar workbench-page-header" aria-label="Users header">
+        <div class="client-profile-page-heading workbench-detail-heading">
+          <button type="button" class="btn btn-sm btn-outline-secondary client-profile-back-button workbench-detail-back-button" id="usersBackButton" aria-label="Back to Users" hidden>
+            <span class="button-icon" aria-hidden="true">arrow_back</span>
+            <span>Users</span>
+          </button>
+          <div class="settings-title-block workbench-detail-title-block">
+            <h1 class="settings-title" id="usersPageTitle">Users</h1>
+            <span class="client-profile-page-subtitle" id="usersPageSubtitle" hidden></span>
+          </div>
+        </div>
+        <div class="profile-status workbench-page-status" id="usersStatus" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="profile-layout client-profile-layout" id="usersLayout" aria-label="Users editor">
+        <section class="profile-panel profile-table-panel table-panel table-panel--standalone" id="usersListView" aria-label="Users">
+          <div class="profile-panel-head table-panel__head">
+            <h2 class="table-panel__title">Users</h2>
+            <div class="profile-panel-head-actions table-panel__tools" data-ui-table-layout-host="users_grid">
+              <button type="button" class="btn btn-sm btn-primary reference-new-button" id="usersNewButton">
+                <span class="button-icon" aria-hidden="true">person_add</span>
+                <span>New user</span>
+              </button>
+            </div>
+          </div>
+          <div class="profile-table-wrap table-panel__body table-panel__viewport">
+            <table class="profile-table reference-table client-profile-table users-table unified-data-table" id="usersTable" data-ui-table-layout-key="users_grid">
+              <colgroup>
+                <col class="users-id-col" data-ui-column-key="id">
+                <col class="users-code-col" data-ui-column-key="user_code">
+                <col class="users-first-name-col" data-ui-column-key="first_name">
+                <col class="users-last-name-col" data-ui-column-key="last_name">
+                <col class="users-role-col" data-ui-column-key="role">
+                <col class="users-status-col" data-ui-column-key="active">
+                <col class="users-actions-col" data-ui-column-key="actions">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th id="usersIdHeader" aria-sort="ascending">
+                    <div class="reference-column-head">
+                      <button type="button" class="reference-column-title reference-sort-control" id="usersIdSort" aria-label="Sort users by ID ascending" aria-pressed="true">
+                        <span>ID</span>
+                        <span class="reference-sort-indicator" aria-hidden="true"></span>
+                      </button>
+                      <input class="reference-header-filter" type="text" inputmode="numeric" autocomplete="off" data-user-header-filter="userId" aria-label="Filter users by ID">
+                    </div>
+                  </th>
+                  <th>
+                    <div class="reference-column-head">
+                      <span class="reference-column-title">User Code</span>
+                      <input class="reference-header-filter" type="text" autocomplete="off" data-user-header-filter="userCode" aria-label="Filter users by user code">
+                    </div>
+                  </th>
+                  <th>
+                    <div class="reference-column-head">
+                      <span class="reference-column-title">First Name</span>
+                      <input class="reference-header-filter" type="text" autocomplete="off" data-user-header-filter="firstName" aria-label="Filter users by first name">
+                    </div>
+                  </th>
+                  <th>
+                    <div class="reference-column-head">
+                      <span class="reference-column-title">Last Name</span>
+                      <input class="reference-header-filter" type="text" autocomplete="off" data-user-header-filter="lastName" aria-label="Filter users by last name">
+                    </div>
+                  </th>
+                  <th>
+                    <div class="reference-column-head">
+                      <span class="reference-column-title">Role</span>
+                      <select class="reference-header-filter form-select" data-user-header-filter="userRole" aria-label="Filter users by role">
+                        <option value="">All</option>
+                        <option value="DEALER">DEALER</option>
+                        <option value="SUPERVISOR">SUPERVISOR</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                    </div>
+                  </th>
+                  <th>
+                    <div class="reference-column-head">
+                      <span class="reference-column-title">Active</span>
+                      <select class="reference-header-filter form-select" data-user-header-filter="active" aria-label="Filter users by active state">
+                        <option value="">All</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                  </th>
+                  <th class="profile-actions-cell">
+                    <div class="reference-column-head reference-column-head-static reference-column-head-centered">
+                      <span class="reference-column-title">Actions</span>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="usersRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="profile-panel profile-detail-panel" id="usersDetailView" aria-label="User card" hidden>
+          <div class="profile-panel-head">
+            <h2 class="profile-panel-title" id="usersFormTitle">User</h2>
+          </div>
+          <div class="profile-detail-hint" id="usersDetailHint" hidden>
+            <div>
+              <span class="button-icon" aria-hidden="true">person</span>
+              Select a user from the list or create a new one.
+            </div>
+          </div>
+          <form class="profile-form" id="usersForm" autocomplete="off" hidden>
+            <div class="user-fields">
+              <label class="form-field">
+                User Code
+                <input type="text" name="userCode" maxlength="30" pattern="[A-Z0-9._-]{2,30}" required>
+              </label>
+              <label class="form-field">
+                First Name
+                <input type="text" name="firstName" maxlength="50" required>
+              </label>
+              <label class="form-field">
+                Last Name
+                <input type="text" name="lastName" maxlength="50" required>
+              </label>
+              <label class="form-field">
+                Role
+                <select name="userRole" required>
+                  <option value="DEALER">DEALER</option>
+                  <option value="SUPERVISOR">SUPERVISOR</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+              </label>
+              <label class="form-field counterparty-active-field">
+                <input type="checkbox" name="active" checked>
+                <span>Active</span>
+              </label>
+            </div>
+            <div class="profile-form-actions profile-detail-actions">
+              <button type="button" class="btn btn-sm btn-outline-danger with-icon profile-danger-action" id="usersDeleteButton" hidden>
+                <span class="button-icon" aria-hidden="true">delete</span>
+                <span>Delete</span>
+              </button>
+              <span class="profile-row-actions">
+                <button type="button" class="btn btn-sm btn-outline-secondary with-icon" id="usersResetButton">
+                  <span class="button-icon" aria-hidden="true">arrow_back</span>
+                  <span>Back</span>
+                </button>
+                <button type="submit" class="btn btn-sm btn-primary with-icon" id="usersSubmitButton" formnovalidate>
+                  <span class="button-icon" aria-hidden="true">save</span>
+                  <span>Save user</span>
+                </button>
+              </span>
+            </div>
+          </form>
+        </section>
+      </section>
+    </section>
+  </main>

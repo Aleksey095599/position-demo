@@ -1,0 +1,144 @@
+{
+  "fragments": [
+    {
+      "kind": "page",
+      "id": "marketPage",
+      "file": "features/market/market.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "databasePage",
+      "file": "features/database/database.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "mainPage",
+      "file": "features/fx-position/fx-position.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "fxBatchesPage",
+      "file": "features/batching/fx-batches.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "batchDetailsPage",
+      "file": "features/batching/batch-details.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "fxDealsPage",
+      "file": "features/trades/trades.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "analyticalPnlReportPage",
+      "file": "features/reporting/analytical-pnl-report.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "clientProfilePage",
+      "file": "features/counterparties/counterparties.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "pricingPage",
+      "file": "features/pricing/execution-context.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "referenceDataPage",
+      "file": "features/pricing/reference-data.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "pricingRulesPage",
+      "file": "features/pricing/pricing-rules.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "batchingSettingsPage",
+      "file": "features/batching/batching-settings.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "processesPage",
+      "file": "features/processes/processes.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "hedgingSettingsPage",
+      "file": "features/hedging/hedging-settings.page.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "marketSimulationDialog",
+      "file": "features/market/components/market-simulation.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "sendToAutoPositionModeDialog",
+      "file": "features/fx-position/components/send-to-auto-position-mode.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "oneBatchTenorDialog",
+      "file": "features/batching/components/one-batch-tenor.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "batchRollbackDialog",
+      "file": "features/batching/components/batch-rollback.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "resetDemoTradesDialog",
+      "file": "features/trades/components/reset-demo-trades.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "pricingRulesTableLayoutDialog",
+      "file": "shared/components/table-layout.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "addClientDealDialog",
+      "file": "features/trades/components/add-client-deal.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "addHedgeDealDialog",
+      "file": "features/trades/components/add-hedge-deal.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "clientDealDuplicateCheckDialog",
+      "file": "features/trades/components/client-deal-duplicate-check.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "editDealDialog",
+      "file": "features/trades/components/edit-client-deal.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "clientDealGenerationDialog",
+      "file": "features/trades/components/client-deal-generation.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "autoBatchingProcessFlowDialog",
+      "file": "features/batching/components/auto-batching-process-flow.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "clientExecutionContextAttachDialog",
+      "file": "features/counterparties/components/execution-context-attach.dialog.html"
+    },
+    {
+      "kind": "dialog",
+      "id": "clientPricingRuleDialog",
+      "file": "features/counterparties/components/pricing-rule.dialog.html"
+    }
+  ]
+}

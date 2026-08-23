@@ -1,0 +1,147 @@
+  <dialog class="client-deal-create-dialog hedge-deal-create-dialog" id="addHedgeDealDialog">
+    <form class="modal-content" id="addHedgeDealForm" autocomplete="off">
+      <div class="modal-header">
+        <h2 class="modal-title" id="addHedgeDealDialogTitle">Add Hedge Deal</h2>
+        <button type="button" class="btn-close" id="addHedgeDealDialogClose" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <section class="client-deal-create-section client-deal-create-context-section semantic-section" aria-labelledby="addHedgeDealContextTitle">
+          <div class="client-deal-create-section-title semantic-section-head" id="addHedgeDealContextTitle">Trade Context</div>
+          <div class="client-deal-create-section-body">
+            <div class="client-deal-context-fields hedge-deal-context-fields has-pricing-mode">
+              <div class="client-deal-currency-pair-field">
+                <label class="form-label" for="addHedgeDealCurrencyPair">Ccy Pair</label>
+                <select class="form-select" id="addHedgeDealCurrencyPair" name="currencyPair" required></select>
+              </div>
+              <div class="client-deal-pricing-mode-field">
+                <label class="form-label" for="addHedgeDealPricingMode">Pricing Mode</label>
+                <div class="input-group client-deal-pricing-mode-filter">
+                  <span class="input-group-text pricing-mode-indicator client-deal-pricing-mode-icon is-dealer-priced" id="addHedgeDealPricingModeIcon" role="img" aria-label="Dealer Priced">
+                    <span class="button-icon" aria-hidden="true">contact_phone</span>
+                  </span>
+                  <select class="form-select" id="addHedgeDealPricingMode" required>
+                    <option value="DEALER_PRICED">DEALER_PRICED</option>
+                    <option value="AUTO_PRICED">AUTO_PRICED</option>
+                  </select>
+                </div>
+              </div>
+              <div class="client-deal-client-field">
+                <span class="form-label" id="addHedgeDealCounterpartyLabel">Hedge Counterparty</span>
+                <div class="client-deal-client-picker" id="addHedgeDealCounterpartyPicker">
+                  <input type="hidden" id="addHedgeDealCounterpartyId" name="counterpartyId">
+                  <div class="input-group">
+                    <input class="form-control client-deal-client-picker-value" type="text" id="addHedgeDealCounterpartyPickerValue" placeholder="Type Hedge Counterparty name..." role="combobox" aria-labelledby="addHedgeDealCounterpartyLabel" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="addHedgeDealCounterpartyOptions" aria-expanded="false" autocomplete="off">
+                    <button type="button" class="btn btn-outline-secondary client-deal-client-picker-clear" id="addHedgeDealCounterpartyPickerClear" aria-label="Clear Hedge Counterparty" hidden>
+                      <span class="button-icon" aria-hidden="true">close</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary client-deal-client-picker-toggle" id="addHedgeDealCounterpartyPickerToggle" aria-label="Open Hedge Counterparty list" aria-haspopup="listbox" aria-controls="addHedgeDealCounterpartyOptions" aria-expanded="false">
+                      <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+                    </button>
+                  </div>
+                  <div class="client-deal-client-options" id="addHedgeDealCounterpartyOptions" role="listbox" aria-labelledby="addHedgeDealCounterpartyLabel" hidden></div>
+                </div>
+              </div>
+            </div>
+            <div class="client-deal-context-picker" id="addHedgeDealPricingRulePicker" aria-live="polite"></div>
+            <input type="hidden" name="pricingRuleId">
+            <input type="hidden" name="side">
+            <input type="hidden" id="addHedgeDealAmountFixingCurrency" name="amountFixingCurrency" value="base">
+          </div>
+        </section>
+
+        <section class="client-deal-create-section semantic-section" aria-labelledby="addHedgeDealEconomicsTitle">
+          <div class="client-deal-create-section-title semantic-section-head" id="addHedgeDealEconomicsTitle">Trade Economics</div>
+          <div class="client-deal-create-section-body">
+            <div class="hedge-deal-main-economics-row">
+              <div class="client-deal-economics-field">
+                <label class="form-label" for="addHedgeDealSide">Our Side</label>
+                <select class="form-select" id="addHedgeDealSide" required>
+                  <option value="">Select...</option>
+                </select>
+              </div>
+              <div class="client-deal-economics-field client-deal-amount-field" data-add-hedge-deal-amount-field="base">
+                <label class="form-label" for="addHedgeDealBaseAmount">Base Ccy Amount</label>
+                <div class="input-group">
+                  <button type="button" class="input-group-text client-deal-fixed-currency-toggle" data-add-hedge-deal-fixing-currency="base" aria-pressed="true">
+                    <span class="button-icon" data-add-hedge-deal-fixing-icon aria-hidden="true">radio_button_checked</span>
+                    <span data-add-hedge-deal-base-ccy>BASE</span>
+                  </button>
+                  <input class="form-control" type="text" id="addHedgeDealBaseAmount" name="baseCcyAmount" inputmode="decimal" required>
+                </div>
+              </div>
+              <div class="client-deal-economics-field client-deal-amount-field" data-add-hedge-deal-amount-field="quote">
+                <label class="form-label" for="addHedgeDealQuoteAmount">Quote Ccy Amount</label>
+                <div class="input-group">
+                  <button type="button" class="input-group-text client-deal-fixed-currency-toggle" data-add-hedge-deal-fixing-currency="quote" aria-pressed="false">
+                    <span class="button-icon" data-add-hedge-deal-fixing-icon aria-hidden="true">radio_button_unchecked</span>
+                    <span data-add-hedge-deal-quote-ccy>QUOTE</span>
+                  </button>
+                  <input class="form-control" type="text" id="addHedgeDealQuoteAmount" name="quoteCcyAmount" inputmode="decimal" required readonly>
+                </div>
+              </div>
+              <div class="client-deal-economics-field">
+                <label class="form-label" for="addHedgeDealTenor">Tenor</label>
+                <select class="form-select" id="addHedgeDealTenor" name="tenor" required>
+                  <option value="TOD">TOD</option>
+                  <option value="TOM">TOM</option>
+                  <option value="SPOT">SPOT</option>
+                </select>
+              </div>
+            </div>
+            <div class="client-deal-pricing-row is-market-first">
+              <div class="client-deal-market-pulse-card is-compact" id="addHedgeDealMarketPulse" aria-label="Market Pulse">
+                <div class="client-deal-market-pulse-brand">
+                  <span class="button-icon market-pulse-icon" role="img" aria-label="Market Pulse" title="Market Pulse">monitoring</span>
+                </div>
+                <div class="client-deal-market-pulse-quote" id="addHedgeDealMarketQuote" role="textbox" aria-readonly="true" aria-label="Bid / Offer">
+                  <span class="client-deal-market-pulse-quote-bid" data-market-quote-bid></span>
+                  <span class="client-deal-market-pulse-quote-separator" aria-hidden="true">/</span>
+                  <span class="client-deal-market-pulse-quote-offer" data-market-quote-offer></span>
+                </div>
+                <input type="hidden" id="addHedgeDealMarketBid">
+                <input type="hidden" id="addHedgeDealMarketOffer">
+                <div class="client-deal-market-pulse-status" data-add-hedge-deal-market-status aria-live="polite" title="Unavailable">
+                  <span class="client-deal-market-pulse-status-dot" aria-hidden="true"></span>
+                  <span class="visually-hidden" data-add-hedge-deal-market-status-text>Unavailable</span>
+                </div>
+              </div>
+              <div>
+                <label class="form-label" for="addHedgeDealRate">Trade Rate</label>
+                <div class="input-group client-deal-rate-input-group client-deal-trade-rate-input-group">
+                  <span class="input-group-text client-deal-rate-icon" aria-hidden="true">
+                    <span class="button-icon">shield</span>
+                  </span>
+                  <input class="form-control" type="text" id="addHedgeDealRate" name="tradeRate" inputmode="decimal" required>
+                </div>
+              </div>
+              <div>
+                <label class="form-label" for="addHedgeDealTransferRate">Transfer Rate</label>
+                <div class="input-group client-deal-rate-input-group client-deal-transfer-rate-input-group">
+                  <span class="input-group-text client-deal-rate-icon" aria-hidden="true">
+                    <span class="button-icon">swap_horiz</span>
+                  </span>
+                  <input class="form-control" type="text" id="addHedgeDealTransferRate" readonly>
+                </div>
+              </div>
+              <div>
+                <label class="form-label" for="addHedgeDealAnalyticalPnl">Analytical PnL</label>
+                <div class="input-group client-deal-rate-input-group client-deal-pnl-input-group">
+                  <span class="input-group-text client-deal-rate-icon" aria-hidden="true">
+                    <span class="button-icon">payments</span>
+                  </span>
+                  <input class="form-control" type="text" id="addHedgeDealAnalyticalPnl" name="analyticalPnl" readonly>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="addHedgeDealCancelButton">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="addHedgeDealSubmitButton">
+          <span class="button-icon" aria-hidden="true">add</span>
+          <span>Hedge Deal</span>
+        </button>
+      </div>
+    </form>
+  </dialog>

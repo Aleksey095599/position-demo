@@ -1,0 +1,60 @@
+  <dialog class="market-bootstrap-dialog market-simulation-dialog" id="marketSimulationDialog">
+    <form id="marketSimulationForm" autocomplete="off">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title" id="marketSimulationDialogTitle">Simulation Settings</h2>
+          <button type="button" class="btn-close" id="marketSimulationDialogClose" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" aria-label="Quote Simulation Parameters">
+          <section class="market-simulation-section semantic-section" aria-labelledby="marketSimulationPriceRangeTitle">
+            <header class="market-simulation-section-title semantic-section-head">
+              <h3 class="market-simulation-section-name" id="marketSimulationPriceRangeTitle">Price Range</h3>
+              <p class="market-simulation-section-copy">Bid moves between these boundaries; Offer is calculated as Bid plus Spread.</p>
+            </header>
+            <div class="market-simulation-parameter-grid market-simulation-price-grid">
+              <label class="market-simulation-field">
+                <span class="form-label d-block">Min Bid</span>
+                <input class="form-control text-end" type="text" name="bidMin" inputmode="decimal" required>
+              </label>
+              <label class="market-simulation-field">
+                <span class="form-label d-block">Max Bid</span>
+                <input class="form-control text-end" type="text" name="bidMax" inputmode="decimal" required>
+              </label>
+              <label class="market-simulation-field">
+                <span class="form-label d-block">Spread</span>
+                <input class="form-control text-end" type="text" name="spread" inputmode="decimal" required>
+              </label>
+            </div>
+          </section>
+          <section class="market-simulation-section semantic-section" aria-labelledby="marketSimulationMovementTitle">
+            <header class="market-simulation-section-title semantic-section-head">
+              <h3 class="market-simulation-section-name" id="marketSimulationMovementTitle">Movement Pattern</h3>
+              <p class="market-simulation-section-copy">Controls how quickly the price moves and how far it may deviate from its linear path.</p>
+            </header>
+            <div class="market-simulation-parameter-grid market-simulation-movement-grid">
+              <label class="market-simulation-field">
+                <span class="form-label d-block">One-way Duration</span>
+                <span class="input-group">
+                  <input class="form-control text-end" type="number" name="oneWayDurationSeconds" min="5" max="3600" step="1" required>
+                  <span class="input-group-text">sec</span>
+                </span>
+                <span class="form-text">Time from Min Bid to Max Bid, or back.</span>
+              </label>
+              <label class="market-simulation-field">
+                <span class="form-label d-block">Fluctuation</span>
+                <span class="input-group">
+                  <input class="form-control text-end" type="number" name="fluctuationSpreads" min="0" max="10" step="0.1" required>
+                  <span class="input-group-text">spreads</span>
+                </span>
+                <span class="form-text">Maximum deviation from the linear path.</span>
+              </label>
+            </div>
+          </section>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="marketSimulationCancelButton">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-primary" id="marketSimulationSubmitButton">Save settings</button>
+        </div>
+      </div>
+    </form>
+  </dialog>

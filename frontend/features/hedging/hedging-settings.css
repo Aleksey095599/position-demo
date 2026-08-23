@@ -1,0 +1,36 @@
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedging-settings-tab-panel[hidden] {
+      display: none;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-panel {
+      width: min(1180px, 100%);
+      overflow: hidden;
+      border-color: var(--hedging-settings-border);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-panel
+    > .table-panel__head {
+      border-bottom-color: var(--hedging-settings-border);
+      background: var(--hedging-settings-accent-soft);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-empty {
+      display: flex;
+      min-height: 160px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-control);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-empty
+    .button-icon {
+      color: var(--hedging-settings-accent-text);
+      font-size: 24px;
+    }

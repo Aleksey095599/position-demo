@@ -1,0 +1,15 @@
+{
+  "sources": [
+    "styles/core/foundation.css",
+    "shared/components/tabulator.css",
+    "features/pricing/pricing-workflows.css",
+    "shared/components/reference-tables.css",
+    "shared/components/workbench-tabs.css",
+    "features/hedging/hedging-settings.css",
+    "features/fx-position/fx-position-workbench.css",
+    "shared/components/transaction-forms.css",
+    "app/shell/workspace.css",
+    "shared/components/data-tables.css",
+    "shared/components/semantic-sections.css"
+  ]
+}

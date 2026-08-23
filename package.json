@@ -3,6 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "description": "Demo FX Position application",
+  "scripts": {
+    "build:frontend": "node scripts/build-frontend.mjs",
+    "check:frontend": "node scripts/build-frontend.mjs --check && node --check frontend/app/app.js",
+    "test": "node --test"
+  },
   "dependencies": {
     "big.js": "7.0.1",
     "bootstrap": "5.3.8",

@@ -1,5 +1,17 @@
 # Demo FX Position Application
 
+## Frontend development
+
+The browser entry point `index.html` is generated from the feature-oriented
+sources in `frontend/`. Page markup and feature-specific dialogs live next to
+their owning feature; the workspace shell, application script and compatibility
+stylesheet are separate files.
+
+Run `npm run build:frontend` after changing a frontend fragment. Run
+`npm run check:frontend` to verify that the generated entry point is current and
+structurally valid. `start-demo.bat` rebuilds the frontend before starting the
+server.
+
 ## Run with SQLite persistence
 
 1. Double-click `start-demo.bat`.

@@ -6,17 +6,15 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const { DatabaseSync } = require("node:sqlite");
+const { readFrontendSources } = require("./test-support/frontend-source.js");
 
 const ROOT = path.resolve(__dirname, "..");
-const HTML_PATH = path.join(ROOT, "index.html");
 const SCHEMA_PATH = path.join(ROOT, "schema.sql");
 const SEED_PATH = path.join(ROOT, "seed.sql");
 const SERVER_PATH = path.join(ROOT, "server.js");
 const TEMPORARY_DIRECTORY_PREFIX = "position-execution-system-pricing-mode-";
-const html = fs.readFileSync(HTML_PATH, "utf8");
+const { combinedSource: html, appScript: inlineScript } = readFrontendSources(ROOT);
 const serverSource = fs.readFileSync(SERVER_PATH, "utf8");
-const scripts = [...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/g)];
-const inlineScript = scripts.at(-1)?.[1] || "";
 
 function topLevelFunctionSource(name) {
   const asyncMarker = `async function ${name}(`;

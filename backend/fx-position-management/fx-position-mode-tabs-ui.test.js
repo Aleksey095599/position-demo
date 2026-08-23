@@ -4,14 +4,12 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readFrontendSources } = require("../test-support/frontend-source.js");
 
 const ROOT = path.resolve(__dirname, "..", "..");
-const HTML_PATH = path.join(ROOT, "index.html");
 const SERVER_PATH = path.join(ROOT, "server.js");
-const html = fs.readFileSync(HTML_PATH, "utf8");
+const { combinedSource: html, appScript: inlineScript } = readFrontendSources(ROOT);
 const serverSource = fs.readFileSync(SERVER_PATH, "utf8");
-const scripts = [...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/g)];
-const inlineScript = scripts.at(-1)?.[1] || "";
 const fxPositionPageMarkup = html.match(
   /<main class="shell fx-position-bootstrap workbench-page" id="mainPage"[\s\S]*?<\/main>/
 )?.[0] || "";

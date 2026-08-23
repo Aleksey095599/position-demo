@@ -7,6 +7,12 @@ echo Starting Demo FX Position Application...
 echo Opening %DEMO_URL% in your browser.
 echo Press Ctrl+C in this window to stop the application.
 echo.
+node scripts\build-frontend.mjs
+if errorlevel 1 (
+  echo Frontend build failed.
+  pause
+  exit /b 1
+)
 start "" /b powershell.exe -NoProfile -WindowStyle Hidden -Command "Start-Sleep -Milliseconds 750; Start-Process '%DEMO_URL%'" >nul 2>&1
 node --no-warnings server.js
 set "EXIT_CODE=%ERRORLEVEL%"

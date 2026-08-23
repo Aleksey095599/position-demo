@@ -1,0 +1,160 @@
+  <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page hedging-settings-page" id="hedgingSettingsPage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Hedging Settings header">
+      <div class="workbench-detail-heading">
+        <div class="settings-title-block workbench-detail-title-block">
+          <h1 class="settings-title">Hedging Settings</h1>
+        </div>
+      </div>
+      <div class="hedge-quick-settings-status workbench-page-status" id="hedgeQuickModeSettingsStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <nav class="nav nav-tabs workbench-section-tabs hedging-settings-tabs" aria-label="Hedging Settings sections" role="tablist">
+      <button type="button" class="nav-link active" id="quickHedgeSettingsTab" data-hedging-settings-tab="quick" role="tab" aria-controls="quickHedgeSettingsPanel" aria-selected="true">
+        <span class="button-icon" aria-hidden="true">bolt</span>
+        <span>Quick Hedge Settings</span>
+      </button>
+      <button type="button" class="nav-link" id="autoHedgingAdmissionSettingsTab" data-hedging-settings-tab="auto-admission" role="tab" aria-controls="autoHedgingAdmissionSettingsPanel" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">verified_user</span>
+        <span>Auto Hedging Admission Settings</span>
+      </button>
+    </nav>
+
+    <section class="hedging-settings-layout" aria-label="Hedging Settings">
+      <section class="hedging-settings-tab-panel" id="quickHedgeSettingsPanel" role="tabpanel" aria-labelledby="quickHedgeSettingsTab">
+        <section class="profile-panel client-deal-create-dialog hedge-quick-settings-dialog hedging-settings-panel" aria-label="Quick Hedge Settings">
+        <form class="modal-content" id="hedgeQuickModeSettingsForm" autocomplete="off">
+      <div class="modal-header" id="hedgeQuickModeSettingsHeader" hidden>
+        <div class="hedge-quick-settings-heading">
+          <button type="button" class="btn btn-sm btn-outline-secondary hedge-quick-settings-back" id="hedgeQuickModeSettingsBackButton" aria-label="Back to Quick Hedge Settings" hidden>
+            <span class="button-icon" aria-hidden="true">arrow_back</span>
+          </button>
+        </div>
+        <div class="form-check form-switch hedge-quick-settings-active" id="hedgeQuickModeSettingsActiveField" hidden>
+          <input class="form-check-input" type="checkbox" role="switch" id="hedgeQuickModeActive" name="active">
+          <label class="form-check-label" for="hedgeQuickModeActive">Active</label>
+        </div>
+      </div>
+      <div class="modal-body">
+        <section class="hedge-quick-settings-overview table-panel table-panel--standalone" id="hedgeQuickModeSettingsOverview" aria-label="Quick Hedge Settings">
+          <div class="hedge-quick-settings-overview-toolbar table-panel__head" data-ui-table-layout-host="hedge_quick_mode_settings_grid">
+            <h3 class="table-panel__title">Quick Hedge Settings</h3>
+            <span class="badge text-bg-light border hedge-quick-settings-count" id="hedgeQuickModeSettingsCount">0 settings</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="hedgeQuickModeSettingsNewButton">
+              <span class="button-icon" aria-hidden="true">add</span>
+              <span>New Setting</span>
+            </button>
+          </div>
+          <div class="hedge-quick-settings-grid table-panel__body table-panel__viewport" id="hedgeQuickModeSettingsGrid"></div>
+        </section>
+
+        <div class="hedge-quick-settings-editor" id="hedgeQuickModeSettingsEditor" hidden>
+          <section class="client-deal-create-section client-deal-create-context-section semantic-section" aria-labelledby="hedgeQuickModeTradeContextTitle">
+            <div class="client-deal-create-section-title semantic-section-head" id="hedgeQuickModeTradeContextTitle">Trade Context</div>
+            <div class="client-deal-create-section-body">
+              <div class="client-deal-context-fields has-pricing-mode hedge-quick-settings-context-fields">
+                <div class="client-deal-currency-pair-field">
+                  <label class="form-label" for="hedgeQuickModeSettingsCurrencyPair">Ccy Pair</label>
+                  <select class="form-select" id="hedgeQuickModeSettingsCurrencyPair" name="currencyPair" required></select>
+                </div>
+                <div class="client-deal-pricing-mode-field">
+                  <label class="form-label form-label-with-help" for="hedgeQuickModePricingMode">
+                    <span>Pricing Mode</span>
+                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Only AUTO_PRICED Execution Systems are available for Quick Hedging." data-tooltip="Only AUTO_PRICED Execution Systems are available for Quick Hedging.">info</span>
+                  </label>
+                  <div class="input-group client-deal-pricing-mode-filter">
+                    <span class="input-group-text pricing-mode-indicator client-deal-pricing-mode-icon is-auto-priced" aria-hidden="true">
+                      <span class="button-icon" aria-hidden="true">bolt</span>
+                    </span>
+                    <select class="form-select" id="hedgeQuickModePricingMode" name="pricingMode" aria-readonly="true" disabled>
+                      <option value="AUTO_PRICED">AUTO_PRICED</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="client-deal-client-field">
+                  <span class="form-label" id="hedgeQuickModeCounterpartyLabel">Hedge Counterparty</span>
+                  <div class="client-deal-client-picker" id="hedgeQuickModeCounterpartyPicker">
+                    <input type="hidden" id="hedgeQuickModeCounterpartyId" name="counterpartyId">
+                    <div class="input-group">
+                      <input class="form-control client-deal-client-picker-value" type="text" id="hedgeQuickModeCounterpartyPickerValue" placeholder="Type Hedge Counterparty name..." role="combobox" aria-labelledby="hedgeQuickModeCounterpartyLabel" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="hedgeQuickModeCounterpartyOptions" aria-expanded="false" autocomplete="off">
+                      <button type="button" class="btn btn-outline-secondary client-deal-client-picker-clear" id="hedgeQuickModeCounterpartyPickerClear" aria-label="Clear Hedge Counterparty" hidden>
+                        <span class="button-icon" aria-hidden="true">close</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary client-deal-client-picker-toggle" id="hedgeQuickModeCounterpartyPickerToggle" aria-label="Open Hedge Counterparty list" aria-haspopup="listbox" aria-controls="hedgeQuickModeCounterpartyOptions" aria-expanded="false">
+                        <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+                      </button>
+                    </div>
+                    <div class="client-deal-client-options" id="hedgeQuickModeCounterpartyOptions" role="listbox" aria-labelledby="hedgeQuickModeCounterpartyLabel" hidden></div>
+                  </div>
+                </div>
+              </div>
+              <div class="client-deal-context-picker" id="hedgeQuickModePricingRulePicker" aria-live="polite"></div>
+              <input type="hidden" name="pricingRuleId">
+            </div>
+          </section>
+
+          <section class="client-deal-create-section semantic-section" aria-labelledby="hedgeQuickModePresetsTitle">
+            <div class="client-deal-create-section-title semantic-section-head" id="hedgeQuickModePresetsTitle">Quick Amount Presets</div>
+            <div class="client-deal-create-section-body">
+              <div class="hedge-quick-settings-presets">
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeSmallAmount">Small Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeSmallAmount" name="smallBaseCcyAmount" inputmode="decimal" required>
+                </div>
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeMediumAmount">Medium Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeMediumAmount" name="mediumBaseCcyAmount" inputmode="decimal" required>
+                </div>
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeLargeAmount">Large Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeLargeAmount" name="largeBaseCcyAmount" inputmode="decimal" required>
+                </div>
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeXlargeAmount">Extra Large Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeXlargeAmount" name="xlargeBaseCcyAmount" inputmode="decimal" required>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="client-deal-create-section semantic-section" aria-labelledby="hedgeQuickModeExecutionDefaultsTitle">
+            <div class="client-deal-create-section-title semantic-section-head" id="hedgeQuickModeExecutionDefaultsTitle">Execution Defaults</div>
+            <div class="client-deal-create-section-body">
+              <div class="hedge-quick-settings-defaults">
+                <div>
+                  <label class="form-label" for="hedgeQuickModeDefaultTenor">Default Tenor</label>
+                  <select class="form-select" id="hedgeQuickModeDefaultTenor" name="defaultTenor" required>
+                    <option value="TOD">TOD</option>
+                    <option value="TOM">TOM</option>
+                    <option value="SPOT">SPOT</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-footer" id="hedgeQuickModeSettingsFooter">
+        <button type="button" class="btn btn-outline-danger btn-sm" id="hedgeQuickModeSettingsDeleteButton" hidden>Delete Setting</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="hedgeQuickModeSettingsCancelButton">Close</button>
+        <button type="submit" class="btn btn-primary btn-sm with-icon" id="hedgeQuickModeSettingsSaveButton">
+          <span class="button-icon" aria-hidden="true">save</span>
+          <span>Save Settings</span>
+        </button>
+      </div>
+        </form>
+        </section>
+      </section>
+
+      <section class="hedging-settings-tab-panel" id="autoHedgingAdmissionSettingsPanel" role="tabpanel" aria-labelledby="autoHedgingAdmissionSettingsTab" hidden>
+        <section class="profile-panel table-panel table-panel--standalone auto-hedging-admission-settings-panel" aria-labelledby="autoHedgingAdmissionSettingsTitle">
+          <div class="table-panel__head">
+            <h2 class="table-panel__title" id="autoHedgingAdmissionSettingsTitle">Auto Hedging Admission Settings</h2>
+          </div>
+          <div class="table-panel__body auto-hedging-admission-settings-empty">
+            <span class="button-icon" aria-hidden="true">verified_user</span>
+            <span>No Auto Hedging Admission Settings configured.</span>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>

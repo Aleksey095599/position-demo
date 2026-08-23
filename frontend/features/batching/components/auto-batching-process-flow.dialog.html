@@ -1,0 +1,112 @@
+  <dialog class="market-bootstrap-dialog auto-batching-flow-dialog" id="autoBatchingProcessFlowDialog" aria-labelledby="autoBatchingProcessFlowDialogTitle">
+    <div class="modal-content">
+      <header class="modal-header">
+        <div class="auto-batching-flow-title-block">
+          <h2 class="modal-title" id="autoBatchingProcessFlowDialogTitle">Current Auto Batching Flow</h2>
+          <span class="auto-batching-flow-version">Draft - 08.08.2026</span>
+        </div>
+        <button type="button" class="btn-close" id="autoBatchingProcessFlowDialogClose" aria-label="Close"></button>
+      </header>
+      <div class="modal-body">
+        <p class="auto-batching-flow-intro">This diagram records the currently implemented process. Each currency pair is evaluated independently.</p>
+        <div class="auto-batching-flowchart" role="group" aria-label="Current Auto Batching process flow">
+          <div class="auto-batching-flow-step is-start">
+            <div class="auto-batching-flow-step-title">AutoBatch Process Starts</div>
+            <div class="auto-batching-flow-step-detail">Capture the process start time and Trade ID boundary. Load configured Currency Pairs and Tenor Compatibility.</div>
+            <details class="auto-batching-flow-capture">
+              <summary>
+                <span class="button-icon" aria-hidden="true">data_object</span>
+                <span>Captured / Logged</span>
+                <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="auto-batching-flow-capture-list">
+                <div class="auto-batching-flow-capture-item"><code>startedAt</code><span>Server timestamp when the Auto Batch process starts.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>startBoundaryTradeId</code><span>Latest Trade ID already present at process start.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>eligibleCcyPairCodes</code><span>Configured Currency Pairs enabled for this process.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>tenorCompatibilityMode</code><span>Currently fixed as SAME_TENOR_ONLY.</span></div>
+              </div>
+            </details>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Select trades for this run</div>
+            <div class="auto-batching-flow-step-detail">Only new Client and Hedge Deals above the start boundary may open a window. Older FX Position trades remain under manual control.</div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Build independent queues</div>
+            <div class="auto-batching-flow-step-detail">Group by Ccy Pair, Trade Date, Tenor, Value Dates and currency precision.</div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Order by Received Timestamp</div>
+            <div class="auto-batching-flow-step-detail">Trade ID resolves equal timestamps.</div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">First eligible trade opens a Batching Window</div>
+            <div class="auto-batching-flow-step-detail">Deadline = first Received Timestamp + Maximum Batching Interval.</div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step is-decision">
+            <div class="auto-batching-flow-step-title">Would the next trade breach the Transfer Rate corridor?</div>
+          </div>
+          <div class="auto-batching-flow-branches">
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">Breach</span>
+              <div class="auto-batching-flow-step-title">Close the window</div>
+              <div class="auto-batching-flow-step-detail">Reason: TRANSFER_RATE_CORRIDOR_BREACHED. The breaching trade starts the next window.</div>
+            </div>
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">Within corridor</span>
+              <div class="auto-batching-flow-step-title">Add the trade</div>
+              <div class="auto-batching-flow-step-detail">Keep the current window open and continue evaluating it.</div>
+            </div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step is-decision">
+            <div class="auto-batching-flow-step-title">Has the Maximum Batching Interval elapsed?</div>
+          </div>
+          <div class="auto-batching-flow-branches">
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">Reached</span>
+              <div class="auto-batching-flow-step-title">Close the window</div>
+              <div class="auto-batching-flow-step-detail">Reason: MAX_INTERVAL_REACHED.</div>
+            </div>
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">Not reached</span>
+              <div class="auto-batching-flow-step-title">Wait for another trade</div>
+              <div class="auto-batching-flow-step-detail">Re-evaluate when a trade arrives or the deadline is reached.</div>
+            </div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step is-decision">
+            <div class="auto-batching-flow-step-title">Does the closed window contain at least two eligible trades?</div>
+          </div>
+          <div class="auto-batching-flow-branches">
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">Yes</span>
+              <div class="auto-batching-flow-step-title">Form an FX Batch</div>
+              <div class="auto-batching-flow-step-detail">At most one candidate is formed per currency pair in one evaluation cycle.</div>
+            </div>
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">No</span>
+              <div class="auto-batching-flow-step-title">Keep manual control</div>
+              <div class="auto-batching-flow-step-detail">Trades remain in FX Position and are excluded from the current Auto Batch run.</div>
+            </div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step is-result">
+            <div class="auto-batching-flow-step-title">Continue independently for each currency pair</div>
+          </div>
+        </div>
+        <p class="auto-batching-flow-note" role="note">
+          <span class="button-icon" aria-hidden="true">info</span>
+          <span>Execution Timestamp is stored for trades but is not yet used by this Auto Batching flow.</span>
+        </p>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="autoBatchingProcessFlowCloseButton">Close</button>
+      </footer>
+    </div>
+  </dialog>

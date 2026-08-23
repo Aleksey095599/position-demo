@@ -1,0 +1,304 @@
+    /* Unified data-table chrome. The FX Position matrix intentionally does not use these classes. */
+    .table-panel {
+      min-width: 0;
+      max-width: 100%;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    .table-panel > .table-panel__head {
+      display: flex;
+      min-width: 0;
+      min-height: 48px;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      margin: 0;
+      padding: 8px 10px;
+      border: 0;
+      border-bottom: 1px solid var(--bs-border-color);
+      border-radius: calc(var(--workbench-radius) - 1px) calc(var(--workbench-radius) - 1px) 0 0;
+      background:
+        color-mix(
+          in srgb,
+          var(--palette-blue-100) 32%,
+          var(--bs-tertiary-bg)
+        );
+      background-clip: padding-box;
+    }
+
+    .table-panel__heading,
+    .table-panel__tools {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .table-panel__tools {
+      margin-left: auto;
+      justify-content: flex-end;
+    }
+
+    .table-panel__title {
+      margin: 0;
+      color: var(--bs-emphasis-color);
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.25;
+    }
+
+    .table-panel__meta {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      font-weight: var(--app-font-weight-regular);
+      white-space: nowrap;
+    }
+
+    .table-panel > .table-panel__body {
+      min-width: 0;
+      margin: 0;
+      border: 0;
+      border-radius: 0 0 calc(var(--workbench-radius) - 1px) calc(var(--workbench-radius) - 1px);
+      background: var(--bs-body-bg);
+    }
+
+    .table-panel > .table-panel__viewport {
+      border: 0;
+      border-radius: 0 0 calc(var(--workbench-radius) - 1px) calc(var(--workbench-radius) - 1px);
+    }
+
+    .table-panel > .table-panel__viewport > :is(.tabulator, table),
+    .table-panel > .table-panel__body > .table-panel__viewport > :is(.tabulator, table) {
+      margin-bottom: 0;
+      border: 0;
+      border-radius: 0;
+      vertical-align: top;
+    }
+
+    .table-panel.semantic-section > .table-panel__body,
+    .table-panel.semantic-section > .table-panel__viewport {
+      padding-left: 0;
+    }
+
+    .table-panel--compact > .table-panel__head {
+      min-height: 42px;
+      padding-block: 7px;
+    }
+
+    .table-panel--compact .table-panel__title {
+      font-size: var(--app-font-size-body);
+    }
+
+    .table-panel .client-deals-count {
+      margin-left: 0;
+    }
+
+    .table-panel > .table-panel__head .ui-table-layout-actions {
+      margin-left: auto;
+    }
+
+    .table-panel > .table-panel__head[data-ui-table-layout-host]
+    > .ui-table-layout-button:last-child {
+      margin-left: auto;
+    }
+
+    .table-panel .tabulator[tabulator-layout="fitDataTable"] {
+      vertical-align: top;
+    }
+
+    .table-panel .tabulator-footer .tabulator-calcs-holder {
+      border-bottom: 0;
+    }
+
+    /* Existing wrappers keep ownership of scrolling; the panel owns the outer border. */
+    :is(
+      .market-grid-frame,
+      .batching-history-grid-shell,
+      .trades-table-viewport,
+      .profile-table-wrap.table-panel__viewport,
+      .hedge-quick-settings-grid.table-panel__viewport,
+      .client-context-attach-table-wrap.table-panel__viewport
+    ) {
+      border: 0;
+      border-radius: 0 0 calc(var(--workbench-radius) - 1px) calc(var(--workbench-radius) - 1px);
+    }
+
+    .market-bootstrap-panel.table-panel,
+    .batching-history-content.table-panel,
+    .trades-tab-panel.table-panel,
+    .hedge-quick-settings-overview.table-panel {
+      overflow: hidden;
+    }
+
+    .hedge-quick-settings-overview.table-panel {
+      gap: 0;
+    }
+
+    .market-bootstrap-panel.table-panel > .market-grid-toolbar,
+    .batching-history-content.table-panel > .batching-history-toolbar,
+    .trades-tab-panel.table-panel > .client-deals-toolbar,
+    .hedge-quick-settings-overview.table-panel > .hedge-quick-settings-overview-toolbar,
+    .profile-panel.table-panel > .profile-panel-head,
+    .profile-panel.table-panel > .pricing-rules-table-toolbar {
+      width: 100%;
+      min-height: 48px;
+      margin: 0;
+      padding: 8px 10px;
+      border: 0;
+      border-bottom: 1px solid var(--bs-border-color);
+      background:
+        color-mix(
+          in srgb,
+          var(--palette-blue-100) 32%,
+          var(--bs-tertiary-bg)
+        );
+    }
+
+    /* Legacy page-specific toolbar rules must not override the shared table chrome. */
+    :is(
+      #clientProfilePage,
+      #pricingPage,
+      #referenceDataPage,
+      #pricingRulesPage,
+      #marketPage,
+      #fxDealsPage,
+      #fxBatchesPage,
+      #hedgingSettingsPage
+    ).workbench-page .table-panel.table-panel--standalone {
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    :is(
+      #clientProfilePage,
+      #pricingPage,
+      #referenceDataPage,
+      #pricingRulesPage,
+      #marketPage,
+      #fxDealsPage,
+      #fxBatchesPage,
+      #hedgingSettingsPage
+    ).workbench-page
+    .table-panel.table-panel--standalone > .table-panel__head {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      min-height: 48px;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      margin: 0;
+      padding: 8px 10px;
+      border: 0;
+      border-bottom: 1px solid var(--bs-border-color);
+      border-radius: calc(var(--workbench-radius) - 1px) calc(var(--workbench-radius) - 1px) 0 0;
+      background:
+        color-mix(
+          in srgb,
+          var(--palette-blue-100) 32%,
+          var(--bs-tertiary-bg)
+        );
+      background-clip: padding-box;
+      box-shadow: none;
+    }
+
+    :is(
+      #clientProfilePage,
+      #pricingPage,
+      #referenceDataPage,
+      #pricingRulesPage,
+      #marketPage,
+      #fxDealsPage,
+      #fxBatchesPage,
+      #hedgingSettingsPage
+    ).workbench-page
+    .table-panel.table-panel--standalone > :is(.table-panel__body, .table-panel__viewport) {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0 0 calc(var(--workbench-radius) - 1px) calc(var(--workbench-radius) - 1px);
+    }
+
+    .table-panel > .table-panel__head > :is(
+      .ui-table-layout-button,
+      [data-ui-table-layout-host]
+    ):last-child {
+      margin-left: auto;
+    }
+
+    /* Page-specific legacy borders must not create a second frame inside the shared table panel. */
+    #marketPage.workbench-page
+    .table-panel.table-panel--standalone
+    > .table-panel__viewport
+    > .tabulator {
+      border: 0;
+      border-radius: 0;
+    }
+
+    #databasePage.workbench-page .table-panel.table-panel--semantic {
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #databasePage.workbench-page
+    .table-panel.table-panel--semantic
+    > .table-panel__head {
+      min-height: 48px;
+      margin: 0;
+      padding: 8px 10px;
+      border: 0;
+      border-bottom: 1px solid var(--bs-border-color);
+      border-radius: calc(var(--workbench-radius) - 1px) calc(var(--workbench-radius) - 1px) 0 0;
+      background:
+        color-mix(
+          in srgb,
+          var(--palette-blue-100) 32%,
+          var(--bs-tertiary-bg)
+        );
+      box-shadow: none;
+    }
+
+    #databasePage.workbench-page
+    .table-panel.table-panel--semantic
+    > .table-panel__viewport {
+      margin: 0;
+      border: 0;
+      border-radius: 0 0 calc(var(--workbench-radius) - 1px) calc(var(--workbench-radius) - 1px);
+    }
+
+    .generation-settings-table-region.table-panel,
+    .semantic-table-section.table-panel {
+      border: 1px solid var(--semantic-card-border);
+      border-radius: var(--bs-border-radius-lg);
+      box-shadow: -5px 0 0 var(--semantic-card-accent);
+    }
+
+    .generation-settings-table-region.table-panel > .generation-settings-table-body {
+      padding-left: 0;
+    }
+
+    .generation-settings-table-region.table-panel .generation-settings-table-wrap {
+      border: 0;
+      border-radius: 0;
+    }
+
+    .manual-process-detail-panel.table-panel {
+      overflow: hidden;
+    }
+
+    .manual-process-detail-panel.table-panel .manual-process-artifacts-table thead th {
+      background: var(--bs-tertiary-bg);
+    }
+
+    .client-deal-duplicate-dialog .table-panel {
+      overflow: hidden;
+    }
+
+    .client-deal-duplicate-dialog .table-panel .tabulator {
+      border: 0;
+      border-radius: 0;
+    }

@@ -1,0 +1,137 @@
+  <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page batching-settings-page" id="batchingSettingsPage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Batching Settings header">
+      <div class="workbench-detail-heading">
+        <div class="settings-title-block workbench-detail-title-block">
+          <h1 class="settings-title">Batching Settings</h1>
+        </div>
+      </div>
+      <div class="workbench-page-status" id="batchingSettingsStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <nav class="nav nav-tabs workbench-section-tabs batching-settings-tabs" aria-label="Batching Settings sections" role="tablist">
+      <button type="button" class="nav-link active" id="generalBatchingSettingsTab" data-batching-settings-tab="general" role="tab" aria-controls="generalBatchingSettingsPanel" aria-selected="true">
+        <span class="button-icon" aria-hidden="true">tune</span>
+        <span>Manual Batch Settings</span>
+      </button>
+      <button type="button" class="nav-link" id="autoBatchingSettingsTab" data-batching-settings-tab="auto" role="tab" aria-controls="autoBatchingSettingsPanel" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">autorenew</span>
+        <span>Auto Batching Settings</span>
+      </button>
+    </nav>
+
+    <section class="batching-settings-layout" aria-label="Batching Settings">
+      <section class="batching-settings-tab-panel" id="generalBatchingSettingsPanel" role="tabpanel" aria-labelledby="generalBatchingSettingsTab">
+        <form class="batching-settings-form" id="batchingSettingsForm" autocomplete="off">
+          <section class="auto-batching-settings-panel semantic-section" aria-labelledby="generalBatchingSettingsTitle">
+            <div class="auto-batching-settings-panel-head semantic-section-head">
+              <h2 class="auto-batching-settings-panel-title" id="generalBatchingSettingsTitle">Manual Batch Settings</h2>
+            </div>
+            <div class="auto-batching-settings-panel-body">
+              <section class="auto-batching-setting-group" aria-labelledby="allowCrossTenorBatchingLabel">
+                <div class="auto-batching-setting-group-head">
+                  <h3 class="auto-batching-setting-group-title" id="allowCrossTenorBatchingLabel">Allow Cross-Tenor Batching</h3>
+                </div>
+                <select class="form-select batching-general-tenor-select" id="allowCrossTenorBatching" name="allowCrossTenorBatching" aria-labelledby="allowCrossTenorBatchingLabel" required>
+                  <option value="false">No</option>
+                  <option value="true" disabled>Yes (In Development)</option>
+                </select>
+              </section>
+            </div>
+          </section>
+
+          <div class="batching-settings-actions profile-form-actions">
+            <a class="btn btn-sm btn-outline-secondary batching-process-flow-button" id="manualBatchingProcessFlowLink" href="#processes:manual-batch-formation">
+              <span class="button-icon" aria-hidden="true">account_tree</span>
+              <span>View Process</span>
+            </a>
+            <span class="profile-row-actions">
+              <button type="submit" class="btn btn-primary btn-sm" id="batchingSettingsSaveButton">
+                <span class="button-icon" aria-hidden="true">save</span>
+                <span>Save Settings</span>
+              </button>
+            </span>
+          </div>
+        </form>
+      </section>
+
+      <section class="batching-settings-tab-panel" id="autoBatchingSettingsPanel" role="tabpanel" aria-labelledby="autoBatchingSettingsTab" hidden>
+      <form class="batching-settings-form" id="autoBatchingSettingsForm" autocomplete="off">
+        <section class="auto-batching-settings-panel semantic-section" aria-labelledby="autoBatchingSettingsTitle">
+          <div class="auto-batching-settings-panel-head semantic-section-head">
+            <h2 class="auto-batching-settings-panel-title" id="autoBatchingSettingsTitle">Auto Batching Settings</h2>
+          </div>
+          <div class="auto-batching-settings-panel-body">
+            <section class="auto-batching-setting-group" aria-labelledby="autoBatchingEligibleCcyPairCodesLabel">
+              <div class="auto-batching-setting-group-head">
+                <h3 class="auto-batching-setting-group-title" id="autoBatchingEligibleCcyPairCodesLabel">Auto Batching Currency Pairs</h3>
+                <span class="auto-batching-pair-selection-count" id="autoBatchingEligibleCcyPairCount">0 selected</span>
+              </div>
+              <div class="auto-batching-ccy-pair-picker">
+                <div class="input-group auto-batching-ccy-pair-search">
+                  <span class="input-group-text"><span class="button-icon" aria-hidden="true">search</span></span>
+                  <input class="form-control" type="search" id="autoBatchingEligibleCcyPairSearch" autocomplete="off" placeholder="Search currency pairs..." aria-label="Search Auto Batching Currency Pairs" aria-controls="autoBatchingEligibleCcyPairCodes">
+                  <button type="button" class="btn btn-outline-secondary" id="autoBatchingEligibleCcyPairSearchClear" aria-label="Clear currency pair search" hidden>
+                    <span class="button-icon" aria-hidden="true">close</span>
+                  </button>
+                </div>
+                <div class="auto-batching-ccy-pair-options" id="autoBatchingEligibleCcyPairCodes" role="group" aria-labelledby="autoBatchingEligibleCcyPairCodesLabel"></div>
+                <p class="auto-batching-ccy-pair-empty" id="autoBatchingEligibleCcyPairEmpty" hidden>No matching currency pairs.</p>
+              </div>
+            </section>
+
+            <section class="auto-batching-setting-group" aria-labelledby="autoBatchingTenorCompatibilityModeLabel">
+              <div class="auto-batching-setting-group-head">
+                <h3 class="auto-batching-setting-group-title" id="autoBatchingTenorCompatibilityModeLabel">Tenor Compatibility</h3>
+              </div>
+              <select class="form-select auto-batching-tenor-select" id="autoBatchingTenorCompatibilityMode" name="tenorCompatibilityMode" aria-labelledby="autoBatchingTenorCompatibilityModeLabel" required>
+                <option value="SAME_TENOR_ONLY">Same Tenor Only</option>
+                <option value="CROSS_TENOR_WITH_SWAPS" disabled>Cross-Tenor with FX Swaps (In Development)</option>
+              </select>
+            </section>
+
+            <section class="auto-batching-setting-group" aria-labelledby="autoBatchingCloseTriggersLabel">
+              <div class="auto-batching-setting-group-head">
+                <h3 class="auto-batching-setting-group-title" id="autoBatchingCloseTriggersLabel">Batching Window Close Triggers</h3>
+              </div>
+              <div class="auto-batching-close-trigger-grid">
+                <div class="auto-batching-close-trigger">
+                  <label class="form-label form-label-with-help" for="autoBatchingMaxIntervalSeconds">
+                    <span>Maximum Batching Interval</span>
+                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Each open Batching Window closes no later than this maximum interval." data-tooltip="Each open Batching Window closes no later than this maximum interval.">info</span>
+                  </label>
+                  <div class="input-group">
+                    <input class="form-control" type="number" id="autoBatchingMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" inputmode="numeric" required>
+                    <span class="input-group-text">sec</span>
+                  </div>
+                </div>
+                <div class="auto-batching-close-trigger">
+                  <label class="form-label form-label-with-help" for="autoBatchingMaxTransferRateSpreadPercent">
+                    <span>Default Transfer Rate Corridor</span>
+                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Maximum full Transfer Rate spread allowed within one Batching Window." data-tooltip="Maximum full Transfer Rate spread allowed within one Batching Window.">info</span>
+                  </label>
+                  <div class="input-group">
+                    <input class="form-control" type="number" id="autoBatchingMaxTransferRateSpreadPercent" name="maxTransferRateSpreadPercent" min="0.0001" max="100" step="0.0001" inputmode="decimal" required>
+                    <span class="input-group-text">%</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <div class="batching-settings-actions profile-form-actions">
+          <button type="button" class="btn btn-sm btn-outline-secondary batching-process-flow-button" id="autoBatchingProcessFlowButton">
+            <span class="button-icon" aria-hidden="true">account_tree</span>
+            <span>Process Flow</span>
+          </button>
+          <span class="profile-row-actions">
+            <button type="submit" class="btn btn-primary btn-sm" id="autoBatchingSettingsSaveButton">
+              <span class="button-icon" aria-hidden="true">save</span>
+              <span>Save Settings</span>
+            </button>
+          </span>
+        </div>
+      </form>
+      </section>
+    </section>
+  </main>

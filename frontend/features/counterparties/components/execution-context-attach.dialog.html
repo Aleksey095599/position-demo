@@ -1,0 +1,117 @@
+  <dialog class="deal-dialog pricing-rule-bootstrap-dialog client-context-attach-dialog" id="clientExecutionContextAttachDialog" aria-labelledby="clientExecutionContextAttachDialogTitle">
+    <form class="deal-form modal-content" id="clientExecutionContextAttachForm" autocomplete="off">
+      <div class="dialog-head modal-header">
+        <div>
+          <h2 class="dialog-title modal-title" id="clientExecutionContextAttachDialogTitle">Attach Execution Contexts</h2>
+          <p class="client-context-attach-subtitle" id="clientExecutionContextAttachDialogSubtitle"></p>
+        </div>
+        <div class="client-context-attach-header-actions">
+          <button type="button" class="dialog-close btn-close" id="clientExecutionContextAttachDialogClose" aria-label="Close"></button>
+        </div>
+      </div>
+      <div class="deal-form-body modal-body">
+        <section class="table-panel table-panel--standalone table-panel--compact" aria-labelledby="clientExecutionContextAttachTableTitle">
+          <div class="table-panel__head">
+            <h3 class="table-panel__title" id="clientExecutionContextAttachTableTitle">Available Execution Contexts</h3>
+            <div class="table-panel__tools">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary ui-table-layout-button"
+                data-ui-table-layout="execution_contexts_grid"
+                data-ui-table-layout-columns="id servicing_location accounting_system execution_system"
+                data-ui-table-layout-title="Attach Execution Contexts Table Layout"
+                aria-label="Attach Execution Contexts table layout"
+                data-tooltip="Column widths"
+              >
+                <span class="button-icon" aria-hidden="true">view_column</span>
+              </button>
+            </div>
+          </div>
+          <div class="client-context-attach-table-wrap table-panel__body table-panel__viewport">
+          <table class="profile-table unified-data-table client-context-attach-table" data-column-sizing="managed">
+            <colgroup>
+              <col class="client-context-attach-select-col" data-client-context-attach-fixed-width="46">
+              <col class="client-context-attach-id-col" data-client-context-attach-layout-column="id">
+              <col class="client-context-attach-location-col" data-client-context-attach-layout-column="servicing_location">
+              <col class="client-context-attach-accounting-col" data-client-context-attach-layout-column="accounting_system">
+              <col class="client-context-attach-execution-col" data-client-context-attach-layout-column="execution_system">
+              <col class="client-context-attach-mode-col" data-client-context-attach-fixed-width="184">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="client-context-attach-select-cell">
+                  <div class="reference-column-head reference-column-head-static reference-column-head-centered">
+                    <input type="checkbox" class="form-check-input" id="clientExecutionContextAttachSelectAll" aria-label="Select all visible Execution Contexts">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <button type="button" class="reference-column-title reference-sort-control" id="clientExecutionContextAttachIdSort" aria-label="Sort available execution contexts by ID ascending" aria-pressed="true">
+                      <span>ID</span>
+                      <span class="reference-sort-indicator" aria-hidden="true"></span>
+                    </button>
+                    <input class="reference-header-filter" type="text" id="clientExecutionContextAttachIdFilter" autocomplete="off" data-client-context-attach-filter="pricingContextId" aria-label="Filter available execution contexts by ID">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">location_on</span>
+                      <span>Servicing Location</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="servicingBranchCode" aria-label="Filter available execution contexts by servicing location">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">account_balance</span>
+                      <span>Accounting System</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="settlementSystemId" aria-label="Filter available execution contexts by accounting system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">terminal</span>
+                      <span>Execution System</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="tradeCaptureChannelId" aria-label="Filter available execution contexts by execution system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">price_change</span>
+                      <span>Pricing Mode</span>
+                    </span>
+                    <select class="reference-header-filter form-select" data-client-context-attach-filter="pricingMode" aria-label="Filter available execution contexts by pricing mode">
+                      <option value="">All</option>
+                      <option value="AUTO_PRICED">AUTO_PRICED</option>
+                      <option value="DEALER_PRICED">DEALER_PRICED</option>
+                      <option value="DEALER_APPROVED">DEALER_APPROVED</option>
+                    </select>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="clientExecutionContextAttachRows"></tbody>
+          </table>
+          </div>
+        </section>
+        <div class="profile-status client-context-attach-status" id="clientExecutionContextAttachStatus" role="status" aria-live="polite"></div>
+      </div>
+      <div class="dialog-actions modal-footer">
+        <span class="client-context-attach-selection" id="clientExecutionContextAttachSelection">0 selected</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary with-icon" id="clientExecutionContextAttachCancelButton">
+          <span class="button-icon" aria-hidden="true">close</span>
+          <span>Cancel</span>
+        </button>
+        <button type="submit" class="btn btn-sm btn-primary with-icon" id="clientExecutionContextAttachSubmitButton" disabled>
+          <span class="button-icon" aria-hidden="true">add_link</span>
+          <span id="clientExecutionContextAttachSubmitLabel">Attach</span>
+        </button>
+      </div>
+    </form>
+  </dialog>

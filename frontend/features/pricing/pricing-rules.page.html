@@ -1,0 +1,113 @@
+  <main class="settings-shell profile-shell pricing-shell unified-bootstrap-workspace workbench-page" id="pricingRulesPage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Pricing Rules header">
+      <div class="settings-title-block">
+        <nav aria-label="Breadcrumb" id="pricingRulesBreadcrumb" hidden>
+          <ol class="breadcrumb workbench-breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="#settings:currency-pairs" id="pricingRulesBreadcrumbBackLink">Currency Pair Settings</a></li>
+            <li class="breadcrumb-item active" id="pricingRulesBreadcrumbCurrent" aria-current="page"></li>
+          </ol>
+        </nav>
+        <h1 class="settings-title">Pricing Rules</h1>
+      </div>
+      <div class="profile-status workbench-page-status" id="pricingRuleStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <nav class="nav nav-tabs workbench-section-tabs pricing-rules-scope-tabs" id="pricingRulesScopeTabs" aria-label="Pricing Rules scope">
+      <a class="nav-link active" href="#pricing-rules:external-counterparties" data-pricing-rules-scope="EXTERNAL" aria-selected="true">
+        <span class="button-icon" aria-hidden="true">domain</span>
+        <span>External Counterparties</span>
+      </a>
+      <a class="nav-link" href="#pricing-rules:internal-units" data-pricing-rules-scope="INTERNAL" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">account_tree</span>
+        <span>Internal Units</span>
+      </a>
+    </nav>
+
+    <section class="profile-layout pricing-layout" aria-label="Trading Counterparty pricing rules editor">
+      <section class="profile-panel profile-table-panel table-panel table-panel--standalone" aria-label="Trading Counterparty pricing rules">
+        <div class="pricing-rules-table-toolbar table-panel__head">
+          <h2 class="table-panel__title">Pricing Rules</h2>
+          <button type="button" class="btn btn-sm btn-outline-secondary ui-table-layout-button" id="pricingRulesTableLayoutButton" data-ui-table-layout="pricing_rules_grid" aria-label="Pricing Rules table layout">
+            <span class="button-icon" aria-hidden="true">view_column</span>
+          </button>
+        </div>
+        <div class="profile-table-wrap table-panel__body table-panel__viewport">
+          <table class="profile-table pricing-rules-table unified-data-table" id="pricingRulesTable" data-ui-table-layout-key="pricing_rules_grid">
+            <colgroup>
+              <col data-ui-column-key="id">
+              <col data-ui-column-key="counterparty_code">
+              <col data-ui-column-key="counterparty_name">
+              <col data-ui-column-key="execution_context">
+              <col data-ui-column-key="ccy_pair">
+              <col data-ui-column-key="position_management_mode">
+              <col data-ui-column-key="margin">
+              <col class="pricing-rule-quick-hedge-column" data-ui-column-key="quick_hedge" hidden>
+            </colgroup>
+            <thead>
+              <tr>
+                <th id="pricingRuleIdHeader" aria-sort="ascending">
+                  <div class="reference-column-head">
+                    <button type="button" class="reference-column-title reference-sort-control" id="pricingRuleIdSort" aria-label="Sort pricing rules by ID ascending" aria-pressed="true">
+                      <span>ID</span>
+                      <span class="reference-sort-indicator" aria-hidden="true"></span>
+                    </button>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="pricingRuleId" aria-label="Filter pricing rules by ID">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title" id="pricingRuleCounterpartyCodeTitle">Counterparty Code</span>
+                    <input class="reference-header-filter" id="pricingRuleCounterpartyCodeFilter" type="text" autocomplete="off" data-pricing-rule-header-filter="inn" aria-label="Filter pricing rules by counterparty code">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Counterparty Name</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="clientName" aria-label="Filter pricing rules by counterparty name">
+                  </div>
+                </th>
+                <th class="pricing-rule-context-column">
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">hub</span>
+                      <span>Execution Context</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="pricingContextId" aria-label="Filter pricing rules by execution context">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Ccy Pair</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="currencyPair" aria-label="Filter pricing rules by currency pair">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">table_chart</span>
+                      <span>FX Position Mode</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="effectivePositionManagementMode" aria-label="Filter pricing rules by effective FX position mode or source">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head reference-column-head-static reference-column-head-right">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">savings</span>
+                      <span>Margin</span>
+                    </span>
+                  </div>
+                </th>
+                <th class="pricing-rule-quick-hedge-column" id="pricingRuleQuickHedgeHeader" hidden>
+                  <div class="reference-column-head reference-column-head-static reference-column-head-centered">
+                    <span class="reference-column-title">Quick Hedge</span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="pricingRuleRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>

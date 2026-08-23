@@ -4,13 +4,12 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readFrontendSources } = require("../test-support/frontend-source.js");
 
 const ROOT = path.resolve(__dirname, "..", "..");
-const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+const { combinedSource: html, appScript: inlineScript } = readFrontendSources(ROOT);
 const schemaSource = fs.readFileSync(path.join(ROOT, "schema.sql"), "utf8");
 const serverSource = fs.readFileSync(path.join(ROOT, "server.js"), "utf8");
-const scripts = [...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/g)];
-const inlineScript = scripts.at(-1)?.[1] || "";
 
 function topLevelFunctionSource(name) {
   const marker = `function ${name}(`;
@@ -208,8 +207,13 @@ test("client Pricing Rules use one context strip with lightweight branches", () 
   );
   assert.match(
     panelSource,
-    /client-pricing-configuration-context-relation[\s\S]*?data-tooltip="Pricing Mode">price_change<\/span>[\s\S]*?>Pricing Mode<\/span>/
+    /pricingContextFacetsMarkup\(context, \{ executionSystemLabel: true \}\)/
   );
+  assert.match(
+    topLevelFunctionSource("executionSystemLabelMarkup"),
+    /AUTO_PRICED[\s\S]*?flash_auto/
+  );
+  assert.match(topLevelFunctionSource("executionSystemLabelMarkup"), /execution-system-label__pricing/);
   assert.doesNotMatch(panelSource, /Pricing Context|with Pricing Mode =/);
   assert.match(
     html,

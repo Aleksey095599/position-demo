@@ -1,0 +1,56 @@
+    .workbench-page .workbench-section-tabs {
+      display: flex;
+      width: max-content;
+      max-width: 100%;
+      min-height: 40px;
+      margin-top: 10px;
+      margin-bottom: 0;
+      align-items: stretch;
+      border-bottom: 1px solid var(--bs-border-color);
+      gap: 16px;
+    }
+
+    .workbench-page .workbench-section-tabs .nav-link {
+      display: inline-flex;
+      min-height: 39px;
+      margin-bottom: -1px;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 4px 9px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      background: transparent;
+      color: var(--bs-secondary-color);
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-transform: none;
+      box-shadow: none;
+    }
+
+    .workbench-page
+    .workbench-section-tabs
+    .nav-link:not(.active):not(.is-active):hover {
+      border-bottom-color: transparent;
+      background: transparent;
+      color: var(--bs-primary);
+    }
+
+    .workbench-page
+    .workbench-section-tabs
+    .nav-link:is(.active, .is-active) {
+      border-bottom-color: var(--bs-primary);
+      background: transparent;
+      color: var(--bs-primary);
+      font-weight: 500;
+    }
+
+    .workbench-page .workbench-section-tabs .nav-link::after {
+      display: none;
+      content: none;
+    }
+
+    .workbench-page .workbench-section-tabs .button-icon {
+      font-size: 17px;
+    }

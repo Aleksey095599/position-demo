@@ -1,0 +1,92 @@
+  <dialog class="deal-dialog generation-dialog" id="clientDealGenerationDialog">
+    <div class="modal-content">
+      <div class="dialog-head modal-header">
+        <div class="generation-dialog-title-block">
+          <h2 class="dialog-title modal-title">Deal Generating Settings</h2>
+        </div>
+        <button type="button" class="dialog-close btn-close" id="generationDialogClose" aria-label="Close"></button>
+      </div>
+      <div class="deal-form-body modal-body">
+        <form class="generation-cycle-settings semantic-section" id="clientDealGenerationProcessSettingsForm" aria-label="Generation Cycle settings">
+          <div class="generation-cycle-settings-range" role="group" aria-labelledby="generationCycleDelayLabel">
+            <div class="generation-cycle-settings-range-label" id="generationCycleDelayLabel">
+              <span class="button-icon" aria-hidden="true">schedule</span>
+              <span>Delay between generation cycles</span>
+            </div>
+            <div class="generation-cycle-settings-range-control">
+              <label class="visually-hidden" for="generationMinIntervalSeconds">Minimum delay between cycles in seconds</label>
+              <input class="form-control form-control-sm" type="number" id="generationMinIntervalSeconds" name="minIntervalSeconds" min="1" max="3600" step="1" required>
+              <span class="generation-cycle-settings-range-separator" aria-hidden="true">–</span>
+              <label class="visually-hidden" for="generationMaxIntervalSeconds">Maximum delay between cycles in seconds</label>
+              <input class="form-control form-control-sm" type="number" id="generationMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" required>
+              <span class="generation-cycle-settings-range-unit">sec</span>
+            </div>
+          </div>
+          <div class="generation-cycle-settings-range" role="group" aria-labelledby="generationCycleDealsLabel">
+            <div class="generation-cycle-settings-range-label" id="generationCycleDealsLabel">
+              <span class="button-icon" aria-hidden="true">format_list_numbered</span>
+              <span>Deals per generation cycle</span>
+            </div>
+            <div class="generation-cycle-settings-range-control">
+              <label class="visually-hidden" for="generationMinDealsPerCycle">Minimum deals per cycle</label>
+              <input class="form-control form-control-sm" type="number" id="generationMinDealsPerCycle" name="minDealsPerCycle" min="1" max="100" step="1" required>
+              <span class="generation-cycle-settings-range-separator" aria-hidden="true">–</span>
+              <label class="visually-hidden" for="generationMaxDealsPerCycle">Maximum deals per cycle</label>
+              <input class="form-control form-control-sm" type="number" id="generationMaxDealsPerCycle" name="maxDealsPerCycle" min="1" max="100" step="1" required>
+              <span class="generation-cycle-settings-range-unit">deals</span>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary generation-cycle-settings-save" type="submit" id="clientDealGenerationProcessSettingsSave" disabled>Save</button>
+        </form>
+        <div class="generation-settings-status" id="clientDealGenerationSettingsStatus" role="status" aria-live="polite"></div>
+        <div class="generation-settings-table-region semantic-section semantic-table-section table-panel table-panel--semantic" aria-labelledby="generationSettingsTableTitle">
+          <div class="generation-settings-table-toolbar semantic-section-head semantic-table-section-head table-panel__head" data-ui-table-layout-host="deal_generation_settings_grid">
+            <h3 class="generation-settings-table-title table-panel__title" id="generationSettingsTableTitle">Generation Settings by Pricing Rule</h3>
+          </div>
+          <div class="generation-settings-table-body semantic-table-section-body table-panel__body">
+            <div class="table-responsive generation-settings-table-wrap table-panel__viewport">
+              <table class="table table-sm table-hover align-middle generation-settings-table unified-data-table" data-ui-table-layout-key="deal_generation_settings_grid">
+              <colgroup>
+                <col data-ui-column-key="pricing_rule">
+                <col data-ui-column-key="client">
+                <col data-ui-column-key="currency_pair">
+                <col data-ui-column-key="pricing_mode">
+                <col data-ui-column-key="min_base_ccy_amount">
+                <col data-ui-column-key="max_base_ccy_amount">
+                <col data-ui-column-key="amount_step">
+                <col data-ui-column-key="buy_probability">
+                <col data-ui-column-key="sell_probability">
+                <col data-ui-column-key="active">
+                <col data-ui-column-key="actions">
+              </colgroup>
+              <thead class="table-light">
+                <tr>
+                  <th scope="col" data-column-kind="primaryId">Pricing Rule</th>
+                  <th scope="col" data-column-kind="name">Client</th>
+                  <th scope="col" data-column-kind="pair">Ccy Pair</th>
+                  <th scope="col" data-column-kind="type">
+                    <span class="form-label-with-help">
+                      <span>Pricing Mode</span>
+                      <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Only AUTO_PRICED Execution Systems are available for Client Deal generation." data-tooltip="Only AUTO_PRICED Execution Systems are available for Client Deal generation.">info</span>
+                    </span>
+                  </th>
+                  <th scope="col" class="text-end" data-column-kind="amount">Min Base Ccy Amount</th>
+                  <th scope="col" class="text-end" data-column-kind="amount">Max Base Ccy Amount</th>
+                  <th scope="col" class="text-end" data-column-kind="amount">Amount Step</th>
+                  <th scope="col" class="text-end" data-column-kind="number">BUY %</th>
+                  <th scope="col" class="text-end" data-column-kind="number">SELL %</th>
+                  <th scope="col" class="text-center" data-column-kind="boolean">Active</th>
+                  <th scope="col" class="text-center" data-column-kind="compactActions">Actions</th>
+                </tr>
+              </thead>
+                <tbody id="clientDealGenerationSettingsRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-actions modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="generationCancelButton">Close</button>
+      </div>
+    </div>
+  </dialog>

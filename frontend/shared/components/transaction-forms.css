@@ -1,0 +1,203 @@
+    /* Keep transaction-entry forms on one restrained typography hierarchy. */
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    .client-deal-create-section-title {
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.3;
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    .form-label {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-label);
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(.form-control, .form-select, .input-group-text) {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-regular);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(.client-deal-currency-pair-field, .client-deal-pricing-mode-field) .form-select {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(.client-pricing-context-candidate-name, .client-deal-pricing-rule-margin-value, .client-deal-fixed-currency-toggle) {
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog)
+    .client-deal-amount-field.is-fixed .form-label {
+      color: var(--bs-secondary-color);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedging-settings-panel .modal-title {
+      font-size: 16px;
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #hedgingSettingsPage .hedge-quick-settings-active .form-check-label {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-regular);
+    }
+
+    :is(.workbench-page, .modal, dialog) :is(.btn:not(.btn-close), .action-button) {
+      font-size: var(--app-font-size-table);
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    .workbench-page :is(
+      .profile-table,
+      .reference-table,
+      .unified-data-table,
+      .batching-table,
+      .blotter-table,
+      .tabulator
+    ) {
+      font-size: var(--app-font-size-table);
+    }
+
+    .workbench-page :is(.profile-table, .reference-table, .unified-data-table) th,
+    .workbench-page .tabulator .tabulator-col-title {
+      font-size: var(--app-font-size-table);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    /* Keep every Tabulator sort header compact and visually consistent. */
+    .tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-title {
+      padding-right: 10px;
+    }
+
+    .tabulator .tabulator-header .tabulator-col.tabulator-sortable.tabulator-col-sorter-element:hover {
+      background: var(--workbench-grid-hover-bg) !important;
+      cursor: pointer;
+    }
+
+    .workbench-page .batching-table th:has(.sort-button):hover {
+      background: var(--workbench-grid-hover-bg) !important;
+      cursor: pointer;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title :is(.common-head, .market-head):has(.sort-button):hover {
+      background: var(--palette-gray-200) !important;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title .sell-head:has(.sort-button):hover {
+      background: rgba(var(--bs-danger-rgb), 0.12) !important;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title .buy-head:has(.sort-button):hover {
+      background: rgba(var(--bs-success-rgb), 0.12) !important;
+    }
+
+    .tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-sorter {
+      top: 4px;
+      right: 2px;
+      bottom: auto;
+      width: 8px;
+      height: 8px;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 120ms ease;
+    }
+
+    .tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+      border-right-width: var(--table-sort-arrow-width);
+      border-left-width: var(--table-sort-arrow-width);
+    }
+
+    .tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort="none"]:hover .tabulator-col-sorter {
+      opacity: 0.55;
+    }
+
+    .tabulator .tabulator-header .tabulator-col.tabulator-sortable:is([aria-sort="ascending"], [aria-sort="descending"]) .tabulator-col-sorter {
+      opacity: 1;
+    }
+
+    .tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort="none"] .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+      border-top: 0;
+      border-bottom: var(--table-sort-arrow-height) solid var(--bs-tertiary-color);
+    }
+
+    .tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort="ascending"] .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+      border-top: 0;
+      border-bottom: var(--table-sort-arrow-height) solid var(--bs-secondary-color);
+    }
+
+    .tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort="descending"] .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+      border-top: var(--table-sort-arrow-height) solid var(--bs-secondary-color);
+      border-bottom: 0;
+    }
+
+    :is(.workbench-page, .modal, dialog) :is(
+      .deal-form-section-title,
+      .profile-panel-title,
+      .database-section-title,
+      .client-pricing-rules-table-head,
+      .client-execution-contexts-table-head
+    ) {
+      font-size: var(--app-font-size-label);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    :is(
+      .pricing-rule-context-help,
+      .reference-usage-info,
+      .client-pricing-context-facet-count,
+      .client-pricing-context-option-count,
+      .app-status-token,
+      .client-deal-market-pulse-brand,
+      .client-deal-custom-date-badge,
+      .client-deal-manual-pricing-badge,
+      #batchDetailsPage .batch-details-meta dt,
+      .client-deals-bootstrap .side-token,
+      #databasePage .database-table-section-meta,
+      #mainPage .currency-pair-count,
+      #mainPage .fx-position-grid .rate-title-row th,
+      #mainPage .fx-position-grid .batching-summary-row .summary-label,
+      #mainPage .hedge-quick-preset-unit
+    ) {
+      font-size: var(--app-font-size-caption);
+    }
+
+    .button-icon {
+      font-size: var(--app-icon-size-sm);
+    }
+
+    :is(.workspace-nav-icon, .ui-table-layout-button .button-icon) {
+      font-size: var(--app-icon-size-md);
+    }
+
+    #mainPage :is(
+      .hedge-toolbar-title,
+      .client-deal-toolbar-title,
+      .batch-toolbar-icon-title
+    ) .button-icon {
+      font-size: var(--app-icon-size-lg);
+    }
+
+    @media (max-width: 1040px) {
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .trading-counterparty-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .trading-counterparty-fields {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .profile-form .counterparty-active-field {
+        grid-column: 1;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page .trading-counterparty-role-field {
+        grid-column: 1;
+      }
+    }

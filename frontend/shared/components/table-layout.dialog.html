@@ -1,0 +1,31 @@
+  <dialog class="market-bootstrap-dialog ui-table-layout-dialog" id="pricingRulesTableLayoutDialog" aria-labelledby="pricingRulesTableLayoutDialogTitle">
+    <form class="modal-content" id="pricingRulesTableLayoutForm" autocomplete="off">
+      <header class="modal-header">
+        <h2 class="modal-title fs-6" id="pricingRulesTableLayoutDialogTitle">Pricing Rules Table Layout</h2>
+        <button type="button" class="btn-close" id="pricingRulesTableLayoutDialogClose" aria-label="Close"></button>
+      </header>
+      <div class="modal-body">
+        <div class="alert alert-danger py-2 mb-0" id="pricingRulesTableLayoutStatus" role="alert" hidden></div>
+        <div class="ui-table-layout-list" id="pricingRulesTableLayoutList" aria-label="Table column widths"></div>
+      </div>
+      <footer class="modal-footer justify-content-between">
+        <span class="d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary with-icon" id="pricingRulesTableLayoutResetButton">
+            <span class="button-icon" aria-hidden="true">restart_alt</span>
+            <span>Reset defaults</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary with-icon" id="pricingRulesTableLayoutSaveDefaultButton">
+            <span class="button-icon" aria-hidden="true">save_as</span>
+            <span>Save as default</span>
+          </button>
+        </span>
+        <span class="d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="pricingRulesTableLayoutCancelButton">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-primary with-icon" id="pricingRulesTableLayoutSaveButton">
+            <span class="button-icon" aria-hidden="true">save</span>
+            <span>Save layout</span>
+          </button>
+        </span>
+      </footer>
+    </form>
+  </dialog>

@@ -1,0 +1,191 @@
+  <dialog class="client-deal-create-dialog" id="addClientDealDialog">
+    <form class="modal-content" id="addClientDealForm" autocomplete="off">
+      <div class="modal-header">
+        <h2 class="modal-title">Add Client Deal</h2>
+        <button type="button" class="btn-close" id="addClientDealDialogClose" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <section class="client-deal-create-section client-deal-create-context-section semantic-section" aria-labelledby="addClientDealContextTitle">
+          <div class="client-deal-create-section-title semantic-section-head" id="addClientDealContextTitle">Trade Context</div>
+          <div class="client-deal-create-section-body">
+            <div class="client-deal-context-fields has-pricing-mode">
+              <div class="client-deal-currency-pair-field">
+                <label class="form-label" for="addClientDealCurrencyPair">Ccy Pair</label>
+                <select class="form-select" id="addClientDealCurrencyPair" name="currencyPair" required></select>
+              </div>
+              <div class="client-deal-pricing-mode-field">
+                <label class="form-label form-label-with-help" for="addClientDealPricingMode">
+                  <span>Pricing Mode</span>
+                  <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Only DEALER_PRICED Execution Systems are available for manual Client Deal adding." data-tooltip="Only DEALER_PRICED Execution Systems are available for manual Client Deal adding.">info</span>
+                </label>
+                <div class="input-group client-deal-pricing-mode-filter">
+                  <span class="input-group-text pricing-mode-indicator client-deal-pricing-mode-icon is-dealer-priced" role="img" aria-label="Dealer Priced">
+                    <span class="button-icon" aria-hidden="true">contact_phone</span>
+                  </span>
+                  <select class="form-select" id="addClientDealPricingMode" aria-readonly="true" disabled>
+                    <option value="DEALER_PRICED">DEALER_PRICED</option>
+                  </select>
+                </div>
+              </div>
+              <div class="client-deal-client-field">
+                <span class="form-label" id="addClientDealCounterpartyLabel">Client</span>
+                <div class="client-deal-client-picker" id="addClientDealClientPicker">
+                  <input type="hidden" id="addClientDealCounterpartyId" name="counterpartyId">
+                  <div class="input-group">
+                    <input class="form-control client-deal-client-picker-value" type="text" id="addClientDealClientPickerValue" placeholder="Type client name..." role="combobox" aria-labelledby="addClientDealCounterpartyLabel" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="addClientDealClientOptions" aria-expanded="false" autocomplete="off">
+                    <button type="button" class="btn btn-outline-secondary client-deal-client-picker-clear" id="addClientDealClientPickerClear" aria-label="Clear client" hidden>
+                      <span class="button-icon" aria-hidden="true">close</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary client-deal-client-picker-toggle" id="addClientDealClientPickerToggle" aria-label="Open client list" aria-haspopup="listbox" aria-controls="addClientDealClientOptions" aria-expanded="false">
+                      <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+                    </button>
+                  </div>
+                  <div class="client-deal-client-options" id="addClientDealClientOptions" role="listbox" aria-labelledby="addClientDealCounterpartyLabel" hidden></div>
+                </div>
+              </div>
+            </div>
+            <input type="hidden" name="executionContextId">
+            <input type="hidden" name="pricingRuleId">
+            <input type="hidden" name="manualPricingReason">
+            <div class="client-deal-context-picker" id="addClientDealPricingRulePicker" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section class="client-deal-create-section semantic-section" aria-labelledby="addClientDealEconomicsTitle">
+          <div class="client-deal-create-section-title semantic-section-head" id="addClientDealEconomicsTitle">Trade Economics</div>
+          <div class="client-deal-create-section-body">
+            <div class="client-deal-main-economics-row">
+              <div class="client-deal-economics-field">
+                <label class="form-label" for="addClientDealSide">Client Side</label>
+                <select class="form-select" id="addClientDealSide" name="side" required>
+                  <option value="">Select...</option>
+                </select>
+              </div>
+              <input type="hidden" id="addClientDealAmountFixingCurrency" name="amountFixingCurrency" value="base">
+              <div class="client-deal-economics-field client-deal-amount-field" data-add-client-deal-amount-field="base">
+                <label class="form-label" for="addClientDealBaseAmount">Base Ccy Amount</label>
+                <div class="input-group">
+                  <button type="button" class="input-group-text client-deal-fixed-currency-toggle" data-add-client-deal-fixing-currency="base" aria-pressed="true">
+                    <span class="button-icon" data-add-client-deal-fixing-icon aria-hidden="true">radio_button_checked</span>
+                    <span data-add-client-deal-base-ccy>BASE</span>
+                  </button>
+                  <input class="form-control" type="text" id="addClientDealBaseAmount" name="baseCcyAmount" inputmode="decimal" required>
+                </div>
+              </div>
+              <div class="client-deal-economics-field client-deal-amount-field" data-add-client-deal-amount-field="quote">
+                <label class="form-label" for="addClientDealQuoteAmount">Quote Ccy Amount</label>
+                <div class="input-group">
+                  <button type="button" class="input-group-text client-deal-fixed-currency-toggle" data-add-client-deal-fixing-currency="quote" aria-pressed="false">
+                    <span class="button-icon" data-add-client-deal-fixing-icon aria-hidden="true">radio_button_unchecked</span>
+                    <span data-add-client-deal-quote-ccy>QUOTE</span>
+                  </button>
+                  <input class="form-control" type="text" id="addClientDealQuoteAmount" name="quoteCcyAmount" inputmode="decimal" required readonly>
+                </div>
+              </div>
+              <div class="client-deal-economics-field">
+                <label class="form-label" for="addClientDealTenor">Tenor</label>
+                <select class="form-select" id="addClientDealTenor" name="tenor" required>
+                  <option value="TOD">TOD</option>
+                  <option value="TOM">TOM</option>
+                  <option value="SPOT">SPOT</option>
+                </select>
+              </div>
+            </div>
+            <div class="client-deal-pricing-row is-market-first">
+              <div class="client-deal-market-pulse-card is-compact" id="addClientDealMarketPulse" aria-label="Market Pulse">
+                <div class="client-deal-market-pulse-brand">
+                  <span class="button-icon market-pulse-icon" role="img" aria-label="Market Pulse" title="Market Pulse">monitoring</span>
+                </div>
+                <div class="client-deal-market-pulse-quote" id="addClientDealMarketQuote" role="textbox" aria-readonly="true" aria-label="Bid / Offer">
+                  <span class="client-deal-market-pulse-quote-bid" data-market-quote-bid></span>
+                  <span class="client-deal-market-pulse-quote-separator" aria-hidden="true">/</span>
+                  <span class="client-deal-market-pulse-quote-offer" data-market-quote-offer></span>
+                </div>
+                <input type="hidden" id="addClientDealMarketBid" name="marketBid">
+                <input type="hidden" id="addClientDealMarketOffer" name="marketOffer">
+                <input type="hidden" id="addClientDealMarketStatus" name="marketStatus">
+                <div class="client-deal-market-pulse-status" data-add-client-deal-market-status aria-live="polite" title="Unavailable">
+                  <span class="client-deal-market-pulse-status-dot" aria-hidden="true"></span>
+                  <span class="visually-hidden" data-add-client-deal-market-status-text>Unavailable</span>
+                </div>
+              </div>
+              <div class="client-deal-loss-sensitive-field" data-add-client-deal-loss-field>
+                <label class="form-label" for="addClientDealRate">Trade Rate</label>
+                <div class="input-group client-deal-rate-input-group client-deal-trade-rate-input-group">
+                  <span class="input-group-text client-deal-rate-icon" aria-hidden="true">
+                    <span class="button-icon">handshake</span>
+                  </span>
+                  <input class="form-control" type="text" id="addClientDealRate" name="clientRate" inputmode="decimal" required>
+                </div>
+              </div>
+              <div class="client-deal-loss-sensitive-field" data-add-client-deal-loss-field>
+                <label class="form-label" for="addClientDealTransferRate">
+                  Transfer Rate
+                  <span class="badge text-bg-warning client-deal-manual-pricing-badge" data-add-client-deal-manual-pricing-badge hidden>Manual</span>
+                </label>
+                <div class="input-group client-deal-rate-input-group client-deal-transfer-rate-input-group">
+                  <span class="input-group-text client-deal-rate-icon" aria-hidden="true">
+                    <span class="button-icon">swap_horiz</span>
+                  </span>
+                  <input class="form-control" type="text" id="addClientDealTransferRate" name="transferRate" readonly required>
+                </div>
+              </div>
+              <div class="client-deal-loss-sensitive-field" data-add-client-deal-loss-field>
+                <label class="form-label" for="addClientDealAnalyticalPnl">Analytical PnL</label>
+                <div class="input-group client-deal-rate-input-group client-deal-pnl-input-group">
+                  <span class="input-group-text client-deal-rate-icon" aria-hidden="true">
+                    <span class="button-icon">payments</span>
+                  </span>
+                  <input class="form-control" type="text" id="addClientDealAnalyticalPnl" name="analyticalPnl" readonly required>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <details class="client-deal-create-section client-deal-additional-section semantic-section" id="addClientDealAdditionalDetails">
+          <summary class="client-deal-additional-summary semantic-section-head">
+            <span>Additional Attributes</span>
+            <span class="client-deal-additional-summary-values">
+              Trade Date <span data-add-client-deal-trade-date-summary>—</span>
+              · Base Ccy Value Date <span data-add-client-deal-base-value-date-summary>—</span>
+              · Quote Ccy Value Date <span data-add-client-deal-quote-value-date-summary>—</span>
+            </span>
+            <span class="client-deal-custom-date-badge" data-add-client-deal-custom-date aria-label="Custom Trade Date" hidden>Custom</span>
+            <span class="button-icon" aria-hidden="true">expand_more</span>
+          </summary>
+          <div class="client-deal-create-section-body">
+            <div class="client-deal-value-dates-grid">
+              <div>
+                <label class="form-label" for="addClientDealTradeDate">Trade Date</label>
+                <input class="form-control" type="text" id="addClientDealTradeDate" name="tradeDate" placeholder="DD.MM.YYYY" required>
+              </div>
+              <div>
+                <label class="form-label" for="addClientDealBaseValueDate">Base Ccy Value Date</label>
+                <input class="form-control" type="text" id="addClientDealBaseValueDate" name="baseCcyValueDate" readonly>
+              </div>
+              <div>
+                <label class="form-label" for="addClientDealQuoteValueDate">Quote Ccy Value Date</label>
+                <input class="form-control" type="text" id="addClientDealQuoteValueDate" name="quoteCcyValueDate" readonly>
+              </div>
+            </div>
+            <div class="client-deal-additional-comment">
+              <label class="form-label" for="addClientDealComment">Comment</label>
+              <input class="form-control" type="text" id="addClientDealComment" name="comment" maxlength="500">
+            </div>
+          </div>
+        </details>
+        <div class="alert alert-danger client-deal-loss-confirmation" id="addClientDealLossConfirmation" role="alert" hidden>
+          <span class="button-icon" aria-hidden="true">warning</span>
+          <span>Negative Analytical PnL. Hold Ctrl and click Client Deal, or press Ctrl+Enter, to confirm.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="addClientDealCancelButton">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="addClientDealSubmitButton">
+          <span class="button-icon" aria-hidden="true">add</span>
+          <span>Client Deal</span>
+        </button>
+      </div>
+    </form>
+  </dialog>

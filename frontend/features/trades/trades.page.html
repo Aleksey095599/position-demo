@@ -1,0 +1,44 @@
+  <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace workbench-page" id="fxDealsPage" hidden>
+    <section class="action-bar workbench-page-header" aria-label="Trades header">
+      <h1 class="page-title">Trades</h1>
+    </section>
+
+    <nav class="nav nav-tabs workbench-section-tabs trades-scope-tabs" aria-label="Trade types" role="tablist">
+      <a class="nav-link" id="clientFxDealsTab" href="#client-fx-deals" data-fx-deals-route="client-fx-deals" role="tab" aria-controls="clientFxDealsPage" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">handshake</span>
+        <span>Client FX Deals</span>
+      </a>
+      <a class="nav-link" id="hedgeFxDealsTab" href="#hedge-fx-deals" data-fx-deals-route="hedge-fx-deals" role="tab" aria-controls="hedgeFxDealsPage" aria-selected="false">
+        <span class="button-icon" aria-hidden="true">shield</span>
+        <span>Hedge FX Deals</span>
+      </a>
+    </nav>
+
+    <section class="trades-tab-panel table-panel table-panel--standalone" id="clientFxDealsPage" role="tabpanel" aria-labelledby="clientFxDealsTab" hidden>
+      <section class="client-deals-toolbar table-panel__head" data-ui-table-layout-host="client_fx_deals_grid" aria-label="Client FX Deals table layout">
+        <h2 class="table-panel__title">Client FX Deals</h2>
+        <div class="form-check form-switch fx-deals-view-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="clientFxDealsAuditView" data-fx-deals-audit-toggle data-fx-deals-view-scope="client">
+          <label class="form-check-label" for="clientFxDealsAuditView">Audit View</label>
+        </div>
+        <span class="client-deals-count" id="clientFxDealsCount">0 deals</span>
+      </section>
+      <section class="client-deals-grid-shell trades-table-viewport table-panel__body table-panel__viewport" aria-label="client_fx_deals">
+        <div class="fx-deals-grid" id="clientFxDealsGrid" aria-label="Client FX Deals table"></div>
+      </section>
+    </section>
+
+    <section class="trades-tab-panel table-panel table-panel--standalone" id="hedgeFxDealsPage" role="tabpanel" aria-labelledby="hedgeFxDealsTab" hidden>
+      <section class="client-deals-toolbar table-panel__head" data-ui-table-layout-host="hedge_fx_deals_grid" aria-label="Hedge FX Deals table layout">
+        <h2 class="table-panel__title">Hedge FX Deals</h2>
+        <div class="form-check form-switch fx-deals-view-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="hedgeFxDealsAuditView" data-fx-deals-audit-toggle data-fx-deals-view-scope="hedge">
+          <label class="form-check-label" for="hedgeFxDealsAuditView">Audit View</label>
+        </div>
+        <span class="client-deals-count" id="hedgeFxDealsCount">0 deals</span>
+      </section>
+      <section class="client-deals-grid-shell trades-table-viewport table-panel__body table-panel__viewport" aria-label="fx_hedge_deals">
+        <div class="fx-deals-grid" id="hedgeFxDealsGrid" aria-label="Hedge FX Deals table"></div>
+      </section>
+    </section>
+  </main>

@@ -1,0 +1,51 @@
+  <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace workbench-page" id="analyticalPnlReportPage" hidden>
+    <section class="action-bar workbench-page-header" aria-label="Analytical PnL Report header">
+      <h1 class="page-title">Analytical PnL Report</h1>
+      <div class="profile-status workbench-page-status" id="analyticalPnlReportStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <div class="analytical-pnl-report-overview">
+      <section class="analytical-pnl-report-panel analytical-pnl-report-filter-panel semantic-section" aria-labelledby="analyticalPnlReportFiltersTitle">
+        <h2 class="analytical-pnl-report-panel-title semantic-section-head" id="analyticalPnlReportFiltersTitle">Report Filters</h2>
+        <form class="analytical-pnl-report-filters" id="analyticalPnlReportFilters" autocomplete="off">
+          <label class="analytical-pnl-report-filter">
+            <span>Trade Date From</span>
+            <input class="form-control form-control-sm" type="date" name="dateFrom">
+          </label>
+          <label class="analytical-pnl-report-filter">
+            <span>Trade Date To</span>
+            <input class="form-control form-control-sm" type="date" name="dateTo">
+          </label>
+          <label class="analytical-pnl-report-filter">
+            <span>Trade Type</span>
+            <select class="form-select form-select-sm" name="tradeType">
+              <option value="">All deals</option>
+              <option value="CLIENT_DEAL">Client FX Deals</option>
+              <option value="HEDGE_DEAL">Hedge FX Deals</option>
+            </select>
+          </label>
+          <div class="analytical-pnl-report-filter-actions">
+            <button type="submit" class="btn btn-sm btn-primary">
+              <span class="button-icon" aria-hidden="true">filter_alt</span>
+              <span>Apply</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="analyticalPnlReportClearFilters">
+              <span class="button-icon" aria-hidden="true">filter_alt_off</span>
+              <span>Clear</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="analytical-pnl-report-summary semantic-section semantic-table-section table-panel table-panel--semantic" aria-labelledby="analyticalPnlReportSummaryTitle">
+        <div class="analytical-pnl-report-summary-header semantic-section-head semantic-table-section-head table-panel__head" data-ui-table-layout-host="analytical_pnl_summary_grid">
+          <h2 class="analytical-pnl-report-panel-title table-panel__title" id="analyticalPnlReportSummaryTitle">Net Analytical PnL</h2>
+        </div>
+        <div class="analytical-pnl-report-summary-grid-shell semantic-table-section-body table-panel__body table-panel__viewport">
+          <div id="analyticalPnlReportSummaryGrid" aria-label="Net Analytical PnL by currency"></div>
+        </div>
+        <p class="analytical-pnl-report-summary-note" id="analyticalPnlReportSummaryNote" hidden></p>
+      </section>
+    </div>
+
+  </main>

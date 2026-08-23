@@ -1,0 +1,55 @@
+  <main class="settings-shell profile-shell market-shell market-bootstrap workbench-page" id="marketPage" hidden>
+    <section class="settings-topbar workbench-page-header" id="marketPageHeader" aria-label="Market Pulse header">
+      <div class="settings-title-block">
+        <nav aria-label="Breadcrumb" id="marketSettingsBreadcrumb" hidden>
+          <ol class="breadcrumb workbench-breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="#settings:currencies" id="marketSettingsBreadcrumbBackLink">Currency Settings</a></li>
+            <li class="breadcrumb-item active" id="marketSettingsBreadcrumbCurrent" aria-current="page"></li>
+          </ol>
+        </nav>
+        <h1 class="settings-title" id="marketPageTitle">Market Pulse</h1>
+      </div>
+      <div class="profile-status workbench-page-status" id="marketStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="market-bootstrap-content" aria-label="Market Pulse data">
+      <section class="market-bootstrap-panel table-panel table-panel--standalone" data-market-panel="currencies" aria-label="Ccy options" hidden>
+        <div class="market-grid-toolbar table-panel__head" data-ui-table-layout-host="ccy_options_grid">
+          <h2 class="table-panel__title">Currencies</h2>
+          <button type="button" class="btn btn-sm btn-primary" id="marketCcyOptionNewButton">
+            <span class="button-icon" aria-hidden="true">add</span>
+            <span>New currency</span>
+          </button>
+        </div>
+        <div class="market-grid-frame table-panel__body table-panel__viewport">
+          <div class="market-tabulator" id="marketCcyOptionRows" aria-label="Ccy Options table"></div>
+        </div>
+      </section>
+
+      <section class="market-bootstrap-panel table-panel table-panel--standalone" data-market-panel="pairs" aria-label="Ccy pair options" hidden>
+        <div class="market-grid-toolbar table-panel__head" data-ui-table-layout-host="ccy_pair_options_grid">
+          <h2 class="table-panel__title">Currency Pairs</h2>
+          <button type="button" class="btn btn-sm btn-primary" id="marketPairOptionNewButton">
+            <span class="button-icon" aria-hidden="true">add</span>
+            <span>New pair</span>
+          </button>
+        </div>
+        <div class="market-grid-frame table-panel__body table-panel__viewport">
+          <div class="market-tabulator" id="marketPairOptionRows" aria-label="Ccy Pair Options table"></div>
+        </div>
+      </section>
+
+      <section class="market-bootstrap-panel table-panel table-panel--standalone" data-market-panel="streams" aria-label="Quote Stream simulation" hidden>
+        <div class="market-grid-toolbar table-panel__head" data-ui-table-layout-host="market_stream_grid">
+          <h2 class="table-panel__title">Quote Stream</h2>
+          <button type="button" class="btn btn-sm btn-primary process-toggle-button" id="marketStreamToggleButton" aria-label="Start stream" aria-pressed="false">
+            <span class="button-icon" aria-hidden="true" id="marketStreamToggleIcon">play_arrow</span>
+            <span id="marketStreamToggleText">Start stream</span>
+          </button>
+        </div>
+        <div class="market-grid-frame table-panel__body table-panel__viewport">
+          <div class="market-tabulator" id="marketStreamTable" aria-label="Quote Stream table"></div>
+        </div>
+      </section>
+    </section>
+  </main>

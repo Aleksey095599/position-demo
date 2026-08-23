@@ -1,0 +1,126 @@
+  <main class="settings-shell profile-shell pricing-shell unified-bootstrap-workspace workbench-page" id="pricingPage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Execution context header">
+      <div class="settings-title-block">
+        <nav class="workbench-breadcrumb" id="pricingContextBreadcrumb" aria-label="breadcrumb" hidden>
+          <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+              <a id="pricingContextBreadcrumbBackLink" href="#reference-data:servicing-locations">Servicing Locations</a>
+            </li>
+            <li class="breadcrumb-item active" id="pricingContextBreadcrumbCurrent" aria-current="page">Execution Contexts</li>
+          </ol>
+        </nav>
+        <h1 class="settings-title">Execution Context</h1>
+      </div>
+      <div class="profile-status workbench-page-status" id="pricingContextStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="profile-layout pricing-layout" aria-label="Pricing context editor">
+      <section class="profile-panel profile-table-panel table-panel table-panel--standalone" aria-label="Pricing contexts">
+        <div class="profile-panel-head table-panel__head">
+          <h2 class="table-panel__title">Execution Contexts</h2>
+            <div class="profile-panel-head-actions table-panel__tools" data-ui-table-layout-host="execution_contexts_grid">
+            <button type="button" class="btn btn-sm btn-primary with-icon" id="pricingContextNewButton">
+              <span class="button-icon" aria-hidden="true">add</span>
+              <span>New context</span>
+            </button>
+          </div>
+        </div>
+        <div class="profile-table-wrap table-panel__body table-panel__viewport">
+          <table class="profile-table pricing-context-table unified-data-table" id="executionContextsTable" data-ui-table-layout-key="execution_contexts_grid">
+            <colgroup>
+              <col class="pricing-context-id-col" data-ui-column-key="id">
+              <col class="pricing-context-location-col" data-ui-column-key="servicing_location">
+              <col class="pricing-context-accounting-col" data-ui-column-key="accounting_system">
+              <col class="pricing-context-execution-col" data-ui-column-key="execution_system">
+              <col class="pricing-context-position-mode-col" data-ui-column-key="default_position_management_mode">
+              <col class="pricing-context-admission-policy-col" data-ui-column-key="auto_hedging_admission_policy">
+              <col class="pricing-context-count-col" data-ui-column-key="counterparties_count">
+              <col class="pricing-context-actions-col" data-ui-column-key="actions" data-pricing-context-actions-column>
+            </colgroup>
+            <thead>
+              <tr>
+                <th id="pricingContextIdHeader" aria-sort="ascending">
+                  <div class="reference-column-head">
+                    <button type="button" class="reference-column-title reference-sort-control" id="pricingContextIdSort" aria-label="Sort execution contexts by ID ascending" aria-pressed="true">
+                      <span>ID</span>
+                      <span class="reference-sort-indicator" aria-hidden="true"></span>
+                    </button>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="pricingContextId" aria-label="Filter execution contexts by ID">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">location_on</span>
+                      <span>Servicing Location</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="servicingBranchCode" aria-label="Filter execution contexts by servicing location">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">account_balance</span>
+                      <span>Accounting System</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="settlementSystemId" aria-label="Filter execution contexts by accounting system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">terminal</span>
+                      <span>Execution System</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="tradeCaptureChannelId" aria-label="Filter execution contexts by execution system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true" data-disable-overflow-tooltip>table_chart</span>
+                      <span>Default FX Position Mode</span>
+                    </span>
+                    <select class="reference-header-filter" data-pricing-context-header-filter="defaultPositionManagementMode" aria-label="Filter execution contexts by default FX position mode">
+                      <option value="">All</option>
+                      <option value="MANUAL">Manual Control</option>
+                      <option value="AUTO">Auto Hedging</option>
+                    </select>
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">shield</span>
+                      <span>Auto Hedging Admission Policy</span>
+                    </span>
+                    <select class="reference-header-filter" data-pricing-context-header-filter="autoHedgingAdmissionPolicy" aria-label="Filter execution contexts by Auto Hedging Admission Policy">
+                      <option value="">All</option>
+                      <option value="AUTO_IF_ELIGIBLE">Auto if eligible</option>
+                      <option value="REVIEW_REQUIRED">Review required</option>
+                      <option value="MANUAL_ONLY">Manual only</option>
+                    </select>
+                  </div>
+                </th>
+                <th data-column-kind="count">
+                  <div class="reference-column-head reference-column-head-static reference-column-head-centered">
+                    <span
+                      class="button-icon"
+                      role="img"
+                      tabindex="0"
+                      aria-label="Attached Trading Counterparties"
+                      data-tooltip="Attached Trading Counterparties"
+                    >
+                      badge
+                    </span>
+                  </div>
+                </th>
+                <th class="profile-actions-cell" data-pricing-context-actions-column>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pricingContextRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>

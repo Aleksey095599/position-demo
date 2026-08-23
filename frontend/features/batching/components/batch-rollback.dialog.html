@@ -1,0 +1,19 @@
+  <dialog class="market-bootstrap-dialog batch-rollback-dialog" id="batchRollbackDialog" aria-labelledby="batchRollbackDialogTitle">
+    <div class="modal-content">
+      <header class="modal-header">
+          <h2 class="modal-title" id="batchRollbackDialogTitle">Rollback FX Batch</h2>
+        <button type="button" class="btn-close" id="batchRollbackDialogClose" aria-label="Close"></button>
+      </header>
+      <div class="modal-body">
+        <p class="batch-rollback-summary" id="batchRollbackSummary"></p>
+        <div class="alert alert-danger batch-rollback-status" id="batchRollbackStatus" role="alert" hidden></div>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="batchRollbackCancelButton">Cancel</button>
+        <button type="button" class="btn btn-sm btn-warning" id="batchRollbackConfirmButton">
+          <span class="button-icon" aria-hidden="true">undo</span>
+          <span>Rollback batch</span>
+        </button>
+      </footer>
+    </div>
+  </dialog>

@@ -1,0 +1,555 @@
+  <main class="settings-shell profile-shell processes-shell unified-bootstrap-workspace workbench-page" id="processesPage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Processes header" data-process-aria-label="pageHeader">
+      <div class="settings-title-block">
+        <h1 class="settings-title" data-process-copy="pageTitle">Process Catalog</h1>
+      </div>
+      <div class="processes-language-switch" role="group" aria-label="Process Catalog language" data-process-aria-label="languageSwitch">
+        <button type="button" class="processes-language-button" data-process-language="en" aria-pressed="false">EN</button>
+        <button type="button" class="processes-language-button is-active" data-process-language="ru" aria-pressed="true">RU</button>
+      </div>
+    </section>
+
+    <section class="processes-layout" aria-label="Process catalog" data-process-aria-label="catalog">
+      <aside class="profile-panel processes-catalog">
+        <nav class="processes-list" aria-label="Processes" data-process-aria-label="processes">
+          <a class="processes-list-link is-active" href="#processes:manual-batch-formation" data-process-catalog-view="manual" aria-current="page">
+            <span class="button-icon" aria-hidden="true">account_tree</span>
+            <span class="processes-list-link-copy">
+              <strong data-process-copy="manualBatching">Manual Batching</strong>
+            </span>
+          </a>
+          <div class="processes-list-group" data-process-catalog-group="auto-hedging">
+            <a class="processes-list-link" href="#processes:auto-hedging" data-process-catalog-view="auto-hedging">
+              <span class="button-icon" aria-hidden="true">shield</span>
+              <span class="processes-list-link-copy">
+                <strong data-process-copy="autoHedging">Auto Hedging</strong>
+              </span>
+            </a>
+            <div class="processes-sublist" aria-label="Auto Hedging subcatalogs" data-process-aria-label="autoHedgingSubcatalogs">
+              <a class="processes-list-link processes-list-sublink" href="#processes:auto-hedging-admission" data-process-catalog-view="admission" data-process-catalog-parent="auto-hedging">
+                <span class="button-icon" aria-hidden="true">verified_user</span>
+                <span class="processes-list-link-copy">
+                  <strong data-process-copy="automationAdmission">Auto Hedging Admission</strong>
+                </span>
+              </a>
+            </div>
+          </div>
+          <a class="processes-list-link" href="#processes:domain-glossary" data-process-catalog-view="glossary">
+            <span class="button-icon" aria-hidden="true">menu_book</span>
+            <span class="processes-list-link-copy">
+              <strong data-process-copy="domainGlossary">Domain Glossary</strong>
+            </span>
+          </a>
+        </nav>
+      </aside>
+
+      <article class="profile-panel processes-details" id="manualBatchFormationProcessView" aria-labelledby="manualBatchFormationProcessTitle">
+        <header class="profile-panel-head processes-detail-head">
+          <div class="processes-detail-heading">
+            <h2 class="processes-section-title" id="manualBatchFormationProcessTitle" data-process-copy="manualBatching">Manual Batching</h2>
+          </div>
+        </header>
+        <div class="processes-detail-body">
+        <div class="manual-process-summary" aria-label="Process goal" data-process-aria-label="processGoal">
+          <div class="manual-process-summary-flow">
+            <span class="manual-process-summary-label" data-process-copy="goal">Process goal:</span>
+            <span class="button-icon" aria-hidden="true">checklist</span>
+            <span data-process-copy="selectedFxTrades" data-process-linked-copy>Selected FX Trades</span>
+            <span class="button-icon" aria-hidden="true">arrow_forward</span>
+            <span class="manual-process-summary-result">
+              <span class="button-icon" aria-hidden="true">stacks</span>
+              <span data-process-copy="formedFxBatch" data-process-linked-copy>Formed FX Batch</span>
+            </span>
+          </div>
+        </div>
+
+        <section class="manual-process-map" aria-label="Manual Batching process map" data-process-aria-label="processMap">
+          <div class="manual-process-canvas">
+            <button type="button" class="manual-process-node is-input is-step-1 is-current is-pinned" data-manual-process-stage="select" aria-pressed="true" aria-describedby="manualProcessInspector">
+              <span class="manual-process-node-meta"><span>01</span><span data-process-copy="stageInput">INPUT</span></span>
+              <span class="manual-process-node-main">
+                <span class="manual-process-node-icon button-icon" aria-hidden="true">checklist</span>
+                <span class="manual-process-node-title" data-process-copy="selectFxTrades">FX Trade Selection for FX Batch Formation</span>
+              </span>
+            </button>
+            <span class="manual-process-connector is-after-select" aria-hidden="true"></span>
+
+            <button type="button" class="manual-process-node is-tenor is-decision is-step-2" data-manual-process-stage="tenor" aria-pressed="false" aria-describedby="manualProcessInspector">
+              <span class="manual-process-node-meta"><span>02</span><span data-process-copy="stageDecision">DECISION</span></span>
+              <span class="manual-process-node-main">
+                <span class="manual-process-node-icon button-icon" aria-hidden="true">alt_route</span>
+                <span class="manual-process-node-title" data-process-copy="resolveTenors">Resolve Batching Key</span>
+              </span>
+            </button>
+            <span class="manual-process-connector is-after-tenor" aria-hidden="true"></span>
+
+            <button type="button" class="manual-process-node is-validation is-step-3" data-manual-process-stage="validate" aria-pressed="false" aria-describedby="manualProcessInspector">
+              <span class="manual-process-node-meta"><span>03</span><span data-process-copy="stageControl">CONTROL</span></span>
+              <span class="manual-process-node-main">
+                <span class="manual-process-node-icon button-icon" aria-hidden="true">fact_check</span>
+                <span class="manual-process-node-title" data-process-copy="validateAndPlan">Validate &amp; Plan</span>
+              </span>
+            </button>
+            <span class="manual-process-connector is-after-validation" aria-hidden="true"></span>
+
+            <button type="button" class="manual-process-node is-domain is-step-4" data-manual-process-stage="form" aria-pressed="false" aria-describedby="manualProcessInspector">
+              <span class="manual-process-node-meta"><span>04</span><span data-process-copy="stageDomain">DOMAIN</span></span>
+              <span class="manual-process-node-main">
+                <span class="manual-process-node-icon button-icon" aria-hidden="true">calculate</span>
+                <span class="manual-process-node-title" data-process-copy="formAndNeutralize">Form &amp; Neutralize</span>
+              </span>
+            </button>
+            <span class="manual-process-connector is-atomic" aria-hidden="true"><span class="manual-process-connector-label" data-process-copy="oneDbTransaction">ONE DB TX</span></span>
+
+            <button type="button" class="manual-process-node is-commit is-step-5" data-manual-process-stage="commit" aria-pressed="false" aria-describedby="manualProcessInspector">
+              <span class="manual-process-node-meta"><span>05</span><span data-process-copy="stageCommit">COMMIT</span></span>
+              <span class="manual-process-node-main">
+                <span class="manual-process-node-icon button-icon" aria-hidden="true">database</span>
+                <span class="manual-process-node-title" data-process-copy="commitAndRefresh">Commit &amp; Refresh</span>
+              </span>
+            </button>
+
+            <div class="manual-process-tenor-routes" aria-label="Tenor decision outcomes" data-process-aria-label="tenorOutcomes">
+              <span class="manual-process-route"><strong data-process-copy="sameTenor">Same Tenor</strong><span data-process-copy="continueAction">Continue</span></span>
+              <span class="manual-process-route"><strong data-process-copy="mixedTenors">Mixed Batching Key</strong><span data-process-copy="chooseOrSplit">Choose one Group</span></span>
+            </div>
+            <span class="manual-process-failure-drop is-validation" aria-hidden="true"></span>
+            <span class="manual-process-failure-drop is-commit" aria-hidden="true"></span>
+            <div class="manual-process-rollback" role="note">
+              <span class="button-icon" aria-hidden="true">error</span>
+              <strong data-process-copy="serverTransactionFailure">Server transaction failure</strong>
+              <span class="manual-process-rollback-arrow button-icon" aria-hidden="true">arrow_forward</span>
+              <span data-process-copy="fullRollback">Full rollback</span>
+              <span class="manual-process-rollback-arrow button-icon" aria-hidden="true">arrow_forward</span>
+              <span data-process-copy="fxPositionUnchanged" data-process-linked-copy>FX Position unchanged</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="manual-process-inspector is-input" id="manualProcessInspector" aria-label="Selected process phase specification" data-process-aria-label="stageSpecification">
+          <div class="manual-process-inspector-heading">
+            <span class="manual-process-inspector-icon button-icon" id="manualProcessInspectorIcon" aria-hidden="true">checklist</span>
+            <div>
+              <div class="manual-process-inspector-kicker" id="manualProcessInspectorKicker">01 &middot; Input</div>
+              <h3 class="manual-process-inspector-title" id="manualProcessInspectorTitle">FX Trade Selection for FX Batch Formation</h3>
+            </div>
+          </div>
+          <div class="manual-process-inspector-body">
+            <section class="manual-process-stage-objective" aria-labelledby="manualProcessInspectorObjectiveLabel">
+              <span class="manual-process-stage-label" id="manualProcessInspectorObjectiveLabel" data-process-copy="stageObjective">Stage goal:</span>
+              <p id="manualProcessInspectorObjective">Freeze the operator's eligible FX Position selection for deterministic Manual Batching.</p>
+            </section>
+
+            <div class="manual-process-detail-grid">
+              <section class="manual-process-detail-panel" aria-labelledby="manualProcessInspectorStepsTitle">
+                <h4 class="manual-process-detail-title" id="manualProcessInspectorStepsTitle" data-process-copy="executionSteps">Execution steps</h4>
+                <ol class="manual-process-steps" id="manualProcessInspectorSteps"></ol>
+              </section>
+              <section class="manual-process-detail-panel" aria-labelledby="manualProcessInspectorControlsTitle">
+                <h4 class="manual-process-detail-title" id="manualProcessInspectorControlsTitle" data-process-copy="controlsAndFailure">Controls &amp; failure</h4>
+                <ul class="manual-process-controls" id="manualProcessInspectorControls"></ul>
+              </section>
+            </div>
+
+            <section class="manual-process-detail-panel table-panel table-panel--standalone table-panel--compact" aria-labelledby="manualProcessInspectorArtifactsTitle">
+              <h4 class="manual-process-detail-title" id="manualProcessInspectorArtifactsTitle" data-process-copy="dataArtifacts">Data artifacts</h4>
+              <div class="manual-process-artifacts-wrap table-panel__body table-panel__viewport">
+                <table class="manual-process-artifacts-table">
+                  <thead>
+                    <tr>
+                      <th data-process-copy="artifactKind">Kind</th>
+                      <th data-process-copy="artifactNameType">Name / type</th>
+                      <th data-process-copy="artifactScope">Scope</th>
+                      <th data-process-copy="artifactPurpose">Purpose</th>
+                    </tr>
+                  </thead>
+                  <tbody id="manualProcessInspectorArtifacts"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="manual-process-detail-panel" aria-labelledby="manualProcessInspectorTraceabilityTitle">
+              <h4 class="manual-process-detail-title" id="manualProcessInspectorTraceabilityTitle" data-process-copy="traceability">Traceability</h4>
+              <dl class="manual-process-traceability" id="manualProcessInspectorTraceability"></dl>
+            </section>
+
+            <section class="manual-process-stage-result" aria-labelledby="manualProcessInspectorResultLabel">
+              <span class="manual-process-stage-label" id="manualProcessInspectorResultLabel" data-process-copy="stageResult">Stage result</span>
+              <p id="manualProcessInspectorResult">Eligible FX Trade snapshot ready for Tenor resolution.</p>
+            </section>
+          </div>
+        </section>
+
+        <details class="processes-technical-details" hidden aria-hidden="true">
+          <summary>
+            <span class="button-icon" aria-hidden="true">schema</span>
+            <span>Technical Details</span>
+            <span class="processes-technical-chevron button-icon" aria-hidden="true">expand_more</span>
+          </summary>
+          <div class="processes-technical-body">
+        <p class="auto-batching-flow-intro">&#x0421;&#x0445;&#x0435;&#x043C;&#x0430; &#x0444;&#x0438;&#x043A;&#x0441;&#x0438;&#x0440;&#x0443;&#x0435;&#x0442; &#x0442;&#x0435;&#x043A;&#x0443;&#x0449;&#x0438;&#x0439; &#x043F;&#x0440;&#x043E;&#x0446;&#x0435;&#x0441;&#x0441;, &#x0437;&#x0430;&#x043F;&#x0443;&#x0441;&#x043A;&#x0430;&#x0435;&#x043C;&#x044B;&#x0439; &#x043A;&#x043D;&#x043E;&#x043F;&#x043A;&#x043E;&#x0439; Create Batch, &#x0438; &#x043E;&#x0442;&#x0434;&#x0435;&#x043B;&#x044F;&#x0435;&#x0442; &#x0432;&#x0440;&#x0435;&#x043C;&#x0435;&#x043D;&#x043D;&#x043E;&#x0435; &#x0441;&#x043E;&#x0441;&#x0442;&#x043E;&#x044F;&#x043D;&#x0438;&#x0435; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0430; &#x043E;&#x0442; &#x0434;&#x0430;&#x043D;&#x043D;&#x044B;&#x0445;, &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x044F;&#x0435;&#x043C;&#x044B;&#x0445; &#x0441;&#x0435;&#x0440;&#x0432;&#x0435;&#x0440;&#x043E;&#x043C;.</p>
+        <div class="auto-batching-flowchart" role="group" aria-label="Current Manual Batching process flow">
+          <div class="auto-batching-flow-step is-start">
+            <div class="auto-batching-flow-step-title">Select FX Trades and click Create Batch</div>
+            <div class="auto-batching-flow-step-detail">&#x0424;&#x043B;&#x0430;&#x0436;&#x043A;&#x0438; &#x043D;&#x0430; &#x0441;&#x0442;&#x0440;&#x0430;&#x043D;&#x0438;&#x0446;&#x0435; FX Position &#x043E;&#x043F;&#x0440;&#x0435;&#x0434;&#x0435;&#x043B;&#x044F;&#x044E;&#x0442; &#x0432;&#x044B;&#x0431;&#x0440;&#x0430;&#x043D;&#x043D;&#x044B;&#x0435; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0435; &#x0441;&#x0434;&#x0435;&#x043B;&#x043A;&#x0438;. &#x0414;&#x043E; &#x043D;&#x0430;&#x0436;&#x0430;&#x0442;&#x0438;&#x044F; Create Batch &#x0441;&#x043E;&#x0441;&#x0442;&#x043E;&#x044F;&#x043D;&#x0438;&#x0435; &#x0432;&#x044B;&#x0431;&#x043E;&#x0440;&#x0430; &#x0441;&#x0443;&#x0449;&#x0435;&#x0441;&#x0442;&#x0432;&#x0443;&#x0435;&#x0442; &#x0442;&#x043E;&#x043B;&#x044C;&#x043A;&#x043E; &#x0432; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0435;.</div>
+            <details class="auto-batching-flow-capture">
+              <summary>
+                <span class="button-icon" aria-hidden="true">data_object</span>
+                <span>&#x0417;&#x0430;&#x0444;&#x0438;&#x043A;&#x0441;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043E; / &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x0435;&#x043D;&#x043E;</span>
+                <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="auto-batching-flow-capture-list">
+                <div class="auto-batching-flow-capture-item"><code>selectedTradeIds</code><span>&#x0422;&#x0435;&#x043A;&#x0443;&#x0449;&#x0438;&#x0439; &#x0438;&#x0437;&#x043C;&#x0435;&#x043D;&#x044F;&#x0435;&#x043C;&#x044B;&#x0439; &#x043D;&#x0430;&#x0431;&#x043E;&#x0440; &#x0432;&#x044B;&#x0431;&#x0440;&#x0430;&#x043D;&#x043D;&#x044B;&#x0445; Trade ID &#x0432; &#x043F;&#x0430;&#x043C;&#x044F;&#x0442;&#x0438; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0430;; &#x0441;&#x0430;&#x043C;&#x043E; &#x0441;&#x043E;&#x0441;&#x0442;&#x043E;&#x044F;&#x043D;&#x0438;&#x0435; &#x0432;&#x044B;&#x0431;&#x043E;&#x0440;&#x0430; &#x043D;&#x0435; &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x044F;&#x0435;&#x0442;&#x0441;&#x044F;.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>tradeIds</code><span>&#x041E;&#x043A;&#x043E;&#x043D;&#x0447;&#x0430;&#x0442;&#x0435;&#x043B;&#x044C;&#x043D;&#x044B;&#x0439; &#x043E;&#x0442;&#x0441;&#x043E;&#x0440;&#x0442;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043D;&#x044B;&#x0439; &#x0441;&#x043F;&#x0438;&#x0441;&#x043E;&#x043A;, &#x0441;&#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043D;&#x044B;&#x0439; &#x043F;&#x0440;&#x0438; &#x043D;&#x0430;&#x0436;&#x0430;&#x0442;&#x0438;&#x0438; Create Batch &#x0438; &#x043E;&#x0442;&#x043F;&#x0440;&#x0430;&#x0432;&#x043B;&#x0435;&#x043D;&#x043D;&#x044B;&#x0439; &#x0441;&#x0435;&#x0440;&#x0432;&#x0435;&#x0440;&#x0443;.</span></div>
+              </div>
+            </details>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step is-decision">
+            <div class="auto-batching-flow-step-title">Are one or more eligible FX Trades selected?</div>
+          </div>
+          <div class="auto-batching-flow-branches">
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">&#x041D;&#x0435;&#x0442;</span>
+              <div class="auto-batching-flow-step-title">Stop before submission</div>
+              <div class="auto-batching-flow-step-detail">&#x041F;&#x043E;&#x043A;&#x0430;&#x0437;&#x0430;&#x0442;&#x044C; &#x043F;&#x0440;&#x0435;&#x0434;&#x0443;&#x043F;&#x0440;&#x0435;&#x0436;&#x0434;&#x0435;&#x043D;&#x0438;&#x0435; &#x0438; &#x043E;&#x0441;&#x0442;&#x0430;&#x0432;&#x0438;&#x0442;&#x044C; FX Position &#x0431;&#x0435;&#x0437; &#x0438;&#x0437;&#x043C;&#x0435;&#x043D;&#x0435;&#x043D;&#x0438;&#x0439;.</div>
+            </div>
+            <div class="auto-batching-flow-branch">
+              <span class="auto-batching-flow-branch-label">&#x0414;&#x0430;</span>
+              <div class="auto-batching-flow-step-title">Resolve a compatible selection</div>
+              <div class="auto-batching-flow-step-detail">One Batching Key continues immediately. If the selection is mixed, the dealer chooses one compatible group for this FX Batch.</div>
+            </div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Prepare the Manual Batch Request</div>
+            <div class="auto-batching-flow-step-detail">The browser submits one compatible Trade selection. Mixed Batching Keys are never split into independent FX Batches.</div>
+            <details class="auto-batching-flow-capture">
+              <summary>
+                <span class="button-icon" aria-hidden="true">data_object</span>
+                <span>&#x0417;&#x0430;&#x0444;&#x0438;&#x043A;&#x0441;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043E; / &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x0435;&#x043D;&#x043E;</span>
+                <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="auto-batching-flow-capture-list">
+                <div class="auto-batching-flow-capture-item"><code>idempotencyKey</code><span>&#x0421;&#x043E;&#x0437;&#x0434;&#x0430;&#x0451;&#x0442;&#x0441;&#x044F; &#x0432; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0435; &#x0438; &#x043F;&#x0435;&#x0440;&#x0435;&#x0434;&#x0430;&#x0451;&#x0442;&#x0441;&#x044F; &#x0432; &#x0437;&#x0430;&#x0433;&#x043E;&#x043B;&#x043E;&#x0432;&#x043A;&#x0435; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0441;&#x0430;.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>tradeIds</code><span>&#x041E;&#x0442;&#x0441;&#x043E;&#x0440;&#x0442;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043D;&#x044B;&#x0435; &#x0447;&#x0438;&#x0441;&#x043B;&#x043E;&#x0432;&#x044B;&#x0435; Trade ID, &#x043F;&#x0435;&#x0440;&#x0435;&#x0434;&#x0430;&#x0432;&#x0430;&#x0435;&#x043C;&#x044B;&#x0435; &#x0432; &#x0442;&#x0435;&#x043B;&#x0435; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0441;&#x0430;.</span></div>
+              </div>
+            </details>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Validate the command and resolve idempotency</div>
+            <div class="auto-batching-flow-step-detail">The server accepts 1 to 200 unique positive Trade IDs. A matching completed request is replayed; reuse of the same key for a different command is rejected.</div>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Resolve and validate source Trades</div>
+            <div class="auto-batching-flow-step-detail">The server loads the exact requested Trade set, sorts it by Trade ID, and validates one common Batching Key. It never plans multiple manual FX Batches.</div>
+            <details class="auto-batching-flow-capture">
+              <summary>
+                <span class="button-icon" aria-hidden="true">data_object</span>
+                <span>&#x0417;&#x0430;&#x0444;&#x0438;&#x043A;&#x0441;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043E; / &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x0435;&#x043D;&#x043E;</span>
+                <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="auto-batching-flow-capture-list">
+                <div class="auto-batching-flow-capture-item"><code>sourceTradeIds</code><span>The exact sorted source selection used by the domain calculation and idempotent replay.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>Batching Key</code><span>Ccy Pair, Trade Date, Tenor and both Value Dates must be compatible until technical FX Swap neutralization is implemented.</span></div>
+              </div>
+            </details>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Create the FX Batch Aggregate</div>
+            <div class="auto-batching-flow-step-detail">Create the single immutable FX Batch aggregate under the public request idempotency key.</div>
+            <details class="auto-batching-flow-capture">
+              <summary>
+                <span class="button-icon" aria-hidden="true">database</span>
+                <span>&#x0417;&#x0430;&#x0444;&#x0438;&#x043A;&#x0441;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043E; / &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x0435;&#x043D;&#x043E;</span>
+                <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="auto-batching-flow-capture-list">
+                <div class="auto-batching-flow-capture-item"><code>batch_id</code><span>Primary identifier of the single record created in fx_batches.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>idempotency_key</code><span>&#x041D;&#x0435;&#x0438;&#x0437;&#x043C;&#x0435;&#x043D;&#x044F;&#x0435;&#x043C;&#x044B;&#x0439; &#x0438;&#x0434;&#x0435;&#x043D;&#x0442;&#x0438;&#x0444;&#x0438;&#x043A;&#x0430;&#x0442;&#x043E;&#x0440; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0441;&#x0430;.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>fx_batch_members</code><span>The exact immutable source Trade selection used for idempotent replay.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>batch_status</code><span>Transitions atomically from BUILDING to FORMED when the aggregate is complete.</span></div>
+              </div>
+            </details>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Form the FX Batch</div>
+            <div class="auto-batching-flow-step-detail">&#x0417;&#x0430;&#x0433;&#x0440;&#x0443;&#x0437;&#x0438;&#x0442;&#x044C; &#x043F;&#x043E;&#x043B;&#x043D;&#x043E;&#x0441;&#x0442;&#x044C;&#x044E; &#x0434;&#x043E;&#x0441;&#x0442;&#x0443;&#x043F;&#x043D;&#x044B;&#x0435; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0435; &#x0441;&#x0434;&#x0435;&#x043B;&#x043A;&#x0438;, &#x043F;&#x0440;&#x043E;&#x0432;&#x0435;&#x0440;&#x0438;&#x0442;&#x044C; &#x043D;&#x0430;&#x043B;&#x0438;&#x0447;&#x0438;&#x0435; Transfer Rate &#x0438; &#x0441;&#x043E;&#x0432;&#x043C;&#x0435;&#x0441;&#x0442;&#x0438;&#x043C;&#x043E;&#x0441;&#x0442;&#x044C; &#x043A;&#x043B;&#x044E;&#x0447;&#x0435;&#x0432;&#x044B;&#x0445; &#x043F;&#x0430;&#x0440;&#x0430;&#x043C;&#x0435;&#x0442;&#x0440;&#x043E;&#x0432;, &#x0440;&#x0430;&#x0441;&#x0441;&#x0447;&#x0438;&#x0442;&#x0430;&#x0442;&#x044C; &#x0447;&#x0438;&#x0441;&#x0442;&#x044B;&#x0435; &#x043E;&#x0441;&#x0442;&#x0430;&#x0442;&#x043A;&#x0438; &#x0438; &#x043F;&#x0440;&#x0438; &#x043D;&#x0435;&#x043E;&#x0431;&#x0445;&#x043E;&#x0434;&#x0438;&#x043C;&#x043E;&#x0441;&#x0442;&#x0438; &#x0441;&#x043E;&#x0437;&#x0434;&#x0430;&#x0442;&#x044C; Balance Trade, Position Out &#x0438; Quote Cash Out.</div>
+            <details class="auto-batching-flow-capture">
+              <summary>
+                <span class="button-icon" aria-hidden="true">calculate</span>
+                <span>&#x0417;&#x0430;&#x0444;&#x0438;&#x043A;&#x0441;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043E; / &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x0435;&#x043D;&#x043E;</span>
+                <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="auto-batching-flow-capture-list">
+                <div class="auto-batching-flow-capture-item"><code>formationReasonCode</code><span>&#x041F;&#x0440;&#x0438;&#x0447;&#x0438;&#x043D;&#x0430; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F;: MANUAL_SELECTION.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>sourceTradeIds</code><span>&#x041E;&#x043A;&#x043E;&#x043D;&#x0447;&#x0430;&#x0442;&#x0435;&#x043B;&#x044C;&#x043D;&#x044B;&#x0435; &#x0443;&#x0447;&#x0430;&#x0441;&#x0442;&#x043D;&#x0438;&#x043A;&#x0438;, &#x043F;&#x0435;&#x0440;&#x0435;&#x0434;&#x0430;&#x043D;&#x043D;&#x044B;&#x0435; &#x0432; &#x0434;&#x043E;&#x043C;&#x0435;&#x043D;&#x043D;&#x044B;&#x0439; &#x0440;&#x0430;&#x0441;&#x0447;&#x0451;&#x0442; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F; &#x0431;&#x0430;&#x0442;&#x0447;&#x0430;.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>formation outputs</code><span>&#x0420;&#x0430;&#x0441;&#x0441;&#x0447;&#x0438;&#x0442;&#x044B;&#x0432;&#x0430;&#x044E;&#x0442;&#x0441;&#x044F; &#x0432; &#x043F;&#x0430;&#x043C;&#x044F;&#x0442;&#x0438; &#x0434;&#x043E; &#x0430;&#x0442;&#x043E;&#x043C;&#x0430;&#x0440;&#x043D;&#x043E;&#x0433;&#x043E; &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x0435;&#x043D;&#x0438;&#x044F;.</span></div>
+              </div>
+            </details>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step">
+            <div class="auto-batching-flow-step-title">Persist all results atomically</div>
+            <div class="auto-batching-flow-step-detail">Persist the Batch, all Trade members and technical outputs in one transaction. Any error rolls back the entire manual command.</div>
+            <details class="auto-batching-flow-capture">
+              <summary>
+                <span class="button-icon" aria-hidden="true">database</span>
+                <span>&#x0417;&#x0430;&#x0444;&#x0438;&#x043A;&#x0441;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043E; / &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x0435;&#x043D;&#x043E;</span>
+                <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="auto-batching-flow-capture-list">
+                <div class="auto-batching-flow-capture-item"><code>fx_batches</code><span>&#x0417;&#x0430;&#x0433;&#x043E;&#x043B;&#x043E;&#x0432;&#x043E;&#x043A; &#x0441;&#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043D;&#x043E;&#x0433;&#x043E; &#x0431;&#x0430;&#x0442;&#x0447;&#x0430; &#x0438; &#x043F;&#x0440;&#x0438;&#x0447;&#x0438;&#x043D;&#x0430; &#x0435;&#x0433;&#x043E; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F;.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>fx_batch_members</code><span>&#x0421;&#x043D;&#x0438;&#x043C;&#x043E;&#x043A; &#x0441;&#x043E;&#x0441;&#x0442;&#x0430;&#x0432;&#x0430; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0445; &#x0441;&#x0434;&#x0435;&#x043B;&#x043E;&#x043A; &#x0431;&#x0430;&#x0442;&#x0447;&#x0430;.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>batch outputs</code><span>Position Out &#x0438; Quote Cash Out, &#x043A;&#x043E;&#x0433;&#x0434;&#x0430; &#x043E;&#x043D;&#x0438; &#x0442;&#x0440;&#x0435;&#x0431;&#x0443;&#x044E;&#x0442;&#x0441;&#x044F;.</span></div>
+              </div>
+            </details>
+          </div>
+          <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
+          <div class="auto-batching-flow-step is-result">
+            <div class="auto-batching-flow-step-title">Return the result and refresh FX Position</div>
+            <div class="auto-batching-flow-step-detail">Return the single Batch ID, reload FX Position, clear the submitted selection and request another Auto Batch evaluation.</div>
+          </div>
+        </div>
+        <p class="auto-batching-flow-note" role="note">
+          <span class="button-icon" aria-hidden="true">info</span>
+          <span>&#x0412; &#x0442;&#x0435;&#x043A;&#x0443;&#x0449;&#x0435;&#x0439; &#x0440;&#x0435;&#x0430;&#x043B;&#x0438;&#x0437;&#x0430;&#x0446;&#x0438;&#x0438; &#x043E;&#x0442;&#x0434;&#x0435;&#x043B;&#x044C;&#x043D;&#x044B;&#x0439; &#x0436;&#x0443;&#x0440;&#x043D;&#x0430;&#x043B; &#x0441;&#x043E;&#x0431;&#x044B;&#x0442;&#x0438;&#x0439; &#x043F;&#x043E; &#x044D;&#x0442;&#x0430;&#x043F;&#x0430;&#x043C; &#x043E;&#x0442;&#x0441;&#x0443;&#x0442;&#x0441;&#x0442;&#x0432;&#x0443;&#x0435;&#x0442;. &#x0420;&#x0430;&#x0441;&#x043A;&#x0440;&#x044B;&#x0432;&#x0430;&#x044E;&#x0449;&#x0438;&#x0435;&#x0441;&#x044F; &#x0431;&#x043B;&#x043E;&#x043A;&#x0438; &#x043F;&#x043E;&#x043A;&#x0430;&#x0437;&#x044B;&#x0432;&#x0430;&#x044E;&#x0442; &#x0441;&#x043E;&#x0441;&#x0442;&#x043E;&#x044F;&#x043D;&#x0438;&#x0435; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0430; &#x0438; &#x0437;&#x0430;&#x043F;&#x0438;&#x0441;&#x0438; &#x0431;&#x0430;&#x0437;&#x044B; &#x0434;&#x0430;&#x043D;&#x043D;&#x044B;&#x0445;, &#x043A;&#x043E;&#x0442;&#x043E;&#x0440;&#x044B;&#x0435; &#x0441;&#x0435;&#x0439;&#x0447;&#x0430;&#x0441; &#x043E;&#x0431;&#x0435;&#x0441;&#x043F;&#x0435;&#x0447;&#x0438;&#x0432;&#x0430;&#x044E;&#x0442; &#x0430;&#x0443;&#x0434;&#x0438;&#x0442; &#x043F;&#x0440;&#x043E;&#x0446;&#x0435;&#x0441;&#x0441;&#x0430;.</span>
+        </p>
+          </div>
+        </details>
+        </div>
+      </article>
+
+      <article class="profile-panel processes-details" id="autoHedgingProcessView" aria-labelledby="autoHedgingTitle" hidden>
+        <header class="profile-panel-head processes-detail-head">
+          <div class="processes-detail-heading">
+            <h2 class="processes-section-title" id="autoHedgingTitle" data-process-copy="autoHedging">Auto Hedging</h2>
+            <p class="processes-detail-subtitle" data-process-copy="autoHedgingSubtitle">Automated FX risk management</p>
+          </div>
+        </header>
+        <div class="processes-detail-body automation-admission-body">
+          <p class="auto-hedging-note" data-process-copy="autoHedgingFxPositionPresentation" data-process-linked-copy>In FX Position, FX Trades admitted to the Auto Hedging process are displayed on the “Auto Hedging” tab. FX Trades not admitted to Auto Hedging remain on the “Manual Control” tab.</p>
+
+          <section class="auto-hedging-subcatalogs" aria-labelledby="autoHedgingSubcatalogsTitle">
+            <h3 class="auto-hedging-subcatalogs-title" id="autoHedgingSubcatalogsTitle" data-process-copy="subcatalogs">Subcatalogs</h3>
+            <a class="auto-hedging-subcatalog-link" href="#processes:auto-hedging-admission">
+              <span class="button-icon" aria-hidden="true">verified_user</span>
+              <span class="auto-hedging-subcatalog-copy">
+                <strong data-process-copy="automationAdmission">Auto Hedging Admission</strong>
+                <small data-process-copy="automationAdmissionCatalogDescription">Controls which FX Trades may participate in Auto Hedging.</small>
+              </span>
+            </a>
+          </section>
+        </div>
+      </article>
+
+
+      <article class="profile-panel processes-details" id="automationAdmissionProcessView" aria-labelledby="automationAdmissionTitle" hidden>
+        <header class="profile-panel-head processes-detail-head">
+          <div class="processes-detail-heading">
+            <h2 class="processes-section-title" id="automationAdmissionTitle" data-process-copy="automationAdmission">Auto Hedging Admission</h2>
+            <p class="processes-detail-subtitle" data-process-copy="automationAdmissionSubtitle" data-process-linked-copy>The boundary for admitting an FX Trade to the Auto Hedging process</p>
+          </div>
+        </header>
+        <div class="processes-detail-body automation-admission-body">
+          <p class="automation-admission-summary" role="note">
+            <span class="button-icon" aria-hidden="true">shield</span>
+            <span data-process-copy="automationAdmissionSummary" data-process-linked-copy>Auto Hedging Admission controls which FX Trades may participate in Auto Hedging.</span>
+          </p>
+
+          <div class="automation-admission-concepts">
+            <section class="automation-admission-concept" aria-labelledby="automationAdmissionPolicyTitle">
+              <header class="automation-admission-concept-head">
+                <h3 class="automation-admission-concept-title" id="automationAdmissionPolicyTitle">
+                  <span class="button-icon" aria-hidden="true">rule</span>
+                  <span>Admission Policy</span>
+                </h3>
+                <p class="automation-admission-concept-description" data-process-copy="automationAdmissionPolicyDefinition" data-process-linked-copy>Defines the permitted admission path for an FX Trade: automatic release after checks, release after review, or manual control only.</p>
+              </header>
+              <dl class="automation-admission-values">
+                <div class="automation-admission-value">
+                  <dt>AUTO_IF_ELIGIBLE</dt>
+                  <dd data-process-copy="autoIfEligibleDefinition">Release automatically when all required eligibility checks pass.</dd>
+                </div>
+                <div class="automation-admission-value">
+                  <dt>REVIEW_REQUIRED</dt>
+                  <dd data-process-copy="reviewRequiredDefinition">Hold first; release only after review.</dd>
+                </div>
+                <div class="automation-admission-value">
+                  <dt>MANUAL_ONLY</dt>
+                  <dd data-process-copy="manualOnlyDefinition" data-process-linked-copy>Keep under manual control; admission to Auto Hedging is not allowed.</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="automation-admission-concept" aria-labelledby="automationAdmissionStateTitle">
+              <header class="automation-admission-concept-head">
+                <h3 class="automation-admission-concept-title" id="automationAdmissionStateTitle">
+                  <span class="button-icon" aria-hidden="true">toggle_on</span>
+                  <span>Admission State</span>
+                </h3>
+                <p class="automation-admission-concept-description" data-process-copy="automationAdmissionStateDefinition" data-process-linked-copy>Shows whether a specific FX Trade is currently held for manual control or released to Auto Hedging.</p>
+              </header>
+              <dl class="automation-admission-values">
+                <div class="automation-admission-value">
+                  <dt>HELD</dt>
+                  <dd data-process-copy="heldDefinition" data-process-linked-copy>Held for manual control and does not participate in Auto Hedging.</dd>
+                </div>
+                <div class="automation-admission-value">
+                  <dt>RELEASED</dt>
+                  <dd data-process-copy="releasedDefinition" data-process-linked-copy>Admitted to Auto Hedging.</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+
+          <p class="automation-admission-rule" data-process-copy="automationAdmissionRule" data-process-linked-copy>Policy answers “which admission path is allowed?” State answers “where is this FX Trade now?”</p>
+
+          <section class="automation-admission-functions" aria-labelledby="automationAdmissionFunctionsTitle">
+            <header class="automation-admission-functions-head">
+              <h3 class="automation-admission-functions-title" id="automationAdmissionFunctionsTitle" data-process-copy="domainFunctions">Domain Functions</h3>
+              <p class="automation-admission-functions-description" data-process-copy="domainFunctionsDescription">These pure domain functions do not persist data. They return the planned state or transition and its reason; additional admission conditions can be added later without changing the calling workflow.</p>
+            </header>
+
+            <div class="automation-admission-function-grid">
+              <section class="automation-admission-function">
+                <header class="automation-admission-function-head">
+                  <span class="button-icon" aria-hidden="true">move_to_inbox</span>
+                  <span class="automation-admission-function-name">
+                    <strong data-process-copy="determineInitialAdmissionStateTitle">Determine Initial Admission State</strong>
+                    <code>determineInitialAdmissionState</code>
+                  </span>
+                </header>
+                <p class="automation-admission-function-description" data-process-copy="determineInitialAdmissionStateDescription" data-process-linked-copy>Demo baseline for an FX Trade with an Execution Context: if the Execution System referenced by that context has Pricing Mode AUTO_PRICED, Policy AUTO_IF_ELIGIBLE applies and the function returns State RELEASED; otherwise it returns HELD. Technical FX Trades without an Execution Context are outside this baseline and will be defined separately. Future checks may include Transfer Rate deviation from Market Pulse and trade amount limits.</p>
+              </section>
+
+              <section class="automation-admission-function">
+                <header class="automation-admission-function-head">
+                  <span class="button-icon" aria-hidden="true">outbound</span>
+                  <span class="automation-admission-function-name">
+                    <strong data-process-copy="decideReleaseToAutoHedgingTitle">Decide Release to Auto Hedging</strong>
+                    <code>decideReleaseToAutoHedging</code>
+                  </span>
+                </header>
+                <p class="automation-admission-function-description" data-process-copy="decideReleaseToAutoHedgingDescription" data-process-linked-copy>Called when a HELD FX Trade is proposed for Auto Hedging. It returns whether HELD → RELEASED is allowed, together with the next State and reason.</p>
+              </section>
+            </div>
+
+            <p class="automation-admission-future" role="note">
+              <span class="button-icon" aria-hidden="true">timeline</span>
+              <span data-process-copy="automationAdmissionFutureExample" data-process-linked-copy>Future extension example—not implemented: release may additionally require the Transfer Rate to remain within a configured deviation corridor from current Market Pulse quotes.</span>
+            </p>
+          </section>
+        </div>
+      </article>
+
+
+      <article class="profile-panel processes-details" id="domainGlossaryProcessView" aria-labelledby="domainGlossaryTitle" hidden>
+        <header class="profile-panel-head processes-detail-head">
+          <div class="processes-detail-heading">
+            <h2 class="processes-section-title" id="domainGlossaryTitle" data-process-copy="domainGlossary">Domain Glossary</h2>
+            <p class="processes-detail-subtitle" data-process-copy="domainGlossarySubtitle">Core terms used across documented processes</p>
+          </div>
+        </header>
+        <div class="processes-detail-body">
+          <section class="manual-process-definitions domain-glossary-definitions" aria-labelledby="domainGlossaryTitle">
+            <dl class="manual-process-definition-list">
+              <div class="manual-process-definition" id="process-term-auto-hedging" tabindex="-1">
+                <dt>Auto Hedging</dt>
+                <dd data-process-copy="autoHedgingDefinition">An automated FX risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.</dd>
+              </div>
+
+              <div class="manual-process-definition" id="process-term-fx-batch" tabindex="-1">
+                <dt>FX Batch</dt>
+                <dd data-process-copy="fxBatchDefinition">A fixed package of FX Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical FX Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active FX Position view, which organizes trades and simplifies control of the current currency position.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-batching" tabindex="-1">
+                <dt data-process-copy="batchingTerm">Batching</dt>
+                <dd data-process-copy="batchingDefinition">A manual or automatic process that selects, validates, groups and neutralizes FX Trades compatible by Batching Key to form one or more FX Batches. A user selects FX Trades for Manual Batching; configured rules select them for Automatic Batching.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-fx-trade" tabindex="-1">
+                <dt>FX Trade</dt>
+                <dd data-process-copy="fxTradeDefinition">A Client Deal, Hedge Deal, or technical FX transaction included in currency-position calculations and displayed in FX Position.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-client-deal" tabindex="-1">
+                <dt>Client Deal</dt>
+                <dd data-process-copy="clientDealDefinition">An FX Trade executed with a client and forming the client component of the currency position.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-hedge-deal" tabindex="-1">
+                <dt>Hedge Deal</dt>
+                <dd data-process-copy="hedgeDealDefinition">An FX Trade executed with a hedge counterparty to manage or neutralize the currency position.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-fx-position" tabindex="-1">
+                <dt>FX Position</dt>
+                <dd data-process-copy="fxPositionDefinition">Application interface for monitoring the currency position and performing operations with FX Trades, including Batching.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-execution-context" tabindex="-1">
+                <dt>Execution Context</dt>
+                <dd data-process-copy="executionContextDefinition">A configuration context that determines how an FX Trade is processed for pricing, position management, and other applicable processes. In the current demo, it is defined by the combination of Servicing Location, Accounting System (when applicable), and Execution System.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-servicing-location" tabindex="-1">
+                <dt>Servicing Location</dt>
+                <dd data-process-copy="servicingLocationDefinition">The organizational and geographic point at which an FX Trade is serviced, such as a branch or head office in a particular region.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-accounting-system" tabindex="-1">
+                <dt>Accounting System</dt>
+                <dd data-process-copy="accountingSystemDefinition">An internal system of record of a bank or financial institution in which an FX Trade and its related accounting entries are registered.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-execution-system" tabindex="-1">
+                <dt>Execution System</dt>
+                <dd data-process-copy="executionSystemDefinition">The system or execution channel in which an FX Trade is actually executed. Its Pricing Mode describes how the execution price is produced or approved.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-pricing-mode" tabindex="-1">
+                <dt>Pricing Mode</dt>
+                <dd data-process-copy="pricingModeDefinition">An Execution System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-market-pulse" tabindex="-1">
+                <dt>Market Pulse</dt>
+                <dd data-process-copy="marketPulseDefinition">An application module that provides current normalized market quotes (Bid and Offer) for currency pairs to pricing, validation, and risk-management processes. In the current demo, quotes are generated by a simulator; the domain concept is independent of the data source and may later use real market-data feeds.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-transfer-rate" tabindex="-1">
+                <dt>Transfer Rate</dt>
+                <dd data-process-copy="transferRateDefinition">An internal accounting rate of an FX Trade used to calculate its currency position and allocate analytical P&amp;L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-base-currency" tabindex="-1">
+                <dt>Base Currency</dt>
+                <dd data-process-copy="baseCurrencyDefinition">The first currency in a currency pair; its amount forms the base currency leg of an FX Trade.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-quote-currency" tabindex="-1">
+                <dt>Quote Currency</dt>
+                <dd data-process-copy="quoteCurrencyDefinition">The second currency in a currency pair, in which the value of the Base Currency is expressed.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-trade-date" tabindex="-1">
+                <dt>Trade Date</dt>
+                <dd data-process-copy="tradeDateDefinition">The date on which an FX Trade is executed; Tenor and Value Dates are determined relative to it.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-tenor" tabindex="-1">
+                <dt>Tenor</dt>
+                <dd data-process-copy="tenorDefinition">The settlement term of an FX Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-value-date" tabindex="-1">
+                <dt>Value Date</dt>
+                <dd data-process-copy="valueDateDefinition">The settlement date for one currency leg of an FX Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-batching-key" tabindex="-1">
+                <dt>Batching Key</dt>
+                <dd data-process-copy="batchingKeyDefinition">A composite compatibility key that determines whether FX Trades may be included in one FX Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-cross-tenor-batching" tabindex="-1">
+                <dt>Cross-Tenor Batching</dt>
+                <dd data-process-copy="crossTenorBatchingDefinition">A Batching mode that allows compatible FX Trades with different Tenors and Value Dates to be included in one FX Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-batch-internal-swap" tabindex="-1">
+                <dt>Batch Internal Swap</dt>
+                <dd data-process-copy="batchInternalSwapDefinition">An internal technical entity of an FX Batch that aligns FX Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across FX Batches and offset by a single net swap at the end of the accounting day.</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </article>
+    </section>
+  </main>

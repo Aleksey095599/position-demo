@@ -1,0 +1,709 @@
+    /* One semantic card contract across pages and dialogs. */
+    :is(
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page,
+      #batchDetailsPage,
+      #analyticalPnlReportPage,
+      #batchingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #databasePage.unified-bootstrap-workspace.workbench-page,
+      dialog
+    ) .semantic-section {
+      --semantic-section-accent: var(--semantic-card-accent);
+      --semantic-section-border-color: var(--semantic-card-border);
+      position: relative;
+      border: 1px solid var(--semantic-section-border-color);
+      border-radius: var(--bs-border-radius-lg);
+      box-shadow: -5px 0 0 var(--semantic-section-accent);
+    }
+
+    :is(
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page,
+      #batchDetailsPage,
+      #analyticalPnlReportPage,
+      #batchingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #databasePage.unified-bootstrap-workspace.workbench-page,
+      dialog
+    ) .semantic-section > .semantic-section-head {
+      border-bottom: 0;
+      background: var(--semantic-card-head-bg);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog {
+      --client-deal-accent: var(--app-primary);
+      --client-deal-accent-strong: var(--app-primary-hover);
+      --client-deal-border: var(--app-primary);
+      --client-deal-accent-soft: var(--palette-blue-100);
+      --client-deal-accent-text: var(--app-primary-text);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .modal-body > .client-deal-create-section.semantic-section {
+      --semantic-section-accent: var(--client-deal-border);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog {
+      --hedge-deal-accent: var(--palette-yellow-500);
+      --hedge-deal-accent-strong: var(--palette-yellow-600);
+      --hedge-deal-border: var(--palette-yellow-300);
+      --hedge-deal-accent-soft:
+        color-mix(in srgb, var(--palette-yellow-100) 58%, var(--bs-body-bg));
+      --hedge-deal-accent-text: var(--palette-yellow-800);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .modal-body > .client-deal-create-section.semantic-section {
+      --semantic-section-accent: var(--hedge-deal-border);
+    }
+
+    :is(
+      #addClientDealDialog.client-deal-create-dialog,
+      #addHedgeDealDialog.client-deal-create-dialog
+    ) .modal-body
+    > .client-deal-create-section.semantic-section
+    > .semantic-section-head {
+      border-bottom-color: var(--semantic-section-accent);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .modal-body
+    > .client-deal-create-section.semantic-section
+    > .semantic-section-head {
+      background:
+        color-mix(
+          in srgb,
+          var(--palette-blue-100) 32%,
+          var(--bs-tertiary-bg)
+        );
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .client-deal-fixed-currency-toggle:is(.is-active, [aria-pressed="true"]) {
+      border-color: var(--client-deal-accent-strong);
+      background: var(--palette-blue-100);
+      color: var(--client-deal-accent-text);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .client-deal-fixed-currency-toggle:hover,
+    #addClientDealDialog.client-deal-create-dialog
+    .client-deal-fixed-currency-toggle:focus-visible {
+      border-color: var(--client-deal-accent-strong);
+      background: var(--client-deal-accent-soft);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .client-deal-fixed-currency-toggle:focus-visible {
+      box-shadow:
+        0 0 0 3px
+        color-mix(in srgb, var(--client-deal-accent) 20%, transparent);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    :is(.form-control, .form-select):focus {
+      border-color: var(--client-deal-accent-strong);
+      box-shadow:
+        0 0 0 3px
+        color-mix(in srgb, var(--client-deal-accent) 20%, transparent);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .client-deal-client-option:is(:hover, :focus-visible, .is-selected),
+    #addClientDealDialog.client-deal-create-dialog
+    .client-pricing-context-candidate:is(:hover, :focus-visible) {
+      border-color: var(--client-deal-accent-strong);
+      background: var(--client-deal-accent-soft);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .client-pricing-context-candidate.is-selected {
+      border-color: var(--client-deal-accent-strong);
+      background: var(--palette-blue-100);
+      box-shadow: inset 3px 0 0 var(--client-deal-accent);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle):focus-visible {
+      border-color: var(--client-deal-accent-strong);
+      box-shadow:
+        0 0 0 3px
+        color-mix(in srgb, var(--client-deal-accent) 20%, transparent);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle)[aria-expanded="true"] {
+      border-color: var(--client-deal-accent-strong);
+      background: var(--client-deal-accent-soft);
+      color: var(--client-deal-accent-text);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog #addClientDealSubmitButton {
+      --bs-btn-color: var(--app-button-primary-color);
+      --bs-btn-bg: var(--app-button-primary-bg);
+      --bs-btn-border-color: var(--app-button-primary-border);
+      --bs-btn-hover-color: var(--app-button-primary-color);
+      --bs-btn-hover-bg: var(--app-button-primary-hover-bg);
+      --bs-btn-hover-border-color: var(--app-button-primary-hover-border);
+      --bs-btn-active-color: var(--app-button-primary-color);
+      --bs-btn-active-bg: var(--app-button-primary-active-bg);
+      --bs-btn-active-border-color: var(--app-button-primary-active-border);
+      --bs-btn-focus-shadow-rgb: 13, 110, 253;
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .modal-body
+    > .client-deal-create-section.semantic-section
+    > .semantic-section-head {
+      background: var(--hedge-deal-accent-soft);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-deal-fixed-currency-toggle:is(.is-active, [aria-pressed="true"]) {
+      border-color: var(--hedge-deal-accent-strong);
+      background: var(--palette-yellow-100);
+      color: var(--hedge-deal-accent-text);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-deal-fixed-currency-toggle:hover,
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-deal-fixed-currency-toggle:focus-visible {
+      border-color: var(--hedge-deal-accent-strong);
+      background: var(--hedge-deal-accent-soft);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-deal-fixed-currency-toggle:focus-visible {
+      box-shadow:
+        0 0 0 3px
+        color-mix(in srgb, var(--hedge-deal-accent) 20%, transparent);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    :is(.form-control, .form-select):focus {
+      border-color: var(--hedge-deal-accent-strong);
+      box-shadow:
+        0 0 0 3px
+        color-mix(in srgb, var(--hedge-deal-accent) 20%, transparent);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-deal-client-option:is(:hover, :focus-visible, .is-selected),
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-pricing-context-candidate:is(:hover, :focus-visible) {
+      border-color: var(--hedge-deal-accent-strong);
+      background: var(--hedge-deal-accent-soft);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-pricing-context-candidate.is-selected {
+      border-color: var(--hedge-deal-accent-strong);
+      background: var(--palette-yellow-100);
+      box-shadow: inset 3px 0 0 var(--hedge-deal-accent);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle):focus-visible {
+      border-color: var(--hedge-deal-accent-strong);
+      box-shadow:
+        0 0 0 3px
+        color-mix(in srgb, var(--hedge-deal-accent) 20%, transparent);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle)[aria-expanded="true"] {
+      border-color: var(--hedge-deal-accent-strong);
+      background: var(--hedge-deal-accent-soft);
+      color: var(--hedge-deal-accent-text);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog #addHedgeDealSubmitButton {
+      --bs-btn-color: var(--palette-yellow-800);
+      --bs-btn-bg: var(--palette-yellow-200);
+      --bs-btn-border-color: var(--palette-yellow-600);
+      --bs-btn-hover-color: var(--palette-yellow-800);
+      --bs-btn-hover-bg: var(--palette-yellow-300);
+      --bs-btn-hover-border-color: var(--palette-yellow-600);
+      --bs-btn-active-color: var(--palette-yellow-800);
+      --bs-btn-active-bg: var(--palette-yellow-400);
+      --bs-btn-active-border-color: var(--palette-yellow-700);
+      --bs-btn-focus-shadow-rgb: 204, 154, 6;
+    }
+
+    :is(
+      #addClientDealDialog.client-deal-create-dialog,
+      #addHedgeDealDialog.client-deal-create-dialog
+    ) .modal-body > details.client-deal-additional-section.semantic-section {
+      --semantic-section-accent: var(--palette-gray-300);
+      --semantic-section-border-color: var(--palette-gray-300);
+    }
+
+    :is(
+      #addClientDealDialog.client-deal-create-dialog,
+      #addHedgeDealDialog.client-deal-create-dialog
+    ) .modal-body
+    > details.client-deal-additional-section.semantic-section
+    > .semantic-section-head {
+      border-bottom-color: var(--palette-gray-300);
+      background: var(--palette-gray-100);
+    }
+
+    :is(
+      #addClientDealDialog.client-deal-create-dialog,
+      #addHedgeDealDialog.client-deal-create-dialog
+    ) .modal-body
+    > details.client-deal-additional-section.semantic-section:is(:hover, :focus-within, [open]) {
+      --semantic-section-accent: var(--palette-gray-400);
+      --semantic-section-border-color: var(--palette-gray-400);
+    }
+
+    :is(
+      #addClientDealDialog.client-deal-create-dialog,
+      #addHedgeDealDialog.client-deal-create-dialog
+    ) .modal-body
+    > details.client-deal-additional-section.semantic-section:is(:hover, :focus-within, [open])
+    > .semantic-section-head {
+      border-bottom-color: var(--palette-gray-400);
+      background: var(--palette-gray-200);
+    }
+
+    :is(
+      #addClientDealDialog.client-deal-create-dialog,
+      #addHedgeDealDialog.client-deal-create-dialog
+    ) .client-deal-additional-summary:focus-visible {
+      box-shadow: inset 0 0 0 2px var(--palette-gray-500);
+    }
+
+    :is(
+      #addClientDealDialog.client-deal-create-dialog,
+      #addHedgeDealDialog.client-deal-create-dialog
+    ) .modal-body
+    > details.client-deal-additional-section.semantic-section:not([open])
+    > .semantic-section-head {
+      border-bottom: 0;
+    }
+
+    :is(
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page,
+      #batchDetailsPage,
+      #analyticalPnlReportPage,
+      #batchingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #databasePage.unified-bootstrap-workspace.workbench-page,
+      dialog
+    ) .semantic-section > .semantic-section-head:first-child {
+      border-top-left-radius: calc(var(--bs-border-radius-lg) - 1px);
+      border-top-right-radius: calc(var(--bs-border-radius-lg) - 1px);
+      background-clip: padding-box;
+    }
+
+    dialog .client-deal-additional-section:not([open])
+    > .client-deal-additional-summary.semantic-section-head {
+      border-bottom: 0;
+    }
+
+    #batchDetailsPage.workbench-page :is(
+      .batch-neutrality,
+      .batch-details-section
+    ).semantic-section {
+      --semantic-section-accent: var(--bs-border-color);
+      --semantic-section-border-color: var(--bs-border-color);
+    }
+
+    #batchDetailsPage.workbench-page :is(
+      .batch-neutrality,
+      .batch-details-section
+    ).semantic-section > .semantic-section-head {
+      border-bottom: 0;
+      background: var(--semantic-card-head-bg);
+    }
+
+    #batchDetailsPage.workbench-page
+    .batch-details-output-section.semantic-section {
+      --semantic-section-accent: var(--palette-teal-700);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page
+    .deal-toolbar .client-deal-toolbar-title {
+      color: var(--bs-secondary-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page
+    :is(.deal-toolbar, .batch-toolbar) .btn-outline-primary:not(.is-running) {
+      --bs-btn-color: var(--app-button-primary-color);
+      --bs-btn-bg: var(--app-button-primary-bg);
+      --bs-btn-border-color: var(--app-button-primary-border);
+      --bs-btn-hover-color: var(--app-button-primary-color);
+      --bs-btn-hover-bg: var(--app-button-primary-hover-bg);
+      --bs-btn-hover-border-color: var(--app-button-primary-hover-border);
+      --bs-btn-active-color: var(--app-button-primary-color);
+      --bs-btn-active-bg: var(--app-button-primary-active-bg);
+      --bs-btn-active-border-color: var(--app-button-primary-active-border);
+      --bs-btn-focus-shadow-rgb: 13, 110, 253;
+      border-color: var(--app-button-primary-border);
+      background: var(--app-button-primary-bg);
+      color: var(--app-button-primary-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page
+    :is(.deal-toolbar, .batch-toolbar) .btn-outline-primary:not(.is-running):hover:not(:disabled) {
+      border-color: var(--app-button-primary-hover-border);
+      background: var(--app-button-primary-hover-bg);
+      color: var(--app-button-primary-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page
+    :is(.deal-toolbar, .batch-toolbar) .btn-outline-primary:not(.is-running):active:not(:disabled) {
+      border-color: var(--app-button-primary-active-border);
+      background: var(--app-button-primary-active-bg);
+      color: var(--app-button-primary-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page
+    :is(.deal-toolbar, .batch-toolbar) .btn:disabled {
+      --bs-btn-disabled-color: var(--bs-secondary-color);
+      --bs-btn-disabled-bg: var(--bs-tertiary-bg);
+      --bs-btn-disabled-border-color: var(--bs-border-color);
+      border-color: var(--bs-border-color);
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-secondary-color);
+      opacity: 0.68;
+    }
+
+    #clientDealGenerationDialog.generation-dialog {
+      --client-generation-accent: var(--app-primary);
+      --client-generation-accent-strong: var(--app-primary-hover);
+      --client-generation-accent-active: var(--app-primary-active);
+      --client-generation-border: var(--app-primary);
+      --client-generation-accent-soft: var(--palette-blue-100);
+      --client-generation-accent-text: var(--app-primary-text);
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .generation-cycle-settings.semantic-section,
+    #clientDealGenerationDialog.generation-dialog
+    .generation-settings-table-region.semantic-section {
+      --semantic-section-accent: var(--client-generation-border);
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .generation-cycle-settings.semantic-section {
+      background:
+        color-mix(
+          in srgb,
+          var(--palette-blue-100) 32%,
+          var(--bs-tertiary-bg)
+        );
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .generation-cycle-settings-range-control {
+      border-color: var(--palette-gray-500);
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .generation-cycle-settings-range-unit {
+      border-left-color: var(--palette-gray-500);
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .generation-cycle-settings-range + .generation-cycle-settings-range {
+      border-color: var(--bs-border-color);
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .generation-cycle-settings-range-control:focus-within,
+    #clientDealGenerationDialog.generation-dialog
+    .generation-settings-table .form-control:focus {
+      border-color: var(--client-generation-accent-strong);
+      box-shadow:
+        0 0 0 3px
+        color-mix(in srgb, var(--client-generation-accent) 20%, transparent);
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .generation-settings-table-region.semantic-section
+    > .generation-settings-table-toolbar.semantic-section-head {
+      border-bottom-color: var(--bs-border-color);
+      background:
+        color-mix(
+          in srgb,
+          var(--palette-blue-100) 32%,
+          var(--bs-tertiary-bg)
+        );
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .generation-settings-table tbody tr:hover {
+      background: var(--workbench-grid-hover-bg);
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .generation-settings-table .btn-outline-primary {
+      --bs-btn-color: var(--client-generation-accent-text);
+      --bs-btn-bg: transparent;
+      --bs-btn-border-color: var(--client-generation-accent);
+      --bs-btn-hover-color: var(--client-generation-accent-text);
+      --bs-btn-hover-bg: rgba(var(--app-primary-rgb), 0.08);
+      --bs-btn-hover-border-color: var(--client-generation-accent);
+      --bs-btn-active-color: var(--client-generation-accent-text);
+      --bs-btn-active-bg: rgba(var(--app-primary-rgb), 0.14);
+      --bs-btn-active-border-color: var(--client-generation-accent);
+      --bs-btn-focus-shadow-rgb: 13, 110, 253;
+    }
+
+    #clientDealGenerationDialog.generation-dialog .btn:disabled {
+      --bs-btn-disabled-color: var(--bs-secondary-color);
+      --bs-btn-disabled-bg: var(--bs-tertiary-bg);
+      --bs-btn-disabled-border-color: var(--bs-border-color);
+      border-color: var(--bs-border-color);
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-secondary-color);
+      opacity: 0.68;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page {
+      --hedging-settings-accent: var(--palette-yellow-500);
+      --hedging-settings-accent-strong: var(--palette-yellow-600);
+      --hedging-settings-border: var(--palette-yellow-300);
+      --hedging-settings-accent-soft:
+        color-mix(in srgb, var(--palette-yellow-100) 58%, var(--bs-body-bg));
+      --hedging-settings-accent-text: var(--palette-yellow-800);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-overview.table-panel--standalone {
+      gap: 0;
+      overflow: hidden;
+      border-color: var(--hedging-settings-border);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-overview.table-panel--standalone
+    > .hedge-quick-settings-overview-toolbar.table-panel__head {
+      border-bottom-color: var(--hedging-settings-border);
+      background: var(--hedging-settings-accent-soft);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-count {
+      border-color: var(--palette-yellow-300) !important;
+      background: var(--palette-yellow-100) !important;
+      color: var(--hedging-settings-accent-text) !important;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #hedgeQuickModeSettingsNewButton {
+      --bs-btn-color: var(--hedging-settings-accent-text);
+      --bs-btn-bg: transparent;
+      --bs-btn-border-color: var(--hedging-settings-accent-strong);
+      --bs-btn-hover-color: var(--palette-yellow-900);
+      --bs-btn-hover-bg: var(--palette-yellow-200);
+      --bs-btn-hover-border-color: var(--hedging-settings-accent-strong);
+      --bs-btn-active-color: var(--palette-yellow-900);
+      --bs-btn-active-bg: var(--palette-yellow-300);
+      --bs-btn-active-border-color: var(--palette-yellow-700);
+      --bs-btn-focus-shadow-rgb: 204, 154, 6;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-grid.table-panel__body {
+      overflow: auto;
+      border: 0;
+      border-radius: 0;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-grid .tabulator-row:hover {
+      background: var(--workbench-grid-hover-bg);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-editor > .client-deal-create-section.semantic-section {
+      --semantic-section-accent: var(--hedging-settings-border);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-editor {
+      --bs-border-color: var(--palette-gray-400);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-editor
+    > .client-deal-create-section.semantic-section
+    > .semantic-section-head {
+      border-bottom-color: var(--hedging-settings-border);
+      background: var(--hedging-settings-accent-soft);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-editor :is(.form-control, .form-select):focus {
+      border-color: var(--hedging-settings-accent-strong);
+      box-shadow:
+        0 0 0 3px
+        color-mix(in srgb, var(--hedging-settings-accent) 20%, transparent);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-editor
+    .client-deal-client-option:is(:hover, :focus-visible, .is-selected),
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-editor
+    .client-pricing-context-candidate:is(:hover, :focus-visible) {
+      border-color: var(--hedging-settings-accent-strong);
+      background: var(--hedging-settings-accent-soft);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-editor .client-pricing-context-candidate.is-selected {
+      border-color: var(--hedging-settings-accent-strong);
+      background: var(--palette-yellow-100);
+      box-shadow: inset 3px 0 0 var(--hedging-settings-accent);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-editor
+    :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle):focus-visible {
+      border-color: var(--hedging-settings-accent-strong);
+      box-shadow:
+        0 0 0 3px
+        color-mix(in srgb, var(--hedging-settings-accent) 20%, transparent);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-editor
+    :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle)[aria-expanded="true"] {
+      border-color: var(--hedging-settings-accent-strong);
+      background: var(--hedging-settings-accent-soft);
+      color: var(--hedging-settings-accent-text);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-active .form-check-input:checked {
+      border-color: var(--hedging-settings-accent-strong);
+      background-color: var(--hedging-settings-accent);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedge-quick-settings-active .form-check-input:focus {
+      border-color: var(--hedging-settings-accent-strong);
+      box-shadow:
+        0 0 0 3px
+        color-mix(in srgb, var(--hedging-settings-accent) 20%, transparent);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #hedgeQuickModeSettingsSaveButton {
+      --bs-btn-color: var(--palette-yellow-900);
+      --bs-btn-bg: var(--hedging-settings-accent);
+      --bs-btn-border-color: var(--hedging-settings-accent-strong);
+      --bs-btn-hover-color: var(--palette-yellow-900);
+      --bs-btn-hover-bg: var(--palette-yellow-400);
+      --bs-btn-hover-border-color: var(--hedging-settings-accent-strong);
+      --bs-btn-active-color: var(--palette-yellow-900);
+      --bs-btn-active-bg: var(--palette-yellow-300);
+      --bs-btn-active-border-color: var(--palette-yellow-700);
+      --bs-btn-focus-shadow-rgb: 204, 154, 6;
+    }
+
+    /* Dialog close buttons keep their icon treatment and share one visible neutral hover. */
+    dialog :is(.btn-close, .dialog-close):is(:hover, :focus-visible) {
+      background-color: var(--app-button-secondary-hover-bg) !important;
+    }
+
+    /* Tables share one hover and neutral row-action contract across the application. */
+    :is(.workbench-page, .modal, dialog)
+    .tabulator
+    .tabulator-row:hover:not(.tabulator-selected):not(.market-inline-edit-row) {
+      background: var(--workbench-grid-hover-bg) !important;
+    }
+
+    :is(.workbench-page, .modal, dialog)
+    table
+    tbody
+    tr:hover:not(.is-selected):not(.is-editing):not(.fx-position-grid-fill)
+    > td {
+      background: var(--workbench-grid-hover-bg) !important;
+    }
+
+    :is(.workbench-page, .modal, dialog)
+    :is(.tabulator-row, tbody tr)
+    :is(
+      .btn.btn-outline-secondary,
+      .icon-action:not(.profile-danger-action)
+    ) {
+      --bs-btn-color: var(--app-table-action-color);
+      --bs-btn-bg: var(--app-table-action-bg);
+      --bs-btn-border-color: var(--app-table-action-border);
+      --bs-btn-hover-color: var(--app-table-action-color);
+      --bs-btn-hover-bg: var(--app-table-action-hover-bg);
+      --bs-btn-hover-border-color: var(--app-table-action-border);
+      --bs-btn-active-color: var(--app-table-action-color);
+      --bs-btn-active-bg: var(--app-table-action-active-bg);
+      --bs-btn-active-border-color: var(--app-table-action-border);
+      border-color: var(--app-table-action-border) !important;
+      background: var(--app-table-action-bg) !important;
+      color: var(--app-table-action-color) !important;
+    }
+
+    :is(.workbench-page, .modal, dialog)
+    :is(.tabulator-row, tbody tr)
+    :is(
+      .btn.btn-outline-secondary,
+      .icon-action:not(.profile-danger-action)
+    ):hover:not(:disabled):not([aria-disabled="true"]) {
+      border-color: var(--app-table-action-border) !important;
+      background: var(--app-table-action-hover-bg) !important;
+      color: var(--app-table-action-color) !important;
+    }
+
+    :is(.workbench-page, .modal, dialog)
+    :is(.tabulator-row, tbody tr)
+    :is(
+      .btn.btn-outline-secondary,
+      .icon-action:not(.profile-danger-action)
+    ):active:not(:disabled):not([aria-disabled="true"]) {
+      border-color: var(--app-table-action-border) !important;
+      background: var(--app-table-action-active-bg) !important;
+      color: var(--app-table-action-color) !important;
+    }
+
+    :is(.workbench-page, .modal, dialog)
+    :is(.tabulator-row, tbody tr)
+    :is(
+      .btn.btn-outline-secondary,
+      .icon-action:not(.profile-danger-action)
+    ):is(:disabled, [aria-disabled="true"]) {
+      border-color: var(--app-button-disabled-border) !important;
+      background: var(--app-button-disabled-bg) !important;
+      color: var(--app-button-disabled-color) !important;
+    }
+
+    @media (max-width: 720px) {
+      .workbench-grid-toolbar,
+      .client-deals-toolbar {
+        flex-wrap: wrap;
+      }
+
+      .workbench-search {
+        width: 100%;
+      }
+
+      .workbench-toolbar-actions {
+        width: 100%;
+      }
+
+      .fx-deals-grid {
+        height: max(320px, calc(100vh - 230px));
+      }
+    }
+
+    @media (max-width: 980px) {
+      #databasePage.unified-bootstrap-workspace.workbench-page .database-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .client-pricing-context-facets {
+        grid-template-columns: 1fr;
+      }
+    }

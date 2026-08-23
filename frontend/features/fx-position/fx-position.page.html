@@ -1,0 +1,190 @@
+  <main class="shell fx-position-bootstrap workbench-page" id="mainPage" hidden>
+    <section class="action-bar workbench-page-header" aria-label="FX Position actions">
+      <h1 class="page-title">FX Position</h1>
+      <div class="fx-position-header-tools">
+        <div class="batch-status workbench-page-status" id="batchStatus" role="status" aria-live="polite"></div>
+        <div class="fx-position-grid-layout-host" data-ui-table-layout-host="fx_position_grid"></div>
+      </div>
+    </section>
+
+    <section class="batching-workspace" aria-label="FX Position workspace">
+      <section class="currency-pair-panel" aria-label="Ccy pair selector" data-ui-table-layout-key="fx_position_grid" data-ui-table-layout-column-key="ccy_pair_selector">
+        <h2 class="currency-pair-title">Ccy Pair</h2>
+        <div class="currency-pair-list" id="currencyPairList"></div>
+      </section>
+
+      <div class="batching-workspace-main">
+        <nav class="nav nav-tabs workbench-section-tabs fx-position-mode-tabs" id="fxPositionModeTabs" aria-label="FX Position mode" role="tablist">
+          <a class="nav-link active" id="fxPositionManualTab" href="#fx-position:manual" data-fx-position-mode="MANUAL" role="tab" aria-controls="fxPositionGridPanel" aria-selected="true">
+            <span class="button-icon fx-position-mode-icon" aria-hidden="true">touch_app</span>
+            <span>Manual Control</span>
+            <span class="fx-position-mode-count" id="fxPositionManualCount">0</span>
+          </a>
+          <a class="nav-link" id="fxPositionAutoTab" href="#fx-position:auto" data-fx-position-mode="AUTO" role="tab" aria-controls="fxPositionGridPanel" aria-selected="false">
+            <span class="button-icon fx-position-mode-icon" aria-hidden="true">automation</span>
+            <span>Auto Hedging</span>
+            <span class="fx-position-mode-count" id="fxPositionAutoCount">0</span>
+          </a>
+        </nav>
+
+        <section class="table-wrap fx-position-grid-frame" id="fxPositionGridPanel" aria-label="FX positions" role="tabpanel" aria-labelledby="fxPositionManualTab">
+          <table class="table table-sm align-middle batching-table fx-position-grid" data-ui-table-layout-key="fx_position_grid">
+            <colgroup>
+              <col class="trade-id-column" data-ui-column-key="trade_id">
+              <col class="client" data-ui-column-key="trade">
+              <col class="date" data-ui-column-key="trade_date">
+              <col class="base-value-date" data-ui-column-key="base_ccy_value_date">
+              <col class="wide-gap" data-fx-position-fixed-width="16">
+              <col class="amount" data-ui-column-key="sell_base_ccy_amount">
+              <col class="rate" data-ui-column-key="sell_trade_rate">
+              <col class="rate" data-ui-column-key="sell_transfer_rate">
+              <col class="selection-gap" data-fx-position-fixed-width="32">
+              <col class="market-left" data-ui-column-key="market_bid">
+              <col class="market-right" data-ui-column-key="market_offer">
+              <col class="selection-gap" data-fx-position-fixed-width="32">
+              <col class="rate" data-ui-column-key="buy_transfer_rate">
+              <col class="rate" data-ui-column-key="buy_trade_rate">
+              <col class="amount" data-ui-column-key="buy_base_ccy_amount">
+            </colgroup>
+            <thead>
+              <tr class="group-title">
+                <th class="section-name common-title" colspan="4">SHARED TRADE ATTRIBUTES</th>
+                <th class="gap wide-gap trade-divider"></th>
+                <th class="section-name sell-title" colspan="3">SELL SIDE</th>
+                <th class="gap selection-gap sell-check-zone"></th>
+                <th class="section-name market-title" colspan="2">
+                  <span class="market-reference-heading">
+                    <span class="market-reference-brand">
+                      <span class="button-icon market-reference-icon market-pulse-icon" role="img" aria-label="Market Pulse" tabindex="0" data-tooltip="Market Pulse">monitoring</span>
+                    </span>
+                  </span>
+                </th>
+                <th class="gap selection-gap buy-check-zone"></th>
+                <th class="section-name buy-title" colspan="3">BUY SIDE</th>
+              </tr>
+              <tr class="rate-title-row" aria-hidden="true">
+                <th class="common-head rate-title-spacer" colspan="4"></th>
+                <th class="gap wide-gap trade-divider"></th>
+                <th class="sell-head sell-zone sell-zone-left rate-title-spacer"></th>
+                <th class="sell-head sell-zone sell-rate-band" colspan="2">Rate</th>
+                <th class="gap selection-gap sell-check-zone"></th>
+                <th class="market-head rate-title-spacer" colspan="2"></th>
+                <th class="gap selection-gap buy-check-zone"></th>
+                <th class="buy-head buy-zone buy-rate-band" colspan="2">Rate</th>
+                <th class="buy-head buy-zone rate-title-spacer"></th>
+              </tr>
+              <tr class="column-title">
+                <th class="trade-id-column common-head">ID</th>
+                <th class="client common-head">Trade</th>
+                <th class="date common-head">Trade Date</th>
+                <th class="base-value-date common-head">Base Ccy Value Date</th>
+                <th class="gap wide-gap trade-divider"></th>
+                <th class="amount sell-head sell-zone sell-zone-left" data-smart-min-text="100 000 000 000.00">Base Ccy Amount</th>
+                <th class="rate sell-head sell-zone">
+                  <button type="button" class="sort-button" data-sort-key="tradeRate" title="Trade Rate">Trade</button>
+                </th>
+                <th class="rate header-rate sell-head sell-zone sell-zone-right">
+                  <button type="button" class="sort-button" data-sort-key="transferRate" title="Transfer Rate">Transfer</button>
+                </th>
+                <th class="gap selection-gap select-all-cell sell-check-zone">
+                  <input type="checkbox" class="form-check-input select-all-checkbox" data-select-side="sell" aria-label="Select all sell deals" aria-keyshortcuts="S" title="Select all SELL deals · Shortcut: S">
+                </th>
+                <th class="rate market-left market-head">
+                  <button type="button" class="sort-button" data-sort-key="marketBid" title="Market Pulse Bid">Bid</button>
+                </th>
+                <th class="rate market-right market-head">
+                  <button type="button" class="sort-button" data-sort-key="marketOffer" title="Market Pulse Offer">Offer</button>
+                </th>
+                <th class="gap selection-gap select-all-cell buy-check-zone">
+                  <input type="checkbox" class="form-check-input select-all-checkbox" data-select-side="buy" aria-label="Select all buy deals" aria-keyshortcuts="B" title="Select all BUY deals · Shortcut: B">
+                </th>
+                <th class="rate header-rate buy-head buy-zone">
+                  <button type="button" class="sort-button" data-sort-key="transferRate" title="Transfer Rate">Transfer</button>
+                </th>
+                <th class="rate buy-head buy-zone">
+                  <button type="button" class="sort-button" data-sort-key="tradeRate" title="Trade Rate">Trade</button>
+                </th>
+                <th class="amount buy-head buy-zone" data-smart-min-text="100 000 000 000.00">Base Ccy Amount</th>
+              </tr>
+            </thead>
+            <tbody id="dealRows"></tbody>
+            <tfoot id="batchingSummaryRows"></tfoot>
+          </table>
+        </section>
+
+        <section class="hedge-toolbar btn-toolbar" aria-label="Hedging Toolbar">
+          <div class="hedge-toolbar-primary">
+            <span class="batch-toolbar-title hedge-toolbar-title" role="img" aria-label="Hedging Toolbar" tabindex="0" data-tooltip="Hedging Toolbar">
+              <span class="button-icon" aria-hidden="true">shield</span>
+            </span>
+            <div class="batch-control" aria-label="Hedge Deal actions">
+              <button type="button" class="action-button primary btn btn-sm btn-soft-primary with-icon" id="addHedgeDealButton">
+                <span class="button-icon" aria-hidden="true">add</span>
+                <span>Hedge Deal</span>
+              </button>
+            </div>
+          </div>
+          <div class="hedge-quick-toolbar" id="hedgeQuickModeToolbar" aria-label="Quick Mode Hedge controls" aria-live="polite"></div>
+          <div class="batch-control hedge-toolbar-settings" aria-label="Hedging settings">
+            <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-settings-toggle" id="hedgeQuickModeSettingsButton" aria-label="Hedging Settings">
+              <span class="button-icon" aria-hidden="true">settings</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="deal-toolbar btn-toolbar" aria-label="Client Deal Toolbar">
+          <span class="deal-toolbar-title client-deal-toolbar-title" role="img" aria-label="Client Deal Toolbar" tabindex="0" data-tooltip="Client Deal Toolbar">
+            <span class="button-icon" aria-hidden="true">handshake</span>
+          </span>
+          <div class="batch-control client-deal-actions" aria-label="Client Deal actions">
+            <button type="button" class="action-button primary btn btn-sm btn-primary with-icon" id="createDealButton">
+              <span class="button-icon" aria-hidden="true">add</span>
+              <span>Client Deal</span>
+            </button>
+            <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary" id="editDealButton" disabled>Edit Comment</button>
+          </div>
+          <div class="batch-control deal-generation-control" aria-label="Demo Deal Generation actions">
+            <span class="batch-label">Demo Generation</span>
+            <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-main" id="generateClientDealButton">One Deal</button>
+            <button type="button" class="action-button btn btn-sm btn-primary batch-process process-toggle-button with-icon" id="runClientDealGenerationButton" aria-label="Start automatic Deal Generation" aria-pressed="false">
+              <span class="button-icon" aria-hidden="true" id="runClientDealGenerationIcon">play_arrow</span>
+              <span id="runClientDealGenerationLabel">Auto Generate</span>
+            </button>
+            <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary generation-settings-toggle" id="clientDealSettingsButton" aria-label="Demo Deal Generation settings" aria-expanded="false">
+              <span class="button-icon" aria-hidden="true">settings</span>
+            </button>
+          </div>
+        </section>
+
+        <div class="position-toolbar-row">
+          <section class="batch-toolbar btn-toolbar" aria-label="Batch Toolbar">
+            <div class="batch-toolbar-primary">
+              <span class="batch-toolbar-title batch-toolbar-icon-title" role="img" aria-label="Batch Toolbar" tabindex="0" data-tooltip="Batch Toolbar">
+                <span class="button-icon" aria-hidden="true">stacks</span>
+              </span>
+              <div class="batch-control" aria-label="Batching actions">
+                <button type="button" class="action-button primary btn btn-sm btn-primary batch-main" id="oneBatchButton" aria-label="Create Batch" aria-keyshortcuts="G" title="Create Batch · Shortcut: G" disabled>Create Batch</button>
+              </div>
+            </div>
+            <div class="batch-control batch-toolbar-settings" aria-label="Automatic Batching actions and settings">
+              <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary with-icon" id="sendToAutoPositionModeButton" aria-label="Send selected Trades to Auto Hedging" disabled>
+                <span class="button-icon" aria-hidden="true">move_down</span>
+                <span>Send to Auto</span>
+              </button>
+              <button type="button" class="action-button btn btn-sm btn-primary batch-process process-toggle-button with-icon" id="autoBatchButton" aria-label="Start Auto Batching" aria-pressed="false" disabled>
+                <span class="button-icon" aria-hidden="true" id="autoBatchIcon">play_arrow</span>
+                <span id="autoBatchLabel">Auto Batch</span>
+              </button>
+              <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary batch-settings-toggle" id="autoBatchingSettingsButton" aria-label="Batching Settings">
+                <span class="button-icon" aria-hidden="true">settings</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <section class="fx-position-footer" aria-label="FX Position status and Demo actions">
+        <button type="button" class="action-button danger btn btn-sm btn-outline-danger" id="resetDemoTradesButton">Reset Trades (Demo)</button>
+      </section>
+    </section>
+  </main>

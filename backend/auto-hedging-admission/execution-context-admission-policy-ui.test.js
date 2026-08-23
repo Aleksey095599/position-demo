@@ -4,9 +4,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readFrontendSources } = require("../test-support/frontend-source.js");
 
 const root = path.resolve(__dirname, "..", "..");
-const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const { combinedSource: html } = readFrontendSources(root);
 const layoutsSource = fs.readFileSync(
   path.join(root, "backend", "ui-table-layout", "ui-table-layouts.js"),
   "utf8"

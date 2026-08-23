@@ -1,0 +1,123 @@
+  <dialog class="deal-dialog client-pricing-rule-dialog pricing-rule-bootstrap-dialog" id="clientPricingRuleDialog">
+    <form class="deal-form modal-content" id="clientPricingRuleForm" autocomplete="off">
+      <div class="dialog-head modal-header">
+        <h2 class="dialog-title modal-title" id="clientPricingRuleDialogTitle">Pricing Rule</h2>
+        <button type="button" class="dialog-close btn-close" id="clientPricingRuleDialogClose" aria-label="Close"></button>
+      </div>
+      <div class="deal-form-body modal-body">
+        <section class="deal-form-section pricing-rule-bootstrap-section semantic-section" id="clientPricingRuleContextSearchSection" aria-label="Find Execution Context">
+          <div class="deal-form-section-title pricing-rule-bootstrap-section-title pricing-context-filter-title semantic-section-head">
+            <span class="button-icon" aria-hidden="true">filter_alt</span>
+            <span>Find Execution Context</span>
+          </div>
+          <p class="pricing-context-filter-help">Use the filters below to find an existing Execution Context.</p>
+          <div class="client-pricing-context-facets" id="clientPricingContextBuilder">
+            <div class="form-field client-pricing-context-facet">
+              <label class="client-pricing-context-facet-label" for="clientPricingLocationSearch">
+                <span>Servicing Location</span>
+                <span class="client-pricing-context-facet-count" data-pricing-context-count="servicingBranchCode"></span>
+              </label>
+              <span class="client-pricing-context-facet-control">
+                <span class="button-icon client-pricing-context-facet-icon" aria-hidden="true">location_on</span>
+                <input class="form-control form-control-sm" type="search" id="clientPricingLocationSearch" name="contextServicingLocation" data-pricing-context-facet="servicingBranchCode" placeholder="Filter by code or name" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clientPricingLocationMenu">
+                <button type="button" class="client-pricing-context-facet-clear" data-pricing-context-clear="servicingBranchCode" aria-label="Clear Servicing Location" hidden>
+                  <span class="button-icon" aria-hidden="true">close</span>
+                </button>
+                <button type="button" class="client-pricing-context-facet-toggle" data-pricing-context-toggle="servicingBranchCode" aria-label="Show Servicing Location options" aria-expanded="false">
+                  <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+                </button>
+              </span>
+              <div class="client-pricing-context-menu" id="clientPricingLocationMenu" role="listbox" hidden></div>
+            </div>
+            <div class="form-field client-pricing-context-facet">
+              <label class="client-pricing-context-facet-label" for="clientPricingAccountingSearch">
+                <span>Accounting System</span>
+                <span class="client-pricing-context-facet-count" data-pricing-context-count="settlementSystemId"></span>
+              </label>
+              <span class="client-pricing-context-facet-control">
+                <span class="button-icon client-pricing-context-facet-icon" aria-hidden="true">account_balance</span>
+                <input class="form-control form-control-sm" type="search" id="clientPricingAccountingSearch" name="contextAccountingSystem" data-pricing-context-facet="settlementSystemId" placeholder="Filter by code or name" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clientPricingAccountingMenu">
+                <button type="button" class="client-pricing-context-facet-clear" data-pricing-context-clear="settlementSystemId" aria-label="Clear Accounting System" hidden>
+                  <span class="button-icon" aria-hidden="true">close</span>
+                </button>
+                <button type="button" class="client-pricing-context-facet-toggle" data-pricing-context-toggle="settlementSystemId" aria-label="Show Accounting System options" aria-expanded="false">
+                  <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+                </button>
+              </span>
+              <div class="client-pricing-context-menu" id="clientPricingAccountingMenu" role="listbox" hidden></div>
+            </div>
+            <div class="form-field client-pricing-context-facet">
+              <label class="client-pricing-context-facet-label" for="clientPricingExecutionSearch">
+                <span>Execution System</span>
+                <span class="client-pricing-context-facet-count" data-pricing-context-count="tradeCaptureChannelId"></span>
+              </label>
+              <span class="client-pricing-context-facet-control">
+                <span class="button-icon client-pricing-context-facet-icon" aria-hidden="true">terminal</span>
+                <input class="form-control form-control-sm" type="search" id="clientPricingExecutionSearch" name="contextExecutionSystem" data-pricing-context-facet="tradeCaptureChannelId" placeholder="Filter by code or name" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clientPricingExecutionMenu">
+                <button type="button" class="client-pricing-context-facet-clear" data-pricing-context-clear="tradeCaptureChannelId" aria-label="Clear Execution System" hidden>
+                  <span class="button-icon" aria-hidden="true">close</span>
+                </button>
+                <button type="button" class="client-pricing-context-facet-toggle" data-pricing-context-toggle="tradeCaptureChannelId" aria-label="Show Execution System options" aria-expanded="false">
+                  <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+                </button>
+              </span>
+              <div class="client-pricing-context-menu" id="clientPricingExecutionMenu" role="listbox" hidden></div>
+            </div>
+          </div>
+          <input type="hidden" name="pricingContextId">
+          <div class="client-pricing-context-results" id="clientPricingContextResults" aria-live="polite"></div>
+        </section>
+        <section class="deal-form-section pricing-rule-bootstrap-section semantic-section" id="clientPricingRuleFixedTermsSection" aria-label="Pricing Rule fixed terms" hidden>
+          <div class="deal-form-section-title pricing-rule-bootstrap-section-title semantic-section-head">Fixed Terms</div>
+          <div class="client-pricing-rule-fixed-grid">
+            <span class="client-pricing-rule-fixed-term" id="clientPricingRuleFixedPairTerm">
+              <span>Ccy Pair</span>
+              <span class="client-pricing-rule-fixed-value" id="clientPricingRuleFixedPair"></span>
+            </span>
+            <span class="client-pricing-rule-fixed-term" id="clientPricingRuleFixedContextTerm">
+              <span>Execution Context</span>
+              <span class="client-pricing-rule-fixed-value client-pricing-rule-fixed-context" id="clientPricingRuleFixedContext"></span>
+            </span>
+          </div>
+        </section>
+        <section class="deal-form-section pricing-rule-bootstrap-section semantic-section" aria-label="Pricing Rule Parameters">
+          <div class="deal-form-section-title pricing-rule-bootstrap-section-title semantic-section-head">Pricing Rule Parameters</div>
+          <div class="form-grid client-pricing-rule-terms-grid">
+            <label class="form-field" id="clientPricingRuleCurrencyPairField">
+              Ccy Pair
+              <select class="form-select form-select-sm" name="currencyPair" required></select>
+            </label>
+            <fieldset class="form-field client-pricing-rule-position-mode-field">
+              <legend>FX Position Mode</legend>
+              <label class="position-management-mode-inherit" for="clientPricingRuleUseExecutionContextDefault">
+                <input class="form-check-input" type="checkbox" id="clientPricingRuleUseExecutionContextDefault" name="useExecutionContextDefault" aria-controls="clientPricingRulePositionManagementModeOverride" checked>
+                <span>Execution Context Default</span>
+              </label>
+              <select class="form-select form-select-sm" id="clientPricingRulePositionManagementModeOverride" name="positionManagementModeOverride" data-position-management-mode-inherited="true" aria-label="FX Position Mode" disabled>
+                <option value="MANUAL">Manual Control</option>
+                <option value="AUTO">Auto Hedging</option>
+              </select>
+            </fieldset>
+            <label class="form-field">
+              Margin %
+              <input class="form-control form-control-sm" type="text" name="marginPercent" inputmode="decimal" required>
+            </label>
+          </div>
+        </section>
+      </div>
+      <div class="dialog-actions modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-danger with-icon me-auto" id="clientPricingRuleDeleteButton" hidden>
+          <span class="button-icon" aria-hidden="true">delete</span>
+          <span>Delete rule</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary with-icon" id="clientPricingRuleCancelButton">
+          <span class="button-icon" aria-hidden="true">close</span>
+          <span>Cancel</span>
+        </button>
+        <button type="submit" class="btn btn-sm btn-primary with-icon" id="clientPricingRuleSubmitButton">
+          <span class="button-icon" aria-hidden="true">save</span>
+          <span>Save rule</span>
+        </button>
+      </div>
+    </form>
+  </dialog>

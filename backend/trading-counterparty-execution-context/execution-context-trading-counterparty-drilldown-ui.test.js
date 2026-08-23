@@ -4,12 +4,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readFrontendSources } = require("../test-support/frontend-source.js");
 
 const ROOT = path.resolve(__dirname, "..", "..");
-const HTML_PATH = path.join(ROOT, "index.html");
-const html = fs.readFileSync(HTML_PATH, "utf8");
-const scripts = [...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/g)];
-const inlineScript = scripts.at(-1)?.[1] || "";
+const { combinedSource: html, appScript: inlineScript } = readFrontendSources(ROOT);
 
 function topLevelFunctionSource(name) {
   const asyncMarker = `async function ${name}(`;

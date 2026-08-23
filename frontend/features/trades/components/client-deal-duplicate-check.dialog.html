@@ -1,0 +1,30 @@
+  <dialog class="client-deal-create-dialog client-deal-duplicate-dialog" id="clientDealDuplicateCheckDialog" aria-labelledby="clientDealDuplicateCheckTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="clientDealDuplicateCheckTitle">Check Existing Client Deals</h2>
+        <button type="button" class="btn-close" id="clientDealDuplicateCheckCloseButton" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning client-deal-duplicate-summary" role="status">
+          <span class="button-icon" aria-hidden="true">content_copy</span>
+          <span id="clientDealDuplicateCheckSummary"></span>
+        </div>
+        <section class="table-panel table-panel--standalone table-panel--compact" aria-labelledby="clientDealDuplicateCheckGridTitle">
+          <div class="table-panel__head">
+            <h3 class="table-panel__title" id="clientDealDuplicateCheckGridTitle">Existing Client Deals</h3>
+          </div>
+          <div class="table-panel__body table-panel__viewport">
+            <div id="clientDealDuplicateCheckGrid" aria-label="Existing Client Deals with the same client and currency pair"></div>
+          </div>
+        </section>
+        <div class="alert alert-danger client-deal-duplicate-status" id="clientDealDuplicateCheckStatus" role="alert" hidden></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="clientDealDuplicateCheckCancelButton">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="clientDealDuplicateCheckConfirmButton">
+          <span class="button-icon" aria-hidden="true">add</span>
+          <span>Client Deal</span>
+        </button>
+      </div>
+    </div>
+  </dialog>

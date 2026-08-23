@@ -1,0 +1,529 @@
+    /* The global navigation owns the page boundary; page headings use whitespace, not a second rule. */
+    .workbench-page-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 0;
+      box-shadow: none;
+    }
+
+    .workbench-page-status {
+      display: block;
+      min-width: 0;
+      max-width: min(520px, 46vw);
+      min-height: 18px;
+      margin-left: auto;
+      margin-right: 0;
+      overflow: hidden;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 18px;
+      text-align: right;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .workbench-page-status:empty {
+      display: none;
+    }
+
+    .workbench-page-status.is-success {
+      color: var(--bs-success-text-emphasis);
+    }
+
+    .workbench-page-status.is-warning {
+      color: var(--bs-warning-text-emphasis);
+    }
+
+    .workbench-page-status.is-error {
+      color: var(--bs-danger-text-emphasis);
+    }
+
+    .workspace-nav-link:focus-visible,
+    .workbench-page .action-button:focus-visible,
+    .workbench-page .reference-column-filter-trigger:focus-visible,
+    #databasePage.workbench-page .database-table-button:focus-visible {
+      outline: 0;
+      box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.2);
+    }
+
+    /* Единый контракт: состояния кнопки не меняют исходный цвет текста. */
+    :where(button, .btn) {
+      transition:
+        background-color 150ms ease-in-out,
+        border-color 150ms ease-in-out,
+        box-shadow 150ms ease-in-out;
+    }
+
+    .btn {
+      --bs-btn-hover-color: var(--bs-btn-color);
+      --bs-btn-active-color: var(--bs-btn-color);
+    }
+
+    .btn[class*="btn-outline-"]:not(.btn-outline-primary):not(.btn-outline-secondary) {
+      --bs-btn-hover-bg: color-mix(
+        in srgb,
+        transparent 80%,
+        var(--bs-btn-color) 20%
+      );
+      --bs-btn-hover-border-color: color-mix(
+        in srgb,
+        var(--bs-btn-color) 84%,
+        var(--palette-gray-900) 16%
+      );
+      --bs-btn-active-bg: color-mix(
+        in srgb,
+        transparent 70%,
+        var(--bs-btn-color) 30%
+      );
+      --bs-btn-active-border-color: color-mix(
+        in srgb,
+        var(--bs-btn-color) 72%,
+        var(--palette-gray-900) 28%
+      );
+    }
+
+    .btn:not(.btn-link):not([class*="btn-outline-"]):not(.btn-soft-primary):not(.btn-primary):not(.process-toggle-button) {
+      --bs-btn-hover-bg: color-mix(
+        in srgb,
+        var(--bs-btn-bg) 88%,
+        var(--palette-gray-900) 12%
+      );
+      --bs-btn-hover-border-color: color-mix(
+        in srgb,
+        var(--bs-btn-border-color) 82%,
+        var(--palette-gray-900) 18%
+      );
+      --bs-btn-active-bg: color-mix(
+        in srgb,
+        var(--bs-btn-bg) 78%,
+        var(--palette-gray-900) 22%
+      );
+      --bs-btn-active-border-color: color-mix(
+        in srgb,
+        var(--bs-btn-border-color) 70%,
+        var(--palette-gray-900) 30%
+      );
+    }
+
+    /*
+      Application button contract:
+      btn-primary          = the main command in a workflow;
+      btn-outline-*        = secondary, table, and icon actions;
+      process-toggle-button = primary while idle, danger while running;
+      disabled             = neutral and non-semantic.
+    */
+    .btn-primary {
+      --bs-btn-color: var(--app-button-primary-color);
+      --bs-btn-bg: var(--app-button-primary-bg);
+      --bs-btn-border-color: var(--app-button-primary-border);
+      --bs-btn-hover-color: var(--app-button-primary-color);
+      --bs-btn-hover-bg: var(--app-button-primary-hover-bg);
+      --bs-btn-hover-border-color: var(--app-button-primary-hover-border);
+      --bs-btn-active-color: var(--app-button-primary-color);
+      --bs-btn-active-bg: var(--app-button-primary-active-bg);
+      --bs-btn-active-border-color: var(--app-button-primary-active-border);
+      --bs-btn-focus-shadow-rgb: var(--app-primary-rgb);
+      --bs-btn-disabled-color: var(--app-button-disabled-color);
+      --bs-btn-disabled-bg: var(--app-button-disabled-bg);
+      --bs-btn-disabled-border-color: var(--app-button-disabled-border);
+    }
+
+    .btn-outline-primary {
+      --bs-btn-color: var(--app-primary-text);
+      --bs-btn-bg: transparent;
+      --bs-btn-border-color: var(--app-primary);
+      --bs-btn-hover-color: var(--app-primary-text);
+      --bs-btn-hover-bg: rgba(var(--app-primary-rgb), 0.08);
+      --bs-btn-hover-border-color: var(--app-primary);
+      --bs-btn-active-color: var(--app-primary-text);
+      --bs-btn-active-bg: rgba(var(--app-primary-rgb), 0.14);
+      --bs-btn-active-border-color: var(--app-primary);
+      --bs-btn-focus-shadow-rgb: var(--app-primary-rgb);
+      --bs-btn-disabled-color: var(--app-button-disabled-color);
+      --bs-btn-disabled-bg: var(--app-button-disabled-bg);
+      --bs-btn-disabled-border-color: var(--app-button-disabled-border);
+    }
+
+    .btn-outline-secondary {
+      --bs-btn-color: var(--app-button-secondary-color);
+      --bs-btn-bg: var(--app-button-secondary-bg);
+      --bs-btn-border-color: var(--app-button-secondary-border);
+      --bs-btn-hover-color: var(--app-button-secondary-color);
+      --bs-btn-hover-bg: var(--app-button-secondary-hover-bg);
+      --bs-btn-hover-border-color: var(--app-button-secondary-hover-border);
+      --bs-btn-active-color: var(--app-button-secondary-color);
+      --bs-btn-active-bg: var(--app-button-secondary-active-bg);
+      --bs-btn-active-border-color: var(--app-button-secondary-hover-border);
+      --bs-btn-disabled-color: var(--app-button-disabled-color);
+      --bs-btn-disabled-bg: var(--app-button-disabled-bg);
+      --bs-btn-disabled-border-color: var(--app-button-disabled-border);
+    }
+
+    .btn-soft-primary {
+      --bs-btn-color: var(--app-primary-text);
+      --bs-btn-bg: rgba(var(--app-primary-rgb), 0.07);
+      --bs-btn-border-color: rgba(var(--app-primary-rgb), 0.58);
+      --bs-btn-hover-color: var(--app-primary-text);
+      --bs-btn-hover-bg: rgba(var(--app-primary-rgb), 0.14);
+      --bs-btn-hover-border-color: var(--app-primary);
+      --bs-btn-active-color: var(--app-primary-text);
+      --bs-btn-active-bg: rgba(var(--app-primary-rgb), 0.2);
+      --bs-btn-active-border-color: var(--app-primary);
+    }
+
+    .process-toggle-button:not(.is-running) {
+      --bs-btn-color: var(--app-button-primary-color);
+      --bs-btn-bg: var(--app-button-primary-bg);
+      --bs-btn-border-color: var(--app-button-primary-border);
+      --bs-btn-hover-color: var(--app-button-primary-color);
+      --bs-btn-hover-bg: var(--app-button-primary-hover-bg);
+      --bs-btn-hover-border-color: var(--app-button-primary-hover-border);
+      --bs-btn-active-color: var(--app-button-primary-color);
+      --bs-btn-active-bg: var(--app-button-primary-active-bg);
+      --bs-btn-active-border-color: var(--app-button-primary-active-border);
+      border-color: var(--app-button-primary-border);
+      background: var(--app-button-primary-bg);
+      color: var(--app-button-primary-color);
+    }
+
+    .process-toggle-button:not(.is-running):hover:not(:disabled) {
+      border-color: var(--app-button-primary-hover-border);
+      background: var(--app-button-primary-hover-bg);
+      color: var(--app-button-primary-color);
+    }
+
+    .process-toggle-button:not(.is-running):active:not(:disabled) {
+      border-color: var(--app-button-primary-active-border);
+      background: var(--app-button-primary-active-bg);
+      color: var(--app-button-primary-color);
+    }
+
+    .process-toggle-button:not(.is-running):disabled {
+      border-color: var(--app-button-disabled-border);
+      background: var(--app-button-disabled-bg);
+      color: var(--app-button-disabled-color);
+      opacity: 0.68;
+    }
+
+    .process-toggle-button.is-running {
+      --bs-btn-color: var(--bs-white);
+      --bs-btn-bg: var(--app-process-running);
+      --bs-btn-border-color: var(--app-process-running-border);
+      --bs-btn-hover-color: var(--bs-white);
+      --bs-btn-hover-bg: var(--app-process-running-hover);
+      --bs-btn-hover-border-color: var(--app-process-running-hover);
+      --bs-btn-active-color: var(--bs-white);
+      --bs-btn-active-bg: var(--app-process-running-active);
+      --bs-btn-active-border-color: var(--app-process-running-active);
+      --bs-btn-focus-shadow-rgb: var(--app-process-running-rgb);
+      border-color: var(--app-process-running-border);
+      background: var(--app-process-running);
+      color: var(--bs-white);
+    }
+
+    .process-toggle-button.is-running:hover:not(:disabled) {
+      border-color: var(--app-process-running-hover);
+      background: var(--app-process-running-hover);
+      color: var(--bs-white);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+      border-color: var(--palette-yellow-300);
+      background: var(--palette-yellow-100);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    :is(.hedge-toolbar-title, .hedge-quick-boundary-start, .hedge-quick-boundary-end) {
+      border-color: var(--palette-yellow-500);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar .hedge-quick-quote {
+      border-color: var(--palette-yellow-500);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    .hedge-quick-quote-value + .hedge-quick-quote-value {
+      border-left-color: var(--palette-yellow-400);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action) {
+      --bs-btn-color: var(--palette-yellow-800);
+      --bs-btn-bg: var(--palette-yellow-200);
+      --bs-btn-border-color: var(--palette-yellow-600);
+      --bs-btn-hover-color: var(--palette-yellow-800);
+      --bs-btn-hover-bg: var(--palette-yellow-300);
+      --bs-btn-hover-border-color: var(--palette-yellow-600);
+      --bs-btn-active-color: var(--palette-yellow-800);
+      --bs-btn-active-bg: var(--palette-yellow-400);
+      --bs-btn-active-border-color: var(--palette-yellow-700);
+      --bs-btn-disabled-color: var(--palette-yellow-800);
+      --bs-btn-disabled-bg: var(--palette-yellow-200);
+      --bs-btn-disabled-border-color: var(--palette-yellow-600);
+      border-color: var(--bs-btn-border-color);
+      background: var(--bs-btn-bg);
+      color: var(--bs-btn-color) !important;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):hover:not(:disabled) {
+      border-color: var(--bs-btn-hover-border-color);
+      background: var(--bs-btn-hover-bg);
+      color: var(--bs-btn-hover-color) !important;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):is(:active, .active):not(:disabled) {
+      border-color: var(--bs-btn-active-border-color);
+      background: var(--bs-btn-active-bg);
+      color: var(--bs-btn-active-color) !important;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):disabled {
+      border-color: var(--bs-btn-disabled-border-color);
+      background: var(--bs-btn-disabled-bg);
+      color: var(--bs-btn-disabled-color) !important;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    .hedge-quick-preset.active,
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    .hedge-quick-preset.active:disabled {
+      border-color: var(--palette-yellow-700);
+      background: var(--palette-yellow-400);
+      color: var(--palette-yellow-800) !important;
+    }
+
+    dialog {
+      --app-primary: var(--palette-blue-500);
+      --app-primary-rgb: 13, 110, 253;
+      --app-primary-hover: var(--palette-blue-600);
+      --app-primary-active: var(--palette-blue-700);
+      --app-primary-soft: var(--palette-blue-100);
+      --app-primary-border-subtle: var(--palette-blue-200);
+      --app-primary-text: var(--palette-blue-700);
+      --bs-primary: var(--app-primary);
+      --bs-primary-rgb: var(--app-primary-rgb);
+      --bs-primary-bg-subtle: var(--app-primary-soft);
+      --bs-primary-border-subtle: var(--app-primary-border-subtle);
+      --bs-primary-text-emphasis: var(--app-primary-text);
+      --bs-body-color: var(--palette-gray-900);
+      --bs-emphasis-color: var(--palette-gray-900);
+      --bs-secondary-color: var(--palette-gray-600);
+      --bs-border-color: var(--palette-gray-400);
+      --bs-tertiary-bg: var(--app-dialog-readonly-bg);
+    }
+
+    dialog .modal-content {
+      border-color: var(--app-dialog-section-border);
+    }
+
+    dialog .modal-content > .modal-header {
+      min-height: 52px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--app-dialog-chrome-border);
+      background: var(--app-dialog-titlebar-bg);
+      box-shadow: none;
+    }
+
+    dialog .modal-content > .modal-header:has(
+      :is(.generation-dialog-subtitle, .client-context-attach-subtitle):not(:empty)
+    ) {
+      min-height: 64px;
+    }
+
+    dialog:is(.batch-rollback-dialog, .client-deal-duplicate-dialog)
+    .modal-content > .modal-header {
+      min-height: 48px;
+      padding-block: 10px;
+    }
+
+    dialog .modal-content > .modal-header :is(.modal-title, .dialog-title) {
+      color: var(--bs-emphasis-color);
+    }
+
+    dialog .modal-content > .modal-header :is(.generation-dialog-subtitle, .client-context-attach-subtitle) {
+      color: var(--bs-secondary-color);
+    }
+
+    dialog .modal-content > .modal-header .btn-close {
+      background-color: transparent;
+      filter: none;
+      opacity: 0.55;
+    }
+
+    dialog .modal-content > .modal-header .btn-close:hover,
+    dialog .modal-content > .modal-header .btn-close:focus-visible {
+      background-color: var(--bs-tertiary-bg);
+      opacity: 0.85;
+    }
+
+    dialog .modal-content > .modal-body {
+      background: var(--app-dialog-workspace-bg);
+    }
+
+    dialog :is(.client-deal-create-section, .market-simulation-section, .pricing-rule-bootstrap-section, .deal-form-section) {
+      border-color: var(--app-dialog-section-border);
+      background: var(--bs-body-bg);
+      box-shadow: var(--app-dialog-section-shadow);
+    }
+
+    dialog .client-deal-create-section-title {
+      min-height: 0;
+      padding: 14px 14px 0;
+      border-bottom: 0;
+      background: transparent;
+    }
+
+    dialog .client-deal-create-section-body {
+      padding: 10px 14px 14px;
+    }
+
+    dialog .client-deal-additional-summary {
+      min-height: 42px;
+      padding: 10px 14px;
+      background: var(--bs-body-bg);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page
+      .database-details > .semantic-section > .semantic-section-head {
+      padding-left: 10px;
+    }
+
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section {
+      --semantic-section-accent: var(--semantic-card-accent);
+      border: 1px solid var(--semantic-card-border);
+      border-radius: var(--bs-border-radius-lg);
+      background: var(--bs-body-bg);
+      box-shadow: -5px 0 0 var(--semantic-section-accent);
+    }
+
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section-head {
+      min-height: 38px;
+      margin: 0;
+      padding: 8px 10px;
+      border: 0;
+      border-bottom: 1px solid var(--bs-border-color);
+      border-radius: calc(var(--workbench-radius) - 1px) calc(var(--workbench-radius) - 1px) 0 0;
+      background:
+        color-mix(
+          in srgb,
+          var(--palette-blue-100) 32%,
+          var(--bs-tertiary-bg)
+        );
+    }
+
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section-body {
+      min-width: 0;
+      padding: 10px;
+    }
+
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section {
+      overflow: hidden;
+    }
+
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section-body {
+      padding: 0;
+    }
+
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section .client-deals-grid-shell,
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section .tabulator {
+      border-radius: 0;
+    }
+
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section .tabulator {
+      border: 0;
+      vertical-align: top;
+    }
+
+    :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section
+    .tabulator-footer .tabulator-calcs-holder {
+      border-top: 0;
+      border-bottom: 0;
+    }
+
+    #batchDetailsPage .batch-details-summary-heading.semantic-section-head {
+      min-height: 40px;
+      margin: -16px -16px 14px;
+      padding: 9px 16px;
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    #batchDetailsPage .batch-neutrality-title.semantic-section-head {
+      min-height: 38px;
+      margin: -14px -14px 12px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    #analyticalPnlReportPage .analytical-pnl-report-filter-panel > .semantic-section-head {
+      min-height: 38px;
+      margin: -12px -12px 12px;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    dialog .semantic-section > .semantic-section-head {
+      min-height: 38px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--app-dialog-section-border);
+    }
+
+    dialog .client-deal-additional-section:not([open])
+    > .client-deal-additional-summary.semantic-section-head {
+      border-bottom: 0;
+    }
+
+    dialog .market-simulation-section > .semantic-section-head {
+      margin: -14px -14px 14px;
+    }
+
+    dialog .client-deal-market-pulse-card.is-compact .client-deal-market-pulse-brand,
+    dialog .client-deal-rate-input-group .client-deal-rate-icon {
+      border-color: var(--app-dialog-readonly-border);
+      background: var(--app-dialog-readonly-addon-bg);
+      color: var(--app-dialog-readonly-text);
+    }
+
+    dialog .client-deal-market-pulse-brand .button-icon {
+      color: inherit;
+    }
+
+    dialog .client-deal-loss-sensitive-field.is-negative-pnl .client-deal-rate-icon {
+      border-color: var(--bs-danger-border-subtle);
+      background: var(--bs-danger-bg-subtle);
+      color: var(--bs-danger-text-emphasis);
+    }
+
+    dialog :is(.form-control, .form-select):not(:disabled):not([readonly]) {
+      background-color: var(--bs-white);
+    }
+
+    dialog :is(.form-control[readonly], .form-control:disabled, .form-select:disabled) {
+      border-color: var(--app-dialog-readonly-border);
+      background-color: var(--app-dialog-readonly-bg);
+      color: var(--app-dialog-readonly-text);
+      opacity: 1;
+    }
+
+    dialog .input-group:has(:is(.form-control[readonly], .form-control:disabled)) .input-group-text {
+      border-color: var(--app-dialog-readonly-border);
+      background-color: var(--app-dialog-readonly-addon-bg);
+      color: var(--app-dialog-readonly-text);
+    }
+
+    dialog .client-deal-pricing-rule-select.is-disabled
+    :is(.client-deal-pricing-rule-select-value, .client-deal-pricing-rule-select-toggle) {
+      border-color: var(--app-dialog-readonly-border);
+      background-color: var(--app-dialog-readonly-bg);
+      color: var(--app-dialog-readonly-text);
+      opacity: 1;
+    }
+
+    dialog .modal-content > .modal-footer {
+      border-top-color: var(--app-dialog-chrome-border);
+      background: var(--app-dialog-footer-bg);
+    }

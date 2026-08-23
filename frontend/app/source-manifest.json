@@ -1,0 +1,15 @@
+{
+  "sources": [
+    "app/core/runtime.js",
+    "features/counterparties/counterparties.page.js",
+    "features/batching/batching.page.js",
+    "features/market/market.page.js",
+    "features/database/database.page.js",
+    "features/processes/processes.page.js",
+    "features/fx-position/fx-position.page.js",
+    "features/hedging/hedging.page.js",
+    "features/trades/trades.page.js",
+    "features/fx-position/fx-position-grid.page.js",
+    "app/shell/workspace-shell.js"
+  ]
+}

@@ -1,0 +1,1337 @@
+    /* FX Position keeps its mirrored domain layout while following the Bootstrap 5 + Tabulator workbench contract. */
+    #mainPage.fx-position-bootstrap.workbench-page {
+      --app-primary: var(--palette-blue-500);
+      --app-primary-rgb: 13, 110, 253;
+      --app-primary-hover: var(--palette-blue-600);
+      --app-primary-active: var(--palette-blue-700);
+      --app-primary-soft: var(--palette-blue-100);
+      --app-primary-border-subtle: var(--palette-blue-200);
+      --app-primary-text: var(--palette-blue-700);
+      --app-process-idle: var(--palette-blue-200);
+      --app-process-idle-border: var(--palette-blue-300);
+      --app-process-idle-text: var(--palette-gray-800);
+      --app-process-idle-hover: var(--palette-blue-300);
+      --app-process-idle-hover-border: var(--palette-blue-400);
+      --app-process-idle-active: var(--palette-blue-400);
+      --app-process-running: var(--palette-red-500);
+      --app-process-running-border: var(--palette-red-600);
+      --app-process-running-rgb: 220, 53, 69;
+      --app-process-running-hover: var(--palette-red-600);
+      --app-process-running-active: var(--palette-red-700);
+      --bs-primary: var(--app-primary);
+      --bs-primary-rgb: var(--app-primary-rgb);
+      --bs-primary-bg-subtle: var(--app-primary-soft);
+      --bs-primary-border-subtle: var(--app-primary-border-subtle);
+      --bs-primary-text-emphasis: var(--app-primary-text);
+      --bs-secondary: var(--palette-gray-600);
+      --bs-secondary-rgb: 108, 117, 125;
+      --bs-secondary-bg: var(--palette-gray-100);
+      --bs-secondary-color: var(--palette-gray-600);
+      --bs-tertiary-bg: var(--palette-gray-100);
+      --bs-body-color: var(--palette-gray-900);
+      --bs-emphasis-color: var(--palette-gray-900);
+      --bs-border-color: var(--palette-gray-300);
+      --selection-accent: var(--app-primary);
+      --selection-accent-soft: rgba(var(--bs-primary-rgb), 0.24);
+      --selection-ring: rgba(var(--bs-primary-rgb), 0.82);
+      --selection-wash: rgba(var(--bs-primary-rgb), 0.22);
+      --data-grid-line-color: var(--palette-gray-300);
+      --workbench-grid-header-bg: var(--palette-gray-100);
+      --workbench-grid-stripe-bg: var(--palette-gray-100);
+      --workbench-grid-hover-bg: var(--palette-gray-200);
+      --workbench-grid-selected-bg: var(--palette-blue-100);
+      --market-trade-bg: var(--palette-yellow-100);
+      --market-trade-border: var(--palette-yellow-200);
+      --market-trade-border-active: var(--palette-yellow-600);
+      --market-trade-text: var(--palette-yellow-900);
+      --market-trade-focus-ring: rgba(204, 154, 6, 0.24);
+      --fx-position-section-rule-width: 2px;
+      --fx-position-toolbar-gap: 8px;
+      display: flex;
+      height: calc(100vh - var(--workspace-nav-height));
+      min-height: 0;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 12px var(--workbench-page-padding-x) var(--workbench-page-padding-bottom);
+      font-size: var(--workbench-body-size);
+    }
+
+    body:has(#mainPage.fx-position-bootstrap.workbench-page:not([hidden])) {
+      overflow: hidden;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .action-bar {
+      flex: 0 0 auto;
+      min-height: 42px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: var(--bs-body-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-header-tools {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-header-tools .workbench-page-status {
+      margin: 0;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid-layout-host {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .page-title {
+      margin: 0;
+      color: var(--bs-emphasis-color);
+      font-size: var(--workbench-title-size);
+      font-weight: var(--workbench-title-weight);
+      line-height: 1.2;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batching-workspace {
+      display: grid;
+      min-height: 0;
+      flex: 1 1 auto;
+      grid-template-columns: var(--fx-position-ccy-pair-selector-width, 136px) minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) auto;
+      align-items: stretch;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-panel {
+      display: flex;
+      min-height: 0;
+      align-self: stretch;
+      min-width: 0;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 0;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      box-shadow: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-footer {
+      display: grid;
+      min-width: 0;
+      grid-column: 1 / -1;
+      grid-template-columns: var(--fx-position-ccy-pair-selector-width, 136px) minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      padding-top: 0;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page #resetDemoTradesButton {
+      width: 100%;
+      min-height: 32px;
+      padding: 5px 7px;
+      border-radius: var(--workbench-radius);
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.25;
+      white-space: normal;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page #resetDemoTradesButton:disabled {
+      border-color: var(--bs-border-color);
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-secondary-color);
+      cursor: default;
+      opacity: 0.58;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-title {
+      margin: 0;
+      padding: 9px 10px;
+      border: 0;
+      border-bottom: 1px solid var(--bs-border-color);
+      background: var(--workbench-grid-header-bg);
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 18px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-list {
+      display: grid;
+      min-width: 0;
+      min-height: 0;
+      flex: 1 1 auto;
+      grid-auto-rows: max-content;
+      align-content: start;
+      overflow-x: hidden;
+      overflow-y: auto;
+      gap: 4px;
+      padding: 6px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-button {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      min-height: 30px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 4px 8px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+      font-weight: 500;
+      text-align: left;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-button:hover {
+      border-color: var(--bs-secondary-color);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-button.is-active {
+      border-color: var(--bs-primary-border-subtle);
+      background: var(--bs-primary-bg-subtle);
+      color: var(--bs-primary-text-emphasis);
+      font-weight: 500;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-count {
+      display: inline-flex;
+      min-width: 20px;
+      height: 20px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--palette-gray-300);
+      border-radius: 999px;
+      padding: 0 6px;
+      background: var(--palette-gray-100);
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      font-weight: 600;
+      line-height: 20px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page
+    .currency-pair-button:hover:not(.is-active)
+    .currency-pair-count {
+      border-color: var(--palette-gray-400);
+      background: var(--palette-gray-200);
+      color: var(--palette-gray-800);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-button.is-active .currency-pair-count {
+      border-color: rgba(var(--bs-primary-rgb), 0.22);
+      background: rgba(var(--bs-primary-rgb), 0.12);
+      color: var(--bs-primary-text-emphasis);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-empty {
+      padding: 5px 4px;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batching-workspace-main {
+      display: flex;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+      flex-direction: column;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-mode-tabs {
+      width: 100%;
+      flex: 0 0 auto;
+      margin-top: 0;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-mode-tabs .fx-position-mode-icon {
+      flex: 0 0 auto;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-mode-count {
+      display: inline-flex;
+      min-width: 20px;
+      height: 20px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+      border: 1px solid var(--palette-gray-300);
+      border-radius: 999px;
+      background: var(--palette-gray-100);
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      font-weight: 600;
+      line-height: 20px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-mode-tabs .nav-link.active .fx-position-mode-count {
+      border-color: rgba(var(--bs-primary-rgb), 0.22);
+      background: rgba(var(--bs-primary-rgb), 0.12);
+      color: var(--bs-primary-text-emphasis);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid-frame {
+      width: 100%;
+      max-width: 100%;
+      min-height: 0;
+      margin-top: 12px;
+      flex: 1 1 auto;
+      overflow: auto;
+      overscroll-behavior: contain;
+      border: var(--data-grid-line-width) solid var(--data-grid-line-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      box-shadow: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid {
+      width: 1485px;
+      min-width: 1485px;
+      margin: 0;
+      border: 0;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      font-family: var(--bs-body-font-family);
+      font-size: var(--workbench-grid-size);
+      table-layout: fixed;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid thead {
+      position: static;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tfoot {
+      position: sticky;
+      z-index: 3;
+      bottom: 0;
+      overflow: visible;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(th, td) {
+      height: var(--workbench-grid-row-height);
+      padding: 5px 8px;
+      border: 0;
+      border-right: var(--data-grid-line-width) solid var(--data-grid-line-color);
+      border-bottom: var(--data-grid-line-width) solid var(--data-grid-line-color);
+      background-clip: padding-box;
+      box-shadow: none;
+      vertical-align: middle;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .group-title th {
+      position: relative;
+      height: 39px;
+      padding: 7px 8px 6px;
+      border-color: var(--data-grid-line-color);
+      background: var(--workbench-grid-header-bg);
+      color: var(--bs-emphasis-color);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .section-name::before {
+      position: absolute;
+      top: 7px;
+      right: 12px;
+      left: 12px;
+      height: var(--fx-position-section-rule-width);
+      margin: 0;
+      border-radius: 999px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .group-title .common-title {
+      color: var(--bs-secondary-color);
+      background: var(--workbench-grid-header-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .group-title .sell-title {
+      color: var(--bs-emphasis-color);
+      background: rgba(var(--bs-danger-rgb), 0.055);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .group-title .market-title {
+      color: var(--bs-secondary-color);
+      background: var(--workbench-grid-header-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .group-title .buy-title {
+      color: var(--bs-emphasis-color);
+      background: rgba(var(--bs-success-rgb), 0.055);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .rate-title-row th {
+      height: 24px;
+      padding: 3px 8px;
+      border-color: var(--data-grid-line-color);
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title th {
+      height: 36px;
+      padding: 5px 8px;
+      border-color: var(--data-grid-line-color);
+      background: var(--workbench-grid-header-bg);
+      color: var(--bs-emphasis-color);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(.common-head, .market-head) {
+      background: var(--workbench-grid-header-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sell-head,
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title .sell-head {
+      background: rgba(var(--bs-danger-rgb), 0.055);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .buy-head,
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title .buy-head {
+      background: rgba(var(--bs-success-rgb), 0.055);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .market-reference-icon {
+      color: var(--bs-secondary-color);
+      font-size: 19px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .client {
+      width: 280px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .trade-id-column {
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(th, td).trade-id-column {
+      padding-inline: 0;
+      text-align: center;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .date {
+      width: 94px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .base-value-date {
+      width: 132px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .amount {
+      width: 208px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .rate {
+      width: 90px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .market-left,
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .market-right {
+      width: 78px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .wide-gap {
+      width: 16px;
+      min-width: 16px;
+      max-width: 16px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .selection-gap {
+      width: 32px;
+      min-width: 32px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(th, td).selection-gap {
+      padding-inline: 0;
+      text-align: center;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .selection-gap .form-check-input {
+      display: block;
+      margin-inline: auto;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .select-all-checkbox {
+      width: 18px;
+      height: 18px;
+      border-width: 2px;
+      border-radius: 3px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sell-check-zone .select-all-checkbox {
+      border-color: rgba(var(--bs-danger-rgb), 0.62);
+      background-color: rgba(var(--bs-danger-rgb), 0.07);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sell-check-zone .select-all-checkbox:hover:not(:disabled) {
+      background-color: rgba(var(--bs-danger-rgb), 0.14);
+      box-shadow: 0 0 0 3px rgba(var(--bs-danger-rgb), 0.1);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sell-check-zone .select-all-checkbox:is(:checked, :indeterminate) {
+      border-color: var(--bs-danger);
+      background-color: var(--bs-danger);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .buy-check-zone .select-all-checkbox {
+      border-color: rgba(var(--bs-success-rgb), 0.68);
+      background-color: rgba(var(--bs-success-rgb), 0.07);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .buy-check-zone .select-all-checkbox:hover:not(:disabled) {
+      background-color: rgba(var(--bs-success-rgb), 0.14);
+      box-shadow: 0 0 0 3px rgba(var(--bs-success-rgb), 0.1);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .buy-check-zone .select-all-checkbox:is(:checked, :indeterminate) {
+      border-color: var(--bs-success);
+      background-color: var(--bs-success);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .gap {
+      padding: 0;
+      border-right-color: transparent;
+      border-bottom-color: var(--data-grid-line-color);
+      background: var(--bs-body-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(th, td):is(
+      .wide-gap,
+      .sell-check-zone,
+      .buy-check-zone
+    ) {
+      border-right-color: var(--data-grid-line-color);
+      background: var(--bs-body-bg);
+      box-shadow: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .trade-divider::before {
+      content: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .identity {
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      font-weight: 400;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr:nth-child(even) .identity {
+      background: var(--workbench-grid-stripe-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .sell-zone {
+      background: rgba(var(--bs-danger-rgb), 0.055);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr:nth-child(even) .sell-zone {
+      background: rgba(var(--bs-danger-rgb), 0.085);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .buy-zone {
+      background: rgba(var(--bs-success-rgb), 0.055);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr:nth-child(even) .buy-zone {
+      background: rgba(var(--bs-success-rgb), 0.085);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .market-left,
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .market-right {
+      background: var(--bs-tertiary-bg);
+      box-shadow: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .market-sell {
+      color: var(--bs-success);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .market-buy {
+      color: var(--bs-danger);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr:hover td:not(.gap) {
+      background: var(--workbench-grid-hover-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr.is-selected td:not(.gap) {
+      background: var(--workbench-grid-selected-bg);
+      background-image: none;
+      box-shadow: inset 0 2px 0 rgba(var(--bs-primary-rgb), 0.35),
+        inset 0 -2px 0 rgba(var(--bs-primary-rgb), 0.35);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .fx-position-grid-fill td {
+      height: 0;
+      min-height: 0;
+      padding: 0;
+      pointer-events: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .fx-position-grid-fill .identity {
+      background: var(--bs-body-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .fx-position-grid-fill .sell-zone {
+      background: rgba(var(--bs-danger-rgb), 0.055);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .fx-position-grid-fill .buy-zone {
+      background: rgba(var(--bs-success-rgb), 0.055);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .fx-position-grid-fill:hover td:not(.gap) {
+      background: inherit;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sort-button {
+      gap: 4px;
+      color: inherit;
+      font: inherit;
+      font-weight: 500;
+      text-decoration: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sort-button:hover {
+      text-decoration: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sort-button::after {
+      color: var(--bs-secondary-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .form-check-input {
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      border-color: var(--bs-secondary-color);
+      cursor: pointer;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .trade-id-copy {
+      width: 24px;
+      min-width: 24px;
+      height: 24px;
+      min-height: 24px;
+      padding: 0;
+      border-color: var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      color: var(--bs-secondary-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .trade-id-copy:hover {
+      border-color: var(--bs-secondary-color);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tfoot td {
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tfoot tr:last-child td {
+      border-bottom: 0;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-row td {
+      height: 34px;
+      font-weight: 500;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-total td {
+      border-top: 3px solid var(--palette-gray-500);
+      border-bottom: 0;
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      font-weight: 400;
+      box-shadow: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-total .summary-label {
+      background: var(--workbench-grid-header-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-row .summary-label {
+      background: var(--workbench-grid-header-bg);
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-total .summary-label {
+      font-weight: 400;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-net td {
+      font-size: calc(var(--workbench-grid-size) + 1px);
+      font-weight: 600;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-net .summary-label {
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-table);
+      font-weight: 600;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-row :is(.summary-sell.rate, .summary-buy.rate) {
+      border-right: var(--data-grid-line-width) solid var(--data-grid-line-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .summary-sell {
+      background: var(--bs-body-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .summary-buy {
+      background: var(--bs-body-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-net .summary-net-active.sell-side {
+      background: var(--bs-danger-bg-subtle);
+      color: var(--bs-danger-text-emphasis);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-net .summary-net-active.buy-side {
+      background: var(--bs-success-bg-subtle);
+      color: var(--bs-success-text-emphasis);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .summary-bridge {
+      background: var(--bs-body-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .hedge-toolbar) {
+      display: flex;
+      width: 100%;
+      min-height: 48px;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: var(--fx-position-toolbar-gap) 0 0;
+      padding: 7px 8px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      box-shadow: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .position-toolbar-row {
+      display: grid;
+      flex: 0 0 auto;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+      margin-top: var(--fx-position-toolbar-gap);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+      margin-top: 0;
+      background: var(--bs-tertiary-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar {
+      margin-top: 0;
+      background: var(--bs-body-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .hedge-toolbar) {
+      flex: 0 0 auto;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+      display: grid !important;
+      flex: 0 0 auto;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      flex-wrap: nowrap;
+      gap: 14px;
+      margin-top: var(--fx-position-toolbar-gap);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar-primary {
+      display: flex;
+      min-width: max-content;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto;
+      flex-wrap: nowrap;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar-primary {
+      display: flex;
+      min-width: max-content;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-control.batch-toolbar-settings {
+      display: flex;
+      align-items: center;
+      justify-self: end;
+      padding-left: 12px;
+      border-left: 1px solid var(--bs-border-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar-settings {
+      display: flex;
+      align-items: center;
+      justify-self: end;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: minmax(280px, 1fr) auto;
+      align-items: center;
+      justify-content: end;
+      gap: 10px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-execution {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: 118px 156px 118px 24px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned {
+      position: relative;
+      display: block;
+      min-height: 30px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-presets {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--hedge-quick-preset-width);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-execution {
+      position: absolute;
+      top: 0;
+      left: var(--hedge-quick-execution-left);
+      grid-template-columns:
+        var(--hedge-quick-action-width)
+        var(--hedge-quick-quote-width)
+        var(--hedge-quick-action-width)
+        24px;
+      gap: 8px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-action {
+      width: var(--hedge-quick-action-width);
+      min-width: 0;
+      padding-inline: 4px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-quote {
+      width: var(--hedge-quick-quote-width);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar-state {
+      display: inline-flex;
+      min-height: 30px;
+      grid-column: 1 / -1;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-presets {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 7px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-boundary {
+      display: inline-flex;
+      width: 24px;
+      min-width: 24px;
+      height: 30px;
+      flex: 0 0 24px;
+      align-items: center;
+      color: var(--bs-secondary-color);
+      transition: color 150ms ease-in-out;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-boundary-start {
+      justify-content: flex-end;
+      padding-left: 7px;
+      border-left: 1px solid var(--bs-border-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-boundary-end {
+      justify-content: flex-start;
+      padding-right: 7px;
+      border-right: 1px solid var(--bs-border-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-boundary .button-icon {
+      font-size: 16px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-unlocked .hedge-quick-boundary-start {
+      color: var(--bs-danger);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-unlocked .hedge-quick-boundary-end {
+      color: var(--bs-success);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar:not(.is-unlocked) :is(
+      .hedge-quick-preset-unit,
+      .hedge-quick-quote
+    ) {
+      opacity: 0.72;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-presets .btn-group {
+      display: flex;
+      min-width: 0;
+      flex: 0 0 auto;
+      justify-content: flex-end;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset {
+      --bs-btn-color: var(--bs-secondary-color);
+      --bs-btn-bg: var(--bs-body-bg);
+      --bs-btn-hover-bg: rgba(var(--bs-primary-rgb), 0.08);
+      --bs-btn-hover-border-color: var(--bs-primary-border-subtle);
+      --bs-btn-active-bg: var(--bs-primary-bg-subtle);
+      --bs-btn-active-border-color: var(--bs-primary);
+      width: 50px;
+      min-width: 50px;
+      height: 30px;
+      flex: 0 0 50px;
+      padding: 3px 8px;
+      border-color: var(--bs-border-color);
+      border-radius: 0;
+      color: var(--bs-secondary-color) !important;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset:first-child {
+      border-radius: var(--workbench-radius) 0 0 var(--workbench-radius);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset:last-child {
+      border-radius: 0 var(--workbench-radius) var(--workbench-radius) 0;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset:is(
+      :hover,
+      :focus,
+      :focus-visible,
+      :active
+    ):not(:disabled):not(.active) {
+      z-index: 1;
+      box-shadow: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset.active {
+      z-index: 4;
+      border-color: var(--bs-primary);
+      background: var(--bs-primary-bg-subtle);
+      color: var(--bs-primary-text-emphasis) !important;
+      box-shadow: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset-unit {
+      min-width: 52px;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action {
+      --bs-btn-bg: var(--bs-body-bg);
+      display: inline-flex;
+      min-width: 118px;
+      height: 30px;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border-radius: var(--workbench-radius);
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action-sell {
+      --bs-btn-bg: rgba(var(--bs-danger-rgb), 0.055);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action-buy {
+      --bs-btn-bg: rgba(var(--bs-success-rgb), 0.055);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action .button-icon {
+      font-size: 17px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action:focus-visible {
+      box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.16);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-quote {
+      display: grid;
+      width: 156px;
+      min-height: 30px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: stretch;
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      font-variant-numeric: tabular-nums;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-quote-value {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-quote-value {
+      padding: 0 7px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-quote-value + .hedge-quick-quote-value {
+      border-left: 1px solid var(--bs-border-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar-title, .batch-toolbar-title) {
+      display: inline-flex;
+      min-width: 106px;
+      height: 30px;
+      align-items: center;
+      padding: 0 10px 0 2px;
+      border-right: 1px solid var(--bs-border-color);
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(
+      .hedge-toolbar-title,
+      .client-deal-toolbar-title,
+      .batch-toolbar-icon-title
+    ) {
+      width: 32px;
+      min-width: 32px;
+      justify-content: center;
+      padding: 0;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(
+      .hedge-toolbar-title,
+      .client-deal-toolbar-title,
+      .batch-toolbar-icon-title
+    ) .button-icon {
+      font-size: 20px;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-control {
+      display: inline-flex;
+      width: auto;
+      min-height: 30px;
+      flex: 0 0 auto;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 6px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-label {
+      display: inline-flex;
+      height: 30px;
+      align-items: center;
+      padding: 0 3px 0 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .deal-generation-control {
+      margin-left: auto;
+      padding-left: 12px;
+      border-left: 1px solid var(--bs-border-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .hedge-toolbar) .action-button {
+      display: inline-flex;
+      min-height: 30px;
+      height: 30px;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: var(--workbench-radius);
+      box-shadow: none;
+      font-family: var(--bs-body-font-family);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-control .action-button {
+      width: auto;
+      min-width: auto;
+      margin: 0;
+      border-width: 1px;
+      border-style: solid;
+      border-radius: var(--workbench-radius);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-control :is(
+      .generation-settings-toggle,
+      .batch-settings-toggle
+    ) {
+      width: 30px;
+      min-width: 30px;
+      padding: 0;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .toolbar-secondary-action:is(
+      :hover,
+      :focus-visible
+    ):not(:disabled):not(.is-running) {
+      border-color: var(--bs-secondary);
+      background: var(--app-button-secondary-hover-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .toolbar-secondary-action:active:not(:disabled):not(.is-running) {
+      border-color: var(--bs-secondary);
+      background: var(--app-button-secondary-active-bg);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar)
+    .process-toggle-button:not(.is-running) {
+      --bs-btn-color: var(--app-button-primary-color);
+      --bs-btn-bg: var(--app-button-primary-bg);
+      --bs-btn-border-color: var(--app-button-primary-border);
+      --bs-btn-hover-color: var(--app-button-primary-color);
+      --bs-btn-hover-bg: var(--app-button-primary-hover-bg);
+      --bs-btn-hover-border-color: var(--app-button-primary-hover-border);
+      --bs-btn-active-color: var(--app-button-primary-color);
+      --bs-btn-active-bg: var(--app-button-primary-active-bg);
+      --bs-btn-active-border-color: var(--app-button-primary-active-border);
+      border-color: var(--app-button-primary-border);
+      background: var(--app-button-primary-bg);
+      color: var(--app-button-primary-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar)
+    .process-toggle-button:not(.is-running):hover:not(:disabled) {
+      border-color: var(--app-button-primary-hover-border);
+      background: var(--app-button-primary-hover-bg);
+      color: var(--app-button-primary-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar)
+    .process-toggle-button:not(.is-running):active:not(:disabled) {
+      border-color: var(--app-button-primary-active-border);
+      background: var(--app-button-primary-active-bg);
+      color: var(--app-button-primary-color);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running {
+      border-color: var(--app-process-running-border);
+      background: var(--app-process-running);
+      color: var(--bs-white);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running:hover:not(:disabled) {
+      border-color: var(--app-process-running-hover);
+      background: var(--app-process-running-hover);
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .hedge-toolbar) .action-button:disabled {
+      border-color: var(--bs-border-color);
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-secondary-color);
+      cursor: default;
+      opacity: 1;
+    }
+
+    @media (max-width: 1220px) {
+      #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 7px;
+      }
+
+      #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar {
+        grid-template-columns: minmax(280px, 1fr) auto;
+      }
+    }
+
+    @media (max-width: 1040px) {
+      #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar-settings {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-presets {
+        grid-column: 1 / -1;
+      }
+
+      #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-execution {
+        width: 100%;
+        grid-template-columns: minmax(92px, 1fr) minmax(142px, 156px) minmax(92px, 1fr) 24px;
+      }
+
+      #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action {
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 860px) {
+      #mainPage.fx-position-bootstrap.workbench-page .deal-generation-control {
+        width: 100%;
+        margin-left: 118px;
+        padding-top: 7px;
+        padding-left: 0;
+        border-top: 1px solid var(--bs-border-color);
+        border-left: 0;
+      }
+
+      #mainPage.fx-position-bootstrap.workbench-page .position-toolbar-row {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .batch-status {
+      min-width: 0;
+      flex: 0 1 auto;
+      justify-content: flex-end;
+      margin-left: auto;
+    }
+
+    #mainPage.fx-position-bootstrap.workbench-page .fx-position-footer .batch-status {
+      display: flex;
+      min-height: 32px;
+      align-items: center;
+      margin: 0;
+    }
+
+    :is(.workbench-page, .modal, dialog[class]) {
+      font-family: var(--bs-body-font-family);
+      font-size: var(--app-font-size-body);
+      font-weight: var(--app-font-weight-regular);
+    }
+
+    :is(.workbench-page, .modal, dialog) :is(.modal-title, .dialog-title) {
+      font-size: var(--app-font-size-dialog-title);
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.2;
+    }
+
+    .workbench-page :is(.page-title, .settings-title) {
+      font-size: var(--app-font-size-page-title);
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.2;
+    }
+
+    .workbench-page :is(
+      .batch-details-section-title,
+      .batch-neutrality-title,
+      .batch-details-prompt-title,
+      .counterparty-card-section-title,
+      .client-execution-contexts-title,
+      .client-deal-create-section-title,
+      .profile-detail-panel .profile-panel-title
+    ) {
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+      line-height: 1.3;
+    }
+
+    :is(.workbench-page, .modal, dialog) :is(.form-label, .form-field, .settings-field-title) {
+      font-size: var(--app-font-size-label);
+      font-weight: var(--app-font-weight-medium);
+    }
+
+    :is(.workbench-page, .modal, dialog) :is(
+      .form-control,
+      .form-select,
+      .input-group-text,
+      .inline-edit-control
+    ),
+    :is(.workbench-page, .modal, dialog) .form-field > :is(input, select, textarea) {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-regular);
+    }
+
+    .client-deal-currency-pair-field .form-select,
+    #hedgingSettingsPage .client-deal-pricing-mode-field .form-select {
+      font-size: var(--app-font-size-control-emphasis);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    :is(#addClientDealDialog, #addHedgeDealDialog)
+    .client-deal-pricing-mode-field .form-select {
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-medium);
+    }
