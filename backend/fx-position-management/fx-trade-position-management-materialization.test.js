@@ -124,6 +124,14 @@ function managementRow(databasePath, tradeId, tradeType) {
   `).get(tradeId, tradeType));
 }
 
+function batchMemberTradeId(databasePath, batchId, memberRole) {
+  return withDatabase(databasePath, database => Number(database.prepare(`
+    SELECT trade_id AS tradeId
+    FROM fx_batch_members
+    WHERE batch_id = ? AND member_role = ?
+  `).get(batchId, memberRole)?.tradeId));
+}
+
 function assertValidManagementTimestamp(row) {
   assert.match(row.createdAt, ISO_UTC_TIMESTAMP);
   assert.match(row.updatedAt, ISO_UTC_TIMESTAMP);
@@ -666,16 +674,17 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
     { positionManagementModeOverride: "AUTO" }
   ), 200);
 
+  const hedgeDealPayload = {
+    pricingRuleId: hedgeRule.pricingRuleId,
+    ccyPairCode: hedgeRule.ccyPairCode,
+    side: "BUY",
+    dealtCcyCode: "EUR",
+    dealtCcyAmount: "1000",
+    tradeRate: "1.1234",
+    tenor: "TOD"
+  };
   const overriddenAutoHedge = successfulBody(
-    await request("POST", "/api/v1/hedge-fx-deals", {
-      pricingRuleId: hedgeRule.pricingRuleId,
-      ccyPairCode: hedgeRule.ccyPairCode,
-      side: "BUY",
-      dealtCcyCode: "EUR",
-      dealtCcyAmount: "1000",
-      tradeRate: "1.1234",
-      tenor: "TOD"
-    }),
+    await request("POST", "/api/v1/hedge-fx-deals", hedgeDealPayload),
     201
   );
   const overriddenAutoHedgeSnapshot = managementRow(
@@ -686,6 +695,39 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
   assert.equal(overriddenAutoHedgeSnapshot.initialPositionManagementMode, "AUTO");
   assert.equal(overriddenAutoHedgeSnapshot.currentPositionManagementMode, "AUTO");
 
+  const manualTabHedge = successfulBody(
+    await request("POST", "/api/v1/hedge-fx-deals", {
+      ...hedgeDealPayload,
+      positionManagementMode: "MANUAL"
+    }),
+    201
+  );
+  assert.deepEqual(
+    [
+      managementRow(
+        databasePath,
+        manualTabHedge.tradeId,
+        "HEDGE_DEAL"
+      ).initialPositionManagementMode,
+      managementRow(
+        databasePath,
+        manualTabHedge.tradeId,
+        "HEDGE_DEAL"
+      ).currentPositionManagementMode
+    ],
+    ["MANUAL", "MANUAL"]
+  );
+  const invalidTabModeHedge = await request(
+    "POST",
+    "/api/v1/hedge-fx-deals",
+    {
+      ...hedgeDealPayload,
+      positionManagementMode: "SEMI_AUTO"
+    }
+  );
+  assert.equal(invalidTabModeHedge.statusCode, 400);
+  assert.equal(invalidTabModeHedge.body.code, "INVALID_HEDGE_FX_DEAL");
+
   successfulBody(await request(
     "PUT",
     `/api/v1/pricing-rules/${hedgeRule.pricingRuleId}`,
@@ -694,6 +736,29 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
   assert.deepEqual(
     managementRow(databasePath, overriddenAutoHedge.tradeId, "HEDGE_DEAL"),
     overriddenAutoHedgeSnapshot
+  );
+
+  const autoTabHedge = successfulBody(
+    await request("POST", "/api/v1/hedge-fx-deals", {
+      ...hedgeDealPayload,
+      positionManagementMode: "AUTO"
+    }),
+    201
+  );
+  assert.deepEqual(
+    [
+      managementRow(
+        databasePath,
+        autoTabHedge.tradeId,
+        "HEDGE_DEAL"
+      ).initialPositionManagementMode,
+      managementRow(
+        databasePath,
+        autoTabHedge.tradeId,
+        "HEDGE_DEAL"
+      ).currentPositionManagementMode
+    ],
+    ["AUTO", "AUTO"]
   );
 
   const fxPositions = successfulBody(
@@ -713,7 +778,9 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
     [`${inheritedAutoClient.tradeId}:CLIENT_DEAL`, ["AUTO", "AUTO"]],
     [`${overriddenManualClient.tradeId}:CLIENT_DEAL`, ["MANUAL", "AUTO"]],
     [`${manualFallbackClient.tradeId}:CLIENT_DEAL`, ["MANUAL", "MANUAL"]],
-    [`${overriddenAutoHedge.tradeId}:HEDGE_DEAL`, ["AUTO", "AUTO"]]
+    [`${overriddenAutoHedge.tradeId}:HEDGE_DEAL`, ["AUTO", "AUTO"]],
+    [`${manualTabHedge.tradeId}:HEDGE_DEAL`, ["MANUAL", "MANUAL"]],
+    [`${autoTabHedge.tradeId}:HEDGE_DEAL`, ["AUTO", "AUTO"]]
   ]);
   fxPositions.forEach(position => {
     const key = `${position.tradeId}:${position.tradeType}`;
@@ -727,7 +794,145 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
   });
   assert.deepEqual([...expectedModes.keys()], []);
 
-  const managementBeforeRestart = withDatabase(databasePath, managementRows);
+  const mixedModeBatch = await request("POST", "/api/v1/fx-batches", {
+    idempotencyKey: "position-mode-mixed-sources",
+    tradeIds: [inheritedAutoClient.tradeId, manualFallbackClient.tradeId]
+  });
+  assert.equal(mixedModeBatch.statusCode, 422);
+  assert.equal(mixedModeBatch.body.code, "INCOMPATIBLE_BATCH_SELECTION");
+
+  const autoSourceBatch = successfulBody(await request(
+    "POST",
+    "/api/v1/fx-batches",
+    {
+      idempotencyKey: "position-mode-auto-source",
+      tradeIds: [inheritedAutoClient.tradeId]
+    }
+  ), 201);
+  assert.equal(autoSourceBatch.formationReasonCode, "MANUAL_SELECTION");
+  const autoPositionOutTradeId = batchMemberTradeId(
+    databasePath,
+    autoSourceBatch.batchId,
+    "POSITION_OUT"
+  );
+  const autoBalanceTradeId = batchMemberTradeId(
+    databasePath,
+    autoSourceBatch.batchId,
+    "BALANCE_TRADE"
+  );
+  assert.ok(Number.isSafeInteger(autoPositionOutTradeId));
+  assert.ok(Number.isSafeInteger(autoBalanceTradeId));
+  assert.deepEqual(
+    [
+      managementRow(
+        databasePath,
+        autoPositionOutTradeId,
+        "BATCH_POSITION_OUT"
+      ).initialPositionManagementMode,
+      managementRow(
+        databasePath,
+        autoPositionOutTradeId,
+        "BATCH_POSITION_OUT"
+      ).currentPositionManagementMode
+    ],
+    ["AUTO", "AUTO"]
+  );
+  assert.deepEqual(
+    [
+      managementRow(
+        databasePath,
+        autoBalanceTradeId,
+        "BATCH_BALANCE_TRADE"
+      ).initialPositionManagementMode,
+      managementRow(
+        databasePath,
+        autoBalanceTradeId,
+        "BATCH_BALANCE_TRADE"
+      ).currentPositionManagementMode
+    ],
+    ["AUTO", "AUTO"]
+  );
+
+  const manualSourceBatch = successfulBody(await request(
+    "POST",
+    "/api/v1/fx-batches",
+    {
+      idempotencyKey: "position-mode-manual-source",
+      tradeIds: [manualFallbackClient.tradeId]
+    }
+  ), 201);
+  const manualPositionOutTradeId = batchMemberTradeId(
+    databasePath,
+    manualSourceBatch.batchId,
+    "POSITION_OUT"
+  );
+  const manualBalanceTradeId = batchMemberTradeId(
+    databasePath,
+    manualSourceBatch.batchId,
+    "BALANCE_TRADE"
+  );
+  assert.ok(Number.isSafeInteger(manualPositionOutTradeId));
+  assert.ok(Number.isSafeInteger(manualBalanceTradeId));
+  assert.deepEqual(
+    [
+      managementRow(
+        databasePath,
+        manualPositionOutTradeId,
+        "BATCH_POSITION_OUT"
+      ).initialPositionManagementMode,
+      managementRow(
+        databasePath,
+        manualPositionOutTradeId,
+        "BATCH_POSITION_OUT"
+      ).currentPositionManagementMode
+    ],
+    ["MANUAL", "MANUAL"]
+  );
+  assert.deepEqual(
+    [
+      managementRow(
+        databasePath,
+        manualBalanceTradeId,
+        "BATCH_BALANCE_TRADE"
+      ).initialPositionManagementMode,
+      managementRow(
+        databasePath,
+        manualBalanceTradeId,
+        "BATCH_BALANCE_TRADE"
+      ).currentPositionManagementMode
+    ],
+    ["MANUAL", "MANUAL"]
+  );
+
+  const positionsAfterBatching = successfulBody(
+    await request("GET", "/api/v1/fx-positions"),
+    200
+  );
+  assert.equal(
+    positionsAfterBatching.find(position =>
+      position.tradeId === autoPositionOutTradeId
+      && position.tradeType === "BATCH_POSITION_OUT"
+    )?.currentFxPositionMode,
+    "AUTO"
+  );
+  assert.equal(
+    positionsAfterBatching.find(position =>
+      position.tradeId === manualPositionOutTradeId
+      && position.tradeType === "BATCH_POSITION_OUT"
+    )?.currentFxPositionMode,
+    "MANUAL"
+  );
+
+  withDatabase(databasePath, database => database.prepare(`
+    UPDATE fx_trade_position_management
+    SET initial_position_management_mode = 'MANUAL',
+        current_position_management_mode = 'MANUAL',
+        updated_at = created_at
+    WHERE
+      (trade_id = ? AND trade_type = 'BATCH_POSITION_OUT')
+      OR (trade_id = ? AND trade_type = 'BATCH_BALANCE_TRADE')
+  `).run(autoPositionOutTradeId, autoBalanceTradeId));
+  const legacyManagementBeforeRestart = withDatabase(databasePath, managementRows);
   closeDatabase();
   closeDatabase = null;
 
@@ -745,8 +950,31 @@ test("trade creation snapshots effective policy and FX Position exposes it", asy
     0,
     `Server restart failed:\n${restart.stdout}\n${restart.stderr}`
   );
+  const managementAfterRestart = withDatabase(databasePath, managementRows);
+  const repairedAutoPositionOut = managementAfterRestart.find(row =>
+    row.tradeId === autoPositionOutTradeId
+    && row.tradeType === "BATCH_POSITION_OUT"
+  );
+  assert.equal(repairedAutoPositionOut.initialPositionManagementMode, "AUTO");
+  assert.equal(repairedAutoPositionOut.currentPositionManagementMode, "AUTO");
+  assertValidManagementTimestamp(repairedAutoPositionOut);
+  const repairedAutoBalanceTrade = managementAfterRestart.find(row =>
+    row.tradeId === autoBalanceTradeId
+    && row.tradeType === "BATCH_BALANCE_TRADE"
+  );
+  assert.equal(repairedAutoBalanceTrade.initialPositionManagementMode, "AUTO");
+  assert.equal(repairedAutoBalanceTrade.currentPositionManagementMode, "AUTO");
+  assertValidManagementTimestamp(repairedAutoBalanceTrade);
+  const repairedTradeKeys = new Set([
+    `${autoPositionOutTradeId}:BATCH_POSITION_OUT`,
+    `${autoBalanceTradeId}:BATCH_BALANCE_TRADE`
+  ]);
   assert.deepEqual(
-    withDatabase(databasePath, managementRows),
-    managementBeforeRestart
+    managementAfterRestart.filter(row =>
+      !repairedTradeKeys.has(`${row.tradeId}:${row.tradeType}`)
+    ),
+    legacyManagementBeforeRestart.filter(row =>
+      !repairedTradeKeys.has(`${row.tradeId}:${row.tradeType}`)
+    )
   );
 });

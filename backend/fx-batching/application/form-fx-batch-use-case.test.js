@@ -9,6 +9,7 @@ const {
 const commonTrade = {
   tradeId: 1,
   tradeType: "CLIENT_DEAL",
+  currentPositionManagementMode: "MANUAL",
   ccyPairCode: "EUR_USD",
   baseCcyCode: "EUR",
   quoteCcyCode: "USD",
@@ -87,6 +88,69 @@ test("forms a batch through one transaction boundary", () => {
     windowOpenedAt: null,
     windowClosedAt: null
   });
+  assert.equal(savedBatch.sourcePositionManagementMode, "MANUAL");
+});
+
+test("preserves the current source FX Position Mode independently of formation reason", () => {
+  let savedBatch;
+  const useCase = useCaseWith({
+    fxBatchRepository: {
+      findFormedByIdempotencyKey: () => null,
+      saveFormed(value) {
+        savedBatch = value;
+        return {
+          batchId: 8,
+          batchStatus: "FORMED",
+          sourceTradeIds: value.formation.sourceTradeIds
+        };
+      }
+    },
+    fxTradeExposureRepository: {
+      findBatchSources: () => [{
+        ...commonTrade,
+        currentPositionManagementMode: "AUTO"
+      }]
+    }
+  });
+
+  useCase.execute({
+    idempotencyKey: "manual-command-for-auto-source",
+    tradeIds: [1]
+  });
+
+  assert.equal(savedBatch.formationReason.reasonCode, "MANUAL_SELECTION");
+  assert.equal(savedBatch.sourcePositionManagementMode, "AUTO");
+});
+
+test("rejects source trades from different FX Position Modes", () => {
+  let saveCalls = 0;
+  const useCase = useCaseWith({
+    fxBatchRepository: {
+      findFormedByIdempotencyKey: () => null,
+      saveFormed() {
+        saveCalls += 1;
+      }
+    },
+    fxTradeExposureRepository: {
+      findBatchSources: () => [
+        commonTrade,
+        {
+          ...commonTrade,
+          tradeId: 2,
+          currentPositionManagementMode: "AUTO"
+        }
+      ]
+    }
+  });
+
+  assert.throws(
+    () => useCase.execute({
+      idempotencyKey: "mixed-position-modes",
+      tradeIds: [1, 2]
+    }),
+    error => error.code === "INCOMPATIBLE_BATCH_SELECTION"
+  );
+  assert.equal(saveCalls, 0);
 });
 
 test("preserves an automatic formation reason with its structured values", () => {

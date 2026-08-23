@@ -31,7 +31,7 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   external_counterparties_grid: 8,
   internal_units_grid: 8,
   users_grid: 7,
-  execution_contexts_grid: 7,
+  execution_contexts_grid: 8,
   servicing_locations_grid: 7,
   accounting_systems_grid: 5,
   execution_systems_grid: 7,
@@ -69,7 +69,7 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 206);
+  assert.equal(fullyQualifiedColumnKeys.size, 207);
 });
 
 test("includes the Ccy Pair selector width in the FX Position layout", () => {

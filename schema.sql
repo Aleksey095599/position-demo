@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS execution_contexts
     accounting_system_id             TEXT,
     execution_system_id              TEXT NOT NULL,
     default_position_management_mode TEXT NOT NULL DEFAULT 'MANUAL',
+    auto_hedging_admission_policy     TEXT NOT NULL DEFAULT 'MANUAL_ONLY',
 
     CONSTRAINT fk_execution_contexts_servicing_location
         FOREIGN KEY (servicing_location_id)
@@ -191,7 +192,12 @@ CREATE TABLE IF NOT EXISTS execution_contexts
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT chk_execution_contexts_default_position_management_mode
-        CHECK (default_position_management_mode IN ('MANUAL', 'AUTO'))
+        CHECK (default_position_management_mode IN ('MANUAL', 'AUTO')),
+    CONSTRAINT chk_execution_contexts_auto_hedging_admission_policy
+        CHECK (
+            auto_hedging_admission_policy IN
+                ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
+        )
 );
 
 CREATE TABLE IF NOT EXISTS trading_counterparties
@@ -2389,6 +2395,20 @@ AND NOT EXISTS
 )
 BEGIN
     SELECT RAISE(ABORT, 'an Execution Context used by client_deal_generation_settings must remain AUTO_PRICED');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_execution_systems_lock_pricing_mode_while_referenced
+BEFORE UPDATE OF pricing_mode ON execution_systems
+FOR EACH ROW
+WHEN NEW.pricing_mode <> OLD.pricing_mode
+    AND EXISTS
+    (
+        SELECT 1
+        FROM execution_contexts context
+        WHERE context.execution_system_id = OLD.execution_system_id
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'an Execution System used by Execution Context cannot change Pricing Mode');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_execution_systems_preserve_auto_priced_client_generation_settings

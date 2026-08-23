@@ -107,6 +107,10 @@ const {
   resolveFxPositionManagementMode
 } = require("./backend/fx-position-management/domain/fx-position-management-policy");
 const {
+  AUTO_HEDGING_ADMISSION_POLICY,
+  normalizeAutoHedgingAdmissionPolicy
+} = require("./backend/auto-hedging-admission/domain/auto-hedging-admission-policy");
+const {
   SendFxTradesToAutoPositionManagementUseCase
 } = require("./backend/fx-position-management/application/send-fx-trades-to-auto-position-management-use-case");
 
@@ -311,6 +315,7 @@ ensureFxBatchFormationReason(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 ensureFxPositionManagementPolicyColumns(database);
 ensureFxTradePositionManagementRows(database);
+repairLegacyBatchTechnicalTradeManagementModes(database);
 ensureHedgeFxDealTriggers(database);
 
 if (!databaseAlreadyInitialized) {
@@ -749,6 +754,25 @@ function ensureFxPositionManagementPolicyColumns(sqlite) {
   }
 
   if (
+    sqliteTableExists(sqlite, "execution_contexts")
+    && !tableColumnNames(sqlite, "execution_contexts")
+      .has("auto_hedging_admission_policy")
+  ) {
+    sqlite.exec(`
+      ALTER TABLE execution_contexts
+      ADD COLUMN auto_hedging_admission_policy TEXT NOT NULL DEFAULT 'MANUAL_ONLY'
+        CHECK (
+          auto_hedging_admission_policy IN
+            ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
+        );
+
+      UPDATE execution_contexts
+      SET auto_hedging_admission_policy = 'AUTO_IF_ELIGIBLE'
+      WHERE default_position_management_mode = 'AUTO';
+    `);
+  }
+
+  if (
     sqliteTableExists(sqlite, "pricing_rules")
     && !tableColumnNames(sqlite, "pricing_rules")
       .has("position_management_mode_override")
@@ -938,6 +962,72 @@ function ensureFxTradePositionManagementRows(sqlite) {
       WHERE management.trade_id = exposure.trade_id
         AND management.trade_type = exposure.trade_type
     )
+  `);
+}
+
+function repairLegacyBatchTechnicalTradeManagementModes(sqlite) {
+  const requiredTables = [
+    "fx_batches",
+    "fx_batch_members",
+    "fx_trade_position_management"
+  ];
+
+  if (requiredTables.some(tableName => !sqliteTableExists(sqlite, tableName))) {
+    return;
+  }
+
+  sqlite.exec(`
+    UPDATE fx_trade_position_management
+    SET initial_position_management_mode = 'AUTO',
+        current_position_management_mode = 'AUTO',
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE trade_type IN ('BATCH_BALANCE_TRADE', 'BATCH_POSITION_OUT')
+      AND initial_position_management_mode = 'MANUAL'
+      AND current_position_management_mode = 'MANUAL'
+      AND EXISTS
+      (
+        SELECT 1
+        FROM fx_batch_members output_member
+        INNER JOIN fx_batches batch
+          ON batch.batch_id = output_member.batch_id
+        WHERE output_member.trade_id = fx_trade_position_management.trade_id
+          AND output_member.trade_type = fx_trade_position_management.trade_type
+          AND
+          (
+            (
+              fx_trade_position_management.trade_type = 'BATCH_BALANCE_TRADE'
+              AND output_member.member_role = 'BALANCE_TRADE'
+            )
+            OR
+            (
+              fx_trade_position_management.trade_type = 'BATCH_POSITION_OUT'
+              AND output_member.member_role = 'POSITION_OUT'
+            )
+          )
+          AND batch.batch_status = 'FORMED'
+          AND EXISTS
+          (
+            SELECT 1
+            FROM fx_batch_members source_member
+            WHERE source_member.batch_id = output_member.batch_id
+              AND source_member.member_role = 'TRADE'
+          )
+          AND NOT EXISTS
+          (
+            SELECT 1
+            FROM fx_batch_members source_member
+            LEFT JOIN fx_trade_position_management source_management
+              ON source_management.trade_id = source_member.trade_id
+              AND source_management.trade_type = source_member.trade_type
+            WHERE source_member.batch_id = output_member.batch_id
+              AND source_member.member_role = 'TRADE'
+              AND
+              (
+                source_management.current_position_management_mode IS NULL
+                OR source_management.current_position_management_mode <> 'AUTO'
+              )
+          )
+      )
   `);
 }
 
@@ -6144,6 +6234,9 @@ function migrateLegacyExecutionContextIds(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
+      DROP TRIGGER IF EXISTS trg_execution_systems_lock_pricing_mode_while_referenced;
+    `);
+    sqlite.exec(`
       CREATE TABLE execution_contexts_migrated
       (
           execution_context_id  INTEGER PRIMARY KEY,
@@ -6274,6 +6367,20 @@ function migrateLegacyExecutionContextIds(sqlite) {
           ON pricing_rules (pricing_rule_id, ccy_pair_code);
       CREATE UNIQUE INDEX uq_pricing_rules_hedge_quick_mode_counterparty_reference
           ON pricing_rules (pricing_rule_id, counterparty_id, ccy_pair_code);
+
+      CREATE TRIGGER trg_execution_systems_lock_pricing_mode_while_referenced
+      BEFORE UPDATE OF pricing_mode ON execution_systems
+      FOR EACH ROW
+      WHEN NEW.pricing_mode <> OLD.pricing_mode
+          AND EXISTS
+          (
+              SELECT 1
+              FROM execution_contexts context
+              WHERE context.execution_system_id = OLD.execution_system_id
+          )
+      BEGIN
+          SELECT RAISE(ABORT, 'an Execution System used by Execution Context cannot change Pricing Mode');
+      END;
 
       DROP TABLE execution_context_id_map;
     `);
@@ -7103,14 +7210,15 @@ function seedInitialExecutionContexts(sqlite) {
         servicing_location_id,
         accounting_system_id,
         execution_system_id,
-        default_position_management_mode
+        default_position_management_mode,
+        auto_hedging_admission_policy
       )
     VALUES
-      ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO'),
-      ('002', 'AFINA', 'RFQ', 'MANUAL'),
-      ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL'),
-      ('1234', 'AFINA', 'RFQ', 'MANUAL'),
-      ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO');
+      ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE'),
+      ('002', 'AFINA', 'RFQ', 'MANUAL', 'MANUAL_ONLY'),
+      ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL', 'MANUAL_ONLY'),
+      ('1234', 'AFINA', 'RFQ', 'MANUAL', 'MANUAL_ONLY'),
+      ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE');
   `);
 }
 
@@ -7747,6 +7855,7 @@ function executionContexts() {
       COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
       context.execution_system_id AS executionSystemId,
       context.default_position_management_mode AS defaultPositionManagementMode,
+      context.auto_hedging_admission_policy AS autoHedgingAdmissionPolicy,
       (
         SELECT COUNT(*)
         FROM trading_counterparty_execution_contexts assignment
@@ -7803,6 +7912,20 @@ function tradingCounterparty(counterpartyId) {
   return tradingCounterparties().find(counterparty => counterparty.counterpartyId === Number(counterpartyId)) || null;
 }
 
+function executionContextTradingCounterparties(executionContextId) {
+  const attachedCounterpartyIds = new Set(
+    database.prepare(`
+      SELECT counterparty_id AS counterpartyId
+      FROM trading_counterparty_execution_contexts
+      WHERE execution_context_id = ?
+    `).all(Number(executionContextId)).map(assignment => assignment.counterpartyId)
+  );
+
+  return tradingCounterparties().filter(counterparty =>
+    attachedCounterpartyIds.has(counterparty.counterpartyId)
+  );
+}
+
 function tradingCounterpartyExecutionContexts(counterpartyId) {
   return database.prepare(`
     SELECT
@@ -7811,6 +7934,7 @@ function tradingCounterpartyExecutionContexts(counterpartyId) {
       COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
       context.execution_system_id AS executionSystemId,
       context.default_position_management_mode AS defaultPositionManagementMode,
+      context.auto_hedging_admission_policy AS autoHedgingAdmissionPolicy,
       (
         SELECT COUNT(*)
         FROM trading_counterparty_execution_contexts context_assignment
@@ -9219,9 +9343,13 @@ function fxBatchSourceTrades(tradeIds) {
       e.tenor,
       e.base_ccy_value_date AS baseCcyValueDate,
       e.quote_ccy_value_date AS quoteCcyValueDate,
-      pair.default_quote_decimals AS rateFractionDigits
+      pair.default_quote_decimals AS rateFractionDigits,
+      management.current_position_management_mode AS currentPositionManagementMode
     FROM fx_trade_exposure e
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
+    INNER JOIN fx_trade_position_management management
+      ON management.trade_id = e.trade_id
+      AND management.trade_type = e.trade_type
     LEFT JOIN client_fx_deals c
       ON c.trade_id = e.trade_id AND c.trade_type = e.trade_type
     LEFT JOIN fx_hedge_deals h
@@ -9316,7 +9444,8 @@ function saveFormedFxBatch({
   sourceTrades,
   formation,
   formationReason,
-  formationTiming
+  formationTiming,
+  sourcePositionManagementMode
 }) {
     const firstSourceTrade = sourceTrades[0];
     const pair = ccyPairOption(firstSourceTrade.ccyPairCode);
@@ -9431,16 +9560,11 @@ function saveFormedFxBatch({
       );
       const tradeId = Number(exposureResult.lastInsertRowid);
 
-      if (trade.tradeType === "BATCH_POSITION_OUT") {
-        materializeFxTradePositionModeState(database, {
-          tradeId,
-          tradeType: trade.tradeType,
-          positionManagementMode: formationReason.reasonCode
-            === FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION
-            ? FX_POSITION_MANAGEMENT_MODE.MANUAL
-            : FX_POSITION_MANAGEMENT_MODE.AUTO
-        });
-      }
+      materializeFxTradePositionModeState(database, {
+        tradeId,
+        tradeType: trade.tradeType,
+        positionManagementMode: sourcePositionManagementMode
+      });
 
       if (trade.tradeType === "BATCH_BALANCE_TRADE") {
         insertBalanceTrade.run(tradeId, trade.tradeType);
@@ -10079,6 +10203,7 @@ function hedgeFxDealWithCalculatedTerms(
     baseCcyAmount: exposureAmounts.baseCcyAmount,
     quoteCcyAmount: exposureAmounts.quoteCcyAmount,
     tradeRate: payload.tradeRate,
+    positionManagementMode: payload.positionManagementMode ?? null,
     marketPulseStreamStatus: marketPulseSnapshot.status,
     marketPulseBid: marketQuote?.bid ?? null,
     marketPulseOffer: marketQuote?.offer ?? null,
@@ -10173,12 +10298,21 @@ function createHedgeFxDeal(
     );
     const tradeId = Number(exposureResult.lastInsertRowid);
 
-    materializeFxTradePositionMode(database, {
-      tradeId,
-      tradeType: "HEDGE_DEAL",
-      pricingRuleId: payload.pricingRuleId,
-      executionContextId: payload.executionContextId
-    });
+    if (payload.positionManagementMode === null
+      || payload.positionManagementMode === undefined) {
+      materializeFxTradePositionMode(database, {
+        tradeId,
+        tradeType: "HEDGE_DEAL",
+        pricingRuleId: payload.pricingRuleId,
+        executionContextId: payload.executionContextId
+      });
+    } else {
+      materializeFxTradePositionModeState(database, {
+        tradeId,
+        tradeType: "HEDGE_DEAL",
+        positionManagementMode: payload.positionManagementMode
+      });
+    }
 
     database.prepare(`
       INSERT INTO fx_hedge_deals
@@ -10762,6 +10896,20 @@ function validatedPositionManagementMode(value, label, { nullable = false } = {}
   }
 }
 
+function validatedAutoHedgingAdmissionPolicy(value) {
+  try {
+    return { value: normalizeAutoHedgingAdmissionPolicy(value) };
+  } catch (error) {
+    if (error?.code === "INVALID_AUTO_HEDGING_ADMISSION_POLICY") {
+      return {
+        error: "Auto Hedging Admission Policy must be AUTO_IF_ELIGIBLE, REVIEW_REQUIRED or MANUAL_ONLY."
+      };
+    }
+
+    throw error;
+  }
+}
+
 function validateExecutionContextPayload(body, current = null) {
   if (body === null || typeof body !== "object" || Array.isArray(body)) {
     return { error: "Execution Context payload must be a JSON object." };
@@ -10781,6 +10929,16 @@ function validateExecutionContextPayload(body, current = null) {
     requestedDefaultPositionManagementMode,
     "Default FX Position Mode"
   );
+  const requestedAutoHedgingAdmissionPolicy = Object.prototype.hasOwnProperty.call(
+    body,
+    "autoHedgingAdmissionPolicy"
+  )
+    ? body.autoHedgingAdmissionPolicy
+    : current?.autoHedgingAdmissionPolicy
+      ?? AUTO_HEDGING_ADMISSION_POLICY.MANUAL_ONLY;
+  const autoHedgingAdmissionPolicy = validatedAutoHedgingAdmissionPolicy(
+    requestedAutoHedgingAdmissionPolicy
+  );
 
   if (!isValidServicingLocationId(servicingLocationId)) {
     return { error: `Servicing Location ID must contain from one to ${SERVICING_LOCATION_ID_MAX_LENGTH} characters.` };
@@ -10798,6 +10956,10 @@ function validateExecutionContextPayload(body, current = null) {
     return defaultPositionManagementMode;
   }
 
+  if (autoHedgingAdmissionPolicy.error) {
+    return autoHedgingAdmissionPolicy;
+  }
+
   return {
     servicingLocationId,
     accountingSystemId,
@@ -10805,7 +10967,8 @@ function validateExecutionContextPayload(body, current = null) {
       ? null
       : accountingSystemId,
     executionSystemId,
-    defaultPositionManagementMode: defaultPositionManagementMode.value
+    defaultPositionManagementMode: defaultPositionManagementMode.value,
+    autoHedgingAdmissionPolicy: autoHedgingAdmissionPolicy.value
   };
 }
 
@@ -11437,6 +11600,15 @@ function validateHedgeFxDealBasePayload(body) {
   const dealtCcyCode = normalizedText(body.dealtCcyCode).toUpperCase();
   const dealtCcyAmount = normalizedPositiveDecimalText(body.dealtCcyAmount);
   const tenor = normalizedText(body.tenor).toUpperCase();
+  const positionManagementMode = Object.prototype.hasOwnProperty.call(
+    body,
+    "positionManagementMode"
+  )
+    ? validatedPositionManagementMode(
+      body.positionManagementMode,
+      "Hedge Deal FX Position Mode"
+    )
+    : { value: null };
 
   if (Number.isNaN(pricingRuleId) || pricingRuleId === null) {
     return { error: "Pricing Rule ID must be a positive integer." };
@@ -11462,13 +11634,18 @@ function validateHedgeFxDealBasePayload(body) {
     return { error: "Tenor must be TOD, TOM or SPOT." };
   }
 
+  if (positionManagementMode.error) {
+    return positionManagementMode;
+  }
+
   return {
     pricingRuleId,
     ccyPairCode,
     side,
     dealtCcyCode,
     dealtCcyAmount,
-    tenor
+    tenor,
+    positionManagementMode: positionManagementMode.value
   };
 }
 
@@ -11514,17 +11691,27 @@ function validateHedgeQuickModeDealPayload(body) {
     "ccyPairCode",
     "side",
     "presetCode",
-    "tenor"
+    "tenor",
+    "positionManagementMode"
   ]);
   const unexpectedFields = Object.keys(body).filter(field => !allowedFields.has(field));
   const ccyPairCode = normalizedText(body.ccyPairCode).toUpperCase();
   const side = normalizedText(body.side).toUpperCase();
   const presetCode = normalizedText(body.presetCode).toUpperCase();
   const tenor = normalizedText(body.tenor).toUpperCase();
+  const positionManagementMode = Object.prototype.hasOwnProperty.call(
+    body,
+    "positionManagementMode"
+  )
+    ? validatedPositionManagementMode(
+      body.positionManagementMode,
+      "Hedge Deal FX Position Mode"
+    )
+    : { value: null };
 
   if (unexpectedFields.length > 0) {
     return {
-      error: `Only Ccy Pair Code, Side, Preset Code and Tenor may be provided. Unexpected fields: ${unexpectedFields.join(", ")}.`
+      error: `Only Ccy Pair Code, Side, Preset Code, Tenor and FX Position Mode may be provided. Unexpected fields: ${unexpectedFields.join(", ")}.`
     };
   }
 
@@ -11546,7 +11733,17 @@ function validateHedgeQuickModeDealPayload(body) {
     return { error: "Tenor must be TOD, TOM or SPOT." };
   }
 
-  return { ccyPairCode, side, presetCode, tenor };
+  if (positionManagementMode.error) {
+    return positionManagementMode;
+  }
+
+  return {
+    ccyPairCode,
+    side,
+    presetCode,
+    tenor,
+    positionManagementMode: positionManagementMode.value
+  };
 }
 
 function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractionDigits) {
@@ -11869,6 +12066,14 @@ function databaseConstraintMessage(error) {
       status: 409,
       code: "COUNTERPARTY_EXECUTION_CONTEXT_IMMUTABLE",
       message: "An Execution Context assignment cannot be changed. Attach a new Context and detach the old one."
+    };
+  }
+
+  if (message.includes("an Execution System used by Execution Context cannot change Pricing Mode")) {
+    return {
+      status: 409,
+      code: "EXECUTION_SYSTEM_PRICING_MODE_IMMUTABLE",
+      message: "An Execution System Pricing Mode cannot be changed while it is used by Execution Context."
     };
   }
 
@@ -12744,7 +12949,10 @@ async function handleApi(request, response, url) {
         return true;
       }
 
-      const priced = autoPricedHedgeFxDealWithCalculatedTerms(instruction);
+      const priced = autoPricedHedgeFxDealWithCalculatedTerms({
+        ...instruction,
+        positionManagementMode: payload.positionManagementMode
+      });
       const tradeId = createHedgeFxDeal(
         priced.deal,
         priced.exposureAmounts,
@@ -13742,6 +13950,16 @@ async function handleApi(request, response, url) {
       return true;
     }
 
+    if (payload.pricingMode !== current.pricingMode && current.executionContextCount > 0) {
+      apiError(
+        response,
+        409,
+        "EXECUTION_SYSTEM_PRICING_MODE_IMMUTABLE",
+        `Execution System ${currentId} Pricing Mode cannot be changed while it is used by Execution Context.`
+      );
+      return true;
+    }
+
     try {
       runInImmediateTransaction(database, () => {
         if (payload.pricingMode !== "AUTO_PRICED") {
@@ -13804,6 +14022,26 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  const executionContextTradingCounterpartiesMatch =
+    /^\/api\/v1\/execution-contexts\/(\d+)\/trading-counterparties$/.exec(pathname);
+
+  if (executionContextTradingCounterpartiesMatch && method === "GET") {
+    const executionContextId = Number(executionContextTradingCounterpartiesMatch[1]);
+
+    if (!executionContext(executionContextId)) {
+      apiError(
+        response,
+        404,
+        "EXECUTION_CONTEXT_NOT_FOUND",
+        `Execution Context ${executionContextId} was not found.`
+      );
+      return true;
+    }
+
+    sendJson(response, 200, executionContextTradingCounterparties(executionContextId));
+    return true;
+  }
+
   if (pathname === "/api/v1/execution-contexts" && method === "GET") {
     sendJson(response, 200, executionContexts());
     return true;
@@ -13832,14 +14070,16 @@ async function handleApi(request, response, url) {
             servicing_location_id,
             accounting_system_id,
             execution_system_id,
-            default_position_management_mode
+            default_position_management_mode,
+            auto_hedging_admission_policy
           )
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
       `).run(
         payload.servicingLocationId,
         payload.accountingSystemDatabaseId,
         payload.executionSystemId,
-        payload.defaultPositionManagementMode
+        payload.defaultPositionManagementMode,
+        payload.autoHedgingAdmissionPolicy
       );
       sendJson(response, 201, executionContext(Number(result.lastInsertRowid)));
     } catch (error) {
@@ -13896,13 +14136,15 @@ async function handleApi(request, response, url) {
           SET servicing_location_id = ?,
               accounting_system_id = ?,
               execution_system_id = ?,
-              default_position_management_mode = ?
+              default_position_management_mode = ?,
+              auto_hedging_admission_policy = ?
           WHERE execution_context_id = ?
         `).run(
           payload.servicingLocationId,
           payload.accountingSystemDatabaseId,
           payload.executionSystemId,
           payload.defaultPositionManagementMode,
+          payload.autoHedgingAdmissionPolicy,
           currentExecutionContextId
         );
         synchronizeClientDealGenerationSettings(database);

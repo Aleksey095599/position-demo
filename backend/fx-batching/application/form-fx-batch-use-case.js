@@ -9,6 +9,11 @@ const {
 const {
   fxBatchFormationTiming
 } = require("../domain/fx-batch-formation-timing");
+const {
+  normalizeFxPositionManagementMode
+} = require(
+  "../../fx-position-management/domain/fx-position-management-policy"
+);
 
 function applicationError(code, message) {
   const error = new Error(message);
@@ -102,6 +107,24 @@ function canonicalJson(value) {
   return JSON.stringify(value);
 }
 
+function commonSourcePositionManagementMode(sourceTrades) {
+  const sourceModes = new Set(sourceTrades.map(trade =>
+    normalizeFxPositionManagementMode(
+      trade?.currentPositionManagementMode,
+      `FX Trade ${trade?.tradeId ?? "<unknown>"} Current FX Position Mode`
+    )
+  ));
+
+  if (sourceModes.size !== 1) {
+    throw applicationError(
+      "INCOMPATIBLE_BATCH_SELECTION",
+      "All source FX Trades in one Batch must have the same current FX Position Mode."
+    );
+  }
+
+  return sourceModes.values().next().value;
+}
+
 class FormFxBatchUseCase {
   constructor({
     transactionRunner,
@@ -182,6 +205,10 @@ class FormFxBatchUseCase {
       );
     }
 
+    const sourcePositionManagementMode = commonSourcePositionManagementMode(
+      sourceTrades
+    );
+
     const formation = formFxBatch({
       trades: sourceTrades,
       rateFractionDigits: sourceTrades[0]?.rateFractionDigits,
@@ -192,7 +219,8 @@ class FormFxBatchUseCase {
       sourceTrades,
       formation,
       formationReason: normalized.formationReason,
-      formationTiming: normalized.formationTiming
+      formationTiming: normalized.formationTiming,
+      sourcePositionManagementMode
     });
 
     return {

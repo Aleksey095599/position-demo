@@ -52,7 +52,7 @@ function normalizedMode(value, fallback = "MANUAL") {
   return ["MANUAL", "AUTO"].includes(fallbackMode) ? fallbackMode : "MANUAL";
 }
 
-test("Manual Control and Auto Batching & Hedging routes control one shared FX Position grid", () => {
+test("Manual Control and Auto Hedging routes control one shared FX Position grid", () => {
   const tabsMarkup = elementMarkup("fxPositionModeTabs", "nav");
   const manualTabMarkup = elementMarkup("fxPositionManualTab", "a");
   const autoTabMarkup = elementMarkup("fxPositionAutoTab", "a");
@@ -69,7 +69,7 @@ test("Manual Control and Auto Batching & Hedging routes control one shared FX Po
   assert.match(autoTabMarkup, /data-fx-position-mode="AUTO"/);
   assert.match(autoTabMarkup, /aria-controls="fxPositionGridPanel"/);
   assert.match(autoTabMarkup, /class="button-icon fx-position-mode-icon" aria-hidden="true">automation<\/span>/);
-  assert.match(autoTabMarkup, />Auto Batching &amp; Hedging</);
+  assert.match(autoTabMarkup, />Auto Hedging</);
   assert.match(autoTabMarkup, /id="fxPositionAutoCount"/);
   assert.match(sharedPanelMarkup, /role="tabpanel"/);
   assert.match(
@@ -103,7 +103,7 @@ test("Manual Control exposes an explicit confirmation before sending Trades to A
 
   assert.match(buttonMarkup, /class="[^"]*\bbtn-outline-secondary\b[^"]*"/);
   assert.match(buttonMarkup, /disabled/);
-  assert.match(buttonMarkup, /aria-label="Send selected Trades to Auto Batching &amp; Hedging"/);
+  assert.match(buttonMarkup, /aria-label="Send selected Trades to Auto Hedging"/);
   assert.match(buttonMarkup, />Send to Auto</);
   assert.match(dialogMarkup, /id="sendToAutoPositionModeDialogTitle"/);
   assert.doesNotMatch(dialogMarkup, /Initial FX Position Mode|Current FX Position Mode/);
@@ -362,7 +362,7 @@ test("Send to Auto posts composite identities and protects success/error/in-flig
 
   assert.match(openSource, /tradeId: Number\(fxPositionTradeId\(deal\)\)/);
   assert.match(openSource, /tradeType: fxPositionType\(deal\)/);
-  assert.match(openSource, /to Auto Batching & Hedging\?`/);
+  assert.match(openSource, /to Auto Hedging\?`/);
   assert.doesNotMatch(openSource, /from Manual Control/);
   assert.match(closeSource, /if \(sendToAutoPositionModeInFlight\)/);
   assert.match(confirmSource, /sendToAutoPositionModeInFlight = true/);
@@ -389,6 +389,50 @@ test("Send to Auto posts composite identities and protects success/error/in-flig
   assert.match(confirmSource, /sendToAutoPositionModeDialogClose\.disabled = false/);
   assert.match(confirmSource, /sendToAutoPositionModeCancelButton\.disabled = false/);
   assert.match(confirmSource, /sendToAutoPositionModeConfirmButton\.disabled = false/);
+});
+
+test("Hedge Deals inherit the FX Position Mode of the initiating tab", () => {
+  const quickHedgeSource = topLevelFunctionSource("createQuickHedgeDeal");
+  const openDialogSource = topLevelFunctionSource("openAddHedgeDealDialog");
+  const createHedgeSource = topLevelFunctionSource("createHedgeDeal");
+  const createHedgeServerSource = serverSource.match(
+    /function createHedgeFxDeal\([\s\S]*?\n\}/
+  )?.[0] || "";
+  const baseValidatorSource = serverSource.match(
+    /function validateHedgeFxDealBasePayload\([\s\S]*?\n\}/
+  )?.[0] || "";
+  const quickValidatorSource = serverSource.match(
+    /function validateHedgeQuickModeDealPayload\([\s\S]*?\n\}/
+  )?.[0] || "";
+
+  assert.match(
+    quickHedgeSource,
+    /const positionManagementMode = normalizedPositionManagementMode\(\s*activeFxPositionMode\s*\)/
+  );
+  assert.match(quickHedgeSource, /presetCode: preset\.presetCode,\s*positionManagementMode/);
+  assert.match(
+    openDialogSource,
+    /addHedgeDealPositionManagementMode = normalizedPositionManagementMode\(\s*activeFxPositionMode\s*\)/
+  );
+  assert.equal(
+    (createHedgeSource.match(
+      /positionManagementMode: addHedgeDealPositionManagementMode/g
+    ) || []).length,
+    2
+  );
+  assert.match(
+    inlineScript,
+    /addHedgeDealQuickModeSelection = null;\s*addHedgeDealPositionManagementMode = null;/
+  );
+
+  assert.match(baseValidatorSource, /validatedPositionManagementMode\(/);
+  assert.match(baseValidatorSource, /"Hedge Deal FX Position Mode"/);
+  assert.match(quickValidatorSource, /"positionManagementMode"/);
+  assert.match(quickValidatorSource, /validatedPositionManagementMode\(/);
+  assert.match(
+    createHedgeServerSource,
+    /payload\.positionManagementMode === null[\s\S]*?materializeFxTradePositionMode\([\s\S]*?materializeFxTradePositionModeState\(/
+  );
 });
 
 test("Client and Hedge deal grids show Initial and Current FX Position modes only in Audit view", () => {

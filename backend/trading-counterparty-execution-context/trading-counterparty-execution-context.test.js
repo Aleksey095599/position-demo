@@ -320,6 +320,32 @@ test("trading counterparties own explicit Execution Context assignments", async 
       ),
       expectedKeys.size
     );
+
+    const standaloneContext = globalContexts.body.find(context =>
+      context.executionContextId === legacy.standaloneAssignment.execution_context_id
+    );
+    const reverseLookup = await apiRequest(
+      demoServer.baseUrl,
+      "GET",
+      `/api/v1/execution-contexts/${standaloneContext.executionContextId}/trading-counterparties`
+    );
+    assert.equal(reverseLookup.status, 200);
+    assert.equal(reverseLookup.body.length, standaloneContext.assignedCounterpartyCount);
+    assert.equal(
+      new Set(reverseLookup.body.map(counterparty => counterparty.counterpartyId)).size,
+      reverseLookup.body.length
+    );
+    assert.ok(reverseLookup.body.some(counterparty =>
+      counterparty.counterpartyId === legacy.standaloneAssignment.counterparty_id
+    ));
+
+    const missingReverseLookup = await apiRequest(
+      demoServer.baseUrl,
+      "GET",
+      "/api/v1/execution-contexts/999999/trading-counterparties"
+    );
+    assert.equal(missingReverseLookup.status, 404);
+    assert.equal(missingReverseLookup.body.code, "EXECUTION_CONTEXT_NOT_FOUND");
   });
 
   await t.test("relation constraints and reverse lookup index are enforced", () => {
@@ -483,6 +509,23 @@ test("trading counterparties own explicit Execution Context assignments", async 
     );
     assert.ok(attach.body.every(context => context.pricingRulesCount === 0));
 
+    const firstContextCounterpartiesPath =
+      `/api/v1/execution-contexts/${firstContext.executionContextId}/trading-counterparties`;
+    const afterAttachReverseLookup = await apiRequest(
+      demoServer.baseUrl,
+      "GET",
+      firstContextCounterpartiesPath
+    );
+    assert.equal(afterAttachReverseLookup.status, 200);
+    assert.ok(afterAttachReverseLookup.body.some(counterparty =>
+      counterparty.counterpartyId === counterpartyId
+      && counterparty.counterpartyScope === "INTERNAL"
+    ));
+    assert.equal(
+      new Set(afterAttachReverseLookup.body.map(counterparty => counterparty.counterpartyId)).size,
+      afterAttachReverseLookup.body.length
+    );
+
     const idempotentAttach = await apiRequest(
       demoServer.baseUrl,
       "PUT",
@@ -559,6 +602,16 @@ test("trading counterparties own explicit Execution Context assignments", async 
       )).status,
       204
     );
+    const afterDetachReverseLookup = await apiRequest(
+      demoServer.baseUrl,
+      "GET",
+      `/api/v1/execution-contexts/${thirdContext.executionContextId}/trading-counterparties`
+    );
+    assert.equal(afterDetachReverseLookup.status, 200);
+    assert.equal(
+      afterDetachReverseLookup.body.some(counterparty => counterparty.counterpartyId === counterpartyId),
+      false
+    );
     assert.equal(
       (await apiRequest(
         demoServer.baseUrl,
@@ -602,6 +655,18 @@ test("trading counterparties own explicit Execution Context assignments", async 
         `${assignmentsPath}/${firstContext.executionContextId}`
       )).status,
       204
+    );
+    const afterFirstContextDetachReverseLookup = await apiRequest(
+      demoServer.baseUrl,
+      "GET",
+      firstContextCounterpartiesPath
+    );
+    assert.equal(afterFirstContextDetachReverseLookup.status, 200);
+    assert.equal(
+      afterFirstContextDetachReverseLookup.body.some(counterparty =>
+        counterparty.counterpartyId === counterpartyId
+      ),
+      false
     );
     assert.equal(
       (await apiRequest(

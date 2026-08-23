@@ -38,7 +38,7 @@ function normalizedCommand(command) {
 
   if (source.trades.length > MAX_FX_TRADES_PER_POSITION_MODE_TRANSITION) {
     throw invalidCommand(
-      "No more than 200 FX Trades can be sent to Auto Batching & Hedging at once."
+      "No more than 200 FX Trades can be sent to Auto Hedging at once."
     );
   }
 

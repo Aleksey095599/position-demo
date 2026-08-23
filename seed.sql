@@ -57,14 +57,15 @@ INSERT INTO execution_contexts
         servicing_location_id,
         accounting_system_id,
         execution_system_id,
-        default_position_management_mode
+        default_position_management_mode,
+        auto_hedging_admission_policy
     )
 VALUES
-    ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO'),
-    ('002', 'AFINA', 'RFQ', 'MANUAL'),
-    ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL'),
-    ('1234', 'AFINA', 'RFQ', 'MANUAL'),
-    ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO');
+    ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE'),
+    ('002', 'AFINA', 'RFQ', 'MANUAL', 'MANUAL_ONLY'),
+    ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL', 'MANUAL_ONLY'),
+    ('1234', 'AFINA', 'RFQ', 'MANUAL', 'MANUAL_ONLY'),
+    ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE');
 
 INSERT INTO trading_counterparties
     (counterparty_name, is_active)
@@ -351,8 +352,9 @@ VALUES
     ('execution_contexts_grid', 'accounting_system', 'Accounting System', 2, 300, 300),
     ('execution_contexts_grid', 'execution_system', 'Execution System', 3, 250, 250),
     ('execution_contexts_grid', 'default_position_management_mode', 'Default FX Position Mode', 4, 176, 176),
-    ('execution_contexts_grid', 'counterparties_count', 'Trading Counterparties Count', 5, 64, 64),
-    ('execution_contexts_grid', 'actions', 'Actions', 6, 80, 80),
+    ('execution_contexts_grid', 'auto_hedging_admission_policy', 'Auto Hedging Admission Policy', 5, 232, 232),
+    ('execution_contexts_grid', 'counterparties_count', 'Trading Counterparties Count', 6, 64, 64),
+    ('execution_contexts_grid', 'actions', 'Actions', 7, 80, 80),
     ('servicing_locations_grid', 'id', 'ID', 0, 64, 64),
     ('servicing_locations_grid', 'name', 'Name', 1, 153, 153),
     ('servicing_locations_grid', 'region', 'Region', 2, 134, 134),

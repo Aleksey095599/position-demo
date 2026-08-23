@@ -141,7 +141,7 @@ test("global and client editors expose explicit inheritance controls", () => {
      return positionManagementModeLabel;`
   )(normalizedMode);
   assert.equal(positionManagementModeLabel("MANUAL"), "Manual Control");
-  assert.equal(positionManagementModeLabel("AUTO"), "Auto Batching & Hedging");
+  assert.equal(positionManagementModeLabel("AUTO"), "Auto Hedging");
 
   const options = new Function(
     "normalizedPositionManagementMode",
@@ -154,7 +154,7 @@ test("global and client editors expose explicit inheritance controls", () => {
     positionManagementModeLabel
   );
   assert.match(options("MANUAL"), /<option value="MANUAL" selected>Manual Control<\/option>/);
-  assert.match(options("AUTO"), /<option value="AUTO" selected>Auto Batching & Hedging<\/option>/);
+  assert.match(options("AUTO"), /<option value="AUTO" selected>Auto Hedging<\/option>/);
   assert.doesNotMatch(options("AUTO"), /<option value="">/);
 
 });
@@ -169,14 +169,14 @@ test("read-only client branches show only the effective FX Position Mode", () =>
     `${clientViewSource}; return clientPricingRulePositionManagementModeMarkup;`
   )(
     rule => rule.positionManagementModeOverride || "AUTO",
-    value => value === "AUTO" ? "Auto Batching & Hedging" : "Manual Control",
+    value => value === "AUTO" ? "Auto Hedging" : "Manual Control",
     value => value
   );
 
   assert.doesNotMatch(globalViewSource, /Execution Context default|Pricing Rule override|Effective:/);
   const inheritedMarkup = clientView({ positionManagementModeOverride: null });
   assert.match(inheritedMarkup, /client-pricing-configuration-node-copy is-read-only/);
-  assert.match(inheritedMarkup, /Auto Batching & Hedging/);
+  assert.match(inheritedMarkup, /Auto Hedging/);
   assert.doesNotMatch(inheritedMarkup, /checkbox|Execution Context Default|client-pricing-configuration-inheritance-indicator|>link<\/span>/);
 
   const explicitMarkup = clientView({ positionManagementModeOverride: "MANUAL" });

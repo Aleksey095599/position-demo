@@ -91,6 +91,11 @@ test("fresh schema and seed define safe FX Position Management policy defaults",
     assert.ok(contextModeColumn);
     assert.equal(contextModeColumn.notnull, 1);
     assert.equal(contextModeColumn.dflt_value, "'MANUAL'");
+    const admissionPolicyColumn = executionContextColumns.find(
+      column => column.name === "auto_hedging_admission_policy"
+    );
+    assert.equal(admissionPolicyColumn?.notnull, 1);
+    assert.equal(admissionPolicyColumn?.dflt_value, "'MANUAL_ONLY'");
 
     const pricingRuleColumns = database.prepare(
       "PRAGMA table_info(pricing_rules)"
@@ -105,7 +110,8 @@ test("fresh schema and seed define safe FX Position Management policy defaults",
     const contexts = database.prepare(`
       SELECT
         execution_system_id AS executionSystemId,
-        default_position_management_mode AS defaultPositionManagementMode
+        default_position_management_mode AS defaultPositionManagementMode,
+        auto_hedging_admission_policy AS autoHedgingAdmissionPolicy
       FROM execution_contexts
       ORDER BY execution_context_id
     `).all();
@@ -118,11 +124,13 @@ test("fresh schema and seed define safe FX Position Management policy defaults",
 
     assert.ok(clickTradeContexts.length > 0);
     assert.ok(otherContexts.length > 0);
-    assert.ok(clickTradeContexts.every(
-      context => context.defaultPositionManagementMode === "AUTO"
+    assert.ok(clickTradeContexts.every(context =>
+      context.defaultPositionManagementMode === "AUTO"
+      && context.autoHedgingAdmissionPolicy === "AUTO_IF_ELIGIBLE"
     ));
-    assert.ok(otherContexts.every(
-      context => context.defaultPositionManagementMode === "MANUAL"
+    assert.ok(otherContexts.every(context =>
+      context.defaultPositionManagementMode === "MANUAL"
+      && context.autoHedgingAdmissionPolicy === "MANUAL_ONLY"
     ));
 
     const pricingRuleModes = database.prepare(`
@@ -137,6 +145,11 @@ test("fresh schema and seed define safe FX Position Management policy defaults",
     assert.throws(() => database.prepare(`
       UPDATE execution_contexts
       SET default_position_management_mode = 'UNVERIFIED'
+      WHERE execution_context_id = (SELECT MIN(execution_context_id) FROM execution_contexts)
+    `).run(), /CHECK constraint failed/i);
+    assert.throws(() => database.prepare(`
+      UPDATE execution_contexts
+      SET auto_hedging_admission_policy = 'UNVERIFIED'
       WHERE execution_context_id = (SELECT MIN(execution_context_id) FROM execution_contexts)
     `).run(), /CHECK constraint failed/i);
     assert.throws(() => database.prepare(`
@@ -182,10 +195,12 @@ test("FX Position Management configuration API preserves inheritance and overrid
   );
   assert.ok(seededContexts.filter(
     context => context.executionSystemId === "CLICK_TRADE_EFX"
-  ).every(context => context.defaultPositionManagementMode === "AUTO"));
+  ).every(context => context.defaultPositionManagementMode === "AUTO"
+    && context.autoHedgingAdmissionPolicy === "AUTO_IF_ELIGIBLE"));
   assert.ok(seededContexts.filter(
     context => context.executionSystemId !== "CLICK_TRADE_EFX"
-  ).every(context => context.defaultPositionManagementMode === "MANUAL"));
+  ).every(context => context.defaultPositionManagementMode === "MANUAL"
+    && context.autoHedgingAdmissionPolicy === "MANUAL_ONLY"));
 
   const newContextTerms = {
     servicingLocationId: "000",
@@ -197,16 +212,18 @@ test("FX Position Management configuration API preserves inheritance and overrid
     201
   );
   assert.equal(createdContext.defaultPositionManagementMode, "MANUAL");
+  assert.equal(createdContext.autoHedgingAdmissionPolicy, "MANUAL_ONLY");
 
   const contextWithAutoDefault = assertSuccessfulApiResponse(
     await request(
       "PUT",
       `/api/v1/execution-contexts/${createdContext.executionContextId}`,
-      { ...newContextTerms, defaultPositionManagementMode: "AUTO" }
+      { ...newContextTerms, defaultPositionManagementMode: "AUTO", autoHedgingAdmissionPolicy: "REVIEW_REQUIRED" }
     ),
     200
   );
   assert.equal(contextWithAutoDefault.defaultPositionManagementMode, "AUTO");
+  assert.equal(contextWithAutoDefault.autoHedgingAdmissionPolicy, "REVIEW_REQUIRED");
 
   const contextUpdatedWithoutMode = assertSuccessfulApiResponse(
     await request(
@@ -217,6 +234,7 @@ test("FX Position Management configuration API preserves inheritance and overrid
     200
   );
   assert.equal(contextUpdatedWithoutMode.defaultPositionManagementMode, "AUTO");
+  assert.equal(contextUpdatedWithoutMode.autoHedgingAdmissionPolicy, "REVIEW_REQUIRED");
 
   for (const invalidContextResponse of [
     await request("POST", "/api/v1/execution-contexts", {
@@ -224,6 +242,10 @@ test("FX Position Management configuration API preserves inheritance and overrid
       accountingSystemId: "CTF3",
       executionSystemId: "RFQ",
       defaultPositionManagementMode: "UNVERIFIED"
+    }),
+    await request("POST", "/api/v1/execution-contexts", {
+      ...newContextTerms,
+      autoHedgingAdmissionPolicy: "UNVERIFIED"
     }),
     await request(
       "PUT",

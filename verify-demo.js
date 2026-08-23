@@ -1896,6 +1896,12 @@ function verifyFrontendStructure() {
   const manualBatchFormationProcessViewMarkup = manualBatchFormationProcessPageMarkup.match(
     /<article class="profile-panel processes-details" id="manualBatchFormationProcessView"[\s\S]*?<\/article>/
   )?.[0] || "";
+  const autoHedgingProcessViewMarkup = manualBatchFormationProcessPageMarkup.match(
+    /<article class="profile-panel processes-details" id="autoHedgingProcessView"[\s\S]*?<\/article>/
+  )?.[0] || "";
+  const automationAdmissionProcessViewMarkup = manualBatchFormationProcessPageMarkup.match(
+    /<article class="profile-panel processes-details" id="automationAdmissionProcessView"[\s\S]*?<\/article>/
+  )?.[0] || "";
   const domainGlossaryProcessViewMarkup = manualBatchFormationProcessPageMarkup.match(
     /<article class="profile-panel processes-details" id="domainGlossaryProcessView"[\s\S]*?<\/article>/
   )?.[0] || "";
@@ -2066,14 +2072,17 @@ function verifyFrontendStructure() {
     usesPricingRulePositionModeInheritanceControls,
     usesFxPositionManagementPolicyConfiguration:
       schemaSource.includes("default_position_management_mode")
+      && schemaSource.includes("auto_hedging_admission_policy")
       && schemaSource.includes("position_management_mode_override")
       && serverSource.includes("ensureFxPositionManagementPolicyColumns(database)")
       && serverSource.includes("effectivePositionManagementMode: resolveFxPositionManagementMode")
       && html.includes('data-ui-column-key="default_position_management_mode"')
+      && html.includes('data-ui-column-key="auto_hedging_admission_policy"')
       && html.includes('data-ui-column-key="position_management_mode"')
       && html.includes('name="positionManagementModeOverride"')
       && inlineScript.includes("function effectivePositionManagementModeForRule(rule, context = null)")
       && inlineScript.includes("defaultPositionManagementMode: context.defaultPositionManagementMode")
+      && inlineScript.includes("autoHedgingAdmissionPolicy: context.autoHedgingAdmissionPolicy")
       && inlineScript.includes("positionManagementModeOverride: normalizedPositionManagementModeOverride"),
     usesUiColorTokenPalette:
       schemaSource.includes("CREATE TABLE IF NOT EXISTS ui_color_tokens")
@@ -2399,6 +2408,46 @@ function verifyFrontendStructure() {
         '>Process goal:</span>'
       )
       && manualBatchFormationProcessPageMarkup.includes(
+        'href="#processes:auto-hedging" data-process-catalog-view="auto-hedging"'
+      )
+      && manualBatchFormationProcessPageMarkup.includes(
+        'class="processes-list-link processes-list-sublink" href="#processes:auto-hedging-admission"'
+      )
+      && autoHedgingProcessViewMarkup.includes(
+        'id="autoHedgingTitle" data-process-copy="autoHedging">Auto Hedging</h2>'
+      )
+      && !autoHedgingProcessViewMarkup.includes('data-process-copy="autoHedgingDefinition"')
+      && autoHedgingProcessViewMarkup.includes("“Auto Hedging” tab")
+      && autoHedgingProcessViewMarkup.includes("“Manual Control” tab")
+      && autoHedgingProcessViewMarkup.includes('data-process-copy="autoHedgingFxPositionPresentation" data-process-linked-copy')
+      && autoHedgingProcessViewMarkup.includes('href="#processes:auto-hedging-admission"')
+
+      && manualBatchFormationProcessPageMarkup.includes(
+        'href="#processes:auto-hedging-admission" data-process-catalog-view="admission"'
+      )
+      && automationAdmissionProcessViewMarkup.includes(
+        'id="automationAdmissionTitle" data-process-copy="automationAdmission">Auto Hedging Admission</h2>'
+      )
+      && automationAdmissionProcessViewMarkup.includes('data-process-copy="automationAdmissionSubtitle" data-process-linked-copy')
+      && automationAdmissionProcessViewMarkup.includes('data-process-copy="automationAdmissionSummary" data-process-linked-copy')
+      && !automationAdmissionProcessViewMarkup.includes("The model separates the rule")
+      && automationAdmissionProcessViewMarkup.includes(">Admission Policy</span>")
+      && automationAdmissionProcessViewMarkup.includes(">Admission State</span>")
+      && automationAdmissionProcessViewMarkup.includes("<dt>AUTO_IF_ELIGIBLE</dt>")
+      && automationAdmissionProcessViewMarkup.includes("<dt>REVIEW_REQUIRED</dt>")
+      && automationAdmissionProcessViewMarkup.includes("<dt>MANUAL_ONLY</dt>")
+      && automationAdmissionProcessViewMarkup.includes("<dt>HELD</dt>")
+      && automationAdmissionProcessViewMarkup.includes("<dt>RELEASED</dt>")
+      && automationAdmissionProcessViewMarkup.includes('data-process-copy="automationAdmissionRule"')
+      && automationAdmissionProcessViewMarkup.includes("<code>determineInitialAdmissionState</code>")
+      && automationAdmissionProcessViewMarkup.includes("Demo baseline for an FX Trade with an Execution Context")
+      && automationAdmissionProcessViewMarkup.includes("<code>decideReleaseToAutoHedging</code>")
+      && html.includes(".automation-admission-technical-token")
+      && automationAdmissionProcessViewMarkup.includes('data-process-copy="domainFunctionsDescription"')
+      && automationAdmissionProcessViewMarkup.includes('data-process-copy="automationAdmissionFutureExample" data-process-linked-copy')
+      && automationAdmissionProcessViewMarkup.includes("Transfer Rate")
+      && automationAdmissionProcessViewMarkup.includes("Market Pulse")
+      && manualBatchFormationProcessPageMarkup.includes(
         'href="#processes:domain-glossary" data-process-catalog-view="glossary"'
       )
       && domainGlossaryProcessViewMarkup.includes(
@@ -2406,12 +2455,19 @@ function verifyFrontendStructure() {
       )
       && domainGlossaryProcessViewMarkup.includes('<dt>FX Position</dt>')
       && !domainGlossaryProcessViewMarkup.includes('href="#fx-position"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-auto-hedging"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-batch"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-batching"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-trade"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-client-deal"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-hedge-deal"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-position"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-execution-context"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-servicing-location"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-accounting-system"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-execution-system"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-pricing-mode"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-market-pulse"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-base-currency"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-quote-currency"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-trade-date"')
@@ -2475,6 +2531,14 @@ function verifyFrontendStructure() {
       && inlineScript.includes("function linkDomainGlossaryDefinitions")
       && inlineScript.includes('excludeTermKey = ""')
       && inlineScript.includes('termKey === "batching" || termKey === "value-date"')
+      && inlineScript.indexOf('{ text: "Market Pulse", key: "market-pulse" }')
+        > inlineScript.indexOf("const MANUAL_PROCESS_TERM_REFERENCES")
+      && inlineScript.includes('{ text: "Auto Hedging", key: "auto-hedging" }')
+      && inlineScript.includes('{ text: "Servicing Location", key: "servicing-location" }')
+      && inlineScript.includes('{ text: "Accounting System", key: "accounting-system" }')
+      && inlineScript.includes('{ text: "Execution Context", key: "execution-context" }')
+      && inlineScript.includes('{ text: "Execution System", key: "execution-system" }')
+      && inlineScript.includes('{ text: "Pricing Mode", key: "pricing-mode" }')
       && inlineScript.includes('{ text: "Cross-Tenor Batching", key: "cross-tenor-batching" }')
       && inlineScript.includes('{ text: "Batch Internal Swap", key: "batch-internal-swap" }')
       && inlineScript.includes('{ text: "Base Currency", key: "base-currency" }')
@@ -2484,12 +2548,20 @@ function verifyFrontendStructure() {
       && !inlineScript.includes('{ text: "Batch", key: "fx-batch" }')
       && !inlineScript.includes('{ text: "FX-сделка", key: "fx-trade" }')
       && inlineScript.includes("linkDomainGlossaryDefinitions();")
+      && inlineScript.includes("function highlightAutomationAdmissionTechnicalTokens()")
+      && inlineScript.includes('"AUTO_IF_ELIGIBLE",')
+      && inlineScript.includes('"REVIEW_REQUIRED",')
+      && inlineScript.includes('"MANUAL_ONLY",')
       && inlineScript.includes("function showManualProcessDefinition")
       && inlineScript.includes("function domainGlossaryRoute")
+      && inlineScript.includes('return "#processes:auto-hedging-admission";')
+      && inlineScript.includes('return "#processes:automation-admission";')
       && inlineScript.includes("function isDomainGlossaryRoute")
       && inlineScript.includes("function isProcessCatalogRoute")
       && inlineScript.includes("function renderProcessCatalogRoute")
       && inlineScript.includes("function isManualProcessTermBoundary")
+      && inlineScript.includes("function isManualProcessQuotedLabel")
+      && inlineScript.includes("isManualProcessQuotedLabel(value, index, term.text.length)")
       && inlineScript.includes("dataset.processTermReference")
       && !inlineScript.includes('node.addEventListener("pointerenter"')
       && !inlineScript.includes('node.addEventListener("pointerleave"')
@@ -2500,6 +2572,13 @@ function verifyFrontendStructure() {
       && !html.includes('id="manualBatchingProcessFlowDialog"')
       && inlineScript.includes("function manualBatchFormationProcessRoute()")
       && inlineScript.includes("function isManualBatchFormationProcessRoute()")
+      && inlineScript.includes("function autoHedgingRoute()")
+      && inlineScript.includes("function isAutoHedgingRoute()")
+      && inlineScript.includes("autoHedgingProcessView.hidden = !isAutoHedging;")
+      && inlineScript.includes('activeView === "admission" && view === "auto-hedging"')
+      && inlineScript.includes("function automationAdmissionRoute()")
+      && inlineScript.includes("function isAutomationAdmissionRoute()")
+      && inlineScript.includes("automationAdmissionProcessView.hidden = !isAdmission;")
       && batchingSettingsPageMarkup.includes('id="autoBatchingSettingsSaveButton"')
       && inlineScript.includes("function batchingSettingsRoute()")
       && inlineScript.includes("function isBatchingSettingsRoute()")
@@ -2643,7 +2722,7 @@ function verifyFrontendStructure() {
     usesUnifiedMarginIndicators:
       inlineScript.includes("function marginIndicatorMarkup(marginPercent")
       && inlineScript.includes('data-tooltip="Margin"')
-      && inlineScript.includes(">percent</span>")
+      && inlineScript.includes(">savings</span>")
       && inlineScript.includes("marginIndicatorMarkup(rule.marginPercent)")
       && inlineScript.includes('marginIndicatorMarkup(rule.marginPercent, "client-pricing-rules-margin", false)')
       && html.includes(".client-deal-pricing-rule-margin-icon")
@@ -2747,7 +2826,7 @@ function verifyFrontendStructure() {
       && fxPositionModeTabsMarkup.includes('href="#fx-position:auto"')
       && fxPositionModeTabsMarkup.includes('data-fx-position-mode="AUTO"')
       && fxPositionModeTabsMarkup.includes('id="fxPositionAutoCount"')
-      && fxPositionModeTabsMarkup.includes('>Auto Batching &amp; Hedging</span>')
+      && fxPositionModeTabsMarkup.includes('>Auto Hedging</span>')
       && fxPositionModeTabsMarkup.includes('aria-controls="fxPositionGridPanel"')
       && fxPositionPageMarkup.includes('id="fxPositionGridPanel"')
       && (fxPositionPageMarkup.match(/<table\b[^>]*\bfx-position-grid\b/g) || []).length === 1
@@ -2788,12 +2867,12 @@ function verifyFrontendStructure() {
     usesManualToAutoFxPositionTransition:
       fxPositionPageMarkup.includes('id="sendToAutoPositionModeButton"')
       && fxPositionPageMarkup.includes(
-        'aria-label="Send selected Trades to Auto Batching &amp; Hedging"'
+        'aria-label="Send selected Trades to Auto Hedging"'
       )
       && fxPositionPageMarkup.includes('>Send to Auto</span>')
       && html.includes('id="sendToAutoPositionModeDialog"')
       && !html.includes("Initial FX Position Mode will remain Manual Control")
-      && sendToAutoPositionModeSource.includes("to Auto Batching & Hedging?`")
+      && sendToAutoPositionModeSource.includes("to Auto Hedging?`")
       && !sendToAutoPositionModeSource.includes("from Manual Control?")
       && sendToAutoPositionModeSource.includes("function selectedManualReviewTradesForAuto()")
       && sendToAutoPositionModeSource.includes('activeFxPositionMode !== "MANUAL"')
@@ -3957,7 +4036,7 @@ function verifyFrontendStructure() {
       && serverSource.includes('SERVICING_LOCATION_NAME_MAX_LENGTH = 50')
       && serverSource.includes('SERVICING_LOCATION_REGION_MAX_LENGTH = 50')
       && inlineScript.includes('count: { min: 64, max: 80')
-      && html.includes('data-tooltip="Execution Contexts using this location"')
+      && html.includes('data-reference-panel="servicingBranch"')
       && !html.includes('id="servicingLocationUsageInfo"'),
     usesServicingLocationIdSort: html.includes('id="servicingBranchIdSort"')
       && html.includes('id="servicingBranchIdHeader" aria-sort="ascending"')
@@ -3967,7 +4046,7 @@ function verifyFrontendStructure() {
       && html.includes('data-reference-field="settlementSystemName" value="${escapeHtml(item.settlementSystemName)}" maxlength="50"')
       && serverSource.includes('ACCOUNTING_SYSTEM_ID_MAX_LENGTH = 20')
       && inlineScript.includes('count: { min: 64, max: 80')
-      && html.includes('data-tooltip="Execution Contexts using this accounting system"')
+      && html.includes('data-reference-panel="settlementSystem"')
       && !html.includes('id="accountingSystemUsageInfo"')
       && !serverSource.includes('pricingRuleCount')
       && !inlineScript.includes('description: persistedItem.description'),
@@ -3979,7 +4058,7 @@ function verifyFrontendStructure() {
       && serverSource.includes('EXECUTION_SYSTEM_ID_MAX_LENGTH = 30')
       && serverSource.includes('EXECUTION_SYSTEM_NAME_MAX_LENGTH = 50')
       && inlineScript.includes('count: { min: 64, max: 80')
-      && html.includes('data-tooltip="Execution Contexts using this execution system"')
+      && html.includes('data-reference-panel="tradeCaptureChannel"')
       && !html.includes('id="executionSystemUsageInfo"'),
     usesExecutionSystemIdSort: html.includes('id="tradeCaptureChannelIdSort"')
       && html.includes('aria-sort="ascending"')
@@ -4009,7 +4088,8 @@ function verifyFrontendStructure() {
       && html.includes(">Accounting System</span>")
       && html.includes(">Execution System</span>"),
     usesExecutionContextUsage:
-      html.includes('data-tooltip="Trading Counterparties using this Execution Context"')
+      html.includes('aria-label="Attached Trading Counterparties"')
+      && html.includes('data-tooltip="Attached Trading Counterparties"')
       && !html.includes('id="pricingContextUsageInfo"'),
     usesExecutionContextColumnWidths:
       html.includes('id="executionContextsTable" data-ui-table-layout-key="execution_contexts_grid"')
@@ -4019,6 +4099,7 @@ function verifyFrontendStructure() {
       && uiTableLayoutsSource.includes('["servicing_location", "Servicing Location", 250]')
       && uiTableLayoutsSource.includes('["accounting_system", "Accounting System", 300]')
       && uiTableLayoutsSource.includes('["execution_system", "Execution System", 250]')
+      && uiTableLayoutsSource.includes('["auto_hedging_admission_policy", "Auto Hedging Admission Policy", 232]')
       && uiTableLayoutsSource.includes(
         '["counterparties_count", "Trading Counterparties Count", 64]'
       )
@@ -4029,7 +4110,7 @@ function verifyFrontendStructure() {
       && !html.includes(">Execution Context List<"),
     usesExecutionContextHeaderFiltersAndSort: html.includes('id="pricingContextIdSort"')
       && html.includes('id="pricingContextIdHeader" aria-sort="ascending"')
-      && (html.match(/data-pricing-context-header-filter=/g) || []).length === 5
+      && (html.match(/data-pricing-context-header-filter=/g) || []).length === 6
       && inlineScript.includes('pricingContextIdSortDirection = "asc"')
       && inlineScript.includes("pricingContextMatchesHeaderFilters"),
     usesConciseIntegerIdHeaders: html.includes('class="profile-table pricing-context-table unified-data-table"')
@@ -4094,9 +4175,9 @@ function verifyFrontendStructure() {
       && inlineScript.includes('return "#market-pulse";')
       && inlineScript.includes('function settingsRoute(kind = "currencies")')
       && inlineScript.includes('return kind === "pairs"')
+      && inlineScript.includes('function currencySettingsRouteStateFromLocation(hash = location.hash)')
       && inlineScript.includes('function isCurrencySettingsRoute()')
-      && inlineScript.includes('location.hash === settingsRoute("currencies")')
-      && inlineScript.includes('location.hash === settingsRoute("pairs")')
+      && inlineScript.includes('return currencySettingsRouteStateFromLocation().matches;')
       && inlineScript.includes('location.hash === "#market-pulse"')
       && !html.includes('href="#market-pulse:ccy-options"')
       && !html.includes('href="#market-pulse:ccy-pair-options"'),
@@ -4107,11 +4188,12 @@ function verifyFrontendStructure() {
       && inlineScript.includes('pattern="${pattern}"')
       && inlineScript.includes('function marketCcyTextIsValid(value, maxLength)'),
     usesCompactCcyOptionColumns:
-      inlineScript.includes('tabulatorSizedColumn("code", { title: "Ccy Code"')
+      inlineScript.includes('tabulatorSizedColumn("code", { title: "Code"')
       && inlineScript.includes('tabulatorSizedColumn("name", { title: "Name"')
       && inlineScript.includes('tabulatorSizedColumn("name", { title: "Country"')
       && inlineScript.includes('title: tabulatorIconColumnTitle("decimal_increase", "Fraction Digits")')
-      && inlineScript.includes('tabulatorSizedColumn("count", { title: "Ccy Pairs"')
+      && inlineScript.includes('title: "Ccy Pairs",\n            field: "pairCount"')
+      && inlineScript.includes('formatter: marketCcyPairsViewFormatter')
       && inlineScript.includes('headerSort: true')
       && (inlineScript.match(/headerSort: false/g) || []).length >= 6
       && inlineScript.includes('initialSort: [{ column: "code", dir: "asc" }]')
@@ -4124,8 +4206,23 @@ function verifyFrontendStructure() {
       && inlineScript.includes('title: tabulatorIconColumnTitle("rule", "Pricing Rules using this Ccy Pair")')
       && inlineScript.includes('initialSort: [{ column: "currencyPair", dir: "asc" }]')
       && inlineScript.includes('field: "pricingRulesCount"')
+      && inlineScript.includes('formatter: marketPairPricingRulesViewFormatter')
       && inlineScript.includes('Delete unavailable: ${item.currencyPair} is used in ${pricingRulesCount} ${ruleLabel}.')
       && !html.includes('[data-market-panel="pairs"] .market-grid-frame {\n      width: min(680px'),
+    usesCurrencySettingsRelatedDrilldowns:
+      html.includes('id="marketSettingsBreadcrumb" hidden')
+      && html.includes('id="pricingRulesBreadcrumb" hidden')
+      && inlineScript.includes('data-market-grid-action="${escapeHtml(action)}"')
+      && inlineScript.includes('"view-currency-pairs"')
+      && inlineScript.includes('"view-pricing-rules"')
+      && inlineScript.includes('function currencyPairSettingsForCurrencyRoute(currencyCode, returnHash = location.hash)')
+      && inlineScript.includes('function pricingRulesForCcyPairRoute(')
+      && inlineScript.includes('pair.baseCcy === marketSettingsRouteScope.currencyCode')
+      && inlineScript.includes('pair.quoteCcy === marketSettingsRouteScope.currencyCode')
+      && inlineScript.includes('rule.ccyPairCode === pricingRulesRouteScope.pairCode')
+      && inlineScript.includes('marketPairOptionNewButton.hidden = Boolean(marketSettingsRouteScope)')
+      && inlineScript.includes('actionsColumn.hide()')
+      && inlineScript.includes('currencyPairFilter.readOnly = true'),
     usesUnifiedActionsColumnWidth: html.includes('--workbench-actions-column-width: 80px;')
       && inlineScript.includes('getPropertyValue("--workbench-actions-column-width")')
       && inlineScript.includes('min: smartActionsColumnWidth')
@@ -4471,12 +4568,36 @@ function verifyFrontendStructure() {
       && html.includes(':is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-header-filter {')
       && html.includes(':is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-sort-control {'),
     usesExecutionContextRoute: html.includes('href="#execution-context" data-workspace-route="pricing"')
-      && html.includes('function pricingRoute() {\n      return "#execution-context";')
-      && inlineScript.includes('location.hash === pricingRoute() || location.hash === "#pricing"'),
-    usesBootstrapReferenceDataControls: (html.match(/btn btn-sm btn-outline-primary reference-new-button/g) || []).length === 5
+      && inlineScript.includes('function pricingRoute(referenceKind = "", referenceId = "")')
+      && inlineScript.includes('function pricingRouteStateFromLocation(hash = location.hash)')
+      && inlineScript.includes('return pricingRouteStateFromLocation().matches;'),
+    usesReferenceDataExecutionContextDrilldown:
+      html.includes('id="pricingContextBreadcrumb" aria-label="breadcrumb" hidden')
+      && html.includes('data-pricing-context-actions-column')
+      && inlineScript.includes('data-reference-action="view-execution-contexts"')
+      && inlineScript.includes('View ${count} attached ${contextLabel}')
+      && inlineScript.includes('parameter: "servicing-location"')
+      && inlineScript.includes('parameter: "accounting-system"')
+      && inlineScript.includes('parameter: "execution-system"')
+      && inlineScript.includes('pricingContextNewButton.hidden = Boolean(pricingContextRouteScope)')
+      && inlineScript.includes('String(context?.[pricingContextRouteScope.field] ?? "") !== pricingContextRouteScope.value'),
+    usesExecutionContextTradingCounterpartyDrilldown:
+      html.includes('id="clientProfileBreadcrumb" aria-label="breadcrumb" hidden')
+      && html.includes('data-client-profile-actions-column')
+      && inlineScript.includes('data-pricing-context-action="view-trading-counterparties"')
+      && inlineScript.includes('View ${count} attached ${counterpartyLabel}')
+      && inlineScript.includes('function tradingCounterpartiesForExecutionContextRoute(executionContextId, returnHash = location.hash)')
+      && inlineScript.includes('mode: "related"')
+      && inlineScript.includes('/trading-counterparties`')
+      && inlineScript.includes('function tradingCounterpartyMatchesRouteScope(profile)')
+      && inlineScript.includes('clientProfileNewButton.hidden = true')
+      && inlineScript.includes('if (clientProfileRouteScope) {')
+      && serverSource.includes('function executionContextTradingCounterparties(executionContextId)')
+      && serverSource.includes('executionContextTradingCounterpartiesMatch'),
+    usesBootstrapReferenceDataControls: (html.match(/btn btn-sm btn-primary reference-new-button/g) || []).length >= 6
       && inlineScript.includes('btn btn-sm btn-outline-secondary reference-grid-action')
       && inlineScript.includes('btn btn-sm btn-outline-danger reference-grid-action')
-      && (html.match(/data-tooltip="Execution Contexts using this (?:location|accounting system|execution system)"/g) || []).length === 3,
+      && inlineScript.includes('<span class="button-icon" aria-hidden="true">visibility</span>'),
     usesUniformReferenceDataGrid: html.includes('#referenceDataPage.unified-bootstrap-workspace .reference-table {')
       && html.includes('border-collapse: separate;')
       && html.includes('#referenceDataPage.unified-bootstrap-workspace .reference-table tbody tr:nth-child(even) td {')
@@ -7522,10 +7643,10 @@ async function main() {
         !== "BLUE,CYAN,GRAY,GREEN,INDIGO,ORANGE,PINK,PURPLE,RED,TEAL,YELLOW"
       || freshSchema.uiColorTokenSamples.map(row => `${row.token_code}:${row.color_value}`).join(",")
         !== "blue_500:#0D6EFD,red_100:#F8D7DA,green_100:#D1E7DD"
-      || freshSchema.uiTableColumnSettings !== 206
+      || freshSchema.uiTableColumnSettings !== 207
       || freshSchema.uiTableColumnLayoutKeys.map(row =>
         `${row.table_key}:${row.column_count}`
-      ).join(",") !== "accounting_systems_grid:5,analytical_pnl_report_grid:12,analytical_pnl_summary_grid:3,batch_cash_output_grid:3,batch_formation_audit_grid:10,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:6,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:21,deal_generation_settings_grid:11,execution_contexts_grid:7,execution_systems_grid:7,external_counterparties_grid:8,fx_position_grid:13,hedge_fx_deals_grid:22,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:8,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:7,servicing_locations_grid:7,users_grid:7"
+      ).join(",") !== "accounting_systems_grid:5,analytical_pnl_report_grid:12,analytical_pnl_summary_grid:3,batch_cash_output_grid:3,batch_formation_audit_grid:10,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:6,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:21,deal_generation_settings_grid:11,execution_contexts_grid:8,execution_systems_grid:7,external_counterparties_grid:8,fx_position_grid:13,hedge_fx_deals_grid:22,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:8,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:7,servicing_locations_grid:7,users_grid:7"
       || freshSchema.uiTableColumnSettingColumns.join(",")
         !== "table_key,column_key,column_label,display_order,default_width_px,width_px,updated_at"
       || freshSchema.uiTableColumnSettingRows.map(row =>
@@ -7951,6 +8072,7 @@ async function main() {
       || !frontend.usesCcyOptionLimits
       || !frontend.usesCompactCcyOptionColumns
       || !frontend.usesCompactCcyPairOptionColumns
+      || !frontend.usesCurrencySettingsRelatedDrilldowns
       || !frontend.usesUnifiedActionsColumnWidth
       || !frontend.usesUnifiedFilterFocus
       || !frontend.disablesTabulatorColumnMoving
@@ -7985,6 +8107,8 @@ async function main() {
       || !frontend.usesFluidPricingRulesTable
       || !frontend.usesPricingRulesHeaderLayout
       || !frontend.usesExecutionContextRoute
+      || !frontend.usesReferenceDataExecutionContextDrilldown
+      || !frontend.usesExecutionContextTradingCounterpartyDrilldown
       || !frontend.usesBootstrapReferenceDataControls
       || !frontend.usesUniformReferenceDataGrid
       || !frontend.usesHoverTabWithoutBottomBorder
@@ -8041,7 +8165,7 @@ async function main() {
       || apiAndMigration.executionSystemColumns.join(",") !== "execution_system_id,name,pricing_mode,is_active"
       || apiAndMigration.executionSystems.count !== 3
       || apiAndMigration.executionSystems.clickTradeContextCount !== 2
-      || apiAndMigration.executionContextColumns.join(",") !== "execution_context_id,servicing_location_id,accounting_system_id,execution_system_id,default_position_management_mode"
+      || apiAndMigration.executionContextColumns.join(",") !== "execution_context_id,servicing_location_id,accounting_system_id,execution_system_id,default_position_management_mode,auto_hedging_admission_policy"
       || apiAndMigration.executionContextIdType !== "INTEGER"
       || apiAndMigration.executionContextForeignKeys.length !== 3
       || !apiAndMigration.executionContextForeignKeys.every(foreignKey => foreignKey.onDelete === "RESTRICT")

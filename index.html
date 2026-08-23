@@ -1257,7 +1257,7 @@
       white-space: nowrap;
     }
 
-    .pricing-context-table td:nth-child(6) {
+    .pricing-context-table td:nth-child(7) {
       text-align: right;
     }
 
@@ -2475,6 +2475,18 @@
       border-color: var(--bs-success-border-subtle);
       background: var(--bs-success-bg-subtle);
       color: var(--bs-success-text-emphasis);
+    }
+
+    .auto-hedging-admission-policy-badge.is-review-required {
+      border-color: var(--bs-warning-border-subtle);
+      background: var(--bs-warning-bg-subtle);
+      color: var(--bs-warning-text-emphasis);
+    }
+
+    .auto-hedging-admission-policy-badge.is-manual-only {
+      border-color: var(--bs-secondary-border-subtle);
+      background: var(--bs-secondary-bg-subtle);
+      color: var(--bs-secondary-text-emphasis);
     }
 
     .pricing-context-id-preview {
@@ -5821,6 +5833,19 @@
       gap: 6px;
       padding: 12px;
     }
+    .processes-list-group,
+    .processes-sublist {
+      display: grid;
+      gap: 4px;
+    }
+
+    .processes-sublist {
+      margin-left: 21px;
+      padding-left: 10px;
+      border-left: 1px solid var(--surface-border);
+    }
+
+
 
     .processes-list-link {
       display: flex;
@@ -5836,10 +5861,19 @@
     }
 
     .processes-list-link:hover,
-    .processes-list-link.is-active {
+    .processes-list-link.is-active,
+    .processes-list-link.is-ancestor {
       border-color: var(--selection-accent);
       background: var(--control-soft-bg);
       color: var(--text-strong);
+    }
+
+    .processes-list-sublink {
+      min-height: 44px;
+    }
+
+    .processes-list-sublink > .button-icon {
+      font-size: 18px;
     }
 
     .processes-list-link > .button-icon {
@@ -5901,6 +5935,319 @@
 
     .processes-detail-body {
       padding: 16px;
+    }
+
+    .automation-admission-body {
+      display: grid;
+      gap: 12px;
+    }
+
+    .auto-hedging-note {
+      margin: 0;
+      padding: 10px 12px;
+      border-left: 3px solid var(--palette-blue-600);
+      border-radius: 0 var(--workbench-radius) var(--workbench-radius) 0;
+      background: var(--palette-blue-100);
+      color: var(--text-strong);
+      line-height: 1.45;
+    }
+
+    .auto-hedging-subcatalogs {
+      display: grid;
+      gap: 8px;
+    }
+
+    .auto-hedging-subcatalogs-title {
+      margin: 0;
+      color: var(--text-strong);
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .auto-hedging-subcatalog-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--surface-border);
+      border-radius: var(--workbench-radius);
+      background: var(--surface-card);
+      color: var(--text-strong);
+      text-decoration: none;
+    }
+
+    .auto-hedging-subcatalog-link:hover,
+    .auto-hedging-subcatalog-link:focus-visible {
+      border-color: var(--selection-accent);
+      background: var(--control-soft-bg);
+      color: var(--text-strong);
+    }
+
+    .auto-hedging-subcatalog-link > .button-icon {
+      flex: 0 0 auto;
+      color: var(--palette-blue-700);
+      font-size: 20px;
+    }
+
+    .auto-hedging-subcatalog-copy {
+      display: grid;
+      gap: 2px;
+    }
+
+    .auto-hedging-subcatalog-copy small {
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+
+
+    .automation-admission-summary {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 0;
+      padding: 10px 12px;
+      border: 1px solid color-mix(in srgb, var(--palette-blue-600) 28%, var(--surface-border));
+      border-radius: var(--workbench-radius);
+      background: var(--palette-blue-100);
+      color: var(--text-strong);
+      line-height: 1.45;
+    }
+
+    .automation-admission-summary > .button-icon {
+      flex: 0 0 auto;
+      color: var(--palette-blue-700);
+      font-size: 19px;
+    }
+
+    .automation-admission-concepts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .automation-admission-concept {
+      overflow: hidden;
+      border: 1px solid var(--surface-border);
+      border-radius: var(--workbench-radius);
+      background: var(--surface-card);
+    }
+
+    .automation-admission-concept-head {
+      display: grid;
+      gap: 4px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--surface-border);
+      background: var(--palette-gray-100);
+    }
+
+    .automation-admission-concept-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      color: var(--text-strong);
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .automation-admission-concept-title > .button-icon {
+      color: var(--bs-secondary-color);
+      font-size: 18px;
+    }
+
+    .automation-admission-concept-description {
+      margin: 0;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .automation-admission-values {
+      display: grid;
+      margin: 0;
+    }
+
+    .automation-admission-value {
+      display: grid;
+      grid-template-columns: max-content minmax(0, 1fr);
+      gap: 12px;
+      align-items: baseline;
+      padding: 10px 14px;
+      border-top: 1px solid var(--surface-border);
+    }
+
+    .automation-admission-value:first-child {
+      border-top: 0;
+    }
+
+    .automation-admission-value dt,
+    .automation-admission-value dd {
+      margin: 0;
+    }
+
+    .automation-admission-value dt {
+      color: var(--text-strong);
+      font-family: var(--bs-font-monospace);
+      font-size: var(--app-font-size-caption);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .automation-admission-value dd {
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .automation-admission-rule {
+      margin: 0;
+      padding: 10px 12px;
+      border-left: 3px solid var(--palette-green-600);
+      border-radius: 0 var(--workbench-radius) var(--workbench-radius) 0;
+      background: color-mix(in srgb, var(--palette-green-100) 72%, var(--surface-card));
+      color: var(--text-strong);
+      line-height: 1.45;
+    }
+
+    .automation-admission-functions {
+      display: grid;
+      gap: 10px;
+      padding-top: 12px;
+      border-top: 1px solid var(--surface-border);
+    }
+
+    .automation-admission-functions-head {
+      display: grid;
+      gap: 3px;
+    }
+
+    .automation-admission-functions-title {
+      margin: 0;
+      color: var(--text-strong);
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .automation-admission-functions-description {
+      margin: 0;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .automation-admission-function-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .automation-admission-function {
+      overflow: hidden;
+      border: 1px solid var(--surface-border);
+      border-radius: var(--workbench-radius);
+      background: var(--surface-card);
+    }
+
+    .automation-admission-function-head {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--surface-border);
+      background: var(--palette-gray-100);
+    }
+
+    .automation-admission-function-head > .button-icon {
+      color: var(--palette-blue-700);
+      font-size: 19px;
+    }
+
+    .automation-admission-function-name {
+      display: grid;
+      gap: 2px;
+    }
+
+    .automation-admission-function-name strong {
+      color: var(--text-strong);
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    .automation-admission-function-name code {
+      display: inline-block;
+      width: max-content;
+      padding: 2px 6px;
+      border: 1px solid var(--palette-blue-300);
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--palette-blue-100) 58%, var(--surface-card));
+      color: var(--palette-blue-800);
+      font-size: var(--app-font-size-caption);
+      font-weight: var(--app-font-weight-medium);
+      white-space: nowrap;
+    }
+
+    .automation-admission-technical-token {
+      display: inline-block;
+      padding: 1px 5px;
+      border: 1px solid var(--palette-indigo-300);
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--palette-indigo-100) 48%, var(--surface-card));
+      color: var(--palette-indigo-800);
+      font-family: var(--bs-font-monospace);
+      font-size: 0.94em;
+      font-weight: var(--app-font-weight-medium);
+      line-height: 1.25;
+      white-space: nowrap;
+    }
+
+    .automation-admission-technical-token[data-automation-admission-token="AUTO_IF_ELIGIBLE"],
+    .automation-admission-technical-token[data-automation-admission-token="RELEASED"] {
+      border-color: var(--palette-green-300);
+      background: color-mix(in srgb, var(--palette-green-100) 54%, var(--surface-card));
+      color: var(--palette-green-800);
+    }
+
+    .automation-admission-technical-token[data-automation-admission-token="REVIEW_REQUIRED"],
+    .automation-admission-technical-token[data-automation-admission-token="HELD"] {
+      border-color: var(--palette-yellow-300);
+      background: color-mix(in srgb, var(--palette-yellow-100) 58%, var(--surface-card));
+      color: var(--palette-yellow-800);
+    }
+
+    .automation-admission-technical-token[data-automation-admission-token="MANUAL_ONLY"] {
+      border-color: var(--palette-gray-300);
+      background: var(--palette-gray-100);
+      color: var(--palette-gray-800);
+    }
+
+    .automation-admission-technical-token[data-automation-admission-token$="_PRICED"],
+    .automation-admission-technical-token[data-automation-admission-token="DEALER_APPROVED"] {
+      border-color: var(--palette-blue-300);
+      background: color-mix(in srgb, var(--palette-blue-100) 52%, var(--surface-card));
+      color: var(--palette-blue-800);
+    }
+
+    .automation-admission-function-description {
+      margin: 0;
+      padding: 12px 14px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .automation-admission-future {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin: 0;
+      padding: 10px 12px;
+      border: 1px solid var(--palette-yellow-400);
+      border-radius: var(--workbench-radius);
+      background: var(--palette-yellow-100);
+      color: var(--text-strong);
+      line-height: 1.45;
+    }
+
+    .automation-admission-future > .button-icon {
+      flex: 0 0 auto;
+      color: var(--palette-yellow-700);
+      font-size: 19px;
     }
 
     .manual-process-summary {
@@ -6725,6 +7072,15 @@
     }
 
     @media (max-width: 899.98px) {
+      .automation-admission-concepts {
+        grid-template-columns: 1fr;
+      }
+      .automation-admission-function-grid {
+        grid-template-columns: 1fr;
+      }
+
+
+
       .manual-process-summary,
       .manual-process-summary-flow {
         align-items: flex-start;
@@ -12153,6 +12509,85 @@
       box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);
     }
 
+    /* Keep immutable Reference Data fields visually aligned with Bootstrap readonly controls. */
+    #referenceDataPage.unified-bootstrap-workspace.workbench-page .inline-edit-control[readonly],
+    #referenceDataPage.unified-bootstrap-workspace.workbench-page .inline-edit-control:disabled {
+      border-color: var(--bs-border-color);
+      background-color: var(--bs-secondary-bg);
+      color: var(--bs-secondary-color);
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    #referenceDataPage.unified-bootstrap-workspace.workbench-page .inline-edit-control[readonly]:focus,
+    #referenceDataPage.unified-bootstrap-workspace.workbench-page .inline-edit-control:disabled:focus {
+      border-color: var(--bs-border-color);
+      outline: 0;
+      box-shadow: none;
+    }
+
+    #referenceDataPage.unified-bootstrap-workspace.workbench-page .reference-readonly-control {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      cursor: not-allowed;
+    }
+
+    #referenceDataPage.unified-bootstrap-workspace.workbench-page .reference-readonly-control:focus-visible {
+      outline: 2px solid rgba(var(--bs-primary-rgb), 0.28);
+      outline-offset: 2px;
+    }
+
+    #referenceDataPage.unified-bootstrap-workspace.workbench-page .reference-readonly-control > .inline-edit-control:disabled {
+      pointer-events: none;
+    }
+
+    :is(#marketPage, #pricingPage, #clientProfilePage, #pricingRulesPage).workbench-page .workbench-breadcrumb {
+      margin-bottom: 2px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    :is(#marketPage, #pricingPage, #clientProfilePage, #pricingRulesPage).workbench-page .workbench-breadcrumb .breadcrumb-item,
+    :is(#marketPage, #pricingPage, #clientProfilePage, #pricingRulesPage).workbench-page .workbench-breadcrumb .breadcrumb-item a {
+      color: var(--bs-secondary-color);
+    }
+
+    :is(#marketPage, #pricingPage, #clientProfilePage, #pricingRulesPage).workbench-page .workbench-breadcrumb .breadcrumb-item.active {
+      color: var(--bs-body-color);
+    }
+
+    :is(#pricingPage, #pricingRulesPage).unified-bootstrap-workspace.workbench-page .reference-header-filter[readonly] {
+      border-color: var(--bs-border-color);
+      background-color: var(--bs-secondary-bg);
+      color: var(--bs-secondary-color);
+      cursor: not-allowed;
+    }
+
+    :is(#pricingPage, #pricingRulesPage).unified-bootstrap-workspace.workbench-page .reference-header-filter[readonly]:focus {
+      border-color: var(--bs-border-color);
+      outline: 0;
+      box-shadow: none;
+    }
+
+    #pricingPage.unified-bootstrap-workspace.workbench-page.is-related-view [data-pricing-context-actions-column] {
+      display: none;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page.is-related-view [data-client-profile-actions-column] {
+      display: none;
+    }
+
+    :is(#marketPage, #pricingPage, #referenceDataPage).workbench-page .reference-related-view-cell {
+      text-align: center;
+    }
+
+    :is(#marketPage, #pricingPage, #referenceDataPage).workbench-page .reference-related-view-control {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     /* Execution Context and Reference Data use the same compact rounding in editable rows. */
     :is(#pricingPage, #referenceDataPage).unified-bootstrap-workspace.workbench-page .inline-edit-control {
       border-radius: var(--workbench-radius);
@@ -13142,6 +13577,7 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table tbody tr.is-editing,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page.is-related-view .client-profile-table tbody tr,
     #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table tbody tr {
       cursor: default;
     }
@@ -17662,6 +18098,12 @@
   <main class="settings-shell profile-shell market-shell market-bootstrap workbench-page" id="marketPage" hidden>
     <section class="settings-topbar workbench-page-header" id="marketPageHeader" aria-label="Market Pulse header">
       <div class="settings-title-block">
+        <nav aria-label="Breadcrumb" id="marketSettingsBreadcrumb" hidden>
+          <ol class="breadcrumb workbench-breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="#settings:currencies" id="marketSettingsBreadcrumbBackLink">Currency Settings</a></li>
+            <li class="breadcrumb-item active" id="marketSettingsBreadcrumbCurrent" aria-current="page"></li>
+          </ol>
+        </nav>
         <h1 class="settings-title" id="marketPageTitle">Market Pulse</h1>
       </div>
       <div class="profile-status workbench-page-status" id="marketStatus" role="status" aria-live="polite"></div>
@@ -17897,7 +18339,7 @@
           </a>
           <a class="nav-link" id="fxPositionAutoTab" href="#fx-position:auto" data-fx-position-mode="AUTO" role="tab" aria-controls="fxPositionGridPanel" aria-selected="false">
             <span class="button-icon fx-position-mode-icon" aria-hidden="true">automation</span>
-            <span>Auto Batching &amp; Hedging</span>
+            <span>Auto Hedging</span>
             <span class="fx-position-mode-count" id="fxPositionAutoCount">0</span>
           </a>
         </nav>
@@ -18042,7 +18484,7 @@
               </div>
             </div>
             <div class="batch-control batch-toolbar-settings" aria-label="Automatic Batching actions and settings">
-              <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary with-icon" id="sendToAutoPositionModeButton" aria-label="Send selected Trades to Auto Batching &amp; Hedging" disabled>
+              <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary with-icon" id="sendToAutoPositionModeButton" aria-label="Send selected Trades to Auto Hedging" disabled>
                 <span class="button-icon" aria-hidden="true">move_down</span>
                 <span>Send to Auto</span>
               </button>
@@ -18274,7 +18716,7 @@
   <dialog class="market-bootstrap-dialog batch-rollback-dialog" id="sendToAutoPositionModeDialog" aria-labelledby="sendToAutoPositionModeDialogTitle">
     <div class="modal-content">
       <header class="modal-header">
-        <h2 class="modal-title" id="sendToAutoPositionModeDialogTitle">Send to Auto Batching &amp; Hedging</h2>
+        <h2 class="modal-title" id="sendToAutoPositionModeDialogTitle">Send to Auto Hedging</h2>
         <button type="button" class="btn-close" id="sendToAutoPositionModeDialogClose" aria-label="Close"></button>
       </header>
       <div class="modal-body">
@@ -18459,6 +18901,14 @@
           <span>Trading Counterparties</span>
         </button>
         <div class="settings-title-block workbench-detail-title-block">
+          <nav class="workbench-breadcrumb" id="clientProfileBreadcrumb" aria-label="breadcrumb" hidden>
+            <ol class="breadcrumb mb-0">
+              <li class="breadcrumb-item">
+                <a id="clientProfileBreadcrumbBackLink" href="#execution-context">Execution Contexts</a>
+              </li>
+              <li class="breadcrumb-item active" id="clientProfileBreadcrumbCurrent" aria-current="page">Trading Counterparties</li>
+            </ol>
+          </nav>
           <h1 class="settings-title" id="clientProfilePageTitle">Trading Counterparties</h1>
         </div>
       </div>
@@ -18497,7 +18947,7 @@
               <col class="client-profile-name-col" data-ui-column-key="counterparty_name">
               <col class="client-profile-counterparty-role-col" data-ui-column-key="role">
               <col class="client-profile-status-col" data-ui-column-key="active">
-              <col class="client-profile-actions-col" data-ui-column-key="actions">
+              <col class="client-profile-actions-col" data-ui-column-key="actions" data-client-profile-actions-column>
             </colgroup>
             <thead>
               <tr>
@@ -18565,7 +19015,7 @@
                     </select>
                   </div>
                 </th>
-                <th class="profile-actions-cell">
+                <th class="profile-actions-cell" data-client-profile-actions-column>
                   <div class="reference-column-head reference-column-head-static reference-column-head-centered">
                     <span class="reference-column-title">Actions</span>
                   </div>
@@ -18825,6 +19275,14 @@
   <main class="settings-shell profile-shell pricing-shell unified-bootstrap-workspace workbench-page" id="pricingPage" hidden>
     <section class="settings-topbar workbench-page-header" aria-label="Execution context header">
       <div class="settings-title-block">
+        <nav class="workbench-breadcrumb" id="pricingContextBreadcrumb" aria-label="breadcrumb" hidden>
+          <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+              <a id="pricingContextBreadcrumbBackLink" href="#reference-data:servicing-locations">Servicing Locations</a>
+            </li>
+            <li class="breadcrumb-item active" id="pricingContextBreadcrumbCurrent" aria-current="page">Execution Contexts</li>
+          </ol>
+        </nav>
         <h1 class="settings-title">Execution Context</h1>
       </div>
       <div class="profile-status workbench-page-status" id="pricingContextStatus" role="status" aria-live="polite"></div>
@@ -18849,8 +19307,9 @@
               <col class="pricing-context-accounting-col" data-ui-column-key="accounting_system">
               <col class="pricing-context-execution-col" data-ui-column-key="execution_system">
               <col class="pricing-context-position-mode-col" data-ui-column-key="default_position_management_mode">
+              <col class="pricing-context-admission-policy-col" data-ui-column-key="auto_hedging_admission_policy">
               <col class="pricing-context-count-col" data-ui-column-key="counterparties_count">
-              <col class="pricing-context-actions-col" data-ui-column-key="actions">
+              <col class="pricing-context-actions-col" data-ui-column-key="actions" data-pricing-context-actions-column>
             </colgroup>
             <thead>
               <tr>
@@ -18899,7 +19358,21 @@
                     <select class="reference-header-filter" data-pricing-context-header-filter="defaultPositionManagementMode" aria-label="Filter execution contexts by default FX position mode">
                       <option value="">All</option>
                       <option value="MANUAL">Manual Control</option>
-                      <option value="AUTO">Auto Batching &amp; Hedging</option>
+                      <option value="AUTO">Auto Hedging</option>
+                    </select>
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">shield</span>
+                      <span>Auto Hedging Admission Policy</span>
+                    </span>
+                    <select class="reference-header-filter" data-pricing-context-header-filter="autoHedgingAdmissionPolicy" aria-label="Filter execution contexts by Auto Hedging Admission Policy">
+                      <option value="">All</option>
+                      <option value="AUTO_IF_ELIGIBLE">Auto if eligible</option>
+                      <option value="REVIEW_REQUIRED">Review required</option>
+                      <option value="MANUAL_ONLY">Manual only</option>
                     </select>
                   </div>
                 </th>
@@ -18916,7 +19389,7 @@
                     </span>
                   </div>
                 </th>
-                <th class="profile-actions-cell">Actions</th>
+                <th class="profile-actions-cell" data-pricing-context-actions-column>Actions</th>
               </tr>
             </thead>
             <tbody id="pricingContextRows"></tbody>
@@ -19195,6 +19668,12 @@
   <main class="settings-shell profile-shell pricing-shell unified-bootstrap-workspace workbench-page" id="pricingRulesPage" hidden>
     <section class="settings-topbar workbench-page-header" aria-label="Pricing Rules header">
       <div class="settings-title-block">
+        <nav aria-label="Breadcrumb" id="pricingRulesBreadcrumb" hidden>
+          <ol class="breadcrumb workbench-breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="#settings:currency-pairs" id="pricingRulesBreadcrumbBackLink">Currency Pair Settings</a></li>
+            <li class="breadcrumb-item active" id="pricingRulesBreadcrumbCurrent" aria-current="page"></li>
+          </ol>
+        </nav>
         <h1 class="settings-title">Pricing Rules</h1>
       </div>
       <div class="profile-status workbench-page-status" id="pricingRuleStatus" role="status" aria-live="polite"></div>
@@ -20239,6 +20718,22 @@
               <strong data-process-copy="manualBatching">Manual Batching</strong>
             </span>
           </a>
+          <div class="processes-list-group" data-process-catalog-group="auto-hedging">
+            <a class="processes-list-link" href="#processes:auto-hedging" data-process-catalog-view="auto-hedging">
+              <span class="button-icon" aria-hidden="true">shield</span>
+              <span class="processes-list-link-copy">
+                <strong data-process-copy="autoHedging">Auto Hedging</strong>
+              </span>
+            </a>
+            <div class="processes-sublist" aria-label="Auto Hedging subcatalogs" data-process-aria-label="autoHedgingSubcatalogs">
+              <a class="processes-list-link processes-list-sublink" href="#processes:auto-hedging-admission" data-process-catalog-view="admission" data-process-catalog-parent="auto-hedging">
+                <span class="button-icon" aria-hidden="true">verified_user</span>
+                <span class="processes-list-link-copy">
+                  <strong data-process-copy="automationAdmission">Auto Hedging Admission</strong>
+                </span>
+              </a>
+            </div>
+          </div>
           <a class="processes-list-link" href="#processes:domain-glossary" data-process-catalog-view="glossary">
             <span class="button-icon" aria-hidden="true">menu_book</span>
             <span class="processes-list-link-copy">
@@ -20529,6 +21024,130 @@
         </div>
       </article>
 
+      <article class="profile-panel processes-details" id="autoHedgingProcessView" aria-labelledby="autoHedgingTitle" hidden>
+        <header class="profile-panel-head processes-detail-head">
+          <div class="processes-detail-heading">
+            <h2 class="processes-section-title" id="autoHedgingTitle" data-process-copy="autoHedging">Auto Hedging</h2>
+            <p class="processes-detail-subtitle" data-process-copy="autoHedgingSubtitle">Automated FX risk management</p>
+          </div>
+        </header>
+        <div class="processes-detail-body automation-admission-body">
+          <p class="auto-hedging-note" data-process-copy="autoHedgingFxPositionPresentation" data-process-linked-copy>In FX Position, FX Trades admitted to the Auto Hedging process are displayed on the “Auto Hedging” tab. FX Trades not admitted to Auto Hedging remain on the “Manual Control” tab.</p>
+
+          <section class="auto-hedging-subcatalogs" aria-labelledby="autoHedgingSubcatalogsTitle">
+            <h3 class="auto-hedging-subcatalogs-title" id="autoHedgingSubcatalogsTitle" data-process-copy="subcatalogs">Subcatalogs</h3>
+            <a class="auto-hedging-subcatalog-link" href="#processes:auto-hedging-admission">
+              <span class="button-icon" aria-hidden="true">verified_user</span>
+              <span class="auto-hedging-subcatalog-copy">
+                <strong data-process-copy="automationAdmission">Auto Hedging Admission</strong>
+                <small data-process-copy="automationAdmissionCatalogDescription">Controls which FX Trades may participate in Auto Hedging.</small>
+              </span>
+            </a>
+          </section>
+        </div>
+      </article>
+
+
+      <article class="profile-panel processes-details" id="automationAdmissionProcessView" aria-labelledby="automationAdmissionTitle" hidden>
+        <header class="profile-panel-head processes-detail-head">
+          <div class="processes-detail-heading">
+            <h2 class="processes-section-title" id="automationAdmissionTitle" data-process-copy="automationAdmission">Auto Hedging Admission</h2>
+            <p class="processes-detail-subtitle" data-process-copy="automationAdmissionSubtitle" data-process-linked-copy>The boundary for admitting an FX Trade to the Auto Hedging process</p>
+          </div>
+        </header>
+        <div class="processes-detail-body automation-admission-body">
+          <p class="automation-admission-summary" role="note">
+            <span class="button-icon" aria-hidden="true">shield</span>
+            <span data-process-copy="automationAdmissionSummary" data-process-linked-copy>Auto Hedging Admission controls which FX Trades may participate in Auto Hedging.</span>
+          </p>
+
+          <div class="automation-admission-concepts">
+            <section class="automation-admission-concept" aria-labelledby="automationAdmissionPolicyTitle">
+              <header class="automation-admission-concept-head">
+                <h3 class="automation-admission-concept-title" id="automationAdmissionPolicyTitle">
+                  <span class="button-icon" aria-hidden="true">rule</span>
+                  <span>Admission Policy</span>
+                </h3>
+                <p class="automation-admission-concept-description" data-process-copy="automationAdmissionPolicyDefinition" data-process-linked-copy>Defines the permitted admission path for an FX Trade: automatic release after checks, release after review, or manual control only.</p>
+              </header>
+              <dl class="automation-admission-values">
+                <div class="automation-admission-value">
+                  <dt>AUTO_IF_ELIGIBLE</dt>
+                  <dd data-process-copy="autoIfEligibleDefinition">Release automatically when all required eligibility checks pass.</dd>
+                </div>
+                <div class="automation-admission-value">
+                  <dt>REVIEW_REQUIRED</dt>
+                  <dd data-process-copy="reviewRequiredDefinition">Hold first; release only after review.</dd>
+                </div>
+                <div class="automation-admission-value">
+                  <dt>MANUAL_ONLY</dt>
+                  <dd data-process-copy="manualOnlyDefinition" data-process-linked-copy>Keep under manual control; admission to Auto Hedging is not allowed.</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="automation-admission-concept" aria-labelledby="automationAdmissionStateTitle">
+              <header class="automation-admission-concept-head">
+                <h3 class="automation-admission-concept-title" id="automationAdmissionStateTitle">
+                  <span class="button-icon" aria-hidden="true">toggle_on</span>
+                  <span>Admission State</span>
+                </h3>
+                <p class="automation-admission-concept-description" data-process-copy="automationAdmissionStateDefinition" data-process-linked-copy>Shows whether a specific FX Trade is currently held for manual control or released to Auto Hedging.</p>
+              </header>
+              <dl class="automation-admission-values">
+                <div class="automation-admission-value">
+                  <dt>HELD</dt>
+                  <dd data-process-copy="heldDefinition" data-process-linked-copy>Held for manual control and does not participate in Auto Hedging.</dd>
+                </div>
+                <div class="automation-admission-value">
+                  <dt>RELEASED</dt>
+                  <dd data-process-copy="releasedDefinition" data-process-linked-copy>Admitted to Auto Hedging.</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+
+          <p class="automation-admission-rule" data-process-copy="automationAdmissionRule" data-process-linked-copy>Policy answers “which admission path is allowed?” State answers “where is this FX Trade now?”</p>
+
+          <section class="automation-admission-functions" aria-labelledby="automationAdmissionFunctionsTitle">
+            <header class="automation-admission-functions-head">
+              <h3 class="automation-admission-functions-title" id="automationAdmissionFunctionsTitle" data-process-copy="domainFunctions">Domain Functions</h3>
+              <p class="automation-admission-functions-description" data-process-copy="domainFunctionsDescription">These pure domain functions do not persist data. They return the planned state or transition and its reason; additional admission conditions can be added later without changing the calling workflow.</p>
+            </header>
+
+            <div class="automation-admission-function-grid">
+              <section class="automation-admission-function">
+                <header class="automation-admission-function-head">
+                  <span class="button-icon" aria-hidden="true">move_to_inbox</span>
+                  <span class="automation-admission-function-name">
+                    <strong data-process-copy="determineInitialAdmissionStateTitle">Determine Initial Admission State</strong>
+                    <code>determineInitialAdmissionState</code>
+                  </span>
+                </header>
+                <p class="automation-admission-function-description" data-process-copy="determineInitialAdmissionStateDescription" data-process-linked-copy>Demo baseline for an FX Trade with an Execution Context: if the Execution System referenced by that context has Pricing Mode AUTO_PRICED, Policy AUTO_IF_ELIGIBLE applies and the function returns State RELEASED; otherwise it returns HELD. Technical FX Trades without an Execution Context are outside this baseline and will be defined separately. Future checks may include Transfer Rate deviation from Market Pulse and trade amount limits.</p>
+              </section>
+
+              <section class="automation-admission-function">
+                <header class="automation-admission-function-head">
+                  <span class="button-icon" aria-hidden="true">outbound</span>
+                  <span class="automation-admission-function-name">
+                    <strong data-process-copy="decideReleaseToAutoHedgingTitle">Decide Release to Auto Hedging</strong>
+                    <code>decideReleaseToAutoHedging</code>
+                  </span>
+                </header>
+                <p class="automation-admission-function-description" data-process-copy="decideReleaseToAutoHedgingDescription" data-process-linked-copy>Called when a HELD FX Trade is proposed for Auto Hedging. It returns whether HELD → RELEASED is allowed, together with the next State and reason.</p>
+              </section>
+            </div>
+
+            <p class="automation-admission-future" role="note">
+              <span class="button-icon" aria-hidden="true">timeline</span>
+              <span data-process-copy="automationAdmissionFutureExample" data-process-linked-copy>Future extension example—not implemented: release may additionally require the Transfer Rate to remain within a configured deviation corridor from current Market Pulse quotes.</span>
+            </p>
+          </section>
+        </div>
+      </article>
+
+
       <article class="profile-panel processes-details" id="domainGlossaryProcessView" aria-labelledby="domainGlossaryTitle" hidden>
         <header class="profile-panel-head processes-detail-head">
           <div class="processes-detail-heading">
@@ -20539,6 +21158,11 @@
         <div class="processes-detail-body">
           <section class="manual-process-definitions domain-glossary-definitions" aria-labelledby="domainGlossaryTitle">
             <dl class="manual-process-definition-list">
+              <div class="manual-process-definition" id="process-term-auto-hedging" tabindex="-1">
+                <dt>Auto Hedging</dt>
+                <dd data-process-copy="autoHedgingDefinition">An automated FX risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.</dd>
+              </div>
+
               <div class="manual-process-definition" id="process-term-fx-batch" tabindex="-1">
                 <dt>FX Batch</dt>
                 <dd data-process-copy="fxBatchDefinition">A fixed package of FX Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical FX Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active FX Position view, which organizes trades and simplifies control of the current currency position.</dd>
@@ -20562,6 +21186,30 @@
               <div class="manual-process-definition" id="process-term-fx-position" tabindex="-1">
                 <dt>FX Position</dt>
                 <dd data-process-copy="fxPositionDefinition">Application interface for monitoring the currency position and performing operations with FX Trades, including Batching.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-execution-context" tabindex="-1">
+                <dt>Execution Context</dt>
+                <dd data-process-copy="executionContextDefinition">A configuration context that determines how an FX Trade is processed for pricing, position management, and other applicable processes. In the current demo, it is defined by the combination of Servicing Location, Accounting System (when applicable), and Execution System.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-servicing-location" tabindex="-1">
+                <dt>Servicing Location</dt>
+                <dd data-process-copy="servicingLocationDefinition">The organizational and geographic point at which an FX Trade is serviced, such as a branch or head office in a particular region.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-accounting-system" tabindex="-1">
+                <dt>Accounting System</dt>
+                <dd data-process-copy="accountingSystemDefinition">An internal system of record of a bank or financial institution in which an FX Trade and its related accounting entries are registered.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-execution-system" tabindex="-1">
+                <dt>Execution System</dt>
+                <dd data-process-copy="executionSystemDefinition">The system or execution channel in which an FX Trade is actually executed. Its Pricing Mode describes how the execution price is produced or approved.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-pricing-mode" tabindex="-1">
+                <dt>Pricing Mode</dt>
+                <dd data-process-copy="pricingModeDefinition">An Execution System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-market-pulse" tabindex="-1">
+                <dt>Market Pulse</dt>
+                <dd data-process-copy="marketPulseDefinition">An application module that provides current normalized market quotes (Bid and Offer) for currency pairs to pricing, validation, and risk-management processes. In the current demo, quotes are generated by a simulator; the domain concept is independent of the data source and may later use real market-data feeds.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-transfer-rate" tabindex="-1">
                 <dt>Transfer Rate</dt>
@@ -20957,7 +21605,7 @@
               </label>
               <select class="form-select form-select-sm" id="clientPricingRulePositionManagementModeOverride" name="positionManagementModeOverride" data-position-management-mode-inherited="true" aria-label="FX Position Mode" disabled>
                 <option value="MANUAL">Manual Control</option>
-                <option value="AUTO">Auto Batching &amp; Hedging</option>
+                <option value="AUTO">Auto Hedging</option>
               </select>
             </fieldset>
             <label class="form-field">
@@ -21055,7 +21703,13 @@
     const POSITION_MANAGEMENT_MODES = Object.freeze(["MANUAL", "AUTO"]);
     const POSITION_MANAGEMENT_MODE_LABELS = Object.freeze({
       MANUAL: "Manual Control",
-      AUTO: "Auto Batching & Hedging"
+      AUTO: "Auto Hedging"
+    });
+    const AUTO_HEDGING_ADMISSION_POLICIES = Object.freeze(["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED", "MANUAL_ONLY"]);
+    const AUTO_HEDGING_ADMISSION_POLICY_LABELS = Object.freeze({
+      AUTO_IF_ELIGIBLE: "Auto if eligible",
+      REVIEW_REQUIRED: "Review required",
+      MANUAL_ONLY: "Manual only"
     });
     const HEDGE_DEAL_PRICING_MODES = ["AUTO_PRICED", "DEALER_PRICED"];
     const PRICING_TYPE_PRESENTATION = Object.freeze({
@@ -21912,12 +22566,17 @@
     const marketPage = document.getElementById("marketPage");
     const marketPageHeader = document.getElementById("marketPageHeader");
     const marketPageTitle = document.getElementById("marketPageTitle");
+    const marketSettingsBreadcrumb = document.getElementById("marketSettingsBreadcrumb");
+    const marketSettingsBreadcrumbBackLink = document.getElementById("marketSettingsBreadcrumbBackLink");
+    const marketSettingsBreadcrumbCurrent = document.getElementById("marketSettingsBreadcrumbCurrent");
     const databasePage = document.getElementById("databasePage");
     const processesPage = document.getElementById("processesPage");
     const processCatalogViewLinks = Array.from(
       document.querySelectorAll("[data-process-catalog-view]")
     );
     const manualBatchFormationProcessView = document.getElementById("manualBatchFormationProcessView");
+    const autoHedgingProcessView = document.getElementById("autoHedgingProcessView");
+    const automationAdmissionProcessView = document.getElementById("automationAdmissionProcessView");
     const domainGlossaryProcessView = document.getElementById("domainGlossaryProcessView");
     const processCatalogLanguageButtons = Array.from(
       document.querySelectorAll("[data-process-language]")
@@ -22027,6 +22686,9 @@
     const clientProfileDetailView = document.getElementById("clientProfileDetailView");
     const clientProfileBackButton = document.getElementById("clientProfileBackButton");
     const clientProfilePageTitle = document.getElementById("clientProfilePageTitle");
+    const clientProfileBreadcrumb = document.getElementById("clientProfileBreadcrumb");
+    const clientProfileBreadcrumbBackLink = document.getElementById("clientProfileBreadcrumbBackLink");
+    const clientProfileBreadcrumbCurrent = document.getElementById("clientProfileBreadcrumbCurrent");
     const tradingCounterpartyScopeTabs = document.getElementById("tradingCounterpartyScopeTabs");
     const tradingCounterpartyScopeButtons = Array.from(document.querySelectorAll("[data-trading-counterparty-scope]"));
     const tradingCounterpartiesTable = document.getElementById("tradingCounterpartiesTable");
@@ -22079,6 +22741,9 @@
     const pricingContextIdHeader = document.getElementById("pricingContextIdHeader");
     const pricingContextHeaderFilterControls = Array.from(document.querySelectorAll("[data-pricing-context-header-filter]"));
     const pricingContextNewButton = document.getElementById("pricingContextNewButton");
+    const pricingContextBreadcrumb = document.getElementById("pricingContextBreadcrumb");
+    const pricingContextBreadcrumbBackLink = document.getElementById("pricingContextBreadcrumbBackLink");
+    const pricingContextBreadcrumbCurrent = document.getElementById("pricingContextBreadcrumbCurrent");
     const referenceDataStatusEl = document.getElementById("referenceDataStatus");
     const referenceDataPanels = Array.from(document.querySelectorAll("[data-reference-panel]"));
     const referenceDataRouteLinks = Array.from(document.querySelectorAll("[data-reference-route]"));
@@ -22097,6 +22762,9 @@
     const tradeCaptureChannelIdHeader = document.getElementById("tradeCaptureChannelIdHeader");
     const pricingRuleRowsEl = document.getElementById("pricingRuleRows");
     const pricingRulesScopeButtons = Array.from(document.querySelectorAll("[data-pricing-rules-scope]"));
+    const pricingRulesBreadcrumb = document.getElementById("pricingRulesBreadcrumb");
+    const pricingRulesBreadcrumbBackLink = document.getElementById("pricingRulesBreadcrumbBackLink");
+    const pricingRulesBreadcrumbCurrent = document.getElementById("pricingRulesBreadcrumbCurrent");
     const pricingRuleCounterpartyCodeTitle = document.getElementById("pricingRuleCounterpartyCodeTitle");
     const pricingRuleCounterpartyCodeFilter = document.getElementById("pricingRuleCounterpartyCodeFilter");
     const pricingRuleQuickHedgeHeader = document.getElementById("pricingRuleQuickHedgeHeader");
@@ -22460,6 +23128,7 @@
     let editingDealId = null;
     let marketCcyOptionsEditState = null;
     let marketPairOptionsEditState = null;
+    let marketSettingsRouteScope = null;
     let editingMarketSimulationCurrencyPair = null;
     let marketCcyOptionGrid = null;
     let marketPairOptionGrid = null;
@@ -22483,6 +23152,7 @@
     let addHedgeDealPricingModeLocked = false;
     let addHedgeDealSideLocked = false;
     let addHedgeDealQuickModeSelection = null;
+    let addHedgeDealPositionManagementMode = null;
     const selectedHedgeQuickModePresetCodes = new Map();
     let hedgeQuickModeAlignmentFrame = null;
     let hedgeQuickModeToolbarSignature = "";
@@ -22509,12 +23179,16 @@
     let activeTradingCounterpartyScope = "EXTERNAL";
     let editingUserIndex = null;
     let tradingCounterpartyRowEditState = null;
+    let clientProfileRouteScope = null;
+    let clientProfileRouteScopeRequestSequence = 0;
     let userRowEditState = null;
     let referenceDataEditState = null;
     let tradingCounterpartyIdSortDirection = "asc";
     let usersIdSortDirection = "asc";
     let pricingContextIdSortDirection = "asc";
+    let pricingContextRouteScope = null;
     let pricingRuleIdSortDirection = "asc";
+    let pricingRulesRouteScope = null;
     let servicingBranchIdSortDirection = "asc";
     let settlementSystemIdSortDirection = "asc";
     let tradeCaptureChannelIdSortDirection = "asc";
@@ -23812,6 +24486,31 @@
       return POSITION_MANAGEMENT_MODE_LABELS[normalizedPositionManagementMode(value)];
     }
 
+    function normalizedAutoHedgingAdmissionPolicy(value, defaultPositionManagementMode = "MANUAL") {
+      const policy = normalizedReferenceCode(value);
+
+      if (AUTO_HEDGING_ADMISSION_POLICIES.includes(policy)) {
+        return policy;
+      }
+
+      return normalizedPositionManagementMode(defaultPositionManagementMode) === "AUTO"
+        ? "AUTO_IF_ELIGIBLE"
+        : "MANUAL_ONLY";
+    }
+
+    function autoHedgingAdmissionPolicyLabel(value) {
+      return AUTO_HEDGING_ADMISSION_POLICY_LABELS[normalizedAutoHedgingAdmissionPolicy(value)];
+    }
+
+    function autoHedgingAdmissionPolicyBadgeMarkup(value) {
+      const policy = normalizedAutoHedgingAdmissionPolicy(value);
+      const toneClass = policy === "AUTO_IF_ELIGIBLE"
+        ? " is-auto"
+        : policy === "REVIEW_REQUIRED" ? " is-review-required" : " is-manual-only";
+
+      return `<span class="position-management-mode-badge auto-hedging-admission-policy-badge${toneClass}">${escapeHtml(autoHedgingAdmissionPolicyLabel(policy))}</span>`;
+    }
+
     function effectivePositionManagementModeForRule(rule, context = null) {
       const override = normalizedPositionManagementModeOverride(rule?.positionManagementModeOverride);
 
@@ -23967,7 +24666,7 @@
       return `
         <span class="client-deal-pricing-rule-margin${extraClass ? ` ${escapeHtml(extraClass)}` : ""}">
           <span class="client-deal-pricing-rule-margin-icon" ${iconAttributes}>
-            <span class="button-icon" aria-hidden="true">percent</span>
+            <span class="button-icon" aria-hidden="true">savings</span>
           </span>
           <span class="client-deal-pricing-rule-margin-value">${escapeHtml(editNumber(marginPercent, 4))}%</span>
         </span>
@@ -24281,6 +24980,10 @@
           const defaultPositionManagementMode = normalizedPositionManagementMode(
             item?.defaultPositionManagementMode ?? item?.default_position_management_mode
           );
+          const autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(
+            item?.autoHedgingAdmissionPolicy ?? item?.auto_hedging_admission_policy,
+            defaultPositionManagementMode
+          );
           let pricingContextIdValue = normalizedIntegerId(
             item?.executionContextId ?? item?.execution_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
           );
@@ -24315,6 +25018,7 @@
             settlementSystemId,
             tradeCaptureChannelId,
             defaultPositionManagementMode,
+            autoHedgingAdmissionPolicy,
             assignedCounterpartyCount,
             pricingRulesCount
           };
@@ -26274,6 +26978,66 @@
       return `${rule.pricingContextId} ${pricingContextDisplayPath(rule.pricingContextId)} ${pricingMode} ${pricingTypePresentation(pricingMode).label}`;
     }
 
+    function pricingRuleHeaderFilterControl(field) {
+      return pricingRuleHeaderFilterControls
+        .find(control => control.dataset.pricingRuleHeaderFilter === field) || null;
+    }
+
+    function pricingRuleMatchesRouteScope(rule) {
+      return !pricingRulesRouteScope
+        || rule.ccyPairCode === pricingRulesRouteScope.pairCode;
+    }
+
+    function syncPricingRulesRouteView() {
+      const routeState = pricingRulesRouteStateFromLocation();
+      const previousScope = pricingRulesRouteScope;
+      const relatedView = routeState.mode === "related" && routeState.pairCode;
+      const pairChanged = previousScope?.pairCode !== routeState.pairCode;
+
+      pricingRuleEditState = null;
+      pricingRuleHeaderFilterControls.forEach(control => {
+        control.readOnly = false;
+        control.removeAttribute("aria-readonly");
+
+        if (relatedView && pairChanged) {
+          control.value = "";
+        } else if (
+          !relatedView
+          && previousScope
+          && control.dataset.pricingRuleHeaderFilter === "currencyPair"
+          && control.value.trim().toUpperCase() === previousScope.currencyPair
+        ) {
+          control.value = "";
+        }
+      });
+
+      pricingRulesRouteScope = relatedView
+        ? {
+            pairCode: routeState.pairCode,
+            currencyPair: routeState.currencyPair,
+            returnHash: routeState.returnHash
+          }
+        : null;
+      pricingRulesPage.classList.toggle("is-related-view", Boolean(pricingRulesRouteScope));
+      pricingRulesBreadcrumb.hidden = !pricingRulesRouteScope;
+
+      if (pricingRulesRouteScope) {
+        const currencyPairFilter = pricingRuleHeaderFilterControl("currencyPair");
+
+        if (currencyPairFilter) {
+          currencyPairFilter.value = pricingRulesRouteScope.currencyPair;
+          currencyPairFilter.readOnly = true;
+          currencyPairFilter.setAttribute("aria-readonly", "true");
+        }
+
+        pricingRulesBreadcrumbBackLink.href = pricingRulesRouteScope.returnHash;
+        pricingRulesBreadcrumbBackLink.textContent = "Currency Pair Settings";
+        pricingRulesBreadcrumbCurrent.textContent = `Pricing Rules for ${pricingRulesRouteScope.currencyPair}`;
+      }
+
+      setPricingRuleStatus("");
+    }
+
     function pricingRuleMatchesColumnFilters(rule) {
       return pricingRuleHeaderFilterControls.every(control => {
         const query = control.value.trim().toLowerCase();
@@ -26301,6 +27065,7 @@
       return clientPricingRules
         .map((rule, index) => ({ rule, index }))
         .filter(({ rule }) => rule.counterpartyScope === activePricingRulesScope)
+        .filter(({ rule }) => pricingRuleMatchesRouteScope(rule))
         .filter(({ rule }) => !pricingRulesClientInnFilter || rule.inn === pricingRulesClientInnFilter)
         .filter(({ rule }) => pricingRuleMatchesColumnFilters(rule))
         .sort((left, right) => {
@@ -27049,6 +27814,13 @@
         const selected = button.dataset.pricingRulesScope === activePricingRulesScope;
         button.classList.toggle("active", selected);
         button.setAttribute("aria-selected", String(selected));
+        button.href = pricingRulesRouteScope
+          ? pricingRulesForCcyPairRoute(
+              pricingRulesRouteScope.pairCode,
+              pricingRulesRouteScope.returnHash,
+              button.dataset.pricingRulesScope
+            )
+          : pricingRulesRoute(button.dataset.pricingRulesScope);
       });
       pricingRuleCounterpartyCodeTitle.textContent = internalScope ? "Unit Code" : "Counterparty Code";
       pricingRuleCounterpartyCodeFilter.setAttribute(
@@ -27086,14 +27858,18 @@
       const rows = filteredPricingRules();
       const scopeRules = clientPricingRules.filter(rule =>
         rule.counterpartyScope === activePricingRulesScope
+        && pricingRuleMatchesRouteScope(rule)
       );
       const columnCount = activePricingRulesScope === "INTERNAL" ? 8 : 7;
       const layoutKey = activePricingRulesLayoutKey();
 
       if (scopeRules.length === 0) {
+        const emptyMessage = pricingRulesRouteScope
+          ? `No Pricing Rules for ${pricingRulesRouteScope.currencyPair} in this counterparty scope.`
+          : "No pricing rules for this counterparty scope yet.";
         pricingRuleRowsEl.innerHTML = `
           <tr>
-            <td class="profile-empty" colspan="${columnCount}">No pricing rules for this counterparty scope yet.</td>
+            <td class="profile-empty" colspan="${columnCount}">${emptyMessage}</td>
           </tr>
         `;
         applyUiTableLayout(layoutKey);
@@ -29893,6 +30669,101 @@
       clientProfileLayout.classList.toggle("is-detail-view", detailVisible);
     }
 
+    function locallyAttachedTradingCounterpartyIds(executionContextId) {
+      const contextId = String(executionContextId ?? "");
+
+      return new Set(
+        clientProfiles
+          .filter(profile => assignedExecutionContextsForProfile(profile)
+            .some(context => context.pricingContextId === contextId))
+          .map(profile => String(profile.counterpartyId ?? ""))
+          .filter(Boolean)
+      );
+    }
+
+    function selectFirstPopulatedTradingCounterpartyScope(counterpartyIds) {
+      const attachedProfiles = clientProfiles.filter(profile =>
+        counterpartyIds.has(String(profile.counterpartyId ?? ""))
+      );
+      const activeScopeHasRows = attachedProfiles.some(profile =>
+        normalizedCounterpartyScope(profile.counterpartyScope) === activeTradingCounterpartyScope
+      );
+
+      if (activeScopeHasRows) {
+        return;
+      }
+
+      const firstScope = ["EXTERNAL", "INTERNAL"].find(scope =>
+        attachedProfiles.some(profile => normalizedCounterpartyScope(profile.counterpartyScope) === scope)
+      );
+
+      if (firstScope) {
+        setTradingCounterpartyScopeTab(firstScope);
+      }
+    }
+
+    async function loadExecutionContextTradingCounterparties(routeScope) {
+      const requestSequence = ++clientProfileRouteScopeRequestSequence;
+      const localIds = locallyAttachedTradingCounterpartyIds(routeScope.executionContextId);
+      routeScope.counterpartyIds = localIds;
+      routeScope.status = DEMO_API_ENABLED ? "loading" : "loaded";
+      tradingCounterpartiesTable.toggleAttribute("aria-busy", DEMO_API_ENABLED);
+
+      if (!DEMO_API_ENABLED) {
+        selectFirstPopulatedTradingCounterpartyScope(localIds);
+        renderClientProfiles();
+        return;
+      }
+
+      setClientProfileStatus("Loading attached Trading Counterparties...");
+      renderClientProfiles();
+
+      try {
+        const payload = await demoApiRequest(
+          `/api/v1/execution-contexts/${encodeURIComponent(routeScope.executionContextId)}/trading-counterparties`
+        );
+        const attachedProfiles = normalizedClientProfiles(payload, []);
+
+        if (requestSequence !== clientProfileRouteScopeRequestSequence || clientProfileRouteScope !== routeScope) {
+          return;
+        }
+
+        attachedProfiles.forEach(profile => {
+          const existingIndex = clientProfiles.findIndex(candidate =>
+            String(candidate.counterpartyId ?? "") === String(profile.counterpartyId ?? "")
+          );
+
+          if (existingIndex >= 0) {
+            clientProfiles[existingIndex] = profile;
+          } else {
+            clientProfiles.push(profile);
+          }
+        });
+        routeScope.counterpartyIds = new Set(
+          attachedProfiles
+            .map(profile => String(profile.counterpartyId ?? ""))
+            .filter(Boolean)
+        );
+        routeScope.status = "loaded";
+        selectFirstPopulatedTradingCounterpartyScope(routeScope.counterpartyIds);
+        setClientProfileStatus("");
+      } catch (error) {
+        if (requestSequence !== clientProfileRouteScopeRequestSequence || clientProfileRouteScope !== routeScope) {
+          return;
+        }
+
+        routeScope.counterpartyIds = new Set();
+        routeScope.status = "error";
+        routeScope.message = error.message || "Attached Trading Counterparties could not be loaded.";
+        setClientProfileStatus(routeScope.message, "error");
+      } finally {
+        if (requestSequence === clientProfileRouteScopeRequestSequence && clientProfileRouteScope === routeScope) {
+          tradingCounterpartiesTable.removeAttribute("aria-busy");
+          renderClientProfiles();
+        }
+      }
+    }
+
     function replaceClientProfileRoute(counterpartyId = "") {
       const route = clientProfileRoute(counterpartyId);
 
@@ -29921,6 +30792,45 @@
 
     function syncClientProfileRouteView() {
       const routeState = clientProfileRouteStateFromLocation();
+      const previousScope = clientProfileRouteScope;
+
+      if (routeState.mode === "related") {
+        clientProfileRouteScope = {
+          executionContextId: routeState.executionContextId,
+          returnHash: routeState.returnHash,
+          counterpartyIds: new Set(),
+          status: "loading",
+          message: ""
+        };
+        tradingCounterpartyRowEditState = null;
+        editingClientProfileIndex = null;
+        setClientProfileRouteVisibility(false);
+        resetClientProfileForm();
+        setClientProfilePageHeading("Trading Counterparties");
+        clientProfilePage.classList.add("is-related-view");
+        clientProfileNewButton.hidden = true;
+        clientProfileBreadcrumb.hidden = false;
+        clientProfileBreadcrumbBackLink.href = clientProfileRouteScope.returnHash;
+        clientProfileBreadcrumbBackLink.textContent = "Execution Contexts";
+        clientProfileBreadcrumbCurrent.textContent = `Trading Counterparties for Execution Context ${routeState.executionContextId}`;
+
+        if (!previousScope || previousScope.executionContextId !== routeState.executionContextId) {
+          tradingCounterpartyHeaderFilterControls.forEach(control => {
+            control.value = "";
+          });
+        }
+
+        setClientProfileStatus("");
+        loadExecutionContextTradingCounterparties(clientProfileRouteScope);
+        return;
+      }
+
+      clientProfileRouteScopeRequestSequence += 1;
+      clientProfileRouteScope = null;
+      tradingCounterpartiesTable.removeAttribute("aria-busy");
+      clientProfilePage.classList.remove("is-related-view");
+      clientProfileNewButton.hidden = false;
+      clientProfileBreadcrumb.hidden = true;
 
       if (routeState.mode === "list") {
         tradingCounterpartyRowEditState = null;
@@ -30064,9 +30974,18 @@
       return profile.isActive ? "YES" : "NO";
     }
 
+    function tradingCounterpartyMatchesRouteScope(profile) {
+      return !clientProfileRouteScope || clientProfileRouteScope.counterpartyIds.has(
+        String(profile.counterpartyId ?? "")
+      );
+    }
+
     function tradingCounterpartyFilterValues(field) {
       return uniqueReferenceValues(
-        clientProfiles.filter(profile => normalizedCounterpartyScope(profile.counterpartyScope) === activeTradingCounterpartyScope),
+        clientProfiles.filter(profile =>
+          normalizedCounterpartyScope(profile.counterpartyScope) === activeTradingCounterpartyScope
+          && tradingCounterpartyMatchesRouteScope(profile)
+        ),
         profile => tradingCounterpartyFilterValue(profile, field)
       );
     }
@@ -30116,6 +31035,10 @@
         .map((profile, index) => ({ profile, index }))
         .filter(({ profile }) => {
           if (normalizedCounterpartyScope(profile.counterpartyScope) !== activeTradingCounterpartyScope) {
+            return false;
+          }
+
+          if (!tradingCounterpartyMatchesRouteScope(profile)) {
             return false;
           }
 
@@ -30248,8 +31171,10 @@
     }
 
     function renderTradingCounterpartyViewRow(profile, index) {
+      const relatedView = Boolean(clientProfileRouteScope);
+
       return `
-        <tr${index === editingClientProfileIndex ? " class=\"is-selected\"" : ""} data-profile-index="${index}" tabindex="0">
+        <tr${index === editingClientProfileIndex ? " class=\"is-selected\"" : ""} data-profile-index="${index}"${relatedView ? "" : ' tabindex="0"'}>
           <td>${escapeHtml(profile.counterpartyId ?? "")}</td>
           <td>${escapeHtml(tradingCounterpartyPartyTypeLabel(profile))}</td>
           <td>${escapeHtml(tradingCounterpartyBusinessIdType(profile))}</td>
@@ -30257,12 +31182,14 @@
           <td>${escapeHtml(profile.name)}</td>
           <td>${escapeHtml(tradingCounterpartyRolesLabel(profile))}</td>
           <td>${activeBooleanTokenMarkup(profile.isActive)}</td>
-          <td class="profile-actions-cell">
-            <span class="profile-row-actions">
-              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-profile-action="edit" data-profile-index="${index}" aria-label="Edit ${escapeHtml(profile.counterpartyId ?? profile.inn)}">
-                <span class="button-icon" aria-hidden="true">edit</span>
-              </button>
-            </span>
+          <td class="profile-actions-cell" data-client-profile-actions-column>
+            ${relatedView ? "" : `
+              <span class="profile-row-actions">
+                <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-profile-action="edit" data-profile-index="${index}" aria-label="Edit ${escapeHtml(profile.counterpartyId ?? profile.inn)}">
+                  <span class="button-icon" aria-hidden="true">edit</span>
+                </button>
+              </span>
+            `}
           </td>
         </tr>
       `;
@@ -30452,16 +31379,40 @@
       const rows = filteredClientProfiles();
       const scopedProfiles = clientProfiles.filter(profile =>
         normalizedCounterpartyScope(profile.counterpartyScope) === activeTradingCounterpartyScope
+        && tradingCounterpartyMatchesRouteScope(profile)
       );
-      const createRow = tradingCounterpartyRowEditState?.mode === "create"
+      const createRow = !clientProfileRouteScope && tradingCounterpartyRowEditState?.mode === "create"
         ? renderTradingCounterpartyCreateRow(tradingCounterpartyDefaultDraft())
         : "";
-      const columnCount = 8;
+      const columnCount = clientProfileRouteScope ? 7 : 8;
 
-      if (scopedProfiles.length === 0 && !createRow) {
+      if (clientProfileRouteScope?.status === "loading") {
         clientProfileRowsEl.innerHTML = `
           <tr>
-            <td class="profile-empty" colspan="${columnCount}">No ${activeTradingCounterpartyScope === "INTERNAL" ? "internal units" : "external counterparties"} yet.</td>
+            <td class="profile-empty" colspan="${columnCount}">Loading attached Trading Counterparties...</td>
+          </tr>
+        `;
+        scheduleSmartColumnSizing();
+        return;
+      }
+
+      if (clientProfileRouteScope?.status === "error") {
+        clientProfileRowsEl.innerHTML = `
+          <tr>
+            <td class="profile-empty" colspan="${columnCount}">Attached Trading Counterparties could not be loaded.</td>
+          </tr>
+        `;
+        scheduleSmartColumnSizing();
+        return;
+      }
+
+      if (scopedProfiles.length === 0 && !createRow) {
+        const emptyLabel = clientProfileRouteScope
+          ? `No attached ${activeTradingCounterpartyScope === "INTERNAL" ? "internal units" : "external counterparties"} for this Execution Context.`
+          : `No ${activeTradingCounterpartyScope === "INTERNAL" ? "internal units" : "external counterparties"} yet.`;
+        clientProfileRowsEl.innerHTML = `
+          <tr>
+            <td class="profile-empty" colspan="${columnCount}">${emptyLabel}</td>
           </tr>
         `;
         scheduleSmartColumnSizing();
@@ -31495,7 +32446,8 @@
         servicingBranchCode: "",
         settlementSystemId: "",
         tradeCaptureChannelId: "",
-        defaultPositionManagementMode: "MANUAL"
+        defaultPositionManagementMode: "MANUAL",
+        autoHedgingAdmissionPolicy: "MANUAL_ONLY"
       };
     }
 
@@ -31509,7 +32461,9 @@
     function samePricingContext(left, right) {
       return samePricingContextIdentity(left, right) &&
         normalizedPositionManagementMode(left.defaultPositionManagementMode) ===
-          normalizedPositionManagementMode(right.defaultPositionManagementMode);
+          normalizedPositionManagementMode(right.defaultPositionManagementMode) &&
+        normalizedAutoHedgingAdmissionPolicy(left.autoHedgingAdmissionPolicy) ===
+          normalizedAutoHedgingAdmissionPolicy(right.autoHedgingAdmissionPolicy);
     }
 
     function pricingContextRowControl(row, name) {
@@ -31522,6 +32476,9 @@
       const tradeCaptureChannelId = normalizedContextCode(pricingContextRowControl(row, "tradeCaptureChannelId")?.value);
       const defaultPositionManagementMode = normalizedPositionManagementMode(
         pricingContextRowControl(row, "defaultPositionManagementMode")?.value
+      );
+      const autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(
+        pricingContextRowControl(row, "autoHedgingAdmissionPolicy")?.value
       );
 
       if (!servicingBranchCode || !settlementSystemId || !tradeCaptureChannelId) {
@@ -31542,7 +32499,8 @@
         servicingBranchCode,
         settlementSystemId,
         tradeCaptureChannelId,
-        defaultPositionManagementMode
+        defaultPositionManagementMode,
+        autoHedgingAdmissionPolicy
       };
     }
 
@@ -31576,12 +32534,16 @@
       const executionSystemSelect = pricingContextRowControl(row, "tradeCaptureChannelId");
       const defaultPositionManagementModeSelect = pricingContextRowControl(row, "defaultPositionManagementMode");
       const servicingBranchCode = parseBranchCode(servicingLocationSelect);
+      const autoHedgingAdmissionPolicySelect = pricingContextRowControl(row, "autoHedgingAdmissionPolicy");
       const settlementSystemId = parseContextCode(accountingSystemSelect, "Accounting System");
       const tradeCaptureChannelId = parseContextCode(executionSystemSelect, "Execution System");
       const defaultPositionManagementMode = normalizedPositionManagementMode(
         defaultPositionManagementModeSelect?.value
       );
 
+      const autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(
+        autoHedgingAdmissionPolicySelect?.value
+      );
       if (servicingBranchCode === null || settlementSystemId === null || tradeCaptureChannelId === null) {
         updatePricingContextRowSaveAvailability(row);
         return null;
@@ -31617,7 +32579,8 @@
         servicingBranchCode,
         settlementSystemId,
         tradeCaptureChannelId,
-        defaultPositionManagementMode
+        defaultPositionManagementMode,
+        autoHedgingAdmissionPolicy
       };
       const currentIndex = pricingContextEditStateIndex();
       const duplicateIndex = pricingContexts.findIndex((item, index) =>
@@ -31828,6 +32791,63 @@
         ?.value.trim().toLowerCase() || "";
     }
 
+    function pricingContextHeaderFilterControl(field) {
+      return pricingContextHeaderFilterControls
+        .find(control => control.dataset.pricingContextHeaderFilter === field) || null;
+    }
+
+    function pricingContextRouteScopeLabel(scope) {
+      const item = referenceDataCollection(scope.kind)
+        .find(candidate => referenceDataKey(scope.kind, candidate) === scope.value);
+      const name = referenceDataItemName(scope.kind, item);
+
+      return `Execution Contexts for ${scope.value}${name ? ` — ${name}` : ""}`;
+    }
+
+    function syncPricingContextRouteView() {
+      const routeState = pricingRouteStateFromLocation();
+      const previousScope = pricingContextRouteScope;
+      const relatedView = routeState.mode === "related" && routeState.scope;
+
+      pricingContextEditState = null;
+      setPricingContextStatus("");
+      pricingContextHeaderFilterControls.forEach(control => {
+        control.readOnly = false;
+        control.removeAttribute("aria-readonly");
+
+        if (relatedView) {
+          control.value = "";
+        } else if (
+          previousScope &&
+          control.dataset.pricingContextHeaderFilter === previousScope.field &&
+          control.value.trim() === previousScope.value
+        ) {
+          control.value = "";
+        }
+      });
+
+      pricingContextRouteScope = relatedView ? routeState.scope : null;
+      pricingPage.classList.toggle("is-related-view", Boolean(pricingContextRouteScope));
+      pricingContextNewButton.hidden = Boolean(pricingContextRouteScope);
+      pricingContextBreadcrumb.hidden = !pricingContextRouteScope;
+
+      if (pricingContextRouteScope) {
+        const scopeControl = pricingContextHeaderFilterControl(pricingContextRouteScope.field);
+
+        if (scopeControl) {
+          scopeControl.value = pricingContextRouteScope.value;
+          scopeControl.readOnly = true;
+          scopeControl.setAttribute("aria-readonly", "true");
+        }
+
+        pricingContextBreadcrumbBackLink.href = referenceDataRoute(pricingContextRouteScope.kind);
+        pricingContextBreadcrumbBackLink.textContent = referenceDataPluralLabel(pricingContextRouteScope.kind);
+        pricingContextBreadcrumbCurrent.textContent = pricingContextRouteScopeLabel(pricingContextRouteScope);
+      }
+
+      renderPricingContexts();
+    }
+
     function pricingContextSearchValues(context, field) {
       if (field === "pricingContextId") {
         return [context.pricingContextId];
@@ -31851,6 +32871,13 @@
         ];
       }
 
+      if (field === "autoHedgingAdmissionPolicy") {
+        return [
+          context.autoHedgingAdmissionPolicy,
+          autoHedgingAdmissionPolicyLabel(context.autoHedgingAdmissionPolicy)
+        ];
+      }
+
       const executionSystem = tradeCaptureChannelById(context.tradeCaptureChannelId);
       const pricingMode = normalizedPricingType(executionSystem?.pricingType);
 
@@ -31863,6 +32890,13 @@
     }
 
     function pricingContextMatchesHeaderFilters(context) {
+      if (
+        pricingContextRouteScope &&
+        String(context?.[pricingContextRouteScope.field] ?? "") !== pricingContextRouteScope.value
+      ) {
+        return false;
+      }
+
       return pricingContextHeaderFilterControls.every(control => {
         const query = control.value.trim().toLowerCase();
 
@@ -31886,8 +32920,37 @@
         });
     }
 
+    function attachedTradingCounterpartiesButtonMarkup(context, index, editing = false) {
+      const count = pricingContextUsageCount(context?.pricingContextId);
+      const hasAttachedCounterparties = count > 0;
+      const counterpartyLabel = count === 1 ? "Trading Counterparty" : "Trading Counterparties";
+      const tooltip = editing && hasAttachedCounterparties
+        ? "Finish editing to view attached Trading Counterparties"
+        : hasAttachedCounterparties
+          ? `View ${count} attached ${counterpartyLabel}`
+          : "No attached Trading Counterparties";
+      const disabled = editing || !hasAttachedCounterparties;
+      const wrapperTooltip = disabled
+        ? ` tabindex="0" data-tooltip="${escapeHtml(tooltip)}"`
+        : "";
+      const buttonTooltip = disabled ? "" : ` data-tooltip="${escapeHtml(tooltip)}"`;
+      const indexAttribute = Number.isInteger(index) ? ` data-pricing-context-index="${index}"` : "";
+
+      return `
+        <span class="reference-related-view-control"${wrapperTooltip}>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary reference-grid-action"
+            data-pricing-context-action="view-trading-counterparties"${indexAttribute}
+            aria-label="${escapeHtml(tooltip)}"${buttonTooltip}${disabled ? " disabled" : ""}
+          >
+            <span class="button-icon" aria-hidden="true">visibility</span>
+          </button>
+        </span>
+      `;
+    }
+
     function renderPricingContextViewRow(context, index) {
-      const usage = pricingContextUsageCount(context.pricingContextId);
       const executionSystem = tradeCaptureChannelById(context.tradeCaptureChannelId);
       const executionSystemName = executionSystem?.tradeCaptureChannelName || context.tradeCaptureChannelId;
       const dependencyDescription = executionContextDependencyDescription(context.pricingContextId);
@@ -31900,8 +32963,9 @@
           <td>${pricingContextFacetMarkup(context, "settlementSystemId")}</td>
           <td>${executionSystemLabelMarkup(executionSystemName, executionSystem?.pricingType)}</td>
           <td>${positionManagementModeBadgeMarkup(context.defaultPositionManagementMode)}</td>
-          <td>${usage}</td>
-          <td class="profile-actions-cell">
+          <td>${autoHedgingAdmissionPolicyBadgeMarkup(context.autoHedgingAdmissionPolicy)}</td>
+          <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index)}</td>
+          <td class="profile-actions-cell" data-pricing-context-actions-column>
             <span class="profile-row-actions">
               <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-pricing-context-action="edit" data-pricing-context-index="${index}" aria-label="Edit ${escapeHtml(context.pricingContextId)}">
                 <span class="button-icon" aria-hidden="true">edit</span>
@@ -31916,7 +32980,6 @@
     }
 
     function renderPricingContextEditRow(context, index) {
-      const usage = index === null ? 0 : pricingContextUsageCount(context.pricingContextId);
       const indexAttribute = index === null ? "" : ` data-pricing-context-index="${index}"`;
       const id = index === null ? "" : context.pricingContextId;
 
@@ -31944,7 +33007,14 @@
               <option value="AUTO"${normalizedPositionManagementMode(context.defaultPositionManagementMode) === "AUTO" ? " selected" : ""}>${escapeHtml(positionManagementModeLabel("AUTO"))}</option>
             </select>
           </td>
-          <td>${usage}</td>
+          <td>
+            <select class="inline-edit-control" data-pricing-context-field="autoHedgingAdmissionPolicy" aria-label="Auto Hedging Admission Policy" required>
+              <option value="AUTO_IF_ELIGIBLE"${normalizedAutoHedgingAdmissionPolicy(context.autoHedgingAdmissionPolicy) === "AUTO_IF_ELIGIBLE" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionPolicyLabel("AUTO_IF_ELIGIBLE"))}</option>
+              <option value="REVIEW_REQUIRED"${normalizedAutoHedgingAdmissionPolicy(context.autoHedgingAdmissionPolicy) === "REVIEW_REQUIRED" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionPolicyLabel("REVIEW_REQUIRED"))}</option>
+              <option value="MANUAL_ONLY"${normalizedAutoHedgingAdmissionPolicy(context.autoHedgingAdmissionPolicy) === "MANUAL_ONLY" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionPolicyLabel("MANUAL_ONLY"))}</option>
+            </select>
+          </td>
+          <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index, true)}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
               <button type="button" class="btn btn-sm btn-outline-primary reference-grid-action" data-pricing-context-action="save" aria-label="Save Execution Context" title="Save" disabled>
@@ -31972,9 +33042,13 @@
         : "";
 
       if (rows.length === 0 && !createRow) {
+        const emptyLabel = pricingContextRouteScope
+          ? "No attached execution contexts."
+          : "No execution contexts yet.";
+        const columnCount = pricingContextRouteScope ? 7 : 8;
         pricingContextRowsEl.innerHTML = `
           <tr>
-            <td class="profile-empty" colspan="7">No execution contexts yet.</td>
+            <td class="profile-empty" colspan="${columnCount}">${emptyLabel}</td>
           </tr>
         `;
         scheduleSmartColumnSizing();
@@ -32028,6 +33102,21 @@
       pricingContextEditState = null;
       setPricingContextStatus("");
       renderPricingContexts();
+    }
+
+    function viewPricingContextTradingCounterparties(index) {
+      const context = pricingContexts[index];
+
+      if (!context || pricingContextUsageCount(context.pricingContextId) <= 0) {
+        return;
+      }
+
+      pricingContextEditState = null;
+      setPricingContextStatus("");
+      location.hash = tradingCounterpartiesForExecutionContextRoute(
+        context.pricingContextId,
+        location.hash
+      );
     }
 
     async function removePricingContext(index) {
@@ -32106,7 +33195,8 @@
                 servicingLocationId: context.servicingBranchCode,
                 accountingSystemId: context.settlementSystemId,
                 executionSystemId: context.tradeCaptureChannelId,
-                defaultPositionManagementMode: context.defaultPositionManagementMode
+                defaultPositionManagementMode: context.defaultPositionManagementMode,
+                autoHedgingAdmissionPolicy: context.autoHedgingAdmissionPolicy
               })
             }
           );
@@ -32313,6 +33403,37 @@
       return tradeCaptureChannelContextUsageCount(item?.tradeCaptureChannelId || "");
     }
 
+    function attachedExecutionContextsButtonMarkup(kind, item, index, editing = false) {
+      const count = referenceDataUsageCount(kind, item);
+      const hasAttachedContexts = count > 0;
+      const contextLabel = count === 1 ? "Execution Context" : "Execution Contexts";
+      const tooltip = editing && hasAttachedContexts
+        ? "Finish editing to view attached Execution Contexts"
+        : hasAttachedContexts
+          ? `View ${count} attached ${contextLabel}`
+          : "No attached Execution Contexts";
+      const disabled = editing || !hasAttachedContexts;
+      const wrapperTooltip = disabled
+        ? ` tabindex="0" data-tooltip="${escapeHtml(tooltip)}"`
+        : "";
+      const buttonTooltip = disabled ? "" : ` data-tooltip="${escapeHtml(tooltip)}"`;
+      const indexAttribute = Number.isInteger(index) ? ` data-reference-index="${index}"` : "";
+
+      return `
+        <span class="reference-related-view-control"${wrapperTooltip}>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary reference-grid-action"
+            data-reference-action="view-execution-contexts"
+            data-reference-kind="${escapeHtml(kind)}"${indexAttribute}
+            aria-label="${escapeHtml(tooltip)}"${buttonTooltip}${disabled ? " disabled" : ""}
+          >
+            <span class="button-icon" aria-hidden="true">visibility</span>
+          </button>
+        </span>
+      `;
+    }
+
     function referenceDataDefaultDraft(kind) {
       if (kind === "servicingBranch") {
         return { servicingBranchCode: "", servicingBranchName: "", region: "", locationType: "BRANCH", isActive: true };
@@ -32351,6 +33472,7 @@
       const label = referenceDataKindLabel(kind);
       const usageCount = index === null ? 0 : referenceDataUsageCount(kind, item);
       const keyReadonly = usageCount > 0 ? " readonly" : "";
+      const pricingModeLocked = kind === "tradeCaptureChannel" && usageCount > 0;
       const indexAttribute = index === null ? "" : ` data-reference-index="${index}"`;
       let cells = "";
 
@@ -32369,10 +33491,29 @@
           <td><select class="inline-edit-control" data-reference-field="isActive">${activeBooleanOptions(item.isActive)}</select></td>
         `;
       } else {
+        const pricingModeLockMessage = "Pricing Mode is locked while Execution Contexts are attached. Create another Execution System for a different mode.";
+        const pricingModeLockAriaLabel = `Pricing Mode: ${pricingTypePresentation(item.pricingType).label}. ${pricingModeLockMessage}`;
+        const pricingModeControl = pricingModeLocked
+          ? `
+            <span
+              class="reference-readonly-control"
+              tabindex="0"
+              role="group"
+              aria-disabled="true"
+              aria-label="${escapeHtml(pricingModeLockAriaLabel)}"
+              data-tooltip="${escapeHtml(pricingModeLockMessage)}"
+            >
+              <select class="inline-edit-control" data-reference-field="pricingType" aria-label="Pricing Mode" required disabled>
+                ${pricingTypeOptions(item.pricingType)}
+              </select>
+            </span>
+          `
+          : `<select class="inline-edit-control" data-reference-field="pricingType" aria-label="Pricing Mode" required>${pricingTypeOptions(item.pricingType)}</select>`;
+
         cells = `
           <td><input class="inline-edit-control" type="text" data-reference-field="tradeCaptureChannelId" value="${escapeHtml(item.tradeCaptureChannelId)}" maxlength="30" pattern="[A-Z0-9_-]{2,30}" required${keyReadonly}></td>
           <td><input class="inline-edit-control" type="text" data-reference-field="tradeCaptureChannelName" value="${escapeHtml(item.tradeCaptureChannelName)}" maxlength="50" required></td>
-          <td><select class="inline-edit-control" data-reference-field="pricingType" required>${pricingTypeOptions(item.pricingType)}</select></td>
+          <td>${pricingModeControl}</td>
           <td data-execution-system-label-preview>${executionSystemLabelMarkup(item.tradeCaptureChannelName, item.pricingType)}</td>
           <td><select class="inline-edit-control" data-reference-field="isActive">${activeBooleanOptions(item.isActive)}</select></td>
         `;
@@ -32381,7 +33522,7 @@
       return `
         <tr class="is-selected is-editing"${indexAttribute} data-reference-kind="${kind}" data-reference-edit-row>
           ${cells}
-          <td>${usageCount}</td>
+          <td class="reference-related-view-cell">${attachedExecutionContextsButtonMarkup(kind, item, index, true)}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
               <button type="button" class="btn btn-sm btn-outline-primary reference-grid-action" data-reference-action="save" data-reference-kind="${kind}" aria-label="Save ${escapeHtml(label)}" title="Save">
@@ -32436,7 +33577,7 @@
       return `
         <tr data-reference-kind="${kind}" data-reference-index="${index}">
           ${cells}
-          <td>${usageCount}</td>
+          <td class="reference-related-view-cell">${attachedExecutionContextsButtonMarkup(kind, item, index)}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
               <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-reference-action="edit" data-reference-kind="${kind}" data-reference-index="${index}" aria-label="Edit ${escapeHtml(key)}">
@@ -32767,6 +33908,16 @@
         return;
       }
 
+      if (
+        kind === "tradeCaptureChannel"
+        && oldItem
+        && item.pricingType !== oldItem.pricingType
+        && referenceDataUsageCount(kind, oldItem) > 0
+      ) {
+        setSaveButtonAvailability(button, false, "Pricing Mode cannot be changed while this Execution System is used");
+        return;
+      }
+
       const changed = currentIndex === null || !sameReferenceDataItem(kind, item, oldItem);
       setSaveButtonAvailability(button, changed);
     }
@@ -32802,6 +33953,16 @@
 
       if (oldItem && oldKey !== key && referenceDataUsageCount(kind, oldItem) > 0) {
         setReferenceDataStatus(`${referenceDataKindLabel(kind)} ID cannot be changed while it is used by Execution Context.`, "error");
+        return;
+      }
+
+      if (
+        kind === "tradeCaptureChannel"
+        && oldItem
+        && item.pricingType !== oldItem.pricingType
+        && referenceDataUsageCount(kind, oldItem) > 0
+      ) {
+        setReferenceDataStatus("Execution System Pricing Mode cannot be changed while it is used by Execution Context.", "error");
         return;
       }
 
@@ -32941,6 +34102,19 @@
       }
     }
 
+    function viewReferenceDataExecutionContexts(kind, index) {
+      const item = referenceDataCollection(kind)[index];
+
+      if (!item || referenceDataUsageCount(kind, item) <= 0) {
+        return;
+      }
+
+      const referenceId = referenceDataKey(kind, item);
+      referenceDataEditState = null;
+      setReferenceDataStatus("");
+      location.hash = pricingRoute(kind, referenceId);
+    }
+
     function handleReferenceDataClick(event) {
       const button = event.target.closest("[data-reference-action]");
 
@@ -32957,6 +34131,8 @@
         startReferenceDataEdit(kind, index);
       } else if (action === "remove") {
         removeReferenceDataItem(kind, index);
+      } else if (action === "view-execution-contexts") {
+        viewReferenceDataExecutionContexts(kind, index);
       } else if (action === "cancel") {
         cancelReferenceDataForm();
       } else if (action === "save" && row) {
@@ -33100,19 +34276,68 @@
     }
 
     function activeMarketKind() {
-      const settingsMatch = /^#settings:(currencies|currency-pairs)$/.exec(location.hash);
+      const settingsState = currencySettingsRouteStateFromLocation();
       const legacyMarketMatch = /^#(?:market-pulse|market)(?::([^:]+))?$/.exec(location.hash);
-      const routeKind = settingsMatch?.[1] || legacyMarketMatch?.[1];
+      const routeKind = settingsState.matches
+        ? settingsState.kind
+        : legacyMarketMatch?.[1];
 
-      if (routeKind === "currency-pairs" || routeKind === "ccy-pair-options") {
+      if (routeKind === "pairs" || routeKind === "currency-pairs" || routeKind === "ccy-pair-options") {
         return "pairs";
       }
 
-      if (routeKind === "ccy-options" || routeKind === "currencies") {
+      if (routeKind === "currencies" || routeKind === "ccy-options") {
         return "currencies";
       }
 
       return "streams";
+    }
+
+    function marketSettingsScopeLabel(scope) {
+      const currency = ccyOptions.find(item => item.code === scope.currencyCode);
+
+      return `Currency Pairs for ${scope.currencyCode}${currency?.name ? ` — ${currency.name}` : ""}`;
+    }
+
+    function syncMarketPairActionsColumn() {
+      const actionsColumn = marketPairOptionGrid?.getColumn("actions");
+
+      if (!actionsColumn) {
+        return;
+      }
+
+      if (marketSettingsRouteScope) {
+        actionsColumn.hide();
+      } else {
+        actionsColumn.show();
+      }
+    }
+
+    function syncMarketSettingsRouteView() {
+      const routeState = currencySettingsRouteStateFromLocation();
+      const nextScope = routeState.mode === "related" && routeState.scope
+        ? routeState.scope
+        : null;
+      const scopeChanged = marketSettingsRouteScope?.currencyCode !== nextScope?.currencyCode;
+
+      marketSettingsRouteScope = nextScope;
+      marketPage.classList.toggle("is-related-view", Boolean(marketSettingsRouteScope));
+      marketPairOptionNewButton.hidden = Boolean(marketSettingsRouteScope);
+      marketSettingsBreadcrumb.hidden = !marketSettingsRouteScope;
+
+      if (marketSettingsRouteScope) {
+        marketCcyOptionsEditState = null;
+        marketPairOptionsEditState = null;
+        marketSettingsBreadcrumbBackLink.href = marketSettingsRouteScope.returnHash;
+        marketSettingsBreadcrumbBackLink.textContent = "Currency Settings";
+        marketSettingsBreadcrumbCurrent.textContent = marketSettingsScopeLabel(marketSettingsRouteScope);
+
+        if (scopeChanged) {
+          marketPairOptionGrid?.clearHeaderFilter();
+        }
+      }
+
+      syncMarketPairActionsColumn();
     }
 
     function updateMarketVisibility() {
@@ -34433,6 +35658,38 @@
       `;
     }
 
+    function marketRelatedViewButtonMarkup(
+      action,
+      count,
+      singularLabel,
+      pluralLabel,
+      editing = false
+    ) {
+      const normalizedCount = Math.max(0, Number(count) || 0);
+      const hasRelatedRows = normalizedCount > 0;
+      const label = normalizedCount === 1 ? singularLabel : pluralLabel;
+      const tooltip = editing && hasRelatedRows
+        ? `Finish editing to view ${pluralLabel}`
+        : hasRelatedRows
+          ? `View ${normalizedCount} ${label}`
+          : `No ${pluralLabel}`;
+      const disabled = editing || !hasRelatedRows;
+      const wrapperTooltip = disabled
+        ? ` tabindex="0" data-tooltip="${escapeHtml(tooltip)}"`
+        : "";
+      const buttonTooltip = disabled ? "" : ` data-tooltip="${escapeHtml(tooltip)}"`;
+
+      return `
+        <span class="reference-related-view-control"${wrapperTooltip}>
+          <button type="button" class="btn btn-sm btn-outline-secondary market-grid-action"
+            data-market-grid-action="${escapeHtml(action)}"
+            aria-label="${escapeHtml(tooltip)}"${buttonTooltip}${disabled ? " disabled" : ""}>
+            <span class="button-icon" aria-hidden="true">visibility</span>
+          </button>
+        </span>
+      `;
+    }
+
     function marketCcyOptionGridData() {
       const rows = ccyOptions.map((ccy, sourceIndex) => ({
         id: ccy.code,
@@ -34507,6 +35764,18 @@
       </div>`;
     }
 
+    function marketCcyPairsViewFormatter(cell) {
+      const item = cell.getRow().getData();
+
+      return marketRelatedViewButtonMarkup(
+        "view-currency-pairs",
+        item.pairCount,
+        "Ccy Pair",
+        "Ccy Pairs",
+        Boolean(item.isEditing)
+      );
+    }
+
     function marketCcyOptionRowFormatter(row) {
       const element = row.getElement();
       const item = row.getData();
@@ -34530,7 +35799,21 @@
       const row = cell.getRow();
       const index = Number(row.getData().sourceIndex);
 
-      if (action === "edit") {
+      if (button.disabled) {
+        return;
+      }
+
+      if (action === "view-currency-pairs") {
+        const code = row.getData().code;
+        const route = currencyPairSettingsForCurrencyRoute(code);
+
+        if (location.hash === route) {
+          syncMarketSettingsRouteView();
+          renderMarketPage();
+        } else {
+          location.hash = route;
+        }
+      } else if (action === "edit") {
         startMarketCcyOptionEdit(index);
       } else if (action === "delete") {
         deleteMarketCcyOption(index);
@@ -34557,7 +35840,16 @@
             headerHozAlign: "right",
             formatter: marketCcyOptionFieldFormatter("fractionDigits")
           }),
-          tabulatorSizedColumn("count", { title: "Ccy Pairs", field: "pairCount", headerSort: false, hozAlign: "right", headerHozAlign: "right" }),
+          tabulatorSizedColumn("count", {
+            title: "Ccy Pairs",
+            field: "pairCount",
+            cssClass: "reference-related-view-cell",
+            headerSort: false,
+            hozAlign: "center",
+            headerHozAlign: "center",
+            formatter: marketCcyPairsViewFormatter,
+            cellClick: handleMarketCcyOptionGridAction
+          }),
           tabulatorSizedColumn("actions", {
             title: "Actions",
             field: "actions",
@@ -34751,7 +36043,11 @@
 
     function renderMarketPairOptionRows() {
       const data = marketPairs
-        .map((pair, sourceIndex) => ({
+        .map((pair, sourceIndex) => ({ pair, sourceIndex }))
+        .filter(({ pair }) => !marketSettingsRouteScope
+          || pair.baseCcy === marketSettingsRouteScope.currencyCode
+          || pair.quoteCcy === marketSettingsRouteScope.currencyCode)
+        .map(({ pair, sourceIndex }) => ({
           id: pair.pairCode,
           sourceIndex,
           baseCcy: pair.baseCcy,
@@ -34762,7 +36058,7 @@
         }))
         .sort((left, right) => left.currencyPair.localeCompare(right.currencyPair));
 
-      if (marketPairOptionsEditState?.mode === "create") {
+      if (!marketSettingsRouteScope && marketPairOptionsEditState?.mode === "create") {
         data.unshift({
           id: "__new_currency_pair__",
           sourceIndex: null,
@@ -34799,9 +36095,12 @@
           tabulatorSizedColumn("count", {
             title: tabulatorIconColumnTitle("rule", "Pricing Rules using this Ccy Pair"),
             field: "pricingRulesCount",
+            cssClass: "reference-related-view-cell",
             headerSort: false,
-            hozAlign: "right",
-            headerHozAlign: "right"
+            hozAlign: "center",
+            headerHozAlign: "center",
+            formatter: marketPairPricingRulesViewFormatter,
+            cellClick: handleMarketPairOptionGridAction
           }),
           tabulatorSizedColumn("actions", {
             title: "Actions",
@@ -34810,6 +36109,7 @@
             headerSort: false,
             hozAlign: "center",
             headerHozAlign: "center",
+            visible: !marketSettingsRouteScope,
             formatter: marketPairOptionActionsFormatter,
             cellClick: handleMarketPairOptionGridAction
           })
@@ -34820,10 +36120,12 @@
         registerUiTableTabulator("ccy_pair_options_grid", marketPairOptionGrid);
         marketPairOptionGrid.on("tableBuilt", () => {
           marketPairOptionGridReady = true;
+          syncMarketPairActionsColumn();
           marketPairOptionGrid.redraw(true);
         });
       } else if (marketPairOptionGridReady) {
         marketPairOptionGrid.replaceData(data);
+        syncMarketPairActionsColumn();
       }
     }
 
@@ -34884,6 +36186,18 @@
       </div>`;
     }
 
+    function marketPairPricingRulesViewFormatter(cell) {
+      const item = cell.getRow().getData();
+
+      return marketRelatedViewButtonMarkup(
+        "view-pricing-rules",
+        item.pricingRulesCount,
+        "Pricing Rule",
+        "Pricing Rules",
+        Boolean(item.isEditing)
+      );
+    }
+
     function marketPairOptionRowFormatter(row) {
       const element = row.getElement();
       const item = row.getData();
@@ -34911,7 +36225,16 @@
       const row = cell.getRow();
       const index = Number(row.getData().sourceIndex);
 
-      if (action === "edit") {
+      if (action === "view-pricing-rules") {
+        const route = pricingRulesForCcyPairRoute(row.getData().pairCode || row.getData().id);
+
+        if (location.hash === route) {
+          syncPricingRulesRouteView();
+          renderPricingRules();
+        } else {
+          location.hash = route;
+        }
+      } else if (action === "edit") {
         startMarketPairOptionEdit(index);
       } else if (action === "delete") {
         deleteMarketPair(index);
@@ -36026,19 +37349,64 @@
         : "#trading-counterparties";
     }
 
-    function clientProfileRouteStateFromLocation() {
-      const match = /^#(?:trading-counterparties|client-profile)(?:\/([^/?#]+))?$/.exec(location.hash);
-      const routeToken = match?.[1] ? decodeURIComponent(match[1]) : "";
+    function normalizedPricingContextReturnRoute(value) {
+      const candidate = String(value || "").trim();
+
+      return pricingRouteStateFromLocation(candidate).matches ? candidate : pricingRoute();
+    }
+
+    function tradingCounterpartiesForExecutionContextRoute(executionContextId, returnHash = location.hash) {
+      const normalizedExecutionContextId = Number(executionContextId);
+
+      if (!Number.isInteger(normalizedExecutionContextId) || normalizedExecutionContextId <= 0) {
+        return clientProfileRoute();
+      }
+
+      const parameters = new URLSearchParams();
+      parameters.set("execution-context", String(normalizedExecutionContextId));
+      parameters.set("return", normalizedPricingContextReturnRoute(returnHash));
+      return `#trading-counterparties?${parameters.toString()}`;
+    }
+
+    function clientProfileRouteStateFromLocation(hash = location.hash) {
+      const match = /^#(?:trading-counterparties|client-profile)(?:\/([^/?#]+))?(?:\?([^#]*))?$/.exec(
+        String(hash || "").trim()
+      );
+
+      if (!match) {
+        return { matches: false, mode: "list", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+      }
+
+      let routeToken = "";
+
+      try {
+        routeToken = match[1] ? decodeURIComponent(match[1]) : "";
+      } catch (_error) {
+        return { matches: false, mode: "list", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+      }
+
+      const parameters = new URLSearchParams(match[2] || "");
+      const executionContextId = Number(parameters.get("execution-context"));
+
+      if (!routeToken && Number.isInteger(executionContextId) && executionContextId > 0) {
+        return {
+          matches: true,
+          mode: "related",
+          counterpartyId: "",
+          executionContextId,
+          returnHash: normalizedPricingContextReturnRoute(parameters.get("return"))
+        };
+      }
 
       if (!routeToken) {
-        return { mode: "list", counterpartyId: "" };
+        return { matches: true, mode: "list", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
       }
 
       if (routeToken.toLowerCase() === "new") {
-        return { mode: "create", counterpartyId: "" };
+        return { matches: true, mode: "create", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
       }
 
-      return { mode: "detail", counterpartyId: routeToken };
+      return { matches: true, mode: "detail", counterpartyId: routeToken, executionContextId: null, returnHash: pricingRoute() };
     }
 
     function usersRoute(userId = "") {
@@ -36074,12 +37442,85 @@
         : "#settings:currencies";
     }
 
+    function normalizedCurrencySettingsReturnRoute(value) {
+      const candidate = String(value || "").trim();
+
+      return /^(?:#settings:currencies|#(?:market-pulse|market):ccy-options)$/.test(candidate)
+        ? candidate
+        : settingsRoute("currencies");
+    }
+
+    function currencyPairSettingsForCurrencyRoute(currencyCode, returnHash = location.hash) {
+      const normalizedCurrencyCode = String(currencyCode || "").trim().toUpperCase();
+
+      if (!/^[A-Z]{3}$/.test(normalizedCurrencyCode)) {
+        return settingsRoute("pairs");
+      }
+
+      const parameters = new URLSearchParams();
+      parameters.set("currency", normalizedCurrencyCode);
+      parameters.set("return", normalizedCurrencySettingsReturnRoute(returnHash));
+      return `${settingsRoute("pairs")}?${parameters.toString()}`;
+    }
+
+    function currencySettingsRouteStateFromLocation(hash = location.hash) {
+      const source = String(hash || "").trim();
+      const settingsMatch = /^#settings:(currencies|currency-pairs)(?:\?([^#]*))?$/.exec(source);
+      const legacyMatch = /^#(?:market-pulse|market):(ccy-options|ccy-pair-options)(?:\?([^#]*))?$/.exec(source);
+      const routeToken = settingsMatch?.[1] || legacyMatch?.[1] || "";
+
+      if (!routeToken) {
+        return { matches: false, kind: "streams", mode: "list", scope: null };
+      }
+
+      const kind = routeToken === "currency-pairs" || routeToken === "ccy-pair-options"
+        ? "pairs"
+        : "currencies";
+      const parameters = new URLSearchParams(settingsMatch?.[2] || legacyMatch?.[2] || "");
+      const currencyCode = String(parameters.get("currency") || "").trim().toUpperCase();
+
+      if (kind === "pairs" && /^[A-Z]{3}$/.test(currencyCode)) {
+        return {
+          matches: true,
+          kind,
+          mode: "related",
+          scope: {
+            currencyCode,
+            returnHash: normalizedCurrencySettingsReturnRoute(parameters.get("return"))
+          }
+        };
+      }
+
+      return { matches: true, kind, mode: "list", scope: null };
+    }
+
+    function normalizedCurrencyPairSettingsReturnRoute(value) {
+      const candidate = String(value || "").trim();
+      const routeState = currencySettingsRouteStateFromLocation(candidate);
+
+      return routeState.matches && routeState.kind === "pairs"
+        ? candidate
+        : settingsRoute("pairs");
+    }
+
     function databaseRoute() {
       return "#database";
     }
 
     function manualBatchFormationProcessRoute() {
       return "#processes:manual-batch-formation";
+    }
+
+    function autoHedgingRoute() {
+      return "#processes:auto-hedging";
+    }
+
+    function automationAdmissionRoute() {
+      return "#processes:auto-hedging-admission";
+    }
+
+    function legacyAutomationAdmissionRoute() {
+      return "#processes:automation-admission";
     }
 
     function domainGlossaryRoute(termKey = "") {
@@ -36089,12 +37530,19 @@
     }
 
     const PROCESS_CATALOG_GLOSSARY_TERM_KEYS = new Set([
+      "auto-hedging",
       "fx-batch",
       "batching",
+      "market-pulse",
       "fx-trade",
       "client-deal",
       "hedge-deal",
       "fx-position",
+      "execution-context",
+      "servicing-location",
+      "accounting-system",
+      "execution-system",
+      "pricing-mode",
       "transfer-rate",
       "base-currency",
       "quote-currency",
@@ -36124,17 +37572,47 @@
       en: Object.freeze({
         pageTitle: "Process Catalog",
         manualBatching: "Manual Batching",
+        autoHedging: "Auto Hedging",
+        autoHedgingSubtitle: "Automated FX risk management",
+        autoHedgingDefinition: "An automated FX risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.",
+        autoHedgingFxPositionPresentation: "In FX Position, FX Trades admitted to the Auto Hedging process are displayed on the “Auto Hedging” tab. FX Trades not admitted to Auto Hedging remain on the “Manual Control” tab.",
+        subcatalogs: "Subcatalogs",
+        automationAdmissionCatalogDescription: "Controls which FX Trades may participate in Auto Hedging.",
+        automationAdmission: "Auto Hedging Admission",
+        automationAdmissionSubtitle: "The boundary for admitting an FX Trade to the Auto Hedging process",
+        automationAdmissionSummary: "Auto Hedging Admission controls which FX Trades may participate in Auto Hedging.",
+        automationAdmissionPolicyDefinition: "Defines the permitted admission path for an FX Trade: automatic release after checks, release after review, or manual control only.",
+        autoIfEligibleDefinition: "Release automatically when all required eligibility checks pass.",
+        reviewRequiredDefinition: "Hold first; release only after review.",
+        manualOnlyDefinition: "Keep under manual control; admission to Auto Hedging is not allowed.",
+        automationAdmissionStateDefinition: "Shows whether a specific FX Trade is currently held for manual control or released to Auto Hedging.",
+        heldDefinition: "Held for manual control and does not participate in Auto Hedging.",
+        releasedDefinition: "Admitted to Auto Hedging.",
+        automationAdmissionRule: "Policy answers “which admission path is allowed?” State answers “where is this FX Trade now?”",
+        domainFunctions: "Domain Functions",
+        domainFunctionsDescription: "These pure domain functions do not persist data. They return the planned state or transition and its reason; additional admission conditions can be added later without changing the calling workflow.",
+        determineInitialAdmissionStateTitle: "Determine Initial Admission State",
+        determineInitialAdmissionStateDescription: "Demo baseline for an FX Trade with an Execution Context: if the Execution System referenced by that context has Pricing Mode AUTO_PRICED, Policy AUTO_IF_ELIGIBLE applies and the function returns State RELEASED; otherwise it returns HELD. Technical FX Trades without an Execution Context are outside this baseline and will be defined separately. Future checks may include Transfer Rate deviation from Market Pulse and trade amount limits.",
+        decideReleaseToAutoHedgingTitle: "Decide Release to Auto Hedging",
+        decideReleaseToAutoHedgingDescription: "Called when a HELD FX Trade is proposed for Auto Hedging. It returns whether HELD → RELEASED is allowed, together with the next State and reason.",
+        automationAdmissionFutureExample: "Future extension example—not implemented: release may additionally require the Transfer Rate to remain within a configured deviation corridor from current Market Pulse quotes.",
         domainGlossary: "Domain Glossary",
         domainGlossarySubtitle: "Core terms used across documented processes",
         goal: "Process goal:",
         definitions: "Core definitions",
         fxBatchDefinition: "A fixed package of FX Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical FX Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active FX Position view, which organizes trades and simplifies control of the current currency position.",
         batchingTerm: "Batching",
+        marketPulseDefinition: "An application module that provides current normalized market quotes (Bid and Offer) for currency pairs to pricing, validation, and risk-management processes. In the current demo, quotes are generated by a simulator; the domain concept is independent of the data source and may later use real market-data feeds.",
         batchingDefinition: "A manual or automatic process that selects, validates, groups and neutralizes FX Trades compatible by Batching Key to form one or more FX Batches. A user selects FX Trades for Manual Batching; configured rules select them for Automatic Batching.",
         fxTradeDefinition: "A Client Deal, Hedge Deal, or technical FX transaction included in currency-position calculations and displayed in FX Position.",
         clientDealDefinition: "An FX Trade executed with a client and forming the client component of the currency position.",
         hedgeDealDefinition: "An FX Trade executed with a hedge counterparty to manage or neutralize the currency position.",
         fxPositionDefinition: "Application interface for monitoring the currency position and performing operations with FX Trades, including Batching.",
+        executionContextDefinition: "A configuration context that determines how an FX Trade is processed for pricing, position management, and other applicable processes. In the current demo, it is defined by the combination of Servicing Location, Accounting System (when applicable), and Execution System.",
+        servicingLocationDefinition: "The organizational and geographic point at which an FX Trade is serviced, such as a branch or head office in a particular region.",
+        accountingSystemDefinition: "An internal system of record of a bank or financial institution in which an FX Trade and its related accounting entries are registered.",
+        executionSystemDefinition: "The system or execution channel in which an FX Trade is actually executed. Its Pricing Mode describes how the execution price is produced or approved.",
+        pricingModeDefinition: "An Execution System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.",
         transferRateDefinition: "An internal accounting rate of an FX Trade used to calculate its currency position and allocate analytical P&L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.",
         baseCurrencyDefinition: "The first currency in a currency pair; its amount forms the base currency leg of an FX Trade.",
         quoteCurrencyDefinition: "The second currency in a currency pair, in which the value of the Base Currency is expressed.",
@@ -36183,17 +37661,47 @@
         transferRateDefinition: "\u0412\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u0443\u0447\u0451\u0442\u043d\u044b\u0439 \u043a\u0443\u0440\u0441 FX Trade, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u044b\u0439 \u0434\u043b\u044f \u0440\u0430\u0441\u0447\u0451\u0442\u0430 \u0432\u0430\u043b\u044e\u0442\u043d\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0434\u043e\u0445\u043e\u0434\u0430. \u0418\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u044d\u0442\u043e\u043c\u0443 \u043a\u0443\u0440\u0441\u0443 \u043a\u043b\u0438\u0435\u043d\u0442\u0441\u043a\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043b\u0430\u0441\u044c \u0438\u0437 \u043a\u043d\u0438\u0433\u0438 Sales \u0432 \u043a\u043d\u0438\u0433\u0443 \u043f\u043e\u0434\u0440\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u044f, \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0438 \u043f\u0435\u0440\u0435\u043a\u0440\u044b\u0432\u0430\u044e\u0449\u0435\u0433\u043e \u043f\u043e\u0437\u0438\u0446\u0438\u044e. \u0412 \u0442\u0435\u043a\u0443\u0449\u0435\u043c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438 \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0438 \u043c\u0435\u0436\u0434\u0443 \u043a\u043d\u0438\u0433\u0430\u043c\u0438 \u0438\u043b\u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0430\u043c\u0438 \u043d\u0435\u0442; \u043e\u0442\u0440\u0430\u0441\u043b\u0435\u0432\u043e\u0439 \u0442\u0435\u0440\u043c\u0438\u043d \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u043b\u044f \u043e\u0431\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f \u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0433\u043e \u0440\u0430\u0441\u0447\u0451\u0442\u043d\u043e\u0433\u043e \u043a\u0443\u0440\u0441\u0430.",
         pageTitle: "Каталог процессов",
         manualBatching: "Ручной Batching",
+        autoHedging: "Auto Hedging",
+        autoHedgingSubtitle: "Автоматизированное управление валютным риском",
+        autoHedgingDefinition: "Автоматизированный процесс управления валютным риском, который контролирует открытую валютную позицию и применяет настроенные алгоритмы и ограничения для удержания валютного риска в утверждённых пределах.",
+        autoHedgingFxPositionPresentation: "В FX Position FX Trades, допущенные к процессу Auto Hedging, отображаются на вкладке «Auto Hedging». FX Trades, не допущенные к Auto Hedging, остаются на вкладке «Manual Control».",
+        subcatalogs: "Подкаталоги",
+        automationAdmissionCatalogDescription: "Определяет, какие FX Trades могут участвовать в Auto Hedging.",
+        automationAdmission: "Auto Hedging Admission",
+        automationAdmissionSubtitle: "Границы допуска FX Trade к процессу Auto Hedging",
+        automationAdmissionSummary: "Auto Hedging Admission определяет, какие FX Trades могут участвовать в Auto Hedging.",
+        automationAdmissionPolicyDefinition: "Определяет допустимый порядок допуска FX Trade: автоматический допуск после проверок, допуск после ручной проверки либо только ручной контроль.",
+        autoIfEligibleDefinition: "Допустить автоматически, если пройдены все обязательные проверки.",
+        reviewRequiredDefinition: "Сначала удержать; допустить только после проверки.",
+        manualOnlyDefinition: "Оставить под ручным контролем; допуск к Auto Hedging запрещён.",
+        automationAdmissionStateDefinition: "Показывает, удерживается ли конкретная FX Trade для ручного контроля или уже допущена к Auto Hedging.",
+        heldDefinition: "Удерживается для ручного контроля и не участвует в Auto Hedging.",
+        releasedDefinition: "Допущена к Auto Hedging.",
+        automationAdmissionRule: "Policy отвечает на вопрос «какой путь допуска разрешён?». State — «где находится конкретная FX Trade сейчас?».",
+        domainFunctions: "Доменные функции",
+        domainFunctionsDescription: "Эти чистые доменные функции не сохраняют данные. Они возвращают запланированное состояние или переход и его причину; в дальнейшем в них можно добавлять новые условия допуска, не меняя вызывающий сценарий.",
+        determineInitialAdmissionStateTitle: "Determine Initial Admission State",
+        determineInitialAdmissionStateDescription: "Базовая реализация демо для FX Trade с Execution Context: если связанная с этим контекстом Execution System имеет Pricing Mode AUTO_PRICED, применяется Policy AUTO_IF_ELIGIBLE и функция возвращает State RELEASED; в остальных случаях — HELD. Правила для технических FX Trades без Execution Context будут определены отдельно. В будущем могут добавиться проверки отклонения Transfer Rate от Market Pulse и лимита суммы сделки.",
+        decideReleaseToAutoHedgingTitle: "Decide Release to Auto Hedging",
+        decideReleaseToAutoHedgingDescription: "Вызывается, когда удерживаемую FX Trade предлагается допустить к Auto Hedging. Возвращает, разрешён ли переход HELD → RELEASED, а также следующее состояние и причину решения.",
+        automationAdmissionFutureExample: "Пример будущего расширения — пока не реализовано: для допуска может дополнительно требоваться, чтобы Transfer Rate находился в настроенном диапазоне отклонения от текущих котировок Market Pulse.",
         domainGlossary: "Domain Glossary",
         domainGlossarySubtitle: "Основные термины, используемые в описаниях процессов",
         goal: "Цель процесса:",
         definitions: "Основные определения",
         fxBatchDefinition: "Зафиксированный пакет совместимых по Batching Key FX Trades — Client Deals, Hedge Deals и технических FX Trades, — совокупная ОВП которых равна нулю. После формирования участники пакета исключаются из активного представления FX Position, что систематизирует сделки и упрощает контроль текущей валютной позиции.",
+        marketPulseDefinition: "Модуль приложения, предоставляющий текущие нормализованные рыночные котировки (Bid и Offer) по валютным парам для ценообразования, проверок и процессов управления риском. В текущей демонстрационной реализации котировки формируются симулятором; доменное понятие не зависит от источника данных и в дальнейшем может использовать реальные потоки рыночных данных.",
         batchingTerm: "Batching",
         batchingDefinition: "Ручной или автоматический процесс выбора, проверки, группировки и нейтрализации совместимых по Batching Key FX Trades, результатом которого становится один или несколько FX Batches. При ручном Batching FX Trades выбирает пользователь, при автоматическом — система по настроенным правилам.",
         fxTradeDefinition: "Client Deal, Hedge Deal или техническая FX Trade, учитываемая при расчёте валютной позиции и отображаемая в FX Position.",
         clientDealDefinition: "FX Trade, заключённый с клиентом и формирующий клиентскую часть валютной позиции.",
         hedgeDealDefinition: "FX Trade, заключённый с хеджирующим контрагентом для управления или нейтрализации валютной позиции.",
         fxPositionDefinition: "Интерфейс приложения для контроля валютной позиции и выполнения операций с FX Trades, в том числе для выполнения Batching.",
+        executionContextDefinition: "Конфигурационный контекст, определяющий обработку FX Trade в части ценообразования, управления позицией и других применимых процессов. В текущей демо-реализации он задаётся сочетанием Servicing Location, Accounting System (когда применимо) и Execution System.",
+        servicingLocationDefinition: "Организационная и географическая точка обслуживания FX Trade, например филиал или головной офис в определённом регионе.",
+        accountingSystemDefinition: "Внутренняя учётная система банка или финансовой организации, в которой регистрируются FX Trade и связанные с ней бухгалтерские проводки.",
+        executionSystemDefinition: "Система или канал исполнения, в котором непосредственно заключается FX Trade. Её Pricing Mode определяет способ формирования или подтверждения цены исполнения.",
+        pricingModeDefinition: "Атрибут Execution System, определяющий способ формирования или подтверждения цены исполнения: AUTO_PRICED — автоматическое ценообразование, DEALER_PRICED — цену устанавливает дилер, DEALER_APPROVED — предложенная системой цена требует подтверждения дилером.",
         baseCurrencyDefinition: "Первая валюта в валютной паре; её сумма образует базовую валютную часть FX Trade.",
         quoteCurrencyDefinition: "Вторая валюта в валютной паре; в ней выражается стоимость Base Currency.",
         tradeDateDefinition: "Дата заключения FX Trade, относительно которой определяется Tenor и рассчитываются Value Dates.",
@@ -36243,6 +37751,7 @@
           languageSwitch: "Process Catalog language",
           catalog: "Process catalog",
           processes: "Processes",
+          autoHedgingSubcatalogs: "Auto Hedging subcatalogs",
           processGoal: "Process goal",
           processMap: "Manual Batching process map",
           tenorOutcomes: "Tenor decision outcomes",
@@ -36253,6 +37762,7 @@
           languageSwitch: "Язык каталога процессов",
           catalog: "Каталог процессов",
           processes: "Процессы",
+          autoHedgingSubcatalogs: "Подкаталоги Auto Hedging",
           processGoal: "Цель процесса",
           processMap: "Схема процесса «Ручной Batching»",
           tenorOutcomes: "Варианты разрешения Tenor",
@@ -36587,7 +38097,15 @@
 
     function updateProcessCatalogDocumentTitle() {
       if (processesPage && !processesPage.hidden) {
-        if (isDomainGlossaryRoute()) {
+        if (isAutomationAdmissionRoute()) {
+          document.title = processCatalogLanguage === "ru"
+            ? "Auto Hedging Admission — Каталог процессов"
+            : "Auto Hedging Admission - Process Catalog";
+        } else if (isAutoHedgingRoute()) {
+          document.title = processCatalogLanguage === "ru"
+            ? "Auto Hedging — Каталог процессов"
+            : "Auto Hedging - Process Catalog";
+        } else if (isDomainGlossaryRoute()) {
           document.title = processCatalogLanguage === "ru"
             ? "Domain Glossary — Каталог процессов"
             : "Domain Glossary - Process Catalog";
@@ -36600,16 +38118,33 @@
     }
 
     function renderProcessCatalogRoute() {
+      const isAutoHedging = isAutoHedgingRoute();
+      const isAdmission = isAutomationAdmissionRoute();
       const isGlossary = isDomainGlossaryRoute();
+      const activeView = isAdmission
+        ? "admission"
+        : isAutoHedging
+          ? "auto-hedging"
+          : (isGlossary ? "glossary" : "manual");
+
       if (manualBatchFormationProcessView) {
-        manualBatchFormationProcessView.hidden = isGlossary;
+        manualBatchFormationProcessView.hidden = isAutoHedging || isAdmission || isGlossary;
+      }
+      if (autoHedgingProcessView) {
+        autoHedgingProcessView.hidden = !isAutoHedging;
+      }
+      if (automationAdmissionProcessView) {
+        automationAdmissionProcessView.hidden = !isAdmission;
       }
       if (domainGlossaryProcessView) {
         domainGlossaryProcessView.hidden = !isGlossary;
       }
       processCatalogViewLinks.forEach(link => {
-        const isActive = link.dataset.processCatalogView === (isGlossary ? "glossary" : "manual");
+        const view = link.dataset.processCatalogView;
+        const isActive = view === activeView;
+        const isAncestor = activeView === "admission" && view === "auto-hedging";
         link.classList.toggle("is-active", isActive);
+        link.classList.toggle("is-ancestor", isAncestor);
         if (isActive) {
           link.setAttribute("aria-current", "page");
         } else {
@@ -36640,6 +38175,7 @@
         }
       });
       linkDomainGlossaryDefinitions();
+      highlightAutomationAdmissionTechnicalTokens();
       processCatalogAriaElements.forEach(element => {
         const key = element.dataset.processAriaLabel;
         if (Object.prototype.hasOwnProperty.call(ariaCopy, key)) {
@@ -36668,6 +38204,13 @@
     }
 
     const MANUAL_PROCESS_TERM_REFERENCES = Object.freeze([
+      Object.freeze({ text: "Auto Hedging", key: "auto-hedging" }),
+      Object.freeze({ text: "Servicing Location", key: "servicing-location" }),
+      Object.freeze({ text: "Accounting System", key: "accounting-system" }),
+      Object.freeze({ text: "Execution Context", key: "execution-context" }),
+      Object.freeze({ text: "Execution System", key: "execution-system" }),
+      Object.freeze({ text: "Pricing Mode", key: "pricing-mode" }),
+      Object.freeze({ text: "Market Pulse", key: "market-pulse" }),
       Object.freeze({ text: "Cross-Tenor Batching", key: "cross-tenor-batching" }),
       Object.freeze({ text: "Batch Internal Swaps", key: "batch-internal-swap" }),
       Object.freeze({ text: "Batch Internal Swap", key: "batch-internal-swap" }),
@@ -36701,6 +38244,14 @@
         && !isManualProcessTermWordCharacter(value[index + length]);
     }
 
+    function isManualProcessQuotedLabel(value, index, length) {
+      const openingQuote = value[index - 1];
+      const closingQuote = value[index + length];
+      return (openingQuote === "“" && closingQuote === "”")
+        || (openingQuote === "«" && closingQuote === "»")
+        || (openingQuote === '"' && closingQuote === '"');
+    }
+
     function nextManualProcessTermReference(value, fromIndex, excludeTermKey = "") {
       let nextReference = null;
       const normalizedValue = value.toLocaleLowerCase();
@@ -36713,7 +38264,10 @@
         let index = normalizedValue.indexOf(normalizedTerm, fromIndex);
         while (
           index >= 0
-          && !isManualProcessTermBoundary(value, index, term.text.length)
+          && (
+            !isManualProcessTermBoundary(value, index, term.text.length)
+            || isManualProcessQuotedLabel(value, index, term.text.length)
+          )
         ) {
           index = normalizedValue.indexOf(normalizedTerm, index + 1);
         }
@@ -36869,6 +38423,70 @@
             { excludeTermKey }
           );
         });
+    }
+
+    const AUTOMATION_ADMISSION_TECHNICAL_TOKENS = Object.freeze([
+      "AUTO_IF_ELIGIBLE",
+      "REVIEW_REQUIRED",
+      "MANUAL_ONLY",
+      "AUTO_PRICED",
+      "DEALER_PRICED",
+      "DEALER_APPROVED",
+      "RELEASED",
+      "HELD"
+    ]);
+    const automationAdmissionTechnicalTokenPattern = new RegExp(
+      `\\b(?:${AUTOMATION_ADMISSION_TECHNICAL_TOKENS.join("|")})\\b`,
+      "g"
+    );
+
+    function highlightAutomationAdmissionTechnicalTokens() {
+      if (!automationAdmissionProcessView) {
+        return;
+      }
+
+      const textNodes = [];
+      automationAdmissionProcessView
+        .querySelectorAll(
+          ".automation-admission-values dt, .automation-admission-function-description"
+        )
+        .forEach(root => {
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+          while (walker.nextNode()) {
+            const textNode = walker.currentNode;
+            if (textNode.parentElement?.closest("code")) {
+              continue;
+            }
+            automationAdmissionTechnicalTokenPattern.lastIndex = 0;
+            if (automationAdmissionTechnicalTokenPattern.test(textNode.nodeValue || "")) {
+              textNodes.push(textNode);
+            }
+          }
+        });
+
+      textNodes.forEach(textNode => {
+        const value = textNode.nodeValue || "";
+        const fragment = document.createDocumentFragment();
+        let cursor = 0;
+        automationAdmissionTechnicalTokenPattern.lastIndex = 0;
+
+        for (const match of value.matchAll(automationAdmissionTechnicalTokenPattern)) {
+          const index = match.index ?? 0;
+          if (index > cursor) {
+            fragment.append(document.createTextNode(value.slice(cursor, index)));
+          }
+          const token = document.createElement("code");
+          token.className = "automation-admission-technical-token";
+          token.dataset.automationAdmissionToken = match[0];
+          token.textContent = match[0];
+          fragment.append(token);
+          cursor = index + match[0].length;
+        }
+        if (cursor < value.length) {
+          fragment.append(document.createTextNode(value.slice(cursor)));
+        }
+        textNode.replaceWith(fragment);
+      });
     }
 
     let manualProcessDefinitionHighlightTimeoutId = null;
@@ -37063,8 +38681,51 @@
       return "#batching-settings";
     }
 
-    function pricingRoute() {
-      return "#execution-context";
+    const PRICING_CONTEXT_REFERENCE_FILTERS = Object.freeze({
+      servicingBranch: Object.freeze({
+        parameter: "servicing-location",
+        field: "servicingBranchCode"
+      }),
+      settlementSystem: Object.freeze({
+        parameter: "accounting-system",
+        field: "settlementSystemId"
+      }),
+      tradeCaptureChannel: Object.freeze({
+        parameter: "execution-system",
+        field: "tradeCaptureChannelId"
+      })
+    });
+
+    function pricingRoute(referenceKind = "", referenceId = "") {
+      const filter = PRICING_CONTEXT_REFERENCE_FILTERS[referenceKind];
+      const normalizedReferenceId = String(referenceId ?? "").trim();
+
+      return filter && normalizedReferenceId
+        ? `#execution-context?${filter.parameter}=${encodeURIComponent(normalizedReferenceId)}`
+        : "#execution-context";
+    }
+
+    function pricingRouteStateFromLocation(hash = location.hash) {
+      const match = /^#(?:execution-context|pricing)(?:\?([^#]*))?$/.exec(String(hash || "").trim());
+
+      if (!match) {
+        return { matches: false, mode: "default", scope: null };
+      }
+
+      const parameters = new URLSearchParams(match[1] || "");
+      const scopedEntry = Object.entries(PRICING_CONTEXT_REFERENCE_FILTERS)
+        .map(([kind, filter]) => ({
+          kind,
+          field: filter.field,
+          value: String(parameters.get(filter.parameter) || "").trim()
+        }))
+        .find(entry => entry.value);
+
+      return {
+        matches: true,
+        mode: scopedEntry ? "related" : "default",
+        scope: scopedEntry || null
+      };
     }
 
     function referenceDataRouteToken(kind) {
@@ -37105,12 +38766,73 @@
       return referenceDataKindFromToken(match?.[1] || "servicing-branches");
     }
 
-    function pricingRulesRouteStateFromLocation() {
-      const match = /^#pricing-rules(?::([^:]+))?(?::([^:]+))?$/.exec(location.hash);
+    function pricingRulesRoute(scope = "EXTERNAL") {
+      return scope === "INTERNAL"
+        ? "#pricing-rules:internal-units"
+        : "#pricing-rules:external-counterparties";
+    }
+
+    function normalizedCcyPairRouteCode(value) {
+      const pairCode = String(value || "").trim().toUpperCase().replace("/", "_");
+
+      return /^[A-Z]{3}_[A-Z]{3}$/.test(pairCode) ? pairCode : "";
+    }
+
+    function preferredPricingRulesScopeForPair(pairCode) {
+      return ["EXTERNAL", "INTERNAL"].find(scope =>
+        clientPricingRules.some(rule =>
+          rule.ccyPairCode === pairCode && rule.counterpartyScope === scope
+        )
+      ) || "EXTERNAL";
+    }
+
+    function pricingRulesForCcyPairRoute(
+      pairCode,
+      returnHash = location.hash,
+      scope = ""
+    ) {
+      const normalizedPairCode = normalizedCcyPairRouteCode(pairCode);
+
+      if (!normalizedPairCode) {
+        return pricingRulesRoute();
+      }
+
+      const normalizedScope = ["EXTERNAL", "INTERNAL"].includes(scope)
+        ? scope
+        : preferredPricingRulesScopeForPair(normalizedPairCode);
+      const parameters = new URLSearchParams();
+      parameters.set("ccy-pair", normalizedPairCode);
+      parameters.set("return", normalizedCurrencyPairSettingsReturnRoute(returnHash));
+      return `${pricingRulesRoute(normalizedScope)}?${parameters.toString()}`;
+    }
+
+    function pricingRulesRouteStateFromLocation(hash = location.hash) {
+      const match = /^#pricing-rules(?::(external-counterparties|internal-units))?(?:\?([^#]*))?$/.exec(
+        String(hash || "").trim()
+      );
+
+      if (!match) {
+        return {
+          matches: false,
+          mode: "list",
+          scope: "EXTERNAL",
+          pairCode: "",
+          currencyPair: "",
+          returnHash: settingsRoute("pairs")
+        };
+      }
+
+      const scope = match[1] === "internal-units" ? "INTERNAL" : "EXTERNAL";
+      const parameters = new URLSearchParams(match[2] || "");
+      const pairCode = normalizedCcyPairRouteCode(parameters.get("ccy-pair"));
 
       return {
-        inn: match?.[1] ? decodeURIComponent(match[1]) : "",
-        action: match?.[2] ? decodeURIComponent(match[2]) : ""
+        matches: true,
+        mode: pairCode ? "related" : "list",
+        scope,
+        pairCode,
+        currencyPair: pairCode.replace("_", "/"),
+        returnHash: normalizedCurrencyPairSettingsReturnRoute(parameters.get("return"))
       };
     }
 
@@ -37134,7 +38856,7 @@
     }
 
     function isClientProfileRoute() {
-      return /^#(?:trading-counterparties|client-profile)(?:\/[^/?#]+)?$/.test(location.hash);
+      return clientProfileRouteStateFromLocation().matches;
     }
 
     function isUsersRoute() {
@@ -37149,12 +38871,7 @@
     }
 
     function isCurrencySettingsRoute() {
-      return location.hash === settingsRoute("currencies")
-        || location.hash === settingsRoute("pairs")
-        || location.hash === "#market-pulse:ccy-options"
-        || location.hash === "#market-pulse:ccy-pair-options"
-        || location.hash === "#market:ccy-options"
-        || location.hash === "#market:ccy-pair-options";
+      return currencySettingsRouteStateFromLocation().matches;
     }
 
     function isDatabaseRoute() {
@@ -37165,13 +38882,25 @@
       return location.hash === manualBatchFormationProcessRoute();
     }
 
+    function isAutoHedgingRoute() {
+      return location.hash === autoHedgingRoute();
+    }
+
+    function isAutomationAdmissionRoute() {
+      return location.hash === automationAdmissionRoute()
+        || location.hash === legacyAutomationAdmissionRoute();
+    }
+
     function isDomainGlossaryRoute() {
       return location.hash === domainGlossaryRoute()
         || location.hash.startsWith(`${domainGlossaryRoute()}/`);
     }
 
     function isProcessCatalogRoute() {
-      return isManualBatchFormationProcessRoute() || isDomainGlossaryRoute();
+      return isManualBatchFormationProcessRoute()
+        || isAutoHedgingRoute()
+        || isAutomationAdmissionRoute()
+        || isDomainGlossaryRoute();
     }
 
     function isClientFxDealsRoute() {
@@ -37195,7 +38924,7 @@
     }
 
     function isPricingRoute() {
-      return location.hash === pricingRoute() || location.hash === "#pricing";
+      return pricingRouteStateFromLocation().matches;
     }
 
     function isReferenceDataRoute() {
@@ -37203,11 +38932,11 @@
     }
 
     function isPricingRulesRoute() {
-      return location.hash.startsWith("#pricing-rules");
+      return pricingRulesRouteStateFromLocation().matches;
     }
 
     function pricingRulesScopeFromRoute() {
-      return location.hash === "#pricing-rules:internal-units" ? "INTERNAL" : "EXTERNAL";
+      return pricingRulesRouteStateFromLocation().scope;
     }
 
     function setBatchStatus(message, tone = "") {
@@ -38265,7 +39994,7 @@
       }));
       const count = pendingSendToAutoTrades.length;
       sendToAutoPositionModeSummary.textContent =
-        `Send ${count} selected FX Trade${count === 1 ? "" : "s"} to Auto Batching & Hedging?`;
+        `Send ${count} selected FX Trade${count === 1 ? "" : "s"} to Auto Hedging?`;
       sendToAutoPositionModeStatus.textContent = "";
       sendToAutoPositionModeStatus.hidden = true;
 
@@ -38293,7 +40022,7 @@
       sendToAutoPositionModeCancelButton.disabled = true;
       sendToAutoPositionModeConfirmButton.disabled = true;
       sendToAutoPositionModeStatus.textContent =
-        `Sending ${count} FX Trade${count === 1 ? "" : "s"} to Auto Batching & Hedging...`;
+        `Sending ${count} FX Trade${count === 1 ? "" : "s"} to Auto Hedging...`;
       sendToAutoPositionModeStatus.className =
         "alert alert-secondary batch-rollback-status mt-3 mb-0";
       sendToAutoPositionModeStatus.hidden = false;
@@ -38324,7 +40053,7 @@
 
         const replayedCount = Number(result?.replayedCount || 0);
         setBatchStatus(
-          `${count} FX Trade${count === 1 ? " is" : "s are"} now in Auto Batching & Hedging.`
+          `${count} FX Trade${count === 1 ? " is" : "s are"} now in Auto Hedging.`
           + (replayedCount > 0
             ? ` ${replayedCount} already had the requested Current Mode.`
             : ""),
@@ -38332,7 +40061,7 @@
         );
       } catch (error) {
         const message = error.message
-          || "Unable to send selected FX Trades to Auto Batching & Hedging.";
+          || "Unable to send selected FX Trades to Auto Hedging.";
         sendToAutoPositionModeStatus.textContent = message;
         sendToAutoPositionModeStatus.className =
           "alert alert-danger batch-rollback-status mt-3 mb-0";
@@ -41694,6 +43423,9 @@
 
     async function createQuickHedgeDeal(ourSide, presetCode) {
       const normalizedOurSide = String(ourSide || "").trim().toUpperCase();
+      const positionManagementMode = normalizedPositionManagementMode(
+        activeFxPositionMode
+      );
       const setting = hedgeQuickModeSettingForPair();
       const normalizedPresetCode = String(presetCode || "").trim().toUpperCase();
       const preset = setting?.presets.find(
@@ -41727,7 +43459,8 @@
           body: JSON.stringify({
             ccyPairCode: setting.ccyPairCode,
             side: oppositeFxSide(normalizedOurSide),
-            presetCode: preset.presetCode
+            presetCode: preset.presetCode,
+            positionManagementMode
           })
         });
 
@@ -41768,6 +43501,9 @@
       }
 
       addHedgeDealQuickModeSelection = isQuickMode ? quickModeSelection : null;
+      addHedgeDealPositionManagementMode = normalizedPositionManagementMode(
+        activeFxPositionMode
+      );
       addHedgeDealPricingModeLocked = isQuickMode;
       addHedgeDealSideLocked = validOurSide;
       addHedgeDealDialogTitle.textContent = isQuickMode
@@ -41891,7 +43627,8 @@
             ccyPairCode: quickModeSelection.setting.ccyPairCode,
             side: addHedgeDealForm.elements.side.value,
             presetCode: quickModeSelection.preset.presetCode,
-            tenor: addHedgeDealForm.elements.tenor.value
+            tenor: addHedgeDealForm.elements.tenor.value,
+            positionManagementMode: addHedgeDealPositionManagementMode
           };
           endpoint = "/api/v1/hedge-fx-deals/quick-mode";
         } else {
@@ -41902,7 +43639,8 @@
             side: addHedgeDealForm.elements.side.value,
             dealtCcyCode: fixing === "quote" ? currencies.quote : currencies.base,
             dealtCcyAmount,
-            tenor: addHedgeDealForm.elements.tenor.value
+            tenor: addHedgeDealForm.elements.tenor.value,
+            positionManagementMode: addHedgeDealPositionManagementMode
           };
 
           if (!autoPriced) {
@@ -44637,6 +46375,7 @@
         const settingsTitle = settingsKind === "pairs"
           ? "Currency Pair Settings"
           : "Currency Settings";
+        syncMarketSettingsRouteView();
         setWorkspaceRoute(settingsKind === "pairs" ? "settings-currency-pairs" : "settings-currencies");
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -44644,12 +46383,15 @@
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
         marketPage.hidden = false;
-        document.title = settingsTitle;
+        document.title = marketSettingsRouteScope
+          ? `${settingsTitle} - ${marketSettingsRouteScope.currencyCode}`
+          : settingsTitle;
         renderMarketPage();
         return;
       }
 
       if (isMarketRoute()) {
+        syncMarketSettingsRouteView();
         setWorkspaceRoute("market");
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -44697,7 +46439,10 @@
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
         pricingPage.hidden = false;
-        document.title = "Execution Context";
+        syncPricingContextRouteView();
+        document.title = pricingContextRouteScope
+          ? `Execution Contexts - ${pricingContextRouteScope.value}`
+          : "Execution Context";
         return;
       }
 
@@ -44719,6 +46464,7 @@
         pricingRulesClientInnFilter = "";
         pricingRuleEditState = null;
         activePricingRulesScope = pricingRulesScopeFromRoute();
+        syncPricingRulesRouteView();
         setWorkspaceRoute("pricing-rules");
         marketPage.hidden = true;
         mainPage.hidden = true;
@@ -44726,7 +46472,9 @@
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = false;
-        document.title = "Pricing Rules";
+        document.title = pricingRulesRouteScope
+          ? `Pricing Rules - ${pricingRulesRouteScope.currencyPair}`
+          : "Pricing Rules";
         return;
       }
 
@@ -45036,6 +46784,7 @@
       addHedgeDealPricingModeLocked = false;
       addHedgeDealSideLocked = false;
       addHedgeDealQuickModeSelection = null;
+      addHedgeDealPositionManagementMode = null;
       addHedgeDealCounterpartyPicker.classList.remove("is-invalid");
       addHedgeDealPricingRulePicker.classList.remove("is-invalid");
       addHedgeDealForm.reset();
@@ -45235,7 +46984,11 @@
 
       updateClientProfileSubmitAvailability();
     });
-    clientProfileNewButton.addEventListener("click", startTradingCounterpartyRowCreate);
+    clientProfileNewButton.addEventListener("click", () => {
+      if (!clientProfileRouteScope) {
+        startTradingCounterpartyRowCreate();
+      }
+    });
     tradingCounterpartyScopeTabs.addEventListener("click", event => {
       const button = event.target.closest("[data-trading-counterparty-scope]");
 
@@ -45245,7 +46998,9 @@
 
       tradingCounterpartyRowEditState = null;
       setTradingCounterpartyScopeTab(button.dataset.tradingCounterpartyScope);
-      setClientProfileStatus("");
+      if (!clientProfileRouteScope || clientProfileRouteScope.status === "loaded") {
+        setClientProfileStatus("");
+      }
       renderClientProfiles();
     });
     clientProfileBackButton.addEventListener("click", () => navigateToClientProfileRoute());
@@ -45266,6 +47021,10 @@
       }
     });
     clientProfileRowsEl.addEventListener("click", event => {
+      if (clientProfileRouteScope) {
+        return;
+      }
+
       const actionButton = event.target.closest("[data-profile-action]");
 
       if (actionButton) {
@@ -45344,7 +47103,7 @@
       }
     });
     clientProfileRowsEl.addEventListener("keydown", event => {
-      if (event.key !== "Enter" && event.key !== " ") {
+      if (clientProfileRouteScope || (event.key !== "Enter" && event.key !== " ")) {
         return;
       }
 
@@ -45804,6 +47563,11 @@
       const index = Number(button.dataset.pricingContextIndex);
 
       if (!Number.isInteger(index)) {
+        return;
+      }
+
+      if (action === "view-trading-counterparties") {
+        viewPricingContextTradingCounterparties(index);
         return;
       }
 
