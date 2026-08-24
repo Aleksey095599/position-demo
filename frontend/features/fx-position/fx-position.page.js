@@ -10,8 +10,25 @@
       return "#reports:analytical-pnl";
     }
 
-    function hedgingSettingsRoute() {
-      return "#hedging-settings";
+    function hedgingSettingsRoute(section = "quick") {
+      if (section === "initial") {
+        return "#hedging-settings:auto-hedging:initial-admission";
+      }
+      if (section === "manual-release") {
+        return "#hedging-settings:auto-hedging:manual-release";
+      }
+      return "#hedging-settings:quick-hedge";
+    }
+
+    function hedgingSettingsSectionFromLocation(hash = location.hash) {
+      const normalizedHash = String(hash || "").trim().toLowerCase();
+      if (normalizedHash === "#hedging-settings:auto-hedging:initial-admission") {
+        return "initial";
+      }
+      if (normalizedHash === "#hedging-settings:auto-hedging:manual-release") {
+        return "manual-release";
+      }
+      return "quick";
     }
 
     function batchingSettingsRoute() {
@@ -242,7 +259,8 @@
     }
 
     function isHedgingSettingsRoute() {
-      return location.hash === hedgingSettingsRoute();
+      return location.hash === "#hedging-settings"
+        || /^#hedging-settings:(?:quick-hedge|auto-hedging:(?:initial-admission|manual-release))$/.test(location.hash);
     }
 
     function isBatchingSettingsRoute() {

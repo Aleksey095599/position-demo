@@ -78,6 +78,7 @@
     }
 
     function applyInitialPageMode() {
+      const hedgingSettingsWasVisible = !hedgingSettingsPage.hidden;
       batchDetailsRequestSequence += 1;
       analyticalPnlReportRequestSequence += 1;
       fxDealsPage.hidden = true;
@@ -212,7 +213,7 @@
         pricingRulesPage.hidden = true;
         hedgingSettingsPage.hidden = false;
         document.title = "Hedging Settings";
-        loadHedgingSettingsPage();
+        loadHedgingSettingsPage({ reload: !hedgingSettingsWasVisible });
         return;
       }
 
@@ -566,11 +567,6 @@
     autoBatchingSettingsButton.addEventListener("click", event => {
       event.stopPropagation();
       location.hash = batchingSettingsRoute();
-    });
-    hedgingSettingsTabs.forEach(tab => {
-      tab.addEventListener("click", () => {
-        setHedgingSettingsTab(tab.dataset.hedgingSettingsTab);
-      });
     });
     batchingSettingsTabs.forEach(tab => {
       tab.addEventListener("click", () => {

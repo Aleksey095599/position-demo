@@ -2927,10 +2927,6 @@
       width: min(1180px, calc(100vw - 32px));
     }
 
-    #hedgingSettingsPage .hedging-settings-layout {
-      display: block;
-    }
-
     #hedgingSettingsPage .hedging-settings-panel {
       width: min(1180px, 100%);
       max-height: none;

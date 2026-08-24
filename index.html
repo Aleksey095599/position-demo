@@ -96,7 +96,7 @@
       <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
       <span>Batching Settings</span>
     </a>
-    <a class="workspace-nav-menu-link" href="#hedging-settings" data-workspace-route="hedging-settings" role="menuitem">
+    <a class="workspace-nav-menu-link" href="#hedging-settings:quick-hedge" data-workspace-route="hedging-settings" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">shield</span>
       <span>Hedging Settings</span>
     </a>
@@ -3155,19 +3155,36 @@
       <div class="hedge-quick-settings-status workbench-page-status" id="hedgeQuickModeSettingsStatus" role="status" aria-live="polite"></div>
     </section>
 
-    <nav class="nav nav-tabs workbench-section-tabs hedging-settings-tabs" aria-label="Hedging Settings sections" role="tablist">
-      <button type="button" class="nav-link active" id="quickHedgeSettingsTab" data-hedging-settings-tab="quick" role="tab" aria-controls="quickHedgeSettingsPanel" aria-selected="true">
-        <span class="button-icon" aria-hidden="true">bolt</span>
-        <span>Quick Hedge Settings</span>
-      </button>
-      <button type="button" class="nav-link" id="autoHedgingAdmissionSettingsTab" data-hedging-settings-tab="auto-admission" role="tab" aria-controls="autoHedgingAdmissionSettingsPanel" aria-selected="false">
-        <span class="button-icon" aria-hidden="true">verified_user</span>
-        <span>Auto Hedging Settings</span>
-      </button>
-    </nav>
+    <section class="hedging-settings-workspace-layout" aria-label="Hedging Settings">
+      <aside class="profile-panel hedging-settings-sidebar">
+        <nav class="hedging-settings-navigation" aria-label="Hedging Settings sections">
+          <a class="hedging-settings-navigation-link is-active" id="quickHedgeSettingsNavLink" href="#hedging-settings:quick-hedge" data-hedging-settings-section="quick" aria-current="page">
+            <span class="button-icon" aria-hidden="true">bolt</span>
+            <span>Quick Hedge Settings</span>
+          </a>
 
-    <section class="hedging-settings-layout" aria-label="Hedging Settings">
-      <section class="hedging-settings-tab-panel" id="quickHedgeSettingsPanel" role="tabpanel" aria-labelledby="quickHedgeSettingsTab">
+          <div class="hedging-settings-navigation-group">
+            <button type="button" class="hedging-settings-navigation-group-toggle" id="autoHedgingSettingsGroupToggle" aria-expanded="true" aria-controls="autoHedgingSettingsSubnav">
+              <span class="button-icon" aria-hidden="true">verified_user</span>
+              <span>Auto Hedging Settings</span>
+              <span class="button-icon hedging-settings-navigation-chevron" aria-hidden="true">expand_more</span>
+            </button>
+            <div class="hedging-settings-navigation-subnav" id="autoHedgingSettingsSubnav">
+              <a class="hedging-settings-navigation-link hedging-settings-navigation-sublink" id="initialAdmissionSettingsNavLink" href="#hedging-settings:auto-hedging:initial-admission" data-hedging-settings-section="initial">
+                <span class="button-icon" aria-hidden="true">move_to_inbox</span>
+                <span>Initial Admission</span>
+              </a>
+              <a class="hedging-settings-navigation-link hedging-settings-navigation-sublink" id="manualReleaseSettingsNavLink" href="#hedging-settings:auto-hedging:manual-release" data-hedging-settings-section="manual-release">
+                <span class="button-icon" aria-hidden="true">approval</span>
+                <span>Manual Release</span>
+              </a>
+            </div>
+          </div>
+        </nav>
+      </aside>
+
+      <div class="hedging-settings-content">
+      <section class="hedging-settings-content-panel" id="quickHedgeSettingsPanel" data-hedging-settings-section-panel="quick" aria-labelledby="quickHedgeSettingsNavLink">
         <section class="profile-panel client-deal-create-dialog hedge-quick-settings-dialog hedging-settings-panel" aria-label="Quick Hedge Settings">
         <form class="modal-content" id="hedgeQuickModeSettingsForm" autocomplete="off">
       <div class="modal-header" id="hedgeQuickModeSettingsHeader" hidden>
@@ -3292,57 +3309,30 @@
         </section>
       </section>
 
-      <section class="hedging-settings-tab-panel" id="autoHedgingAdmissionSettingsPanel" role="tabpanel" aria-labelledby="autoHedgingAdmissionSettingsTab" hidden>
-        <section class="auto-hedging-settings-workspace" aria-labelledby="autoHedgingAdmissionSettingsTitle">
-          <header class="auto-hedging-settings-workspace-head">
-            <div>
-              <h2 id="autoHedgingAdmissionSettingsTitle">Auto Hedging Settings</h2>
-              <p>Configure how each category of FX Trades may enter Auto Hedging.</p>
-            </div>
-          </header>
-
-          <div class="auto-hedging-entry-route-switch" role="group" aria-label="Auto Hedging entry route">
-            <button type="button" class="auto-hedging-entry-route-option is-active" data-auto-hedging-settings-route="initial" aria-pressed="true" aria-controls="autoHedgingInitialAdmissionRoute">
-              <span class="button-icon" aria-hidden="true">move_to_inbox</span>
-              <span class="auto-hedging-entry-route-option-copy">
-                <strong>Initial Admission</strong>
-                <small>Automatic decision when an FX Trade enters the application.</small>
-              </span>
-            </button>
-            <button type="button" class="auto-hedging-entry-route-option" data-auto-hedging-settings-route="manual-release" aria-pressed="false" aria-controls="autoHedgingManualReleaseRoute">
-              <span class="button-icon" aria-hidden="true">approval</span>
-              <span class="auto-hedging-entry-route-option-copy">
-                <strong>Manual Release</strong>
-                <small>Dealer-initiated release of a held FX Trade to Auto Hedging.</small>
-              </span>
-            </button>
-          </div>
-
-          <section class="auto-hedging-entry-route-panel" id="autoHedgingInitialAdmissionRoute" data-auto-hedging-settings-route-panel="initial" aria-labelledby="autoHedgingInitialAdmissionTitle">
+      <section class="hedging-settings-content-panel auto-hedging-entry-route-panel" id="autoHedgingInitialAdmissionRoute" data-hedging-settings-section-panel="initial" aria-labelledby="initialAdmissionSettingsNavLink" hidden>
             <header class="auto-hedging-entry-route-head">
               <h3 id="autoHedgingInitialAdmissionTitle">Initial Admission to Auto Hedging</h3>
               <p>Defines the first admission decision made when an FX Trade appears in the application.</p>
             </header>
 
             <div class="auto-hedging-trade-segment-list" data-auto-hedging-settings-segments="initial">
-              <section class="auto-hedging-trade-segment is-expanded">
+              <section class="auto-hedging-trade-segment">
                 <h4 class="auto-hedging-trade-segment-heading">
-                  <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingInitialClientToggle" data-auto-hedging-segment-toggle aria-expanded="true" aria-controls="autoHedgingInitialClientPanel">
-                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">person</span>
+                  <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingInitialClientToggle" data-auto-hedging-segment-toggle aria-expanded="false" aria-controls="autoHedgingInitialClientPanel">
+                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">handshake</span>
                     <span class="auto-hedging-trade-segment-copy">
-                      <strong>Client FX Trades</strong>
-                      <small>FX Trades executed with clients.</small>
+                      <strong>Client FX Deals</strong>
                     </span>
                     <span class="badge text-bg-primary">Configured</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
                   </button>
                 </h4>
-                <div class="auto-hedging-trade-segment-body" id="autoHedgingInitialClientPanel" role="region" aria-labelledby="autoHedgingInitialClientToggle">
-                  <form class="auto-hedging-admission-settings-panel" id="autoHedgingAdmissionPolicyForm" aria-label="Client FX Trade Initial Admission Policy" autocomplete="off">
+                <div class="auto-hedging-trade-segment-body" id="autoHedgingInitialClientPanel" role="region" aria-labelledby="autoHedgingInitialClientToggle" hidden>
+                  <form class="auto-hedging-admission-settings-panel" id="autoHedgingAdmissionPolicyForm" aria-label="Client FX Deal Initial Admission Policy" autocomplete="off">
                     <div class="auto-hedging-client-policy-head">
                       <div>
-                        <strong>Client FX Trade Initial Admission Policy</strong>
-                        <p>Current executable demo policy for automatic admission of Client FX Trades.</p>
+                        <strong>Client FX Deal Initial Admission Policy</strong>
+                        <p>Current executable demo policy for automatic admission of Client FX Deals.</p>
                       </div>
                       <span class="badge text-bg-light border" id="autoHedgingAdmissionPolicyRevision" aria-label="Current policy revision">Revision —</span>
                     </div>
@@ -3435,10 +3425,9 @@
               <section class="auto-hedging-trade-segment">
                 <h4 class="auto-hedging-trade-segment-heading">
                   <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingInitialHedgeToggle" data-auto-hedging-segment-toggle aria-expanded="false" aria-controls="autoHedgingInitialHedgePanel">
-                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">currency_exchange</span>
+                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">shield</span>
                     <span class="auto-hedging-trade-segment-copy">
-                      <strong>Hedge FX Trades</strong>
-                      <small>FX Trades executed with hedge counterparties.</small>
+                      <strong>Hedge FX Deals</strong>
                     </span>
                     <span class="badge text-bg-light border">Not configured</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
@@ -3449,7 +3438,7 @@
                     <span class="button-icon" aria-hidden="true">rule_settings</span>
                     <div>
                       <strong>Initial Admission Policy is not defined</strong>
-                      <p>Hedge FX Trade rules will be configured independently from Client FX Trades.</p>
+                      <p>Hedge FX Deal rules will be configured independently from Client FX Deals.</p>
                     </div>
                   </div>
                 </div>
@@ -3461,7 +3450,6 @@
                     <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">build_circle</span>
                     <span class="auto-hedging-trade-segment-copy">
                       <strong>Technical FX Trades</strong>
-                      <small>System-generated Balance Position and Position Out trades.</small>
                     </span>
                     <span class="badge text-bg-light border">Not configured</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
@@ -3485,35 +3473,34 @@
             </div>
           </section>
 
-          <section class="auto-hedging-entry-route-panel" id="autoHedgingManualReleaseRoute" data-auto-hedging-settings-route-panel="manual-release" aria-labelledby="autoHedgingManualReleaseTitle" hidden>
+      <section class="hedging-settings-content-panel auto-hedging-entry-route-panel" id="autoHedgingManualReleaseRoute" data-hedging-settings-section-panel="manual-release" aria-labelledby="manualReleaseSettingsNavLink" hidden>
             <header class="auto-hedging-entry-route-head">
               <h3 id="autoHedgingManualReleaseTitle">Manual Release to Auto Hedging</h3>
               <p>Defines the checks applied when a dealer requests release of a held FX Trade.</p>
             </header>
 
             <div class="auto-hedging-trade-segment-list" data-auto-hedging-settings-segments="manual-release">
-              <section class="auto-hedging-trade-segment is-expanded">
+              <section class="auto-hedging-trade-segment">
                 <h4 class="auto-hedging-trade-segment-heading">
-                  <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingManualClientToggle" data-auto-hedging-segment-toggle aria-expanded="true" aria-controls="autoHedgingManualClientPanel">
-                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">person</span>
+                  <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingManualClientToggle" data-auto-hedging-segment-toggle aria-expanded="false" aria-controls="autoHedgingManualClientPanel">
+                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">handshake</span>
                     <span class="auto-hedging-trade-segment-copy">
-                      <strong>Client FX Trades</strong>
-                      <small>Manual release of held client trades.</small>
+                      <strong>Client FX Deals</strong>
                     </span>
                     <span class="badge text-bg-warning">Shared in demo</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
                   </button>
                 </h4>
-                <div class="auto-hedging-trade-segment-body" id="autoHedgingManualClientPanel" role="region" aria-labelledby="autoHedgingManualClientToggle">
+                <div class="auto-hedging-trade-segment-body" id="autoHedgingManualClientPanel" role="region" aria-labelledby="autoHedgingManualClientToggle" hidden>
                   <div class="auto-hedging-shared-policy-note" role="note">
                     <span class="button-icon" aria-hidden="true">info</span>
                     <div>
                       <strong>Current demo behavior</strong>
-                      <p>Manual Release currently reuses the Client FX Trade Initial Admission eligibility settings. It does not yet have an independently editable policy.</p>
+                      <p>Manual Release currently reuses the Client FX Deal Initial Admission eligibility settings. It does not yet have an independently editable policy.</p>
                     </div>
                   </div>
                   <dl class="auto-hedging-shared-policy-summary">
-                    <div><dt>Policy source</dt><dd>Client FX Trade Initial Admission</dd></div>
+                    <div><dt>Policy source</dt><dd>Client FX Deal Initial Admission</dd></div>
                     <div><dt>Policy revision</dt><dd id="autoHedgingManualReleaseSharedRevision">—</dd></div>
                     <div><dt>Enabled Ccy Pairs</dt><dd id="autoHedgingManualReleaseSharedPairSummary">—</dd></div>
                     <div><dt>Maximum Transfer Rate Deviation</dt><dd id="autoHedgingManualReleaseSharedDeviation">—</dd></div>
@@ -3524,10 +3511,9 @@
               <section class="auto-hedging-trade-segment">
                 <h4 class="auto-hedging-trade-segment-heading">
                   <button type="button" class="auto-hedging-trade-segment-toggle" id="autoHedgingManualHedgeToggle" data-auto-hedging-segment-toggle aria-expanded="false" aria-controls="autoHedgingManualHedgePanel">
-                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">currency_exchange</span>
+                    <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">shield</span>
                     <span class="auto-hedging-trade-segment-copy">
-                      <strong>Hedge FX Trades</strong>
-                      <small>Manual release of held hedge trades.</small>
+                      <strong>Hedge FX Deals</strong>
                     </span>
                     <span class="badge text-bg-light border">Not configured</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
@@ -3538,7 +3524,7 @@
                     <span class="button-icon" aria-hidden="true">rule_settings</span>
                     <div>
                       <strong>Manual Release Policy is not defined</strong>
-                      <p>Hedge FX Trade release checks will be configured independently.</p>
+                      <p>Hedge FX Deal release checks will be configured independently.</p>
                     </div>
                   </div>
                 </div>
@@ -3550,7 +3536,6 @@
                     <span class="button-icon auto-hedging-trade-segment-icon" aria-hidden="true">build_circle</span>
                     <span class="auto-hedging-trade-segment-copy">
                       <strong>Technical FX Trades</strong>
-                      <small>Manual release of Balance Position and Position Out trades.</small>
                     </span>
                     <span class="badge text-bg-light border">Not configured</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
@@ -3572,9 +3557,8 @@
                 </div>
               </section>
             </div>
-          </section>
-        </section>
       </section>
+      </div>
     </section>
   </main>
 

@@ -58,7 +58,7 @@ test("every Bootstrap tab list uses the shared workbench tab contract", () => {
     /<nav\b[^>]*class="([^"]*\bnav-tabs\b[^"]*)"[^>]*>/g
   )];
 
-  assert.equal(tabLists.length, 8);
+  assert.equal(tabLists.length, 7);
   for (const [, classNames] of tabLists) {
     assert.match(classNames, /\bworkbench-section-tabs\b/);
   }

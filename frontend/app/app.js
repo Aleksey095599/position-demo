@@ -1274,17 +1274,14 @@
     const hedgeQuickModeCounterpartyPickerToggle = document.getElementById("hedgeQuickModeCounterpartyPickerToggle");
     const hedgeQuickModeCounterpartyOptions = document.getElementById("hedgeQuickModeCounterpartyOptions");
     const hedgeQuickModePricingRulePicker = document.getElementById("hedgeQuickModePricingRulePicker");
-    const hedgingSettingsTabs = Array.from(
-      document.querySelectorAll("[data-hedging-settings-tab]")
+    const hedgingSettingsSectionLinks = Array.from(
+      document.querySelectorAll("[data-hedging-settings-section]")
     );
-    const quickHedgeSettingsPanel = document.getElementById("quickHedgeSettingsPanel");
-    const autoHedgingAdmissionSettingsPanel = document.getElementById("autoHedgingAdmissionSettingsPanel");
-    const autoHedgingSettingsRouteControls = Array.from(
-      document.querySelectorAll("[data-auto-hedging-settings-route]")
+    const hedgingSettingsSectionPanels = Array.from(
+      document.querySelectorAll("[data-hedging-settings-section-panel]")
     );
-    const autoHedgingSettingsRoutePanels = Array.from(
-      document.querySelectorAll("[data-auto-hedging-settings-route-panel]")
-    );
+    const hedgingSettingsAutoGroupToggle = document.getElementById("autoHedgingSettingsGroupToggle");
+    const hedgingSettingsAutoSubnav = document.getElementById("autoHedgingSettingsSubnav");
     const autoHedgingSettingsSegmentToggles = Array.from(
       document.querySelectorAll("[data-auto-hedging-segment-toggle]")
     );
@@ -17030,8 +17027,25 @@
       return "#reports:analytical-pnl";
     }
 
-    function hedgingSettingsRoute() {
-      return "#hedging-settings";
+    function hedgingSettingsRoute(section = "quick") {
+      if (section === "initial") {
+        return "#hedging-settings:auto-hedging:initial-admission";
+      }
+      if (section === "manual-release") {
+        return "#hedging-settings:auto-hedging:manual-release";
+      }
+      return "#hedging-settings:quick-hedge";
+    }
+
+    function hedgingSettingsSectionFromLocation(hash = location.hash) {
+      const normalizedHash = String(hash || "").trim().toLowerCase();
+      if (normalizedHash === "#hedging-settings:auto-hedging:initial-admission") {
+        return "initial";
+      }
+      if (normalizedHash === "#hedging-settings:auto-hedging:manual-release") {
+        return "manual-release";
+      }
+      return "quick";
     }
 
     function batchingSettingsRoute() {
@@ -17262,7 +17276,8 @@
     }
 
     function isHedgingSettingsRoute() {
-      return location.hash === hedgingSettingsRoute();
+      return location.hash === "#hedging-settings"
+        || /^#hedging-settings:(?:quick-hedge|auto-hedging:(?:initial-admission|manual-release))$/.test(location.hash);
     }
 
     function isBatchingSettingsRoute() {
@@ -20340,27 +20355,36 @@
       setWorkbenchPageStatus(autoHedgingAdmissionPolicyStatus, message, tone);
     }
 
-    function setAutoHedgingSettingsRoute(routeName, { focus = false } = {}) {
-      const normalizedRoute = routeName === "manual-release"
-        ? "manual-release"
-        : "initial";
-      let activeControl = null;
+    function setHedgingSettingsAutoGroupExpanded(expanded) {
+      const isExpanded = expanded === true;
+      hedgingSettingsAutoGroupToggle.setAttribute("aria-expanded", String(isExpanded));
+      hedgingSettingsAutoSubnav.hidden = !isExpanded;
+    }
 
-      autoHedgingSettingsRouteControls.forEach(control => {
-        const active = control.dataset.autoHedgingSettingsRoute === normalizedRoute;
-        control.classList.toggle("is-active", active);
-        control.setAttribute("aria-pressed", String(active));
+    function setHedgingSettingsSection(sectionName) {
+      const normalizedSection = sectionName === "initial" || sectionName === "manual-release"
+        ? sectionName
+        : "quick";
+
+      hedgingSettingsSectionLinks.forEach(link => {
+        const active = link.dataset.hedgingSettingsSection === normalizedSection;
+        link.classList.toggle("is-active", active);
         if (active) {
-          activeControl = control;
+          link.setAttribute("aria-current", "page");
+        } else {
+          link.removeAttribute("aria-current");
         }
       });
-
-      autoHedgingSettingsRoutePanels.forEach(panel => {
-        panel.hidden = panel.dataset.autoHedgingSettingsRoutePanel !== normalizedRoute;
+      hedgingSettingsSectionPanels.forEach(panel => {
+        panel.hidden = panel.dataset.hedgingSettingsSectionPanel !== normalizedSection;
       });
+      hedgeQuickModeSettingsStatus.hidden = normalizedSection !== "quick";
 
-      if (focus) {
-        activeControl?.focus();
+      if (normalizedSection !== "quick") {
+        setHedgingSettingsAutoGroupExpanded(true);
+      }
+      if (normalizedSection === "quick" && hedgeQuickModeSettingsGridReady) {
+        requestAnimationFrame(() => hedgeQuickModeSettingsGrid.redraw(true));
       }
     }
 
@@ -20831,35 +20855,16 @@
         filterAutoHedgingAdmissionPairs();
         autoHedgingAdmissionPairSearch.focus();
       });
-      autoHedgingSettingsRouteControls.forEach(control => {
-        control.addEventListener("click", () => {
-          setAutoHedgingSettingsRoute(
-            control.dataset.autoHedgingSettingsRoute
-          );
-        });
+      hedgingSettingsAutoGroupToggle.addEventListener("click", () => {
+        setHedgingSettingsAutoGroupExpanded(
+          hedgingSettingsAutoGroupToggle.getAttribute("aria-expanded") !== "true"
+        );
       });
       autoHedgingSettingsSegmentToggles.forEach(toggle => {
         toggle.addEventListener("click", () => {
           toggleAutoHedgingSettingsSegment(toggle);
         });
       });
-    }
-
-    function setHedgingSettingsTab(tabName) {
-      const normalizedTab = tabName === "auto-admission" ? "auto-admission" : "quick";
-
-      hedgingSettingsTabs.forEach(tab => {
-        const active = tab.dataset.hedgingSettingsTab === normalizedTab;
-        tab.classList.toggle("active", active);
-        tab.setAttribute("aria-selected", String(active));
-      });
-      quickHedgeSettingsPanel.hidden = normalizedTab !== "quick";
-      autoHedgingAdmissionSettingsPanel.hidden = normalizedTab !== "auto-admission";
-      hedgeQuickModeSettingsStatus.hidden = normalizedTab !== "quick";
-
-      if (normalizedTab === "quick" && hedgeQuickModeSettingsGridReady) {
-        requestAnimationFrame(() => hedgeQuickModeSettingsGrid.redraw(true));
-      }
     }
 
     function hedgeQuickModeUnconfiguredPairs() {
@@ -21513,7 +21518,12 @@
       setHedgeQuickModeCounterpartyPickerExpanded(true);
     }
 
-    async function loadHedgingSettingsPage() {
+    async function loadHedgingSettingsPage({ reload = true } = {}) {
+      setHedgingSettingsSection(hedgingSettingsSectionFromLocation());
+      if (!reload) {
+        return;
+      }
+
       ensureAutoHedgingAdmissionPolicyEventBindings();
       renderAutoHedgingAdmissionPolicy();
       const autoHedgingAdmissionPolicyLoad =
@@ -25081,6 +25091,7 @@
     }
 
     function applyInitialPageMode() {
+      const hedgingSettingsWasVisible = !hedgingSettingsPage.hidden;
       batchDetailsRequestSequence += 1;
       analyticalPnlReportRequestSequence += 1;
       fxDealsPage.hidden = true;
@@ -25215,7 +25226,7 @@
         pricingRulesPage.hidden = true;
         hedgingSettingsPage.hidden = false;
         document.title = "Hedging Settings";
-        loadHedgingSettingsPage();
+        loadHedgingSettingsPage({ reload: !hedgingSettingsWasVisible });
         return;
       }
 
@@ -25569,11 +25580,6 @@
     autoBatchingSettingsButton.addEventListener("click", event => {
       event.stopPropagation();
       location.hash = batchingSettingsRoute();
-    });
-    hedgingSettingsTabs.forEach(tab => {
-      tab.addEventListener("click", () => {
-        setHedgingSettingsTab(tab.dataset.hedgingSettingsTab);
-      });
     });
     batchingSettingsTabs.forEach(tab => {
       tab.addEventListener("click", () => {

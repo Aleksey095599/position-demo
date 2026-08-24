@@ -12,11 +12,12 @@ const documentHtml = fs.readFileSync(
 );
 const appScript = [
   path.join(ROOT, "frontend", "app", "core", "runtime.js"),
+  path.join(ROOT, "frontend", "features", "fx-position", "fx-position.page.js"),
   path.join(ROOT, "frontend", "features", "hedging", "hedging.page.js"),
   path.join(ROOT, "frontend", "app", "shell", "workspace-shell.js")
 ].map(filePath => fs.readFileSync(filePath, "utf8")).join("\n");
-const sharedTabsStyle = fs.readFileSync(
-  path.join(ROOT, "frontend", "shared", "components", "workbench-tabs.css"),
+const settingsStyle = fs.readFileSync(
+  path.join(ROOT, "frontend", "features", "hedging", "hedging-settings.css"),
   "utf8"
 );
 const styleManifest = JSON.parse(fs.readFileSync(
@@ -25,86 +26,97 @@ const styleManifest = JSON.parse(fs.readFileSync(
 ));
 const hedgingPageMarkup = documentHtml;
 
-test("Hedging Settings exposes Quick Hedge and Auto Hedging tabs", () => {
+test("Hedging Settings exposes scalable sidebar navigation", () => {
   assert.match(
     hedgingPageMarkup,
-    /class="nav nav-tabs workbench-section-tabs hedging-settings-tabs"[^>]*role="tablist"/
+    /class="hedging-settings-workspace-layout"[^>]*aria-label="Hedging Settings"/
   );
   assert.match(
     hedgingPageMarkup,
-    /id="quickHedgeSettingsTab"[^>]*data-hedging-settings-tab="quick"[^>]*role="tab"[^>]*aria-controls="quickHedgeSettingsPanel"[^>]*aria-selected="true"/
+    /<aside class="profile-panel hedging-settings-sidebar">[\s\S]*?<nav class="hedging-settings-navigation"/
   );
   assert.match(
     hedgingPageMarkup,
-    /id="autoHedgingAdmissionSettingsTab"[^>]*data-hedging-settings-tab="auto-admission"[^>]*role="tab"[^>]*aria-controls="autoHedgingAdmissionSettingsPanel"[^>]*aria-selected="false"/
+    /id="quickHedgeSettingsNavLink"[^>]*href="#hedging-settings:quick-hedge"[^>]*data-hedging-settings-section="quick"[^>]*aria-current="page"/
   );
   assert.match(
     hedgingPageMarkup,
-    /id="quickHedgeSettingsPanel"[^>]*role="tabpanel"[^>]*aria-labelledby="quickHedgeSettingsTab"/
+    /id="autoHedgingSettingsGroupToggle"[^>]*aria-expanded="true"[^>]*aria-controls="autoHedgingSettingsSubnav"/
   );
   assert.match(
     hedgingPageMarkup,
-    /id="autoHedgingAdmissionSettingsPanel"[^>]*role="tabpanel"[^>]*aria-labelledby="autoHedgingAdmissionSettingsTab" hidden/
+    /id="initialAdmissionSettingsNavLink"[^>]*href="#hedging-settings:auto-hedging:initial-admission"[^>]*data-hedging-settings-section="initial"/
   );
-  assert.match(hedgingPageMarkup, />Auto Hedging Settings<\/span>/);
-  assert.match(hedgingPageMarkup, />Auto Hedging Settings<\/h2>/);
+  assert.match(
+    hedgingPageMarkup,
+    /id="manualReleaseSettingsNavLink"[^>]*href="#hedging-settings:auto-hedging:manual-release"[^>]*data-hedging-settings-section="manual-release"/
+  );
+  assert.match(
+    hedgingPageMarkup,
+    /id="quickHedgeSettingsPanel"[^>]*data-hedging-settings-section-panel="quick"/
+  );
+  assert.match(
+    hedgingPageMarkup,
+    /id="autoHedgingInitialAdmissionRoute"[^>]*data-hedging-settings-section-panel="initial"[^>]*hidden/
+  );
+  assert.match(
+    hedgingPageMarkup,
+    /id="autoHedgingManualReleaseRoute"[^>]*data-hedging-settings-section-panel="manual-release"[^>]*hidden/
+  );
+  assert.doesNotMatch(hedgingPageMarkup, /data-hedging-settings-tab/);
+  assert.doesNotMatch(hedgingPageMarkup, /auto-hedging-entry-route-switch/);
 });
 
-test("Hedging Settings tab switching owns active and panel visibility state", () => {
-  const tabSwitchSource = appScript.match(
-    /function setHedgingSettingsTab\(tabName\)[\s\S]*?\n    \}/
-  )?.[0] || "";
-
-  assert.match(tabSwitchSource, /tab\.classList\.toggle\("active", active\)/);
-  assert.match(tabSwitchSource, /tab\.setAttribute\("aria-selected", String\(active\)\)/);
-  assert.match(tabSwitchSource, /quickHedgeSettingsPanel\.hidden = normalizedTab !== "quick"/);
+test("URL-backed section switching owns active and panel visibility state", () => {
+  assert.match(appScript, /function setHedgingSettingsSection\(sectionName\)/);
+  assert.match(appScript, /link\.classList\.toggle\("is-active", active\)/);
+  assert.match(appScript, /link\.setAttribute\("aria-current", "page"\)/);
+  assert.match(appScript, /link\.removeAttribute\("aria-current"\)/);
   assert.match(
-    tabSwitchSource,
-    /autoHedgingAdmissionSettingsPanel\.hidden = normalizedTab !== "auto-admission"/
+    appScript,
+    /panel\.hidden = panel\.dataset\.hedgingSettingsSectionPanel !== normalizedSection/
+  );
+  assert.match(appScript, /function hedgingSettingsSectionFromLocation\(hash = location\.hash\)/);
+  assert.match(appScript, /#hedging-settings:auto-hedging:initial-admission/);
+  assert.match(appScript, /#hedging-settings:auto-hedging:manual-release/);
+  assert.match(appScript, /const hedgingSettingsWasVisible = !hedgingSettingsPage\.hidden/);
+  assert.match(appScript, /loadHedgingSettingsPage\(\{ reload: !hedgingSettingsWasVisible \}\)/);
+  assert.match(
+    appScript,
+    /async function loadHedgingSettingsPage\(\{ reload = true \} = \{\}\)[\s\S]*?if \(!reload\) \{\s*return;/
+  );
+});
+
+test("Auto Hedging sidebar group can collapse independently", () => {
+  assert.match(
+    hedgingPageMarkup,
+    /id="autoHedgingSettingsGroupToggle"[^>]*aria-controls="autoHedgingSettingsSubnav"/
+  );
+  assert.match(
+    hedgingPageMarkup,
+    /class="hedging-settings-navigation-subnav" id="autoHedgingSettingsSubnav"/
   );
   assert.match(
     appScript,
-    /setHedgingSettingsTab\(tab\.dataset\.hedgingSettingsTab\)/
-  );
-});
-
-test("Auto Hedging uses a segmented route switch instead of nesting Bootstrap tabs", () => {
-  assert.match(
-    hedgingPageMarkup,
-    /class="auto-hedging-entry-route-switch" role="group" aria-label="Auto Hedging entry route"/
+    /function setHedgingSettingsAutoGroupExpanded\(expanded\)[\s\S]*?hedgingSettingsAutoSubnav\.hidden = !isExpanded/
   );
   assert.match(
-    hedgingPageMarkup,
-    /data-auto-hedging-settings-route="initial"[^>]*aria-pressed="true"[^>]*aria-controls="autoHedgingInitialAdmissionRoute"/
+    appScript,
+    /hedgingSettingsAutoGroupToggle\.addEventListener\("click"[\s\S]*?setHedgingSettingsAutoGroupExpanded/
   );
-  assert.match(
-    hedgingPageMarkup,
-    /data-auto-hedging-settings-route="manual-release"[^>]*aria-pressed="false"[^>]*aria-controls="autoHedgingManualReleaseRoute"/
-  );
-  assert.match(
-    hedgingPageMarkup,
-    /id="autoHedgingManualReleaseRoute"[^>]*data-auto-hedging-settings-route-panel="manual-release"[^>]*hidden/
-  );
-  assert.equal(
-    (hedgingPageMarkup.match(/\bauto-hedging-entry-route-switch\b/g) || []).length,
-    1
-  );
-  assert.doesNotMatch(
-    hedgingPageMarkup,
-    /auto-hedging-entry-route-switch[^>]*nav-tabs/
-  );
-
-  const routeSwitchSource = appScript.match(
-    /function setAutoHedgingSettingsRoute\(routeName,[\s\S]*?\n    \}/
-  )?.[0] || "";
-  assert.match(routeSwitchSource, /control\.classList\.toggle\("is-active", active\)/);
-  assert.match(routeSwitchSource, /control\.setAttribute\("aria-pressed", String\(active\)\)/);
-  assert.match(routeSwitchSource, /panel\.hidden = panel\.dataset\.autoHedgingSettingsRoutePanel !== normalizedRoute/);
 });
 
 test("each entry route exposes Client, Hedge and Technical FX Trade accordions", () => {
   assert.equal(
     (hedgingPageMarkup.match(/data-auto-hedging-segment-toggle/g) || []).length,
+    6
+  );
+  assert.equal(
+    (hedgingPageMarkup.match(/data-auto-hedging-segment-toggle[^>]*aria-expanded="false"/g) || []).length,
+    6
+  );
+  assert.equal(
+    (hedgingPageMarkup.match(/class="auto-hedging-trade-segment-body"[^>]*hidden/g) || []).length,
     6
   );
   [
@@ -130,18 +142,31 @@ test("each entry route exposes Client, Hedge and Technical FX Trade accordions",
   );
 });
 
-test("Workbench tabs use a reusable page-independent style contract", () => {
-  assert.ok(styleManifest.sources.includes("shared/components/workbench-tabs.css"));
+test("trade segment headings reuse Trades icons and concise domain terminology", () => {
+  assert.equal((hedgingPageMarkup.match(/>handshake<\/span>/g) || []).length, 2);
+  assert.equal((hedgingPageMarkup.match(/>shield<\/span>/g) || []).length, 2);
+  assert.equal((hedgingPageMarkup.match(/>build_circle<\/span>/g) || []).length, 2);
+  assert.equal((hedgingPageMarkup.match(/>Client FX Deals<\/strong>/g) || []).length, 2);
+  assert.equal((hedgingPageMarkup.match(/>Hedge FX Deals<\/strong>/g) || []).length, 2);
+  assert.equal((hedgingPageMarkup.match(/>Technical FX Trades<\/strong>/g) || []).length, 2);
+  const segmentCopies = [...hedgingPageMarkup.matchAll(
+    /<span class="auto-hedging-trade-segment-copy">([\s\S]*?)<\/span>/g
+  )].map(match => match[1]);
+  assert.equal(segmentCopies.length, 6);
+  segmentCopies.forEach(copy => assert.doesNotMatch(copy, /<small>/));
+});
+
+test("Hedging Settings sidebar has a responsive page-local style contract", () => {
   assert.ok(styleManifest.sources.includes("features/hedging/hedging-settings.css"));
   assert.match(
-    sharedTabsStyle,
-    /\.workbench-page \.workbench-section-tabs \{/
+    settingsStyle,
+    /\.hedging-settings-workspace-layout \{[\s\S]*?grid-template-columns: minmax\(220px, 250px\) minmax\(0, 1fr\)/
   );
-  assert.match(sharedTabsStyle, /border-bottom: 1px solid var\(--bs-border-color\)/);
-  assert.match(sharedTabsStyle, /border-bottom-color: var\(--bs-primary\)/);
-  assert.match(sharedTabsStyle, /gap: 16px/);
-  assert.doesNotMatch(
-    sharedTabsStyle,
-    /#(?:clientProfilePage|referenceDataPage|hedgingSettingsPage|mainPage)/
+  assert.match(settingsStyle, /\.hedging-settings-sidebar \{[\s\S]*?position: sticky/);
+  assert.match(
+    settingsStyle,
+    /\.hedging-settings-navigation-link\.is-active \{[\s\S]*?box-shadow: inset 3px 0 0 var\(--bs-primary\)/
   );
+  assert.match(settingsStyle, /@media \(max-width: 900px\)[\s\S]*?grid-template-columns: 1fr/);
+  assert.doesNotMatch(settingsStyle, /auto-hedging-entry-route-switch/);
 });

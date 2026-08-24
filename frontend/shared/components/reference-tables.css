@@ -183,10 +183,6 @@
       }
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-layout {
-      margin-top: 12px;
-    }
-
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-layout {
       width: min(680px, 100%);
       margin-top: 12px;

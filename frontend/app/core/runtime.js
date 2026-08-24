@@ -1274,17 +1274,14 @@
     const hedgeQuickModeCounterpartyPickerToggle = document.getElementById("hedgeQuickModeCounterpartyPickerToggle");
     const hedgeQuickModeCounterpartyOptions = document.getElementById("hedgeQuickModeCounterpartyOptions");
     const hedgeQuickModePricingRulePicker = document.getElementById("hedgeQuickModePricingRulePicker");
-    const hedgingSettingsTabs = Array.from(
-      document.querySelectorAll("[data-hedging-settings-tab]")
+    const hedgingSettingsSectionLinks = Array.from(
+      document.querySelectorAll("[data-hedging-settings-section]")
     );
-    const quickHedgeSettingsPanel = document.getElementById("quickHedgeSettingsPanel");
-    const autoHedgingAdmissionSettingsPanel = document.getElementById("autoHedgingAdmissionSettingsPanel");
-    const autoHedgingSettingsRouteControls = Array.from(
-      document.querySelectorAll("[data-auto-hedging-settings-route]")
+    const hedgingSettingsSectionPanels = Array.from(
+      document.querySelectorAll("[data-hedging-settings-section-panel]")
     );
-    const autoHedgingSettingsRoutePanels = Array.from(
-      document.querySelectorAll("[data-auto-hedging-settings-route-panel]")
-    );
+    const hedgingSettingsAutoGroupToggle = document.getElementById("autoHedgingSettingsGroupToggle");
+    const hedgingSettingsAutoSubnav = document.getElementById("autoHedgingSettingsSubnav");
     const autoHedgingSettingsSegmentToggles = Array.from(
       document.querySelectorAll("[data-auto-hedging-segment-toggle]")
     );

@@ -23,7 +23,7 @@ const policyMarkup = documentHtml.match(
 )?.[0] || "";
 
 test("Auto Hedging Settings presents the required core rule and configurable eligibility checks", () => {
-  assert.match(policyMarkup, />Client FX Trade Initial Admission Policy<\/strong>/);
+  assert.match(policyMarkup, />Client FX Deal Initial Admission Policy<\/strong>/);
   assert.match(policyMarkup, />Execution Context Admission Mode<\/h5>/);
   assert.match(policyMarkup, />Required<\/span>/);
   assert.match(policyMarkup, />Always applied<\/span>/);
@@ -74,7 +74,7 @@ test("Manual Release is represented honestly as a read-only shared demo policy",
   assert.match(documentHtml, /id="autoHedgingManualReleaseSharedDeviation"/);
   assert.match(
     documentHtml,
-    /Manual Release currently reuses the Client FX Trade Initial Admission eligibility settings\./
+    /Manual Release currently reuses the Client FX Deal Initial Admission eligibility settings\./
   );
   assert.match(
     appScript,

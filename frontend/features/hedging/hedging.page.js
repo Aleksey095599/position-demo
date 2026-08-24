@@ -352,27 +352,36 @@
       setWorkbenchPageStatus(autoHedgingAdmissionPolicyStatus, message, tone);
     }
 
-    function setAutoHedgingSettingsRoute(routeName, { focus = false } = {}) {
-      const normalizedRoute = routeName === "manual-release"
-        ? "manual-release"
-        : "initial";
-      let activeControl = null;
+    function setHedgingSettingsAutoGroupExpanded(expanded) {
+      const isExpanded = expanded === true;
+      hedgingSettingsAutoGroupToggle.setAttribute("aria-expanded", String(isExpanded));
+      hedgingSettingsAutoSubnav.hidden = !isExpanded;
+    }
 
-      autoHedgingSettingsRouteControls.forEach(control => {
-        const active = control.dataset.autoHedgingSettingsRoute === normalizedRoute;
-        control.classList.toggle("is-active", active);
-        control.setAttribute("aria-pressed", String(active));
+    function setHedgingSettingsSection(sectionName) {
+      const normalizedSection = sectionName === "initial" || sectionName === "manual-release"
+        ? sectionName
+        : "quick";
+
+      hedgingSettingsSectionLinks.forEach(link => {
+        const active = link.dataset.hedgingSettingsSection === normalizedSection;
+        link.classList.toggle("is-active", active);
         if (active) {
-          activeControl = control;
+          link.setAttribute("aria-current", "page");
+        } else {
+          link.removeAttribute("aria-current");
         }
       });
-
-      autoHedgingSettingsRoutePanels.forEach(panel => {
-        panel.hidden = panel.dataset.autoHedgingSettingsRoutePanel !== normalizedRoute;
+      hedgingSettingsSectionPanels.forEach(panel => {
+        panel.hidden = panel.dataset.hedgingSettingsSectionPanel !== normalizedSection;
       });
+      hedgeQuickModeSettingsStatus.hidden = normalizedSection !== "quick";
 
-      if (focus) {
-        activeControl?.focus();
+      if (normalizedSection !== "quick") {
+        setHedgingSettingsAutoGroupExpanded(true);
+      }
+      if (normalizedSection === "quick" && hedgeQuickModeSettingsGridReady) {
+        requestAnimationFrame(() => hedgeQuickModeSettingsGrid.redraw(true));
       }
     }
 
@@ -843,35 +852,16 @@
         filterAutoHedgingAdmissionPairs();
         autoHedgingAdmissionPairSearch.focus();
       });
-      autoHedgingSettingsRouteControls.forEach(control => {
-        control.addEventListener("click", () => {
-          setAutoHedgingSettingsRoute(
-            control.dataset.autoHedgingSettingsRoute
-          );
-        });
+      hedgingSettingsAutoGroupToggle.addEventListener("click", () => {
+        setHedgingSettingsAutoGroupExpanded(
+          hedgingSettingsAutoGroupToggle.getAttribute("aria-expanded") !== "true"
+        );
       });
       autoHedgingSettingsSegmentToggles.forEach(toggle => {
         toggle.addEventListener("click", () => {
           toggleAutoHedgingSettingsSegment(toggle);
         });
       });
-    }
-
-    function setHedgingSettingsTab(tabName) {
-      const normalizedTab = tabName === "auto-admission" ? "auto-admission" : "quick";
-
-      hedgingSettingsTabs.forEach(tab => {
-        const active = tab.dataset.hedgingSettingsTab === normalizedTab;
-        tab.classList.toggle("active", active);
-        tab.setAttribute("aria-selected", String(active));
-      });
-      quickHedgeSettingsPanel.hidden = normalizedTab !== "quick";
-      autoHedgingAdmissionSettingsPanel.hidden = normalizedTab !== "auto-admission";
-      hedgeQuickModeSettingsStatus.hidden = normalizedTab !== "quick";
-
-      if (normalizedTab === "quick" && hedgeQuickModeSettingsGridReady) {
-        requestAnimationFrame(() => hedgeQuickModeSettingsGrid.redraw(true));
-      }
     }
 
     function hedgeQuickModeUnconfiguredPairs() {
@@ -1525,7 +1515,12 @@
       setHedgeQuickModeCounterpartyPickerExpanded(true);
     }
 
-    async function loadHedgingSettingsPage() {
+    async function loadHedgingSettingsPage({ reload = true } = {}) {
+      setHedgingSettingsSection(hedgingSettingsSectionFromLocation());
+      if (!reload) {
+        return;
+      }
+
       ensureAutoHedgingAdmissionPolicyEventBindings();
       renderAutoHedgingAdmissionPolicy();
       const autoHedgingAdmissionPolicyLoad =
