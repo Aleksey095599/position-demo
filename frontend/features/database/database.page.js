@@ -432,14 +432,6 @@
       });
     }
 
-    function setFxBatchesActiveTab(activeRoute) {
-      fxBatchesTabs.forEach(tab => {
-        const isActive = tab.dataset.fxBatchesRoute === activeRoute;
-        tab.classList.toggle("active", isActive);
-        tab.setAttribute("aria-selected", String(isActive));
-      });
-    }
-
     function batchDetailsRoute(batchId) {
       const normalizedBatchId = Number(batchId);
 

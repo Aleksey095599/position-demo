@@ -227,15 +227,9 @@
       }
     }
 
-    function queueMarketInlineEditorFocus(container, selector, onReady = null) {
+    function queueMarketInlineEditorReady(container, selector, onReady = null) {
       requestAnimationFrame(() => requestAnimationFrame(() => {
         const control = container.querySelector(selector);
-        control?.focus();
-
-        if (control instanceof HTMLInputElement && control.type !== "number") {
-          control.select();
-        }
-
         onReady?.(control?.closest(".tabulator-row") || null);
       }));
     }
@@ -247,7 +241,7 @@
       marketCcyOptionGrid?.clearHeaderFilter();
       setMarketStatus("");
       renderMarketPage();
-      queueMarketInlineEditorFocus(
+      queueMarketInlineEditorReady(
         marketCcyOptionRowsEl,
         `[data-market-ccy-option-edit-index="${isEditing ? index : "new"}"] [data-market-ccy-option-field="${isEditing ? "name" : "code"}"]`,
         row => row && updateMarketCcyOptionRowSaveAvailability(row)
@@ -605,7 +599,7 @@
       marketPairOptionGrid?.clearHeaderFilter();
       setMarketStatus("");
       renderMarketPage();
-      queueMarketInlineEditorFocus(
+      queueMarketInlineEditorReady(
         marketPairOptionRowsEl,
         `[data-market-pair-option-edit-index="${isEditing ? index : "new"}"] [data-market-pair-option-field="${isEditing ? "defaultQuoteDecimals" : "baseCcy"}"]`,
         row => row && syncMarketPairOptionEditRow(row)
@@ -806,14 +800,7 @@
         marketSimulationForm.elements.fluctuationSpreads
       ].forEach(input => input.setCustomValidity(""));
 
-      if (typeof marketSimulationDialog.showModal === "function") {
-        marketSimulationDialog.showModal();
-      } else {
-        marketSimulationDialog.setAttribute("open", "");
-      }
-
-      marketSimulationForm.elements.bidMin.focus();
-      marketSimulationForm.elements.bidMin.select();
+      openDialogWithoutFieldFocus(marketSimulationDialog);
     }
 
     function closeMarketSimulationDialog() {

@@ -210,10 +210,13 @@ test("client Pricing Rules use one context strip with lightweight branches", () 
     /pricingContextFacetsMarkup\(context, \{ executionSystemLabel: true \}\)/
   );
   assert.match(
-    topLevelFunctionSource("executionSystemLabelMarkup"),
-    /AUTO_PRICED[\s\S]*?flash_auto/
+    inlineScript,
+    /AUTO_PRICED:\s*Object\.freeze\(\{\s*label: "Auto Priced",\s*icon: "flash_auto"/
   );
-  assert.match(topLevelFunctionSource("executionSystemLabelMarkup"), /execution-system-label__pricing/);
+  assert.match(
+    topLevelFunctionSource("executionSystemLabelMarkup"),
+    /const pricingIcon = presentation\.icon;[\s\S]*?execution-system-label__pricing/
+  );
   assert.doesNotMatch(panelSource, /Pricing Context|with Pricing Mode =/);
   assert.match(
     html,

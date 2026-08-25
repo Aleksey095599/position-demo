@@ -1342,13 +1342,7 @@
       sendToAutoPositionModeStatus.textContent = "";
       sendToAutoPositionModeStatus.hidden = true;
 
-      if (typeof sendToAutoPositionModeDialog.showModal === "function") {
-        sendToAutoPositionModeDialog.showModal();
-      } else {
-        sendToAutoPositionModeDialog.setAttribute("open", "");
-      }
-
-      sendToAutoPositionModeCancelButton.focus();
+      openDialogWithoutFieldFocus(sendToAutoPositionModeDialog);
     }
 
     async function confirmSendToAutoPositionMode() {
@@ -1521,13 +1515,7 @@
 
       updateOneBatchSelectedTenorButton();
 
-      if (typeof oneBatchTenorDialog.showModal === "function") {
-        oneBatchTenorDialog.showModal();
-      } else {
-        oneBatchTenorDialog.setAttribute("open", "");
-      }
-
-      oneBatchTenorSelect.focus();
+      openDialogWithoutFieldFocus(oneBatchTenorDialog);
     }
 
     function closeOneBatchTenorDialog({ restoreFocus = true } = {}) {
@@ -1967,13 +1955,7 @@
       resetDemoTradesStatus.className = "alert alert-danger batch-rollback-status";
       resetDemoTradesStatus.hidden = true;
 
-      if (typeof resetDemoTradesDialog.showModal === "function") {
-        resetDemoTradesDialog.showModal();
-      } else {
-        resetDemoTradesDialog.setAttribute("open", "");
-      }
-
-      resetDemoTradesCancelButton.focus();
+      openDialogWithoutFieldFocus(resetDemoTradesDialog);
     }
 
     async function confirmResetDemoTradeWorkspace() {
@@ -2968,13 +2950,7 @@
       renderAddClientDealPricingRules();
       syncAddClientDealDerivedFields();
 
-      if (typeof addClientDealDialog.showModal === "function") {
-        addClientDealDialog.showModal();
-      } else {
-        addClientDealDialog.setAttribute("open", "");
-      }
-
-      addClientDealClientPickerValue.focus();
+      openDialogWithoutFieldFocus(addClientDealDialog);
     }
 
     function closeAddClientDealDialog() {

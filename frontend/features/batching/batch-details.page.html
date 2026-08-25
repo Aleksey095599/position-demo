@@ -59,8 +59,15 @@
           </dl>
         </div>
 
-        <section class="batch-neutrality semantic-section" aria-labelledby="batchNeutralityTitle">
-          <h2 class="batch-neutrality-title semantic-section-head" id="batchNeutralityTitle">Batch Neutrality</h2>
+        <details class="batch-neutrality semantic-section" id="batchNeutralityDetails" aria-labelledby="batchNeutralityTitle">
+          <summary class="batch-neutrality-summary semantic-section-head">
+            <h2 class="batch-neutrality-title" id="batchNeutralityTitle">Batch Neutrality</h2>
+            <span class="batch-neutrality-summary-status" id="batchNeutralitySummaryStatus">
+              <span class="button-icon" id="batchNeutralitySummaryStatusIcon" aria-hidden="true">check_circle</span>
+              <span id="batchNeutralitySummaryStatusText">Neutral Batch</span>
+            </span>
+            <span class="button-icon batch-neutrality-summary-toggle" aria-hidden="true">expand_more</span>
+          </summary>
           <div class="batch-neutrality-equation">
             <article class="batch-neutrality-node">
               <div class="batch-neutrality-node-heading">
@@ -113,7 +120,7 @@
               </div>
             </article>
           </div>
-        </section>
+        </details>
 
         <section class="batch-details-section semantic-section semantic-table-section table-panel table-panel--semantic" aria-labelledby="batchDetailsMembersTitle">
           <div class="batch-details-section-header semantic-section-head semantic-table-section-head table-panel__head" data-ui-table-layout-host="batch_members_grid">

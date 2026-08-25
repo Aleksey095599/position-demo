@@ -177,21 +177,14 @@ const UI_TABLE_LAYOUTS = Object.freeze({
   batching_history_grid: layout("FX Batches", [
     ["batch_id", "Batch ID", 96],
     ["ccy_pair_code", "Ccy Pair Code", 100],
-    ["batch_status", "Batch Status", 101],
-    ["formation_reason_code", "Formation Reason", 252],
-    ["formed_at", "Formed At", 157],
-    ["actions", "Actions", 80]
-  ]),
-  batch_formation_audit_grid: layout("Batch Formation Audit", [
-    ["batch_id", "Batch ID", 96],
     ["batching_key", "Batching Key", 450],
     ["window_opened_at", "Window Opened At", 157],
     ["window_closed_at", "Window Closed At", 157],
-    ["formed_at", "Batch Formed At", 157],
     ["window_duration_ms", "Duration", 105],
+    ["batch_status", "Batch Status", 101],
     ["formation_reason_code", "Formation Reason", 252],
+    ["formed_at", "Formed At", 157],
     ["source_trade_count", "Source Trades", 108],
-    ["batch_status", "Status", 101],
     ["actions", "Actions", 80]
   ]),
   batch_members_grid: layout("FX Trade Members", [

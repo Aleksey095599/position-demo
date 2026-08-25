@@ -92,11 +92,7 @@
       setClientDealDuplicateCheckStatus();
       addClientDealSubmitButton.disabled = true;
 
-      if (typeof clientDealDuplicateCheckDialog.showModal === "function") {
-        clientDealDuplicateCheckDialog.showModal();
-      } else {
-        clientDealDuplicateCheckDialog.setAttribute("open", "");
-      }
+      openDialogWithoutFieldFocus(clientDealDuplicateCheckDialog);
 
       if (clientDealDuplicateCheckGrid) {
         clientDealDuplicateCheckGrid.replaceData(data).then(() => clientDealDuplicateCheckGrid.redraw(true));
@@ -106,7 +102,6 @@
 
       requestAnimationFrame(() => {
         clientDealDuplicateCheckGrid?.redraw(true);
-        clientDealDuplicateCheckConfirmButton.focus();
       });
     }
 
@@ -730,18 +725,8 @@
       }
     }
 
-    function showDealDialog(focusElement = editForm.elements.amount) {
-      if (typeof editDialog.showModal === "function") {
-        editDialog.showModal();
-      } else {
-        editDialog.setAttribute("open", "");
-      }
-
-      focusElement.focus();
-
-      if (typeof focusElement.select === "function") {
-        focusElement.select();
-      }
+    function showDealDialog() {
+      openDialogWithoutFieldFocus(editDialog);
     }
 
     function openEditDialog(dealId) {
@@ -831,7 +816,7 @@
       prepareEditDealForm();
       dealIdentitySection.open = true;
 
-      showDealDialog(editForm.elements.comment);
+      showDealDialog();
     }
 
     function openSelectedEditDialog() {

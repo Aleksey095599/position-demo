@@ -194,7 +194,7 @@
 
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-form {
       display: grid;
-      gap: 12px;
+      gap: 16px;
     }
 
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-tab-panel[hidden] {
@@ -661,6 +661,7 @@
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel .modal-content {
+      overflow: visible;
       border: 0;
       border-radius: 0;
       background: transparent;
@@ -697,7 +698,7 @@
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-editor {
       display: grid;
-      gap: 12px;
+      gap: 16px;
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-editor .client-deal-create-section {
@@ -713,10 +714,6 @@
       padding: 0;
       border-top: 0;
       background: transparent;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-overview {
-      gap: 8px;
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-overview-toolbar {

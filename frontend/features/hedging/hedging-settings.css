@@ -63,10 +63,9 @@
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedging-settings-navigation-link.is-active {
-      border-color: color-mix(in srgb, var(--bs-primary) 35%, var(--bs-border-color));
-      background: var(--hedging-settings-accent-soft);
-      color: var(--bs-primary-text-emphasis);
-      box-shadow: inset 3px 0 0 var(--bs-primary);
+      border-color: var(--selection-accent);
+      background: var(--control-soft-bg);
+      color: var(--bs-body-color);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -89,6 +88,17 @@
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedging-settings-navigation-group:has(
+      .hedging-settings-navigation-sublink.is-active
+    ) > .hedging-settings-navigation-group-toggle {
+      background: color-mix(
+        in srgb,
+        var(--control-soft-bg) 58%,
+        var(--bs-body-bg)
+      );
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedging-settings-navigation-chevron {
       color: var(--bs-secondary-color);
       transition: transform 120ms ease;
@@ -104,7 +114,8 @@
     .hedging-settings-navigation-subnav {
       display: grid;
       gap: 2px;
-      padding-left: 22px;
+      margin: 2px 0 2px 22px;
+      padding-left: 12px;
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -142,11 +153,7 @@
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-entry-route-head p,
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-client-policy-head p,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-copy p,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-policy-heading p {
+    .auto-hedging-admission-policy-block-copy p {
       margin: 4px 0 0;
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-caption);
@@ -175,7 +182,7 @@
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-trade-segment.is-expanded {
       border-color: color-mix(in srgb, var(--bs-primary) 32%, var(--bs-border-color));
-      box-shadow: -4px 0 0 var(--palette-blue-500);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -259,38 +266,32 @@
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-client-policy-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--bs-border-color);
-      background: var(--bs-body-bg);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-client-policy-head strong {
-      font-size: var(--app-font-size-section-title);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-admission-settings-body {
+      --auto-hedging-admission-tree-bg: color-mix(
+        in srgb,
+        var(--bs-tertiary-bg) 42%,
+        var(--bs-body-bg)
+      );
+      position: relative;
       display: grid;
-      gap: 16px;
-      padding: 20px;
+      gap: 4px;
+      padding: 12px 20px 16px 54px;
+      background: var(--auto-hedging-admission-tree-bg);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-body > .semantic-section {
-      --semantic-section-accent: var(--palette-blue-500);
-      --semantic-section-border-color: var(--bs-border-color);
+    .auto-hedging-admission-rule-tree::before {
+      position: absolute;
+      top: 0;
+      bottom: 16px;
+      left: 27px;
+      width: 1px;
+      background: var(--bs-border-color);
+      content: "";
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-copy h5,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-policy-heading h5 {
+    .auto-hedging-admission-policy-block-copy h5 {
       margin: 0;
       color: var(--bs-body-color);
       font-size: var(--app-font-size-section-title);
@@ -299,12 +300,35 @@
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-admission-policy-block {
+      position: relative;
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
       align-items: center;
       gap: 12px;
-      padding: 14px 16px;
-      background: var(--bs-body-bg);
+      min-height: 54px;
+      padding: 7px 0;
+      background: transparent;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-policy-block::before {
+      position: absolute;
+      top: 50%;
+      left: -27px;
+      width: 20px;
+      border-top: 1px solid var(--bs-border-color);
+      content: "";
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-policy-block:last-of-type::after {
+      position: absolute;
+      top: calc(50% + 1px);
+      bottom: -20px;
+      left: -28px;
+      width: 3px;
+      background: var(--auto-hedging-admission-tree-bg);
+      content: "";
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -340,62 +364,57 @@
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-policy {
-      overflow: hidden;
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--bs-border-radius);
-      background: var(--bs-body-bg);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-policy-heading,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy-actions,
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy-actions {
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .auto-hedging-admission-pair-dialog
+    .auto-hedging-admission-pair-toolbar {
       padding: 12px 14px;
       border-bottom: 1px solid var(--bs-border-color);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-policy-heading-copy {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-width: 0;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-toolbar {
       background: var(--bs-tertiary-bg);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy-actions .reference-grid-action {
+      background: var(--app-table-action-bg);
+    }
+
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-search {
       width: min(360px, 100%);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-filter {
       width: 150px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table-viewport {
       position: relative;
       max-height: min(56vh, 620px);
       overflow: auto;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table {
       min-width: 720px;
       margin: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table thead th {
       position: sticky;
       top: 0;
@@ -408,22 +427,22 @@
       white-space: nowrap;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table tbody td {
       padding: 9px 12px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table th:nth-child(1) {
       width: 24%;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table th:nth-child(2) {
       width: 25%;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-enabled {
       display: flex;
       justify-content: center;
@@ -431,28 +450,72 @@
       min-height: 24px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-enabled .form-check-input {
       margin-top: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-limit {
       width: min(320px, 100%);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-limit .input-group-text {
       min-width: 54px;
       justify-content: center;
       font-weight: 600;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-empty {
       padding: 24px 16px;
       color: var(--bs-secondary-color);
       text-align: center;
+    }
+
+    .auto-hedging-admission-pair-dialog {
+      width: min(980px, calc(100vw - 32px));
+      max-width: none;
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-content {
+      max-height: min(86vh, 760px);
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-header {
+      align-items: flex-start;
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-header h2 {
+      margin: 0;
+      font-size: var(--app-font-size-section-title);
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-header h2:focus {
+      outline: 0;
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-header p {
+      margin: 4px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-body {
+      min-height: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .auto-hedging-admission-pair-dialog .auto-hedging-admission-pair-table-viewport {
+      max-height: min(58vh, 560px);
+    }
+
+    .auto-hedging-admission-pair-dialog-note {
+      margin-right: auto;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -489,7 +552,8 @@
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-shared-policy-note {
-      border-left: 4px solid var(--palette-blue-500);
+      border-left: 1px solid var(--bs-border-color);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -601,7 +665,7 @@
       display: flex;
       justify-content: flex-end;
       padding: 12px 20px;
-      border-top: 1px solid var(--hedging-settings-border);
+      border-top: 1px solid var(--bs-border-color);
       background: var(--bs-tertiary-bg);
     }
 
@@ -626,11 +690,7 @@
     }
 
     @media (max-width: 720px) {
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-client-policy-head,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-admission-pair-policy-heading,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-pair-dialog
       .auto-hedging-admission-pair-toolbar {
         align-items: stretch;
         flex-direction: column;
@@ -683,7 +743,9 @@
       #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
       .auto-hedging-admission-deviation-field,
       #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-admission-core-rule-badges {
+      .auto-hedging-admission-core-rule-badges,
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-pair-policy-actions {
         grid-column: 1 / -1;
       }
 
@@ -698,6 +760,11 @@
       }
 
       #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-pair-policy-actions {
+        justify-content: space-between;
+      }
+
+      .auto-hedging-admission-pair-dialog
       .auto-hedging-admission-pair-filter {
         width: 100%;
       }

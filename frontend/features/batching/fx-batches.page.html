@@ -3,41 +3,19 @@
       <h1 class="page-title">FX Batches</h1>
     </section>
 
-    <nav class="nav nav-tabs workbench-section-tabs batches-scope-tabs" aria-label="FX Batch views" role="tablist">
-      <a class="nav-link" id="fxBatchesTab" href="#batching:history" data-fx-batches-route="batching-history" role="tab" aria-controls="batchingHistoryPage" aria-selected="false">
-        <span class="button-icon" aria-hidden="true">stacks</span>
-        <span>FX Batches</span>
-      </a>
-      <a class="nav-link" id="batchFormationAuditTab" href="#batching:formation-audit" data-fx-batches-route="batch-formation-audit" role="tab" aria-controls="batchFormationAuditPage" aria-selected="false">
-        <span class="button-icon" aria-hidden="true">fact_check</span>
-        <span>Batch Formation Audit</span>
-      </a>
-    </nav>
-
-    <section class="batches-tab-panel batching-history-page" id="batchingHistoryPage" role="tabpanel" aria-labelledby="fxBatchesTab" hidden>
+    <section class="batching-history-page" id="batchingHistoryPage" hidden>
       <div class="batching-history-content table-panel table-panel--standalone" aria-label="FX Batches">
-        <div class="batching-history-toolbar table-panel__head">
+        <div class="batching-history-toolbar table-panel__head" data-ui-table-layout-host="batching_history_grid" aria-label="FX Batches table layout">
           <h2 class="table-panel__title">FX Batches</h2>
+          <div class="form-check form-switch fx-batches-view-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="fxBatchesAuditView">
+            <label class="form-check-label" for="fxBatchesAuditView">Audit View</label>
+          </div>
           <span class="client-deals-count" id="batchingHistoryCount">0 batches</span>
           <div class="profile-status batching-history-status workbench-page-status" id="batchingHistoryStatus" role="status" aria-live="polite" hidden></div>
-          <div data-ui-table-layout-host="batching_history_grid"></div>
         </div>
         <div class="client-deals-grid-shell batching-history-grid-shell table-panel__body table-panel__viewport">
           <div class="batching-history-grid" id="batchingHistoryGrid" aria-label="FX Batches table"></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="batches-tab-panel batching-history-page" id="batchFormationAuditPage" role="tabpanel" aria-labelledby="batchFormationAuditTab" hidden>
-      <div class="batching-history-content table-panel table-panel--standalone" aria-label="Batch Formation Audit">
-        <div class="batching-history-toolbar table-panel__head">
-          <h2 class="table-panel__title">Batch Formation Audit</h2>
-          <span class="client-deals-count" id="batchFormationAuditCount">0 batches</span>
-          <div class="profile-status batching-history-status workbench-page-status" id="batchFormationAuditStatus" role="status" aria-live="polite" hidden></div>
-          <div data-ui-table-layout-host="batch_formation_audit_grid"></div>
-        </div>
-        <div class="client-deals-grid-shell batching-history-grid-shell table-panel__body table-panel__viewport">
-          <div class="batching-history-grid" id="batchFormationAuditGrid" aria-label="FX Batch formation audit table"></div>
         </div>
       </div>
     </section>

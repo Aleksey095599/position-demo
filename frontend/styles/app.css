@@ -3922,11 +3922,11 @@
 
     .market-simulation-dialog .modal-body {
       display: grid;
-      gap: 12px;
+      gap: 16px;
       background: var(--bs-tertiary-bg);
     }
 
-    .market-simulation-section {
+    .market-simulation-dialog .market-simulation-section {
       margin: 0;
       min-width: 0;
       padding: 14px;
@@ -6335,7 +6335,7 @@
       border: 1px solid var(--surface-divider);
       border-radius: var(--workbench-radius);
       background: var(--palette-red-100);
-      box-shadow: -5px 0 0 var(--palette-red-600);
+      box-shadow: var(--bs-box-shadow-sm);
       color: var(--palette-red-800);
       font-size: var(--app-font-size-caption);
       text-align: center;
@@ -6420,7 +6420,7 @@
     .manual-process-stage-result {
       border-radius: var(--workbench-radius);
       background: color-mix(in srgb, var(--process-stage-bg) 32%, var(--surface-card));
-      box-shadow: -5px 0 0 var(--process-stage-accent);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     .manual-process-stage-objective {
@@ -9299,7 +9299,7 @@
       white-space: nowrap;
     }
 
-    .fx-deals-view-switch {
+    :is(.fx-deals-view-switch, .fx-batches-view-switch) {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -9308,11 +9308,11 @@
       white-space: nowrap;
     }
 
-    .fx-deals-view-switch .form-check-input {
+    :is(.fx-deals-view-switch, .fx-batches-view-switch) .form-check-input {
       margin-top: 0;
     }
 
-    .fx-deals-view-switch .form-check-label {
+    :is(.fx-deals-view-switch, .fx-batches-view-switch) .form-check-label {
       color: var(--bs-body-color);
       font-weight: var(--app-font-weight-medium);
     }
@@ -9414,8 +9414,8 @@
       text-overflow: clip;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content,
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid-shell {
+    #batchingHistoryPage .batching-history-content,
+    #batchingHistoryPage .batching-history-grid-shell {
       width: fit-content;
       max-width: 100%;
       min-width: 0;
@@ -9424,11 +9424,11 @@
     #fxBatchesPage:not([hidden]) {
       display: grid;
       height: calc(100vh - var(--workspace-nav-height));
-      grid-template-rows: auto auto minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
       overflow: hidden;
     }
 
-    #fxBatchesPage .batches-tab-panel:not([hidden]) {
+    #batchingHistoryPage:not([hidden]) {
       display: grid;
       min-height: 0;
       grid-template-rows: auto;
@@ -9436,20 +9436,20 @@
       overflow: hidden;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content {
+    #batchingHistoryPage .batching-history-content {
       display: grid;
       min-height: 0;
       grid-template-rows: auto auto;
       align-self: start;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid-shell {
+    #batchingHistoryPage .batching-history-grid-shell {
       min-height: 0;
       overflow-x: auto;
       overflow-y: hidden;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-toolbar {
+    #batchingHistoryPage .batching-history-toolbar {
       display: flex;
       width: 100%;
       align-items: center;
@@ -9458,28 +9458,23 @@
       margin-bottom: 8px;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-toolbar > .client-deals-count:first-child {
-      margin-left: 0;
-      margin-right: auto;
-    }
-
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content,
+    #batchingHistoryPage .batching-history-content,
     #batchDetailsPage .batch-details-content {
       margin-top: 12px;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid {
+    #batchingHistoryPage .batching-history-grid {
       width: max-content;
       max-width: 100%;
       height: auto;
       max-height: 100%;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator {
+    #batchingHistoryPage .tabulator {
       box-sizing: border-box;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator .tabulator-header-filter select {
+    #batchingHistoryPage .tabulator .tabulator-header-filter select {
       min-height: 27px;
       padding: 3px 26px 3px 7px;
       border: 1px solid var(--palette-gray-400);
@@ -9488,13 +9483,13 @@
       font-size: 11px;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator .tabulator-header-filter :is(input, select):focus {
+    #batchingHistoryPage .tabulator .tabulator-header-filter :is(input, select):focus {
       border-color: var(--bs-primary);
       outline: 0;
       box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token,
+    #batchingHistoryPage .batch-status-token,
     #batchDetailsPage .batch-status-token {
       display: inline-flex;
       align-items: center;
@@ -9508,28 +9503,28 @@
       font-weight: 500;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token.is-formed,
+    #batchingHistoryPage .batch-status-token.is-formed,
     #batchDetailsPage .batch-status-token.is-formed {
       border-color: var(--palette-green-200);
       background: var(--palette-green-100);
       color: var(--palette-green-700);
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token.is-rolled-back,
+    #batchingHistoryPage .batch-status-token.is-rolled-back,
     #batchDetailsPage .batch-status-token.is-rolled-back {
       border-color: var(--palette-yellow-200);
       background: var(--palette-yellow-100);
       color: var(--palette-yellow-800);
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-actions {
+    #batchingHistoryPage .batching-history-actions {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-action {
+    #batchingHistoryPage .batching-history-action {
       --bs-btn-color: var(--app-button-secondary-color);
       --bs-btn-bg: var(--bs-body-bg);
       --bs-btn-border-color: var(--app-button-secondary-border);
@@ -9547,22 +9542,22 @@
       padding: 0;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-action .button-icon {
+    #batchingHistoryPage .batching-history-action .button-icon {
       font-size: 16px;
     }
 
-    #batchFormationAuditPage .batching-key-cell {
+    #batchingHistoryPage .batching-key-cell {
       display: grid;
       gap: 2px;
       line-height: 1.25;
     }
 
-    #batchFormationAuditPage .batching-key-primary {
+    #batchingHistoryPage .batching-key-primary {
       color: var(--bs-body-color);
       font-weight: 600;
     }
 
-    #batchFormationAuditPage .batching-key-secondary {
+    #batchingHistoryPage .batching-key-secondary {
       color: var(--bs-secondary-color);
       font-size: 11px;
     }
@@ -9607,6 +9602,14 @@
       display: grid;
       gap: 16px;
       min-width: 0;
+      justify-items: start;
+    }
+
+    #batchDetailsPage :is(
+      .batch-details-summary-card,
+      .batch-neutrality
+    ) {
+      width: min(1120px, 100%);
     }
 
     #batchDetailsPage .batch-details-summary-card {
@@ -9631,20 +9634,32 @@
     }
 
     #batchDetailsPage .batch-details-meta {
+      position: relative;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1px;
+      gap: 0;
       margin: 0;
       padding: 0;
       overflow: hidden;
-      border: 1px solid var(--bs-border-color);
+      border: 0;
       border-radius: var(--bs-border-radius-sm);
-      background: var(--bs-border-color);
+      background: var(--bs-body-bg);
+    }
+
+    #batchDetailsPage .batch-details-meta::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 1px solid var(--bs-border-color);
+      border-radius: inherit;
+      pointer-events: none;
     }
 
     #batchDetailsPage .batch-details-meta-item {
       min-width: 0;
       padding: 10px 12px;
+      border-top: 1px solid var(--bs-border-color);
+      border-left: 1px solid var(--bs-border-color);
       background: var(--bs-body-bg);
     }
 
@@ -9666,16 +9681,75 @@
 
     #batchDetailsPage .batch-neutrality {
       min-width: 0;
-      padding: 14px;
+      padding: 0;
+      overflow: hidden;
       border: 1px solid var(--bs-border-color);
       border-radius: var(--bs-border-radius);
       background: var(--bs-body-bg);
     }
 
+    #batchDetailsPage .batch-neutrality-summary {
+      display: flex;
+      min-height: 42px;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+
+    #batchDetailsPage .batch-neutrality-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    #batchDetailsPage .batch-neutrality-summary:focus-visible {
+      outline: 2px solid var(--bs-primary);
+      outline-offset: -2px;
+    }
+
     #batchDetailsPage .batch-neutrality-title {
-      margin: 0 0 10px;
+      margin: 0;
       font-size: var(--app-font-size-section-title);
       font-weight: var(--app-font-weight-semibold);
+    }
+
+    #batchDetailsPage .batch-neutrality-summary-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: auto;
+      padding: 3px 7px;
+      border: 1px solid var(--bs-success-border-subtle);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-success-bg-subtle);
+      color: var(--bs-success-text-emphasis);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    #batchDetailsPage .batch-neutrality-summary-status.is-invalid {
+      border-color: var(--bs-danger-border-subtle);
+      background: var(--bs-danger-bg-subtle);
+      color: var(--bs-danger-text-emphasis);
+    }
+
+    #batchDetailsPage .batch-neutrality-summary-status .button-icon,
+    #batchDetailsPage .batch-neutrality-summary-toggle {
+      font-size: 16px;
+    }
+
+    #batchDetailsPage .batch-neutrality-summary-toggle {
+      flex: 0 0 auto;
+      color: var(--bs-secondary-color);
+      transition: transform 0.15s ease;
+    }
+
+    #batchDetailsPage .batch-neutrality[open]
+    .batch-neutrality-summary-toggle {
+      transform: rotate(180deg);
     }
 
     #batchDetailsPage .batch-neutrality-equation {
@@ -9683,6 +9757,8 @@
       grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr) auto minmax(200px, 1fr);
       align-items: stretch;
       gap: 10px;
+      padding: 14px;
+      border-top: 1px solid var(--bs-border-color);
     }
 
     #batchDetailsPage .batch-neutrality-node {
@@ -9887,7 +9963,7 @@
     }
 
     #fxDealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] {
-      border-right: 2px solid var(--palette-gray-400);
+      border-right: var(--data-grid-line-width) solid var(--palette-gray-500);
       background: var(--palette-gray-200);
     }
 
@@ -9900,8 +9976,13 @@
     }
 
     #fxDealsPage .tabulator .tabulator-col-group > .tabulator-col-content .tabulator-col-title {
-      padding-left: 12px;
-      text-align: left;
+      padding-inline: 12px;
+      text-align: center;
+    }
+
+    #fxDealsPage .tabulator .tabulator-header .tabulator-col.client-deals-group-end,
+    #fxDealsPage .tabulator .tabulator-row .tabulator-cell.client-deals-group-end {
+      border-right: var(--data-grid-line-width) solid var(--palette-gray-500);
     }
 
     .client-deals-bootstrap .tabulator .tabulator-col-group-cols {
@@ -11274,7 +11355,7 @@
 
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-form {
       display: grid;
-      gap: 12px;
+      gap: 16px;
     }
 
     #batchingSettingsPage.unified-bootstrap-workspace.workbench-page .batching-settings-tab-panel[hidden] {
@@ -11741,6 +11822,7 @@
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel .modal-content {
+      overflow: visible;
       border: 0;
       border-radius: 0;
       background: transparent;
@@ -11777,7 +11859,7 @@
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-editor {
       display: grid;
-      gap: 12px;
+      gap: 16px;
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-editor .client-deal-create-section {
@@ -11793,10 +11875,6 @@
       padding: 0;
       border-top: 0;
       background: transparent;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-overview {
-      gap: 8px;
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-overview-toolbar {
@@ -14583,10 +14661,9 @@
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedging-settings-navigation-link.is-active {
-      border-color: color-mix(in srgb, var(--bs-primary) 35%, var(--bs-border-color));
-      background: var(--hedging-settings-accent-soft);
-      color: var(--bs-primary-text-emphasis);
-      box-shadow: inset 3px 0 0 var(--bs-primary);
+      border-color: var(--selection-accent);
+      background: var(--control-soft-bg);
+      color: var(--bs-body-color);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -14609,6 +14686,17 @@
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .hedging-settings-navigation-group:has(
+      .hedging-settings-navigation-sublink.is-active
+    ) > .hedging-settings-navigation-group-toggle {
+      background: color-mix(
+        in srgb,
+        var(--control-soft-bg) 58%,
+        var(--bs-body-bg)
+      );
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedging-settings-navigation-chevron {
       color: var(--bs-secondary-color);
       transition: transform 120ms ease;
@@ -14624,7 +14712,8 @@
     .hedging-settings-navigation-subnav {
       display: grid;
       gap: 2px;
-      padding-left: 22px;
+      margin: 2px 0 2px 22px;
+      padding-left: 12px;
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -14662,11 +14751,7 @@
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-entry-route-head p,
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-client-policy-head p,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-copy p,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-policy-heading p {
+    .auto-hedging-admission-policy-block-copy p {
       margin: 4px 0 0;
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-caption);
@@ -14695,7 +14780,7 @@
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-trade-segment.is-expanded {
       border-color: color-mix(in srgb, var(--bs-primary) 32%, var(--bs-border-color));
-      box-shadow: -4px 0 0 var(--palette-blue-500);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -14779,38 +14864,32 @@
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-client-policy-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--bs-border-color);
-      background: var(--bs-body-bg);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-client-policy-head strong {
-      font-size: var(--app-font-size-section-title);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-admission-settings-body {
+      --auto-hedging-admission-tree-bg: color-mix(
+        in srgb,
+        var(--bs-tertiary-bg) 42%,
+        var(--bs-body-bg)
+      );
+      position: relative;
       display: grid;
-      gap: 16px;
-      padding: 20px;
+      gap: 4px;
+      padding: 12px 20px 16px 54px;
+      background: var(--auto-hedging-admission-tree-bg);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-body > .semantic-section {
-      --semantic-section-accent: var(--palette-blue-500);
-      --semantic-section-border-color: var(--bs-border-color);
+    .auto-hedging-admission-rule-tree::before {
+      position: absolute;
+      top: 0;
+      bottom: 16px;
+      left: 27px;
+      width: 1px;
+      background: var(--bs-border-color);
+      content: "";
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-copy h5,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-policy-heading h5 {
+    .auto-hedging-admission-policy-block-copy h5 {
       margin: 0;
       color: var(--bs-body-color);
       font-size: var(--app-font-size-section-title);
@@ -14819,12 +14898,35 @@
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-admission-policy-block {
+      position: relative;
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
       align-items: center;
       gap: 12px;
-      padding: 14px 16px;
-      background: var(--bs-body-bg);
+      min-height: 54px;
+      padding: 7px 0;
+      background: transparent;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-policy-block::before {
+      position: absolute;
+      top: 50%;
+      left: -27px;
+      width: 20px;
+      border-top: 1px solid var(--bs-border-color);
+      content: "";
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-policy-block:last-of-type::after {
+      position: absolute;
+      top: calc(50% + 1px);
+      bottom: -20px;
+      left: -28px;
+      width: 3px;
+      background: var(--auto-hedging-admission-tree-bg);
+      content: "";
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -14860,62 +14962,57 @@
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-policy {
-      overflow: hidden;
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--bs-border-radius);
-      background: var(--bs-body-bg);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-policy-heading,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy-actions,
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy-actions {
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .auto-hedging-admission-pair-dialog
+    .auto-hedging-admission-pair-toolbar {
       padding: 12px 14px;
       border-bottom: 1px solid var(--bs-border-color);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-policy-heading-copy {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-width: 0;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-pair-toolbar {
       background: var(--bs-tertiary-bg);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-policy-actions .reference-grid-action {
+      background: var(--app-table-action-bg);
+    }
+
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-search {
       width: min(360px, 100%);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-filter {
       width: 150px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table-viewport {
       position: relative;
       max-height: min(56vh, 620px);
       overflow: auto;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table {
       min-width: 720px;
       margin: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table thead th {
       position: sticky;
       top: 0;
@@ -14928,22 +15025,22 @@
       white-space: nowrap;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table tbody td {
       padding: 9px 12px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table th:nth-child(1) {
       width: 24%;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-table th:nth-child(2) {
       width: 25%;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-enabled {
       display: flex;
       justify-content: center;
@@ -14951,28 +15048,72 @@
       min-height: 24px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-enabled .form-check-input {
       margin-top: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-limit {
       width: min(320px, 100%);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-limit .input-group-text {
       min-width: 54px;
       justify-content: center;
       font-weight: 600;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-pair-dialog
     .auto-hedging-admission-pair-empty {
       padding: 24px 16px;
       color: var(--bs-secondary-color);
       text-align: center;
+    }
+
+    .auto-hedging-admission-pair-dialog {
+      width: min(980px, calc(100vw - 32px));
+      max-width: none;
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-content {
+      max-height: min(86vh, 760px);
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-header {
+      align-items: flex-start;
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-header h2 {
+      margin: 0;
+      font-size: var(--app-font-size-section-title);
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-header h2:focus {
+      outline: 0;
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-header p {
+      margin: 4px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+    }
+
+    .auto-hedging-admission-pair-dialog .modal-body {
+      min-height: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .auto-hedging-admission-pair-dialog .auto-hedging-admission-pair-table-viewport {
+      max-height: min(58vh, 560px);
+    }
+
+    .auto-hedging-admission-pair-dialog-note {
+      margin-right: auto;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -15009,7 +15150,8 @@
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-shared-policy-note {
-      border-left: 4px solid var(--palette-blue-500);
+      border-left: 1px solid var(--bs-border-color);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -15121,7 +15263,7 @@
       display: flex;
       justify-content: flex-end;
       padding: 12px 20px;
-      border-top: 1px solid var(--hedging-settings-border);
+      border-top: 1px solid var(--bs-border-color);
       background: var(--bs-tertiary-bg);
     }
 
@@ -15146,11 +15288,7 @@
     }
 
     @media (max-width: 720px) {
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-client-policy-head,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-admission-pair-policy-heading,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-pair-dialog
       .auto-hedging-admission-pair-toolbar {
         align-items: stretch;
         flex-direction: column;
@@ -15203,7 +15341,9 @@
       #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
       .auto-hedging-admission-deviation-field,
       #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-admission-core-rule-badges {
+      .auto-hedging-admission-core-rule-badges,
+      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-pair-policy-actions {
         grid-column: 1 / -1;
       }
 
@@ -15218,6 +15358,11 @@
       }
 
       #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-hedging-admission-pair-policy-actions {
+        justify-content: space-between;
+      }
+
+      .auto-hedging-admission-pair-dialog
       .auto-hedging-admission-pair-filter {
         width: 100%;
       }
@@ -17162,7 +17307,7 @@
       border: 1px solid var(--semantic-card-border);
       border-radius: var(--bs-border-radius-lg);
       background: var(--bs-body-bg);
-      box-shadow: -5px 0 0 var(--semantic-section-accent);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section-head {
@@ -17567,7 +17712,7 @@
     .semantic-table-section.table-panel {
       border: 1px solid var(--semantic-card-border);
       border-radius: var(--bs-border-radius-lg);
-      box-shadow: -5px 0 0 var(--semantic-card-accent);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     .generation-settings-table-region.table-panel > .generation-settings-table-body {
@@ -17610,7 +17755,7 @@
       position: relative;
       border: 1px solid var(--semantic-section-border-color);
       border-radius: var(--bs-border-radius-lg);
-      box-shadow: -5px 0 0 var(--semantic-section-accent);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     :is(
@@ -17626,12 +17771,76 @@
       background: var(--semantic-card-head-bg);
     }
 
+    #marketSimulationDialog.market-simulation-dialog
+    .modal-body > .market-simulation-section.semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    #clientProfileDetailView .profile-form {
+      gap: 16px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    #clientProfileDetailView
+    .profile-form > .counterparty-card-section.semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #analyticalPnlReportPage.workbench-page
+    .analytical-pnl-report-overview {
+      gap: 16px;
+    }
+
+    #analyticalPnlReportPage.workbench-page
+    .analytical-pnl-report-overview > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-body > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page
+    :is(.database-layout, .database-details) {
+      gap: 16px;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page
+    .database-details > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    :is(
+      #clientPricingRuleDialog.client-pricing-rule-dialog,
+      #editDealDialog.client-deal-create-dialog
+    ) .modal-body {
+      gap: 16px;
+    }
+
+    :is(
+      #clientPricingRuleDialog.client-pricing-rule-dialog,
+      #editDealDialog.client-deal-create-dialog
+    ) .modal-body > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
     #addClientDealDialog.client-deal-create-dialog {
       --client-deal-accent: var(--app-primary);
       --client-deal-accent-strong: var(--app-primary-hover);
       --client-deal-border: var(--app-primary);
       --client-deal-accent-soft: var(--palette-blue-100);
       --client-deal-accent-text: var(--app-primary-text);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog .modal-body {
+      gap: 16px;
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .modal-body > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #addClientDealDialog.client-deal-create-dialog
@@ -17646,6 +17855,15 @@
       --hedge-deal-accent-soft:
         color-mix(in srgb, var(--palette-yellow-100) 58%, var(--bs-body-bg));
       --hedge-deal-accent-text: var(--palette-yellow-800);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog .modal-body {
+      gap: 16px;
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .modal-body > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #addHedgeDealDialog.client-deal-create-dialog
@@ -17705,9 +17923,21 @@
     }
 
     #addClientDealDialog.client-deal-create-dialog
-    .client-deal-client-option:is(:hover, :focus-visible, .is-selected),
+    .client-deal-client-option:is(:hover, :focus-visible),
     #addClientDealDialog.client-deal-create-dialog
     .client-pricing-context-candidate:is(:hover, :focus-visible) {
+      border-color: var(--client-deal-accent-strong);
+      background: var(--client-deal-accent-soft);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .client-deal-client-option.is-selected {
+      border-color: transparent;
+      background: var(--bs-body-bg);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .client-deal-client-option.is-selected:is(:hover, :focus-visible) {
       border-color: var(--client-deal-accent-strong);
       background: var(--client-deal-accent-soft);
     }
@@ -17785,9 +18015,21 @@
     }
 
     #addHedgeDealDialog.client-deal-create-dialog
-    .client-deal-client-option:is(:hover, :focus-visible, .is-selected),
+    .client-deal-client-option:is(:hover, :focus-visible),
     #addHedgeDealDialog.client-deal-create-dialog
     .client-pricing-context-candidate:is(:hover, :focus-visible) {
+      border-color: var(--hedge-deal-accent-strong);
+      background: var(--hedge-deal-accent-soft);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-deal-client-option.is-selected {
+      border-color: transparent;
+      background: var(--bs-body-bg);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-deal-client-option.is-selected:is(:hover, :focus-visible) {
       border-color: var(--hedge-deal-accent-strong);
       background: var(--hedge-deal-accent-soft);
     }
@@ -17907,6 +18149,11 @@
       --semantic-section-border-color: var(--bs-border-color);
     }
 
+    #batchDetailsPage.workbench-page
+    .batch-details-summary > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
     #batchDetailsPage.workbench-page :is(
       .batch-neutrality,
       .batch-details-section
@@ -17974,6 +18221,17 @@
       --client-generation-border: var(--app-primary);
       --client-generation-accent-soft: var(--palette-blue-100);
       --client-generation-accent-text: var(--app-primary-text);
+    }
+
+    #clientDealGenerationDialog.generation-dialog .modal-body {
+      display: grid;
+      gap: 16px;
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .modal-body > .semantic-section {
+      margin-bottom: 0;
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #clientDealGenerationDialog.generation-dialog
@@ -18059,6 +18317,11 @@
       opacity: 0.68;
     }
 
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .batching-settings-tab-panel .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page {
       --hedging-settings-accent: var(--palette-yellow-500);
       --hedging-settings-accent-strong: var(--palette-yellow-600);
@@ -18066,41 +18329,11 @@
       --hedging-settings-accent-soft:
         color-mix(in srgb, var(--palette-yellow-100) 58%, var(--bs-body-bg));
       --hedging-settings-accent-text: var(--palette-yellow-800);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedge-quick-settings-overview.table-panel--standalone {
-      gap: 0;
-      overflow: hidden;
-      border-color: var(--hedging-settings-border);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedge-quick-settings-overview.table-panel--standalone
-    > .hedge-quick-settings-overview-toolbar.table-panel__head {
-      border-bottom-color: var(--hedging-settings-border);
-      background: var(--hedging-settings-accent-soft);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedge-quick-settings-count {
-      border-color: var(--palette-yellow-300) !important;
-      background: var(--palette-yellow-100) !important;
-      color: var(--hedging-settings-accent-text) !important;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    #hedgeQuickModeSettingsNewButton {
-      --bs-btn-color: var(--hedging-settings-accent-text);
-      --bs-btn-bg: transparent;
-      --bs-btn-border-color: var(--hedging-settings-accent-strong);
-      --bs-btn-hover-color: var(--palette-yellow-900);
-      --bs-btn-hover-bg: var(--palette-yellow-200);
-      --bs-btn-hover-border-color: var(--hedging-settings-accent-strong);
-      --bs-btn-active-color: var(--palette-yellow-900);
-      --bs-btn-active-bg: var(--palette-yellow-300);
-      --bs-btn-active-border-color: var(--palette-yellow-700);
-      --bs-btn-focus-shadow-rgb: 204, 154, 6;
+      --quick-hedge-settings-accent: var(--app-primary);
+      --quick-hedge-settings-accent-strong: var(--app-primary-hover);
+      --quick-hedge-settings-border: var(--app-primary);
+      --quick-hedge-settings-accent-soft: var(--palette-blue-100);
+      --quick-hedge-settings-accent-text: var(--app-primary-text);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -18117,9 +18350,8 @@
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor > .client-deal-create-section.semantic-section {
-      --semantic-section-accent: var(--hedging-settings-border);
-      border-left: 5px solid var(--semantic-section-accent);
-      box-shadow: none;
+      --semantic-section-accent: var(--quick-hedge-settings-border);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -18131,16 +18363,21 @@
     .hedge-quick-settings-editor
     > .client-deal-create-section.semantic-section
     > .semantic-section-head {
-      border-bottom-color: var(--hedging-settings-border);
-      background: var(--hedging-settings-accent-soft);
+      border-bottom-color: var(--quick-hedge-settings-border);
+      background:
+        color-mix(
+          in srgb,
+          var(--palette-blue-100) 32%,
+          var(--bs-tertiary-bg)
+        );
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor :is(.form-control, .form-select):focus {
-      border-color: var(--hedging-settings-accent-strong);
+      border-color: var(--quick-hedge-settings-accent-strong);
       box-shadow:
         0 0 0 3px
-        color-mix(in srgb, var(--hedging-settings-accent) 20%, transparent);
+        color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -18149,60 +18386,60 @@
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     .client-pricing-context-candidate:is(:hover, :focus-visible) {
-      border-color: var(--hedging-settings-accent-strong);
-      background: var(--hedging-settings-accent-soft);
+      border-color: var(--quick-hedge-settings-accent-strong);
+      background: var(--quick-hedge-settings-accent-soft);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor .client-pricing-context-candidate.is-selected {
-      border-color: var(--hedging-settings-accent-strong);
-      background: var(--palette-yellow-100);
-      box-shadow: inset 3px 0 0 var(--hedging-settings-accent);
+      border-color: var(--quick-hedge-settings-accent-strong);
+      background: var(--palette-blue-100);
+      box-shadow: inset 3px 0 0 var(--quick-hedge-settings-accent);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle):focus-visible {
-      border-color: var(--hedging-settings-accent-strong);
+      border-color: var(--quick-hedge-settings-accent-strong);
       box-shadow:
         0 0 0 3px
-        color-mix(in srgb, var(--hedging-settings-accent) 20%, transparent);
+        color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle)[aria-expanded="true"] {
-      border-color: var(--hedging-settings-accent-strong);
-      background: var(--hedging-settings-accent-soft);
-      color: var(--hedging-settings-accent-text);
+      border-color: var(--quick-hedge-settings-accent-strong);
+      background: var(--quick-hedge-settings-accent-soft);
+      color: var(--quick-hedge-settings-accent-text);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-active .form-check-input:checked {
-      border-color: var(--hedging-settings-accent-strong);
-      background-color: var(--hedging-settings-accent);
+      border-color: var(--quick-hedge-settings-accent-strong);
+      background-color: var(--quick-hedge-settings-accent);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-active .form-check-input:focus {
-      border-color: var(--hedging-settings-accent-strong);
+      border-color: var(--quick-hedge-settings-accent-strong);
       box-shadow:
         0 0 0 3px
-        color-mix(in srgb, var(--hedging-settings-accent) 20%, transparent);
+        color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     #hedgeQuickModeSettingsSaveButton {
-      --bs-btn-color: var(--palette-yellow-900);
-      --bs-btn-bg: var(--hedging-settings-accent);
-      --bs-btn-border-color: var(--hedging-settings-accent-strong);
-      --bs-btn-hover-color: var(--palette-yellow-900);
-      --bs-btn-hover-bg: var(--palette-yellow-400);
-      --bs-btn-hover-border-color: var(--hedging-settings-accent-strong);
-      --bs-btn-active-color: var(--palette-yellow-900);
-      --bs-btn-active-bg: var(--palette-yellow-300);
-      --bs-btn-active-border-color: var(--palette-yellow-700);
-      --bs-btn-focus-shadow-rgb: 204, 154, 6;
+      --bs-btn-color: var(--app-button-primary-color);
+      --bs-btn-bg: var(--app-button-primary-bg);
+      --bs-btn-border-color: var(--app-button-primary-border);
+      --bs-btn-hover-color: var(--app-button-primary-color);
+      --bs-btn-hover-bg: var(--app-button-primary-hover-bg);
+      --bs-btn-hover-border-color: var(--app-button-primary-hover-border);
+      --bs-btn-active-color: var(--app-button-primary-color);
+      --bs-btn-active-bg: var(--app-button-primary-active-bg);
+      --bs-btn-active-border-color: var(--app-button-primary-active-border);
+      --bs-btn-focus-shadow-rgb: 13, 110, 253;
     }
 
     /* Dialog close buttons keep their icon treatment and share one visible neutral hover. */

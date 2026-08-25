@@ -29,6 +29,40 @@
     const MAX_MARKET_FLUCTUATION_SPREADS = 10;
     Big.DP = 40;
     Big.RM = Big.roundHalfUp;
+
+    function dialogInitialFocusTarget(dialog) {
+      const labelledBy = String(dialog?.getAttribute("aria-labelledby") || "").trim();
+      const labelledElement = labelledBy ? document.getElementById(labelledBy) : null;
+
+      return labelledElement
+        || dialog?.querySelector(".modal-title, .dialog-title, h1, h2, h3")
+        || dialog;
+    }
+
+    function focusDialogWithoutEditableControl(dialog) {
+      const target = dialogInitialFocusTarget(dialog);
+
+      if (!target) {
+        return;
+      }
+
+      if (!target.hasAttribute("tabindex")) {
+        target.setAttribute("tabindex", "-1");
+      }
+
+      target.focus({ preventScroll: true });
+    }
+
+    function openDialogWithoutFieldFocus(dialog) {
+      if (typeof dialog?.showModal === "function") {
+        dialog.showModal();
+      } else {
+        dialog?.setAttribute("open", "");
+      }
+
+      focusDialogWithoutEditableControl(dialog);
+    }
+
     const COUNTERPARTY_ROLES = ["CLIENT", "HEDGE_COUNTERPARTY"];
     const COUNTERPARTY_SCOPES = ["EXTERNAL", "INTERNAL"];
     const EXTERNAL_COUNTERPARTY_CODE_TYPES = ["INN", "OTHER"];
@@ -74,7 +108,7 @@
     const PRICING_TYPE_PRESENTATION = Object.freeze({
       AUTO_PRICED: Object.freeze({
         label: "Auto Priced",
-        icon: "bolt",
+        icon: "flash_auto",
         tone: "auto-priced"
       }),
       DEALER_PRICED: Object.freeze({
@@ -136,7 +170,6 @@
     let clientFxDeals = loadClientFxDeals();
     let hedgeFxDeals = loadHedgeFxDeals();
     let fxBatchHistory = loadFxBatches();
-    let batchFormationAuditRecords = [];
     let fxPositionRecords = Array.isArray(DEMO_API_BOOTSTRAP.fxPositions)
       ? DEMO_API_BOOTSTRAP.fxPositions
       : [];
@@ -968,15 +1001,11 @@
     const batchingSettingsPage = document.getElementById("batchingSettingsPage");
     const hedgingSettingsPage = document.getElementById("hedgingSettingsPage");
     const fxBatchesPage = document.getElementById("fxBatchesPage");
-    const fxBatchesTabs = Array.from(document.querySelectorAll("[data-fx-batches-route]"));
     const batchingHistoryPage = document.getElementById("batchingHistoryPage");
     const batchingHistoryGridEl = document.getElementById("batchingHistoryGrid");
     const batchingHistoryCountEl = document.getElementById("batchingHistoryCount");
     const batchingHistoryStatusEl = document.getElementById("batchingHistoryStatus");
-    const batchFormationAuditPage = document.getElementById("batchFormationAuditPage");
-    const batchFormationAuditGridEl = document.getElementById("batchFormationAuditGrid");
-    const batchFormationAuditCountEl = document.getElementById("batchFormationAuditCount");
-    const batchFormationAuditStatusEl = document.getElementById("batchFormationAuditStatus");
+    const fxBatchesAuditViewToggle = document.getElementById("fxBatchesAuditView");
     const batchDetailsPage = document.getElementById("batchDetailsPage");
     const batchDetailsStatusEl = document.getElementById("batchDetailsStatus");
     const batchDetailsPrompt = document.getElementById("batchDetailsPrompt");
@@ -992,6 +1021,13 @@
     const batchDetailsTenor = document.getElementById("batchDetailsTenor");
     const batchDetailsBaseValueDate = document.getElementById("batchDetailsBaseValueDate");
     const batchDetailsQuoteValueDate = document.getElementById("batchDetailsQuoteValueDate");
+    const batchNeutralityDetails = document.getElementById("batchNeutralityDetails");
+    const batchNeutralitySummaryStatus =
+      document.getElementById("batchNeutralitySummaryStatus");
+    const batchNeutralitySummaryStatusIcon =
+      document.getElementById("batchNeutralitySummaryStatusIcon");
+    const batchNeutralitySummaryStatusText =
+      document.getElementById("batchNeutralitySummaryStatusText");
     const batchNeutralityMembersBase = document.getElementById("batchNeutralityMembersBase");
     const batchNeutralityMembersQuote = document.getElementById("batchNeutralityMembersQuote");
     const batchNeutralityCashQuote = document.getElementById("batchNeutralityCashQuote");
@@ -1289,6 +1325,11 @@
     const autoHedgingAdmissionPolicyRevision = document.getElementById("autoHedgingAdmissionPolicyRevision");
     const autoHedgingMaxTransferRateDeviationPercent = document.getElementById("autoHedgingMaxTransferRateDeviationPercent");
     const autoHedgingAdmissionPairSummary = document.getElementById("autoHedgingAdmissionPairSummary");
+    const autoHedgingAdmissionPairEditButton = document.getElementById("autoHedgingAdmissionPairEditButton");
+    const autoHedgingAdmissionPairDialog = document.getElementById("autoHedgingAdmissionPairDialog");
+    const autoHedgingAdmissionPairDialogClose = document.getElementById("autoHedgingAdmissionPairDialogClose");
+    const autoHedgingAdmissionPairDialogCancel = document.getElementById("autoHedgingAdmissionPairDialogCancel");
+    const autoHedgingAdmissionPairDialogApply = document.getElementById("autoHedgingAdmissionPairDialogApply");
     const autoHedgingAdmissionPairSearch = document.getElementById("autoHedgingAdmissionPairSearch");
     const autoHedgingAdmissionPairSearchClear = document.getElementById("autoHedgingAdmissionPairSearchClear");
     const autoHedgingAdmissionPairFilter = document.getElementById("autoHedgingAdmissionPairFilter");
@@ -1488,6 +1529,8 @@
     let activeFxPositionMode = "MANUAL";
     const FX_DEALS_VIEW_MODE_STANDARD = "STANDARD";
     const FX_DEALS_VIEW_MODE_AUDIT = "AUDIT";
+    const FX_BATCHES_VIEW_MODE_STANDARD = "STANDARD";
+    const FX_BATCHES_VIEW_MODE_AUDIT = "AUDIT";
     let clientFxDealsGrid = null;
     let clientFxDealsGridReady = false;
     let clientFxDealsPendingData = [];
@@ -1495,8 +1538,7 @@
     let clientFxDealsViewMode = FX_DEALS_VIEW_MODE_STANDARD;
     let batchingHistoryGrid = null;
     let batchingHistoryGridReady = false;
-    let batchFormationAuditGrid = null;
-    let batchFormationAuditGridReady = false;
+    let fxBatchesViewMode = FX_BATCHES_VIEW_MODE_STANDARD;
     let batchDetailsMembersGrid = null;
     let batchDetailsCashOutputGrid = null;
     let batchDetailsOutputsGrid = null;
@@ -1553,6 +1595,7 @@
     let autoHedgingAdmissionPolicySaving = false;
     let autoHedgingAdmissionPolicyLoaded = false;
     let autoHedgingAdmissionPolicyEventsBound = false;
+    let autoHedgingAdmissionPairDialogSnapshot = null;
     let hedgeQuickModeDealCreating = false;
     let addClientDealSubmitWithControl = false;
     let clientDealDuplicateCheckGrid = null;
@@ -3007,16 +3050,13 @@
     function pricingModeIndicatorMarkup(
       value,
       labelMarkup = "",
-      showTooltip = true,
-      { useAutoPricingIcon = false } = {}
+      showTooltip = true
     ) {
       const presentation = pricingTypePresentation(value);
       const indicatorAttributes = showTooltip
         ? `role="img" tabindex="0" aria-label="${escapeHtml(presentation.label)}" data-tooltip="${escapeHtml(presentation.label)}"`
         : 'aria-hidden="true"';
-      const icon = useAutoPricingIcon && presentation.pricingType === "AUTO_PRICED"
-        ? "flash_auto"
-        : presentation.icon;
+      const icon = presentation.icon;
 
       return `
         <span class="reference-pricing-mode" data-smart-width-content>
@@ -3031,9 +3071,7 @@
     function executionSystemLabelMarkup(name, pricingType) {
       const normalizedName = String(name || "").trim();
       const presentation = pricingTypePresentation(pricingType);
-      const pricingIcon = presentation.pricingType === "AUTO_PRICED"
-        ? "flash_auto"
-        : presentation.icon;
+      const pricingIcon = presentation.icon;
       const displayName = normalizedName || "Enter name";
       const nameClass = normalizedName ? "" : " is-placeholder";
 
@@ -4131,15 +4169,50 @@
 
     function normalizedFxBatch(value) {
       const source = value && typeof value === "object" ? value : {};
+      const sourceBatchingKey = source.batchingKey
+        && typeof source.batchingKey === "object"
+        ? source.batchingKey
+        : {};
       const formationReasonDetails = source.formationReasonDetails
         && typeof source.formationReasonDetails === "object"
         && !Array.isArray(source.formationReasonDetails)
         ? source.formationReasonDetails
         : {};
 
+      const hasDuration = source.windowDurationMs !== null
+        && source.windowDurationMs !== undefined
+        && source.windowDurationMs !== "";
+      const duration = hasDuration ? Number(source.windowDurationMs) : null;
+
       return {
         batchId: Number(source.batchId),
         ccyPairCode: String(source.ccyPairCode || "").trim().toUpperCase(),
+        batchingKey: source.batchingKey
+          ? {
+              ccyPairCode: String(sourceBatchingKey.ccyPairCode || source.ccyPairCode || "")
+                .trim()
+                .toUpperCase(),
+              tradeDate: String(sourceBatchingKey.tradeDate || "").trim(),
+              tenor: String(sourceBatchingKey.tenor || "").trim().toUpperCase(),
+              baseCcyValueDate: String(sourceBatchingKey.baseCcyValueDate || "").trim(),
+              quoteCcyValueDate: String(sourceBatchingKey.quoteCcyValueDate || "").trim(),
+              baseCcyFractionDigits: Number(sourceBatchingKey.baseCcyFractionDigits),
+              quoteCcyFractionDigits: Number(sourceBatchingKey.quoteCcyFractionDigits)
+            }
+          : null,
+        windowOpenedAt: source.windowOpenedAt
+          ? String(source.windowOpenedAt).trim()
+          : null,
+        windowClosedAt: source.windowClosedAt
+          ? String(source.windowClosedAt).trim()
+          : null,
+        windowDurationMs: hasDuration && Number.isFinite(duration) && duration >= 0
+          ? duration
+          : null,
+        sourceTradeCount: source.sourceTradeCount === null
+          || source.sourceTradeCount === undefined
+          ? null
+          : Number(source.sourceTradeCount),
         batchStatus: String(source.batchStatus || "").trim().toUpperCase(),
         formationReasonCode: String(
           source.formationReasonCode || "MANUAL_SELECTION"
@@ -4170,60 +4243,6 @@
         .sort((left, right) => right.batchId - left.batchId);
       renderBatchingHistory(fxBatchHistory);
       return fxBatchHistory;
-    }
-
-    function normalizedBatchFormationAuditRecord(value) {
-      const source = value && typeof value === "object" ? value : {};
-      const sourceBatchingKey = source.batchingKey
-        && typeof source.batchingKey === "object"
-        ? source.batchingKey
-        : {};
-      const hasDuration = source.windowDurationMs !== null
-        && source.windowDurationMs !== undefined
-        && source.windowDurationMs !== "";
-      const duration = hasDuration ? Number(source.windowDurationMs) : null;
-
-      return {
-        batchId: Number(source.batchId),
-        batchingKey: {
-          ccyPairCode: String(sourceBatchingKey.ccyPairCode || "").trim().toUpperCase(),
-          tradeDate: String(sourceBatchingKey.tradeDate || "").trim(),
-          tenor: String(sourceBatchingKey.tenor || "").trim().toUpperCase(),
-          baseCcyValueDate: String(sourceBatchingKey.baseCcyValueDate || "").trim(),
-          quoteCcyValueDate: String(sourceBatchingKey.quoteCcyValueDate || "").trim(),
-          baseCcyFractionDigits: Number(sourceBatchingKey.baseCcyFractionDigits),
-          quoteCcyFractionDigits: Number(sourceBatchingKey.quoteCcyFractionDigits)
-        },
-        windowOpenedAt: source.windowOpenedAt
-          ? String(source.windowOpenedAt).trim()
-          : null,
-        windowClosedAt: source.windowClosedAt
-          ? String(source.windowClosedAt).trim()
-          : null,
-        formedAt: String(source.formedAt || "").trim(),
-        windowDurationMs: hasDuration && Number.isFinite(duration) && duration >= 0
-          ? duration
-          : null,
-        formationReasonCode: String(
-          source.formationReasonCode || "MANUAL_SELECTION"
-        ).trim().toUpperCase(),
-        formationReasonDescription: String(
-          source.formationReasonDescription || "Manual selection."
-        ).trim(),
-        sourceTradeCount: Number(source.sourceTradeCount),
-        batchStatus: String(source.batchStatus || "").trim().toUpperCase(),
-        rolledBackAt: source.rolledBackAt ? String(source.rolledBackAt).trim() : null
-      };
-    }
-
-    async function reloadBatchFormationAuditFromApi() {
-      const records = await demoApiRequest("/api/v1/fx-batch-formation-audit");
-      batchFormationAuditRecords = (Array.isArray(records) ? records : [])
-        .map(normalizedBatchFormationAuditRecord)
-        .filter(record => Number.isInteger(record.batchId) && record.batchId > 0)
-        .sort((left, right) => right.batchId - left.batchId);
-      renderBatchFormationAudit(batchFormationAuditRecords);
-      return batchFormationAuditRecords;
     }
 
     function normalizedBatchBalanceMinor(
@@ -6140,8 +6159,7 @@
       pricingRulesTableLayoutSaveDefaultButton.hidden = activeUiTableLayoutColumnKeys !== null;
       renderUiTableLayoutEditor();
       setUiTableLayoutStatus();
-      pricingRulesTableLayoutDialog.showModal();
-      pricingRulesTableLayoutList.querySelector("input")?.focus();
+      openDialogWithoutFieldFocus(pricingRulesTableLayoutDialog);
     }
 
     function closeUiTableLayoutDialog() {
@@ -6391,7 +6409,6 @@
 
       if (row) {
         syncPricingRuleRowPreview(row);
-        row.querySelector("[data-pricing-rule-field='currencyPair']")?.focus();
       }
     }
 
@@ -6409,7 +6426,6 @@
 
       if (row) {
         syncPricingRuleRowPreview(row);
-        row.querySelector("[data-pricing-rule-field='currencyPair']")?.focus();
       }
     }
 
@@ -6622,7 +6638,7 @@
         clientDealGenerationSettingsRows.innerHTML = `
           <tr>
             <td colspan="11" class="text-center text-secondary py-4">
-              No AUTO_PRICED Client Deal Generation Settings found.
+              No Auto Priced Client Deal Generation Settings found.
             </td>
           </tr>
         `;
@@ -6691,7 +6707,7 @@
             <td>
               ${pricingModeIndicatorMarkup(
                 settings.pricingMode,
-                escapeHtml(settings.pricingMode),
+                escapeHtml(pricingTypePresentation(settings.pricingMode).label),
                 false
               )}${inactiveExecutionSystem}
             </td>
@@ -6802,9 +6818,6 @@
         `[data-generation-settings-pricing-rule-id="${clientDealGenerationSettingsEditPricingRuleId}"]`
       );
       updateClientDealGenerationSettingsSaveAvailability(editRow);
-      editRow
-        ?.querySelector("[data-generation-settings-field='minBaseCcyAmount']")
-        ?.focus();
     }
 
     function cancelClientDealGenerationSettingsRowEdit() {
@@ -6869,11 +6882,6 @@
     function setBatchingHistoryStatus(message = "", tone = "") {
       setWorkbenchPageStatus(batchingHistoryStatusEl, message, tone);
       batchingHistoryStatusEl.hidden = !message;
-    }
-
-    function setBatchFormationAuditStatus(message = "", tone = "") {
-      setWorkbenchPageStatus(batchFormationAuditStatusEl, message, tone);
-      batchFormationAuditStatusEl.hidden = !message;
     }
 
     function setDatabaseStatus(message = "", tone = "") {

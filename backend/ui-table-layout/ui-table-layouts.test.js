@@ -23,8 +23,7 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   hedge_fx_deals_grid: 22,
   analytical_pnl_report_grid: 12,
   analytical_pnl_summary_grid: 3,
-  batching_history_grid: 6,
-  batch_formation_audit_grid: 10,
+  batching_history_grid: 11,
   batch_members_grid: 9,
   batch_cash_output_grid: 3,
   batch_position_output_grid: 9,
@@ -69,7 +68,7 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 207);
+  assert.equal(fullyQualifiedColumnKeys.size, 202);
 });
 
 test("includes the Ccy Pair selector width in the FX Position layout", () => {
@@ -80,6 +79,26 @@ test("includes the Ccy Pair selector width in the FX Position layout", () => {
     columnLabel: "Ccy Pair Selector",
     defaultWidthPx: 136
   });
+});
+
+test("keeps Standard and Audit View columns in one FX Batches layout", () => {
+  assert.deepEqual(
+    UI_TABLE_LAYOUTS.batching_history_grid.columns.map(column => column.columnKey),
+    [
+      "batch_id",
+      "ccy_pair_code",
+      "batching_key",
+      "window_opened_at",
+      "window_closed_at",
+      "window_duration_ms",
+      "batch_status",
+      "formation_reason_code",
+      "formed_at",
+      "source_trade_count",
+      "actions"
+    ]
+  );
+  assert.equal(UI_TABLE_LAYOUTS.batch_formation_audit_grid, undefined);
 });
 
 test("keeps Pricing Mode inside Execution Context for pricing rule layouts", () => {

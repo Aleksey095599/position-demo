@@ -6,10 +6,22 @@ const path = require("node:path");
 const test = require("node:test");
 
 const ROOT = path.resolve(__dirname, "..", "..");
-const documentHtml = fs.readFileSync(
+const hedgingSettingsPageHtml = fs.readFileSync(
   path.join(ROOT, "frontend", "features", "hedging", "hedging-settings.page.html"),
   "utf8"
 );
+const admissionPairDialogHtml = fs.readFileSync(
+  path.join(
+    ROOT,
+    "frontend",
+    "features",
+    "hedging",
+    "components",
+    "auto-hedging-admission-pairs.dialog.html"
+  ),
+  "utf8"
+);
+const documentHtml = `${hedgingSettingsPageHtml}\n${admissionPairDialogHtml}`;
 const appScript = [
   path.join(ROOT, "frontend", "app", "core", "runtime.js"),
   path.join(ROOT, "frontend", "features", "hedging", "hedging.page.js")
@@ -23,13 +35,25 @@ const policyMarkup = documentHtml.match(
 )?.[0] || "";
 
 test("Auto Hedging Settings presents the required core rule and configurable eligibility checks", () => {
-  assert.match(policyMarkup, />Client FX Deal Initial Admission Policy<\/strong>/);
+  assert.match(
+    policyMarkup,
+    /aria-label="Client FX Deal Initial Admission Policy"/
+  );
+  assert.doesNotMatch(
+    policyMarkup,
+    />Client FX Deal Initial Admission Policy<\/strong>/
+  );
+  assert.doesNotMatch(
+    policyMarkup,
+    /Current executable demo policy for automatic admission of Client FX Deals\./
+  );
+  assert.match(policyMarkup, /id="autoHedgingAdmissionPolicyRevision" hidden/);
   assert.match(policyMarkup, />Execution Context Admission Mode<\/h5>/);
   assert.match(policyMarkup, />Required<\/span>/);
   assert.match(policyMarkup, />Always applied<\/span>/);
   assert.match(
     policyMarkup,
-    /class="auto-hedging-admission-policy-block auto-hedging-admission-deviation-card semantic-section"/
+    /class="auto-hedging-admission-policy-block auto-hedging-admission-deviation-card"/
   );
   assert.match(
     policyMarkup,
@@ -37,9 +61,10 @@ test("Auto Hedging Settings presents the required core rule and configurable eli
   );
   assert.match(
     policyMarkup,
-    /class="auto-hedging-admission-pair-policy semantic-section"/
+    /class="auto-hedging-admission-policy-block auto-hedging-admission-pair-policy"/
   );
-  assert.equal((policyMarkup.match(/\bsemantic-section\b/g) || []).length, 3);
+  assert.match(policyMarkup, /id="autoHedgingAdmissionPairEditButton"/);
+  assert.doesNotMatch(policyMarkup, /\bsemantic-section\b/);
   assert.doesNotMatch(policyMarkup, />Core Rule<\/h3>/);
   assert.doesNotMatch(policyMarkup, />Eligibility Checks<\/h3>/);
   assert.match(
@@ -48,22 +73,46 @@ test("Auto Hedging Settings presents the required core rule and configurable eli
   );
   assert.match(
     settingsStyle,
-    /\.auto-hedging-admission-settings-body > \.semantic-section \{[\s\S]*?--semantic-section-accent: var\(--palette-blue-500\)/
+    /\.auto-hedging-admission-rule-tree::before \{[\s\S]*?background: var\(--bs-border-color\)/
   );
+  assert.match(
+    settingsStyle,
+    /\.auto-hedging-admission-policy-block:last-of-type::after \{[\s\S]*?background: var\(--auto-hedging-admission-tree-bg\)/
+  );
+  assert.match(
+    settingsStyle,
+    /\.auto-hedging-admission-settings-footer \{[\s\S]*?border-top: 1px solid var\(--bs-border-color\)/
+  );
+  assert.doesNotMatch(settingsStyle, /\.auto-hedging-client-policy-head/);
 });
 
-test("Admission Policy uses one searchable and filterable responsive Ccy Pair table", () => {
-  assert.match(policyMarkup, /id="autoHedgingAdmissionPairSearch"/);
-  assert.match(policyMarkup, /id="autoHedgingAdmissionPairFilter"/);
-  assert.match(policyMarkup, /<option value="ALL">All<\/option>/);
-  assert.match(policyMarkup, /<option value="ENABLED">Enabled<\/option>/);
-  assert.match(policyMarkup, /<option value="DISABLED">Disabled<\/option>/);
-  assert.match(policyMarkup, />Ccy Pair<\/th>/);
-  assert.match(policyMarkup, />Automatic Admission Enabled<\/th>/);
-  assert.match(policyMarkup, />Maximum Trade Amount \(Base Ccy\)<\/th>/);
+test("Admission Policy edits the searchable and filterable Ccy Pair table in a dialog", () => {
+  assert.match(documentHtml, /id="autoHedgingAdmissionPairDialog"[^>]*aria-labelledby="autoHedgingAdmissionPairDialogTitle"/);
+  assert.match(documentHtml, /id="autoHedgingAdmissionPairSearch"/);
+  assert.match(documentHtml, /id="autoHedgingAdmissionPairFilter"/);
+  assert.match(documentHtml, /<option value="ALL">All<\/option>/);
+  assert.match(documentHtml, /<option value="ENABLED">Enabled<\/option>/);
+  assert.match(documentHtml, /<option value="DISABLED">Disabled<\/option>/);
+  assert.match(documentHtml, />Ccy Pair<\/th>/);
+  assert.match(documentHtml, />Automatic Admission Enabled<\/th>/);
+  assert.match(documentHtml, />Maximum Trade Amount \(Base Ccy\)<\/th>/);
   assert.match(policyMarkup, />Save Policy<\/span>/);
+  assert.match(documentHtml, /id="autoHedgingAdmissionPairDialogCancel"/);
+  assert.match(documentHtml, /id="autoHedgingAdmissionPairDialogApply"/);
   assert.match(settingsStyle, /\.auto-hedging-admission-pair-table-viewport \{[\s\S]*?overflow: auto/);
   assert.match(settingsStyle, /\.auto-hedging-admission-pair-table thead th \{[\s\S]*?position: sticky/);
+  assert.match(
+    appScript,
+    /function openAutoHedgingAdmissionPairDialog\(\)[\s\S]*?autoHedgingAdmissionPairControlSnapshot\(\)[\s\S]*?openDialogWithoutFieldFocus\(autoHedgingAdmissionPairDialog\)/
+  );
+  assert.match(
+    appScript,
+    /function closeAutoHedgingAdmissionPairDialog\(\{ restore = false \} = \{\}\)[\s\S]*?restoreAutoHedgingAdmissionPairControlSnapshot/
+  );
+  assert.match(
+    appScript,
+    /function applyAutoHedgingAdmissionPairDialog\(\)[\s\S]*?querySelector\(":invalid"\)[\s\S]*?closeAutoHedgingAdmissionPairDialog\(\)/
+  );
 });
 
 test("Manual Release is represented honestly as a read-only shared demo policy", () => {

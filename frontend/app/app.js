@@ -29,6 +29,40 @@
     const MAX_MARKET_FLUCTUATION_SPREADS = 10;
     Big.DP = 40;
     Big.RM = Big.roundHalfUp;
+
+    function dialogInitialFocusTarget(dialog) {
+      const labelledBy = String(dialog?.getAttribute("aria-labelledby") || "").trim();
+      const labelledElement = labelledBy ? document.getElementById(labelledBy) : null;
+
+      return labelledElement
+        || dialog?.querySelector(".modal-title, .dialog-title, h1, h2, h3")
+        || dialog;
+    }
+
+    function focusDialogWithoutEditableControl(dialog) {
+      const target = dialogInitialFocusTarget(dialog);
+
+      if (!target) {
+        return;
+      }
+
+      if (!target.hasAttribute("tabindex")) {
+        target.setAttribute("tabindex", "-1");
+      }
+
+      target.focus({ preventScroll: true });
+    }
+
+    function openDialogWithoutFieldFocus(dialog) {
+      if (typeof dialog?.showModal === "function") {
+        dialog.showModal();
+      } else {
+        dialog?.setAttribute("open", "");
+      }
+
+      focusDialogWithoutEditableControl(dialog);
+    }
+
     const COUNTERPARTY_ROLES = ["CLIENT", "HEDGE_COUNTERPARTY"];
     const COUNTERPARTY_SCOPES = ["EXTERNAL", "INTERNAL"];
     const EXTERNAL_COUNTERPARTY_CODE_TYPES = ["INN", "OTHER"];
@@ -74,7 +108,7 @@
     const PRICING_TYPE_PRESENTATION = Object.freeze({
       AUTO_PRICED: Object.freeze({
         label: "Auto Priced",
-        icon: "bolt",
+        icon: "flash_auto",
         tone: "auto-priced"
       }),
       DEALER_PRICED: Object.freeze({
@@ -136,7 +170,6 @@
     let clientFxDeals = loadClientFxDeals();
     let hedgeFxDeals = loadHedgeFxDeals();
     let fxBatchHistory = loadFxBatches();
-    let batchFormationAuditRecords = [];
     let fxPositionRecords = Array.isArray(DEMO_API_BOOTSTRAP.fxPositions)
       ? DEMO_API_BOOTSTRAP.fxPositions
       : [];
@@ -968,15 +1001,11 @@
     const batchingSettingsPage = document.getElementById("batchingSettingsPage");
     const hedgingSettingsPage = document.getElementById("hedgingSettingsPage");
     const fxBatchesPage = document.getElementById("fxBatchesPage");
-    const fxBatchesTabs = Array.from(document.querySelectorAll("[data-fx-batches-route]"));
     const batchingHistoryPage = document.getElementById("batchingHistoryPage");
     const batchingHistoryGridEl = document.getElementById("batchingHistoryGrid");
     const batchingHistoryCountEl = document.getElementById("batchingHistoryCount");
     const batchingHistoryStatusEl = document.getElementById("batchingHistoryStatus");
-    const batchFormationAuditPage = document.getElementById("batchFormationAuditPage");
-    const batchFormationAuditGridEl = document.getElementById("batchFormationAuditGrid");
-    const batchFormationAuditCountEl = document.getElementById("batchFormationAuditCount");
-    const batchFormationAuditStatusEl = document.getElementById("batchFormationAuditStatus");
+    const fxBatchesAuditViewToggle = document.getElementById("fxBatchesAuditView");
     const batchDetailsPage = document.getElementById("batchDetailsPage");
     const batchDetailsStatusEl = document.getElementById("batchDetailsStatus");
     const batchDetailsPrompt = document.getElementById("batchDetailsPrompt");
@@ -992,6 +1021,13 @@
     const batchDetailsTenor = document.getElementById("batchDetailsTenor");
     const batchDetailsBaseValueDate = document.getElementById("batchDetailsBaseValueDate");
     const batchDetailsQuoteValueDate = document.getElementById("batchDetailsQuoteValueDate");
+    const batchNeutralityDetails = document.getElementById("batchNeutralityDetails");
+    const batchNeutralitySummaryStatus =
+      document.getElementById("batchNeutralitySummaryStatus");
+    const batchNeutralitySummaryStatusIcon =
+      document.getElementById("batchNeutralitySummaryStatusIcon");
+    const batchNeutralitySummaryStatusText =
+      document.getElementById("batchNeutralitySummaryStatusText");
     const batchNeutralityMembersBase = document.getElementById("batchNeutralityMembersBase");
     const batchNeutralityMembersQuote = document.getElementById("batchNeutralityMembersQuote");
     const batchNeutralityCashQuote = document.getElementById("batchNeutralityCashQuote");
@@ -1289,6 +1325,11 @@
     const autoHedgingAdmissionPolicyRevision = document.getElementById("autoHedgingAdmissionPolicyRevision");
     const autoHedgingMaxTransferRateDeviationPercent = document.getElementById("autoHedgingMaxTransferRateDeviationPercent");
     const autoHedgingAdmissionPairSummary = document.getElementById("autoHedgingAdmissionPairSummary");
+    const autoHedgingAdmissionPairEditButton = document.getElementById("autoHedgingAdmissionPairEditButton");
+    const autoHedgingAdmissionPairDialog = document.getElementById("autoHedgingAdmissionPairDialog");
+    const autoHedgingAdmissionPairDialogClose = document.getElementById("autoHedgingAdmissionPairDialogClose");
+    const autoHedgingAdmissionPairDialogCancel = document.getElementById("autoHedgingAdmissionPairDialogCancel");
+    const autoHedgingAdmissionPairDialogApply = document.getElementById("autoHedgingAdmissionPairDialogApply");
     const autoHedgingAdmissionPairSearch = document.getElementById("autoHedgingAdmissionPairSearch");
     const autoHedgingAdmissionPairSearchClear = document.getElementById("autoHedgingAdmissionPairSearchClear");
     const autoHedgingAdmissionPairFilter = document.getElementById("autoHedgingAdmissionPairFilter");
@@ -1488,6 +1529,8 @@
     let activeFxPositionMode = "MANUAL";
     const FX_DEALS_VIEW_MODE_STANDARD = "STANDARD";
     const FX_DEALS_VIEW_MODE_AUDIT = "AUDIT";
+    const FX_BATCHES_VIEW_MODE_STANDARD = "STANDARD";
+    const FX_BATCHES_VIEW_MODE_AUDIT = "AUDIT";
     let clientFxDealsGrid = null;
     let clientFxDealsGridReady = false;
     let clientFxDealsPendingData = [];
@@ -1495,8 +1538,7 @@
     let clientFxDealsViewMode = FX_DEALS_VIEW_MODE_STANDARD;
     let batchingHistoryGrid = null;
     let batchingHistoryGridReady = false;
-    let batchFormationAuditGrid = null;
-    let batchFormationAuditGridReady = false;
+    let fxBatchesViewMode = FX_BATCHES_VIEW_MODE_STANDARD;
     let batchDetailsMembersGrid = null;
     let batchDetailsCashOutputGrid = null;
     let batchDetailsOutputsGrid = null;
@@ -1553,6 +1595,7 @@
     let autoHedgingAdmissionPolicySaving = false;
     let autoHedgingAdmissionPolicyLoaded = false;
     let autoHedgingAdmissionPolicyEventsBound = false;
+    let autoHedgingAdmissionPairDialogSnapshot = null;
     let hedgeQuickModeDealCreating = false;
     let addClientDealSubmitWithControl = false;
     let clientDealDuplicateCheckGrid = null;
@@ -3007,16 +3050,13 @@
     function pricingModeIndicatorMarkup(
       value,
       labelMarkup = "",
-      showTooltip = true,
-      { useAutoPricingIcon = false } = {}
+      showTooltip = true
     ) {
       const presentation = pricingTypePresentation(value);
       const indicatorAttributes = showTooltip
         ? `role="img" tabindex="0" aria-label="${escapeHtml(presentation.label)}" data-tooltip="${escapeHtml(presentation.label)}"`
         : 'aria-hidden="true"';
-      const icon = useAutoPricingIcon && presentation.pricingType === "AUTO_PRICED"
-        ? "flash_auto"
-        : presentation.icon;
+      const icon = presentation.icon;
 
       return `
         <span class="reference-pricing-mode" data-smart-width-content>
@@ -3031,9 +3071,7 @@
     function executionSystemLabelMarkup(name, pricingType) {
       const normalizedName = String(name || "").trim();
       const presentation = pricingTypePresentation(pricingType);
-      const pricingIcon = presentation.pricingType === "AUTO_PRICED"
-        ? "flash_auto"
-        : presentation.icon;
+      const pricingIcon = presentation.icon;
       const displayName = normalizedName || "Enter name";
       const nameClass = normalizedName ? "" : " is-placeholder";
 
@@ -4131,15 +4169,50 @@
 
     function normalizedFxBatch(value) {
       const source = value && typeof value === "object" ? value : {};
+      const sourceBatchingKey = source.batchingKey
+        && typeof source.batchingKey === "object"
+        ? source.batchingKey
+        : {};
       const formationReasonDetails = source.formationReasonDetails
         && typeof source.formationReasonDetails === "object"
         && !Array.isArray(source.formationReasonDetails)
         ? source.formationReasonDetails
         : {};
 
+      const hasDuration = source.windowDurationMs !== null
+        && source.windowDurationMs !== undefined
+        && source.windowDurationMs !== "";
+      const duration = hasDuration ? Number(source.windowDurationMs) : null;
+
       return {
         batchId: Number(source.batchId),
         ccyPairCode: String(source.ccyPairCode || "").trim().toUpperCase(),
+        batchingKey: source.batchingKey
+          ? {
+              ccyPairCode: String(sourceBatchingKey.ccyPairCode || source.ccyPairCode || "")
+                .trim()
+                .toUpperCase(),
+              tradeDate: String(sourceBatchingKey.tradeDate || "").trim(),
+              tenor: String(sourceBatchingKey.tenor || "").trim().toUpperCase(),
+              baseCcyValueDate: String(sourceBatchingKey.baseCcyValueDate || "").trim(),
+              quoteCcyValueDate: String(sourceBatchingKey.quoteCcyValueDate || "").trim(),
+              baseCcyFractionDigits: Number(sourceBatchingKey.baseCcyFractionDigits),
+              quoteCcyFractionDigits: Number(sourceBatchingKey.quoteCcyFractionDigits)
+            }
+          : null,
+        windowOpenedAt: source.windowOpenedAt
+          ? String(source.windowOpenedAt).trim()
+          : null,
+        windowClosedAt: source.windowClosedAt
+          ? String(source.windowClosedAt).trim()
+          : null,
+        windowDurationMs: hasDuration && Number.isFinite(duration) && duration >= 0
+          ? duration
+          : null,
+        sourceTradeCount: source.sourceTradeCount === null
+          || source.sourceTradeCount === undefined
+          ? null
+          : Number(source.sourceTradeCount),
         batchStatus: String(source.batchStatus || "").trim().toUpperCase(),
         formationReasonCode: String(
           source.formationReasonCode || "MANUAL_SELECTION"
@@ -4170,60 +4243,6 @@
         .sort((left, right) => right.batchId - left.batchId);
       renderBatchingHistory(fxBatchHistory);
       return fxBatchHistory;
-    }
-
-    function normalizedBatchFormationAuditRecord(value) {
-      const source = value && typeof value === "object" ? value : {};
-      const sourceBatchingKey = source.batchingKey
-        && typeof source.batchingKey === "object"
-        ? source.batchingKey
-        : {};
-      const hasDuration = source.windowDurationMs !== null
-        && source.windowDurationMs !== undefined
-        && source.windowDurationMs !== "";
-      const duration = hasDuration ? Number(source.windowDurationMs) : null;
-
-      return {
-        batchId: Number(source.batchId),
-        batchingKey: {
-          ccyPairCode: String(sourceBatchingKey.ccyPairCode || "").trim().toUpperCase(),
-          tradeDate: String(sourceBatchingKey.tradeDate || "").trim(),
-          tenor: String(sourceBatchingKey.tenor || "").trim().toUpperCase(),
-          baseCcyValueDate: String(sourceBatchingKey.baseCcyValueDate || "").trim(),
-          quoteCcyValueDate: String(sourceBatchingKey.quoteCcyValueDate || "").trim(),
-          baseCcyFractionDigits: Number(sourceBatchingKey.baseCcyFractionDigits),
-          quoteCcyFractionDigits: Number(sourceBatchingKey.quoteCcyFractionDigits)
-        },
-        windowOpenedAt: source.windowOpenedAt
-          ? String(source.windowOpenedAt).trim()
-          : null,
-        windowClosedAt: source.windowClosedAt
-          ? String(source.windowClosedAt).trim()
-          : null,
-        formedAt: String(source.formedAt || "").trim(),
-        windowDurationMs: hasDuration && Number.isFinite(duration) && duration >= 0
-          ? duration
-          : null,
-        formationReasonCode: String(
-          source.formationReasonCode || "MANUAL_SELECTION"
-        ).trim().toUpperCase(),
-        formationReasonDescription: String(
-          source.formationReasonDescription || "Manual selection."
-        ).trim(),
-        sourceTradeCount: Number(source.sourceTradeCount),
-        batchStatus: String(source.batchStatus || "").trim().toUpperCase(),
-        rolledBackAt: source.rolledBackAt ? String(source.rolledBackAt).trim() : null
-      };
-    }
-
-    async function reloadBatchFormationAuditFromApi() {
-      const records = await demoApiRequest("/api/v1/fx-batch-formation-audit");
-      batchFormationAuditRecords = (Array.isArray(records) ? records : [])
-        .map(normalizedBatchFormationAuditRecord)
-        .filter(record => Number.isInteger(record.batchId) && record.batchId > 0)
-        .sort((left, right) => right.batchId - left.batchId);
-      renderBatchFormationAudit(batchFormationAuditRecords);
-      return batchFormationAuditRecords;
     }
 
     function normalizedBatchBalanceMinor(
@@ -6140,8 +6159,7 @@
       pricingRulesTableLayoutSaveDefaultButton.hidden = activeUiTableLayoutColumnKeys !== null;
       renderUiTableLayoutEditor();
       setUiTableLayoutStatus();
-      pricingRulesTableLayoutDialog.showModal();
-      pricingRulesTableLayoutList.querySelector("input")?.focus();
+      openDialogWithoutFieldFocus(pricingRulesTableLayoutDialog);
     }
 
     function closeUiTableLayoutDialog() {
@@ -6391,7 +6409,6 @@
 
       if (row) {
         syncPricingRuleRowPreview(row);
-        row.querySelector("[data-pricing-rule-field='currencyPair']")?.focus();
       }
     }
 
@@ -6409,7 +6426,6 @@
 
       if (row) {
         syncPricingRuleRowPreview(row);
-        row.querySelector("[data-pricing-rule-field='currencyPair']")?.focus();
       }
     }
 
@@ -6622,7 +6638,7 @@
         clientDealGenerationSettingsRows.innerHTML = `
           <tr>
             <td colspan="11" class="text-center text-secondary py-4">
-              No AUTO_PRICED Client Deal Generation Settings found.
+              No Auto Priced Client Deal Generation Settings found.
             </td>
           </tr>
         `;
@@ -6691,7 +6707,7 @@
             <td>
               ${pricingModeIndicatorMarkup(
                 settings.pricingMode,
-                escapeHtml(settings.pricingMode),
+                escapeHtml(pricingTypePresentation(settings.pricingMode).label),
                 false
               )}${inactiveExecutionSystem}
             </td>
@@ -6802,9 +6818,6 @@
         `[data-generation-settings-pricing-rule-id="${clientDealGenerationSettingsEditPricingRuleId}"]`
       );
       updateClientDealGenerationSettingsSaveAvailability(editRow);
-      editRow
-        ?.querySelector("[data-generation-settings-field='minBaseCcyAmount']")
-        ?.focus();
     }
 
     function cancelClientDealGenerationSettingsRowEdit() {
@@ -6869,11 +6882,6 @@
     function setBatchingHistoryStatus(message = "", tone = "") {
       setWorkbenchPageStatus(batchingHistoryStatusEl, message, tone);
       batchingHistoryStatusEl.hidden = !message;
-    }
-
-    function setBatchFormationAuditStatus(message = "", tone = "") {
-      setWorkbenchPageStatus(batchFormationAuditStatusEl, message, tone);
-      batchFormationAuditStatusEl.hidden = !message;
     }
 
     function setDatabaseStatus(message = "", tone = "") {
@@ -7753,21 +7761,7 @@
     function openClientPricingRuleDialog(rule) {
       fillClientPricingRuleDialog(rule);
 
-      if (typeof clientPricingRuleDialog.showModal === "function") {
-        clientPricingRuleDialog.showModal();
-      } else {
-        clientPricingRuleDialog.setAttribute("open", "");
-      }
-
-      const focusControl = clientPricingRuleEditState?.mode === "edit"
-        ? clientPricingRuleForm.elements.marginPercent
-        : clientPricingRuleEditState?.pricingContextId
-          ? clientPricingRuleForm.elements.currencyPair
-          : PRICING_CONTEXT_FACETS
-            .map(({ field }) => pricingContextFacetInput(field))
-            .find(input => input && !input.value) || clientPricingRuleForm.elements.currencyPair;
-
-      focusControl.focus();
+      openDialogWithoutFieldFocus(clientPricingRuleDialog);
     }
 
     function closeClientPricingRuleDialog() {
@@ -8087,11 +8081,6 @@
       clientPricingConfigurationCollapsedSet(profile).delete(String(context.pricingContextId));
       setClientProfileStatus("");
       renderClientExecutionContextsPanel(profile);
-      requestAnimationFrame(() => {
-        clientExecutionContextsPanel
-          .querySelector("[data-client-pricing-rule-inline-editor] select")
-          ?.focus();
-      });
     }
 
     function startClientPricingRuleEdit(index) {
@@ -8118,11 +8107,6 @@
       clientPricingConfigurationCollapsedSet(profile).delete(String(rule.pricingContextId));
       setClientProfileStatus("");
       renderClientExecutionContextsPanel(profile);
-      requestAnimationFrame(() => {
-        clientExecutionContextsPanel
-          .querySelector('[data-client-pricing-rule-inline-editor] [data-client-pricing-rule-inline-field="marginPercent"]')
-          ?.focus();
-      });
     }
 
     function startClientPricingRuleDelete(index) {
@@ -8137,7 +8121,6 @@
       clientPricingRuleEditState = { mode: "edit", index, inn: profile.inn };
       setClientProfileStatus("");
       openClientPricingRuleDialog(rule);
-      requestAnimationFrame(() => clientPricingRuleDeleteButton.focus());
     }
 
     function cancelClientPricingRuleEdit() {
@@ -8906,7 +8889,10 @@
                 ? "Not Applicable"
                 : settlementSystemDisplayName(context.settlementSystemId))}</td>
               <td>${escapeHtml(tradeCaptureChannelDisplayName(context.tradeCaptureChannelId))}</td>
-              <td>${pricingModeIndicatorMarkup(pricingMode, escapeHtml(pricingMode))}</td>
+              <td>${pricingModeIndicatorMarkup(
+                pricingMode,
+                escapeHtml(pricingTypePresentation(pricingMode).label)
+              )}</td>
             </tr>
           `;
         }).join("");
@@ -8946,13 +8932,7 @@
       applyClientExecutionContextAttachColumnLayout();
       renderClientExecutionContextAttachTable();
 
-      if (typeof clientExecutionContextAttachDialog.showModal === "function") {
-        clientExecutionContextAttachDialog.showModal();
-      } else {
-        clientExecutionContextAttachDialog.setAttribute("open", "");
-      }
-
-      document.getElementById("clientExecutionContextAttachIdFilter")?.focus();
+      openDialogWithoutFieldFocus(clientExecutionContextAttachDialog);
     }
 
     function closeClientExecutionContextAttachDialog() {
@@ -9790,7 +9770,6 @@
       tradingCounterpartyRowEditState = { mode: "create" };
       setClientProfileStatus("");
       renderClientProfiles();
-      clientProfileRowsEl.querySelector("[data-trading-counterparty-field='counterpartyCode']")?.focus();
     }
 
     function cancelTradingCounterpartyRowEdit() {
@@ -9942,7 +9921,6 @@
       setClientProfileStatus("");
       renderClientProfiles();
       updateClientProfileSubmitAvailability();
-      clientProfileForm.elements.inn.focus({ preventScroll: true });
     }
 
     function startClientProfileEdit(index) {
@@ -10515,7 +10493,6 @@
       userRowEditState = { mode: "create" };
       setUsersStatus("");
       renderUsers();
-      usersRowsEl.querySelector("[data-user-field='userCode']")?.focus();
     }
 
     function startUserRowEdit(index) {
@@ -10526,7 +10503,6 @@
       userRowEditState = { mode: "edit", index };
       setUsersStatus("");
       renderUsers();
-      usersRowsEl.querySelector("[data-user-field='userCode']")?.focus();
     }
 
     function cancelUserRowEdit() {
@@ -10657,7 +10633,6 @@
       setUsersStatus("");
       renderUsers();
       updateUsersSubmitAvailability();
-      usersForm.elements.userCode.focus({ preventScroll: true });
     }
 
     function startUserEdit(index) {
@@ -11563,7 +11538,6 @@
       pricingContextEditState = { mode: "create" };
       setPricingContextStatus("");
       renderPricingContexts();
-      pricingContextRowsEl.querySelector("[data-pricing-context-field='servicingBranchCode']")?.focus();
     }
 
     function startPricingContextEdit(index) {
@@ -11576,7 +11550,6 @@
       pricingContextEditState = { mode: "edit", index };
       setPricingContextStatus("");
       renderPricingContexts();
-      pricingContextRowsEl.querySelector("[data-pricing-context-field='servicingBranchCode']")?.focus();
     }
 
     function cancelPricingContextForm() {
@@ -12048,8 +12021,7 @@
           <td>${pricingModeIndicatorMarkup(
             item.pricingType,
             highlightedReferenceDataText(kind, pricingTypeLabel),
-            false,
-            { useAutoPricingIcon: true }
+            false
           )}</td>
           <td>${executionSystemLabelMarkup(item.tradeCaptureChannelName, item.pricingType)}</td>
           <td>${activeLabel(item.isActive)}</td>
@@ -12179,7 +12151,6 @@
       referenceDataEditState = { mode: "create", kind };
       setReferenceDataStatus("");
       renderReferenceData();
-      referenceDataRowsElement(kind)?.querySelector("[data-reference-field]")?.focus();
     }
 
     function startReferenceDataEdit(kind, index) {
@@ -12192,7 +12163,6 @@
       referenceDataEditState = { mode: "edit", kind, index };
       setReferenceDataStatus("");
       renderReferenceData();
-      referenceDataRowsElement(kind)?.querySelector("[data-reference-field]")?.focus();
     }
 
     function cancelReferenceDataForm() {
@@ -12725,11 +12695,7 @@
     async function openClientDealGenerationDialog() {
       clientDealSettingsButton.setAttribute("aria-expanded", "true");
 
-      if (typeof clientDealGenerationDialog.showModal === "function") {
-        clientDealGenerationDialog.showModal();
-      } else {
-        clientDealGenerationDialog.setAttribute("open", "");
-      }
+      openDialogWithoutFieldFocus(clientDealGenerationDialog);
 
       await loadClientDealGenerationSettingsFromApi();
       const tableViewport = clientDealGenerationDialog.querySelector(
@@ -13082,13 +13048,7 @@
       batchRollbackStatus.textContent = "";
       batchRollbackStatus.hidden = true;
 
-      if (typeof batchRollbackDialog.showModal === "function") {
-        batchRollbackDialog.showModal();
-      } else {
-        batchRollbackDialog.setAttribute("open", "");
-      }
-
-      batchRollbackCancelButton.focus();
+      openDialogWithoutFieldFocus(batchRollbackDialog);
     }
 
     async function confirmBatchRollback() {
@@ -13137,6 +13097,44 @@
         : `${filteredCount} of ${total} batches`;
     }
 
+    function fxBatchesAuditViewEnabled() {
+      return fxBatchesViewMode === FX_BATCHES_VIEW_MODE_AUDIT;
+    }
+
+    function syncFxBatchesAuditToggle() {
+      fxBatchesAuditViewToggle.checked = fxBatchesAuditViewEnabled();
+    }
+
+    function applyFxBatchesViewMode() {
+      const auditFields = [
+        "batchingKey",
+        "windowOpenedAt",
+        "windowClosedAt",
+        "windowDurationMs",
+        "sourceTradeCount"
+      ];
+
+      auditFields.forEach(field => {
+        const column = batchingHistoryGrid?.getColumn(field);
+
+        if (fxBatchesAuditViewEnabled()) {
+          column?.show();
+        } else {
+          column?.hide();
+        }
+      });
+
+      batchingHistoryGrid?.redraw(true);
+      syncFxBatchesAuditToggle();
+    }
+
+    function setFxBatchesViewMode(mode) {
+      fxBatchesViewMode = mode === FX_BATCHES_VIEW_MODE_AUDIT
+        ? FX_BATCHES_VIEW_MODE_AUDIT
+        : FX_BATCHES_VIEW_MODE_STANDARD;
+      applyFxBatchesViewMode();
+    }
+
     function initializeBatchingHistoryGrid(data) {
       batchingHistoryGrid = new Tabulator(batchingHistoryGridEl, {
         data,
@@ -13171,6 +13169,38 @@
             headerFilter: "input",
             formatter: cell => escapeHtml(String(cell.getValue() || "").replace("_", "/"))
           }),
+          tabulatorSizedColumn("executionContext", {
+            title: "Batching Key",
+            field: "batchingKey",
+            visible: fxBatchesAuditViewEnabled(),
+            headerFilter: "input",
+            headerFilterFunc: batchFormationAuditBatchingKeyFilter,
+            formatter: batchFormationAuditBatchingKeyFormatter
+          }),
+          tabulatorSizedColumn("timestamp", {
+            title: "Window Opened At",
+            field: "windowOpenedAt",
+            visible: fxBatchesAuditViewEnabled(),
+            headerFilter: "input",
+            formatter: batchFormationAuditTimestampFormatter
+          }),
+          tabulatorSizedColumn("timestamp", {
+            title: "Window Closed At",
+            field: "windowClosedAt",
+            visible: fxBatchesAuditViewEnabled(),
+            headerFilter: "input",
+            formatter: batchFormationAuditTimestampFormatter
+          }),
+          tabulatorSizedColumn("amount", {
+            title: "Duration",
+            field: "windowDurationMs",
+            visible: fxBatchesAuditViewEnabled(),
+            sorter: "number",
+            headerFilter: "input",
+            formatter: batchFormationAuditDurationFormatter,
+            hozAlign: "right",
+            headerHozAlign: "right"
+          }),
           tabulatorSizedColumn("type", {
             title: "Batch Status",
             field: "batchStatus",
@@ -13183,12 +13213,22 @@
             field: "formationReasonCode",
             headerFilter: batchingHistoryReasonHeaderFilter,
             headerFilterFunc: "=",
+            formatter: batchFormationAuditReasonFormatter,
             cssClass: "text-nowrap"
           }),
           tabulatorSizedColumn("timestamp", {
             title: "Formed At",
             field: "formedAt",
             headerFilter: "input"
+          }),
+          tabulatorSizedColumn("count", {
+            title: "Source Trades",
+            field: "sourceTradeCount",
+            visible: fxBatchesAuditViewEnabled(),
+            sorter: "number",
+            headerFilter: "input",
+            hozAlign: "right",
+            headerHozAlign: "right"
           }),
           tabulatorSizedColumn("actions", {
             title: "Actions",
@@ -13224,7 +13264,7 @@
       batchingHistoryGrid.on("tableBuilt", () => {
         batchingHistoryGridReady = true;
         updateBatchingHistoryCount(data.length);
-        batchingHistoryGrid.redraw(true);
+        applyFxBatchesViewMode();
       });
       batchingHistoryGrid.on("dataFiltered", (_filters, rows) => {
         updateBatchingHistoryCount(rows.length);
@@ -13361,187 +13401,6 @@
     function batchFormationAuditReasonFormatter(cell) {
       const record = cell.getRow().getData();
       return `<span data-tooltip="${escapeHtml(record.formationReasonDescription)}">${escapeHtml(cell.getValue())}</span>`;
-    }
-
-    function batchFormationAuditActionFormatter(cell) {
-      const record = cell.getRow().getData();
-
-      return `
-        <div class="batching-history-actions">
-          <button type="button"
-            class="btn btn-sm btn-outline-secondary batching-history-action"
-            data-batch-formation-audit-action="view"
-            aria-label="View Batch Structure for batch ${escapeHtml(record.batchId)}">
-            <span class="button-icon" aria-hidden="true">visibility</span>
-          </button>
-        </div>
-      `;
-    }
-
-    function updateBatchFormationAuditCount(
-      filteredCount = batchFormationAuditRecords.length
-    ) {
-      const total = batchFormationAuditRecords.length;
-      const label = total === 1 ? "batch" : "batches";
-      batchFormationAuditCountEl.textContent = filteredCount === total
-        ? `${total} ${label}`
-        : `${filteredCount} of ${total} batches`;
-    }
-
-    function initializeBatchFormationAuditGrid(data) {
-      batchFormationAuditGrid = new Tabulator(batchFormationAuditGridEl, {
-        data,
-        index: "batchId",
-        layout: "fitDataTable",
-        renderVertical: "virtual",
-        renderVerticalBuffer: 240,
-        maxHeight: "calc(100vh - var(--workspace-nav-height) - 170px)",
-        placeholder: "No completed FX Batches are available for audit.",
-        movableColumns: false,
-        resizableColumns: false,
-        headerFilterLiveFilterDelay: 250,
-        initialSort: [{ column: "batchId", dir: "desc" }],
-        columnDefaults: {
-          resizable: false,
-          vertAlign: "middle",
-          tooltip: tabulatorCellOverflowTooltip,
-          headerTooltip: tabulatorHeaderOverflowTooltip,
-          headerSort: false
-        },
-        columns: uiTableColumns("batch_formation_audit_grid", [
-          tabulatorSizedColumn("primaryId", {
-            title: "Batch ID",
-            field: "batchId",
-            sorter: "number",
-            headerSort: true,
-            headerFilter: "input"
-          }),
-          tabulatorSizedColumn("executionContext", {
-            title: "Batching Key",
-            field: "batchingKey",
-            headerFilter: "input",
-            headerFilterFunc: batchFormationAuditBatchingKeyFilter,
-            formatter: batchFormationAuditBatchingKeyFormatter
-          }),
-          tabulatorSizedColumn("timestamp", {
-            title: "Window Opened At",
-            field: "windowOpenedAt",
-            headerFilter: "input",
-            formatter: batchFormationAuditTimestampFormatter
-          }),
-          tabulatorSizedColumn("timestamp", {
-            title: "Window Closed At",
-            field: "windowClosedAt",
-            headerFilter: "input",
-            formatter: batchFormationAuditTimestampFormatter
-          }),
-          tabulatorSizedColumn("timestamp", {
-            title: "Batch Formed At",
-            field: "formedAt",
-            headerFilter: "input",
-            formatter: batchFormationAuditTimestampFormatter
-          }),
-          tabulatorSizedColumn("amount", {
-            title: "Duration",
-            field: "windowDurationMs",
-            sorter: "number",
-            headerFilter: "input",
-            formatter: batchFormationAuditDurationFormatter,
-            hozAlign: "right",
-            headerHozAlign: "right"
-          }),
-          tabulatorSizedColumn("name", {
-            title: "Formation Reason",
-            field: "formationReasonCode",
-            headerFilter: batchingHistoryReasonHeaderFilter,
-            headerFilterFunc: "=",
-            formatter: batchFormationAuditReasonFormatter,
-            cssClass: "text-nowrap"
-          }),
-          tabulatorSizedColumn("count", {
-            title: "Source Trades",
-            field: "sourceTradeCount",
-            sorter: "number",
-            headerFilter: "input",
-            hozAlign: "right",
-            headerHozAlign: "right"
-          }),
-          tabulatorSizedColumn("type", {
-            title: "Status",
-            field: "batchStatus",
-            headerFilter: batchingHistoryStatusHeaderFilter,
-            headerFilterFunc: "=",
-            formatter: batchingHistoryStatusFormatter
-          }),
-          tabulatorSizedColumn("actions", {
-            title: "Actions",
-            field: "actions",
-            hozAlign: "center",
-            headerHozAlign: "center",
-            formatter: batchFormationAuditActionFormatter,
-            cellClick(event, cell) {
-              if (!event.target.closest("[data-batch-formation-audit-action='view']")) {
-                return;
-              }
-
-              location.hash = batchDetailsRoute(cell.getRow().getData().batchId);
-            }
-          })
-        ])
-      });
-      registerUiTableTabulator("batch_formation_audit_grid", batchFormationAuditGrid);
-
-      batchFormationAuditGrid.on("tableBuilt", () => {
-        batchFormationAuditGridReady = true;
-        updateBatchFormationAuditCount(data.length);
-        batchFormationAuditGrid.redraw(true);
-      });
-      batchFormationAuditGrid.on("dataFiltered", (_filters, rows) => {
-        updateBatchFormationAuditCount(rows.length);
-      });
-    }
-
-    function renderBatchFormationAudit(source = batchFormationAuditRecords) {
-      const data = Array.isArray(source) ? source : [];
-      updateBatchFormationAuditCount(data.length);
-
-      if (!batchFormationAuditGrid) {
-        if (!batchFormationAuditPage.hidden) {
-          initializeBatchFormationAuditGrid(data);
-        }
-        return;
-      }
-
-      if (!batchFormationAuditGridReady) {
-        return;
-      }
-
-      batchFormationAuditGrid.replaceData(data).then(() => {
-        batchFormationAuditGrid.redraw(true);
-      });
-    }
-
-    async function loadBatchFormationAuditPage() {
-      if (!DEMO_API_ENABLED) {
-        setBatchFormationAuditStatus(
-          "Start the demo server to view Batch Formation Audit.",
-          "warning"
-        );
-        renderBatchFormationAudit([]);
-        return;
-      }
-
-      setBatchFormationAuditStatus("Loading Batch Formation Audit...");
-
-      try {
-        await reloadBatchFormationAuditFromApi();
-        setBatchFormationAuditStatus();
-      } catch (error) {
-        setBatchFormationAuditStatus(
-          error.message || "Unable to load Batch Formation Audit.",
-          "error"
-        );
-      }
     }
 
     function batchDetailsRoleFormatter(cell) {
@@ -13945,6 +13804,16 @@
         && Number.isSafeInteger(quoteNetMinor)
         && Number.isSafeInteger(cashQuoteMinor)
         && quoteNetMinor + cashQuoteMinor === 0;
+      const neutralBatch = positionNeutral && cashNeutral;
+
+      batchNeutralityDetails.open = false;
+      batchNeutralitySummaryStatus.classList.toggle("is-invalid", !neutralBatch);
+      batchNeutralitySummaryStatusIcon.textContent = neutralBatch
+        ? "check_circle"
+        : "error";
+      batchNeutralitySummaryStatusText.textContent = neutralBatch
+        ? "Neutral Batch"
+        : "Neutrality Exception";
 
       batchNeutralityMembersBase.textContent = batchStructureSignedMinorLabel(
         baseNetMinor,
@@ -13971,7 +13840,7 @@
         : "Cash Balance Imbalance";
       batchNeutralityResult.classList.toggle(
         "is-invalid",
-        !positionNeutral || !cashNeutral
+        !neutralBatch
       );
 
     }
@@ -14354,15 +14223,9 @@
       }
     }
 
-    function queueMarketInlineEditorFocus(container, selector, onReady = null) {
+    function queueMarketInlineEditorReady(container, selector, onReady = null) {
       requestAnimationFrame(() => requestAnimationFrame(() => {
         const control = container.querySelector(selector);
-        control?.focus();
-
-        if (control instanceof HTMLInputElement && control.type !== "number") {
-          control.select();
-        }
-
         onReady?.(control?.closest(".tabulator-row") || null);
       }));
     }
@@ -14374,7 +14237,7 @@
       marketCcyOptionGrid?.clearHeaderFilter();
       setMarketStatus("");
       renderMarketPage();
-      queueMarketInlineEditorFocus(
+      queueMarketInlineEditorReady(
         marketCcyOptionRowsEl,
         `[data-market-ccy-option-edit-index="${isEditing ? index : "new"}"] [data-market-ccy-option-field="${isEditing ? "name" : "code"}"]`,
         row => row && updateMarketCcyOptionRowSaveAvailability(row)
@@ -14732,7 +14595,7 @@
       marketPairOptionGrid?.clearHeaderFilter();
       setMarketStatus("");
       renderMarketPage();
-      queueMarketInlineEditorFocus(
+      queueMarketInlineEditorReady(
         marketPairOptionRowsEl,
         `[data-market-pair-option-edit-index="${isEditing ? index : "new"}"] [data-market-pair-option-field="${isEditing ? "defaultQuoteDecimals" : "baseCcy"}"]`,
         row => row && syncMarketPairOptionEditRow(row)
@@ -14933,14 +14796,7 @@
         marketSimulationForm.elements.fluctuationSpreads
       ].forEach(input => input.setCustomValidity(""));
 
-      if (typeof marketSimulationDialog.showModal === "function") {
-        marketSimulationDialog.showModal();
-      } else {
-        marketSimulationDialog.setAttribute("open", "");
-      }
-
-      marketSimulationForm.elements.bidMin.focus();
-      marketSimulationForm.elements.bidMin.select();
+      openDialogWithoutFieldFocus(marketSimulationDialog);
     }
 
     function closeMarketSimulationDialog() {
@@ -15789,14 +15645,6 @@
     function setFxDealsActiveTab(activeRoute) {
       fxDealsTabs.forEach(tab => {
         const isActive = tab.dataset.fxDealsRoute === activeRoute;
-        tab.classList.toggle("active", isActive);
-        tab.setAttribute("aria-selected", String(isActive));
-      });
-    }
-
-    function setFxBatchesActiveTab(activeRoute) {
-      fxBatchesTabs.forEach(tab => {
-        const isActive = tab.dataset.fxBatchesRoute === activeRoute;
         tab.classList.toggle("active", isActive);
         tab.setAttribute("aria-selected", String(isActive));
       });
@@ -18359,13 +18207,7 @@
       sendToAutoPositionModeStatus.textContent = "";
       sendToAutoPositionModeStatus.hidden = true;
 
-      if (typeof sendToAutoPositionModeDialog.showModal === "function") {
-        sendToAutoPositionModeDialog.showModal();
-      } else {
-        sendToAutoPositionModeDialog.setAttribute("open", "");
-      }
-
-      sendToAutoPositionModeCancelButton.focus();
+      openDialogWithoutFieldFocus(sendToAutoPositionModeDialog);
     }
 
     async function confirmSendToAutoPositionMode() {
@@ -18538,13 +18380,7 @@
 
       updateOneBatchSelectedTenorButton();
 
-      if (typeof oneBatchTenorDialog.showModal === "function") {
-        oneBatchTenorDialog.showModal();
-      } else {
-        oneBatchTenorDialog.setAttribute("open", "");
-      }
-
-      oneBatchTenorSelect.focus();
+      openDialogWithoutFieldFocus(oneBatchTenorDialog);
     }
 
     function closeOneBatchTenorDialog({ restoreFocus = true } = {}) {
@@ -18984,13 +18820,7 @@
       resetDemoTradesStatus.className = "alert alert-danger batch-rollback-status";
       resetDemoTradesStatus.hidden = true;
 
-      if (typeof resetDemoTradesDialog.showModal === "function") {
-        resetDemoTradesDialog.showModal();
-      } else {
-        resetDemoTradesDialog.setAttribute("open", "");
-      }
-
-      resetDemoTradesCancelButton.focus();
+      openDialogWithoutFieldFocus(resetDemoTradesDialog);
     }
 
     async function confirmResetDemoTradeWorkspace() {
@@ -19985,13 +19815,7 @@
       renderAddClientDealPricingRules();
       syncAddClientDealDerivedFields();
 
-      if (typeof addClientDealDialog.showModal === "function") {
-        addClientDealDialog.showModal();
-      } else {
-        addClientDealDialog.setAttribute("open", "");
-      }
-
-      addClientDealClientPickerValue.focus();
+      openDialogWithoutFieldFocus(addClientDealDialog);
     }
 
     function closeAddClientDealDialog() {
@@ -20093,14 +19917,8 @@
       }
     }
 
-    function openBatchingProcessFlowDialog(dialog, closeButton) {
-      if (typeof dialog.showModal === "function") {
-        dialog.showModal();
-      } else {
-        dialog.setAttribute("open", "");
-      }
-
-      closeButton.focus();
+    function openBatchingProcessFlowDialog(dialog) {
+      openDialogWithoutFieldFocus(dialog);
     }
 
     function closeBatchingProcessFlowDialog(dialog, triggerButton) {
@@ -20115,8 +19933,7 @@
 
     function openAutoBatchingProcessFlowDialog() {
       openBatchingProcessFlowDialog(
-        autoBatchingProcessFlowDialog,
-        autoBatchingProcessFlowDialogClose
+        autoBatchingProcessFlowDialog
       );
     }
 
@@ -20421,6 +20238,10 @@
     function setAutoHedgingAdmissionPolicyBusy(busy) {
       const isBusy = busy === true;
       autoHedgingAdmissionPolicyForm.setAttribute("aria-busy", String(isBusy));
+      autoHedgingAdmissionPairEditButton.disabled =
+        isBusy || !autoHedgingAdmissionPolicyLoaded;
+      autoHedgingAdmissionPairDialogApply.disabled =
+        isBusy || !autoHedgingAdmissionPolicyLoaded;
       autoHedgingMaxTransferRateDeviationPercent.disabled =
         isBusy || !autoHedgingAdmissionPolicyLoaded;
       autoHedgingAdmissionPairRows
@@ -20537,6 +20358,99 @@
           ? "No Currency Pairs are available in the policy."
           : "No Currency Pairs match the current filters.";
       autoHedgingAdmissionPairEmpty.hidden = visibleCount > 0;
+    }
+
+    function autoHedgingAdmissionPairControlSnapshot() {
+      return Array.from(
+        autoHedgingAdmissionPairRows.querySelectorAll(
+          "[data-auto-hedging-admission-pair-code]"
+        )
+      ).map(row => ({
+        ccyPairCode: row.dataset.autoHedgingAdmissionPairCode,
+        enabled: row.querySelector(
+          "[data-auto-hedging-admission-pair-enabled]"
+        )?.checked === true,
+        amount: row.querySelector(
+          "[data-auto-hedging-admission-pair-limit]"
+        )?.value || ""
+      }));
+    }
+
+    function restoreAutoHedgingAdmissionPairControlSnapshot(snapshot) {
+      const valuesByPair = new Map(
+        (Array.isArray(snapshot) ? snapshot : [])
+          .map(item => [item.ccyPairCode, item])
+      );
+
+      autoHedgingAdmissionPairRows
+        .querySelectorAll("[data-auto-hedging-admission-pair-code]")
+        .forEach(row => {
+          const saved = valuesByPair.get(row.dataset.autoHedgingAdmissionPairCode);
+          const enabledControl = row.querySelector(
+            "[data-auto-hedging-admission-pair-enabled]"
+          );
+          const amountControl = row.querySelector(
+            "[data-auto-hedging-admission-pair-limit]"
+          );
+
+          if (!saved || !enabledControl || !amountControl) {
+            return;
+          }
+
+          enabledControl.checked = saved.enabled;
+          amountControl.value = saved.amount;
+          amountControl.setCustomValidity("");
+          amountControl.disabled = autoHedgingAdmissionPolicySaving
+            || !autoHedgingAdmissionPolicyLoaded
+            || !saved.enabled;
+        });
+
+      updateAutoHedgingAdmissionPairSummary();
+      filterAutoHedgingAdmissionPairs();
+      updateAutoHedgingAdmissionPolicySaveAvailability();
+    }
+
+    function openAutoHedgingAdmissionPairDialog() {
+      if (!autoHedgingAdmissionPolicyLoaded || autoHedgingAdmissionPolicySaving) {
+        return;
+      }
+
+      autoHedgingAdmissionPairDialogSnapshot =
+        autoHedgingAdmissionPairControlSnapshot();
+      openDialogWithoutFieldFocus(autoHedgingAdmissionPairDialog);
+    }
+
+    function closeAutoHedgingAdmissionPairDialog({ restore = false } = {}) {
+      if (restore) {
+        restoreAutoHedgingAdmissionPairControlSnapshot(
+          autoHedgingAdmissionPairDialogSnapshot
+        );
+      }
+      autoHedgingAdmissionPairDialogSnapshot = null;
+
+      if (typeof autoHedgingAdmissionPairDialog.close === "function") {
+        autoHedgingAdmissionPairDialog.close();
+      } else {
+        autoHedgingAdmissionPairDialog.removeAttribute("open");
+      }
+
+      autoHedgingAdmissionPairEditButton.focus();
+    }
+
+    function applyAutoHedgingAdmissionPairDialog() {
+      autoHedgingAdmissionPolicyDraft();
+      const invalidControl = autoHedgingAdmissionPairRows.querySelector(":invalid");
+
+      if (invalidControl) {
+        autoHedgingAdmissionPairSearch.value = "";
+        autoHedgingAdmissionPairFilter.value = "ALL";
+        filterAutoHedgingAdmissionPairs();
+        invalidControl.focus();
+        invalidControl.reportValidity();
+        return;
+      }
+
+      closeAutoHedgingAdmissionPairDialog();
     }
 
     function renderAutoHedgingAdmissionPolicy() {
@@ -20763,7 +20677,18 @@
       const draft = autoHedgingAdmissionPolicyDraft();
 
       if (!draft) {
-        autoHedgingAdmissionPolicyForm.reportValidity();
+        const invalidPairControl = autoHedgingAdmissionPairRows.querySelector(":invalid");
+
+        if (invalidPairControl) {
+          autoHedgingAdmissionPairSearch.value = "";
+          autoHedgingAdmissionPairFilter.value = "ALL";
+          filterAutoHedgingAdmissionPairs();
+          openAutoHedgingAdmissionPairDialog();
+          invalidPairControl.focus();
+          invalidPairControl.reportValidity();
+        } else {
+          autoHedgingAdmissionPolicyForm.reportValidity();
+        }
         updateAutoHedgingAdmissionPolicySaveAvailability();
         return;
       }
@@ -20829,6 +20754,24 @@
         "input",
         updateAutoHedgingAdmissionPolicySaveAvailability
       );
+      autoHedgingAdmissionPairEditButton.addEventListener(
+        "click",
+        openAutoHedgingAdmissionPairDialog
+      );
+      autoHedgingAdmissionPairDialogClose.addEventListener("click", () => {
+        closeAutoHedgingAdmissionPairDialog({ restore: true });
+      });
+      autoHedgingAdmissionPairDialogCancel.addEventListener("click", () => {
+        closeAutoHedgingAdmissionPairDialog({ restore: true });
+      });
+      autoHedgingAdmissionPairDialogApply.addEventListener(
+        "click",
+        applyAutoHedgingAdmissionPairDialog
+      );
+      autoHedgingAdmissionPairDialog.addEventListener("cancel", event => {
+        event.preventDefault();
+        closeAutoHedgingAdmissionPairDialog({ restore: true });
+      });
       autoHedgingAdmissionPairRows.addEventListener("change", event => {
         if (!event.target.matches("[data-auto-hedging-admission-pair-enabled]")) {
           return;
@@ -21132,13 +21075,6 @@
       hedgeQuickModeSettingsForm.elements.currencyPair.disabled = Boolean(setting);
       populateHedgeQuickModeSetting(setting);
       setHedgeQuickModeSettingsView("editor");
-
-      requestAnimationFrame(() => {
-        const focusTarget = setting
-          ? hedgeQuickModeCounterpartyPickerValue
-          : hedgeQuickModeSettingsForm.elements.currencyPair;
-        focusTarget.focus();
-      });
     }
 
     function hedgeQuickModeSettingsPair() {
@@ -21254,7 +21190,7 @@
         : `<div class="client-deal-context-picker-empty">${
             profiles.length > 0
               ? "No Hedge Counterparties match the entered name."
-              : `No active Hedge Counterparty with an AUTO_PRICED Pricing Rule is available for ${
+              : `No active Hedge Counterparty with an Auto Priced Pricing Rule is available for ${
                   escapeHtml(hedgeQuickModeSettingsPair() || "the selected Ccy Pair")
                 }.`
           }</div>`;
@@ -21320,7 +21256,7 @@
         ? "Select a Hedge Counterparty to see available Pricing Rules."
         : !pair
           ? "Select a currency pair to see available Pricing Rules."
-          : "No AUTO_PRICED Pricing Rule is configured for this Hedge Counterparty and currency pair.";
+          : "No Auto Priced Pricing Rule is configured for this Hedge Counterparty and currency pair.";
 
       hedgeQuickModeSettingsForm.elements.pricingRuleId.value =
         selectedOption?.rule.pricingRuleId || "";
@@ -22034,7 +21970,7 @@
 
       if (!marketRate) {
         tradeRateInput.setCustomValidity(
-          "A Market Pulse quote is required for an AUTO_PRICED Hedge FX Deal."
+          "A Market Pulse quote is required for an Auto Priced Hedge FX Deal."
         );
       }
     }
@@ -22431,17 +22367,7 @@
       syncAddHedgeDealDerivedFields();
       syncAddHedgeDealModeLocks();
 
-      if (typeof addHedgeDealDialog.showModal === "function") {
-        addHedgeDealDialog.showModal();
-      } else {
-        addHedgeDealDialog.setAttribute("open", "");
-      }
-
-      if (isQuickMode) {
-        addHedgeDealForm.elements.tenor.focus();
-      } else {
-        addHedgeDealCounterpartyPickerValue.focus();
-      }
+      openDialogWithoutFieldFocus(addHedgeDealDialog);
     }
 
     function closeAddHedgeDealDialog() {
@@ -22654,11 +22580,7 @@
       setClientDealDuplicateCheckStatus();
       addClientDealSubmitButton.disabled = true;
 
-      if (typeof clientDealDuplicateCheckDialog.showModal === "function") {
-        clientDealDuplicateCheckDialog.showModal();
-      } else {
-        clientDealDuplicateCheckDialog.setAttribute("open", "");
-      }
+      openDialogWithoutFieldFocus(clientDealDuplicateCheckDialog);
 
       if (clientDealDuplicateCheckGrid) {
         clientDealDuplicateCheckGrid.replaceData(data).then(() => clientDealDuplicateCheckGrid.redraw(true));
@@ -22668,7 +22590,6 @@
 
       requestAnimationFrame(() => {
         clientDealDuplicateCheckGrid?.redraw(true);
-        clientDealDuplicateCheckConfirmButton.focus();
       });
     }
 
@@ -23292,18 +23213,8 @@
       }
     }
 
-    function showDealDialog(focusElement = editForm.elements.amount) {
-      if (typeof editDialog.showModal === "function") {
-        editDialog.showModal();
-      } else {
-        editDialog.setAttribute("open", "");
-      }
-
-      focusElement.focus();
-
-      if (typeof focusElement.select === "function") {
-        focusElement.select();
-      }
+    function showDealDialog() {
+      openDialogWithoutFieldFocus(editDialog);
     }
 
     function openEditDialog(dealId) {
@@ -23393,7 +23304,7 @@
       prepareEditDealForm();
       dealIdentitySection.open = true;
 
-      showDealDialog(editForm.elements.comment);
+      showDealDialog();
     }
 
     function openSelectedEditDialog() {
@@ -24437,7 +24348,7 @@
               title: "Received Timestamp",
               field: "receivedTimestamp",
               formatter: clientFxDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity"
+              cssClass: "client-deals-col-identity client-deals-group-end"
             })
           ]
         },
@@ -24447,7 +24358,7 @@
           columns: [
             clientFxDealsFilterableColumn("type", { title: "Business ID Type", field: "clientCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
             clientFxDealsFilterableColumn("code", { title: "Business ID", field: "clientCode", headerSort: false, cssClass: "client-deals-col-client" }),
-            clientFxDealsFilterableColumn("name", { title: "Client Name", field: "clientName", cssClass: "client-deals-col-client" })
+            clientFxDealsFilterableColumn("name", { title: "Client Name", field: "clientName", cssClass: "client-deals-col-client client-deals-group-end" })
           ]
         },
         {
@@ -24460,7 +24371,7 @@
             clientFxDealsValueColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
             clientFxDealsValueColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
             clientFxDealsValueColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" })
+            clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms client-deals-group-end" })
           ]
         },
         {
@@ -24468,7 +24379,7 @@
           cssClass: "client-deals-group-value-dates",
           columns: [
             clientFxDealsFilterableColumn("valueDate", { title: "Base Ccy Value Date", field: "baseCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates" }),
-            clientFxDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates" })
+            clientFxDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates client-deals-group-end" })
           ]
         },
         {
@@ -24476,7 +24387,7 @@
           cssClass: "client-deals-group-pricing",
           columns: [
             clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, cssClass: "client-deals-col-pricing" }),
-            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number" })
+            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number client-deals-group-end" })
           ]
         },
         {
@@ -24647,7 +24558,7 @@
               title: "Received Timestamp",
               field: "receivedTimestamp",
               formatter: clientFxDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity"
+              cssClass: "client-deals-col-identity client-deals-group-end"
             })
           ]
         },
@@ -24657,7 +24568,7 @@
           columns: [
             clientFxDealsFilterableColumn("type", { title: "Business ID Type", field: "counterpartyCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
             clientFxDealsFilterableColumn("code", { title: "Business ID", field: "counterpartyCode", headerSort: false, cssClass: "client-deals-col-client" }),
-            clientFxDealsFilterableColumn("name", { title: "Counterparty Name", field: "counterpartyName", cssClass: "client-deals-col-client" })
+            clientFxDealsFilterableColumn("name", { title: "Counterparty Name", field: "counterpartyName", cssClass: "client-deals-col-client client-deals-group-end" })
           ]
         },
         {
@@ -24670,7 +24581,7 @@
             clientFxDealsValueColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
             clientFxDealsValueColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
             clientFxDealsValueColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" })
+            clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms client-deals-group-end" })
           ]
         },
         {
@@ -24678,7 +24589,7 @@
           cssClass: "client-deals-group-value-dates",
           columns: [
             clientFxDealsFilterableColumn("valueDate", { title: "Base Ccy Value Date", field: "baseCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates" }),
-            clientFxDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates" })
+            clientFxDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates client-deals-group-end" })
           ]
         },
         {
@@ -24686,7 +24597,7 @@
           cssClass: "client-deals-group-pricing",
           columns: [
             clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, cssClass: "client-deals-col-pricing" }),
-            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number" })
+            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number client-deals-group-end" })
           ]
         },
         {
@@ -25104,7 +25015,6 @@
       processesPage.hidden = true;
       fxBatchesPage.hidden = true;
       batchingHistoryPage.hidden = true;
-      batchFormationAuditPage.hidden = true;
       batchDetailsPage.hidden = true;
 
       if (location.hash === "#batching:details") {
@@ -25136,14 +25046,13 @@
         pricingRulesPage.hidden = true;
         fxBatchesPage.hidden = false;
         batchingHistoryPage.hidden = false;
-        setFxBatchesActiveTab("batching-history");
         document.title = "FX Batches";
         loadBatchingHistoryPage();
         return;
       }
 
       if (isBatchFormationAuditRoute()) {
-        setWorkspaceRoute("batch-formation-audit");
+        setWorkspaceRoute("batching-history");
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -25151,10 +25060,10 @@
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
         fxBatchesPage.hidden = false;
-        batchFormationAuditPage.hidden = false;
-        setFxBatchesActiveTab("batch-formation-audit");
-        document.title = "Batch Formation Audit - FX Batches";
-        loadBatchFormationAuditPage();
+        batchingHistoryPage.hidden = false;
+        setFxBatchesViewMode(FX_BATCHES_VIEW_MODE_AUDIT);
+        document.title = "FX Batches";
+        loadBatchingHistoryPage();
         return;
       }
 
@@ -26908,6 +26817,15 @@
     });
     syncFxDealsAuditToggle("client");
     syncFxDealsAuditToggle("hedge");
+
+    fxBatchesAuditViewToggle.addEventListener("change", () => {
+      setFxBatchesViewMode(
+        fxBatchesAuditViewToggle.checked
+          ? FX_BATCHES_VIEW_MODE_AUDIT
+          : FX_BATCHES_VIEW_MODE_STANDARD
+      );
+    });
+    syncFxBatchesAuditToggle();
 
     fxPositionModeTabs.forEach(tab => {
       tab.addEventListener("keydown", handleFxPositionModeTabKeydown);

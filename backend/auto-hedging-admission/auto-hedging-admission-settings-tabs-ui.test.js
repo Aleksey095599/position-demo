@@ -20,6 +20,18 @@ const settingsStyle = fs.readFileSync(
   path.join(ROOT, "frontend", "features", "hedging", "hedging-settings.css"),
   "utf8"
 );
+const semanticSectionsStyle = fs.readFileSync(
+  path.join(ROOT, "frontend", "shared", "components", "semantic-sections.css"),
+  "utf8"
+);
+const dataTablesStyle = fs.readFileSync(
+  path.join(ROOT, "frontend", "shared", "components", "data-tables.css"),
+  "utf8"
+);
+const referenceTablesStyle = fs.readFileSync(
+  path.join(ROOT, "frontend", "shared", "components", "reference-tables.css"),
+  "utf8"
+);
 const styleManifest = JSON.parse(fs.readFileSync(
   path.join(ROOT, "frontend", "styles", "source-manifest.json"),
   "utf8"
@@ -49,7 +61,7 @@ test("Hedging Settings exposes scalable sidebar navigation", () => {
   );
   assert.match(
     hedgingPageMarkup,
-    /id="manualReleaseSettingsNavLink"[^>]*href="#hedging-settings:auto-hedging:manual-release"[^>]*data-hedging-settings-section="manual-release"/
+    /id="manualReleaseSettingsNavLink"[^>]*href="#hedging-settings:auto-hedging:manual-release"[^>]*data-hedging-settings-section="manual-release"[^>]*>[\s\S]*?>touch_app<\/span>[\s\S]*?>Manual Release<\/span>/
   );
   assert.match(
     hedgingPageMarkup,
@@ -165,8 +177,78 @@ test("Hedging Settings sidebar has a responsive page-local style contract", () =
   assert.match(settingsStyle, /\.hedging-settings-sidebar \{[\s\S]*?position: sticky/);
   assert.match(
     settingsStyle,
-    /\.hedging-settings-navigation-link\.is-active \{[\s\S]*?box-shadow: inset 3px 0 0 var\(--bs-primary\)/
+    /\.hedging-settings-navigation-link\.is-active \{[\s\S]*?border-color: var\(--selection-accent\)[\s\S]*?background: var\(--control-soft-bg\)/
+  );
+  const activeNavigationStyle = settingsStyle.match(
+    /\.hedging-settings-navigation-link\.is-active \{([\s\S]*?)\}/
+  )?.[1] || "";
+  assert.doesNotMatch(activeNavigationStyle, /box-shadow|palette-yellow|hedging-settings-accent/);
+  assert.match(
+    settingsStyle,
+    /\.hedging-settings-navigation-group:has\([\s\S]*?\.hedging-settings-navigation-sublink\.is-active[\s\S]*?\) > \.hedging-settings-navigation-group-toggle \{[\s\S]*?background: color-mix\(/
+  );
+  assert.doesNotMatch(
+    settingsStyle,
+    /\.hedging-settings-navigation-(?:subnav|sublink)::before/
   );
   assert.match(settingsStyle, /@media \(max-width: 900px\)[\s\S]*?grid-template-columns: 1fr/);
   assert.doesNotMatch(settingsStyle, /auto-hedging-entry-route-switch/);
+});
+
+test("Quick Hedge Settings table uses the shared neutral table chrome", () => {
+  assert.match(
+    hedgingPageMarkup,
+    /class="hedge-quick-settings-overview table-panel table-panel--standalone"/
+  );
+  assert.match(
+    dataTablesStyle,
+    /\.hedge-quick-settings-overview\.table-panel > \.hedge-quick-settings-overview-toolbar/
+  );
+  assert.match(
+    dataTablesStyle,
+    /\.hedge-quick-settings-overview\.table-panel \{\s*gap: 0;/
+  );
+  assert.doesNotMatch(
+    semanticSectionsStyle,
+    /\.hedge-quick-settings-overview\.table-panel--standalone/
+  );
+  assert.doesNotMatch(semanticSectionsStyle, /\.hedge-quick-settings-count\s*\{/);
+  assert.doesNotMatch(semanticSectionsStyle, /#hedgeQuickModeSettingsNewButton\s*\{/);
+  assert.doesNotMatch(
+    referenceTablesStyle,
+    /\.hedge-quick-settings-overview \{[\s\S]*?gap:/
+  );
+});
+
+test("Quick Hedge Settings editor reuses the Client Deal blue palette", () => {
+  assert.match(
+    semanticSectionsStyle,
+    /--quick-hedge-settings-accent: var\(--app-primary\)/
+  );
+  assert.match(
+    semanticSectionsStyle,
+    /--quick-hedge-settings-accent-soft: var\(--palette-blue-100\)/
+  );
+  const quickEditorStyle = semanticSectionsStyle.match(
+    /\.hedge-quick-settings-editor > \.client-deal-create-section\.semantic-section \{[\s\S]*?#hedgeQuickModeSettingsSaveButton \{[\s\S]*?\n    \}/
+  )?.[0] || "";
+  assert.match(quickEditorStyle, /var\(--quick-hedge-settings-accent\)/);
+  assert.match(quickEditorStyle, /var\(--palette-blue-100\)/);
+  assert.match(quickEditorStyle, /var\(--app-button-primary-bg\)/);
+  assert.doesNotMatch(quickEditorStyle, /palette-yellow|var\(--hedging-settings-accent/);
+  assert.doesNotMatch(quickEditorStyle, /border-left/);
+  assert.doesNotMatch(quickEditorStyle, /\.client-deal-create-section\.semantic-section::before/);
+  assert.doesNotMatch(quickEditorStyle, /box-shadow: none/);
+  assert.match(
+    quickEditorStyle,
+    /box-shadow: var\(--bs-box-shadow-sm\)/
+  );
+  assert.match(
+    referenceTablesStyle,
+    /\.hedge-quick-settings-editor \{\s*display: grid;\s*gap: 16px;/
+  );
+  assert.match(
+    referenceTablesStyle,
+    /\.hedging-settings-panel \.modal-content \{\s*overflow: visible;/
+  );
 });

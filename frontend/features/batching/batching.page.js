@@ -47,13 +47,7 @@
       batchRollbackStatus.textContent = "";
       batchRollbackStatus.hidden = true;
 
-      if (typeof batchRollbackDialog.showModal === "function") {
-        batchRollbackDialog.showModal();
-      } else {
-        batchRollbackDialog.setAttribute("open", "");
-      }
-
-      batchRollbackCancelButton.focus();
+      openDialogWithoutFieldFocus(batchRollbackDialog);
     }
 
     async function confirmBatchRollback() {
@@ -102,6 +96,44 @@
         : `${filteredCount} of ${total} batches`;
     }
 
+    function fxBatchesAuditViewEnabled() {
+      return fxBatchesViewMode === FX_BATCHES_VIEW_MODE_AUDIT;
+    }
+
+    function syncFxBatchesAuditToggle() {
+      fxBatchesAuditViewToggle.checked = fxBatchesAuditViewEnabled();
+    }
+
+    function applyFxBatchesViewMode() {
+      const auditFields = [
+        "batchingKey",
+        "windowOpenedAt",
+        "windowClosedAt",
+        "windowDurationMs",
+        "sourceTradeCount"
+      ];
+
+      auditFields.forEach(field => {
+        const column = batchingHistoryGrid?.getColumn(field);
+
+        if (fxBatchesAuditViewEnabled()) {
+          column?.show();
+        } else {
+          column?.hide();
+        }
+      });
+
+      batchingHistoryGrid?.redraw(true);
+      syncFxBatchesAuditToggle();
+    }
+
+    function setFxBatchesViewMode(mode) {
+      fxBatchesViewMode = mode === FX_BATCHES_VIEW_MODE_AUDIT
+        ? FX_BATCHES_VIEW_MODE_AUDIT
+        : FX_BATCHES_VIEW_MODE_STANDARD;
+      applyFxBatchesViewMode();
+    }
+
     function initializeBatchingHistoryGrid(data) {
       batchingHistoryGrid = new Tabulator(batchingHistoryGridEl, {
         data,
@@ -136,6 +168,38 @@
             headerFilter: "input",
             formatter: cell => escapeHtml(String(cell.getValue() || "").replace("_", "/"))
           }),
+          tabulatorSizedColumn("executionContext", {
+            title: "Batching Key",
+            field: "batchingKey",
+            visible: fxBatchesAuditViewEnabled(),
+            headerFilter: "input",
+            headerFilterFunc: batchFormationAuditBatchingKeyFilter,
+            formatter: batchFormationAuditBatchingKeyFormatter
+          }),
+          tabulatorSizedColumn("timestamp", {
+            title: "Window Opened At",
+            field: "windowOpenedAt",
+            visible: fxBatchesAuditViewEnabled(),
+            headerFilter: "input",
+            formatter: batchFormationAuditTimestampFormatter
+          }),
+          tabulatorSizedColumn("timestamp", {
+            title: "Window Closed At",
+            field: "windowClosedAt",
+            visible: fxBatchesAuditViewEnabled(),
+            headerFilter: "input",
+            formatter: batchFormationAuditTimestampFormatter
+          }),
+          tabulatorSizedColumn("amount", {
+            title: "Duration",
+            field: "windowDurationMs",
+            visible: fxBatchesAuditViewEnabled(),
+            sorter: "number",
+            headerFilter: "input",
+            formatter: batchFormationAuditDurationFormatter,
+            hozAlign: "right",
+            headerHozAlign: "right"
+          }),
           tabulatorSizedColumn("type", {
             title: "Batch Status",
             field: "batchStatus",
@@ -148,12 +212,22 @@
             field: "formationReasonCode",
             headerFilter: batchingHistoryReasonHeaderFilter,
             headerFilterFunc: "=",
+            formatter: batchFormationAuditReasonFormatter,
             cssClass: "text-nowrap"
           }),
           tabulatorSizedColumn("timestamp", {
             title: "Formed At",
             field: "formedAt",
             headerFilter: "input"
+          }),
+          tabulatorSizedColumn("count", {
+            title: "Source Trades",
+            field: "sourceTradeCount",
+            visible: fxBatchesAuditViewEnabled(),
+            sorter: "number",
+            headerFilter: "input",
+            hozAlign: "right",
+            headerHozAlign: "right"
           }),
           tabulatorSizedColumn("actions", {
             title: "Actions",
@@ -189,7 +263,7 @@
       batchingHistoryGrid.on("tableBuilt", () => {
         batchingHistoryGridReady = true;
         updateBatchingHistoryCount(data.length);
-        batchingHistoryGrid.redraw(true);
+        applyFxBatchesViewMode();
       });
       batchingHistoryGrid.on("dataFiltered", (_filters, rows) => {
         updateBatchingHistoryCount(rows.length);
@@ -326,187 +400,6 @@
     function batchFormationAuditReasonFormatter(cell) {
       const record = cell.getRow().getData();
       return `<span data-tooltip="${escapeHtml(record.formationReasonDescription)}">${escapeHtml(cell.getValue())}</span>`;
-    }
-
-    function batchFormationAuditActionFormatter(cell) {
-      const record = cell.getRow().getData();
-
-      return `
-        <div class="batching-history-actions">
-          <button type="button"
-            class="btn btn-sm btn-outline-secondary batching-history-action"
-            data-batch-formation-audit-action="view"
-            aria-label="View Batch Structure for batch ${escapeHtml(record.batchId)}">
-            <span class="button-icon" aria-hidden="true">visibility</span>
-          </button>
-        </div>
-      `;
-    }
-
-    function updateBatchFormationAuditCount(
-      filteredCount = batchFormationAuditRecords.length
-    ) {
-      const total = batchFormationAuditRecords.length;
-      const label = total === 1 ? "batch" : "batches";
-      batchFormationAuditCountEl.textContent = filteredCount === total
-        ? `${total} ${label}`
-        : `${filteredCount} of ${total} batches`;
-    }
-
-    function initializeBatchFormationAuditGrid(data) {
-      batchFormationAuditGrid = new Tabulator(batchFormationAuditGridEl, {
-        data,
-        index: "batchId",
-        layout: "fitDataTable",
-        renderVertical: "virtual",
-        renderVerticalBuffer: 240,
-        maxHeight: "calc(100vh - var(--workspace-nav-height) - 170px)",
-        placeholder: "No completed FX Batches are available for audit.",
-        movableColumns: false,
-        resizableColumns: false,
-        headerFilterLiveFilterDelay: 250,
-        initialSort: [{ column: "batchId", dir: "desc" }],
-        columnDefaults: {
-          resizable: false,
-          vertAlign: "middle",
-          tooltip: tabulatorCellOverflowTooltip,
-          headerTooltip: tabulatorHeaderOverflowTooltip,
-          headerSort: false
-        },
-        columns: uiTableColumns("batch_formation_audit_grid", [
-          tabulatorSizedColumn("primaryId", {
-            title: "Batch ID",
-            field: "batchId",
-            sorter: "number",
-            headerSort: true,
-            headerFilter: "input"
-          }),
-          tabulatorSizedColumn("executionContext", {
-            title: "Batching Key",
-            field: "batchingKey",
-            headerFilter: "input",
-            headerFilterFunc: batchFormationAuditBatchingKeyFilter,
-            formatter: batchFormationAuditBatchingKeyFormatter
-          }),
-          tabulatorSizedColumn("timestamp", {
-            title: "Window Opened At",
-            field: "windowOpenedAt",
-            headerFilter: "input",
-            formatter: batchFormationAuditTimestampFormatter
-          }),
-          tabulatorSizedColumn("timestamp", {
-            title: "Window Closed At",
-            field: "windowClosedAt",
-            headerFilter: "input",
-            formatter: batchFormationAuditTimestampFormatter
-          }),
-          tabulatorSizedColumn("timestamp", {
-            title: "Batch Formed At",
-            field: "formedAt",
-            headerFilter: "input",
-            formatter: batchFormationAuditTimestampFormatter
-          }),
-          tabulatorSizedColumn("amount", {
-            title: "Duration",
-            field: "windowDurationMs",
-            sorter: "number",
-            headerFilter: "input",
-            formatter: batchFormationAuditDurationFormatter,
-            hozAlign: "right",
-            headerHozAlign: "right"
-          }),
-          tabulatorSizedColumn("name", {
-            title: "Formation Reason",
-            field: "formationReasonCode",
-            headerFilter: batchingHistoryReasonHeaderFilter,
-            headerFilterFunc: "=",
-            formatter: batchFormationAuditReasonFormatter,
-            cssClass: "text-nowrap"
-          }),
-          tabulatorSizedColumn("count", {
-            title: "Source Trades",
-            field: "sourceTradeCount",
-            sorter: "number",
-            headerFilter: "input",
-            hozAlign: "right",
-            headerHozAlign: "right"
-          }),
-          tabulatorSizedColumn("type", {
-            title: "Status",
-            field: "batchStatus",
-            headerFilter: batchingHistoryStatusHeaderFilter,
-            headerFilterFunc: "=",
-            formatter: batchingHistoryStatusFormatter
-          }),
-          tabulatorSizedColumn("actions", {
-            title: "Actions",
-            field: "actions",
-            hozAlign: "center",
-            headerHozAlign: "center",
-            formatter: batchFormationAuditActionFormatter,
-            cellClick(event, cell) {
-              if (!event.target.closest("[data-batch-formation-audit-action='view']")) {
-                return;
-              }
-
-              location.hash = batchDetailsRoute(cell.getRow().getData().batchId);
-            }
-          })
-        ])
-      });
-      registerUiTableTabulator("batch_formation_audit_grid", batchFormationAuditGrid);
-
-      batchFormationAuditGrid.on("tableBuilt", () => {
-        batchFormationAuditGridReady = true;
-        updateBatchFormationAuditCount(data.length);
-        batchFormationAuditGrid.redraw(true);
-      });
-      batchFormationAuditGrid.on("dataFiltered", (_filters, rows) => {
-        updateBatchFormationAuditCount(rows.length);
-      });
-    }
-
-    function renderBatchFormationAudit(source = batchFormationAuditRecords) {
-      const data = Array.isArray(source) ? source : [];
-      updateBatchFormationAuditCount(data.length);
-
-      if (!batchFormationAuditGrid) {
-        if (!batchFormationAuditPage.hidden) {
-          initializeBatchFormationAuditGrid(data);
-        }
-        return;
-      }
-
-      if (!batchFormationAuditGridReady) {
-        return;
-      }
-
-      batchFormationAuditGrid.replaceData(data).then(() => {
-        batchFormationAuditGrid.redraw(true);
-      });
-    }
-
-    async function loadBatchFormationAuditPage() {
-      if (!DEMO_API_ENABLED) {
-        setBatchFormationAuditStatus(
-          "Start the demo server to view Batch Formation Audit.",
-          "warning"
-        );
-        renderBatchFormationAudit([]);
-        return;
-      }
-
-      setBatchFormationAuditStatus("Loading Batch Formation Audit...");
-
-      try {
-        await reloadBatchFormationAuditFromApi();
-        setBatchFormationAuditStatus();
-      } catch (error) {
-        setBatchFormationAuditStatus(
-          error.message || "Unable to load Batch Formation Audit.",
-          "error"
-        );
-      }
     }
 
     function batchDetailsRoleFormatter(cell) {
@@ -910,6 +803,16 @@
         && Number.isSafeInteger(quoteNetMinor)
         && Number.isSafeInteger(cashQuoteMinor)
         && quoteNetMinor + cashQuoteMinor === 0;
+      const neutralBatch = positionNeutral && cashNeutral;
+
+      batchNeutralityDetails.open = false;
+      batchNeutralitySummaryStatus.classList.toggle("is-invalid", !neutralBatch);
+      batchNeutralitySummaryStatusIcon.textContent = neutralBatch
+        ? "check_circle"
+        : "error";
+      batchNeutralitySummaryStatusText.textContent = neutralBatch
+        ? "Neutral Batch"
+        : "Neutrality Exception";
 
       batchNeutralityMembersBase.textContent = batchStructureSignedMinorLabel(
         baseNetMinor,
@@ -936,7 +839,7 @@
         : "Cash Balance Imbalance";
       batchNeutralityResult.classList.toggle(
         "is-invalid",
-        !positionNeutral || !cashNeutral
+        !neutralBatch
       );
 
     }

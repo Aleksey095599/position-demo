@@ -132,6 +132,11 @@
     },
     {
       "kind": "dialog",
+      "id": "autoHedgingAdmissionPairDialog",
+      "file": "features/hedging/components/auto-hedging-admission-pairs.dialog.html"
+    },
+    {
+      "kind": "dialog",
       "id": "clientExecutionContextAttachDialog",
       "file": "features/counterparties/components/execution-context-attach.dialog.html"
     },

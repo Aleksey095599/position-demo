@@ -1,0 +1,52 @@
+  <dialog class="market-bootstrap-dialog auto-hedging-admission-pair-dialog" id="autoHedgingAdmissionPairDialog" aria-labelledby="autoHedgingAdmissionPairDialogTitle">
+    <div class="modal-content">
+      <header class="modal-header">
+        <div>
+          <h2 class="modal-title" id="autoHedgingAdmissionPairDialogTitle">Ccy Pair Eligibility and Trade Amount Limit</h2>
+          <p>New or unlisted Currency Pairs remain disabled until they are explicitly enabled and assigned a limit.</p>
+        </div>
+        <button type="button" class="btn-close" id="autoHedgingAdmissionPairDialogClose" aria-label="Close"></button>
+      </header>
+      <div class="modal-body">
+        <div class="auto-hedging-admission-pair-toolbar" role="search" aria-label="Filter Auto Hedging Currency Pairs">
+          <div class="input-group auto-hedging-admission-pair-search">
+            <span class="input-group-text" aria-hidden="true"><span class="button-icon">search</span></span>
+            <input class="form-control" type="search" id="autoHedgingAdmissionPairSearch" placeholder="Search Ccy Pair" aria-label="Search Ccy Pair">
+            <button class="btn btn-outline-secondary" type="button" id="autoHedgingAdmissionPairSearchClear" aria-label="Clear Ccy Pair search" hidden>
+              <span class="button-icon" aria-hidden="true">close</span>
+            </button>
+          </div>
+          <div class="auto-hedging-admission-pair-filter">
+            <label class="form-label visually-hidden" for="autoHedgingAdmissionPairFilter">Filter Currency Pairs by Auto Hedging status</label>
+            <select class="form-select" id="autoHedgingAdmissionPairFilter">
+              <option value="ALL">All</option>
+              <option value="ENABLED">Enabled</option>
+              <option value="DISABLED">Disabled</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="auto-hedging-admission-pair-table-viewport">
+          <table class="table table-sm table-hover align-middle auto-hedging-admission-pair-table">
+            <thead>
+              <tr>
+                <th scope="col">Ccy Pair</th>
+                <th scope="col" class="text-center">Automatic Admission Enabled</th>
+                <th scope="col">Maximum Trade Amount (Base Ccy)</th>
+              </tr>
+            </thead>
+            <tbody id="autoHedgingAdmissionPairRows"></tbody>
+          </table>
+          <div class="auto-hedging-admission-pair-empty" id="autoHedgingAdmissionPairEmpty" role="status" hidden>No Currency Pairs match the current filters.</div>
+        </div>
+      </div>
+      <footer class="modal-footer">
+        <span class="auto-hedging-admission-pair-dialog-note">Applied changes remain in the Policy draft until Save Policy is selected.</span>
+        <button type="button" class="btn btn-outline-secondary" id="autoHedgingAdmissionPairDialogCancel">Cancel</button>
+        <button type="button" class="btn btn-primary with-icon" id="autoHedgingAdmissionPairDialogApply">
+          <span class="button-icon" aria-hidden="true">check</span>
+          <span>Apply</span>
+        </button>
+      </footer>
+    </div>
+  </dialog>

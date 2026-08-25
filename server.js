@@ -9339,16 +9339,27 @@ function fxPositions() {
 function fxBatches() {
   return database.prepare(`
     SELECT
-      batch_id AS batchId,
-      ccy_pair_code AS ccyPairCode,
-      batch_status AS batchStatus,
-      formation_reason_code AS formationReasonCode,
-      formation_reason_details_json AS formationReasonDetailsJson,
-      created_at AS formedAt,
-      rolled_back_at AS rolledBackAt
-    FROM fx_batches
-    ORDER BY batch_id DESC
-  `).all().map(fxBatchWithFormationReason);
+      batch.batch_id AS batchId,
+      batch.ccy_pair_code AS ccyPairCode,
+      batch.batch_status AS batchStatus,
+      audit.trade_date AS tradeDate,
+      audit.tenor,
+      audit.base_ccy_value_date AS baseCcyValueDate,
+      audit.quote_ccy_value_date AS quoteCcyValueDate,
+      audit.base_ccy_fraction_digits AS baseCcyFractionDigits,
+      audit.quote_ccy_fraction_digits AS quoteCcyFractionDigits,
+      batch.window_opened_at AS windowOpenedAt,
+      batch.window_closed_at AS windowClosedAt,
+      batch.created_at AS formedAt,
+      batch.formation_reason_code AS formationReasonCode,
+      batch.formation_reason_details_json AS formationReasonDetailsJson,
+      audit.source_trade_count AS sourceTradeCount,
+      batch.rolled_back_at AS rolledBackAt
+    FROM fx_batches batch
+    LEFT JOIN v_fx_batch_formation_audit audit
+      ON audit.batch_id = batch.batch_id
+    ORDER BY batch.batch_id DESC
+  `).all().map(fxBatchWithAuditFields);
 }
 
 function ensureMarketQuoteSimulationSettings(sqlite) {
@@ -9402,39 +9413,49 @@ function fxBatchFormationAudit() {
       rolled_back_at AS rolledBackAt
     FROM v_fx_batch_formation_audit
     ORDER BY batch_id DESC
-  `).all().map(row => {
-    const batch = fxBatchWithFormationReason(row);
-    const windowOpenedAtMilliseconds = Date.parse(row.windowOpenedAt || "");
-    const windowClosedAtMilliseconds = Date.parse(row.windowClosedAt || "");
-    const windowDurationMs = Number.isFinite(windowOpenedAtMilliseconds)
-      && Number.isFinite(windowClosedAtMilliseconds)
-      && windowClosedAtMilliseconds >= windowOpenedAtMilliseconds
-      ? windowClosedAtMilliseconds - windowOpenedAtMilliseconds
-      : null;
+  `).all().map(fxBatchWithAuditFields);
+}
 
-    return {
-      batchId: Number(row.batchId),
-      batchingKey: {
-        ccyPairCode: row.ccyPairCode,
-        tradeDate: row.tradeDate,
-        tenor: row.tenor,
-        baseCcyValueDate: row.baseCcyValueDate,
-        quoteCcyValueDate: row.quoteCcyValueDate,
-        baseCcyFractionDigits: Number(row.baseCcyFractionDigits),
-        quoteCcyFractionDigits: Number(row.quoteCcyFractionDigits)
-      },
-      windowOpenedAt: row.windowOpenedAt || null,
-      windowClosedAt: row.windowClosedAt || null,
-      formedAt: row.formedAt,
-      windowDurationMs,
-      formationReasonCode: batch.formationReasonCode,
-      formationReasonDetails: batch.formationReasonDetails,
-      formationReasonDescription: batch.formationReasonDescription,
-      sourceTradeCount: Number(row.sourceTradeCount),
-      batchStatus: row.batchStatus,
-      rolledBackAt: row.rolledBackAt || null
-    };
-  });
+function fxBatchWithAuditFields(row) {
+  const batch = fxBatchWithFormationReason(row);
+  const windowOpenedAtMilliseconds = Date.parse(row.windowOpenedAt || "");
+  const windowClosedAtMilliseconds = Date.parse(row.windowClosedAt || "");
+  const windowDurationMs = Number.isFinite(windowOpenedAtMilliseconds)
+    && Number.isFinite(windowClosedAtMilliseconds)
+    && windowClosedAtMilliseconds >= windowOpenedAtMilliseconds
+    ? windowClosedAtMilliseconds - windowOpenedAtMilliseconds
+    : null;
+  const hasBatchingKey = row.tradeDate !== null
+    && row.tradeDate !== undefined
+    && String(row.tradeDate).trim() !== "";
+
+  return {
+    batchId: Number(row.batchId),
+    ccyPairCode: row.ccyPairCode,
+    batchingKey: hasBatchingKey
+      ? {
+          ccyPairCode: row.ccyPairCode,
+          tradeDate: row.tradeDate,
+          tenor: row.tenor,
+          baseCcyValueDate: row.baseCcyValueDate,
+          quoteCcyValueDate: row.quoteCcyValueDate,
+          baseCcyFractionDigits: Number(row.baseCcyFractionDigits),
+          quoteCcyFractionDigits: Number(row.quoteCcyFractionDigits)
+        }
+      : null,
+    windowOpenedAt: row.windowOpenedAt || null,
+    windowClosedAt: row.windowClosedAt || null,
+    formedAt: row.formedAt,
+    windowDurationMs,
+    formationReasonCode: batch.formationReasonCode,
+    formationReasonDetails: batch.formationReasonDetails,
+    formationReasonDescription: batch.formationReasonDescription,
+    sourceTradeCount: row.sourceTradeCount === null || row.sourceTradeCount === undefined
+      ? null
+      : Number(row.sourceTradeCount),
+    batchStatus: row.batchStatus,
+    rolledBackAt: row.rolledBackAt || null
+  };
 }
 
 function parsedFxBatchFormationReasonDetails(value) {

@@ -398,7 +398,7 @@
       border: 1px solid var(--semantic-card-border);
       border-radius: var(--bs-border-radius-lg);
       background: var(--bs-body-bg);
-      box-shadow: -5px 0 0 var(--semantic-section-accent);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     :is(#batchDetailsPage, #analyticalPnlReportPage) .semantic-table-section-head {

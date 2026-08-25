@@ -274,7 +274,7 @@
     .semantic-table-section.table-panel {
       border: 1px solid var(--semantic-card-border);
       border-radius: var(--bs-border-radius-lg);
-      box-shadow: -5px 0 0 var(--semantic-card-accent);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     .generation-settings-table-region.table-panel > .generation-settings-table-body {

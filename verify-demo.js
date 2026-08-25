@@ -2187,8 +2187,8 @@ function verifyFrontendStructure() {
       && (addHedgeDealDialogMarkup.match(/data-add-hedge-deal-fixing-currency=/g) || []).length === 2
       && !addHedgeDealDialogMarkup.includes("Net Difference")
       && addHedgeDealDialogMarkup.includes('id="addHedgeDealPricingMode" required')
-      && addHedgeDealDialogMarkup.includes('<option value="DEALER_PRICED">DEALER_PRICED</option>')
-      && addHedgeDealDialogMarkup.includes('<option value="AUTO_PRICED">AUTO_PRICED</option>')
+      && addHedgeDealDialogMarkup.includes('<option value="DEALER_PRICED">Dealer Priced</option>')
+      && addHedgeDealDialogMarkup.includes('<option value="AUTO_PRICED">Auto Priced</option>')
       && !addHedgeDealDialogMarkup.includes("DEALER_APPROVED")
       && addHedgeDealDialogMarkup.includes('id="addHedgeDealDialogTitle">Add Hedge Deal</h2>')
       && !addHedgeDealDialogMarkup.includes("Hedge Deal - Manual")
@@ -2307,10 +2307,16 @@ function verifyFrontendStructure() {
         'id="hedgeQuickModePricingMode" name="pricingMode" aria-readonly="true" disabled'
       )
       && hedgingSettingsPageMarkup.includes(
-        '<option value="AUTO_PRICED">AUTO_PRICED</option>'
+        '<option value="AUTO_PRICED">Auto Priced</option>'
       )
       && hedgingSettingsPageMarkup.includes(
         'pricing-mode-indicator client-deal-pricing-mode-icon is-auto-priced'
+      )
+      && hedgingSettingsPageMarkup.includes(
+        '<span class="button-icon" aria-hidden="true">flash_auto</span>'
+      )
+      && hedgingSettingsPageMarkup.includes(
+        'Only Auto Priced Execution Systems are available for Quick Hedging.'
       )
       && hedgingSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsOverview"'
@@ -2663,7 +2669,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("Select a Hedge Counterparty to see available Pricing Rules."),
     usesPricingModeIndicators:
       html.includes("const PRICING_TYPE_PRESENTATION = Object.freeze({")
-      && html.includes('icon: "bolt"')
+      && html.includes('icon: "flash_auto"')
       && html.includes('icon: "contact_phone"')
       && html.includes('icon: "price_change"')
       && /MANUAL_PRICING:\s*Object\.freeze\(\{\s*label: "Manual Pricing",\s*icon: "price_change"/.test(
@@ -2877,7 +2883,7 @@ function verifyFrontendStructure() {
       && editClientDealDialogMarkup.includes('id="dealSubmitButton">Save Comment</button>')
       && !inlineScript.includes("isDealerPricedPricingRule")
       && inlineScript.includes("dealIdentitySection.open = true;")
-      && inlineScript.includes("showDealDialog(editForm.elements.comment);")
+      && inlineScript.includes("showDealDialog();")
       && saveEditedDealFunction.includes('method: "PATCH"')
       && saveEditedDealFunction.includes("JSON.stringify({ comment })")
       && serverSource.includes("function updateClientFxDealComment(tradeId, comment)")
@@ -2995,9 +3001,13 @@ function verifyFrontendStructure() {
       && html.includes('href="#batching:history"')
       && html.includes('>FX Batches</span>')
       && html.includes('id="fxBatchesPage"')
-      && html.includes('id="fxBatchesTab"')
       && html.includes('id="batchingHistoryPage"')
       && html.includes('id="batchingHistoryGrid"')
+      && html.includes('id="fxBatchesAuditView"')
+      && html.includes('for="fxBatchesAuditView">Audit View</label>')
+      && !html.includes('id="fxBatchesTabs"')
+      && !html.includes('id="batchFormationAuditPage"')
+      && !html.includes('id="batchFormationAuditGrid"')
       && html.includes('<h1 class="page-title">FX Batches</h1>')
       && inlineScript.includes("function initializeBatchingHistoryGrid(data)")
       && inlineScript.includes('demoApiRequest("/api/v1/fx-batches")')
@@ -3011,8 +3021,8 @@ function verifyFrontendStructure() {
        && inlineScript.includes('title: "Formed At"')
        && html.includes('#fxBatchesPage:not([hidden])')
        && html.includes('height: calc(100vh - var(--workspace-nav-height));')
-      && html.includes(':is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content')
-      && html.includes(':is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid')
+      && html.includes('#batchingHistoryPage .batching-history-content')
+      && html.includes('#batchingHistoryPage .batching-history-grid')
       && /function initializeBatchingHistoryGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: "calc\(100vh - var\(--workspace-nav-height\) - 170px\)",/.test(inlineScript)
       && /tabulatorSizedColumn\("timestamp", \{[\s\S]*?title: "Formed At",[\s\S]*?field: "formedAt",/.test(inlineScript)
       && serverSource.includes("function fxBatches()")
@@ -3023,32 +3033,27 @@ function verifyFrontendStructure() {
         'pathname === "/api/v1/fx-batches" && method === "GET"'
       ),
     usesUnifiedBatchHeaderFilterFocus: html.includes(
-      ':is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator .tabulator-header-filter :is(input, select):focus {'
+      '#batchingHistoryPage .tabulator .tabulator-header-filter :is(input, select):focus {'
     )
       && html.includes('border-color: var(--bs-primary);')
       && html.includes('box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);'),
     usesBatchFormationAudit:
-      html.includes('href="#batching:formation-audit"')
-      && html.includes('data-fx-batches-route="batch-formation-audit"')
-      && html.includes('id="batchFormationAuditTab"')
-      && html.includes('id="batchFormationAuditPage"')
-      && html.includes('id="batchFormationAuditGrid"')
-      && html.includes('data-ui-table-layout-host="batch_formation_audit_grid"')
-      && html.includes('<span>Batch Formation Audit</span>')
-      && inlineScript.includes("function initializeBatchFormationAuditGrid(data)")
-      && inlineScript.includes('demoApiRequest("/api/v1/fx-batch-formation-audit")')
+      inlineScript.includes('return "#batching:formation-audit";')
+      && html.includes('data-ui-table-layout-host="batching_history_grid"')
+      && inlineScript.includes("function applyFxBatchesViewMode()")
+      && inlineScript.includes("function setFxBatchesViewMode(mode)")
+      && inlineScript.includes('fxBatchesAuditViewToggle.addEventListener("change"')
+      && inlineScript.includes('setFxBatchesViewMode(FX_BATCHES_VIEW_MODE_AUDIT)')
       && inlineScript.includes('title: "Batching Key"')
       && inlineScript.includes('title: "Window Opened At"')
       && inlineScript.includes('title: "Window Closed At"')
-      && inlineScript.includes('title: "Batch Formed At"')
       && inlineScript.includes('title: "Duration"')
-       && inlineScript.includes('title: "Source Trades"')
-       && inlineScript.includes('data-batch-formation-audit-action="view"')
-       && /function initializeBatchFormationAuditGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: "calc\(100vh - var\(--workspace-nav-height\) - 170px\)",/.test(inlineScript)
-       && serverSource.includes("function fxBatchFormationAudit()")
-      && serverSource.includes(
-        'pathname === "/api/v1/fx-batch-formation-audit" && method === "GET"'
-      )
+      && inlineScript.includes('title: "Source Trades"')
+      && inlineScript.includes('visible: fxBatchesAuditViewEnabled()')
+      && inlineScript.includes('column?.show()')
+      && inlineScript.includes('column?.hide()')
+      && serverSource.includes("function fxBatchWithAuditFields(row)")
+      && serverSource.includes("LEFT JOIN v_fx_batch_formation_audit audit")
       && schemaSource.includes("CREATE VIEW IF NOT EXISTS v_fx_batch_formation_audit")
       && schemaSource.includes("member.member_role = 'TRADE'"),
     usesBatchStructure:
@@ -3370,17 +3375,17 @@ function verifyFrontendStructure() {
       && html.includes(".generation-settings-table tbody tr:nth-child(even)")
       && inlineScript.includes("settings.counterpartyName")
       && !inlineScript.includes("generation-settings-client-code")
-      && /pricingModeIndicatorMarkup\(\s*settings\.pricingMode,\s*escapeHtml\(settings\.pricingMode\),\s*false\s*\)/.test(inlineScript),
+      && /pricingModeIndicatorMarkup\(\s*settings\.pricingMode,\s*escapeHtml\(pricingTypePresentation\(settings\.pricingMode\)\.label\),\s*false\s*\)/.test(inlineScript),
     showsAutoPricedClientDealGenerationMode:
       generationSettingsDialogMarkup.includes(">Pricing Mode</span>")
       && generationSettingsDialogMarkup.includes(
-        "Only AUTO_PRICED Execution Systems are available for Client Deal generation."
+        "Only Auto Priced Execution Systems are available for Client Deal generation."
       )
       && generationSettingsDialogMarkup.indexOf(
-        "Only AUTO_PRICED Execution Systems are available for Client Deal generation."
+        "Only Auto Priced Execution Systems are available for Client Deal generation."
       ) > generationSettingsDialogMarkup.indexOf("<table")
       && generationSettingsDialogMarkup.indexOf(
-        "Only AUTO_PRICED Execution Systems are available for Client Deal generation."
+        "Only Auto Priced Execution Systems are available for Client Deal generation."
       ) < generationSettingsDialogMarkup.indexOf("</thead>")
       && generationSettingsDialogMarkup.includes('class="button-icon form-label-help"')
       && !generationSettingsDialogMarkup.includes("configured for deal generation")
@@ -3910,6 +3915,9 @@ function verifyFrontendStructure() {
       && inlineScript.includes('class="btn btn-sm btn-primary reference-new-button client-pricing-configuration-add-rule"')
       && html.includes('id="clientExecutionContextAttachDialogTitle">Attach Execution Contexts</h2>')
       && (html.match(/data-client-context-attach-filter=/g) || []).length === 5
+      && html.includes('<option value="AUTO_PRICED">Auto Priced</option>')
+      && html.includes('<option value="DEALER_PRICED">Dealer Priced</option>')
+      && html.includes('<option value="DEALER_APPROVED">Dealer Approved</option>')
       && html.includes('id="clientExecutionContextAttachSelectAll"')
       && html.includes('id="clientExecutionContextAttachSubmitButton" disabled')
       && inlineScript.includes("async function refreshTradingCounterpartyExecutionContexts(profile, options = {})")
@@ -4285,6 +4293,10 @@ function verifyFrontendStructure() {
       && inlineScript.includes('title: "Client Side", field: "side", headerSort: false')
       && inlineScript.includes('title: "Tenor", field: "tenor", headerSort: false')
       && inlineScript.includes('title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter')
+      && (inlineScript.match(/client-deals-group-end/g) || []).length === 10
+      && html.includes('.tabulator-header .tabulator-col.client-deals-group-end,')
+      && html.includes('.tabulator-row .tabulator-cell.client-deals-group-end {')
+      && /#fxDealsPage \.tabulator \.tabulator-col-group > \.tabulator-col-content \.tabulator-col-title \{\s*padding-inline: 12px;\s*text-align: center;/.test(html)
       && inlineScript.includes('class="client-pricing-context-candidate-path fx-deals-execution-context-path"')
       && inlineScript.includes('pricingContextFacetsMarkup(context)')
       && html.includes('.client-deals-bootstrap .fx-deals-execution-context-path {')
@@ -7627,10 +7639,10 @@ async function main() {
         !== "BLUE,CYAN,GRAY,GREEN,INDIGO,ORANGE,PINK,PURPLE,RED,TEAL,YELLOW"
       || freshSchema.uiColorTokenSamples.map(row => `${row.token_code}:${row.color_value}`).join(",")
         !== "blue_500:#0D6EFD,red_100:#F8D7DA,green_100:#D1E7DD"
-      || freshSchema.uiTableColumnSettings !== 207
+      || freshSchema.uiTableColumnSettings !== 202
       || freshSchema.uiTableColumnLayoutKeys.map(row =>
         `${row.table_key}:${row.column_count}`
-      ).join(",") !== "accounting_systems_grid:5,analytical_pnl_report_grid:12,analytical_pnl_summary_grid:3,batch_cash_output_grid:3,batch_formation_audit_grid:10,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:6,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:21,deal_generation_settings_grid:11,execution_contexts_grid:8,execution_systems_grid:7,external_counterparties_grid:8,fx_position_grid:13,hedge_fx_deals_grid:22,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:8,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:7,servicing_locations_grid:7,users_grid:7"
+      ).join(",") !== "accounting_systems_grid:5,analytical_pnl_report_grid:12,analytical_pnl_summary_grid:3,batch_cash_output_grid:3,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:11,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:21,deal_generation_settings_grid:11,execution_contexts_grid:8,execution_systems_grid:7,external_counterparties_grid:8,fx_position_grid:13,hedge_fx_deals_grid:22,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:8,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:7,servicing_locations_grid:7,users_grid:7"
       || freshSchema.uiTableColumnSettingColumns.join(",")
         !== "table_key,column_key,column_label,display_order,default_width_px,width_px,updated_at"
       || freshSchema.uiTableColumnSettingRows.map(row =>

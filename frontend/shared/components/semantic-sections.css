@@ -13,7 +13,7 @@
       position: relative;
       border: 1px solid var(--semantic-section-border-color);
       border-radius: var(--bs-border-radius-lg);
-      box-shadow: -5px 0 0 var(--semantic-section-accent);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     :is(
@@ -29,12 +29,76 @@
       background: var(--semantic-card-head-bg);
     }
 
+    #marketSimulationDialog.market-simulation-dialog
+    .modal-body > .market-simulation-section.semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    #clientProfileDetailView .profile-form {
+      gap: 16px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    #clientProfileDetailView
+    .profile-form > .counterparty-card-section.semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #analyticalPnlReportPage.workbench-page
+    .analytical-pnl-report-overview {
+      gap: 16px;
+    }
+
+    #analyticalPnlReportPage.workbench-page
+    .analytical-pnl-report-overview > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-hedging-admission-settings-body > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page
+    :is(.database-layout, .database-details) {
+      gap: 16px;
+    }
+
+    #databasePage.unified-bootstrap-workspace.workbench-page
+    .database-details > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    :is(
+      #clientPricingRuleDialog.client-pricing-rule-dialog,
+      #editDealDialog.client-deal-create-dialog
+    ) .modal-body {
+      gap: 16px;
+    }
+
+    :is(
+      #clientPricingRuleDialog.client-pricing-rule-dialog,
+      #editDealDialog.client-deal-create-dialog
+    ) .modal-body > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
     #addClientDealDialog.client-deal-create-dialog {
       --client-deal-accent: var(--app-primary);
       --client-deal-accent-strong: var(--app-primary-hover);
       --client-deal-border: var(--app-primary);
       --client-deal-accent-soft: var(--palette-blue-100);
       --client-deal-accent-text: var(--app-primary-text);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog .modal-body {
+      gap: 16px;
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .modal-body > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #addClientDealDialog.client-deal-create-dialog
@@ -49,6 +113,15 @@
       --hedge-deal-accent-soft:
         color-mix(in srgb, var(--palette-yellow-100) 58%, var(--bs-body-bg));
       --hedge-deal-accent-text: var(--palette-yellow-800);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog .modal-body {
+      gap: 16px;
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .modal-body > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #addHedgeDealDialog.client-deal-create-dialog
@@ -108,9 +181,21 @@
     }
 
     #addClientDealDialog.client-deal-create-dialog
-    .client-deal-client-option:is(:hover, :focus-visible, .is-selected),
+    .client-deal-client-option:is(:hover, :focus-visible),
     #addClientDealDialog.client-deal-create-dialog
     .client-pricing-context-candidate:is(:hover, :focus-visible) {
+      border-color: var(--client-deal-accent-strong);
+      background: var(--client-deal-accent-soft);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .client-deal-client-option.is-selected {
+      border-color: transparent;
+      background: var(--bs-body-bg);
+    }
+
+    #addClientDealDialog.client-deal-create-dialog
+    .client-deal-client-option.is-selected:is(:hover, :focus-visible) {
       border-color: var(--client-deal-accent-strong);
       background: var(--client-deal-accent-soft);
     }
@@ -188,9 +273,21 @@
     }
 
     #addHedgeDealDialog.client-deal-create-dialog
-    .client-deal-client-option:is(:hover, :focus-visible, .is-selected),
+    .client-deal-client-option:is(:hover, :focus-visible),
     #addHedgeDealDialog.client-deal-create-dialog
     .client-pricing-context-candidate:is(:hover, :focus-visible) {
+      border-color: var(--hedge-deal-accent-strong);
+      background: var(--hedge-deal-accent-soft);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-deal-client-option.is-selected {
+      border-color: transparent;
+      background: var(--bs-body-bg);
+    }
+
+    #addHedgeDealDialog.client-deal-create-dialog
+    .client-deal-client-option.is-selected:is(:hover, :focus-visible) {
       border-color: var(--hedge-deal-accent-strong);
       background: var(--hedge-deal-accent-soft);
     }
@@ -310,6 +407,11 @@
       --semantic-section-border-color: var(--bs-border-color);
     }
 
+    #batchDetailsPage.workbench-page
+    .batch-details-summary > .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
     #batchDetailsPage.workbench-page :is(
       .batch-neutrality,
       .batch-details-section
@@ -377,6 +479,17 @@
       --client-generation-border: var(--app-primary);
       --client-generation-accent-soft: var(--palette-blue-100);
       --client-generation-accent-text: var(--app-primary-text);
+    }
+
+    #clientDealGenerationDialog.generation-dialog .modal-body {
+      display: grid;
+      gap: 16px;
+    }
+
+    #clientDealGenerationDialog.generation-dialog
+    .modal-body > .semantic-section {
+      margin-bottom: 0;
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #clientDealGenerationDialog.generation-dialog
@@ -462,6 +575,11 @@
       opacity: 0.68;
     }
 
+    #batchingSettingsPage.unified-bootstrap-workspace.workbench-page
+    .batching-settings-tab-panel .semantic-section {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page {
       --hedging-settings-accent: var(--palette-yellow-500);
       --hedging-settings-accent-strong: var(--palette-yellow-600);
@@ -469,41 +587,11 @@
       --hedging-settings-accent-soft:
         color-mix(in srgb, var(--palette-yellow-100) 58%, var(--bs-body-bg));
       --hedging-settings-accent-text: var(--palette-yellow-800);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedge-quick-settings-overview.table-panel--standalone {
-      gap: 0;
-      overflow: hidden;
-      border-color: var(--hedging-settings-border);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedge-quick-settings-overview.table-panel--standalone
-    > .hedge-quick-settings-overview-toolbar.table-panel__head {
-      border-bottom-color: var(--hedging-settings-border);
-      background: var(--hedging-settings-accent-soft);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedge-quick-settings-count {
-      border-color: var(--palette-yellow-300) !important;
-      background: var(--palette-yellow-100) !important;
-      color: var(--hedging-settings-accent-text) !important;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    #hedgeQuickModeSettingsNewButton {
-      --bs-btn-color: var(--hedging-settings-accent-text);
-      --bs-btn-bg: transparent;
-      --bs-btn-border-color: var(--hedging-settings-accent-strong);
-      --bs-btn-hover-color: var(--palette-yellow-900);
-      --bs-btn-hover-bg: var(--palette-yellow-200);
-      --bs-btn-hover-border-color: var(--hedging-settings-accent-strong);
-      --bs-btn-active-color: var(--palette-yellow-900);
-      --bs-btn-active-bg: var(--palette-yellow-300);
-      --bs-btn-active-border-color: var(--palette-yellow-700);
-      --bs-btn-focus-shadow-rgb: 204, 154, 6;
+      --quick-hedge-settings-accent: var(--app-primary);
+      --quick-hedge-settings-accent-strong: var(--app-primary-hover);
+      --quick-hedge-settings-border: var(--app-primary);
+      --quick-hedge-settings-accent-soft: var(--palette-blue-100);
+      --quick-hedge-settings-accent-text: var(--app-primary-text);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -520,9 +608,8 @@
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor > .client-deal-create-section.semantic-section {
-      --semantic-section-accent: var(--hedging-settings-border);
-      border-left: 5px solid var(--semantic-section-accent);
-      box-shadow: none;
+      --semantic-section-accent: var(--quick-hedge-settings-border);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -534,16 +621,21 @@
     .hedge-quick-settings-editor
     > .client-deal-create-section.semantic-section
     > .semantic-section-head {
-      border-bottom-color: var(--hedging-settings-border);
-      background: var(--hedging-settings-accent-soft);
+      border-bottom-color: var(--quick-hedge-settings-border);
+      background:
+        color-mix(
+          in srgb,
+          var(--palette-blue-100) 32%,
+          var(--bs-tertiary-bg)
+        );
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor :is(.form-control, .form-select):focus {
-      border-color: var(--hedging-settings-accent-strong);
+      border-color: var(--quick-hedge-settings-accent-strong);
       box-shadow:
         0 0 0 3px
-        color-mix(in srgb, var(--hedging-settings-accent) 20%, transparent);
+        color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -552,60 +644,60 @@
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     .client-pricing-context-candidate:is(:hover, :focus-visible) {
-      border-color: var(--hedging-settings-accent-strong);
-      background: var(--hedging-settings-accent-soft);
+      border-color: var(--quick-hedge-settings-accent-strong);
+      background: var(--quick-hedge-settings-accent-soft);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor .client-pricing-context-candidate.is-selected {
-      border-color: var(--hedging-settings-accent-strong);
-      background: var(--palette-yellow-100);
-      box-shadow: inset 3px 0 0 var(--hedging-settings-accent);
+      border-color: var(--quick-hedge-settings-accent-strong);
+      background: var(--palette-blue-100);
+      box-shadow: inset 3px 0 0 var(--quick-hedge-settings-accent);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle):focus-visible {
-      border-color: var(--hedging-settings-accent-strong);
+      border-color: var(--quick-hedge-settings-accent-strong);
       box-shadow:
         0 0 0 3px
-        color-mix(in srgb, var(--hedging-settings-accent) 20%, transparent);
+        color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle)[aria-expanded="true"] {
-      border-color: var(--hedging-settings-accent-strong);
-      background: var(--hedging-settings-accent-soft);
-      color: var(--hedging-settings-accent-text);
+      border-color: var(--quick-hedge-settings-accent-strong);
+      background: var(--quick-hedge-settings-accent-soft);
+      color: var(--quick-hedge-settings-accent-text);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-active .form-check-input:checked {
-      border-color: var(--hedging-settings-accent-strong);
-      background-color: var(--hedging-settings-accent);
+      border-color: var(--quick-hedge-settings-accent-strong);
+      background-color: var(--quick-hedge-settings-accent);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-active .form-check-input:focus {
-      border-color: var(--hedging-settings-accent-strong);
+      border-color: var(--quick-hedge-settings-accent-strong);
       box-shadow:
         0 0 0 3px
-        color-mix(in srgb, var(--hedging-settings-accent) 20%, transparent);
+        color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     #hedgeQuickModeSettingsSaveButton {
-      --bs-btn-color: var(--palette-yellow-900);
-      --bs-btn-bg: var(--hedging-settings-accent);
-      --bs-btn-border-color: var(--hedging-settings-accent-strong);
-      --bs-btn-hover-color: var(--palette-yellow-900);
-      --bs-btn-hover-bg: var(--palette-yellow-400);
-      --bs-btn-hover-border-color: var(--hedging-settings-accent-strong);
-      --bs-btn-active-color: var(--palette-yellow-900);
-      --bs-btn-active-bg: var(--palette-yellow-300);
-      --bs-btn-active-border-color: var(--palette-yellow-700);
-      --bs-btn-focus-shadow-rgb: 204, 154, 6;
+      --bs-btn-color: var(--app-button-primary-color);
+      --bs-btn-bg: var(--app-button-primary-bg);
+      --bs-btn-border-color: var(--app-button-primary-border);
+      --bs-btn-hover-color: var(--app-button-primary-color);
+      --bs-btn-hover-bg: var(--app-button-primary-hover-bg);
+      --bs-btn-hover-border-color: var(--app-button-primary-hover-border);
+      --bs-btn-active-color: var(--app-button-primary-color);
+      --bs-btn-active-bg: var(--app-button-primary-active-bg);
+      --bs-btn-active-border-color: var(--app-button-primary-active-border);
+      --bs-btn-focus-shadow-rgb: 13, 110, 253;
     }
 
     /* Dialog close buttons keep their icon treatment and share one visible neutral hover. */

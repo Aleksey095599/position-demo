@@ -882,7 +882,7 @@
               title: "Received Timestamp",
               field: "receivedTimestamp",
               formatter: clientFxDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity"
+              cssClass: "client-deals-col-identity client-deals-group-end"
             })
           ]
         },
@@ -892,7 +892,7 @@
           columns: [
             clientFxDealsFilterableColumn("type", { title: "Business ID Type", field: "clientCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
             clientFxDealsFilterableColumn("code", { title: "Business ID", field: "clientCode", headerSort: false, cssClass: "client-deals-col-client" }),
-            clientFxDealsFilterableColumn("name", { title: "Client Name", field: "clientName", cssClass: "client-deals-col-client" })
+            clientFxDealsFilterableColumn("name", { title: "Client Name", field: "clientName", cssClass: "client-deals-col-client client-deals-group-end" })
           ]
         },
         {
@@ -905,7 +905,7 @@
             clientFxDealsValueColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
             clientFxDealsValueColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
             clientFxDealsValueColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" })
+            clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms client-deals-group-end" })
           ]
         },
         {
@@ -913,7 +913,7 @@
           cssClass: "client-deals-group-value-dates",
           columns: [
             clientFxDealsFilterableColumn("valueDate", { title: "Base Ccy Value Date", field: "baseCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates" }),
-            clientFxDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates" })
+            clientFxDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates client-deals-group-end" })
           ]
         },
         {
@@ -921,7 +921,7 @@
           cssClass: "client-deals-group-pricing",
           columns: [
             clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, cssClass: "client-deals-col-pricing" }),
-            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number" })
+            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number client-deals-group-end" })
           ]
         },
         {
@@ -1092,7 +1092,7 @@
               title: "Received Timestamp",
               field: "receivedTimestamp",
               formatter: clientFxDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity"
+              cssClass: "client-deals-col-identity client-deals-group-end"
             })
           ]
         },
@@ -1102,7 +1102,7 @@
           columns: [
             clientFxDealsFilterableColumn("type", { title: "Business ID Type", field: "counterpartyCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
             clientFxDealsFilterableColumn("code", { title: "Business ID", field: "counterpartyCode", headerSort: false, cssClass: "client-deals-col-client" }),
-            clientFxDealsFilterableColumn("name", { title: "Counterparty Name", field: "counterpartyName", cssClass: "client-deals-col-client" })
+            clientFxDealsFilterableColumn("name", { title: "Counterparty Name", field: "counterpartyName", cssClass: "client-deals-col-client client-deals-group-end" })
           ]
         },
         {
@@ -1115,7 +1115,7 @@
             clientFxDealsValueColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
             clientFxDealsValueColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
             clientFxDealsValueColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" })
+            clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms client-deals-group-end" })
           ]
         },
         {
@@ -1123,7 +1123,7 @@
           cssClass: "client-deals-group-value-dates",
           columns: [
             clientFxDealsFilterableColumn("valueDate", { title: "Base Ccy Value Date", field: "baseCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates" }),
-            clientFxDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates" })
+            clientFxDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates client-deals-group-end" })
           ]
         },
         {
@@ -1131,7 +1131,7 @@
           cssClass: "client-deals-group-pricing",
           columns: [
             clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, cssClass: "client-deals-col-pricing" }),
-            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number" })
+            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number client-deals-group-end" })
           ]
         },
         {

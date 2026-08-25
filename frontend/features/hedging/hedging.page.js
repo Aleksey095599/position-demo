@@ -90,14 +90,8 @@
       }
     }
 
-    function openBatchingProcessFlowDialog(dialog, closeButton) {
-      if (typeof dialog.showModal === "function") {
-        dialog.showModal();
-      } else {
-        dialog.setAttribute("open", "");
-      }
-
-      closeButton.focus();
+    function openBatchingProcessFlowDialog(dialog) {
+      openDialogWithoutFieldFocus(dialog);
     }
 
     function closeBatchingProcessFlowDialog(dialog, triggerButton) {
@@ -112,8 +106,7 @@
 
     function openAutoBatchingProcessFlowDialog() {
       openBatchingProcessFlowDialog(
-        autoBatchingProcessFlowDialog,
-        autoBatchingProcessFlowDialogClose
+        autoBatchingProcessFlowDialog
       );
     }
 
@@ -418,6 +411,10 @@
     function setAutoHedgingAdmissionPolicyBusy(busy) {
       const isBusy = busy === true;
       autoHedgingAdmissionPolicyForm.setAttribute("aria-busy", String(isBusy));
+      autoHedgingAdmissionPairEditButton.disabled =
+        isBusy || !autoHedgingAdmissionPolicyLoaded;
+      autoHedgingAdmissionPairDialogApply.disabled =
+        isBusy || !autoHedgingAdmissionPolicyLoaded;
       autoHedgingMaxTransferRateDeviationPercent.disabled =
         isBusy || !autoHedgingAdmissionPolicyLoaded;
       autoHedgingAdmissionPairRows
@@ -534,6 +531,99 @@
           ? "No Currency Pairs are available in the policy."
           : "No Currency Pairs match the current filters.";
       autoHedgingAdmissionPairEmpty.hidden = visibleCount > 0;
+    }
+
+    function autoHedgingAdmissionPairControlSnapshot() {
+      return Array.from(
+        autoHedgingAdmissionPairRows.querySelectorAll(
+          "[data-auto-hedging-admission-pair-code]"
+        )
+      ).map(row => ({
+        ccyPairCode: row.dataset.autoHedgingAdmissionPairCode,
+        enabled: row.querySelector(
+          "[data-auto-hedging-admission-pair-enabled]"
+        )?.checked === true,
+        amount: row.querySelector(
+          "[data-auto-hedging-admission-pair-limit]"
+        )?.value || ""
+      }));
+    }
+
+    function restoreAutoHedgingAdmissionPairControlSnapshot(snapshot) {
+      const valuesByPair = new Map(
+        (Array.isArray(snapshot) ? snapshot : [])
+          .map(item => [item.ccyPairCode, item])
+      );
+
+      autoHedgingAdmissionPairRows
+        .querySelectorAll("[data-auto-hedging-admission-pair-code]")
+        .forEach(row => {
+          const saved = valuesByPair.get(row.dataset.autoHedgingAdmissionPairCode);
+          const enabledControl = row.querySelector(
+            "[data-auto-hedging-admission-pair-enabled]"
+          );
+          const amountControl = row.querySelector(
+            "[data-auto-hedging-admission-pair-limit]"
+          );
+
+          if (!saved || !enabledControl || !amountControl) {
+            return;
+          }
+
+          enabledControl.checked = saved.enabled;
+          amountControl.value = saved.amount;
+          amountControl.setCustomValidity("");
+          amountControl.disabled = autoHedgingAdmissionPolicySaving
+            || !autoHedgingAdmissionPolicyLoaded
+            || !saved.enabled;
+        });
+
+      updateAutoHedgingAdmissionPairSummary();
+      filterAutoHedgingAdmissionPairs();
+      updateAutoHedgingAdmissionPolicySaveAvailability();
+    }
+
+    function openAutoHedgingAdmissionPairDialog() {
+      if (!autoHedgingAdmissionPolicyLoaded || autoHedgingAdmissionPolicySaving) {
+        return;
+      }
+
+      autoHedgingAdmissionPairDialogSnapshot =
+        autoHedgingAdmissionPairControlSnapshot();
+      openDialogWithoutFieldFocus(autoHedgingAdmissionPairDialog);
+    }
+
+    function closeAutoHedgingAdmissionPairDialog({ restore = false } = {}) {
+      if (restore) {
+        restoreAutoHedgingAdmissionPairControlSnapshot(
+          autoHedgingAdmissionPairDialogSnapshot
+        );
+      }
+      autoHedgingAdmissionPairDialogSnapshot = null;
+
+      if (typeof autoHedgingAdmissionPairDialog.close === "function") {
+        autoHedgingAdmissionPairDialog.close();
+      } else {
+        autoHedgingAdmissionPairDialog.removeAttribute("open");
+      }
+
+      autoHedgingAdmissionPairEditButton.focus();
+    }
+
+    function applyAutoHedgingAdmissionPairDialog() {
+      autoHedgingAdmissionPolicyDraft();
+      const invalidControl = autoHedgingAdmissionPairRows.querySelector(":invalid");
+
+      if (invalidControl) {
+        autoHedgingAdmissionPairSearch.value = "";
+        autoHedgingAdmissionPairFilter.value = "ALL";
+        filterAutoHedgingAdmissionPairs();
+        invalidControl.focus();
+        invalidControl.reportValidity();
+        return;
+      }
+
+      closeAutoHedgingAdmissionPairDialog();
     }
 
     function renderAutoHedgingAdmissionPolicy() {
@@ -760,7 +850,18 @@
       const draft = autoHedgingAdmissionPolicyDraft();
 
       if (!draft) {
-        autoHedgingAdmissionPolicyForm.reportValidity();
+        const invalidPairControl = autoHedgingAdmissionPairRows.querySelector(":invalid");
+
+        if (invalidPairControl) {
+          autoHedgingAdmissionPairSearch.value = "";
+          autoHedgingAdmissionPairFilter.value = "ALL";
+          filterAutoHedgingAdmissionPairs();
+          openAutoHedgingAdmissionPairDialog();
+          invalidPairControl.focus();
+          invalidPairControl.reportValidity();
+        } else {
+          autoHedgingAdmissionPolicyForm.reportValidity();
+        }
         updateAutoHedgingAdmissionPolicySaveAvailability();
         return;
       }
@@ -826,6 +927,24 @@
         "input",
         updateAutoHedgingAdmissionPolicySaveAvailability
       );
+      autoHedgingAdmissionPairEditButton.addEventListener(
+        "click",
+        openAutoHedgingAdmissionPairDialog
+      );
+      autoHedgingAdmissionPairDialogClose.addEventListener("click", () => {
+        closeAutoHedgingAdmissionPairDialog({ restore: true });
+      });
+      autoHedgingAdmissionPairDialogCancel.addEventListener("click", () => {
+        closeAutoHedgingAdmissionPairDialog({ restore: true });
+      });
+      autoHedgingAdmissionPairDialogApply.addEventListener(
+        "click",
+        applyAutoHedgingAdmissionPairDialog
+      );
+      autoHedgingAdmissionPairDialog.addEventListener("cancel", event => {
+        event.preventDefault();
+        closeAutoHedgingAdmissionPairDialog({ restore: true });
+      });
       autoHedgingAdmissionPairRows.addEventListener("change", event => {
         if (!event.target.matches("[data-auto-hedging-admission-pair-enabled]")) {
           return;
@@ -1129,13 +1248,6 @@
       hedgeQuickModeSettingsForm.elements.currencyPair.disabled = Boolean(setting);
       populateHedgeQuickModeSetting(setting);
       setHedgeQuickModeSettingsView("editor");
-
-      requestAnimationFrame(() => {
-        const focusTarget = setting
-          ? hedgeQuickModeCounterpartyPickerValue
-          : hedgeQuickModeSettingsForm.elements.currencyPair;
-        focusTarget.focus();
-      });
     }
 
     function hedgeQuickModeSettingsPair() {
@@ -1251,7 +1363,7 @@
         : `<div class="client-deal-context-picker-empty">${
             profiles.length > 0
               ? "No Hedge Counterparties match the entered name."
-              : `No active Hedge Counterparty with an AUTO_PRICED Pricing Rule is available for ${
+              : `No active Hedge Counterparty with an Auto Priced Pricing Rule is available for ${
                   escapeHtml(hedgeQuickModeSettingsPair() || "the selected Ccy Pair")
                 }.`
           }</div>`;
@@ -1317,7 +1429,7 @@
         ? "Select a Hedge Counterparty to see available Pricing Rules."
         : !pair
           ? "Select a currency pair to see available Pricing Rules."
-          : "No AUTO_PRICED Pricing Rule is configured for this Hedge Counterparty and currency pair.";
+          : "No Auto Priced Pricing Rule is configured for this Hedge Counterparty and currency pair.";
 
       hedgeQuickModeSettingsForm.elements.pricingRuleId.value =
         selectedOption?.rule.pricingRuleId || "";
@@ -2031,7 +2143,7 @@
 
       if (!marketRate) {
         tradeRateInput.setCustomValidity(
-          "A Market Pulse quote is required for an AUTO_PRICED Hedge FX Deal."
+          "A Market Pulse quote is required for an Auto Priced Hedge FX Deal."
         );
       }
     }
@@ -2428,17 +2540,7 @@
       syncAddHedgeDealDerivedFields();
       syncAddHedgeDealModeLocks();
 
-      if (typeof addHedgeDealDialog.showModal === "function") {
-        addHedgeDealDialog.showModal();
-      } else {
-        addHedgeDealDialog.setAttribute("open", "");
-      }
-
-      if (isQuickMode) {
-        addHedgeDealForm.elements.tenor.focus();
-      } else {
-        addHedgeDealCounterpartyPickerValue.focus();
-      }
+      openDialogWithoutFieldFocus(addHedgeDealDialog);
     }
 
     function closeAddHedgeDealDialog() {

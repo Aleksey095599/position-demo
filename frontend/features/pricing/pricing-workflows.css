@@ -1403,7 +1403,7 @@
       border: 1px solid var(--surface-divider);
       border-radius: var(--workbench-radius);
       background: var(--palette-red-100);
-      box-shadow: -5px 0 0 var(--palette-red-600);
+      box-shadow: var(--bs-box-shadow-sm);
       color: var(--palette-red-800);
       font-size: var(--app-font-size-caption);
       text-align: center;
@@ -1488,7 +1488,7 @@
     .manual-process-stage-result {
       border-radius: var(--workbench-radius);
       background: color-mix(in srgb, var(--process-stage-bg) 32%, var(--surface-card));
-      box-shadow: -5px 0 0 var(--process-stage-accent);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     .manual-process-stage-objective {
@@ -4367,7 +4367,7 @@
       white-space: nowrap;
     }
 
-    .fx-deals-view-switch {
+    :is(.fx-deals-view-switch, .fx-batches-view-switch) {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -4376,11 +4376,11 @@
       white-space: nowrap;
     }
 
-    .fx-deals-view-switch .form-check-input {
+    :is(.fx-deals-view-switch, .fx-batches-view-switch) .form-check-input {
       margin-top: 0;
     }
 
-    .fx-deals-view-switch .form-check-label {
+    :is(.fx-deals-view-switch, .fx-batches-view-switch) .form-check-label {
       color: var(--bs-body-color);
       font-weight: var(--app-font-weight-medium);
     }
@@ -4482,8 +4482,8 @@
       text-overflow: clip;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content,
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid-shell {
+    #batchingHistoryPage .batching-history-content,
+    #batchingHistoryPage .batching-history-grid-shell {
       width: fit-content;
       max-width: 100%;
       min-width: 0;
@@ -4492,11 +4492,11 @@
     #fxBatchesPage:not([hidden]) {
       display: grid;
       height: calc(100vh - var(--workspace-nav-height));
-      grid-template-rows: auto auto minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
       overflow: hidden;
     }
 
-    #fxBatchesPage .batches-tab-panel:not([hidden]) {
+    #batchingHistoryPage:not([hidden]) {
       display: grid;
       min-height: 0;
       grid-template-rows: auto;
@@ -4504,20 +4504,20 @@
       overflow: hidden;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content {
+    #batchingHistoryPage .batching-history-content {
       display: grid;
       min-height: 0;
       grid-template-rows: auto auto;
       align-self: start;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid-shell {
+    #batchingHistoryPage .batching-history-grid-shell {
       min-height: 0;
       overflow-x: auto;
       overflow-y: hidden;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-toolbar {
+    #batchingHistoryPage .batching-history-toolbar {
       display: flex;
       width: 100%;
       align-items: center;
@@ -4526,28 +4526,23 @@
       margin-bottom: 8px;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-toolbar > .client-deals-count:first-child {
-      margin-left: 0;
-      margin-right: auto;
-    }
-
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-content,
+    #batchingHistoryPage .batching-history-content,
     #batchDetailsPage .batch-details-content {
       margin-top: 12px;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-grid {
+    #batchingHistoryPage .batching-history-grid {
       width: max-content;
       max-width: 100%;
       height: auto;
       max-height: 100%;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator {
+    #batchingHistoryPage .tabulator {
       box-sizing: border-box;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator .tabulator-header-filter select {
+    #batchingHistoryPage .tabulator .tabulator-header-filter select {
       min-height: 27px;
       padding: 3px 26px 3px 7px;
       border: 1px solid var(--palette-gray-400);
@@ -4556,13 +4551,13 @@
       font-size: 11px;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .tabulator .tabulator-header-filter :is(input, select):focus {
+    #batchingHistoryPage .tabulator .tabulator-header-filter :is(input, select):focus {
       border-color: var(--bs-primary);
       outline: 0;
       box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token,
+    #batchingHistoryPage .batch-status-token,
     #batchDetailsPage .batch-status-token {
       display: inline-flex;
       align-items: center;
@@ -4576,28 +4571,28 @@
       font-weight: 500;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token.is-formed,
+    #batchingHistoryPage .batch-status-token.is-formed,
     #batchDetailsPage .batch-status-token.is-formed {
       border-color: var(--palette-green-200);
       background: var(--palette-green-100);
       color: var(--palette-green-700);
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batch-status-token.is-rolled-back,
+    #batchingHistoryPage .batch-status-token.is-rolled-back,
     #batchDetailsPage .batch-status-token.is-rolled-back {
       border-color: var(--palette-yellow-200);
       background: var(--palette-yellow-100);
       color: var(--palette-yellow-800);
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-actions {
+    #batchingHistoryPage .batching-history-actions {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-action {
+    #batchingHistoryPage .batching-history-action {
       --bs-btn-color: var(--app-button-secondary-color);
       --bs-btn-bg: var(--bs-body-bg);
       --bs-btn-border-color: var(--app-button-secondary-border);
@@ -4615,22 +4610,22 @@
       padding: 0;
     }
 
-    :is(#batchingHistoryPage, #batchFormationAuditPage) .batching-history-action .button-icon {
+    #batchingHistoryPage .batching-history-action .button-icon {
       font-size: 16px;
     }
 
-    #batchFormationAuditPage .batching-key-cell {
+    #batchingHistoryPage .batching-key-cell {
       display: grid;
       gap: 2px;
       line-height: 1.25;
     }
 
-    #batchFormationAuditPage .batching-key-primary {
+    #batchingHistoryPage .batching-key-primary {
       color: var(--bs-body-color);
       font-weight: 600;
     }
 
-    #batchFormationAuditPage .batching-key-secondary {
+    #batchingHistoryPage .batching-key-secondary {
       color: var(--bs-secondary-color);
       font-size: 11px;
     }
@@ -4675,6 +4670,14 @@
       display: grid;
       gap: 16px;
       min-width: 0;
+      justify-items: start;
+    }
+
+    #batchDetailsPage :is(
+      .batch-details-summary-card,
+      .batch-neutrality
+    ) {
+      width: min(1120px, 100%);
     }
 
     #batchDetailsPage .batch-details-summary-card {
@@ -4699,20 +4702,32 @@
     }
 
     #batchDetailsPage .batch-details-meta {
+      position: relative;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1px;
+      gap: 0;
       margin: 0;
       padding: 0;
       overflow: hidden;
-      border: 1px solid var(--bs-border-color);
+      border: 0;
       border-radius: var(--bs-border-radius-sm);
-      background: var(--bs-border-color);
+      background: var(--bs-body-bg);
+    }
+
+    #batchDetailsPage .batch-details-meta::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 1px solid var(--bs-border-color);
+      border-radius: inherit;
+      pointer-events: none;
     }
 
     #batchDetailsPage .batch-details-meta-item {
       min-width: 0;
       padding: 10px 12px;
+      border-top: 1px solid var(--bs-border-color);
+      border-left: 1px solid var(--bs-border-color);
       background: var(--bs-body-bg);
     }
 
@@ -4734,16 +4749,75 @@
 
     #batchDetailsPage .batch-neutrality {
       min-width: 0;
-      padding: 14px;
+      padding: 0;
+      overflow: hidden;
       border: 1px solid var(--bs-border-color);
       border-radius: var(--bs-border-radius);
       background: var(--bs-body-bg);
     }
 
+    #batchDetailsPage .batch-neutrality-summary {
+      display: flex;
+      min-height: 42px;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+
+    #batchDetailsPage .batch-neutrality-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    #batchDetailsPage .batch-neutrality-summary:focus-visible {
+      outline: 2px solid var(--bs-primary);
+      outline-offset: -2px;
+    }
+
     #batchDetailsPage .batch-neutrality-title {
-      margin: 0 0 10px;
+      margin: 0;
       font-size: var(--app-font-size-section-title);
       font-weight: var(--app-font-weight-semibold);
+    }
+
+    #batchDetailsPage .batch-neutrality-summary-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: auto;
+      padding: 3px 7px;
+      border: 1px solid var(--bs-success-border-subtle);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-success-bg-subtle);
+      color: var(--bs-success-text-emphasis);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    #batchDetailsPage .batch-neutrality-summary-status.is-invalid {
+      border-color: var(--bs-danger-border-subtle);
+      background: var(--bs-danger-bg-subtle);
+      color: var(--bs-danger-text-emphasis);
+    }
+
+    #batchDetailsPage .batch-neutrality-summary-status .button-icon,
+    #batchDetailsPage .batch-neutrality-summary-toggle {
+      font-size: 16px;
+    }
+
+    #batchDetailsPage .batch-neutrality-summary-toggle {
+      flex: 0 0 auto;
+      color: var(--bs-secondary-color);
+      transition: transform 0.15s ease;
+    }
+
+    #batchDetailsPage .batch-neutrality[open]
+    .batch-neutrality-summary-toggle {
+      transform: rotate(180deg);
     }
 
     #batchDetailsPage .batch-neutrality-equation {
@@ -4751,6 +4825,8 @@
       grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr) auto minmax(200px, 1fr);
       align-items: stretch;
       gap: 10px;
+      padding: 14px;
+      border-top: 1px solid var(--bs-border-color);
     }
 
     #batchDetailsPage .batch-neutrality-node {
@@ -4955,7 +5031,7 @@
     }
 
     #fxDealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] {
-      border-right: 2px solid var(--palette-gray-400);
+      border-right: var(--data-grid-line-width) solid var(--palette-gray-500);
       background: var(--palette-gray-200);
     }
 
@@ -4968,8 +5044,13 @@
     }
 
     #fxDealsPage .tabulator .tabulator-col-group > .tabulator-col-content .tabulator-col-title {
-      padding-left: 12px;
-      text-align: left;
+      padding-inline: 12px;
+      text-align: center;
+    }
+
+    #fxDealsPage .tabulator .tabulator-header .tabulator-col.client-deals-group-end,
+    #fxDealsPage .tabulator .tabulator-row .tabulator-cell.client-deals-group-end {
+      border-right: var(--data-grid-line-width) solid var(--palette-gray-500);
     }
 
     .client-deals-bootstrap .tabulator .tabulator-col-group-cols {

@@ -91,7 +91,6 @@
       processesPage.hidden = true;
       fxBatchesPage.hidden = true;
       batchingHistoryPage.hidden = true;
-      batchFormationAuditPage.hidden = true;
       batchDetailsPage.hidden = true;
 
       if (location.hash === "#batching:details") {
@@ -123,14 +122,13 @@
         pricingRulesPage.hidden = true;
         fxBatchesPage.hidden = false;
         batchingHistoryPage.hidden = false;
-        setFxBatchesActiveTab("batching-history");
         document.title = "FX Batches";
         loadBatchingHistoryPage();
         return;
       }
 
       if (isBatchFormationAuditRoute()) {
-        setWorkspaceRoute("batch-formation-audit");
+        setWorkspaceRoute("batching-history");
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
@@ -138,10 +136,10 @@
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
         fxBatchesPage.hidden = false;
-        batchFormationAuditPage.hidden = false;
-        setFxBatchesActiveTab("batch-formation-audit");
-        document.title = "Batch Formation Audit - FX Batches";
-        loadBatchFormationAuditPage();
+        batchingHistoryPage.hidden = false;
+        setFxBatchesViewMode(FX_BATCHES_VIEW_MODE_AUDIT);
+        document.title = "FX Batches";
+        loadBatchingHistoryPage();
         return;
       }
 
@@ -1895,6 +1893,15 @@
     });
     syncFxDealsAuditToggle("client");
     syncFxDealsAuditToggle("hedge");
+
+    fxBatchesAuditViewToggle.addEventListener("change", () => {
+      setFxBatchesViewMode(
+        fxBatchesAuditViewToggle.checked
+          ? FX_BATCHES_VIEW_MODE_AUDIT
+          : FX_BATCHES_VIEW_MODE_STANDARD
+      );
+    });
+    syncFxBatchesAuditToggle();
 
     fxPositionModeTabs.forEach(tab => {
       tab.addEventListener("keydown", handleFxPositionModeTabKeydown);

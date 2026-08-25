@@ -663,21 +663,7 @@
     function openClientPricingRuleDialog(rule) {
       fillClientPricingRuleDialog(rule);
 
-      if (typeof clientPricingRuleDialog.showModal === "function") {
-        clientPricingRuleDialog.showModal();
-      } else {
-        clientPricingRuleDialog.setAttribute("open", "");
-      }
-
-      const focusControl = clientPricingRuleEditState?.mode === "edit"
-        ? clientPricingRuleForm.elements.marginPercent
-        : clientPricingRuleEditState?.pricingContextId
-          ? clientPricingRuleForm.elements.currencyPair
-          : PRICING_CONTEXT_FACETS
-            .map(({ field }) => pricingContextFacetInput(field))
-            .find(input => input && !input.value) || clientPricingRuleForm.elements.currencyPair;
-
-      focusControl.focus();
+      openDialogWithoutFieldFocus(clientPricingRuleDialog);
     }
 
     function closeClientPricingRuleDialog() {
@@ -997,11 +983,6 @@
       clientPricingConfigurationCollapsedSet(profile).delete(String(context.pricingContextId));
       setClientProfileStatus("");
       renderClientExecutionContextsPanel(profile);
-      requestAnimationFrame(() => {
-        clientExecutionContextsPanel
-          .querySelector("[data-client-pricing-rule-inline-editor] select")
-          ?.focus();
-      });
     }
 
     function startClientPricingRuleEdit(index) {
@@ -1028,11 +1009,6 @@
       clientPricingConfigurationCollapsedSet(profile).delete(String(rule.pricingContextId));
       setClientProfileStatus("");
       renderClientExecutionContextsPanel(profile);
-      requestAnimationFrame(() => {
-        clientExecutionContextsPanel
-          .querySelector('[data-client-pricing-rule-inline-editor] [data-client-pricing-rule-inline-field="marginPercent"]')
-          ?.focus();
-      });
     }
 
     function startClientPricingRuleDelete(index) {
@@ -1047,7 +1023,6 @@
       clientPricingRuleEditState = { mode: "edit", index, inn: profile.inn };
       setClientProfileStatus("");
       openClientPricingRuleDialog(rule);
-      requestAnimationFrame(() => clientPricingRuleDeleteButton.focus());
     }
 
     function cancelClientPricingRuleEdit() {
@@ -1816,7 +1791,10 @@
                 ? "Not Applicable"
                 : settlementSystemDisplayName(context.settlementSystemId))}</td>
               <td>${escapeHtml(tradeCaptureChannelDisplayName(context.tradeCaptureChannelId))}</td>
-              <td>${pricingModeIndicatorMarkup(pricingMode, escapeHtml(pricingMode))}</td>
+              <td>${pricingModeIndicatorMarkup(
+                pricingMode,
+                escapeHtml(pricingTypePresentation(pricingMode).label)
+              )}</td>
             </tr>
           `;
         }).join("");
@@ -1856,13 +1834,7 @@
       applyClientExecutionContextAttachColumnLayout();
       renderClientExecutionContextAttachTable();
 
-      if (typeof clientExecutionContextAttachDialog.showModal === "function") {
-        clientExecutionContextAttachDialog.showModal();
-      } else {
-        clientExecutionContextAttachDialog.setAttribute("open", "");
-      }
-
-      document.getElementById("clientExecutionContextAttachIdFilter")?.focus();
+      openDialogWithoutFieldFocus(clientExecutionContextAttachDialog);
     }
 
     function closeClientExecutionContextAttachDialog() {
@@ -2700,7 +2672,6 @@
       tradingCounterpartyRowEditState = { mode: "create" };
       setClientProfileStatus("");
       renderClientProfiles();
-      clientProfileRowsEl.querySelector("[data-trading-counterparty-field='counterpartyCode']")?.focus();
     }
 
     function cancelTradingCounterpartyRowEdit() {
@@ -2852,7 +2823,6 @@
       setClientProfileStatus("");
       renderClientProfiles();
       updateClientProfileSubmitAvailability();
-      clientProfileForm.elements.inn.focus({ preventScroll: true });
     }
 
     function startClientProfileEdit(index) {
@@ -3425,7 +3395,6 @@
       userRowEditState = { mode: "create" };
       setUsersStatus("");
       renderUsers();
-      usersRowsEl.querySelector("[data-user-field='userCode']")?.focus();
     }
 
     function startUserRowEdit(index) {
@@ -3436,7 +3405,6 @@
       userRowEditState = { mode: "edit", index };
       setUsersStatus("");
       renderUsers();
-      usersRowsEl.querySelector("[data-user-field='userCode']")?.focus();
     }
 
     function cancelUserRowEdit() {
@@ -3567,7 +3535,6 @@
       setUsersStatus("");
       renderUsers();
       updateUsersSubmitAvailability();
-      usersForm.elements.userCode.focus({ preventScroll: true });
     }
 
     function startUserEdit(index) {
@@ -4473,7 +4440,6 @@
       pricingContextEditState = { mode: "create" };
       setPricingContextStatus("");
       renderPricingContexts();
-      pricingContextRowsEl.querySelector("[data-pricing-context-field='servicingBranchCode']")?.focus();
     }
 
     function startPricingContextEdit(index) {
@@ -4486,7 +4452,6 @@
       pricingContextEditState = { mode: "edit", index };
       setPricingContextStatus("");
       renderPricingContexts();
-      pricingContextRowsEl.querySelector("[data-pricing-context-field='servicingBranchCode']")?.focus();
     }
 
     function cancelPricingContextForm() {
@@ -4958,8 +4923,7 @@
           <td>${pricingModeIndicatorMarkup(
             item.pricingType,
             highlightedReferenceDataText(kind, pricingTypeLabel),
-            false,
-            { useAutoPricingIcon: true }
+            false
           )}</td>
           <td>${executionSystemLabelMarkup(item.tradeCaptureChannelName, item.pricingType)}</td>
           <td>${activeLabel(item.isActive)}</td>
@@ -5089,7 +5053,6 @@
       referenceDataEditState = { mode: "create", kind };
       setReferenceDataStatus("");
       renderReferenceData();
-      referenceDataRowsElement(kind)?.querySelector("[data-reference-field]")?.focus();
     }
 
     function startReferenceDataEdit(kind, index) {
@@ -5102,7 +5065,6 @@
       referenceDataEditState = { mode: "edit", kind, index };
       setReferenceDataStatus("");
       renderReferenceData();
-      referenceDataRowsElement(kind)?.querySelector("[data-reference-field]")?.focus();
     }
 
     function cancelReferenceDataForm() {
@@ -5635,11 +5597,7 @@
     async function openClientDealGenerationDialog() {
       clientDealSettingsButton.setAttribute("aria-expanded", "true");
 
-      if (typeof clientDealGenerationDialog.showModal === "function") {
-        clientDealGenerationDialog.showModal();
-      } else {
-        clientDealGenerationDialog.setAttribute("open", "");
-      }
+      openDialogWithoutFieldFocus(clientDealGenerationDialog);
 
       await loadClientDealGenerationSettingsFromApi();
       const tableViewport = clientDealGenerationDialog.querySelector(
