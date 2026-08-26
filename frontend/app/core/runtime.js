@@ -1135,6 +1135,8 @@
     const pricingContextIdHeader = document.getElementById("pricingContextIdHeader");
     const pricingContextHeaderFilterControls = Array.from(document.querySelectorAll("[data-pricing-context-header-filter]"));
     const pricingContextNewButton = document.getElementById("pricingContextNewButton");
+    const executionContextsTable = document.getElementById("executionContextsTable");
+    const pricingContextAutoHedgingAdmissionHeader = document.getElementById("pricingContextAutoHedgingAdmissionHeader");
     const pricingContextBreadcrumb = document.getElementById("pricingContextBreadcrumb");
     const pricingContextBreadcrumbBackLink = document.getElementById("pricingContextBreadcrumbBackLink");
     const pricingContextBreadcrumbCurrent = document.getElementById("pricingContextBreadcrumbCurrent");
@@ -1321,22 +1323,32 @@
     const autoHedgingSettingsSegmentToggles = Array.from(
       document.querySelectorAll("[data-auto-hedging-segment-toggle]")
     );
-    const autoHedgingAdmissionPolicyForm = document.getElementById("autoHedgingAdmissionPolicyForm");
+    const autoHedgingAdmissionPolicyPanel = document.getElementById("autoHedgingAdmissionPolicyPanel");
     const autoHedgingAdmissionPolicyRevision = document.getElementById("autoHedgingAdmissionPolicyRevision");
-    const autoHedgingMaxTransferRateDeviationPercent = document.getElementById("autoHedgingMaxTransferRateDeviationPercent");
+    const autoHedgingAdmissionDeviationSummary = document.getElementById("autoHedgingAdmissionDeviationSummary");
+    const autoHedgingAdmissionDeviationEditButton = document.getElementById("autoHedgingAdmissionDeviationEditButton");
+    const autoHedgingAdmissionDeviationDialog = document.getElementById("autoHedgingAdmissionDeviationDialog");
+    const autoHedgingAdmissionDeviationDialogForm = document.getElementById("autoHedgingAdmissionDeviationDialogForm");
+    const autoHedgingAdmissionDeviationDialogClose = document.getElementById("autoHedgingAdmissionDeviationDialogClose");
+    const autoHedgingAdmissionDeviationDialogCancel = document.getElementById("autoHedgingAdmissionDeviationDialogCancel");
+    const autoHedgingAdmissionDeviationDialogSave = document.getElementById("autoHedgingAdmissionDeviationDialogSave");
+    const autoHedgingAdmissionDeviationDialogStatus = document.getElementById("autoHedgingAdmissionDeviationDialogStatus");
+    const autoHedgingAdmissionDeviationSearch = document.getElementById("autoHedgingAdmissionDeviationSearch");
+    const autoHedgingAdmissionDeviationRows = document.getElementById("autoHedgingAdmissionDeviationRows");
+    const autoHedgingAdmissionDeviationEmpty = document.getElementById("autoHedgingAdmissionDeviationEmpty");
     const autoHedgingAdmissionPairSummary = document.getElementById("autoHedgingAdmissionPairSummary");
     const autoHedgingAdmissionPairEditButton = document.getElementById("autoHedgingAdmissionPairEditButton");
     const autoHedgingAdmissionPairDialog = document.getElementById("autoHedgingAdmissionPairDialog");
+    const autoHedgingAdmissionPairDialogForm = document.getElementById("autoHedgingAdmissionPairDialogForm");
     const autoHedgingAdmissionPairDialogClose = document.getElementById("autoHedgingAdmissionPairDialogClose");
     const autoHedgingAdmissionPairDialogCancel = document.getElementById("autoHedgingAdmissionPairDialogCancel");
-    const autoHedgingAdmissionPairDialogApply = document.getElementById("autoHedgingAdmissionPairDialogApply");
+    const autoHedgingAdmissionPairDialogSave = document.getElementById("autoHedgingAdmissionPairDialogSave");
+    const autoHedgingAdmissionPairDialogStatus = document.getElementById("autoHedgingAdmissionPairDialogStatus");
     const autoHedgingAdmissionPairSearch = document.getElementById("autoHedgingAdmissionPairSearch");
-    const autoHedgingAdmissionPairSearchClear = document.getElementById("autoHedgingAdmissionPairSearchClear");
     const autoHedgingAdmissionPairFilter = document.getElementById("autoHedgingAdmissionPairFilter");
     const autoHedgingAdmissionPairRows = document.getElementById("autoHedgingAdmissionPairRows");
     const autoHedgingAdmissionPairEmpty = document.getElementById("autoHedgingAdmissionPairEmpty");
     const autoHedgingAdmissionPolicyStatus = document.getElementById("autoHedgingAdmissionPolicyStatus");
-    const autoHedgingAdmissionPolicySaveButton = document.getElementById("autoHedgingAdmissionPolicySaveButton");
     const autoHedgingManualReleaseSharedRevision = document.getElementById("autoHedgingManualReleaseSharedRevision");
     const autoHedgingManualReleaseSharedPairSummary = document.getElementById("autoHedgingManualReleaseSharedPairSummary");
     const autoHedgingManualReleaseSharedDeviation = document.getElementById("autoHedgingManualReleaseSharedDeviation");
@@ -1464,6 +1476,7 @@
           "fx_auto_batching_ccy_pairs",
           "auto_hedging_admission_policy_current",
           "auto_hedging_admission_policy_revisions",
+          "auto_hedging_admission_policy_pair_deviations",
           "auto_hedging_admission_policy_pair_rules"
         ]
       },
@@ -1595,6 +1608,7 @@
     let autoHedgingAdmissionPolicySaving = false;
     let autoHedgingAdmissionPolicyLoaded = false;
     let autoHedgingAdmissionPolicyEventsBound = false;
+    let autoHedgingAdmissionDeviationDialogSnapshot = null;
     let autoHedgingAdmissionPairDialogSnapshot = null;
     let hedgeQuickModeDealCreating = false;
     let addClientDealSubmitWithControl = false;
@@ -1620,6 +1634,7 @@
     let usersIdSortDirection = "asc";
     let pricingContextIdSortDirection = "asc";
     let pricingContextRouteScope = null;
+    let pricingContextFocusTimer = null;
     let pricingRuleIdSortDirection = "asc";
     let pricingRulesRouteScope = null;
     let servicingBranchIdSortDirection = "asc";
@@ -3735,6 +3750,20 @@
       ).trim().toUpperCase();
       const fractionDigits = Number(source?.baseCcyFractionDigits);
       const maxBaseCcyAmount = positiveDecimalInputText(source?.maxBaseCcyAmount);
+      const deviation = normalizedDecimalInputText(
+        source?.maxTransferRateDeviationPercent
+      );
+      let maxTransferRateDeviationPercent = null;
+
+      try {
+        if (
+          deviation !== null
+          && new Big(deviation).gte(0)
+          && new Big(deviation).lte(100)
+        ) {
+          maxTransferRateDeviationPercent = deviation;
+        }
+      } catch {}
 
       if (
         !/^[A-Z]{3}_[A-Z]{3}$/.test(ccyPairCode)
@@ -3754,27 +3783,13 @@
           ? fractionDigits
           : 2,
         enabled: source?.enabled === true || Number(source?.enabled) === 1,
-        maxBaseCcyAmount
+        maxBaseCcyAmount,
+        maxTransferRateDeviationPercent
       };
     }
 
     function normalizedAutoHedgingAdmissionPolicy(source) {
       const revision = Number(source?.revision);
-      const deviation = normalizedDecimalInputText(
-        source?.maxTransferRateDeviationPercent
-      );
-      let maxTransferRateDeviationPercent = "0";
-
-      try {
-        if (
-          deviation !== null
-          && new Big(deviation).gte(0)
-          && new Big(deviation).lte(100)
-        ) {
-          maxTransferRateDeviationPercent = deviation;
-        }
-      } catch {}
-
       const seenCodes = new Set();
       const currencyPairs = (Array.isArray(source?.currencyPairs)
         ? source.currencyPairs
@@ -3791,7 +3806,6 @@
 
       return {
         revision: Number.isInteger(revision) && revision >= 0 ? revision : 0,
-        maxTransferRateDeviationPercent,
         currencyPairs
       };
     }

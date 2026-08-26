@@ -68,9 +68,14 @@ VALUES
     ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE');
 
 INSERT INTO auto_hedging_admission_policy_revisions
-    (revision, max_transfer_rate_deviation_percent)
+    (revision)
 VALUES
-    (1, '1.00');
+    (1);
+
+INSERT INTO auto_hedging_admission_policy_pair_deviations
+    (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
+SELECT 1, ccy_pair_code, '1.00'
+FROM ccy_pair_options;
 
 INSERT INTO auto_hedging_admission_policy_pair_rules
     (

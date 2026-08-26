@@ -83,11 +83,25 @@ test("fresh schema seeds an immutable, fail-closed Auto Hedging Admission Policy
     assert.ok(!executionContextColumns.includes("auto_hedging_admission_policy"));
 
     assert.deepEqual(
-      { ...database.prepare(`
-        SELECT revision, max_transfer_rate_deviation_percent AS maxDeviation
+      database.prepare(`
+        SELECT revision
         FROM auto_hedging_admission_policy_revisions
-      `).get() },
-      { revision: 1, maxDeviation: "1.00" }
+      `).all().map(row => ({ ...row })),
+      [{ revision: 1 }]
+    );
+    assert.deepEqual(
+      database.prepare(`
+        SELECT
+          ccy_pair_code AS ccyPairCode,
+          max_transfer_rate_deviation_percent AS maxDeviation
+        FROM auto_hedging_admission_policy_pair_deviations
+        ORDER BY ccy_pair_code
+      `).all().map(row => ({ ...row })),
+      [
+        { ccyPairCode: "EUR_USD", maxDeviation: "1.00" },
+        { ccyPairCode: "GBP_USD", maxDeviation: "1.00" },
+        { ccyPairCode: "USD_RUB", maxDeviation: "1.00" }
+      ]
     );
     assert.deepEqual(
       database.prepare(`
@@ -113,15 +127,33 @@ test("fresh schema seeds an immutable, fail-closed Auto Hedging Admission Policy
     );
 
     assert.throws(() => database.prepare(`
-      UPDATE auto_hedging_admission_policy_revisions
+      UPDATE auto_hedging_admission_policy_pair_deviations
       SET max_transfer_rate_deviation_percent = '2.00'
-      WHERE revision = 1
+      WHERE revision = 1 AND ccy_pair_code = 'EUR_USD'
     `).run(), /AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE/);
     assert.throws(() => database.prepare(`
       INSERT INTO auto_hedging_admission_policy_pair_rules
         (revision, ccy_pair_code, max_base_ccy_amount_minor, base_ccy_fraction_digits)
       VALUES (1, 'USD_RUB', 10000, 2)
     `).run(), /AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE/);
+    database.prepare(`
+      INSERT INTO auto_hedging_admission_policy_revisions (revision)
+      VALUES (2)
+    `).run();
+    database.prepare(`
+      INSERT INTO auto_hedging_admission_policy_pair_deviations
+        (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
+      VALUES (2, 'EUR_USD', '1.00')
+    `).run();
+    assert.throws(() => database.prepare(`
+      UPDATE auto_hedging_admission_policy_current
+      SET revision = 2
+      WHERE policy_id = 1
+    `).run(), /AUTO_HEDGING_ADMISSION_POLICY_PAIR_DEVIATIONS_INCOMPLETE/);
+    assert.throws(() => database.prepare(`
+      DELETE FROM ccy_pair_options
+      WHERE ccy_pair_code = 'USD_RUB'
+    `).run(), /FOREIGN KEY constraint failed/);
     assert.throws(() => database.prepare(`
       UPDATE execution_contexts
       SET auto_hedging_admission_mode = 'AUTO_IF_ELIGIBLE'
@@ -177,6 +209,16 @@ test("startup migrates Admission Policy to Mode and API publishes versioned poli
     WHERE table_key = 'execution_contexts_grid'
       AND column_key = 'auto_hedging_admission_policy'
   `).run();
+  legacyDatabase.exec(`
+    DROP TRIGGER trg_auto_hedging_admission_policy_current_complete_insert;
+    DROP TRIGGER trg_auto_hedging_admission_policy_current_complete_update;
+    DROP TRIGGER trg_auto_hedging_admission_policy_pair_deviations_immutable_update;
+    DROP TRIGGER trg_auto_hedging_admission_policy_pair_deviations_immutable_delete;
+    DROP TRIGGER trg_auto_hedging_admission_policy_pair_deviations_lock_published_insert;
+    DROP TABLE auto_hedging_admission_policy_pair_deviations;
+    ALTER TABLE auto_hedging_admission_policy_revisions
+      ADD COLUMN max_transfer_rate_deviation_percent TEXT NOT NULL DEFAULT '1.00';
+  `);
   legacyDatabase.close();
 
   process.env.DEMO_DATABASE_PATH = databasePath;
@@ -236,32 +278,38 @@ test("startup migrates Admission Policy to Mode and API publishes versioned poli
   assert.equal(initialPolicyResponse.statusCode, 200);
   assert.deepEqual(
     Object.keys(initialPolicyResponse.body),
-    ["revision", "maxTransferRateDeviationPercent", "currencyPairs"]
+    ["revision", "currencyPairs"]
   );
   assert.equal(initialPolicyResponse.body.revision, 1);
-  assert.equal(initialPolicyResponse.body.maxTransferRateDeviationPercent, "1.00");
   assert.deepEqual(
     initialPolicyResponse.body.currencyPairs.map(pair => ({
       code: pair.ccyPairCode,
+      deviation: pair.maxTransferRateDeviationPercent,
       enabled: pair.enabled,
       amount: pair.maxBaseCcyAmount
     })),
     [
-      { code: "EUR_USD", enabled: true, amount: "100000000.00" },
-      { code: "GBP_USD", enabled: true, amount: "100000000.00" },
-      { code: "USD_RUB", enabled: false, amount: null }
+      { code: "EUR_USD", deviation: "1.00", enabled: true, amount: "100000000.00" },
+      { code: "GBP_USD", deviation: "1.00", enabled: true, amount: "100000000.00" },
+      { code: "USD_RUB", deviation: "1.00", enabled: false, amount: null }
     ]
   );
 
-  migratedDatabase.prepare(`
-    INSERT INTO ccy_pair_options
-      (ccy_pair_code, base_ccy_code, quote_ccy_code, default_quote_decimals)
-    VALUES ('EUR_GBP', 'EUR', 'GBP', 4)
-  `).run();
+  const createdPairResponse = await request("POST", "/api/v1/ccy-pair-options", {
+    baseCcy: "EUR",
+    quoteCcy: "GBP",
+    defaultQuoteDecimals: 4
+  });
+  assert.equal(createdPairResponse.statusCode, 201);
   const policyWithNewPair = (await request(
     "GET",
     "/api/v1/auto-hedging-admission-policy"
   )).body;
+  assert.equal(policyWithNewPair.revision, 2);
+  assert.deepEqual(
+    policyWithNewPair.currencyPairs.find(pair => pair.ccyPairCode === "EUR_USD"),
+    initialPolicyResponse.body.currencyPairs.find(pair => pair.ccyPairCode === "EUR_USD")
+  );
   assert.deepEqual(
     policyWithNewPair.currencyPairs.find(pair => pair.ccyPairCode === "EUR_GBP"),
     {
@@ -269,39 +317,45 @@ test("startup migrates Admission Policy to Mode and API publishes versioned poli
       currencyPair: "EUR/GBP",
       baseCcyCode: "EUR",
       baseCcyFractionDigits: 2,
+      maxTransferRateDeviationPercent: "1.00",
       enabled: false,
       maxBaseCcyAmount: null
     }
   );
+  const blockedPairDeleteResponse = await request(
+    "DELETE",
+    "/api/v1/ccy-pair-options/EUR_GBP"
+  );
+  assert.equal(blockedPairDeleteResponse.statusCode, 409);
+  assert.equal(blockedPairDeleteResponse.body.code, "CCY_PAIR_IN_USE");
 
   const updatedPolicyResponse = await request(
     "PUT",
     "/api/v1/auto-hedging-admission-policy",
     {
-      expectedRevision: 1,
-      maxTransferRateDeviationPercent: "0.75",
+      expectedRevision: 2,
       currencyPairs: [
-        { ccyPairCode: "EUR_GBP", enabled: false, maxBaseCcyAmount: null },
-        { ccyPairCode: "EUR_USD", enabled: true, maxBaseCcyAmount: "125000000.50" },
-        { ccyPairCode: "GBP_USD", enabled: false, maxBaseCcyAmount: null },
-        { ccyPairCode: "USD_RUB", enabled: true, maxBaseCcyAmount: "5000000.00" }
+        { ccyPairCode: "EUR_GBP", maxTransferRateDeviationPercent: "0.80", enabled: false, maxBaseCcyAmount: null },
+        { ccyPairCode: "EUR_USD", maxTransferRateDeviationPercent: "0.75", enabled: true, maxBaseCcyAmount: "125000000.50" },
+        { ccyPairCode: "GBP_USD", maxTransferRateDeviationPercent: "0.60", enabled: false, maxBaseCcyAmount: null },
+        { ccyPairCode: "USD_RUB", maxTransferRateDeviationPercent: "0.50", enabled: true, maxBaseCcyAmount: "5000000.00" }
       ]
     }
   );
   assert.equal(updatedPolicyResponse.statusCode, 200);
-  assert.equal(updatedPolicyResponse.body.revision, 2);
-  assert.equal(updatedPolicyResponse.body.maxTransferRateDeviationPercent, "0.75");
+  assert.equal(updatedPolicyResponse.body.revision, 3);
   assert.deepEqual(
     updatedPolicyResponse.body.currencyPairs.map(pair => ({
       code: pair.ccyPairCode,
+      deviation: pair.maxTransferRateDeviationPercent,
       enabled: pair.enabled,
       amount: pair.maxBaseCcyAmount
     })),
     [
-      { code: "EUR_GBP", enabled: false, amount: null },
-      { code: "EUR_USD", enabled: true, amount: "125000000.50" },
-      { code: "GBP_USD", enabled: false, amount: null },
-      { code: "USD_RUB", enabled: true, amount: "5000000.00" }
+      { code: "EUR_GBP", deviation: "0.80", enabled: false, amount: null },
+      { code: "EUR_USD", deviation: "0.75", enabled: true, amount: "125000000.50" },
+      { code: "GBP_USD", deviation: "0.60", enabled: false, amount: null },
+      { code: "USD_RUB", deviation: "0.50", enabled: true, amount: "5000000.00" }
     ]
   );
   assert.deepEqual(server.autoHedgingAdmissionPolicy(), updatedPolicyResponse.body);
@@ -311,9 +365,9 @@ test("startup migrates Admission Policy to Mode and API publishes versioned poli
     "/api/v1/auto-hedging-admission-policy",
     {
       expectedRevision: 1,
-      maxTransferRateDeviationPercent: "0.50",
       currencyPairs: updatedPolicyResponse.body.currencyPairs.map(pair => ({
         ccyPairCode: pair.ccyPairCode,
+        maxTransferRateDeviationPercent: pair.maxTransferRateDeviationPercent,
         enabled: pair.enabled,
         maxBaseCcyAmount: pair.maxBaseCcyAmount
       }))
@@ -321,30 +375,35 @@ test("startup migrates Admission Policy to Mode and API publishes versioned poli
   );
   assert.equal(staleResponse.statusCode, 409);
   assert.equal(staleResponse.body.code, "AUTO_HEDGING_ADMISSION_POLICY_REVISION_CONFLICT");
-  assert.equal(staleResponse.body.currentRevision, 2);
+  assert.equal(staleResponse.body.currentRevision, 3);
 
   const invalidPayloads = [
     null,
-    { expectedRevision: 2, maxTransferRateDeviationPercent: 1, currencyPairs: [] },
-    { expectedRevision: 2, maxTransferRateDeviationPercent: "100.01", currencyPairs: [] },
-    { expectedRevision: 2, maxTransferRateDeviationPercent: "1.00", currencyPairs: [] },
+    { expectedRevision: 3, maxTransferRateDeviationPercent: 1, currencyPairs: [] },
+    { expectedRevision: 3, maxTransferRateDeviationPercent: "100.01", currencyPairs: [] },
+    { expectedRevision: 3, currencyPairs: [] },
     {
-      expectedRevision: 2,
-      maxTransferRateDeviationPercent: "1.00",
-      currencyPairs: [{ ccyPairCode: "UNKNOWN", enabled: false, maxBaseCcyAmount: null }]
+      expectedRevision: 3,
+      currencyPairs: [{ ccyPairCode: "UNKNOWN", maxTransferRateDeviationPercent: "1.00", enabled: false, maxBaseCcyAmount: null }]
     },
     {
-      expectedRevision: 2,
-      maxTransferRateDeviationPercent: "1.00",
+      expectedRevision: 3,
       currencyPairs: [
-        { ccyPairCode: "EUR_USD", enabled: false, maxBaseCcyAmount: null },
-        { ccyPairCode: "EUR_USD", enabled: false, maxBaseCcyAmount: null }
+        { ccyPairCode: "EUR_USD", maxTransferRateDeviationPercent: "1.00", enabled: false, maxBaseCcyAmount: null },
+        { ccyPairCode: "EUR_USD", maxTransferRateDeviationPercent: "1.00", enabled: false, maxBaseCcyAmount: null }
       ]
     },
     {
-      expectedRevision: 2,
-      maxTransferRateDeviationPercent: "1.00",
-      currencyPairs: [{ ccyPairCode: "EUR_USD", enabled: true, maxBaseCcyAmount: "1.001" }]
+      expectedRevision: 3,
+      currencyPairs: [{ ccyPairCode: "EUR_USD", maxTransferRateDeviationPercent: "100.01", enabled: false, maxBaseCcyAmount: null }]
+    },
+    {
+      expectedRevision: 3,
+      currencyPairs: [{ ccyPairCode: "EUR_USD", enabled: false, maxBaseCcyAmount: null }]
+    },
+    {
+      expectedRevision: 3,
+      currencyPairs: [{ ccyPairCode: "EUR_USD", maxTransferRateDeviationPercent: "1.00", enabled: true, maxBaseCcyAmount: "1.001" }]
     }
   ];
 
@@ -367,7 +426,7 @@ test("startup migrates Admission Policy to Mode and API publishes versioned poli
       SELECT COUNT(*) AS count
       FROM auto_hedging_admission_policy_revisions
     `).get().count,
-    2
+    3
   );
   assert.equal(
     migratedDatabase.prepare(`
@@ -375,6 +434,49 @@ test("startup migrates Admission Policy to Mode and API publishes versioned poli
       FROM auto_hedging_admission_policy_current
       WHERE policy_id = 1
     `).get().revision,
-    2
+    3
+  );
+
+  migratedDatabase.prepare(`
+    INSERT INTO ccy_pair_options
+      (ccy_pair_code, base_ccy_code, quote_ccy_code, default_quote_decimals)
+    VALUES ('JPY_USD', 'JPY', 'USD', 4)
+  `).run();
+  const historicalDeviationCount = migratedDatabase.prepare(`
+    SELECT COUNT(*) AS count
+    FROM auto_hedging_admission_policy_pair_deviations
+  `).get().count;
+  assert.equal(
+    migratedDatabase.prepare(`
+      SELECT COUNT(*) AS count
+      FROM auto_hedging_admission_policy_pair_deviations
+      WHERE ccy_pair_code = 'JPY_USD'
+    `).get().count,
+    0
+  );
+
+  migratedDatabase.close();
+  migratedDatabase = null;
+  closeDatabase();
+  closeDatabase = null;
+  delete require.cache[require.resolve(SERVER_PATH)];
+  const restartedServer = require(SERVER_PATH);
+  closeDatabase = restartedServer.closeDatabase;
+  migratedDatabase = new DatabaseSync(databasePath);
+  migratedDatabase.exec("PRAGMA foreign_keys = ON");
+  assert.equal(
+    migratedDatabase.prepare(`
+      SELECT COUNT(*) AS count
+      FROM auto_hedging_admission_policy_pair_deviations
+    `).get().count,
+    historicalDeviationCount
+  );
+  assert.equal(
+    migratedDatabase.prepare(`
+      SELECT COUNT(*) AS count
+      FROM auto_hedging_admission_policy_pair_deviations
+      WHERE ccy_pair_code = 'JPY_USD'
+    `).get().count,
+    0
   );
 });

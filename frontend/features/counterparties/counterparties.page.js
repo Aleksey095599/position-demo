@@ -4162,10 +4162,41 @@
       return `Execution Contexts for ${scope.value}${name ? ` — ${name}` : ""}`;
     }
 
+    function highlightPricingContextAutoHedgingAdmissionColumn(enabled) {
+      if (pricingContextFocusTimer) {
+        window.clearTimeout(pricingContextFocusTimer);
+        pricingContextFocusTimer = null;
+      }
+
+      executionContextsTable?.classList.remove("is-auto-hedging-admission-focused");
+
+      if (!enabled || !executionContextsTable || !pricingContextAutoHedgingAdmissionHeader) {
+        return;
+      }
+
+      // Restart the brief emphasis when this route is entered again.
+      void executionContextsTable.offsetWidth;
+      executionContextsTable.classList.add("is-auto-hedging-admission-focused");
+      pricingContextAutoHedgingAdmissionHeader.scrollIntoView({
+        behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "nearest",
+        inline: "center"
+      });
+      pricingContextAutoHedgingAdmissionHeader.focus({ preventScroll: true });
+      pricingContextFocusTimer = window.setTimeout(() => {
+        executionContextsTable.classList.remove("is-auto-hedging-admission-focused");
+        pricingContextFocusTimer = null;
+      }, 2600);
+    }
+
     function syncPricingContextRouteView() {
       const routeState = pricingRouteStateFromLocation();
       const previousScope = pricingContextRouteScope;
       const relatedView = routeState.mode === "related" && routeState.scope;
+      const focusedAdmissionView = routeState.mode === "focused"
+        && routeState.focus === "auto-hedging-admission";
 
       pricingContextEditState = null;
       setPricingContextStatus("");
@@ -4187,7 +4218,7 @@
       pricingContextRouteScope = relatedView ? routeState.scope : null;
       pricingPage.classList.toggle("is-related-view", Boolean(pricingContextRouteScope));
       pricingContextNewButton.hidden = Boolean(pricingContextRouteScope);
-      pricingContextBreadcrumb.hidden = !pricingContextRouteScope;
+      pricingContextBreadcrumb.hidden = !pricingContextRouteScope && !focusedAdmissionView;
 
       if (pricingContextRouteScope) {
         const scopeControl = pricingContextHeaderFilterControl(pricingContextRouteScope.field);
@@ -4201,9 +4232,14 @@
         pricingContextBreadcrumbBackLink.href = referenceDataRoute(pricingContextRouteScope.kind);
         pricingContextBreadcrumbBackLink.textContent = referenceDataPluralLabel(pricingContextRouteScope.kind);
         pricingContextBreadcrumbCurrent.textContent = pricingContextRouteScopeLabel(pricingContextRouteScope);
+      } else if (focusedAdmissionView) {
+        pricingContextBreadcrumbBackLink.href = routeState.returnHash;
+        pricingContextBreadcrumbBackLink.textContent = "Initial Auto Hedging Admission Policy";
+        pricingContextBreadcrumbCurrent.textContent = "Execution Contexts — Auto Hedging Admission";
       }
 
       renderPricingContexts();
+      highlightPricingContextAutoHedgingAdmissionColumn(focusedAdmissionView);
     }
 
     function pricingContextSearchValues(context, field) {
@@ -4321,7 +4357,7 @@
           <td>${pricingContextFacetMarkup(context, "settlementSystemId")}</td>
           <td>${executionSystemLabelMarkup(executionSystemName, executionSystem?.pricingType)}</td>
           <td>${positionManagementModeBadgeMarkup(context.defaultPositionManagementMode)}</td>
-          <td>${autoHedgingAdmissionModeBadgeMarkup(context.autoHedgingAdmissionMode)}</td>
+          <td data-pricing-context-column="autoHedgingAdmissionMode">${autoHedgingAdmissionModeBadgeMarkup(context.autoHedgingAdmissionMode)}</td>
           <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index)}</td>
           <td class="profile-actions-cell" data-pricing-context-actions-column>
             <span class="profile-row-actions">
@@ -4365,7 +4401,7 @@
               <option value="AUTO"${normalizedPositionManagementMode(context.defaultPositionManagementMode) === "AUTO" ? " selected" : ""}>${escapeHtml(positionManagementModeLabel("AUTO"))}</option>
             </select>
           </td>
-          <td>
+          <td data-pricing-context-column="autoHedgingAdmissionMode">
             <select class="inline-edit-control" data-pricing-context-field="autoHedgingAdmissionMode" aria-label="Auto Hedging Admission" required>
               <option value="AUTO_IF_ELIGIBLE"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "AUTO_IF_ELIGIBLE" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("AUTO_IF_ELIGIBLE"))}</option>
               <option value="REVIEW_REQUIRED"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "REVIEW_REQUIRED" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("REVIEW_REQUIRED"))}</option>

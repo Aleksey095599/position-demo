@@ -39,6 +39,8 @@ const AUTO_HEDGING_ADMISSION_REASON = Object.freeze({
   TRADE_AMOUNT_LIMIT_EXCEEDED: "TRADE_AMOUNT_LIMIT_EXCEEDED",
   MARKET_PULSE_UNAVAILABLE: "MARKET_PULSE_UNAVAILABLE",
   TRANSFER_RATE_UNAVAILABLE: "TRANSFER_RATE_UNAVAILABLE",
+  TRANSFER_RATE_DEVIATION_LIMIT_NOT_CONFIGURED:
+    "TRANSFER_RATE_DEVIATION_LIMIT_NOT_CONFIGURED",
   TRADE_SIDE_UNSUPPORTED: "TRADE_SIDE_UNSUPPORTED",
   TRANSFER_RATE_DEVIATION_EXCEEDED: "TRANSFER_RATE_DEVIATION_EXCEEDED"
 });
@@ -143,7 +145,17 @@ function transferRateDeviationCheck({
   maxTransferRateDeviationPercent
 }) {
   const threshold = decimal(maxTransferRateDeviationPercent);
-  if (!threshold || threshold.lt("0") || threshold.gt("100")) {
+  if (!threshold) {
+    return frozenCheck({
+      code: AUTO_HEDGING_ELIGIBILITY_CHECK.TRANSFER_RATE_DEVIATION,
+      status: AUTO_HEDGING_ELIGIBILITY_CHECK_STATUS.UNAVAILABLE,
+      reasonCode:
+        AUTO_HEDGING_ADMISSION_REASON.TRANSFER_RATE_DEVIATION_LIMIT_NOT_CONFIGURED,
+      evidence: {}
+    });
+  }
+
+  if (threshold.lt("0") || threshold.gt("100")) {
     const error = new RangeError(
       "Maximum Transfer Rate Deviation must be a decimal percentage from 0 to 100."
     );

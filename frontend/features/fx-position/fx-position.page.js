@@ -59,11 +59,31 @@
         : "#execution-context";
     }
 
+    function normalizedAutoHedgingAdmissionReturnRoute(value) {
+      const candidate = String(value || "").trim();
+      const initialAdmissionRoute = hedgingSettingsRoute("initial");
+
+      return candidate === initialAdmissionRoute ? candidate : initialAdmissionRoute;
+    }
+
+    function autoHedgingAdmissionExecutionContextRoute(returnHash = hedgingSettingsRoute("initial")) {
+      const parameters = new URLSearchParams();
+      parameters.set("focus", "auto-hedging-admission");
+      parameters.set("return", normalizedAutoHedgingAdmissionReturnRoute(returnHash));
+      return `#execution-context?${parameters.toString()}`;
+    }
+
     function pricingRouteStateFromLocation(hash = location.hash) {
       const match = /^#(?:execution-context|pricing)(?:\?([^#]*))?$/.exec(String(hash || "").trim());
 
       if (!match) {
-        return { matches: false, mode: "default", scope: null };
+        return {
+          matches: false,
+          mode: "default",
+          scope: null,
+          focus: "",
+          returnHash: pricingRoute()
+        };
       }
 
       const parameters = new URLSearchParams(match[1] || "");
@@ -74,11 +94,18 @@
           value: String(parameters.get(filter.parameter) || "").trim()
         }))
         .find(entry => entry.value);
+      const focus = parameters.get("focus") === "auto-hedging-admission"
+        ? "auto-hedging-admission"
+        : "";
 
       return {
         matches: true,
-        mode: scopedEntry ? "related" : "default",
-        scope: scopedEntry || null
+        mode: scopedEntry ? "related" : focus ? "focused" : "default",
+        scope: scopedEntry || null,
+        focus,
+        returnHash: focus
+          ? normalizedAutoHedgingAdmissionReturnRoute(parameters.get("return"))
+          : pricingRoute()
       };
     }
 

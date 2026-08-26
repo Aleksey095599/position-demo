@@ -161,6 +161,7 @@ test("trade segment headings reuse Trades icons and concise domain terminology",
   assert.equal((hedgingPageMarkup.match(/>Client FX Deals<\/strong>/g) || []).length, 2);
   assert.equal((hedgingPageMarkup.match(/>Hedge FX Deals<\/strong>/g) || []).length, 2);
   assert.equal((hedgingPageMarkup.match(/>Technical FX Trades<\/strong>/g) || []).length, 2);
+  assert.doesNotMatch(hedgingPageMarkup, />Configured<\/span>|>Not configured<\/span>/);
   const segmentCopies = [...hedgingPageMarkup.matchAll(
     /<span class="auto-hedging-trade-segment-copy">([\s\S]*?)<\/span>/g
   )].map(match => match[1]);

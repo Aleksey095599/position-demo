@@ -232,14 +232,39 @@ END;
 
 CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_revisions
 (
-    revision                            INTEGER PRIMARY KEY,
-    max_transfer_rate_deviation_percent TEXT    NOT NULL,
-    created_at                          TEXT    NOT NULL
+    revision   INTEGER PRIMARY KEY,
+    created_at TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
     CONSTRAINT chk_auto_hedging_admission_policy_revision
         CHECK (typeof(revision) = 'integer' AND revision >= 1),
-    CONSTRAINT chk_auto_hedging_admission_policy_max_deviation
+    CONSTRAINT chk_auto_hedging_admission_policy_created_at
+        CHECK (
+            length(created_at) = 24
+            AND created_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
+        )
+);
+
+CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_pair_deviations
+(
+    revision                            INTEGER NOT NULL,
+    ccy_pair_code                       TEXT    NOT NULL,
+    max_transfer_rate_deviation_percent TEXT    NOT NULL,
+
+    CONSTRAINT pk_auto_hedging_admission_policy_pair_deviations
+        PRIMARY KEY (revision, ccy_pair_code),
+    CONSTRAINT fk_auto_hedging_admission_policy_pair_deviations_revision
+        FOREIGN KEY (revision)
+            REFERENCES auto_hedging_admission_policy_revisions (revision)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT fk_auto_hedging_admission_policy_pair_deviations_pair
+        FOREIGN KEY (ccy_pair_code)
+            REFERENCES ccy_pair_options (ccy_pair_code)
+            ON UPDATE RESTRICT
+            ON DELETE RESTRICT,
+    CONSTRAINT chk_auto_hedging_admission_policy_pair_deviations_value
         CHECK (
             typeof(max_transfer_rate_deviation_percent) = 'text'
             AND length(max_transfer_rate_deviation_percent) BETWEEN 1 AND 32
@@ -249,14 +274,8 @@ CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_revisions
                 - length(replace(max_transfer_rate_deviation_percent, '.', '')) <= 1
             AND substr(max_transfer_rate_deviation_percent, -1, 1) <> '.'
             AND CAST(max_transfer_rate_deviation_percent AS REAL) BETWEEN 0 AND 100
-        ),
-    CONSTRAINT chk_auto_hedging_admission_policy_created_at
-        CHECK (
-            length(created_at) = 24
-            AND created_at GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
         )
-);
+) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_pair_rules
 (
@@ -350,12 +369,59 @@ BEGIN
     SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
 END;
 
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_deviations_immutable_update
+BEFORE UPDATE ON auto_hedging_admission_policy_pair_deviations
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_deviations_immutable_delete
+BEFORE DELETE ON auto_hedging_admission_policy_pair_deviations
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_deviations_lock_published_insert
+BEFORE INSERT ON auto_hedging_admission_policy_pair_deviations
+FOR EACH ROW
+WHEN NEW.revision <= COALESCE(
+    (SELECT current.revision FROM auto_hedging_admission_policy_current current WHERE current.policy_id = 1),
+    0
+)
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
+END;
+
 CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_current_forward_only
 BEFORE UPDATE OF revision ON auto_hedging_admission_policy_current
 FOR EACH ROW
 WHEN NEW.revision <= OLD.revision
 BEGIN
     SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_MUST_ADVANCE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_current_complete_insert
+BEFORE INSERT ON auto_hedging_admission_policy_current
+FOR EACH ROW
+WHEN
+    (SELECT COUNT(*) FROM auto_hedging_admission_policy_pair_deviations deviation
+     WHERE deviation.revision = NEW.revision)
+    <> (SELECT COUNT(*) FROM ccy_pair_options)
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_PAIR_DEVIATIONS_INCOMPLETE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_current_complete_update
+BEFORE UPDATE OF revision ON auto_hedging_admission_policy_current
+FOR EACH ROW
+WHEN
+    (SELECT COUNT(*) FROM auto_hedging_admission_policy_pair_deviations deviation
+     WHERE deviation.revision = NEW.revision)
+    <> (SELECT COUNT(*) FROM ccy_pair_options)
+BEGIN
+    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_PAIR_DEVIATIONS_INCOMPLETE');
 END;
 
 CREATE TABLE IF NOT EXISTS trading_counterparties

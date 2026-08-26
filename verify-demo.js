@@ -2747,7 +2747,7 @@ function verifyFrontendStructure() {
         databaseTableSectionsSource
       )
       && !databaseTableSectionsSource.includes('id: "execution-context"')
-      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"fx_hedge_quick_mode_settings",\s*"fx_batching_settings",\s*"fx_auto_batching_settings",\s*"fx_auto_batching_ccy_pairs",\s*"auto_hedging_admission_policy_current",\s*"auto_hedging_admission_policy_revisions",\s*"auto_hedging_admission_policy_pair_rules"\s*\]/.test(
+      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"fx_hedge_quick_mode_settings",\s*"fx_batching_settings",\s*"fx_auto_batching_settings",\s*"fx_auto_batching_ccy_pairs",\s*"auto_hedging_admission_policy_current",\s*"auto_hedging_admission_policy_revisions",\s*"auto_hedging_admission_policy_pair_deviations",\s*"auto_hedging_admission_policy_pair_rules"\s*\]/.test(
         databaseTableSectionsSource
       )
       && !databaseTableSectionsSource.includes('id: "hedging-settings"')
@@ -7550,6 +7550,7 @@ async function main() {
     const expectedTables = [
       "accounting_systems",
       "auto_hedging_admission_policy_current",
+      "auto_hedging_admission_policy_pair_deviations",
       "auto_hedging_admission_policy_pair_rules",
       "auto_hedging_admission_policy_revisions",
       "ccy_options",
@@ -9003,7 +9004,7 @@ async function main() {
       || !apiAndMigration.simulationControl.streamHasSnapshot
       || apiAndMigration.simulationControl.stop !== 200
       || apiAndMigration.simulationControl.stopRunning
-      || apiAndMigration.writeLifecycle.join(",") !== "201,201,200,200,200,204,200,409,204,204,201,200,409,201,200,409,204,201,200,409,204,201,200,409,204,204";
+      || apiAndMigration.writeLifecycle.join(",") !== "201,201,200,200,200,204,200,409,409,409,201,200,409,201,200,409,204,201,200,409,204,201,200,409,204,204";
     const result = { freshSchema, frontend, simulator, apiAndMigration };
 
     if (failed) {

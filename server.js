@@ -318,6 +318,7 @@ dropClientFxDealTriggers(database);
 dropHedgeFxDealTriggers(database);
 dropClientDealGenerationSettingsTriggers(database);
 dropHedgeQuickModeSettingsTriggers(database);
+dropAutoHedgingAdmissionPolicyCompletenessTriggers(database);
 migrateCcyOptionsConstraints(database);
 if (databaseAlreadyInitialized) {
   migrateLegacySimulationSettings(database);
@@ -359,6 +360,7 @@ ensureFxBatchFormationTiming(database);
 ensureFxBatchFormationReason(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 ensureFxPositionManagementPolicyColumns(database);
+migrateAutoHedgingAdmissionPairDeviations(database);
 ensureFxTradePositionManagementRows(database);
 repairLegacyBatchTechnicalTradeManagementModes(database);
 ensureHedgeFxDealTriggers(database);
@@ -596,10 +598,28 @@ function ensureAutoHedgingAdmissionPolicy(sqlite) {
 
     if (revision === 0) {
       revision = 1;
+      const revisionColumns = tableColumnNames(
+        sqlite,
+        "auto_hedging_admission_policy_revisions"
+      );
+      if (revisionColumns.has("max_transfer_rate_deviation_percent")) {
+        sqlite.prepare(`
+          INSERT INTO auto_hedging_admission_policy_revisions
+            (revision, max_transfer_rate_deviation_percent)
+          VALUES (?, '1.00')
+        `).run(revision);
+      } else {
+        sqlite.prepare(`
+          INSERT INTO auto_hedging_admission_policy_revisions (revision)
+          VALUES (?)
+        `).run(revision);
+      }
+
       sqlite.prepare(`
-        INSERT INTO auto_hedging_admission_policy_revisions
-          (revision, max_transfer_rate_deviation_percent)
-        VALUES (?, '1.00')
+        INSERT INTO auto_hedging_admission_policy_pair_deviations
+          (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
+        SELECT ?, ccy_pair_code, '1.00'
+        FROM ccy_pair_options
       `).run(revision);
 
       const seedPair = sqlite.prepare(`
@@ -641,6 +661,117 @@ function ensureAutoHedgingAdmissionPolicy(sqlite) {
         (policy_id, revision)
       VALUES (1, ?)
     `).run(revision);
+  });
+}
+
+function migrateAutoHedgingAdmissionPairDeviations(sqlite) {
+  if (!sqliteTableExists(sqlite, "auto_hedging_admission_policy_revisions")
+    || !sqliteTableExists(sqlite, "auto_hedging_admission_policy_pair_deviations")
+    || !sqliteTableExists(sqlite, "ccy_pair_options")) {
+    return;
+  }
+
+  const revisionColumns = tableColumnNames(
+    sqlite,
+    "auto_hedging_admission_policy_revisions"
+  );
+  if (!revisionColumns.has("max_transfer_rate_deviation_percent")) {
+    return;
+  }
+
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS application_schema_migrations
+    (
+      migration_key TEXT PRIMARY KEY,
+      applied_at TEXT NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    ) WITHOUT ROWID;
+  `);
+
+  const migrationKey = "auto_hedging_admission_pair_deviations_v1";
+  if (sqlite.prepare(`
+    SELECT 1 AS applied
+    FROM application_schema_migrations
+    WHERE migration_key = ?
+  `).get(migrationKey)) {
+    return;
+  }
+
+  const deviationRowCount = Number(sqlite.prepare(`
+    SELECT COUNT(*) AS rowCount
+    FROM auto_hedging_admission_policy_pair_deviations
+  `).get().rowCount);
+  const expectedDeviationRowCount = Number(sqlite.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM auto_hedging_admission_policy_revisions)
+      * (SELECT COUNT(*) FROM ccy_pair_options) AS rowCount
+  `).get().rowCount);
+  if (deviationRowCount !== 0
+    && deviationRowCount !== expectedDeviationRowCount) {
+    throw new Error(
+      "Legacy Auto Hedging Admission pair deviations are partially populated; "
+      + "startup migration cannot preserve immutable revision history safely."
+    );
+  }
+  if (deviationRowCount === expectedDeviationRowCount
+    && deviationRowCount !== 0
+    && sqlite.prepare(`
+      SELECT 1 AS mismatch
+      FROM auto_hedging_admission_policy_pair_deviations deviation
+      INNER JOIN auto_hedging_admission_policy_revisions revision
+        ON revision.revision = deviation.revision
+      WHERE deviation.max_transfer_rate_deviation_percent
+        IS NOT revision.max_transfer_rate_deviation_percent
+      LIMIT 1
+    `).get()) {
+    throw new Error(
+      "Legacy Auto Hedging Admission pair deviations do not match their "
+      + "revision-level source values; startup migration cannot preserve "
+      + "immutable revision history safely."
+    );
+  }
+
+  runInImmediateTransaction(sqlite, () => {
+    // Published revisions are immutable in normal operation. This narrowly
+    // scoped startup migration is the only place allowed to complete their
+    // new per-pair projection.
+    sqlite.exec(`
+      DROP TRIGGER IF EXISTS
+        trg_auto_hedging_admission_policy_pair_deviations_lock_published_insert;
+    `);
+    if (deviationRowCount === 0) {
+      sqlite.exec(`
+        INSERT INTO auto_hedging_admission_policy_pair_deviations
+          (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
+        SELECT
+          revision.revision,
+          pair.ccy_pair_code,
+          revision.max_transfer_rate_deviation_percent
+        FROM auto_hedging_admission_policy_revisions revision
+        CROSS JOIN ccy_pair_options pair;
+      `);
+    }
+    sqlite.prepare(`
+      INSERT INTO application_schema_migrations (migration_key)
+      VALUES (?)
+    `).run(migrationKey);
+    sqlite.exec(`
+      CREATE TRIGGER
+        trg_auto_hedging_admission_policy_pair_deviations_lock_published_insert
+      BEFORE INSERT ON auto_hedging_admission_policy_pair_deviations
+      FOR EACH ROW
+      WHEN NEW.revision <= COALESCE(
+        (
+          SELECT current.revision
+          FROM auto_hedging_admission_policy_current current
+          WHERE current.policy_id = 1
+        ),
+        0
+      )
+      BEGIN
+        SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
+      END;
+    `);
   });
 }
 
@@ -3943,6 +4074,13 @@ function dropHedgeQuickModeSettingsTriggers(sqlite) {
     DROP TRIGGER IF EXISTS trg_execution_contexts_preserve_fx_hedge_quick_mode_settings;
     DROP TRIGGER IF EXISTS trg_execution_systems_preserve_fx_hedge_quick_mode_settings;
     DROP TRIGGER IF EXISTS trg_ccy_options_preserve_fx_hedge_quick_mode_settings_precision;
+  `);
+}
+
+function dropAutoHedgingAdmissionPolicyCompletenessTriggers(sqlite) {
+  sqlite.exec(`
+    DROP TRIGGER IF EXISTS trg_auto_hedging_admission_policy_current_complete_insert;
+    DROP TRIGGER IF EXISTS trg_auto_hedging_admission_policy_current_complete_update;
   `);
 }
 
@@ -7766,8 +7904,7 @@ function executionContextAdmissionMode(executionContextId) {
 function autoHedgingAdmissionPolicy() {
   const current = database.prepare(`
     SELECT
-      revision.revision,
-      revision.max_transfer_rate_deviation_percent AS maxTransferRateDeviationPercent
+      revision.revision
     FROM auto_hedging_admission_policy_current current
     INNER JOIN auto_hedging_admission_policy_revisions revision
       ON revision.revision = current.revision
@@ -7786,20 +7923,26 @@ function autoHedgingAdmissionPolicy() {
       COALESCE(rule.base_ccy_fraction_digits, base_ccy.fraction_digits)
         AS baseCcyFractionDigits,
       CASE WHEN rule.ccy_pair_code IS NULL THEN 0 ELSE 1 END AS enabled,
-      rule.max_base_ccy_amount_minor AS maxBaseCcyAmountMinor
+      rule.max_base_ccy_amount_minor AS maxBaseCcyAmountMinor,
+      deviation.max_transfer_rate_deviation_percent
+        AS maxTransferRateDeviationPercent
     FROM ccy_pair_options pair
     INNER JOIN ccy_options base_ccy
       ON base_ccy.ccy_code = pair.base_ccy_code
     LEFT JOIN auto_hedging_admission_policy_pair_rules rule
       ON rule.revision = ?
       AND rule.ccy_pair_code = pair.ccy_pair_code
+    LEFT JOIN auto_hedging_admission_policy_pair_deviations deviation
+      ON deviation.revision = ?
+      AND deviation.ccy_pair_code = pair.ccy_pair_code
     ORDER BY pair.base_ccy_code, pair.quote_ccy_code
-  `).all(current.revision).map(pair => ({
+  `).all(current.revision, current.revision).map(pair => ({
     ccyPairCode: pair.ccyPairCode,
     currencyPair: pair.currencyPair,
     baseCcyCode: pair.baseCcyCode,
     baseCcyFractionDigits: pair.baseCcyFractionDigits,
     enabled: pair.enabled === 1,
+    maxTransferRateDeviationPercent: pair.maxTransferRateDeviationPercent,
     maxBaseCcyAmount: pair.enabled === 1
       ? minorToMajor(pair.maxBaseCcyAmountMinor, pair.baseCcyFractionDigits)
       : null
@@ -7807,7 +7950,6 @@ function autoHedgingAdmissionPolicy() {
 
   return {
     revision: current.revision,
-    maxTransferRateDeviationPercent: current.maxTransferRateDeviationPercent,
     currencyPairs
   };
 }
@@ -7835,17 +7977,15 @@ function validateAutoHedgingAdmissionPolicyPayload(body) {
   }
 
   const expectedRevision = body.expectedRevision;
-  const maxTransferRateDeviationPercent =
-    normalizedMaxTransferRateDeviationPercent(body.maxTransferRateDeviationPercent);
+
+  if (Object.hasOwn(body, "maxTransferRateDeviationPercent")) {
+    return {
+      error: "Maximum Transfer Rate deviation must be configured for each Currency Pair."
+    };
+  }
 
   if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
     return { error: "Expected revision must be a positive integer." };
-  }
-
-  if (maxTransferRateDeviationPercent === null) {
-    return {
-      error: "Maximum Transfer Rate deviation must be a decimal string from 0 through 100 percent."
-    };
   }
 
   if (!Array.isArray(body.currencyPairs)) {
@@ -7862,6 +8002,7 @@ function validateAutoHedgingAdmissionPolicyPayload(body) {
   `).all().map(pair => [pair.ccyPairCode, pair]));
   const seenPairCodes = new Set();
   const enabledPairRules = [];
+  const pairDeviationRules = [];
 
   for (const item of body.currencyPairs) {
     if (item === null || typeof item !== "object" || Array.isArray(item)) {
@@ -7880,6 +8021,21 @@ function validateAutoHedgingAdmissionPolicyPayload(body) {
     }
 
     seenPairCodes.add(ccyPairCode);
+
+    const maxTransferRateDeviationPercent =
+      normalizedMaxTransferRateDeviationPercent(
+        item.maxTransferRateDeviationPercent
+      );
+    if (maxTransferRateDeviationPercent === null) {
+      return {
+        error: `Maximum Transfer Rate deviation for ${ccyPairCode} must be a decimal string from 0 through 100 percent.`
+      };
+    }
+
+    pairDeviationRules.push({
+      ccyPairCode,
+      maxTransferRateDeviationPercent
+    });
 
     if (typeof item.enabled !== "boolean") {
       return { error: `Enabled must be a boolean value for ${ccyPairCode}.` };
@@ -7926,7 +8082,7 @@ function validateAutoHedgingAdmissionPolicyPayload(body) {
 
   return {
     expectedRevision,
-    maxTransferRateDeviationPercent,
+    pairDeviationRules,
     enabledPairRules
   };
 }
@@ -7953,11 +8109,37 @@ function saveAutoHedgingAdmissionPolicy(payload) {
       FROM auto_hedging_admission_policy_revisions
     `).get().nextRevision);
 
-    database.prepare(`
-      INSERT INTO auto_hedging_admission_policy_revisions
-        (revision, max_transfer_rate_deviation_percent)
-      VALUES (?, ?)
-    `).run(nextRevision, payload.maxTransferRateDeviationPercent);
+    const revisionColumns = tableColumnNames(
+      database,
+      "auto_hedging_admission_policy_revisions"
+    );
+    if (revisionColumns.has("max_transfer_rate_deviation_percent")) {
+      // Existing databases retain the legacy NOT NULL column for a safe,
+      // non-destructive migration. It is no longer read as policy state.
+      database.prepare(`
+        INSERT INTO auto_hedging_admission_policy_revisions
+          (revision, max_transfer_rate_deviation_percent)
+        VALUES (?, '1.00')
+      `).run(nextRevision);
+    } else {
+      database.prepare(`
+        INSERT INTO auto_hedging_admission_policy_revisions (revision)
+        VALUES (?)
+      `).run(nextRevision);
+    }
+
+    const insertPairDeviation = database.prepare(`
+      INSERT INTO auto_hedging_admission_policy_pair_deviations
+        (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
+      VALUES (?, ?, ?)
+    `);
+    payload.pairDeviationRules.forEach(rule => {
+      insertPairDeviation.run(
+        nextRevision,
+        rule.ccyPairCode,
+        rule.maxTransferRateDeviationPercent
+      );
+    });
 
     const insertPairRule = database.prepare(`
       INSERT INTO auto_hedging_admission_policy_pair_rules
@@ -7990,12 +8172,111 @@ function saveAutoHedgingAdmissionPolicy(payload) {
   return autoHedgingAdmissionPolicy();
 }
 
+function createCcyPairOptionWithAdmissionPolicy(payload) {
+  return runInImmediateTransaction(database, () => {
+    const currentRevision = Number(database.prepare(`
+      SELECT revision
+      FROM auto_hedging_admission_policy_current
+      WHERE policy_id = 1
+    `).get()?.revision || 0);
+    if (currentRevision < 1) {
+      throw new Error("Auto Hedging Admission Policy is not configured.");
+    }
+
+    const existingPairCount = Number(database.prepare(`
+      SELECT COUNT(*) AS pairCount
+      FROM ccy_pair_options
+    `).get().pairCount);
+    const currentDeviationCount = Number(database.prepare(`
+      SELECT COUNT(*) AS deviationCount
+      FROM auto_hedging_admission_policy_pair_deviations
+      WHERE revision = ?
+    `).get(currentRevision).deviationCount);
+    if (currentDeviationCount !== existingPairCount) {
+      const error = new Error(
+        "The current Auto Hedging Admission Policy does not cover every existing Ccy Pair."
+      );
+      error.code = "AUTO_HEDGING_ADMISSION_POLICY_PAIR_DEVIATIONS_INCOMPLETE";
+      throw error;
+    }
+
+    database.prepare(`
+      INSERT INTO ccy_pair_options
+        (ccy_pair_code, base_ccy_code, quote_ccy_code, default_quote_decimals)
+      VALUES (?, ?, ?, ?)
+    `).run(
+      payload.pairCode,
+      payload.baseCcy,
+      payload.quoteCcy,
+      payload.defaultQuoteDecimals
+    );
+
+    const nextRevision = Number(database.prepare(`
+      SELECT COALESCE(MAX(revision), 0) + 1 AS nextRevision
+      FROM auto_hedging_admission_policy_revisions
+    `).get().nextRevision);
+    const revisionColumns = tableColumnNames(
+      database,
+      "auto_hedging_admission_policy_revisions"
+    );
+    if (revisionColumns.has("max_transfer_rate_deviation_percent")) {
+      database.prepare(`
+        INSERT INTO auto_hedging_admission_policy_revisions
+          (revision, max_transfer_rate_deviation_percent)
+        VALUES (?, '1.00')
+      `).run(nextRevision);
+    } else {
+      database.prepare(`
+        INSERT INTO auto_hedging_admission_policy_revisions (revision)
+        VALUES (?)
+      `).run(nextRevision);
+    }
+
+    database.prepare(`
+      INSERT INTO auto_hedging_admission_policy_pair_deviations
+        (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
+      SELECT ?, ccy_pair_code, max_transfer_rate_deviation_percent
+      FROM auto_hedging_admission_policy_pair_deviations
+      WHERE revision = ?
+    `).run(nextRevision, currentRevision);
+    database.prepare(`
+      INSERT INTO auto_hedging_admission_policy_pair_deviations
+        (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
+      VALUES (?, ?, '1.00')
+    `).run(nextRevision, payload.pairCode);
+    database.prepare(`
+      INSERT INTO auto_hedging_admission_policy_pair_rules
+        (
+          revision,
+          ccy_pair_code,
+          max_base_ccy_amount_minor,
+          base_ccy_fraction_digits
+        )
+      SELECT
+        ?,
+        ccy_pair_code,
+        max_base_ccy_amount_minor,
+        base_ccy_fraction_digits
+      FROM auto_hedging_admission_policy_pair_rules
+      WHERE revision = ?
+    `).run(nextRevision, currentRevision);
+    database.prepare(`
+      UPDATE auto_hedging_admission_policy_current
+      SET revision = ?,
+          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE policy_id = 1
+    `).run(nextRevision);
+
+    return ccyPairOption(payload.pairCode);
+  });
+}
+
 function autoHedgingAdmissionEvaluationPolicy(ccyPairCode) {
   const normalizedPairCode = normalizedText(ccyPairCode).toUpperCase();
   const policy = database.prepare(`
     SELECT
       revision.revision,
-      revision.max_transfer_rate_deviation_percent
+      deviation.max_transfer_rate_deviation_percent
         AS maxTransferRateDeviationPercent,
       rule.ccy_pair_code AS ruleCcyPairCode,
       rule.max_base_ccy_amount_minor AS maxBaseCcyAmountMinor
@@ -8005,8 +8286,11 @@ function autoHedgingAdmissionEvaluationPolicy(ccyPairCode) {
     LEFT JOIN auto_hedging_admission_policy_pair_rules rule
       ON rule.revision = revision.revision
       AND rule.ccy_pair_code = ?
+    LEFT JOIN auto_hedging_admission_policy_pair_deviations deviation
+      ON deviation.revision = revision.revision
+      AND deviation.ccy_pair_code = ?
     WHERE current.policy_id = 1
-  `).get(normalizedPairCode);
+  `).get(normalizedPairCode, normalizedPairCode);
 
   if (!policy) {
     throw new Error("Auto Hedging Admission Policy is not configured.");
@@ -12707,7 +12991,9 @@ function databaseObjects() {
   return database.prepare(`
     SELECT name, type AS objectType
     FROM sqlite_master
-    WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'
+    WHERE type IN ('table', 'view')
+      AND name NOT LIKE 'sqlite_%'
+      AND name <> 'application_schema_migrations'
     ORDER BY name
   `).all().map(row => ({ ...row }));
 }
@@ -14859,15 +15145,14 @@ async function handleApi(request, response, url) {
     }
 
     try {
-      database.prepare(`
-        INSERT INTO ccy_pair_options
-          (ccy_pair_code, base_ccy_code, quote_ccy_code, default_quote_decimals)
-        VALUES (?, ?, ?, ?)
-      `).run(payload.pairCode, payload.baseCcy, payload.quoteCcy, payload.defaultQuoteDecimals);
-      sendJson(response, 201, ccyPairOption(payload.pairCode));
+      const created = createCcyPairOptionWithAdmissionPolicy(payload);
+      sendJson(response, 201, created);
     } catch (error) {
       if (String(error?.message || "").includes("FOREIGN KEY constraint failed")) {
         apiError(response, 409, "CCY_NOT_FOUND", "Base Ccy and Quote Ccy must exist in Ccy Options.");
+      } else if (error?.code
+        === "AUTO_HEDGING_ADMISSION_POLICY_PAIR_DEVIATIONS_INCOMPLETE") {
+        apiError(response, 409, error.code, error.message);
       } else {
         handleDatabaseError(response, error);
       }
@@ -15044,6 +15329,25 @@ async function handleApi(request, response, url) {
         409,
         "CCY_PAIR_IN_USE",
         `Ccy Pair ${current.currencyPair} is used in ${current.pricingRulesCount} ${ruleLabel}.`
+      );
+      return true;
+    }
+
+    const admissionPolicyRevisionCount = Number(database.prepare(`
+      SELECT COUNT(*) AS revisionCount
+      FROM auto_hedging_admission_policy_pair_deviations
+      WHERE ccy_pair_code = ?
+    `).get(pairCode).revisionCount);
+
+    if (admissionPolicyRevisionCount > 0) {
+      const revisionLabel = admissionPolicyRevisionCount === 1
+        ? "revision"
+        : "revisions";
+      apiError(
+        response,
+        409,
+        "CCY_PAIR_IN_USE",
+        `Ccy Pair ${current.currencyPair} is retained by ${admissionPolicyRevisionCount} Auto Hedging Admission Policy ${revisionLabel}.`
       );
       return true;
     }

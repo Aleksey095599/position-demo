@@ -164,8 +164,8 @@
 
       <section class="hedging-settings-content-panel auto-hedging-entry-route-panel" id="autoHedgingInitialAdmissionRoute" data-hedging-settings-section-panel="initial" aria-labelledby="initialAdmissionSettingsNavLink" hidden>
             <header class="auto-hedging-entry-route-head">
-              <h3 id="autoHedgingInitialAdmissionTitle">Initial Admission to Auto Hedging</h3>
-              <p>Defines the first admission decision made when an FX Trade appears in the application.</p>
+              <h3 id="autoHedgingInitialAdmissionTitle">Initial Auto Hedging Admission Policy</h3>
+              <p>Defines how an FX Trade is routed when it enters FX Position: to Auto Hedging or Manual Review.</p>
             </header>
 
             <div class="auto-hedging-trade-segment-list" data-auto-hedging-settings-segments="initial">
@@ -176,24 +176,24 @@
                     <span class="auto-hedging-trade-segment-copy">
                       <strong>Client FX Deals</strong>
                     </span>
-                    <span class="badge text-bg-primary">Configured</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
                   </button>
                 </h4>
                 <div class="auto-hedging-trade-segment-body" id="autoHedgingInitialClientPanel" role="region" aria-labelledby="autoHedgingInitialClientToggle" hidden>
-                  <form class="auto-hedging-admission-settings-panel" id="autoHedgingAdmissionPolicyForm" aria-label="Client FX Deal Initial Admission Policy" autocomplete="off">
+                  <div class="auto-hedging-admission-settings-panel" id="autoHedgingAdmissionPolicyPanel" role="group" aria-label="Client FX Deal Initial Admission Policy">
                     <span id="autoHedgingAdmissionPolicyRevision" hidden>Revision —</span>
 
                     <div class="auto-hedging-admission-settings-body auto-hedging-admission-rule-tree">
                       <section class="auto-hedging-admission-policy-block auto-hedging-admission-core-rule" aria-labelledby="autoHedgingAdmissionCoreRuleTitle">
-                        <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">lock</span>
+                        <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">hub</span>
                         <div class="auto-hedging-admission-policy-block-copy">
-                          <h5 id="autoHedgingAdmissionCoreRuleTitle">Execution Context Admission Mode</h5>
-                          <p>Uses the Auto Hedging Admission value configured for the FX Trade's Execution Context.</p>
+                          <h5 id="autoHedgingAdmissionCoreRuleTitle">Execution Context Auto Hedging Admission</h5>
+                          <p>Uses the Auto Hedging Admission configured in the Client FX Deal's Execution Context.</p>
                         </div>
-                        <div class="auto-hedging-admission-core-rule-badges" aria-label="Rule status">
-                          <span class="badge text-bg-primary">Required</span>
-                          <span class="badge text-bg-light border">Always applied</span>
+                        <div class="auto-hedging-admission-core-rule-actions">
+                          <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#execution-context?focus=auto-hedging-admission&amp;return=%23hedging-settings%3Aauto-hedging%3Ainitial-admission" aria-label="Open Execution Context settings" data-tooltip="Open Execution Context settings">
+                            <span class="button-icon" aria-hidden="true">settings</span>
+                          </a>
                         </div>
                       </section>
 
@@ -201,26 +201,25 @@
                         <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">monitoring</span>
                         <div class="auto-hedging-admission-policy-block-copy">
                           <h5 id="autoHedgingEligibilityChecksTitle">Maximum Transfer Rate Deviation from Market Pulse</h5>
-                          <p id="autoHedgingMaxTransferRateDeviationHelp">Maximum permitted percentage difference between Transfer Rate and the applicable Market Pulse rate.</p>
+                          <p id="autoHedgingMaxTransferRateDeviationHelp">Maximum permitted percentage difference between Transfer Rate and the applicable Market Pulse rate for each Ccy Pair.</p>
                         </div>
-                        <div class="auto-hedging-admission-deviation-field">
-                          <label class="visually-hidden" for="autoHedgingMaxTransferRateDeviationPercent">Maximum Transfer Rate Deviation from Market Pulse (%)</label>
-                          <div class="input-group">
-                            <input class="form-control" type="text" id="autoHedgingMaxTransferRateDeviationPercent" name="maxTransferRateDeviationPercent" inputmode="decimal" aria-describedby="autoHedgingMaxTransferRateDeviationHelp" required>
-                            <span class="input-group-text" aria-hidden="true">%</span>
-                          </div>
+                        <div class="auto-hedging-admission-policy-block-actions">
+                          <span class="badge text-bg-light border" id="autoHedgingAdmissionDeviationSummary">0 Ccy Pairs</span>
+                          <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" id="autoHedgingAdmissionDeviationEditButton" aria-label="Edit Maximum Transfer Rate Deviation from Market Pulse" aria-haspopup="dialog" aria-controls="autoHedgingAdmissionDeviationDialog">
+                            <span class="button-icon" aria-hidden="true">edit</span>
+                          </button>
                         </div>
                       </section>
 
                       <section class="auto-hedging-admission-policy-block auto-hedging-admission-pair-policy" aria-labelledby="autoHedgingPairEligibilityTitle">
                         <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">currency_exchange</span>
                         <div class="auto-hedging-admission-policy-block-copy">
-                          <h5 id="autoHedgingPairEligibilityTitle">Ccy Pair Eligibility and Trade Amount Limit</h5>
-                          <p>Defines which Currency Pairs may be admitted automatically and their maximum Base Ccy Trade Amounts.</p>
+                          <h5 id="autoHedgingPairEligibilityTitle">Ccy Pair Eligibility and Trade Amount Limits</h5>
+                          <p>Determines whether a Client FX Deal may be initially admitted to Auto Hedging based on its Ccy Pair and Trade Amount in Base Ccy.</p>
                         </div>
-                        <div class="auto-hedging-admission-pair-policy-actions">
+                        <div class="auto-hedging-admission-policy-block-actions auto-hedging-admission-pair-policy-actions">
                           <span class="badge text-bg-light border" id="autoHedgingAdmissionPairSummary">0 enabled</span>
-                          <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" id="autoHedgingAdmissionPairEditButton" aria-label="Edit Ccy Pair Eligibility and Trade Amount Limit" aria-haspopup="dialog" aria-controls="autoHedgingAdmissionPairDialog" data-tooltip="Edit Ccy Pair Eligibility and Trade Amount Limit">
+                          <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" id="autoHedgingAdmissionPairEditButton" aria-label="Edit Ccy Pair Eligibility and Trade Amount Limits" aria-haspopup="dialog" aria-controls="autoHedgingAdmissionPairDialog">
                             <span class="button-icon" aria-hidden="true">edit</span>
                           </button>
                         </div>
@@ -228,13 +227,7 @@
 
                       <div class="auto-hedging-admission-settings-status" id="autoHedgingAdmissionPolicyStatus" role="status" aria-live="polite"></div>
                     </div>
-                    <div class="auto-hedging-admission-settings-footer">
-                      <button type="submit" class="btn btn-primary btn-sm with-icon" id="autoHedgingAdmissionPolicySaveButton" disabled>
-                        <span class="button-icon" aria-hidden="true">save</span>
-                        <span>Save Policy</span>
-                      </button>
-                    </div>
-                  </form>
+                  </div>
                 </div>
               </section>
 
@@ -245,7 +238,6 @@
                     <span class="auto-hedging-trade-segment-copy">
                       <strong>Hedge FX Deals</strong>
                     </span>
-                    <span class="badge text-bg-light border">Not configured</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
                   </button>
                 </h4>
@@ -267,7 +259,6 @@
                     <span class="auto-hedging-trade-segment-copy">
                       <strong>Technical FX Trades</strong>
                     </span>
-                    <span class="badge text-bg-light border">Not configured</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
                   </button>
                 </h4>
@@ -276,12 +267,10 @@
                     <div>
                       <span class="button-icon" aria-hidden="true">balance</span>
                       <span><strong>Balance Position</strong><small>Initial Admission Policy is not defined.</small></span>
-                      <span class="badge text-bg-light border">Not configured</span>
                     </div>
                     <div>
                       <span class="button-icon" aria-hidden="true">output</span>
                       <span><strong>Position Out</strong><small>Initial Admission Policy is not defined.</small></span>
-                      <span class="badge text-bg-light border">Not configured</span>
                     </div>
                   </div>
                 </div>
@@ -319,7 +308,7 @@
                     <div><dt>Policy source</dt><dd>Client FX Deal Initial Admission</dd></div>
                     <div><dt>Policy revision</dt><dd id="autoHedgingManualReleaseSharedRevision">—</dd></div>
                     <div><dt>Enabled Ccy Pairs</dt><dd id="autoHedgingManualReleaseSharedPairSummary">—</dd></div>
-                    <div><dt>Maximum Transfer Rate Deviation</dt><dd id="autoHedgingManualReleaseSharedDeviation">—</dd></div>
+                    <div><dt>Ccy Pair Transfer Rate Deviations</dt><dd id="autoHedgingManualReleaseSharedDeviation">—</dd></div>
                   </dl>
                 </div>
               </section>
@@ -331,7 +320,6 @@
                     <span class="auto-hedging-trade-segment-copy">
                       <strong>Hedge FX Deals</strong>
                     </span>
-                    <span class="badge text-bg-light border">Not configured</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
                   </button>
                 </h4>
@@ -353,7 +341,6 @@
                     <span class="auto-hedging-trade-segment-copy">
                       <strong>Technical FX Trades</strong>
                     </span>
-                    <span class="badge text-bg-light border">Not configured</span>
                     <span class="button-icon auto-hedging-trade-segment-chevron" aria-hidden="true">expand_more</span>
                   </button>
                 </h4>
@@ -362,12 +349,10 @@
                     <div>
                       <span class="button-icon" aria-hidden="true">balance</span>
                       <span><strong>Balance Position</strong><small>Manual Release Policy is not defined.</small></span>
-                      <span class="badge text-bg-light border">Not configured</span>
                     </div>
                     <div>
                       <span class="button-icon" aria-hidden="true">output</span>
                       <span><strong>Position Out</strong><small>Manual Release Policy is not defined.</small></span>
-                      <span class="badge text-bg-light border">Not configured</span>
                     </div>
                   </div>
                 </div>

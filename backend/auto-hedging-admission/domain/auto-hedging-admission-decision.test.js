@@ -154,6 +154,18 @@ test("invalid Policy percentages are rejected", () => {
   );
 });
 
+test("a missing per-pair deviation limit holds the trade fail-closed", () => {
+  const decision = determineInitialAdmissionState(eligibleSource({
+    maxTransferRateDeviationPercent: null
+  }));
+
+  assert.equal(decision.state, "HELD");
+  assert.ok(decision.reasonCodes.includes(
+    "TRANSFER_RATE_DEVIATION_LIMIT_NOT_CONFIGURED"
+  ));
+  assert.equal(decision.checks[1].status, "UNAVAILABLE");
+});
+
 test("release re-evaluates Eligibility Checks and never overrides MANUAL_ONLY", () => {
   const reviewRelease = decideReleaseToAutoHedging(eligibleSource({
     admissionMode: "REVIEW_REQUIRED"

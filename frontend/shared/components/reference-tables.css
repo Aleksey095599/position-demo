@@ -1125,6 +1125,37 @@
       display: none;
     }
 
+    @keyframes pricing-context-admission-column-focus {
+      0%, 100% {
+        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0);
+      }
+
+      14%, 72% {
+        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.13);
+      }
+    }
+
+    #executionContextsTable.is-auto-hedging-admission-focused [data-pricing-context-column="autoHedgingAdmissionMode"] {
+      animation: pricing-context-admission-column-focus 2.6s ease-out both;
+    }
+
+    #executionContextsTable.is-auto-hedging-admission-focused th[data-pricing-context-column="autoHedgingAdmissionMode"] {
+      outline: 2px solid rgba(var(--bs-primary-rgb), 0.38);
+      outline-offset: -2px;
+    }
+
+    #pricingContextAutoHedgingAdmissionHeader:focus {
+      outline: 2px solid rgba(var(--bs-primary-rgb), 0.5);
+      outline-offset: -2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #executionContextsTable.is-auto-hedging-admission-focused [data-pricing-context-column="autoHedgingAdmissionMode"] {
+        animation: none;
+        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.13);
+      }
+    }
+
     #clientProfilePage.unified-bootstrap-workspace.workbench-page.is-related-view [data-client-profile-actions-column] {
       display: none;
     }
