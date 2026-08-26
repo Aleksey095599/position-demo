@@ -7,6 +7,11 @@ const { randomUUID } = require("node:crypto");
 const { URL } = require("node:url");
 const { DatabaseSync } = require("node:sqlite");
 const {
+  DEMO_APPLICATION_ID,
+  runtimeFilePath,
+  runtimeRecordMatches
+} = require("./scripts/demo-server-runtime.cjs");
+const {
   DEFAULT_FLUCTUATION_SPREADS,
   DEFAULT_ONE_WAY_DURATION_SECONDS,
   MAX_FLUCTUATION_SPREADS,
@@ -125,6 +130,7 @@ const PORT = Number.isInteger(configuredPort) && configuredPort >= 1 && configur
   : 8000;
 const ROOT_DIR = __dirname;
 const DATA_DIR = path.join(ROOT_DIR, "data");
+const SERVER_RUNTIME_FILE_PATH = runtimeFilePath(ROOT_DIR, PORT);
 const DATABASE_PATH = process.env.DEMO_DATABASE_PATH
   ? path.resolve(process.env.DEMO_DATABASE_PATH)
   : path.join(DATA_DIR, "demo.sqlite");
@@ -173,6 +179,39 @@ const CLIENT_ONBOARDING_MANUAL_PRICING = "CLIENT_ONBOARDING";
 const HEDGE_DEAL_PRICING_MODES = new Set(["AUTO_PRICED", "DEALER_PRICED"]);
 
 fs.mkdirSync(path.dirname(DATABASE_PATH), { recursive: true });
+
+function serverRuntimeRecord() {
+  return {
+    application: DEMO_APPLICATION_ID,
+    projectRoot: path.resolve(ROOT_DIR),
+    port: PORT,
+    pid: process.pid,
+    startedAt: new Date().toISOString()
+  };
+}
+
+function writeServerRuntimeFile() {
+  const temporaryPath = `${SERVER_RUNTIME_FILE_PATH}.${process.pid}.tmp`;
+
+  fs.mkdirSync(path.dirname(SERVER_RUNTIME_FILE_PATH), { recursive: true });
+  fs.writeFileSync(temporaryPath, `${JSON.stringify(serverRuntimeRecord(), null, 2)}\n`, "utf8");
+  fs.rmSync(SERVER_RUNTIME_FILE_PATH, { force: true });
+  fs.renameSync(temporaryPath, SERVER_RUNTIME_FILE_PATH);
+}
+
+function removeServerRuntimeFile() {
+  try {
+    const record = JSON.parse(fs.readFileSync(SERVER_RUNTIME_FILE_PATH, "utf8"));
+
+    if (runtimeRecordMatches(record, { projectRoot: ROOT_DIR, port: PORT, pid: process.pid })) {
+      fs.rmSync(SERVER_RUNTIME_FILE_PATH, { force: true });
+    }
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      console.error(`Unable to clean up server runtime file: ${error.message}`);
+    }
+  }
+}
 
 const database = new DatabaseSync(DATABASE_PATH);
 database.exec("PRAGMA foreign_keys = ON");
@@ -15104,6 +15143,7 @@ server.on("error", error => {
   clientDealGenerationProcess.dispose();
   fxAutoBatchingProcess.dispose();
   marketPulseSimulator.dispose();
+  removeServerRuntimeFile();
   database.close();
   process.exitCode = 1;
 });
@@ -15120,6 +15160,7 @@ function closeServer() {
     clientDealGenerationProcess.dispose();
     fxAutoBatchingProcess.dispose();
     marketPulseSimulator.dispose();
+    removeServerRuntimeFile();
     database.close();
     process.exit(0);
   });
@@ -15132,6 +15173,7 @@ function closeServer() {
 if (require.main === module) {
   process.on("SIGINT", closeServer);
   process.on("SIGTERM", closeServer);
+  process.on("exit", removeServerRuntimeFile);
 
   if (process.argv.includes("--init-only")) {
     clientDealGenerationProcess.dispose();
@@ -15140,6 +15182,14 @@ if (require.main === module) {
     console.log(`SQLite initialized: ${DATABASE_PATH}`);
   } else {
     server.listen(PORT, HOST, () => {
+      try {
+        writeServerRuntimeFile();
+      } catch (error) {
+        console.error(`Unable to register the demo server for safe restart: ${error.message}`);
+        closeServer();
+        return;
+      }
+
       console.log(`Demo application: http://${HOST}:${PORT}`);
       console.log(`SQLite database: ${DATABASE_PATH}`);
       console.log("Press Ctrl+C to stop.");
