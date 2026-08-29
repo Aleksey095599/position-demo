@@ -147,7 +147,7 @@
       margin: 0;
       color: var(--bs-body-color);
       font-size: var(--app-font-size-section-title);
-      font-weight: 700;
+      font-weight: var(--app-font-weight-semibold);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -233,7 +233,7 @@
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-trade-segment-copy strong {
       font-size: var(--app-font-size-control);
-      font-weight: 700;
+      font-weight: var(--app-font-weight-semibold);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -296,7 +296,7 @@
       margin: 0;
       color: var(--bs-body-color);
       font-size: var(--app-font-size-section-title);
-      font-weight: 700;
+      font-weight: var(--app-font-weight-semibold);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page

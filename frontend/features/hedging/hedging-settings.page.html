@@ -187,7 +187,7 @@
                       <section class="auto-hedging-admission-policy-block auto-hedging-admission-core-rule" aria-labelledby="autoHedgingAdmissionCoreRuleTitle">
                         <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">hub</span>
                         <div class="auto-hedging-admission-policy-block-copy">
-                          <h5 id="autoHedgingAdmissionCoreRuleTitle">Execution Context Auto Hedging Admission</h5>
+                          <h5 id="autoHedgingAdmissionCoreRuleTitle">Execution Context</h5>
                           <p>Uses the Auto Hedging Admission configured in the Client FX Deal's Execution Context.</p>
                         </div>
                         <div class="auto-hedging-admission-core-rule-actions">
@@ -197,15 +197,28 @@
                         </div>
                       </section>
 
+                      <section class="auto-hedging-admission-policy-block auto-hedging-admission-pricing-rule" aria-labelledby="autoHedgingAdmissionPricingRuleTitle">
+                        <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">rule</span>
+                        <div class="auto-hedging-admission-policy-block-copy">
+                          <h5 id="autoHedgingAdmissionPricingRuleTitle">Pricing Rule</h5>
+                          <p>Uses the Execution Context Admission Policy unless overridden by Manual Control.</p>
+                        </div>
+                        <div class="auto-hedging-admission-core-rule-actions">
+                          <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#pricing-rules:external-counterparties?focus=auto-hedging-admission&amp;return=%23hedging-settings%3Aauto-hedging%3Ainitial-admission" aria-label="Open Pricing Rule settings" data-tooltip="Open Pricing Rule settings">
+                            <span class="button-icon" aria-hidden="true">settings</span>
+                          </a>
+                        </div>
+                      </section>
+
                       <section class="auto-hedging-admission-policy-block auto-hedging-admission-deviation-card" aria-labelledby="autoHedgingEligibilityChecksTitle">
                         <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">monitoring</span>
                         <div class="auto-hedging-admission-policy-block-copy">
-                          <h5 id="autoHedgingEligibilityChecksTitle">Maximum Transfer Rate Deviation from Market Pulse</h5>
+                          <h5 id="autoHedgingEligibilityChecksTitle">Transfer Rate Deviation</h5>
                           <p id="autoHedgingMaxTransferRateDeviationHelp">Maximum permitted percentage difference between Transfer Rate and the applicable Market Pulse rate for each Ccy Pair.</p>
                         </div>
                         <div class="auto-hedging-admission-policy-block-actions">
                           <span class="badge text-bg-light border" id="autoHedgingAdmissionDeviationSummary">0 Ccy Pairs</span>
-                          <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" id="autoHedgingAdmissionDeviationEditButton" aria-label="Edit Maximum Transfer Rate Deviation from Market Pulse" aria-haspopup="dialog" aria-controls="autoHedgingAdmissionDeviationDialog">
+                          <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" id="autoHedgingAdmissionDeviationEditButton" aria-label="Edit Transfer Rate Deviation" aria-haspopup="dialog" aria-controls="autoHedgingAdmissionDeviationDialog">
                             <span class="button-icon" aria-hidden="true">edit</span>
                           </button>
                         </div>
@@ -214,12 +227,12 @@
                       <section class="auto-hedging-admission-policy-block auto-hedging-admission-pair-policy" aria-labelledby="autoHedgingPairEligibilityTitle">
                         <span class="button-icon auto-hedging-admission-policy-block-icon" aria-hidden="true">currency_exchange</span>
                         <div class="auto-hedging-admission-policy-block-copy">
-                          <h5 id="autoHedgingPairEligibilityTitle">Ccy Pair Eligibility and Trade Amount Limits</h5>
+                          <h5 id="autoHedgingPairEligibilityTitle">Ccy Pair and Amount Limits</h5>
                           <p>Determines whether a Client FX Deal may be initially admitted to Auto Hedging based on its Ccy Pair and Trade Amount in Base Ccy.</p>
                         </div>
                         <div class="auto-hedging-admission-policy-block-actions auto-hedging-admission-pair-policy-actions">
                           <span class="badge text-bg-light border" id="autoHedgingAdmissionPairSummary">0 enabled</span>
-                          <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" id="autoHedgingAdmissionPairEditButton" aria-label="Edit Ccy Pair Eligibility and Trade Amount Limits" aria-haspopup="dialog" aria-controls="autoHedgingAdmissionPairDialog">
+                          <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" id="autoHedgingAdmissionPairEditButton" aria-label="Edit Ccy Pair and Amount Limits" aria-haspopup="dialog" aria-controls="autoHedgingAdmissionPairDialog">
                             <span class="button-icon" aria-hidden="true">edit</span>
                           </button>
                         </div>

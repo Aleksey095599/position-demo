@@ -205,6 +205,37 @@ test("CLIENT_DEAL creation records a non-enforcing immutable shadow decision", a
   const checks = JSON.parse(audit.checksJson);
   assert.deepEqual(checks, []);
 
+  const admissionOverrideResponse = await request(
+    "PUT",
+    `/api/v1/pricing-rules/${rule.pricingRuleId}`,
+    { autoHedgingAdmissionModeOverride: "MANUAL_ONLY" }
+  );
+  assert.equal(admissionOverrideResponse.statusCode, 200);
+  assert.equal(
+    admissionOverrideResponse.body.effectiveAutoHedgingAdmissionMode,
+    "MANUAL_ONLY"
+  );
+  const createdWithAdmissionOverride = await request(
+    "POST",
+    "/api/v1/client-fx-deals",
+    clientDealPayload(rule, 2)
+  );
+  assert.equal(createdWithAdmissionOverride.statusCode, 201);
+  assert.equal(createdWithAdmissionOverride.body.currentFxPositionMode, "AUTO");
+  const overriddenAudit = inspectionDatabase.prepare(`
+    SELECT
+      admission_mode AS admissionMode,
+      admission_state AS admissionState,
+      releasable,
+      reason_codes_json AS reasonCodesJson
+    FROM fx_auto_hedging_admission_decisions
+    WHERE trade_id = ? AND trade_type = 'CLIENT_DEAL'
+  `).get(createdWithAdmissionOverride.body.tradeId);
+  assert.equal(overriddenAudit.admissionMode, "MANUAL_ONLY");
+  assert.equal(overriddenAudit.admissionState, "HELD");
+  assert.equal(overriddenAudit.releasable, 0);
+  assert.deepEqual(JSON.parse(overriddenAudit.reasonCodesJson), ["MANUAL_ONLY"]);
+
   assert.throws(() => inspectionDatabase.prepare(`
     UPDATE fx_auto_hedging_admission_decisions
     SET is_enforced = 0
@@ -226,7 +257,7 @@ test("CLIENT_DEAL creation records a non-enforcing immutable shadow decision", a
   const createdWhileShadowFails = await request(
     "POST",
     "/api/v1/client-fx-deals",
-    clientDealPayload(rule, 2)
+    clientDealPayload(rule, 3)
   );
   assert.equal(createdWhileShadowFails.statusCode, 201);
   assert.equal(createdWhileShadowFails.body.currentFxPositionMode, "AUTO");

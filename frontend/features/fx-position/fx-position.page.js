@@ -153,6 +153,16 @@
         : "#pricing-rules:external-counterparties";
     }
 
+    function autoHedgingAdmissionPricingRulesRoute(
+      returnHash = hedgingSettingsRoute("initial"),
+      scope = "EXTERNAL"
+    ) {
+      const parameters = new URLSearchParams();
+      parameters.set("focus", "auto-hedging-admission");
+      parameters.set("return", normalizedAutoHedgingAdmissionReturnRoute(returnHash));
+      return `${pricingRulesRoute(scope)}?${parameters.toString()}`;
+    }
+
     function normalizedCcyPairRouteCode(value) {
       const pairCode = String(value || "").trim().toUpperCase().replace("/", "_");
 
@@ -206,6 +216,21 @@
       const scope = match[1] === "internal-units" ? "INTERNAL" : "EXTERNAL";
       const parameters = new URLSearchParams(match[2] || "");
       const pairCode = normalizedCcyPairRouteCode(parameters.get("ccy-pair"));
+      const focus = !pairCode && parameters.get("focus") === "auto-hedging-admission"
+        ? "auto-hedging-admission"
+        : "";
+
+      if (focus) {
+        return {
+          matches: true,
+          mode: "focused",
+          scope,
+          pairCode: "",
+          currencyPair: "",
+          focus,
+          returnHash: normalizedAutoHedgingAdmissionReturnRoute(parameters.get("return"))
+        };
+      }
 
       return {
         matches: true,

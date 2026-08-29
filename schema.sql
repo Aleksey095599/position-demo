@@ -677,6 +677,7 @@ CREATE TABLE IF NOT EXISTS pricing_rules
     ccy_pair_code                    TEXT    NOT NULL,
     margin_percent                   REAL    NOT NULL,
     position_management_mode_override TEXT,
+    auto_hedging_admission_mode_override TEXT,
 
     CONSTRAINT fk_pricing_rules_counterparty
         FOREIGN KEY (counterparty_id)
@@ -701,6 +702,11 @@ CREATE TABLE IF NOT EXISTS pricing_rules
         CHECK (
             position_management_mode_override IS NULL
             OR position_management_mode_override IN ('MANUAL', 'AUTO')
+        ),
+    CONSTRAINT chk_pricing_rules_auto_hedging_admission_mode_override
+        CHECK (
+            auto_hedging_admission_mode_override IS NULL
+            OR auto_hedging_admission_mode_override = 'MANUAL_ONLY'
         )
 );
 

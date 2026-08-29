@@ -457,6 +457,33 @@
         : "#trading-counterparties";
     }
 
+    function normalizedPricingRulesReturnRoute(value) {
+      const candidate = String(value || "").trim();
+
+      return pricingRulesRouteStateFromLocation(candidate).matches
+        ? candidate
+        : pricingRulesRoute();
+    }
+
+    function pricingRuleClientProfileRoute(
+      counterpartyId,
+      pricingRuleId,
+      returnHash = location.hash
+    ) {
+      const counterpartyRoute = clientProfileRoute(counterpartyId);
+      const normalizedCounterpartyId = String(counterpartyId ?? "").trim();
+      const normalizedPricingRuleId = String(pricingRuleId ?? "").trim();
+
+      if (!normalizedCounterpartyId || !normalizedPricingRuleId) {
+        return counterpartyRoute;
+      }
+
+      const parameters = new URLSearchParams();
+      parameters.set("pricing-rule", normalizedPricingRuleId);
+      parameters.set("return", normalizedPricingRulesReturnRoute(returnHash));
+      return `${counterpartyRoute}?${parameters.toString()}`;
+    }
+
     function normalizedPricingContextReturnRoute(value) {
       const candidate = String(value || "").trim();
 
@@ -495,6 +522,7 @@
 
       const parameters = new URLSearchParams(match[2] || "");
       const executionContextId = Number(parameters.get("execution-context"));
+      const pricingRuleId = String(parameters.get("pricing-rule") || "").trim();
 
       if (!routeToken && Number.isInteger(executionContextId) && executionContextId > 0) {
         return {
@@ -512,6 +540,17 @@
 
       if (routeToken.toLowerCase() === "new") {
         return { matches: true, mode: "create", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+      }
+
+      if (pricingRuleId) {
+        return {
+          matches: true,
+          mode: "pricing-rule",
+          counterpartyId: routeToken,
+          executionContextId: null,
+          pricingRuleId,
+          returnHash: normalizedPricingRulesReturnRoute(parameters.get("return"))
+        };
       }
 
       return { matches: true, mode: "detail", counterpartyId: routeToken, executionContextId: null, returnHash: pricingRoute() };

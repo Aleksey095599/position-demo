@@ -116,6 +116,12 @@ const {
   normalizeAutoHedgingAdmissionMode
 } = require("./backend/auto-hedging-admission/domain/auto-hedging-admission-mode");
 const {
+  normalizePricingRuleAutoHedgingAdmissionModeOverride,
+  resolvePricingRuleAutoHedgingAdmissionMode
+} = require(
+  "./backend/auto-hedging-admission/domain/pricing-rule-admission-policy"
+);
+const {
   determineInitialAdmissionState
 } = require("./backend/auto-hedging-admission/domain/auto-hedging-admission-decision");
 const {
@@ -1046,6 +1052,21 @@ function ensureFxPositionManagementPolicyColumns(sqlite) {
         CHECK (
           position_management_mode_override IS NULL
           OR position_management_mode_override IN ('MANUAL', 'AUTO')
+        )
+    `);
+  }
+
+  if (
+    sqliteTableExists(sqlite, "pricing_rules")
+    && !tableColumnNames(sqlite, "pricing_rules")
+      .has("auto_hedging_admission_mode_override")
+  ) {
+    sqlite.exec(`
+      ALTER TABLE pricing_rules
+      ADD COLUMN auto_hedging_admission_mode_override TEXT
+        CHECK (
+          auto_hedging_admission_mode_override IS NULL
+          OR auto_hedging_admission_mode_override = 'MANUAL_ONLY'
         )
     `);
   }
@@ -6524,6 +6545,18 @@ function migrateLegacyExecutionContextIds(sqlite) {
   const contextSelectColumns = `${preserveIntegerIds ? "execution_context_id, " : ""}`
     + "servicing_location_id, accounting_system_id, execution_system_id, "
     + `${legacyDefaultModeExpression}, ${legacyAdmissionModeExpression}`;
+  const pricingRuleColumns = new Set(
+    sqlite.prepare("PRAGMA table_info(pricing_rules)").all()
+      .map(column => column.name)
+  );
+  const positionManagementOverrideExpression = pricingRuleColumns
+    .has("position_management_mode_override")
+    ? "rule.position_management_mode_override"
+    : "NULL";
+  const admissionModeOverrideExpression = pricingRuleColumns
+    .has("auto_hedging_admission_mode_override")
+    ? "rule.auto_hedging_admission_mode_override"
+    : "NULL";
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
 
@@ -6610,6 +6643,8 @@ function migrateLegacyExecutionContextIds(sqlite) {
           execution_context_id INTEGER NOT NULL,
           ccy_pair_code        TEXT    NOT NULL,
           margin_percent       REAL    NOT NULL,
+          position_management_mode_override TEXT,
+          auto_hedging_admission_mode_override TEXT,
 
           CONSTRAINT fk_pricing_rules_counterparty
               FOREIGN KEY (counterparty_id)
@@ -6629,17 +6664,37 @@ function migrateLegacyExecutionContextIds(sqlite) {
           CONSTRAINT uq_pricing_rules_scope
               UNIQUE (counterparty_id, execution_context_id, ccy_pair_code),
           CONSTRAINT chk_pricing_rules_margin
-              CHECK (margin_percent >= 0 AND margin_percent < 100)
+              CHECK (margin_percent >= 0 AND margin_percent < 100),
+          CONSTRAINT chk_pricing_rules_position_management_mode_override
+              CHECK (
+                  position_management_mode_override IS NULL
+                  OR position_management_mode_override IN ('MANUAL', 'AUTO')
+              ),
+          CONSTRAINT chk_pricing_rules_auto_hedging_admission_mode_override
+              CHECK (
+                  auto_hedging_admission_mode_override IS NULL
+                  OR auto_hedging_admission_mode_override = 'MANUAL_ONLY'
+              )
       );
 
       INSERT INTO pricing_rules_migrated
-        (pricing_rule_id, counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
+        (
+          pricing_rule_id,
+          counterparty_id,
+          execution_context_id,
+          ccy_pair_code,
+          margin_percent,
+          position_management_mode_override,
+          auto_hedging_admission_mode_override
+        )
       SELECT
         rule.pricing_rule_id,
         rule.counterparty_id,
         context_map.execution_context_id,
         rule.ccy_pair_code,
-        rule.margin_percent
+        rule.margin_percent,
+        ${positionManagementOverrideExpression},
+        ${admissionModeOverrideExpression}
       FROM pricing_rules rule
       INNER JOIN execution_context_id_map context_map
         ON context_map.legacy_execution_context_id = rule.execution_context_id;
@@ -7901,6 +7956,58 @@ function executionContextAdmissionMode(executionContextId) {
   `).get(normalizedId)?.autoHedgingAdmissionMode ?? null;
 }
 
+function pricingRuleAutoHedgingAdmissionPolicy(
+  pricingRuleId,
+  executionContextId
+) {
+  const normalizedContextId = normalizedExecutionContextId(executionContextId);
+
+  if (pricingRuleId === null || pricingRuleId === undefined) {
+    const executionContextMode = executionContextAdmissionMode(normalizedContextId);
+
+    return {
+      autoHedgingAdmissionModeOverride: null,
+      executionContextAdmissionMode: executionContextMode,
+      effectiveAutoHedgingAdmissionMode:
+        resolvePricingRuleAutoHedgingAdmissionMode({
+          autoHedgingAdmissionModeOverride: null,
+          executionContextAdmissionMode: executionContextMode
+        })
+    };
+  }
+
+  const normalizedPricingRuleId = integerInRange(
+    pricingRuleId,
+    1,
+    Number.MAX_SAFE_INTEGER
+  );
+  const policy = normalizedPricingRuleId === null || normalizedContextId === null
+    ? null
+    : database.prepare(`
+        SELECT
+          rule.auto_hedging_admission_mode_override
+            AS autoHedgingAdmissionModeOverride,
+          context.auto_hedging_admission_mode AS executionContextAdmissionMode
+        FROM pricing_rules rule
+        INNER JOIN execution_contexts context
+          ON context.execution_context_id = rule.execution_context_id
+        WHERE rule.pricing_rule_id = ?
+          AND rule.execution_context_id = ?
+      `).get(normalizedPricingRuleId, normalizedContextId);
+
+  if (!policy) {
+    throw new Error(
+      `Auto Hedging Admission Policy was not found for Pricing Rule ${pricingRuleId} and Execution Context ${executionContextId}.`
+    );
+  }
+
+  return {
+    ...policy,
+    effectiveAutoHedgingAdmissionMode:
+      resolvePricingRuleAutoHedgingAdmissionMode(policy)
+  };
+}
+
 function autoHedgingAdmissionPolicy() {
   const current = database.prepare(`
     SELECT
@@ -8315,8 +8422,12 @@ function recordClientFxDealShadowAdmissionDecision({
   exposureAmounts
 }) {
   const policy = autoHedgingAdmissionEvaluationPolicy(payload.ccyPairCode);
+  const pricingRulePolicy = pricingRuleAutoHedgingAdmissionPolicy(
+    payload.pricingRuleId,
+    payload.executionContextId
+  );
   const decision = determineInitialAdmissionState({
-    admissionMode: executionContextAdmissionMode(payload.executionContextId),
+    admissionMode: pricingRulePolicy.effectiveAutoHedgingAdmissionMode,
     ccyPairCode: payload.ccyPairCode,
     baseCcyAmountMinor: exposureAmounts.baseCcyAmountMinor,
     pairRule: policy.pairRule,
@@ -8779,6 +8890,8 @@ function pricingRules(pricingMode = null) {
       e.pricing_mode AS pricingMode,
       r.position_management_mode_override AS positionManagementModeOverride,
       x.default_position_management_mode AS executionContextDefaultPositionManagementMode,
+      r.auto_hedging_admission_mode_override AS autoHedgingAdmissionModeOverride,
+      x.auto_hedging_admission_mode AS executionContextAdmissionMode,
       (
         SELECT COUNT(*)
         FROM fx_hedge_quick_mode_settings settings
@@ -8800,6 +8913,8 @@ function pricingRules(pricingMode = null) {
         pricingRuleOverride: rule.positionManagementModeOverride,
         executionContextDefault: rule.executionContextDefaultPositionManagementMode
       }),
+      effectiveAutoHedgingAdmissionMode:
+        resolvePricingRuleAutoHedgingAdmissionMode(rule),
       counterpartyType: counterparty?.counterpartyType || "",
       counterpartyRoles: counterparty?.counterpartyRoles || [],
       counterpartyScope: counterparty?.counterpartyScope || "",
@@ -11728,6 +11843,23 @@ function validatedAutoHedgingAdmissionMode(value) {
   }
 }
 
+function validatedPricingRuleAutoHedgingAdmissionModeOverride(value) {
+  try {
+    return {
+      value: normalizePricingRuleAutoHedgingAdmissionModeOverride(value)
+    };
+  } catch (error) {
+    if (error?.code ===
+      "INVALID_PRICING_RULE_AUTO_HEDGING_ADMISSION_MODE_OVERRIDE") {
+      return {
+        error: "Pricing Rule Auto Hedging Admission Mode Override must be MANUAL_ONLY, or null to inherit the Execution Context Admission Policy."
+      };
+    }
+
+    throw error;
+  }
+}
+
 function validateExecutionContextPayload(body, current = null) {
   if (body === null || typeof body !== "object" || Array.isArray(body)) {
     return { error: "Execution Context payload must be a JSON object." };
@@ -12040,6 +12172,15 @@ function validatePricingRulePayload(body) {
     "FX Position Mode Override",
     { nullable: true }
   );
+  const autoHedgingAdmissionModeOverride =
+    validatedPricingRuleAutoHedgingAdmissionModeOverride(
+      Object.prototype.hasOwnProperty.call(
+        body,
+        "autoHedgingAdmissionModeOverride"
+      )
+        ? body.autoHedgingAdmissionModeOverride
+        : null
+    );
 
   if (counterpartyId === null) {
     return { error: "Counterparty ID must be a positive integer." };
@@ -12061,12 +12202,17 @@ function validatePricingRulePayload(body) {
     return positionManagementModeOverride;
   }
 
+  if (autoHedgingAdmissionModeOverride.error) {
+    return autoHedgingAdmissionModeOverride;
+  }
+
   return {
     counterpartyId,
     executionContextId,
     ccyPairCode,
     marginPercent,
-    positionManagementModeOverride: positionManagementModeOverride.value
+    positionManagementModeOverride: positionManagementModeOverride.value,
+    autoHedgingAdmissionModeOverride: autoHedgingAdmissionModeOverride.value
   };
 }
 
@@ -12080,10 +12226,17 @@ function validatePricingRuleUpdatePayload(body, current) {
     body,
     "positionManagementModeOverride"
   );
+  const hasAutoHedgingAdmissionModeOverride =
+    Object.prototype.hasOwnProperty.call(
+      body,
+      "autoHedgingAdmissionModeOverride"
+    );
 
-  if (!hasMarginPercent && !hasPositionManagementModeOverride) {
+  if (!hasMarginPercent
+    && !hasPositionManagementModeOverride
+    && !hasAutoHedgingAdmissionModeOverride) {
     return {
-      error: "Pricing Rule update must include Margin Percent or FX Position Mode Override."
+      error: "Pricing Rule update must include Margin Percent, FX Position Mode Override or Auto Hedging Admission Mode Override."
     };
   }
 
@@ -12107,14 +12260,25 @@ function validatePricingRuleUpdatePayload(body, current) {
     "FX Position Mode Override",
     { nullable: true }
   );
+  const autoHedgingAdmissionModeOverride =
+    validatedPricingRuleAutoHedgingAdmissionModeOverride(
+      hasAutoHedgingAdmissionModeOverride
+        ? body.autoHedgingAdmissionModeOverride
+        : current.autoHedgingAdmissionModeOverride
+    );
 
   if (positionManagementModeOverride.error) {
     return positionManagementModeOverride;
   }
 
+  if (autoHedgingAdmissionModeOverride.error) {
+    return autoHedgingAdmissionModeOverride;
+  }
+
   return {
     marginPercent,
-    positionManagementModeOverride: positionManagementModeOverride.value
+    positionManagementModeOverride: positionManagementModeOverride.value,
+    autoHedgingAdmissionModeOverride: autoHedgingAdmissionModeOverride.value
   };
 }
 
@@ -14040,15 +14204,17 @@ async function handleApi(request, response, url) {
               execution_context_id,
               ccy_pair_code,
               margin_percent,
-              position_management_mode_override
+              position_management_mode_override,
+              auto_hedging_admission_mode_override
             )
-          VALUES (?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?)
         `).run(
           payload.counterpartyId,
           payload.executionContextId,
           payload.ccyPairCode,
           payload.marginPercent,
-          payload.positionManagementModeOverride
+          payload.positionManagementModeOverride,
+          payload.autoHedgingAdmissionModeOverride
         );
         const createdPricingRuleId = Number(result.lastInsertRowid);
         ensureClientDealGenerationSettingsForPricingRule(createdPricingRuleId);
@@ -14080,7 +14246,7 @@ async function handleApi(request, response, url) {
         response,
         409,
         "PRICING_RULE_TERMS_IMMUTABLE",
-        "Counterparty, Ccy Pair and Execution Context cannot be changed. Create a new Pricing Rule for different terms; only Margin Percent and FX Position Mode Override can be edited."
+        "Counterparty, Ccy Pair and Execution Context cannot be changed. Create a new Pricing Rule for different terms; only Margin Percent, FX Position Mode Override and Auto Hedging Admission Mode Override can be edited."
       );
       return true;
     }
@@ -14096,11 +14262,13 @@ async function handleApi(request, response, url) {
       database.prepare(`
         UPDATE pricing_rules
         SET margin_percent = ?,
-            position_management_mode_override = ?
+            position_management_mode_override = ?,
+            auto_hedging_admission_mode_override = ?
         WHERE pricing_rule_id = ?
       `).run(
         payload.marginPercent,
         payload.positionManagementModeOverride,
+        payload.autoHedgingAdmissionModeOverride,
         pricingRuleId
       );
       sendJson(response, 200, pricingRule(pricingRuleId));

@@ -7530,40 +7530,20 @@
       grid-template-columns: minmax(230px, 280px) 140px;
     }
 
-    .pricing-rule-bootstrap-dialog .client-pricing-rule-position-mode-field {
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-admission-field {
       min-width: 0;
       margin: 0;
       border: 0;
       padding: 0;
     }
 
-    .pricing-rule-bootstrap-dialog .client-pricing-rule-position-mode-field legend {
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-admission-field legend {
       float: none;
       width: auto;
       margin: 0;
       padding: 0;
       color: inherit;
       font: inherit;
-    }
-
-    .pricing-rule-bootstrap-dialog .client-pricing-rule-position-mode-field .position-management-mode-inherit {
-      margin-top: 5px;
-    }
-
-    .pricing-rule-bootstrap-dialog .client-pricing-rule-position-mode-field .position-management-mode-inherit input.form-check-input {
-      width: 1em;
-      height: 1em;
-      padding: 0;
-      border-radius: 0.25em;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-size: contain;
-    }
-
-    .pricing-rule-bootstrap-dialog .client-pricing-rule-position-mode-field .position-management-mode-inherit input.form-check-input:checked {
-      border-color: var(--bs-primary);
-      background-color: var(--bs-primary);
-      background-image: var(--bs-form-check-bg-image);
     }
 
     .pricing-rule-bootstrap-dialog .position-management-mode-effective {
@@ -12300,7 +12280,16 @@
       animation: pricing-context-admission-column-focus 2.6s ease-out both;
     }
 
+    #pricingRulesTable.is-auto-hedging-admission-focused [data-pricing-rule-column="autoHedgingAdmissionModeOverride"] {
+      animation: pricing-context-admission-column-focus 2.6s ease-out both;
+    }
+
     #executionContextsTable.is-auto-hedging-admission-focused th[data-pricing-context-column="autoHedgingAdmissionMode"] {
+      outline: 2px solid rgba(var(--bs-primary-rgb), 0.38);
+      outline-offset: -2px;
+    }
+
+    #pricingRulesTable.is-auto-hedging-admission-focused th[data-pricing-rule-column="autoHedgingAdmissionModeOverride"] {
       outline: 2px solid rgba(var(--bs-primary-rgb), 0.38);
       outline-offset: -2px;
     }
@@ -12310,8 +12299,18 @@
       outline-offset: -2px;
     }
 
+    #pricingRuleAutoHedgingAdmissionHeader:focus {
+      outline: 2px solid rgba(var(--bs-primary-rgb), 0.5);
+      outline-offset: -2px;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       #executionContextsTable.is-auto-hedging-admission-focused [data-pricing-context-column="autoHedgingAdmissionMode"] {
+        animation: none;
+        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.13);
+      }
+
+      #pricingRulesTable.is-auto-hedging-admission-focused [data-pricing-rule-column="autoHedgingAdmissionModeOverride"] {
         animation: none;
         box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.13);
       }
@@ -13997,7 +13996,7 @@
       font-variant-numeric: tabular-nums;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-position-mode-choice {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-admission-policy-choice {
       white-space: nowrap;
     }
 
@@ -14090,10 +14089,10 @@
       gap: 7px;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-mode-control {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-admission-control {
       display: grid;
       width: 100%;
-      grid-template-columns: max-content minmax(220px, 1fr);
+      grid-template-columns: minmax(220px, 1fr);
       align-items: center;
       gap: 0;
       overflow: hidden;
@@ -14102,41 +14101,25 @@
       background: var(--bs-body-bg);
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-mode-control:focus-within {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-admission-control:focus-within {
       border-color: var(--bs-primary);
       box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.16);
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
-    .client-pricing-configuration-inline-mode-control
-    .position-management-mode-inherit {
-      min-height: 30px;
-      padding: 0 9px;
-      background: var(--bs-tertiary-bg);
-      white-space: nowrap;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page
-    .client-pricing-configuration-inline-mode-control
+    .client-pricing-configuration-inline-admission-control
     .form-select {
       min-height: 30px;
       border: 0;
-      border-left: 1px solid var(--bs-border-color);
       border-radius: 0;
       box-shadow: none;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
-    .client-pricing-configuration-inline-mode-control
+    .client-pricing-configuration-inline-admission-control
     .form-select:disabled {
       background-color: var(--bs-secondary-bg);
       color: var(--bs-secondary-color);
-      opacity: 1;
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page
-    .client-pricing-configuration-inline-mode-control.is-read-only
-    .form-check-input:disabled {
       opacity: 1;
     }
 
@@ -14165,8 +14148,9 @@
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
     .client-pricing-configuration-inline-editor
-    .client-pricing-configuration-inline-field.is-mode {
-      flex: 0 1 460px;
+    .client-pricing-configuration-inline-field.is-admission {
+      flex: 0 1 300px;
+      max-width: 100%;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-margin {
@@ -14241,8 +14225,15 @@
       }
 
       #clientProfilePage.unified-bootstrap-workspace.workbench-page
-      .client-pricing-configuration-inline-mode-control {
-        grid-template-columns: max-content minmax(0, 1fr);
+      .client-pricing-configuration-inline-editor
+      .client-pricing-configuration-inline-field.is-admission {
+        flex: 1 1 100%;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page
+      .client-pricing-configuration-inline-admission-control {
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr);
       }
 
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-rule-separator {
@@ -14776,7 +14767,7 @@
       margin: 0;
       color: var(--bs-body-color);
       font-size: var(--app-font-size-section-title);
-      font-weight: 700;
+      font-weight: var(--app-font-weight-semibold);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -14862,7 +14853,7 @@
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-hedging-trade-segment-copy strong {
       font-size: var(--app-font-size-control);
-      font-weight: 700;
+      font-weight: var(--app-font-weight-semibold);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -14925,7 +14916,7 @@
       margin: 0;
       color: var(--bs-body-color);
       font-size: var(--app-font-size-section-title);
-      font-weight: 700;
+      font-weight: var(--app-font-weight-semibold);
     }
 
     #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page

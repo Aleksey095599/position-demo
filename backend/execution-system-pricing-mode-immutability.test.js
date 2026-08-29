@@ -318,6 +318,19 @@ test("legacy Execution Context migration restores the Pricing Mode lock atomical
     );
     assert.ok(migratedDatabase.prepare(`
       SELECT 1
+      FROM pragma_table_info('pricing_rules')
+      WHERE name = 'auto_hedging_admission_mode_override'
+    `).get());
+    assert.equal(
+      migratedDatabase.prepare(`
+        SELECT auto_hedging_admission_mode_override AS admissionOverride
+        FROM pricing_rules
+        WHERE pricing_rule_id = 1
+      `).get().admissionOverride,
+      null
+    );
+    assert.ok(migratedDatabase.prepare(`
+      SELECT 1
       FROM sqlite_master
       WHERE type = 'trigger'
         AND name = 'trg_execution_systems_lock_pricing_mode_while_referenced'

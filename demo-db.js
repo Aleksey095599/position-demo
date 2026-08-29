@@ -1,5 +1,5 @@
 window.__DEMO_DB_STARTUP_DATA__ = {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "selectedCurrencyPair": "EUR/USD",
   "marketPairs": [
     {
@@ -202,7 +202,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "currencyPair": "EUR/USD",
       "pricingContextId": 1,
       "marginPercent": 0.1,
-      "positionManagementModeOverride": null
+      "positionManagementModeOverride": null,
+      "autoHedgingAdmissionModeOverride": null
     },
     {
       "pricingRuleId": 2,
@@ -210,7 +211,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "currencyPair": "EUR/USD",
       "pricingContextId": 2,
       "marginPercent": 0.12,
-      "positionManagementModeOverride": null
+      "positionManagementModeOverride": null,
+      "autoHedgingAdmissionModeOverride": null
     },
     {
       "pricingRuleId": 3,
@@ -218,7 +220,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "currencyPair": "EUR/USD",
       "pricingContextId": 3,
       "marginPercent": 0.08,
-      "positionManagementModeOverride": null
+      "positionManagementModeOverride": null,
+      "autoHedgingAdmissionModeOverride": null
     },
     {
       "pricingRuleId": 4,
@@ -226,7 +229,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "currencyPair": "EUR/USD",
       "pricingContextId": 4,
       "marginPercent": 0.05,
-      "positionManagementModeOverride": null
+      "positionManagementModeOverride": null,
+      "autoHedgingAdmissionModeOverride": null
     },
     {
       "pricingRuleId": 5,
@@ -234,7 +238,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "currencyPair": "EUR/USD",
       "pricingContextId": 5,
       "marginPercent": 0.2,
-      "positionManagementModeOverride": null
+      "positionManagementModeOverride": null,
+      "autoHedgingAdmissionModeOverride": null
     }
   ]
 };
@@ -242,14 +247,15 @@ window.__DEMO_DB_STARTUP_DATA__ = {
 (function initializeDemoDatabase(global) {
   "use strict";
 
-  const DATABASE_STORAGE_KEY = "batching-demo.database.v5";
+  const DATABASE_STORAGE_KEY = "batching-demo.database.v6";
   const PREVIOUS_DATABASE_STORAGE_KEYS = [
+    "batching-demo.database.v5",
     "batching-demo.database.v4",
     "batching-demo.database.v3",
     "batching-demo.database.v2",
     "batching-demo.database.v1"
   ];
-  const SCHEMA_VERSION = 5;
+  const SCHEMA_VERSION = 6;
 
   const BUILT_IN_DEFAULT_DATABASE = {
     schemaVersion: SCHEMA_VERSION,
@@ -319,11 +325,11 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX", defaultPositionManagementMode: "AUTO", autoHedgingAdmissionMode: "AUTO_IF_ELIGIBLE" }
     ],
     clientPricingRules: [
-      { pricingRuleId: 1, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 1, marginPercent: 0.10, positionManagementModeOverride: null },
-      { pricingRuleId: 2, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 2, marginPercent: 0.12, positionManagementModeOverride: null },
-      { pricingRuleId: 3, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 3, marginPercent: 0.08, positionManagementModeOverride: null },
-      { pricingRuleId: 4, inn: "7812345678", currencyPair: "EUR/USD", pricingContextId: 4, marginPercent: 0.05, positionManagementModeOverride: null },
-      { pricingRuleId: 5, inn: "5409876543", currencyPair: "EUR/USD", pricingContextId: 5, marginPercent: 0.20, positionManagementModeOverride: null }
+      { pricingRuleId: 1, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 1, marginPercent: 0.10, positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: null },
+      { pricingRuleId: 2, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 2, marginPercent: 0.12, positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: null },
+      { pricingRuleId: 3, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 3, marginPercent: 0.08, positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: null },
+      { pricingRuleId: 4, inn: "7812345678", currencyPair: "EUR/USD", pricingContextId: 4, marginPercent: 0.05, positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: null },
+      { pricingRuleId: 5, inn: "5409876543", currencyPair: "EUR/USD", pricingContextId: 5, marginPercent: 0.20, positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: null }
     ]
   };
 
@@ -387,6 +393,12 @@ window.__DEMO_DB_STARTUP_DATA__ = {
   function normalizedPositionManagementModeOverride(value) {
     const mode = String(value || "").trim().toUpperCase();
     return mode === "AUTO" || mode === "MANUAL" ? mode : null;
+  }
+
+  function normalizedAutoHedgingAdmissionModeOverride(value) {
+    return String(value || "").trim().toUpperCase() === "MANUAL_ONLY"
+      ? "MANUAL_ONLY"
+      : null;
   }
 
   function safeStorage() {
@@ -459,6 +471,9 @@ window.__DEMO_DB_STARTUP_DATA__ = {
         ...clone(rule),
         positionManagementModeOverride: normalizedPositionManagementModeOverride(
           rule?.positionManagementModeOverride
+        ),
+        autoHedgingAdmissionModeOverride: normalizedAutoHedgingAdmissionModeOverride(
+          rule?.autoHedgingAdmissionModeOverride
         )
       }));
     }

@@ -87,15 +87,11 @@
               Ccy Pair
               <select class="form-select form-select-sm" name="currencyPair" required></select>
             </label>
-            <fieldset class="form-field client-pricing-rule-position-mode-field">
-              <legend>FX Position Mode</legend>
-              <label class="position-management-mode-inherit" for="clientPricingRuleUseExecutionContextDefault">
-                <input class="form-check-input" type="checkbox" id="clientPricingRuleUseExecutionContextDefault" name="useExecutionContextDefault" aria-controls="clientPricingRulePositionManagementModeOverride" checked>
-                <span>Execution Context Default</span>
-              </label>
-              <select class="form-select form-select-sm" id="clientPricingRulePositionManagementModeOverride" name="positionManagementModeOverride" data-position-management-mode-inherited="true" aria-label="FX Position Mode" disabled>
-                <option value="MANUAL">Manual Control</option>
-                <option value="AUTO">Auto Hedging</option>
+            <fieldset class="form-field client-pricing-rule-admission-field">
+              <legend>Auto Hedging Admission</legend>
+              <select class="form-select form-select-sm" id="clientPricingRuleAutoHedgingAdmissionModeOverride" name="autoHedgingAdmissionModeOverride" aria-label="Auto Hedging Admission">
+                <option value="">Execution Context Admission Policy</option>
+                <option value="MANUAL_ONLY">Manual Control</option>
               </select>
             </fieldset>
             <label class="form-field">

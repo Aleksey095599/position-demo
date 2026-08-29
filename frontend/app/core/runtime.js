@@ -11,6 +11,12 @@
       batching_history_grid: Object.freeze({
         formation_reason: "formation_reason_code",
         created_at: "formed_at"
+      }),
+      pricing_rules_grid: Object.freeze({
+        position_management_mode: "auto_hedging_admission"
+      }),
+      internal_pricing_rules_grid: Object.freeze({
+        position_management_mode: "auto_hedging_admission"
       })
     });
     const UI_TABLE_LAYOUT_BOOTSTRAP = Array.isArray(DEMO_API_BOOTSTRAP?.uiTableLayouts)
@@ -1161,6 +1167,7 @@
     const pricingRulesBreadcrumb = document.getElementById("pricingRulesBreadcrumb");
     const pricingRulesBreadcrumbBackLink = document.getElementById("pricingRulesBreadcrumbBackLink");
     const pricingRulesBreadcrumbCurrent = document.getElementById("pricingRulesBreadcrumbCurrent");
+    const pricingRuleAutoHedgingAdmissionHeader = document.getElementById("pricingRuleAutoHedgingAdmissionHeader");
     const pricingRuleCounterpartyCodeTitle = document.getElementById("pricingRuleCounterpartyCodeTitle");
     const pricingRuleCounterpartyCodeFilter = document.getElementById("pricingRuleCounterpartyCodeFilter");
     const pricingRuleQuickHedgeHeader = document.getElementById("pricingRuleQuickHedgeHeader");
@@ -1637,6 +1644,7 @@
     let pricingContextFocusTimer = null;
     let pricingRuleIdSortDirection = "asc";
     let pricingRulesRouteScope = null;
+    let pricingRulesFocusTimer = null;
     let servicingBranchIdSortDirection = "asc";
     let settlementSystemIdSortDirection = "asc";
     let tradeCaptureChannelIdSortDirection = "asc";
@@ -2962,92 +2970,104 @@
       return `<span class="position-management-mode-badge auto-hedging-admission-mode-badge${toneClass}">${escapeHtml(autoHedgingAdmissionModeLabel(mode))}</span>`;
     }
 
-    function effectivePositionManagementModeForRule(rule, context = null) {
-      const override = normalizedPositionManagementModeOverride(rule?.positionManagementModeOverride);
+    function normalizedPricingRuleAutoHedgingAdmissionModeOverride(value) {
+      return normalizedReferenceCode(value) === "MANUAL_ONLY"
+        ? "MANUAL_ONLY"
+        : null;
+    }
+
+    function pricingRuleAutoHedgingAdmissionModeOverrideFromControl(control) {
+      if (!control) {
+        return undefined;
+      }
+
+      const value = normalizedReferenceCode(control.value);
+      const valid = value === "" || value === "MANUAL_ONLY";
+
+      control.setCustomValidity?.(
+        valid ? "" : "Select an Auto Hedging Admission policy."
+      );
+
+      if (!valid) {
+        return undefined;
+      }
+
+      return value || null;
+    }
+
+    function pricingRuleAutoHedgingAdmissionSourceLabel(value) {
+      return normalizedPricingRuleAutoHedgingAdmissionModeOverride(value) === "MANUAL_ONLY"
+        ? "Manual Control"
+        : "Execution Context Admission Policy";
+    }
+
+    function pricingRuleAutoHedgingAdmissionOptions(selectedValue = null) {
+      const selected = normalizedPricingRuleAutoHedgingAdmissionModeOverride(selectedValue);
+
+      return `
+        <option value=""${selected === null ? " selected" : ""}>Execution Context Admission Policy</option>
+        <option value="MANUAL_ONLY"${selected === "MANUAL_ONLY" ? " selected" : ""}>Manual Control</option>
+      `;
+    }
+
+    function effectiveAutoHedgingAdmissionModeForRule(rule, context = null) {
+      const override = normalizedPricingRuleAutoHedgingAdmissionModeOverride(
+        rule?.autoHedgingAdmissionModeOverride
+      );
 
       if (override) {
         return override;
       }
 
-      const resolvedContext = pricingContextById(rule?.pricingContextId) || context;
+      const effectiveMode = normalizedReferenceCode(
+        rule?.effectiveAutoHedgingAdmissionMode
+      );
 
-      if (resolvedContext) {
-        return normalizedPositionManagementMode(resolvedContext.defaultPositionManagementMode);
+      if (AUTO_HEDGING_ADMISSION_MODES.includes(effectiveMode)) {
+        return effectiveMode;
       }
 
-      return normalizedPositionManagementMode(rule?.effectivePositionManagementMode);
+      const resolvedContext = pricingContextById(rule?.pricingContextId) || context;
+      const executionContextMode = normalizedReferenceCode(
+        rule?.executionContextAdmissionMode ?? resolvedContext?.autoHedgingAdmissionMode
+      );
+
+      return AUTO_HEDGING_ADMISSION_MODES.includes(executionContextMode)
+        ? executionContextMode
+        : normalizedAutoHedgingAdmissionMode(
+            resolvedContext?.autoHedgingAdmissionMode,
+            resolvedContext?.defaultPositionManagementMode
+          );
+    }
+
+    function pricingRuleAutoHedgingAdmissionMarkup(rule) {
+      const label = pricingRuleAutoHedgingAdmissionSourceLabel(
+        rule?.autoHedgingAdmissionModeOverride
+      );
+
+      return `
+        <span class="position-management-mode-value pricing-rule-admission-policy-source" data-smart-width-content>
+          ${escapeHtml(label)}
+        </span>
+      `;
+    }
+
+    function clientPricingRuleAutoHedgingAdmissionMarkup(rule) {
+      const label = pricingRuleAutoHedgingAdmissionSourceLabel(
+        rule?.autoHedgingAdmissionModeOverride
+      );
+
+      return `
+        <span class="client-pricing-configuration-node-copy is-read-only">
+          <span class="client-pricing-configuration-node-value client-pricing-configuration-admission-policy-choice">${escapeHtml(label)}</span>
+        </span>
+      `;
     }
 
     function positionManagementModeBadgeMarkup(value) {
       const mode = normalizedPositionManagementMode(value);
 
       return `<span class="position-management-mode-badge${mode === "AUTO" ? " is-auto" : ""}">${escapeHtml(positionManagementModeLabel(mode))}</span>`;
-    }
-
-    function pricingRulePositionManagementModeMarkup(rule, context = null) {
-      const effectiveMode = effectivePositionManagementModeForRule(rule, context);
-
-      return `
-        <span class="position-management-mode-value" data-smart-width-content>
-          ${positionManagementModeBadgeMarkup(effectiveMode)}
-        </span>
-      `;
-    }
-
-    function clientPricingRulePositionManagementModeMarkup(rule, context = null) {
-      const effectiveMode = effectivePositionManagementModeForRule(rule, context);
-
-      return `
-        <span class="client-pricing-configuration-node-copy is-read-only">
-          <span class="client-pricing-configuration-node-value client-pricing-configuration-position-mode-choice">${escapeHtml(positionManagementModeLabel(effectiveMode))}</span>
-        </span>
-      `;
-    }
-
-    function positionManagementModeOptions(selectedValue = "MANUAL") {
-      const selected = normalizedPositionManagementMode(selectedValue);
-
-      return `
-        <option value="MANUAL"${selected === "MANUAL" ? " selected" : ""}>${escapeHtml(positionManagementModeLabel("MANUAL"))}</option>
-        <option value="AUTO"${selected === "AUTO" ? " selected" : ""}>${escapeHtml(positionManagementModeLabel("AUTO"))}</option>
-      `;
-    }
-
-    function positionManagementModeOverrideFromControls(inheritControl, overrideControl) {
-      if (!overrideControl) {
-        return undefined;
-      }
-
-      const inherited = Boolean(inheritControl?.checked);
-      const controlState = overrideControl.dataset || (overrideControl.dataset = {});
-      const previouslyInherited = controlState.positionManagementModeInherited === "true";
-
-      if (!inherited && previouslyInherited) {
-        const explicitDraft = normalizedPositionManagementModeOverride(
-          controlState.explicitPositionManagementMode
-        );
-
-        if (explicitDraft) {
-          overrideControl.value = explicitDraft;
-        }
-      }
-
-      const override = inherited
-        ? null
-        : normalizedPositionManagementModeOverride(overrideControl.value);
-
-      if (!inherited && override) {
-        controlState.explicitPositionManagementMode = override;
-      }
-
-      controlState.positionManagementModeInherited = String(inherited);
-
-      overrideControl.required = !inherited;
-      overrideControl.setCustomValidity?.(
-        !inherited && !override ? "Select an FX Position mode." : ""
-      );
-
-      return inherited ? null : override || undefined;
     }
 
     function pricingTypePresentation(value) {
@@ -3582,6 +3602,25 @@
             item?.effective_position_management_mode ??
             pricingContextById(pricingContextIdValue)?.defaultPositionManagementMode
           );
+          const resolvedPricingContext = pricingContextById(pricingContextIdValue);
+          const autoHedgingAdmissionModeOverride =
+            normalizedPricingRuleAutoHedgingAdmissionModeOverride(
+              item?.autoHedgingAdmissionModeOverride ??
+              item?.auto_hedging_admission_mode_override
+            );
+          const executionContextAdmissionMode = normalizedAutoHedgingAdmissionMode(
+            item?.executionContextAdmissionMode ??
+            item?.execution_context_admission_mode ??
+            resolvedPricingContext?.autoHedgingAdmissionMode,
+            resolvedPricingContext?.defaultPositionManagementMode
+          );
+          const effectiveAutoHedgingAdmissionMode = autoHedgingAdmissionModeOverride ||
+            normalizedAutoHedgingAdmissionMode(
+              item?.effectiveAutoHedgingAdmissionMode ??
+              item?.effective_auto_hedging_admission_mode ??
+              executionContextAdmissionMode,
+              resolvedPricingContext?.defaultPositionManagementMode
+            );
           const sourcePricingRuleId = item?.pricingRuleId ?? item?.pricing_rule_id;
           let pricingRuleIdValue = normalizedIntegerId(sourcePricingRuleId);
 
@@ -3619,6 +3658,9 @@
               : null,
             positionManagementModeOverride,
             effectivePositionManagementMode,
+            autoHedgingAdmissionModeOverride,
+            executionContextAdmissionMode,
+            effectiveAutoHedgingAdmissionMode,
             quickHedgeSettingsCount: Math.max(
               0,
               Number(item?.quickHedgeSettingsCount ?? item?.quick_hedge_settings_count) || 0
@@ -4810,9 +4852,10 @@
       if (currentRule) {
         return {
           marginPercent: Number(rule?.marginPercent),
-          positionManagementModeOverride: normalizedPositionManagementModeOverride(
-            rule?.positionManagementModeOverride
-          )
+          autoHedgingAdmissionModeOverride:
+            normalizedPricingRuleAutoHedgingAdmissionModeOverride(
+              rule?.autoHedgingAdmissionModeOverride
+            )
         };
       }
 
@@ -4823,15 +4866,33 @@
         executionContextId: normalizedPricingContextIdValue(rule?.pricingContextId),
         ccyPairCode: String(rule?.ccyPairCode || rule?.currencyPair?.replace("/", "_") || "").toUpperCase(),
         marginPercent: Number(rule?.marginPercent),
-        positionManagementModeOverride: normalizedPositionManagementModeOverride(
-          rule?.positionManagementModeOverride
-        )
+        autoHedgingAdmissionModeOverride:
+          normalizedPricingRuleAutoHedgingAdmissionModeOverride(
+            rule?.autoHedgingAdmissionModeOverride
+          )
       };
     }
 
     async function persistPricingRuleRecord(rule, currentRule = null) {
       if (!DEMO_API_ENABLED) {
-        return rule;
+        const mergedRule = currentRule ? { ...currentRule, ...rule } : { ...rule };
+        const context = pricingContextById(mergedRule.pricingContextId);
+        const executionContextAdmissionMode = normalizedAutoHedgingAdmissionMode(
+          context?.autoHedgingAdmissionMode,
+          context?.defaultPositionManagementMode
+        );
+        const autoHedgingAdmissionModeOverride =
+          normalizedPricingRuleAutoHedgingAdmissionModeOverride(
+            mergedRule.autoHedgingAdmissionModeOverride
+          );
+
+        return {
+          ...mergedRule,
+          autoHedgingAdmissionModeOverride,
+          executionContextAdmissionMode,
+          effectiveAutoHedgingAdmissionMode:
+            autoHedgingAdmissionModeOverride || executionContextAdmissionMode
+        };
       }
 
       const isCreating = !currentRule;
@@ -5222,41 +5283,24 @@
       }
     }
 
-    function pricingRuleRowPositionManagementModeOverride(row) {
-      const inheritControl = row?.querySelector(
-        "[data-pricing-rule-field='useExecutionContextDefault']"
-      );
+    function pricingRuleRowAutoHedgingAdmissionModeOverride(row) {
       const overrideControl = row?.querySelector(
-        "[data-pricing-rule-field='positionManagementModeOverride']"
+        "[data-pricing-rule-field='autoHedgingAdmissionModeOverride']"
       );
 
-      return positionManagementModeOverrideFromControls(inheritControl, overrideControl);
+      return pricingRuleAutoHedgingAdmissionModeOverrideFromControl(overrideControl);
     }
 
-    function syncPricingRuleRowPositionManagementModeControls(row) {
+    function syncPricingRuleRowAutoHedgingAdmissionControls(row) {
       const overrideControl = row?.querySelector(
-        "[data-pricing-rule-field='positionManagementModeOverride']"
+        "[data-pricing-rule-field='autoHedgingAdmissionModeOverride']"
       );
 
       if (!overrideControl) {
         return null;
       }
 
-      const positionManagementModeOverride = pricingRuleRowPositionManagementModeOverride(row);
-      const inherited = positionManagementModeOverride === null;
-      const pricingContextIdValue = row.querySelector(
-        "[data-pricing-rule-field='pricingContextId']"
-      )?.value.trim().toUpperCase() || "";
-
-      if (inherited) {
-        overrideControl.value = effectivePositionManagementModeForRule({
-          pricingContextId: pricingContextIdValue,
-          positionManagementModeOverride: null
-        });
-      }
-
-      overrideControl.disabled = inherited;
-      return positionManagementModeOverride;
+      return pricingRuleRowAutoHedgingAdmissionModeOverride(row);
     }
 
     function syncPricingRuleRowPreview(row) {
@@ -5264,7 +5308,7 @@
       const inn = row.querySelector("[data-pricing-rule-field='inn']")?.value.trim() || "";
       const currencyPairValue = normalizedPricingRuleCurrencyPair(row.querySelector("[data-pricing-rule-field='currencyPair']")?.value);
       const pricingContextIdValue = row.querySelector("[data-pricing-rule-field='pricingContextId']")?.value.trim().toUpperCase() || "";
-      syncPricingRuleRowPositionManagementModeControls(row);
+      syncPricingRuleRowAutoHedgingAdmissionControls(row);
       const preview = row.querySelector("[data-pricing-rule-preview]");
       const clientNameCell = row.querySelector("[data-pricing-rule-client-name]");
 
@@ -5288,7 +5332,7 @@
       const inn = row.querySelector("[data-pricing-rule-field='inn']")?.value.trim() || "";
       const currencyPair = normalizedPricingRuleCurrencyPair(row.querySelector("[data-pricing-rule-field='currencyPair']")?.value);
       const pricingContextIdValue = row.querySelector("[data-pricing-rule-field='pricingContextId']")?.value.trim().toUpperCase() || "";
-      const positionManagementModeOverride = syncPricingRuleRowPositionManagementModeControls(row);
+      const autoHedgingAdmissionModeOverride = syncPricingRuleRowAutoHedgingAdmissionControls(row);
       const marginPercent = normalizeNumber(row.querySelector("[data-pricing-rule-field='marginPercent']")?.value);
       const profile = clientProfileByInn(inn);
       const contextState = pricingRuleCounterpartyExecutionContextState(inn);
@@ -5299,7 +5343,7 @@
         !currencyPair ||
         contextState.status !== "loaded" ||
         !contextAttached ||
-        positionManagementModeOverride === undefined ||
+        autoHedgingAdmissionModeOverride === undefined ||
         marginPercent === null ||
         !Number.isFinite(marginPercent) ||
         marginPercent < 0 ||
@@ -5316,7 +5360,7 @@
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        positionManagementModeOverride,
+        autoHedgingAdmissionModeOverride,
         marginPercent
       };
     }
@@ -5336,8 +5380,8 @@
     function samePricingRule(left, right) {
       return Boolean(left && right) &&
         samePricingRuleIdentity(left, right) &&
-        normalizedPositionManagementModeOverride(left.positionManagementModeOverride) ===
-          normalizedPositionManagementModeOverride(right.positionManagementModeOverride) &&
+        normalizedPricingRuleAutoHedgingAdmissionModeOverride(left.autoHedgingAdmissionModeOverride) ===
+          normalizedPricingRuleAutoHedgingAdmissionModeOverride(right.autoHedgingAdmissionModeOverride) &&
         sameNumber(left.marginPercent, right.marginPercent);
     }
 
@@ -5408,7 +5452,7 @@
         currencyPair: activeCurrencyPairOrDefault(),
         ccyPairCode: activeCurrencyPairOrDefault().replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        positionManagementModeOverride: null,
+        autoHedgingAdmissionModeOverride: null,
         marginPercent: profile?.marginPercent ?? 0
       };
     }
@@ -5417,14 +5461,14 @@
       const innSelect = row.querySelector("[data-pricing-rule-field='inn']");
       const currencyPairInput = row.querySelector("[data-pricing-rule-field='currencyPair']");
       const contextSelect = row.querySelector("[data-pricing-rule-field='pricingContextId']");
-      const positionManagementModeOverrideSelect = row.querySelector(
-        "[data-pricing-rule-field='positionManagementModeOverride']"
+      const autoHedgingAdmissionModeOverrideSelect = row.querySelector(
+        "[data-pricing-rule-field='autoHedgingAdmissionModeOverride']"
       );
       const marginInput = row.querySelector("[data-pricing-rule-field='marginPercent']");
       const inn = innSelect?.value.trim() || "";
       const currencyPair = parsePricingRuleCurrencyPairInput(currencyPairInput);
       const pricingContextIdValue = contextSelect?.value.trim().toUpperCase() || "";
-      const positionManagementModeOverride = syncPricingRuleRowPositionManagementModeControls(row);
+      const autoHedgingAdmissionModeOverride = syncPricingRuleRowAutoHedgingAdmissionControls(row);
       const marginPercent = parsePercentInput(marginInput, "Margin", 100);
       const profile = clientProfileByInn(inn);
 
@@ -5451,8 +5495,8 @@
         return null;
       }
 
-      if (positionManagementModeOverride === undefined) {
-        positionManagementModeOverrideSelect?.reportValidity();
+      if (autoHedgingAdmissionModeOverride === undefined) {
+        autoHedgingAdmissionModeOverrideSelect?.reportValidity();
         return null;
       }
 
@@ -5469,7 +5513,7 @@
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        positionManagementModeOverride,
+        autoHedgingAdmissionModeOverride,
         marginPercent
       };
       const currentIndex = pricingRuleEditStateIndex();
@@ -5503,10 +5547,41 @@
         || rule.ccyPairCode === pricingRulesRouteScope.pairCode;
     }
 
+    function highlightPricingRuleAutoHedgingAdmissionColumn(enabled) {
+      if (pricingRulesFocusTimer) {
+        window.clearTimeout(pricingRulesFocusTimer);
+        pricingRulesFocusTimer = null;
+      }
+
+      pricingRulesTable?.classList.remove("is-auto-hedging-admission-focused");
+
+      if (!enabled || !pricingRulesTable || !pricingRuleAutoHedgingAdmissionHeader) {
+        return;
+      }
+
+      // Restart the brief emphasis when this route is entered again.
+      void pricingRulesTable.offsetWidth;
+      pricingRulesTable.classList.add("is-auto-hedging-admission-focused");
+      pricingRuleAutoHedgingAdmissionHeader.scrollIntoView({
+        behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "nearest",
+        inline: "center"
+      });
+      pricingRuleAutoHedgingAdmissionHeader.focus({ preventScroll: true });
+      pricingRulesFocusTimer = window.setTimeout(() => {
+        pricingRulesTable.classList.remove("is-auto-hedging-admission-focused");
+        pricingRulesFocusTimer = null;
+      }, 2600);
+    }
+
     function syncPricingRulesRouteView() {
       const routeState = pricingRulesRouteStateFromLocation();
       const previousScope = pricingRulesRouteScope;
       const relatedView = routeState.mode === "related" && routeState.pairCode;
+      const focusedAdmissionView = routeState.mode === "focused"
+        && routeState.focus === "auto-hedging-admission";
       const pairChanged = previousScope?.pairCode !== routeState.pairCode;
 
       pricingRuleEditState = null;
@@ -5534,7 +5609,7 @@
           }
         : null;
       pricingRulesPage.classList.toggle("is-related-view", Boolean(pricingRulesRouteScope));
-      pricingRulesBreadcrumb.hidden = !pricingRulesRouteScope;
+      pricingRulesBreadcrumb.hidden = !pricingRulesRouteScope && !focusedAdmissionView;
 
       if (pricingRulesRouteScope) {
         const currencyPairFilter = pricingRuleHeaderFilterControl("currencyPair");
@@ -5548,9 +5623,16 @@
         pricingRulesBreadcrumbBackLink.href = pricingRulesRouteScope.returnHash;
         pricingRulesBreadcrumbBackLink.textContent = "Currency Pair Settings";
         pricingRulesBreadcrumbCurrent.textContent = `Pricing Rules for ${pricingRulesRouteScope.currencyPair}`;
+      } else if (focusedAdmissionView) {
+        pricingRulesBreadcrumbBackLink.href = routeState.returnHash;
+        pricingRulesBreadcrumbBackLink.textContent = "Initial Auto Hedging Admission Policy";
+        pricingRulesBreadcrumbCurrent.textContent = "Pricing Rules — Auto Hedging Admission";
       }
 
       setPricingRuleStatus("");
+      window.requestAnimationFrame(() => {
+        highlightPricingRuleAutoHedgingAdmissionColumn(focusedAdmissionView);
+      });
     }
 
     function pricingRuleMatchesColumnFilters(rule) {
@@ -5566,10 +5648,12 @@
           ? clientNameForInn(rule.inn)
           : field === "pricingContextId"
             ? pricingRuleExecutionContextSearchText(rule)
-            : field === "effectivePositionManagementMode"
-              ? `${effectivePositionManagementModeForRule(rule)} ${
-                  rule.positionManagementModeOverride ? "Pricing Rule override" : "Execution Context default"
-                }`
+            : field === "autoHedgingAdmissionModeOverride"
+              ? `${pricingRuleAutoHedgingAdmissionSourceLabel(
+                  rule.autoHedgingAdmissionModeOverride
+                )} ${autoHedgingAdmissionModeLabel(
+                  effectiveAutoHedgingAdmissionModeForRule(rule)
+                )}`
             : rule[field] || "";
 
         return String(value).toLowerCase().includes(query);
@@ -5607,16 +5691,10 @@
         : "";
       const contextHelpId = `pricing-rule-context-help-${rule.pricingRuleId || "new"}`;
       const contextHelp = pricingRuleContextHelp(contextState);
-      const positionManagementModeOverride = normalizedPositionManagementModeOverride(
-        rule.positionManagementModeOverride
-      );
-      const inheritedPositionManagementMode = positionManagementModeOverride === null;
-      const selectedPositionManagementMode = positionManagementModeOverride ||
-        effectivePositionManagementModeForRule(rule);
-      const positionModeControlKey = String(
-        rule.pricingRuleId || (index === null ? "new" : index)
-      ).replace(/[^a-zA-Z0-9_-]/g, "-");
-      const positionModeSelectId = `pricing-rule-position-mode-${positionModeControlKey}`;
+      const autoHedgingAdmissionModeOverride =
+        normalizedPricingRuleAutoHedgingAdmissionModeOverride(
+          rule.autoHedgingAdmissionModeOverride
+        );
 
       return `
         <tr class="is-selected is-editing"${indexAttribute}${pricingRuleIdAttribute} data-pricing-rule-edit-row data-pricing-rule-context-status="${escapeHtml(contextState.status)}">
@@ -5638,20 +5716,15 @@
           <td>
             <input class="inline-edit-control" type="text" data-pricing-rule-field="currencyPair" value="${escapeHtml(rule.currencyPair)}" maxlength="7" required>
           </td>
-          <td>
-            <span class="position-management-mode-control">
-              <label class="position-management-mode-inherit">
-                <input class="form-check-input" type="checkbox" data-pricing-rule-field="useExecutionContextDefault" aria-controls="${escapeHtml(positionModeSelectId)}"${inheritedPositionManagementMode ? " checked" : ""}>
-                <span>Execution Context Default</span>
-              </label>
-              <select class="inline-edit-control" id="${escapeHtml(positionModeSelectId)}" data-pricing-rule-field="positionManagementModeOverride" data-position-management-mode-inherited="${inheritedPositionManagementMode}"${positionManagementModeOverride ? ` data-explicit-position-management-mode="${escapeHtml(positionManagementModeOverride)}"` : ""} aria-label="FX Position Mode"${inheritedPositionManagementMode ? " disabled" : " required"}>
-                ${positionManagementModeOptions(selectedPositionManagementMode)}
-              </select>
-            </span>
+          <td data-pricing-rule-column="autoHedgingAdmissionModeOverride">
+            <select class="inline-edit-control" data-pricing-rule-field="autoHedgingAdmissionModeOverride" aria-label="Auto Hedging Admission">
+              ${pricingRuleAutoHedgingAdmissionOptions(autoHedgingAdmissionModeOverride)}
+            </select>
           </td>
           <td>
             <input class="inline-edit-control" type="text" data-pricing-rule-field="marginPercent" value="${escapeHtml(editNumber(rule.marginPercent, 4))}" inputmode="decimal" required>
           </td>
+          <td class="pricing-rule-quick-hedge-column"${activePricingRulesScope === "INTERNAL" ? "" : " hidden"}>—</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
               <button type="button" class="icon-action" data-pricing-rule-action="save" aria-label="Save pricing rule" title="Save">
@@ -5674,8 +5747,29 @@
               <span class="button-icon" aria-hidden="true">bolt</span>
               <span>Used</span>
             </span>
-          `
+        `
         : '<span class="pricing-rule-quick-hedge-empty">—</span>';
+      const profile = clientProfiles.find(item =>
+        String(item.counterpartyId ?? "") === String(rule.counterpartyId ?? "")
+      ) || clientProfileByInn(rule.inn);
+      const editRoute = profile
+        ? pricingRuleClientProfileRoute(
+            profile.counterpartyId,
+            rule.pricingRuleId,
+            location.hash
+          )
+        : "";
+      const editActionMarkup = editRoute
+        ? `
+            <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="${escapeHtml(editRoute)}" data-pricing-rule-action="edit-counterparty" aria-label="Edit Pricing Rule ${escapeHtml(rule.pricingRuleId)} in Trading Counterparty card" data-tooltip="Edit Pricing Rule">
+              <span class="button-icon" aria-hidden="true">edit</span>
+            </a>
+          `
+        : `
+            <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" aria-label="Trading Counterparty unavailable for Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Trading Counterparty unavailable" disabled>
+              <span class="button-icon" aria-hidden="true">edit</span>
+            </button>
+          `;
 
       return `
         <tr data-pricing-rule-index="${index}">
@@ -5688,9 +5782,12 @@
             </span>
           </td>
           <td>${escapeHtml(rule.currencyPair)}</td>
-          <td>${pricingRulePositionManagementModeMarkup(rule)}</td>
+          <td data-pricing-rule-column="autoHedgingAdmissionModeOverride">${pricingRuleAutoHedgingAdmissionMarkup(rule)}</td>
           <td>${escapeHtml(editNumber(rule.marginPercent, 2))}%</td>
           <td class="pricing-rule-quick-hedge-column"${activePricingRulesScope === "INTERNAL" ? "" : " hidden"}>${quickHedgeMarkup}</td>
+          <td class="profile-actions-cell">
+            <span class="profile-row-actions">${editActionMarkup}</span>
+          </td>
         </tr>
       `;
     }
@@ -6323,6 +6420,9 @@
     function syncPricingRulesScopePresentation() {
       const internalScope = activePricingRulesScope === "INTERNAL";
       const layoutKey = activePricingRulesLayoutKey();
+      const routeState = pricingRulesRouteStateFromLocation();
+      const focusedAdmissionView = routeState.mode === "focused"
+        && routeState.focus === "auto-hedging-admission";
 
       pricingRulesScopeButtons.forEach(button => {
         const selected = button.dataset.pricingRulesScope === activePricingRulesScope;
@@ -6334,6 +6434,11 @@
               pricingRulesRouteScope.returnHash,
               button.dataset.pricingRulesScope
             )
+          : focusedAdmissionView
+            ? autoHedgingAdmissionPricingRulesRoute(
+                routeState.returnHash,
+                button.dataset.pricingRulesScope
+              )
           : pricingRulesRoute(button.dataset.pricingRulesScope);
       });
       pricingRuleCounterpartyCodeTitle.textContent = internalScope ? "Unit Code" : "Counterparty Code";
@@ -6374,7 +6479,7 @@
         rule.counterpartyScope === activePricingRulesScope
         && pricingRuleMatchesRouteScope(rule)
       );
-      const columnCount = activePricingRulesScope === "INTERNAL" ? 8 : 7;
+      const columnCount = activePricingRulesScope === "INTERNAL" ? 9 : 8;
       const layoutKey = activePricingRulesLayoutKey();
 
       if (scopeRules.length === 0) {

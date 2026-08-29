@@ -69,7 +69,7 @@ test("Auto Hedging Settings presents the required core rule and configurable eli
   assert.match(policyMarkup, /id="autoHedgingAdmissionPolicyRevision" hidden/);
   assert.match(
     policyMarkup,
-    />hub<\/span>[\s\S]*?>Execution Context Auto Hedging Admission<\/h5>[\s\S]*?Uses the Auto Hedging Admission configured in the Client FX Deal's Execution Context\./
+    />hub<\/span>[\s\S]*?>Execution Context<\/h5>[\s\S]*?Uses the Auto Hedging Admission configured in the Client FX Deal's Execution Context\./
   );
   assert.doesNotMatch(policyMarkup, />lock<\/span>/);
   assert.doesNotMatch(policyMarkup, />Required<\/span>/);
@@ -85,7 +85,7 @@ test("Auto Hedging Settings presents the required core rule and configurable eli
   );
   assert.match(
     policyMarkup,
-    />Maximum Transfer Rate Deviation from Market Pulse<\/h5>/
+    />Transfer Rate Deviation<\/h5>/
   );
   assert.match(policyMarkup, /id="autoHedgingAdmissionDeviationSummary"/);
   assert.match(policyMarkup, /id="autoHedgingAdmissionDeviationEditButton"/);
@@ -103,7 +103,7 @@ test("Auto Hedging Settings presents the required core rule and configurable eli
   );
   assert.match(
     policyMarkup,
-    />Ccy Pair Eligibility and Trade Amount Limits<\/h5>[\s\S]*?Determines whether a Client FX Deal may be initially admitted to Auto Hedging based on its Ccy Pair and Trade Amount in Base Ccy\./
+    />Ccy Pair and Amount Limits<\/h5>[\s\S]*?Determines whether a Client FX Deal may be initially admitted to Auto Hedging based on its Ccy Pair and Trade Amount in Base Ccy\./
   );
   assert.match(policyMarkup, /id="autoHedgingAdmissionPairEditButton"/);
   assert.doesNotMatch(
@@ -138,6 +138,10 @@ test("Transfer Rate deviation is edited and saved in its own dialog", () => {
   assert.match(
     admissionDeviationDialogHtml,
     /id="autoHedgingAdmissionDeviationDialog"[^>]*aria-labelledby="autoHedgingAdmissionDeviationDialogTitle"/
+  );
+  assert.match(
+    admissionDeviationDialogHtml,
+    />Transfer Rate Deviation<\/h2>/
   );
   assert.match(
     admissionDeviationDialogHtml,
@@ -181,7 +185,7 @@ test("Admission Policy edits the searchable and filterable Ccy Pair table in a d
   assert.match(documentHtml, /id="autoHedgingAdmissionPairDialog"[^>]*aria-labelledby="autoHedgingAdmissionPairDialogTitle"/);
   assert.match(
     admissionPairDialogHtml,
-    />Ccy Pair Eligibility and Trade Amount Limits<\/h2>/
+    />Ccy Pair and Amount Limits<\/h2>/
   );
   assert.match(documentHtml, /id="autoHedgingAdmissionPairSearch"/);
   assert.match(documentHtml, /id="autoHedgingAdmissionPairFilter"/);

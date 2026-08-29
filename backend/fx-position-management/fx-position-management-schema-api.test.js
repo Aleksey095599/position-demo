@@ -106,6 +106,12 @@ test("fresh schema and seed define safe FX Position Management policy defaults",
     assert.ok(ruleOverrideColumn);
     assert.equal(ruleOverrideColumn.notnull, 0);
     assert.equal(ruleOverrideColumn.dflt_value, null);
+    const admissionOverrideColumn = pricingRuleColumns.find(
+      column => column.name === "auto_hedging_admission_mode_override"
+    );
+    assert.ok(admissionOverrideColumn);
+    assert.equal(admissionOverrideColumn.notnull, 0);
+    assert.equal(admissionOverrideColumn.dflt_value, null);
 
     const contexts = database.prepare(`
       SELECT
@@ -134,12 +140,17 @@ test("fresh schema and seed define safe FX Position Management policy defaults",
     ));
 
     const pricingRuleModes = database.prepare(`
-      SELECT position_management_mode_override AS positionManagementModeOverride
+      SELECT
+        position_management_mode_override AS positionManagementModeOverride,
+        auto_hedging_admission_mode_override AS autoHedgingAdmissionModeOverride
       FROM pricing_rules
     `).all();
     assert.ok(pricingRuleModes.length > 0);
     assert.ok(pricingRuleModes.every(
       rule => rule.positionManagementModeOverride === null
+    ));
+    assert.ok(pricingRuleModes.every(
+      rule => rule.autoHedgingAdmissionModeOverride === null
     ));
 
     assert.throws(() => database.prepare(`
@@ -155,6 +166,11 @@ test("fresh schema and seed define safe FX Position Management policy defaults",
     assert.throws(() => database.prepare(`
       UPDATE pricing_rules
       SET position_management_mode_override = 'UNVERIFIED'
+      WHERE pricing_rule_id = (SELECT MIN(pricing_rule_id) FROM pricing_rules)
+    `).run(), /CHECK constraint failed/i);
+    assert.throws(() => database.prepare(`
+      UPDATE pricing_rules
+      SET auto_hedging_admission_mode_override = 'AUTO_IF_ELIGIBLE'
       WHERE pricing_rule_id = (SELECT MIN(pricing_rule_id) FROM pricing_rules)
     `).run(), /CHECK constraint failed/i);
   } finally {
@@ -278,6 +294,45 @@ test("FX Position Management configuration API preserves inheritance and overrid
   );
   assert.ok(inheritedAutoRule);
   assert.equal(inheritedAutoRule.effectivePositionManagementMode, "AUTO");
+  assert.equal(inheritedAutoRule.autoHedgingAdmissionModeOverride, null);
+  assert.equal(
+    inheritedAutoRule.effectiveAutoHedgingAdmissionMode,
+    inheritedAutoRule.executionContextAdmissionMode
+  );
+
+  const ruleWithManualAdmissionOverride = assertSuccessfulApiResponse(
+    await request(
+      "PUT",
+      `/api/v1/pricing-rules/${inheritedAutoRule.pricingRuleId}`,
+      { autoHedgingAdmissionModeOverride: "MANUAL_ONLY" }
+    ),
+    200
+  );
+  assert.equal(
+    ruleWithManualAdmissionOverride.autoHedgingAdmissionModeOverride,
+    "MANUAL_ONLY"
+  );
+  assert.equal(
+    ruleWithManualAdmissionOverride.effectiveAutoHedgingAdmissionMode,
+    "MANUAL_ONLY"
+  );
+
+  const ruleWithInheritedAdmissionPolicy = assertSuccessfulApiResponse(
+    await request(
+      "PUT",
+      `/api/v1/pricing-rules/${inheritedAutoRule.pricingRuleId}`,
+      { autoHedgingAdmissionModeOverride: null }
+    ),
+    200
+  );
+  assert.equal(
+    ruleWithInheritedAdmissionPolicy.autoHedgingAdmissionModeOverride,
+    null
+  );
+  assert.equal(
+    ruleWithInheritedAdmissionPolicy.effectiveAutoHedgingAdmissionMode,
+    ruleWithInheritedAdmissionPolicy.executionContextAdmissionMode
+  );
 
   const ruleWithManualOverride = assertSuccessfulApiResponse(
     await request(
@@ -313,6 +368,18 @@ test("FX Position Management configuration API preserves inheritance and overrid
       "PUT",
       `/api/v1/pricing-rules/${inheritedAutoRule.pricingRuleId}`,
       { positionManagementModeOverride: "UNVERIFIED" }
+    ),
+    await request("POST", "/api/v1/pricing-rules", {
+      counterpartyId: inheritedAutoRule.counterpartyId,
+      executionContextId: inheritedAutoRule.executionContextId,
+      ccyPairCode: inheritedAutoRule.ccyPairCode,
+      marginPercent: inheritedAutoRule.marginPercent,
+      autoHedgingAdmissionModeOverride: "AUTO_IF_ELIGIBLE"
+    }),
+    await request(
+      "PUT",
+      `/api/v1/pricing-rules/${inheritedAutoRule.pricingRuleId}`,
+      { autoHedgingAdmissionModeOverride: "REVIEW_REQUIRED" }
     )
   ]) {
     assert.equal(invalidRuleResponse.handled, true);
@@ -351,4 +418,9 @@ test("FX Position Management configuration API preserves inheritance and overrid
   assert.equal(inheritedRule.positionManagementModeOverride, null);
   assert.equal(inheritedRule.executionContextDefaultPositionManagementMode, "AUTO");
   assert.equal(inheritedRule.effectivePositionManagementMode, "AUTO");
+  assert.equal(inheritedRule.autoHedgingAdmissionModeOverride, null);
+  assert.equal(
+    inheritedRule.effectiveAutoHedgingAdmissionMode,
+    inheritedRule.executionContextAdmissionMode
+  );
 });

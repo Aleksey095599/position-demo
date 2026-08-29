@@ -2598,40 +2598,20 @@
       grid-template-columns: minmax(230px, 280px) 140px;
     }
 
-    .pricing-rule-bootstrap-dialog .client-pricing-rule-position-mode-field {
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-admission-field {
       min-width: 0;
       margin: 0;
       border: 0;
       padding: 0;
     }
 
-    .pricing-rule-bootstrap-dialog .client-pricing-rule-position-mode-field legend {
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-admission-field legend {
       float: none;
       width: auto;
       margin: 0;
       padding: 0;
       color: inherit;
       font: inherit;
-    }
-
-    .pricing-rule-bootstrap-dialog .client-pricing-rule-position-mode-field .position-management-mode-inherit {
-      margin-top: 5px;
-    }
-
-    .pricing-rule-bootstrap-dialog .client-pricing-rule-position-mode-field .position-management-mode-inherit input.form-check-input {
-      width: 1em;
-      height: 1em;
-      padding: 0;
-      border-radius: 0.25em;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-size: contain;
-    }
-
-    .pricing-rule-bootstrap-dialog .client-pricing-rule-position-mode-field .position-management-mode-inherit input.form-check-input:checked {
-      border-color: var(--bs-primary);
-      background-color: var(--bs-primary);
-      background-image: var(--bs-form-check-bg-image);
     }
 
     .pricing-rule-bootstrap-dialog .position-management-mode-effective {

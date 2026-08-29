@@ -13,8 +13,8 @@ const {
 } = require("./ui-table-layouts");
 
 const EXPECTED_COLUMN_COUNTS = Object.freeze({
-  pricing_rules_grid: 7,
-  internal_pricing_rules_grid: 8,
+  pricing_rules_grid: 8,
+  internal_pricing_rules_grid: 9,
   market_stream_grid: 4,
   ccy_options_grid: 6,
   ccy_pair_options_grid: 6,
@@ -68,7 +68,7 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 202);
+  assert.equal(fullyQualifiedColumnKeys.size, 204);
 });
 
 test("includes the Ccy Pair selector width in the FX Position layout", () => {

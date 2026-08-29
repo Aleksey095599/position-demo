@@ -11,6 +11,16 @@ const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
   Object.freeze({ tableKey: "internal_units_grid", legacyColumnKey: "counterparty_name", columnKey: "unit_name" }),
   Object.freeze({ tableKey: "users_grid", legacyColumnKey: "status", columnKey: "active" }),
   Object.freeze({
+    tableKey: "pricing_rules_grid",
+    legacyColumnKey: "position_management_mode",
+    columnKey: "auto_hedging_admission"
+  }),
+  Object.freeze({
+    tableKey: "internal_pricing_rules_grid",
+    legacyColumnKey: "position_management_mode",
+    columnKey: "auto_hedging_admission"
+  }),
+  Object.freeze({
     tableKey: "client_fx_deals_grid",
     legacyColumnKey: "entry_timestamp",
     columnKey: "execution_timestamp"
@@ -58,8 +68,9 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["counterparty_name", "Counterparty Name", 158],
     ["execution_context", "Execution Context", 596],
     ["ccy_pair", "Ccy Pair", 88],
-    ["position_management_mode", "FX Position Mode", 232],
-    ["margin", "Margin", 82]
+    ["auto_hedging_admission", "Auto Hedging Admission", 232],
+    ["margin", "Margin", 82],
+    ["actions", "Actions", 80]
   ]),
   internal_pricing_rules_grid: layout("Internal Unit Pricing Rules", [
     ["id", "ID", 64],
@@ -67,9 +78,10 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["counterparty_name", "Counterparty Name", 158],
     ["execution_context", "Execution Context", 596],
     ["ccy_pair", "Ccy Pair", 88],
-    ["position_management_mode", "FX Position Mode", 232],
+    ["auto_hedging_admission", "Auto Hedging Admission", 232],
     ["margin", "Margin", 82],
-    ["quick_hedge", "Quick Hedge", 112]
+    ["quick_hedge", "Quick Hedge", 112],
+    ["actions", "Actions", 80]
   ]),
   market_stream_grid: layout("Market Pulse", [
     ["currency_pair", "Ccy Pair", 94],

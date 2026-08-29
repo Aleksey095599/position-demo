@@ -874,7 +874,7 @@
       }
       renderClientProfiles();
     });
-    clientProfileBackButton.addEventListener("click", () => navigateToClientProfileRoute());
+    clientProfileBackButton.addEventListener("click", navigateBackFromClientProfileRoute);
     tradingCounterpartyIdSortButton.addEventListener("click", () => {
       tradingCounterpartyIdSortDirection = tradingCounterpartyIdSortDirection === "asc" ? "desc" : "asc";
       renderClientProfiles();
@@ -884,7 +884,7 @@
       control.addEventListener("change", renderClientProfiles);
     });
     clientProfileResetButton.addEventListener("click", () => {
-      navigateToClientProfileRoute();
+      navigateBackFromClientProfileRoute();
     });
     clientProfileDeleteButton.addEventListener("click", () => {
       if (editingClientProfileIndex !== null) {
@@ -1259,7 +1259,7 @@
         renderClientPricingContextBuilder();
       }
 
-      syncClientPricingRulePositionManagementModeControls();
+      syncClientPricingRuleAutoHedgingAdmissionControl();
       updateClientPricingRuleSubmitAvailability();
     });
     clientPricingRuleForm.addEventListener("change", event => {
@@ -1271,7 +1271,7 @@
         renderClientPricingContextBuilder();
       }
 
-      syncClientPricingRulePositionManagementModeControls();
+      syncClientPricingRuleAutoHedgingAdmissionControl();
       updateClientPricingRuleSubmitAvailability();
     });
     clientPricingRuleForm.addEventListener("click", event => {
@@ -1933,7 +1933,7 @@
         } else if (!clientProfilePage.hidden && usersView.hidden && !clientProfileListView.hidden && tradingCounterpartyRowEditState) {
           cancelTradingCounterpartyRowEdit();
         } else if (!clientProfilePage.hidden && !clientProfileDetailView.hidden && !clientPricingRuleDialog.open) {
-          navigateToClientProfileRoute();
+          navigateBackFromClientProfileRoute();
         }
 
         if (!pricingPage.hidden) {

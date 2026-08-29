@@ -39,9 +39,10 @@
               <col data-ui-column-key="counterparty_name">
               <col data-ui-column-key="execution_context">
               <col data-ui-column-key="ccy_pair">
-              <col data-ui-column-key="position_management_mode">
+              <col data-ui-column-key="auto_hedging_admission">
               <col data-ui-column-key="margin">
               <col class="pricing-rule-quick-hedge-column" data-ui-column-key="quick_hedge" hidden>
+              <col class="pricing-rule-actions-column" data-ui-column-key="actions" data-ui-fallback-width="80">
             </colgroup>
             <thead>
               <tr>
@@ -81,13 +82,13 @@
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="currencyPair" aria-label="Filter pricing rules by currency pair">
                   </div>
                 </th>
-                <th>
+                <th id="pricingRuleAutoHedgingAdmissionHeader" tabindex="-1" data-pricing-rule-column="autoHedgingAdmissionModeOverride">
                   <div class="reference-column-head">
                     <span class="reference-column-title">
-                      <span class="button-icon" aria-hidden="true">table_chart</span>
-                      <span>FX Position Mode</span>
+                      <span class="button-icon" aria-hidden="true">verified_user</span>
+                      <span>Auto Hedging Admission</span>
                     </span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="effectivePositionManagementMode" aria-label="Filter pricing rules by effective FX position mode or source">
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="autoHedgingAdmissionModeOverride" aria-label="Filter pricing rules by admission policy">
                   </div>
                 </th>
                 <th>
@@ -101,6 +102,11 @@
                 <th class="pricing-rule-quick-hedge-column" id="pricingRuleQuickHedgeHeader" hidden>
                   <div class="reference-column-head reference-column-head-static reference-column-head-centered">
                     <span class="reference-column-title">Quick Hedge</span>
+                  </div>
+                </th>
+                <th class="profile-actions-cell">
+                  <div class="reference-column-head reference-column-head-static reference-column-head-centered">
+                    <span class="reference-column-title">Actions</span>
                   </div>
                 </th>
               </tr>
