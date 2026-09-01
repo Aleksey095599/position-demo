@@ -64,20 +64,28 @@ function pricingRulesRouteHelpers() {
   )();
 }
 
-test("Client FX Deals policy presents Pricing Rule after Execution Context", () => {
+test("Client FX Deals policy presents all nodes in admission order", () => {
   const executionContextIndex = hedgingSettingsMarkup.indexOf(
     'id="autoHedgingAdmissionCoreRuleTitle"'
   );
   const pricingRuleIndex = hedgingSettingsMarkup.indexOf(
     'id="autoHedgingAdmissionPricingRuleTitle"'
   );
+  const ccyPairIndex = hedgingSettingsMarkup.indexOf(
+    'id="autoHedgingAdmissionCcyPairTitle"'
+  );
+  const amountLimitIndex = hedgingSettingsMarkup.indexOf(
+    'id="autoHedgingAdmissionAmountLimitTitle"'
+  );
   const deviationIndex = hedgingSettingsMarkup.indexOf(
-    'id="autoHedgingEligibilityChecksTitle"'
+    'id="autoHedgingAdmissionDeviationTitle"'
   );
 
   assert.ok(executionContextIndex >= 0);
   assert.ok(pricingRuleIndex > executionContextIndex);
-  assert.ok(deviationIndex > pricingRuleIndex);
+  assert.ok(ccyPairIndex > pricingRuleIndex);
+  assert.ok(amountLimitIndex > ccyPairIndex);
+  assert.ok(deviationIndex > amountLimitIndex);
   assert.match(
     hedgingSettingsMarkup,
     />rule<\/span>[\s\S]*?id="autoHedgingAdmissionPricingRuleTitle">Pricing Rule<\/h5>[\s\S]*?Uses the Execution Context Admission Policy unless overridden by Manual Control\./

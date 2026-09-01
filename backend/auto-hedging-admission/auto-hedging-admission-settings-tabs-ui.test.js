@@ -53,7 +53,7 @@ test("Hedging Settings exposes scalable sidebar navigation", () => {
   );
   assert.match(
     hedgingPageMarkup,
-    /id="autoHedgingSettingsGroupToggle"[^>]*aria-expanded="true"[^>]*aria-controls="autoHedgingSettingsSubnav"/
+    /id="autoHedgingSettingsGroupToggle"[^>]*aria-expanded="false"[^>]*aria-controls="autoHedgingSettingsSubnav"/
   );
   assert.match(
     hedgingPageMarkup,
@@ -106,7 +106,7 @@ test("Auto Hedging sidebar group can collapse independently", () => {
   );
   assert.match(
     hedgingPageMarkup,
-    /class="hedging-settings-navigation-subnav" id="autoHedgingSettingsSubnav"/
+    /class="hedging-settings-navigation-subnav" id="autoHedgingSettingsSubnav" hidden/
   );
   assert.match(
     appScript,
@@ -115,6 +115,10 @@ test("Auto Hedging sidebar group can collapse independently", () => {
   assert.match(
     appScript,
     /hedgingSettingsAutoGroupToggle\.addEventListener\("click"[\s\S]*?setHedgingSettingsAutoGroupExpanded/
+  );
+  assert.match(
+    appScript,
+    /setHedgingSettingsAutoGroupExpanded\(normalizedSection !== "quick"\)/
   );
 });
 

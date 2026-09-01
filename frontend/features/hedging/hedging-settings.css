@@ -393,44 +393,7 @@
       background: var(--app-table-action-bg);
     }
 
-    .auto-hedging-admission-deviation-dialog {
-      width: min(760px, calc(100vw - 32px));
-      max-width: none;
-    }
-
-    .auto-hedging-admission-deviation-dialog .modal-content {
-      max-height: min(86vh, 720px);
-    }
-
-    .auto-hedging-admission-deviation-dialog .modal-header {
-      align-items: flex-start;
-    }
-
-    .auto-hedging-admission-deviation-dialog .modal-header h2 {
-      margin: 0;
-      font-size: var(--app-font-size-section-title);
-    }
-
-    .auto-hedging-admission-deviation-dialog .modal-header h2:focus {
-      outline: 0;
-    }
-
-    .auto-hedging-admission-deviation-dialog .modal-header p {
-      margin: 4px 0 0;
-      color: var(--bs-secondary-color);
-      font-size: var(--app-font-size-caption);
-    }
-
-    .auto-hedging-admission-deviation-dialog .modal-body {
-      min-height: 0;
-      padding: 14px;
-      overflow: hidden;
-    }
-
-    :is(
-      .auto-hedging-admission-deviation-table-viewport,
-      .auto-hedging-admission-pair-table-viewport
-    ) {
+    .auto-hedging-admission-pair-table-viewport {
       position: relative;
       width: 100%;
       max-height: min(56vh, 520px);
@@ -440,10 +403,7 @@
       background: var(--bs-body-bg);
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) {
+    .auto-hedging-admission-pair-table {
       width: 100%;
       margin: 0;
       border: 0;
@@ -456,28 +416,18 @@
       font-size: var(--workbench-grid-size);
     }
 
-    .auto-hedging-admission-deviation-table {
-      min-width: 560px;
-    }
-
     .auto-hedging-admission-pair-table {
-      min-width: 760px;
+      min-width: 1040px;
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) thead {
+    .auto-hedging-admission-pair-table thead {
       position: sticky;
       top: 0;
       z-index: 2;
       background: var(--workbench-grid-header-bg);
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) :is(th, td) {
+    .auto-hedging-admission-pair-table :is(th, td) {
       height: var(--workbench-grid-row-height);
       padding: 7px 8px;
       border: 0;
@@ -489,24 +439,15 @@
       vertical-align: middle;
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) tr > :last-child {
+    .auto-hedging-admission-pair-table tr > :last-child {
       border-right: 0;
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) tbody tr:last-child td {
+    .auto-hedging-admission-pair-table tbody tr:last-child td {
       border-bottom: 0;
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) thead th {
+    .auto-hedging-admission-pair-table thead th {
       height: 65px;
       padding: 5px 7px;
       background: var(--workbench-grid-header-bg);
@@ -517,24 +458,15 @@
       vertical-align: top;
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) tbody tr:nth-child(even) td {
+    .auto-hedging-admission-pair-table tbody tr:nth-child(even) td {
       background: var(--workbench-grid-stripe-bg);
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) tbody tr:hover td {
+    .auto-hedging-admission-pair-table tbody tr:hover td {
       background: var(--workbench-grid-hover-bg);
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) .reference-column-head {
+    .auto-hedging-admission-pair-table .reference-column-head {
       display: flex;
       min-width: 0;
       min-height: 53px;
@@ -543,17 +475,11 @@
       gap: 5px;
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) .reference-column-head-static {
+    .auto-hedging-admission-pair-table .reference-column-head-static {
       justify-content: center;
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) .reference-column-title {
+    .auto-hedging-admission-pair-table .reference-column-title {
       display: inline-flex;
       min-width: 0;
       align-items: center;
@@ -562,10 +488,7 @@
       white-space: nowrap;
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) .reference-header-filter {
+    .auto-hedging-admission-pair-table .reference-header-filter {
       display: block;
       width: 100%;
       min-width: 0;
@@ -583,29 +506,15 @@
       line-height: 20px;
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) select.reference-header-filter {
+    .auto-hedging-admission-pair-table select.reference-header-filter {
       padding-right: 28px;
       background-size: 12px 9px;
     }
 
-    :is(
-      .auto-hedging-admission-deviation-table,
-      .auto-hedging-admission-pair-table
-    ) .reference-header-filter:focus {
+    .auto-hedging-admission-pair-table .reference-header-filter:focus {
       border-color: var(--bs-primary);
       outline: 0;
       box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);
-    }
-
-    .auto-hedging-admission-deviation-pair-col {
-      width: 34%;
-    }
-
-    .auto-hedging-admission-deviation-value-col {
-      width: 66%;
     }
 
     .auto-hedging-admission-deviation-limit {
@@ -618,22 +527,20 @@
       font-weight: 600;
     }
 
-    .auto-hedging-admission-deviation-empty {
-      padding: 24px 16px;
-      color: var(--bs-secondary-color);
-      text-align: center;
-    }
-
     .auto-hedging-admission-pair-code-col {
-      width: 24%;
+      width: 18%;
     }
 
     .auto-hedging-admission-pair-enabled-col {
-      width: 30%;
+      width: 22%;
     }
 
     .auto-hedging-admission-pair-limit-col {
-      width: 46%;
+      width: 31%;
+    }
+
+    .auto-hedging-admission-pair-deviation-col {
+      width: 29%;
     }
 
     .auto-hedging-admission-pair-table th:nth-child(2) {
@@ -677,7 +584,7 @@
     }
 
     .auto-hedging-admission-pair-dialog {
-      width: min(980px, calc(100vw - 32px));
+      width: min(1180px, calc(100vw - 32px));
       max-width: none;
     }
 
@@ -712,6 +619,35 @@
 
     .auto-hedging-admission-pair-dialog .auto-hedging-admission-pair-table-viewport {
       max-height: min(58vh, 560px);
+    }
+
+    @keyframes auto-hedging-admission-column-focus {
+      0%, 70% {
+        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.14);
+      }
+
+      100% {
+        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0);
+      }
+    }
+
+    .auto-hedging-admission-pair-dialog
+    .is-auto-hedging-admission-column-focused {
+      animation: auto-hedging-admission-column-focus 2.6s ease-out both;
+    }
+
+    .auto-hedging-admission-pair-dialog
+    thead .is-auto-hedging-admission-column-focused {
+      outline: 2px solid rgba(var(--bs-primary-rgb), 0.38);
+      outline-offset: -2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .auto-hedging-admission-pair-dialog
+      .is-auto-hedging-admission-column-focused {
+        animation: none;
+        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.14);
+      }
     }
 
     .auto-hedging-admission-dialog-status {

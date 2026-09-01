@@ -2,8 +2,8 @@
     <form class="modal-content" id="autoHedgingAdmissionPairDialogForm" autocomplete="off">
       <header class="modal-header">
         <div>
-          <h2 class="modal-title" id="autoHedgingAdmissionPairDialogTitle">Ccy Pair and Amount Limits</h2>
-          <p>New or unlisted Currency Pairs remain disabled until they are explicitly enabled and assigned a limit.</p>
+          <h2 class="modal-title" id="autoHedgingAdmissionPairDialogTitle">Ccy Pair Admission Criteria</h2>
+          <p>Configure Ccy Pair eligibility, Amount Limits and Transfer Rate Deviation as one policy revision.</p>
         </div>
         <button type="button" class="btn-close" id="autoHedgingAdmissionPairDialogClose" aria-label="Close"></button>
       </header>
@@ -14,6 +14,7 @@
               <col class="auto-hedging-admission-pair-code-col">
               <col class="auto-hedging-admission-pair-enabled-col">
               <col class="auto-hedging-admission-pair-limit-col">
+              <col class="auto-hedging-admission-pair-deviation-col">
             </colgroup>
             <thead>
               <tr>
@@ -23,19 +24,24 @@
                     <input class="reference-header-filter" type="search" id="autoHedgingAdmissionPairSearch" autocomplete="off" aria-label="Filter admission settings by Ccy Pair">
                   </div>
                 </th>
-                <th scope="col" class="text-center">
+                <th scope="col" class="text-center" tabindex="-1" data-auto-hedging-admission-column="automatic-admission">
                   <div class="reference-column-head">
-                    <span class="reference-column-title">Automatic Admission Enabled</span>
-                    <select class="reference-header-filter form-select" id="autoHedgingAdmissionPairFilter" aria-label="Filter Currency Pairs by automatic admission status">
+                    <span class="reference-column-title">Eligible for Auto Hedging</span>
+                    <select class="reference-header-filter form-select" id="autoHedgingAdmissionPairFilter" aria-label="Filter Ccy Pairs by Auto Hedging eligibility">
                       <option value="ALL">All</option>
                       <option value="ENABLED">Enabled</option>
                       <option value="DISABLED">Disabled</option>
                     </select>
                   </div>
                 </th>
-                <th scope="col">
+                <th scope="col" tabindex="-1" data-auto-hedging-admission-column="amount-limit">
                   <div class="reference-column-head reference-column-head-static">
                     <span class="reference-column-title">Maximum Trade Amount (Base Ccy)</span>
+                  </div>
+                </th>
+                <th scope="col" tabindex="-1" data-auto-hedging-admission-column="transfer-rate-deviation">
+                  <div class="reference-column-head reference-column-head-static">
+                    <span class="reference-column-title">Transfer Rate Deviation (%)</span>
                   </div>
                 </th>
               </tr>

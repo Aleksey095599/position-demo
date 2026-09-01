@@ -132,11 +132,6 @@
     },
     {
       "kind": "dialog",
-      "id": "autoHedgingAdmissionDeviationDialog",
-      "file": "features/hedging/components/auto-hedging-admission-deviation.dialog.html"
-    },
-    {
-      "kind": "dialog",
       "id": "autoHedgingAdmissionPairDialog",
       "file": "features/hedging/components/auto-hedging-admission-pairs.dialog.html"
     },

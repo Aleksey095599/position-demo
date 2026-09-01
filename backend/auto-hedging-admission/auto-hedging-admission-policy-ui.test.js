@@ -10,17 +10,6 @@ const hedgingSettingsPageHtml = fs.readFileSync(
   path.join(ROOT, "frontend", "features", "hedging", "hedging-settings.page.html"),
   "utf8"
 );
-const admissionDeviationDialogHtml = fs.readFileSync(
-  path.join(
-    ROOT,
-    "frontend",
-    "features",
-    "hedging",
-    "components",
-    "auto-hedging-admission-deviation.dialog.html"
-  ),
-  "utf8"
-);
 const admissionPairDialogHtml = fs.readFileSync(
   path.join(
     ROOT,
@@ -34,7 +23,6 @@ const admissionPairDialogHtml = fs.readFileSync(
 );
 const documentHtml = [
   hedgingSettingsPageHtml,
-  admissionDeviationDialogHtml,
   admissionPairDialogHtml
 ].join("\n");
 const appScript = [
@@ -43,6 +31,10 @@ const appScript = [
 ].map(filePath => fs.readFileSync(filePath, "utf8")).join("\n");
 const settingsStyle = fs.readFileSync(
   path.join(ROOT, "frontend", "features", "hedging", "hedging-settings.css"),
+  "utf8"
+);
+const fragmentManifest = fs.readFileSync(
+  path.join(ROOT, "frontend", "fragment-manifest.json"),
   "utf8"
 );
 const policyMarkup = documentHtml.match(
@@ -79,43 +71,33 @@ test("Auto Hedging Settings presents the required core rule and configurable eli
     policyMarkup,
     /href="#execution-context\?focus=auto-hedging-admission&amp;return=%23hedging-settings%3Aauto-hedging%3Ainitial-admission"[\s\S]*?aria-label="Open Execution Context settings"[\s\S]*?data-tooltip="Open Execution Context settings"[\s\S]*?>settings<\/span>/
   );
+  const policyNodeTitles = [...policyMarkup.matchAll(/<h5\b[^>]*>([^<]+)<\/h5>/g)]
+    .map(match => match[1].trim());
+  assert.deepEqual(policyNodeTitles, [
+    "Execution Context",
+    "Pricing Rule",
+    "Ccy Pair",
+    "Amount Limits",
+    "Transfer Rate Deviation"
+  ]);
   assert.match(
     policyMarkup,
-    /class="auto-hedging-admission-policy-block auto-hedging-admission-deviation-card"/
-  );
-  assert.match(
-    policyMarkup,
-    />Transfer Rate Deviation<\/h5>/
-  );
-  assert.match(policyMarkup, /id="autoHedgingAdmissionDeviationSummary"/);
-  assert.match(policyMarkup, /id="autoHedgingAdmissionDeviationEditButton"/);
-  assert.doesNotMatch(
-    policyMarkup,
-    /id="autoHedgingAdmissionDeviationEditButton"[^>]*(?:data-tooltip|title)=/
-  );
-  assert.doesNotMatch(
-    policyMarkup,
-    /data-auto-hedging-admission-deviation/
+    />Ccy Pair<\/h5>[\s\S]*?Defines which Ccy Pairs are eligible for Auto Hedging\./
   );
   assert.match(
     policyMarkup,
-    /class="auto-hedging-admission-policy-block auto-hedging-admission-pair-policy"/
+    />Amount Limits<\/h5>[\s\S]*?Sets the maximum Trade Amount in Base Ccy for each eligible Ccy Pair\./
   );
   assert.match(
     policyMarkup,
-    />Ccy Pair and Amount Limits<\/h5>[\s\S]*?Determines whether a Client FX Deal may be initially admitted to Auto Hedging based on its Ccy Pair and Trade Amount in Base Ccy\./
-  );
-  assert.match(policyMarkup, /id="autoHedgingAdmissionPairEditButton"/);
-  assert.doesNotMatch(
-    policyMarkup,
-    /id="autoHedgingAdmissionPairEditButton"[^>]*(?:data-tooltip|title)=/
+    />Transfer Rate Deviation<\/h5>[\s\S]*?Sets the maximum permitted deviation from the applicable Market Pulse rate for each Ccy Pair\./
   );
   assert.doesNotMatch(policyMarkup, /\bsemantic-section\b/);
   assert.doesNotMatch(policyMarkup, />Core Rule<\/h3>/);
   assert.doesNotMatch(policyMarkup, />Eligibility Checks<\/h3>/);
   assert.match(
-    admissionDeviationDialogHtml,
-    /id="autoHedgingAdmissionDeviationSearch"/
+    admissionPairDialogHtml,
+    /id="autoHedgingAdmissionPairSearch"/
   );
   assert.match(
     settingsStyle,
@@ -134,75 +116,77 @@ test("Auto Hedging Settings presents the required core rule and configurable eli
   assert.doesNotMatch(settingsStyle, /\.auto-hedging-client-policy-head/);
 });
 
-test("Transfer Rate deviation is edited and saved in its own dialog", () => {
-  assert.match(
-    admissionDeviationDialogHtml,
-    /id="autoHedgingAdmissionDeviationDialog"[^>]*aria-labelledby="autoHedgingAdmissionDeviationDialogTitle"/
+test("Ccy Pair, Amount Limits and Transfer Rate Deviation open one focused editor", () => {
+  const editButtons = [...policyMarkup.matchAll(
+    /<button\b[^>]*id="(autoHedgingAdmission(?:CcyPair|AmountLimit|Deviation)EditButton)"[^>]*>/g
+  )].map(match => match[0]);
+
+  assert.equal(editButtons.length, 3);
+  assert.deepEqual(
+    editButtons.map(button => button.match(/id="([^"]+)"/)?.[1]),
+    [
+      "autoHedgingAdmissionCcyPairEditButton",
+      "autoHedgingAdmissionAmountLimitEditButton",
+      "autoHedgingAdmissionDeviationEditButton"
+    ]
   );
-  assert.match(
-    admissionDeviationDialogHtml,
-    />Transfer Rate Deviation<\/h2>/
+  assert.deepEqual(
+    editButtons.map(button => button.match(/data-auto-hedging-admission-focus="([^"]+)"/)?.[1]),
+    ["automatic-admission", "amount-limit", "transfer-rate-deviation"]
   );
-  assert.match(
-    admissionDeviationDialogHtml,
-    /class="reference-column-head reference-column-head-static">[\s\S]*?>Maximum Transfer Rate Deviation \(%\)<\/span>/
-  );
-  assert.match(
-    admissionDeviationDialogHtml,
-    /<th scope="col">[\s\S]*?class="reference-column-title">Ccy Pair<\/span>[\s\S]*?class="reference-header-filter"[^>]*id="autoHedgingAdmissionDeviationSearch"/
-  );
-  assert.match(
-    admissionDeviationDialogHtml,
-    /class="[^"]*unified-data-table[^"]*auto-hedging-admission-deviation-table"[^>]*data-column-sizing="managed"[\s\S]*?<colgroup>/
+  editButtons.forEach(button => {
+    assert.match(button, /aria-haspopup="dialog"/);
+    assert.match(button, /aria-controls="autoHedgingAdmissionPairDialog"/);
+  });
+  assert.doesNotMatch(
+    hedgingSettingsPageHtml,
+    /aria-controls="autoHedgingAdmissionDeviationDialog"/
   );
   assert.doesNotMatch(
-    admissionDeviationDialogHtml,
-    /auto-hedging-admission-deviation-toolbar|autoHedgingAdmissionDeviationSearchClear/
-  );
-  assert.match(
-    admissionDeviationDialogHtml,
-    /id="autoHedgingAdmissionDeviationRows"/
-  );
-  assert.match(
-    admissionDeviationDialogHtml,
-    /id="autoHedgingAdmissionDeviationDialogSave"[^>]*>[\s\S]*?>Save Changes<\/span>/
+    fragmentManifest,
+    /auto-hedging-admission-deviation\.dialog\.html/
   );
   assert.match(
     appScript,
-    /function openAutoHedgingAdmissionDeviationDialog\(\)[\s\S]*?openDialogWithoutFieldFocus\(autoHedgingAdmissionDeviationDialog\)/
+    /\[\s*autoHedgingAdmissionCcyPairEditButton,\s*autoHedgingAdmissionAmountLimitEditButton,\s*autoHedgingAdmissionDeviationEditButton\s*\]\.forEach\(button => \{[\s\S]*?button\.addEventListener\("click", openAutoHedgingAdmissionPairDialog\)/
   );
-  assert.match(
-    appScript,
-    /function closeAutoHedgingAdmissionDeviationDialog\(\{ restore = false \} = \{\}\)[\s\S]*?restoreAutoHedgingAdmissionDeviationControlSnapshot/
-  );
-  assert.match(
-    appScript,
-    /function saveAutoHedgingAdmissionDeviationDialog\(\)[\s\S]*?persistAutoHedgingAdmissionPolicy/
-  );
+  assert.doesNotMatch(appScript, /\bautoHedgingAdmissionPairEditButton\b/);
 });
 
-test("Admission Policy edits the searchable and filterable Ccy Pair table in a dialog", () => {
+test("Admission Policy edits all per-pair criteria in one searchable table", () => {
   assert.match(documentHtml, /id="autoHedgingAdmissionPairDialog"[^>]*aria-labelledby="autoHedgingAdmissionPairDialogTitle"/);
   assert.match(
     admissionPairDialogHtml,
-    />Ccy Pair and Amount Limits<\/h2>/
+    />Ccy Pair Admission Criteria<\/h2>/
   );
   assert.match(documentHtml, /id="autoHedgingAdmissionPairSearch"/);
   assert.match(documentHtml, /id="autoHedgingAdmissionPairFilter"/);
   assert.match(documentHtml, /<option value="ALL">All<\/option>/);
   assert.match(documentHtml, /<option value="ENABLED">Enabled<\/option>/);
   assert.match(documentHtml, /<option value="DISABLED">Disabled<\/option>/);
+  const focusedColumns = [...admissionPairDialogHtml.matchAll(
+    /<th\b[^>]*data-auto-hedging-admission-column="([^"]+)"[^>]*>/g
+  )].map(match => match[1]);
+  assert.deepEqual(focusedColumns, [
+    "automatic-admission",
+    "amount-limit",
+    "transfer-rate-deviation"
+  ]);
   assert.match(
     admissionPairDialogHtml,
     /<th scope="col">[\s\S]*?class="reference-column-title">Ccy Pair<\/span>[\s\S]*?class="reference-header-filter"[^>]*id="autoHedgingAdmissionPairSearch"/
   );
   assert.match(
     admissionPairDialogHtml,
-    /class="reference-column-title">Automatic Admission Enabled<\/span>[\s\S]*?class="reference-header-filter form-select"[^>]*id="autoHedgingAdmissionPairFilter"/
+    /data-auto-hedging-admission-column="automatic-admission"[\s\S]*?class="reference-column-title">Eligible for Auto Hedging<\/span>[\s\S]*?class="reference-header-filter form-select"[^>]*id="autoHedgingAdmissionPairFilter"/
   );
   assert.match(
     admissionPairDialogHtml,
-    /class="reference-column-head reference-column-head-static">[\s\S]*?>Maximum Trade Amount \(Base Ccy\)<\/span>/
+    /data-auto-hedging-admission-column="amount-limit"[\s\S]*?class="reference-column-title">Maximum Trade Amount \(Base Ccy\)<\/span>/
+  );
+  assert.match(
+    admissionPairDialogHtml,
+    /data-auto-hedging-admission-column="transfer-rate-deviation"[\s\S]*?class="reference-column-title">Transfer Rate Deviation \(%\)<\/span>/
   );
   assert.match(
     admissionPairDialogHtml,
@@ -220,19 +204,35 @@ test("Admission Policy edits the searchable and filterable Ccy Pair table in a d
   );
   assert.match(
     settingsStyle,
-    /:is\([\s\S]*?\.auto-hedging-admission-pair-table-viewport[\s\S]*?\) \{[\s\S]*?overflow: auto[\s\S]*?border: var\(--data-grid-line-width\) solid var\(--data-grid-line-color\)/
+    /\.auto-hedging-admission-pair-table-viewport \{[\s\S]*?overflow: auto[\s\S]*?border: var\(--data-grid-line-width\) solid var\(--data-grid-line-color\)/
   );
   assert.match(
     settingsStyle,
-    /:is\([\s\S]*?\.auto-hedging-admission-pair-table[\s\S]*?\) thead \{[\s\S]*?position: sticky/
+    /\.auto-hedging-admission-pair-table thead \{[\s\S]*?position: sticky/
+  );
+  assert.match(
+    settingsStyle,
+    /\.auto-hedging-admission-pair-dialog\s+\.is-auto-hedging-admission-column-focused \{[\s\S]*?animation: auto-hedging-admission-column-focus 2\.6s/
+  );
+  assert.match(
+    settingsStyle,
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.is-auto-hedging-admission-column-focused \{[\s\S]*?animation: none;[\s\S]*?box-shadow:/
   );
   assert.match(
     appScript,
-    /function openAutoHedgingAdmissionPairDialog\(\)[\s\S]*?autoHedgingAdmissionPairControlSnapshot\(\)[\s\S]*?openDialogWithoutFieldFocus\(autoHedgingAdmissionPairDialog\)/
+    /function openAutoHedgingAdmissionPairDialog\(event\)[\s\S]*?autoHedgingAdmissionPairControlSnapshot\(\)[\s\S]*?trigger\?\.dataset\.autoHedgingAdmissionFocus[\s\S]*?openDialogWithoutFieldFocus\(autoHedgingAdmissionPairDialog\)[\s\S]*?focusAutoHedgingAdmissionDialogColumn/
   );
   assert.match(
     appScript,
-    /function closeAutoHedgingAdmissionPairDialog\(\{ restore = false \} = \{\}\)[\s\S]*?restoreAutoHedgingAdmissionPairControlSnapshot/
+    /function setAutoHedgingAdmissionDialogFocus\(focusTarget\)[\s\S]*?querySelectorAll\("\[data-auto-hedging-admission-column\]"\)[\s\S]*?classList\.toggle\([\s\S]*?"is-auto-hedging-admission-column-focused"[\s\S]*?cell\.dataset\.autoHedgingAdmissionColumn === target/
+  );
+  assert.match(
+    appScript,
+    /function focusAutoHedgingAdmissionDialogColumn\(\)[\s\S]*?"automatic-admission"[\s\S]*?"amount-limit"[\s\S]*?"transfer-rate-deviation"[\s\S]*?targetHeader\?\.scrollIntoView[\s\S]*?control\?\.focus\(/
+  );
+  assert.match(
+    appScript,
+    /function closeAutoHedgingAdmissionPairDialog\(\{ restore = false \} = \{\}\)[\s\S]*?restoreAutoHedgingAdmissionPairControlSnapshot[\s\S]*?returnFocus\?\.focus\(\)/
   );
   assert.match(
     appScript,
@@ -267,13 +267,9 @@ test("Admission Policy loads and saves revisioned API data without duplicate sub
   );
   assert.match(
     appScript,
-    /function autoHedgingAdmissionDeviationDraft\(\)[\s\S]*?maxTransferRateDeviationPercent: deviation/
+    /function autoHedgingAdmissionPolicyDraft\(\)[\s\S]*?maxBaseCcyAmount[\s\S]*?maxTransferRateDeviationPercent/
   );
-  assert.match(
-    appScript,
-    /function autoHedgingAdmissionPairDraft\(\)[\s\S]*?maxTransferRateDeviationPercent:\s*pair\.maxTransferRateDeviationPercent/
-  );
-  assert.doesNotMatch(appScript, /function autoHedgingAdmissionPolicyDraft\(/);
+  assert.doesNotMatch(appScript, /function autoHedgingAdmissionDeviationDraft\(/);
   assert.match(
     appScript,
     /method: "PUT",\s*body: JSON\.stringify\(draft\)/
@@ -289,16 +285,9 @@ test("Admission Policy loads and saves revisioned API data without duplicate sub
   );
   assert.match(
     appScript,
-    /autoHedgingAdmissionDeviationDialogForm\.addEventListener\("submit"/
-  );
-  assert.match(
-    appScript,
     /autoHedgingAdmissionPairDialogForm\.addEventListener\("submit"/
   );
-  assert.match(
-    appScript,
-    /autoHedgingAdmissionDeviationSearch\.addEventListener\("keydown", event => \{[\s\S]*?event\.key === "Enter"[\s\S]*?event\.preventDefault\(\)/
-  );
+  assert.doesNotMatch(appScript, /autoHedgingAdmissionDeviationDialogForm/);
   assert.match(
     appScript,
     /autoHedgingAdmissionPairSearch\.addEventListener\("keydown", event => \{[\s\S]*?event\.key === "Enter"[\s\S]*?event\.preventDefault\(\)/
