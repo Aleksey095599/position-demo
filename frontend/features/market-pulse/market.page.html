@@ -1,0 +1,175 @@
+  <main class="settings-shell profile-shell market-shell market-bootstrap workbench-page" id="marketPage" hidden>
+    <section class="settings-topbar workbench-page-header" id="marketPageHeader" aria-label="Market Pulse header">
+      <div class="settings-title-block">
+        <h1 class="settings-title" id="marketPageTitle">Market Pulse</h1>
+      </div>
+      <div class="profile-status workbench-page-status" id="marketStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="market-bootstrap-content" aria-label="Market Pulse data">
+      <section class="market-bootstrap-panel market-history-panel" data-market-panel="data-management" aria-label="Market data management" hidden>
+        <section class="market-history-sync-card" aria-labelledby="marketHistorySyncTitle">
+          <div class="market-history-sync-header">
+            <span class="button-icon market-history-sync-header-icon" aria-hidden="true">calendar_month</span>
+            <div>
+              <h2 class="market-history-section-title" id="marketHistorySyncTitle">Source candle synchronization</h2>
+              <p class="market-history-section-description">
+                Load closed one-minute candles one Moscow calendar day at a time. Today is never included.
+              </p>
+            </div>
+          </div>
+
+          <form class="market-history-sync-form" id="marketHistorySyncForm">
+            <label class="market-history-field" for="marketHistorySyncInstrument">
+              <span>Instrument</span>
+              <select class="form-select form-select-sm" id="marketHistorySyncInstrument" name="instrumentId" required>
+                <option value="CNYRUB_TOM">CNY/RUB TOM</option>
+              </select>
+              <small>MOEX ISS market</small>
+            </label>
+            <label class="market-history-field" for="marketHistorySyncFromDate">
+              <span>From date</span>
+              <input class="form-control form-control-sm" id="marketHistorySyncFromDate" name="fromDate" type="date"
+                aria-describedby="marketHistorySyncFromHelp" required>
+              <small id="marketHistorySyncFromHelp">Up to 366 closed Moscow calendar days</small>
+            </label>
+            <div class="market-history-field market-history-sync-through">
+              <span>Through date</span>
+              <output class="market-history-sync-boundary" id="marketHistorySyncThroughDate" for="marketHistorySyncFromDate">—</output>
+              <small>Yesterday, Moscow time</small>
+            </div>
+            <button class="btn btn-sm btn-primary market-history-sync-button" id="marketHistorySyncButton" type="submit">
+              <span class="button-icon" aria-hidden="true">sync</span>
+              <span id="marketHistorySyncButtonText">Synchronize source candles</span>
+            </button>
+          </form>
+
+          <div class="market-history-sync-progress" id="marketHistorySyncProgress" hidden>
+            <div class="market-history-sync-progress-heading">
+              <p class="market-history-sync-summary" id="marketHistorySyncSummary" role="status" aria-live="polite"></p>
+              <span class="market-history-sync-count" id="marketHistorySyncCount"></span>
+            </div>
+            <div class="progress market-history-sync-progress-bar">
+              <div class="progress-bar" id="marketHistorySyncProgressBar" role="progressbar"
+                aria-label="Historical days synchronized" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"></div>
+            </div>
+            <div class="market-history-sync-legend" aria-label="Synchronization statuses">
+              <span><i class="market-history-day-dot is-pending" aria-hidden="true"></i>Pending</span>
+              <span><i class="market-history-day-dot is-loading" aria-hidden="true"></i>Loading</span>
+              <span><i class="market-history-day-dot is-completed" aria-hidden="true"></i>Completed</span>
+              <span><i class="market-history-day-dot is-already-loaded" aria-hidden="true"></i>Already loaded</span>
+              <span><i class="market-history-day-dot is-error" aria-hidden="true"></i>Error</span>
+            </div>
+            <div class="market-history-calendar" id="marketHistorySyncCalendar" aria-label="Historical candle synchronization by day"></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="market-bootstrap-panel market-history-panel" data-market-panel="charts" aria-label="Market charts" hidden>
+        <div class="market-history-preview-heading">
+          <h2 class="market-history-section-title">Candlestick preview</h2>
+          <p class="market-history-section-description">Load a short interval to inspect the stored market data on the chart.</p>
+        </div>
+        <form class="market-history-form" id="marketHistoryForm">
+          <label class="market-history-field" for="marketHistoryInstrument">
+            <span>Instrument</span>
+            <select class="form-select form-select-sm" id="marketHistoryInstrument" name="instrumentId" required>
+              <option value="CNYRUB_TOM">CNY/RUB TOM</option>
+            </select>
+          </label>
+          <label class="market-history-field" for="marketHistoryTimeframe">
+            <span>Timeframe</span>
+            <select class="form-select form-select-sm" id="marketHistoryTimeframe" name="timeframe" required>
+              <option value="FIVE_MINUTES">5 minutes</option>
+              <option value="FIFTEEN_MINUTES">15 minutes</option>
+            </select>
+          </label>
+          <label class="market-history-field" for="marketHistoryFrom">
+            <span>From (Moscow time)</span>
+            <input class="form-control form-control-sm" id="marketHistoryFrom" name="from" type="datetime-local" step="300" required>
+          </label>
+          <label class="market-history-field" for="marketHistoryTill">
+            <span>Till (Moscow time)</span>
+            <input class="form-control form-control-sm" id="marketHistoryTill" name="till" type="datetime-local" step="300" required>
+          </label>
+          <button class="btn btn-sm btn-primary market-history-load" id="marketHistoryLoadButton" type="submit">
+            Load candles
+          </button>
+        </form>
+
+        <div class="market-history-summary" id="marketHistorySummary">Select a period up to six hours and load the candles.</div>
+        <div class="market-history-chart-frame">
+          <div class="market-history-chart" id="marketHistoryChart" role="img" aria-label="CNY/RUB Candlestick chart"></div>
+          <p class="market-history-empty" id="marketHistoryEmpty">No candles loaded yet.</p>
+        </div>
+        <p class="market-history-attribution">
+          Market data: MOEX ISS. Charting by
+          <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>.
+        </p>
+      </section>
+
+      <section class="market-bootstrap-panel table-panel table-panel--standalone" data-market-panel="currencies" aria-label="Ccy options" hidden>
+        <div class="market-grid-toolbar table-panel__head" data-ui-table-layout-host="ccy_options_grid">
+          <h2 class="table-panel__title">Currencies</h2>
+          <button type="button" class="btn btn-sm btn-primary" id="marketCcyOptionNewButton">
+            <span class="button-icon" aria-hidden="true">add</span>
+            <span>New currency</span>
+          </button>
+        </div>
+        <div class="market-grid-frame table-panel__body table-panel__viewport">
+          <div class="market-tabulator" id="marketCcyOptionRows" aria-label="Ccy Options table"></div>
+        </div>
+      </section>
+
+      <section class="market-bootstrap-panel table-panel table-panel--standalone" data-market-panel="pairs" aria-label="Ccy pair options" hidden>
+        <div class="market-grid-toolbar table-panel__head">
+          <h2 class="table-panel__title">Currency Pairs</h2>
+          <div class="table-panel__tools" data-ui-table-layout-host="ccy_pair_options_grid">
+            <div class="ui-table-layout-actions">
+              <button type="button" class="btn btn-sm btn-primary" id="marketPairOptionNewButton">
+                <span class="button-icon" aria-hidden="true">add</span>
+                <span>New pair</span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary ui-table-layout-button" id="marketPairClearFiltersButton" aria-label="Clear Ccy Pair filters" disabled>
+                <span class="button-icon" aria-hidden="true">filter_alt_off</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="market-grid-frame table-panel__body table-panel__viewport">
+          <div class="market-tabulator" id="marketPairOptionRows" aria-label="Ccy Pair Options table"></div>
+        </div>
+      </section>
+
+      <section class="market-bootstrap-panel" data-market-panel="quote-stream" aria-label="Quote Stream" hidden>
+        <div class="nav nav-tabs workbench-section-tabs" role="tablist" aria-label="Quote sources">
+          <button type="button" class="nav-link active" id="marketMoexQuotesTab" role="tab"
+            data-market-quote-tab="moex-iss" aria-controls="marketMoexQuotesPanel" aria-selected="true">
+            MOEX ISS
+          </button>
+          <button type="button" class="nav-link" id="marketSimulationQuotesTab" role="tab"
+            data-market-quote-tab="simulation" aria-controls="marketSimulationQuotesPanel" aria-selected="false" tabindex="-1">
+            Quote Simulation
+          </button>
+        </div>
+        <section class="market-quote-panel" id="marketMoexQuotesPanel" role="tabpanel"
+          data-market-quote-panel="moex-iss" aria-labelledby="marketMoexQuotesTab" tabindex="0">
+          <p class="text-body-secondary mb-0">MOEX ISS quote stream is not connected yet.</p>
+        </section>
+        <section class="market-bootstrap-panel market-quote-panel table-panel table-panel--standalone"
+          id="marketSimulationQuotesPanel" role="tabpanel" data-market-quote-panel="simulation"
+          aria-labelledby="marketSimulationQuotesTab" tabindex="0" hidden>
+          <div class="market-grid-toolbar table-panel__head" data-ui-table-layout-host="market_stream_grid">
+            <h2 class="table-panel__title">Quote Simulation</h2>
+            <button type="button" class="btn btn-sm btn-primary process-toggle-button" id="marketStreamToggleButton" aria-label="Start stream" aria-pressed="false">
+              <span class="button-icon" aria-hidden="true" id="marketStreamToggleIcon">play_arrow</span>
+              <span id="marketStreamToggleText">Start stream</span>
+            </button>
+          </div>
+          <div class="market-grid-frame table-panel__body table-panel__viewport">
+            <div class="market-tabulator" id="marketStreamTable" aria-label="Quote Simulation table"></div>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>

@@ -41,7 +41,7 @@ test("Analytical PnL Report is calculated from Client and Hedge Deals only", () 
   );
 
   database.prepare(`
-    INSERT INTO fx_trade_exposure
+    INSERT INTO trade_exposures
       (
         trade_id,
         execution_timestamp,

@@ -1,0 +1,49 @@
+  <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page" id="tradeContractPage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Trade Contract header">
+      <h1 class="settings-title">Trade Contract</h1>
+      <span class="badge text-bg-light border">Draft</span>
+    </section>
+
+    <div class="trade-contract-content">
+      <p class="trade-contract-intro">Data supplied by originating systems when submitting concluded trades. This initial draft describes the Trade Context fields.</p>
+
+      <section class="table-panel table-panel--standalone" aria-labelledby="tradeContractContextTitle">
+        <div class="table-panel__head">
+          <h2 class="table-panel__title" id="tradeContractContextTitle">Trade Context</h2>
+        </div>
+        <div class="table-panel__body table-panel__viewport">
+          <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractContextTitle">
+            <thead>
+              <tr>
+                <th scope="col">Field</th>
+                <th scope="col">Description</th>
+                <th scope="col">Example</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Originating System ID</td>
+                <td>Identifies the system in which the trade was concluded.</td>
+                <td>CLICK_TRADE_EFX</td>
+              </tr>
+              <tr>
+                <td>Accounting System ID</td>
+                <td>Identifies the accounting system where the trade is booked.</td>
+                <td>AFINA</td>
+              </tr>
+              <tr>
+                <td>Servicing Location ID</td>
+                <td>Identifies the location responsible for servicing the trade.</td>
+                <td>002</td>
+              </tr>
+              <tr>
+                <td>Trade Purpose ID</td>
+                <td>Identifies the business purpose of the trade.</td>
+                <td>CLIENT_CONVERSION</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>

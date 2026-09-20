@@ -229,26 +229,26 @@
       color: var(--bs-white);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar {
       border-color: var(--palette-yellow-300);
       background: var(--palette-yellow-100);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     :is(.hedge-toolbar-title, .hedge-quick-boundary-start, .hedge-quick-boundary-end) {
       border-color: var(--palette-yellow-500);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar .hedge-quick-quote {
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar .hedge-quick-quote {
       border-color: var(--palette-yellow-500);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     .hedge-quick-quote-value + .hedge-quick-quote-value {
       border-left-color: var(--palette-yellow-400);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action) {
       --bs-btn-color: var(--palette-yellow-800);
       --bs-btn-bg: var(--palette-yellow-200);
@@ -267,30 +267,30 @@
       color: var(--bs-btn-color) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):hover:not(:disabled) {
       border-color: var(--bs-btn-hover-border-color);
       background: var(--bs-btn-hover-bg);
       color: var(--bs-btn-hover-color) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):is(:active, .active):not(:disabled) {
       border-color: var(--bs-btn-active-border-color);
       background: var(--bs-btn-active-bg);
       color: var(--bs-btn-active-color) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):disabled {
       border-color: var(--bs-btn-disabled-border-color);
       background: var(--bs-btn-disabled-bg);
       color: var(--bs-btn-disabled-color) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     .hedge-quick-preset.active,
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     .hedge-quick-preset.active:disabled {
       border-color: var(--palette-yellow-700);
       background: var(--palette-yellow-400);

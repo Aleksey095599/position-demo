@@ -1,6 +1,6 @@
 "use strict";
 
-const UI_TABLE_COLUMN_WIDTH_MIN_PX = 48;
+const UI_TABLE_COLUMN_WIDTH_MIN_PX = 50;
 const UI_TABLE_COLUMN_WIDTH_MAX_PX = 1600;
 const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
   Object.freeze({ tableKey: "external_counterparties_grid", legacyColumnKey: "status", columnKey: "active" }),
@@ -13,20 +13,20 @@ const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
   Object.freeze({
     tableKey: "pricing_rules_grid",
     legacyColumnKey: "position_management_mode",
-    columnKey: "auto_hedging_admission"
+    columnKey: "auto_management_admission"
   }),
   Object.freeze({
     tableKey: "internal_pricing_rules_grid",
     legacyColumnKey: "position_management_mode",
-    columnKey: "auto_hedging_admission"
+    columnKey: "auto_management_admission"
   }),
   Object.freeze({
-    tableKey: "client_fx_deals_grid",
+    tableKey: "client_deals_grid",
     legacyColumnKey: "entry_timestamp",
     columnKey: "execution_timestamp"
   }),
   Object.freeze({
-    tableKey: "hedge_fx_deals_grid",
+    tableKey: "hedge_deals_grid",
     legacyColumnKey: "entry_timestamp",
     columnKey: "execution_timestamp"
   }),
@@ -41,14 +41,14 @@ const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
     columnKey: "formed_at"
   }),
   Object.freeze({
-    tableKey: "execution_contexts_grid",
+    tableKey: "trade_contexts_grid",
     legacyColumnKey: "pricing_rules_count",
     columnKey: "counterparties_count"
   }),
   Object.freeze({
-    tableKey: "execution_contexts_grid",
-    legacyColumnKey: "auto_hedging_admission_policy",
-    columnKey: "auto_hedging_admission_mode"
+    tableKey: "trade_contexts_grid",
+    legacyColumnKey: "auto_management_admission_policy",
+    columnKey: "auto_management_admission_mode"
   })
 ]);
 
@@ -66,9 +66,10 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["id", "ID", 64],
     ["counterparty_code", "Counterparty Code", 122],
     ["counterparty_name", "Counterparty Name", 158],
-    ["execution_context", "Execution Context", 596],
+    ["trade_context_id", "Trade Context ID", 130],
+    ["trade_context", "Trade Context", 596],
     ["ccy_pair", "Ccy Pair", 88],
-    ["auto_hedging_admission", "Auto Hedging Admission", 232],
+    ["auto_management_admission", "Initial Mode Assignment", 232],
     ["margin", "Margin", 82],
     ["actions", "Actions", 80]
   ]),
@@ -76,9 +77,10 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["id", "ID", 64],
     ["counterparty_code", "Unit Code", 122],
     ["counterparty_name", "Counterparty Name", 158],
-    ["execution_context", "Execution Context", 596],
+    ["trade_context_id", "Trade Context ID", 130],
+    ["trade_context", "Trade Context", 596],
     ["ccy_pair", "Ccy Pair", 88],
-    ["auto_hedging_admission", "Auto Hedging Admission", 232],
+    ["auto_management_admission", "Initial Mode Assignment", 232],
     ["margin", "Margin", 82],
     ["quick_hedge", "Quick Hedge", 112],
     ["actions", "Actions", 80]
@@ -105,9 +107,9 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["pricing_rules_count", "Pricing Rules Count", 65],
     ["actions", "Actions", 80]
   ]),
-  fx_position_grid: layout("FX Position", [
+  position_grid: layout("Position", [
     ["ccy_pair_selector", "Ccy Pair Selector", 136],
-    ["trade_id", "ID", 48],
+    ["trade_id", "ID", 50],
     ["trade", "Trade", 280],
     ["trade_date", "Trade Date", 100],
     ["base_ccy_value_date", "Base Ccy Value Date", 145],
@@ -120,7 +122,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["buy_trade_rate", "BUY Trade Rate", 90],
     ["buy_base_ccy_amount", "BUY Base Ccy Amount", 167]
   ]),
-  client_fx_deals_grid: layout("Client FX Deals", [
+  client_deals_grid: layout("Client Deals", [
     ["trade_id", "Trade ID", 96],
     ["execution_timestamp", "Execution Timestamp", 170],
     ["received_timestamp", "Received Timestamp", 170],
@@ -136,14 +138,14 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["tenor", "Tenor", 73],
     ["base_ccy_value_date", "Base Ccy Value Date", 160],
     ["quote_ccy_value_date", "Quote Ccy Value Date", 168],
-    ["execution_context_label", "Execution Context", 435],
+    ["trade_context_label", "Trade Context", 435],
     ["pricing_rule_margin", "Margin", 102],
-    ["initial_fx_position_mode", "Initial FX Position Mode", 232],
-    ["current_fx_position_mode", "Current FX Position Mode", 232],
+    ["initial_position_management_mode", "Initial Position Management Mode", 232],
+    ["current_position_management_mode", "Current Position Management Mode", 232],
     ["transfer_rate", "Transfer Rate", 122],
     ["analytical_pnl", "Analytical PnL", 126]
   ]),
-  hedge_fx_deals_grid: layout("Hedge FX Deals", [
+  hedge_deals_grid: layout("Hedge Deals", [
     ["trade_id", "Trade ID", 96],
     ["request_timestamp", "Request Timestamp", 170],
     ["execution_timestamp", "Execution Timestamp", 170],
@@ -160,10 +162,10 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["tenor", "Tenor", 73],
     ["base_ccy_value_date", "Base Ccy Value Date", 160],
     ["quote_ccy_value_date", "Quote Ccy Value Date", 168],
-    ["execution_context_label", "Execution Context", 435],
+    ["trade_context_label", "Trade Context", 435],
     ["pricing_rule_margin", "Margin", 102],
-    ["initial_fx_position_mode", "Initial FX Position Mode", 232],
-    ["current_fx_position_mode", "Current FX Position Mode", 232],
+    ["initial_position_management_mode", "Initial Position Management Mode", 232],
+    ["current_position_management_mode", "Current Position Management Mode", 232],
     ["transfer_rate", "Transfer Rate", 122],
     ["analytical_pnl", "Analytical PnL", 126]
   ]),
@@ -186,7 +188,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["amount", "Amount", 150],
     ["weighted_average_margin", "Weighted Average Margin", 190]
   ]),
-  batching_history_grid: layout("FX Batches", [
+  batching_history_grid: layout("Batches", [
     ["batch_id", "Batch ID", 96],
     ["ccy_pair_code", "Ccy Pair Code", 100],
     ["batching_key", "Batching Key", 450],
@@ -199,32 +201,22 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["source_trade_count", "Source Trades", 108],
     ["actions", "Actions", 80]
   ]),
-  batch_members_grid: layout("FX Trade Members", [
+  batch_members_grid: layout("Batch Members and Position Outputs", [
     ["trade_id", "Trade ID", 96],
     ["trade_type", "Trade Type", 281],
-    ["member_role", "Member Role", 124],
+    ["member_role", "Role", 124],
     ["base_balance_contribution_minor", "Base Ccy Leg", 125],
     ["quote_balance_contribution_minor", "Quote Ccy Leg", 130],
+    ["trade_rate", "Trade Rate", 108],
     ["transfer_rate", "Transfer Rate", 122],
     ["analytical_pnl_quote_minor", "Analytical PnL", 127],
     ["base_ccy_value_date", "Base Ccy Value Date", 135],
     ["quote_ccy_value_date", "Quote Ccy Value Date", 143]
   ]),
-  batch_cash_output_grid: layout("Cash Output", [
+  batch_cash_output_grid: layout("Batch Quote Cash Outputs", [
     ["currency_code", "Currency", 85],
     ["balance_contribution_minor", "Cash Leg", 119],
     ["value_date", "Value Date", 105]
-  ]),
-  batch_position_output_grid: layout("Net Position Output", [
-    ["trade_id", "Trade ID", 93],
-    ["trade_type", "Trade Type", 281],
-    ["output_role", "Output Role", 101],
-    ["base_balance_contribution_minor", "Base Ccy Leg", 121],
-    ["quote_balance_contribution_minor", "Quote Ccy Leg", 126],
-    ["transfer_rate", "Transfer Rate", 97],
-    ["analytical_pnl_quote_minor", "Analytical PnL", 119],
-    ["base_ccy_value_date", "Base Ccy Value Date", 135],
-    ["quote_ccy_value_date", "Quote Ccy Value Date", 143]
   ]),
   external_counterparties_grid: layout("External Counterparties", [
     ["id", "ID", 70],
@@ -255,14 +247,13 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["active", "Active", 100],
     ["actions", "Actions", 80]
   ]),
-  execution_contexts_grid: layout("Execution Context", [
+  trade_contexts_grid: layout("Trade Context", [
     ["id", "ID", 64],
     ["servicing_location", "Servicing Location", 250],
     ["accounting_system", "Accounting System", 300],
-    ["execution_system", "Execution System", 250],
-    ["default_position_management_mode", "Default FX Position Mode", 176],
-    ["auto_hedging_admission_mode", "Auto Hedging Admission", 232],
-    ["counterparties_count", "Trading Counterparties Count", 64],
+    ["originating_system", "Originating System", 250],
+    ["auto_management_admission_mode", "Initial Mode Assignment", 232],
+    ["counterparties_count", "Attached Counterparties", 64],
     ["actions", "Actions", 80]
   ]),
   servicing_locations_grid: layout("Servicing Locations", [
@@ -271,29 +262,43 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["region", "Region", 134],
     ["type", "Type", 100],
     ["active", "Active", 72],
-    ["execution_context_count", "Exec. Context Count", 64],
+    ["trade_context_count", "Exec. Context Count", 64],
     ["actions", "Actions", 80]
   ]),
   accounting_systems_grid: layout("Accounting Systems", [
     ["id", "ID", 64],
     ["name", "Name", 152],
     ["active", "Active", 72],
-    ["execution_context_count", "Execution Context Count", 64],
+    ["trade_context_count", "Trade Context Count", 64],
     ["actions", "Actions", 80]
   ]),
-  execution_systems_grid: layout("Execution Systems", [
+  originating_systems_grid: layout("Originating Systems", [
     ["id", "ID", 183],
     ["name", "Name", 149],
     ["pricing_mode", "Pricing Mode", 156],
-    ["execution_system_label", "Execution System Label", 250],
+    ["originating_system_label", "Originating System Label", 250],
     ["active", "Active", 72],
-    ["execution_context_count", "Execution Context Count", 64],
+    ["trade_context_count", "Trade Context Count", 64],
     ["actions", "Actions", 80]
+  ]),
+  trade_purposes_grid: layout("Trade Purpose", [
+    ["id", "ID", 210],
+    ["name", "Name", 260],
+    ["trade_context_count", "Attached Trade Contexts", 64],
+    ["actions", "Actions", 100]
+  ]),
+  auto_management_admission_criteria_grid: layout("Auto Mode Eligibility", [
+    ["ccy_pair", "Ccy Pair", 150],
+    ["trade_type", "Trade Type", 210],
+    ["eligible_for_auto_mode", "Eligible", 150],
+    ["maximum_trade_amount", "Amount Limit", 180],
+    ["transfer_rate_deviation", "Max. Transfer Rate Deviation", 230],
+    ["actions", "Actions", 100]
   ]),
   hedge_quick_mode_settings_grid: layout("Quick Hedge Settings", [
     ["currency_pair", "Ccy Pair", 89],
     ["counterparty_name", "Hedge Counterparty", 141],
-    ["context_path", "Execution Context", 469],
+    ["context_path", "Trade Context", 469],
     ["presets_summary", "Quick Amounts", 221],
     ["default_tenor", "Tenor", 73],
     ["state", "Status", 73],

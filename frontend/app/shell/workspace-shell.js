@@ -53,45 +53,67 @@
 
     function render(source) {
       ensureSelectedCurrencyPair(source);
-      clearHiddenFxPositionSelection();
+      clearHiddenPositionSelection();
       const rows = currentDisplayRows();
 
-      renderFxPositionModeTabs(source);
+      renderPositionModeTabs(source);
       updateSortButtons();
       renderCurrencyPairList(source);
       updateActionButtons();
       updateSelectAllCheckboxes(rows);
-      rowsEl.innerHTML = `${rows.map(renderDealRow).join("")}${fxPositionGridFillRow()}`;
+      rowsEl.innerHTML = `${rows.map(renderDealRow).join("")}${positionGridFillRow()}`;
       renderBatchingSummary(rows);
-      renderClientFxDeals(source);
-      renderHedgeFxDeals(source);
+      renderClientDeals(source);
+      renderHedgeDeals(source);
       renderClientProfiles();
       renderUsers();
       renderReferenceData();
       renderPricingContexts();
       renderPricingRules();
-      renderClientExecutionContextsPanel(selectedClientProfile());
+      renderClientTradeContextsPanel(selectedClientProfile());
       renderClientPricingRulesPanel(selectedClientProfile());
       renderMarketPage();
       scheduleSmartColumnSizing();
-      scheduleFxPositionGridFillHeight();
+      schedulePositionGridFillHeight();
     }
 
     function applyInitialPageMode() {
-      const hedgingSettingsWasVisible = !hedgingSettingsPage.hidden;
+      const canonicalHash = canonicalTradeIntakeRoute(canonicalTradeContextRoute(location.hash));
+      if (canonicalHash !== location.hash) {
+        window.history.replaceState(window.history.state, "", canonicalHash);
+      }
+      const positionManagementSettingsWasVisible = !positionManagementSettingsPage.hidden;
       batchDetailsRequestSequence += 1;
       analyticalPnlReportRequestSequence += 1;
-      fxDealsPage.hidden = true;
-      clientFxDealsPage.hidden = true;
-      hedgeFxDealsPage.hidden = true;
+      dealsPage.hidden = true;
+      clientDealsPage.hidden = true;
+      hedgeDealsPage.hidden = true;
       analyticalPnlReportPage.hidden = true;
       batchingSettingsPage.hidden = true;
-      hedgingSettingsPage.hidden = true;
+      positionManagementSettingsPage.hidden = true;
       databasePage.hidden = true;
       processesPage.hidden = true;
-      fxBatchesPage.hidden = true;
+      batchesPage.hidden = true;
       batchingHistoryPage.hidden = true;
       batchDetailsPage.hidden = true;
+
+      tradeContractPage.hidden = true;
+      tradeIntakeMessagesPage.hidden = true;
+
+      if (isTradeIntakeRoute()) {
+        const showMessages = location.hash === "#trade-intake:messages";
+        setWorkspaceRoute(showMessages ? "trade-intake-messages" : "trade-contract");
+        marketPage.hidden = true;
+        mainPage.hidden = true;
+        clientProfilePage.hidden = true;
+        pricingPage.hidden = true;
+        referenceDataPage.hidden = true;
+        pricingRulesPage.hidden = true;
+        tradeContractPage.hidden = showMessages;
+        tradeIntakeMessagesPage.hidden = !showMessages;
+        document.title = showMessages ? "Trade Intake Messages" : "Trade Contract | Trade Intake";
+        return;
+      }
 
       if (location.hash === "#batching:details") {
         location.hash = batchingHistoryRoute();
@@ -120,9 +142,9 @@
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        fxBatchesPage.hidden = false;
+        batchesPage.hidden = false;
         batchingHistoryPage.hidden = false;
-        document.title = "FX Batches";
+        document.title = "Batches";
         loadBatchingHistoryPage();
         return;
       }
@@ -135,41 +157,41 @@
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        fxBatchesPage.hidden = false;
+        batchesPage.hidden = false;
         batchingHistoryPage.hidden = false;
-        setFxBatchesViewMode(FX_BATCHES_VIEW_MODE_AUDIT);
-        document.title = "FX Batches";
+        setBatchesViewMode(BATCHES_VIEW_MODE_AUDIT);
+        document.title = "Batches";
         loadBatchingHistoryPage();
         return;
       }
 
-      if (isClientFxDealsRoute()) {
-        setWorkspaceRoute("client-fx-deals");
+      if (isClientDealsRoute()) {
+        setWorkspaceRoute("client-deals");
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        fxDealsPage.hidden = false;
-        clientFxDealsPage.hidden = false;
-        setFxDealsActiveTab("client-fx-deals");
-        document.title = "Client FX Deals";
+        dealsPage.hidden = false;
+        clientDealsPage.hidden = false;
+        setDealsActiveTab("client-deals");
+        document.title = "Client Deals";
         return;
       }
 
-      if (isHedgeFxDealsRoute()) {
-        setWorkspaceRoute("hedge-fx-deals");
+      if (isHedgeDealsRoute()) {
+        setWorkspaceRoute("hedge-deals");
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        fxDealsPage.hidden = false;
-        hedgeFxDealsPage.hidden = false;
-        setFxDealsActiveTab("hedge-fx-deals");
-        document.title = "Hedge FX Deals";
+        dealsPage.hidden = false;
+        hedgeDealsPage.hidden = false;
+        setDealsActiveTab("hedge-deals");
+        document.title = "Hedge Deals";
         return;
       }
 
@@ -201,17 +223,17 @@
         return;
       }
 
-      if (isHedgingSettingsRoute()) {
-        setWorkspaceRoute("hedging-settings");
+      if (isPositionManagementSettingsRoute()) {
+        setWorkspaceRoute("position-management-settings");
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        hedgingSettingsPage.hidden = false;
-        document.title = "Hedging Settings";
-        loadHedgingSettingsPage({ reload: !hedgingSettingsWasVisible });
+        positionManagementSettingsPage.hidden = false;
+        document.title = "Position Management Settings";
+        loadPositionManagementSettingsPage({ reload: !positionManagementSettingsWasVisible });
         return;
       }
 
@@ -254,23 +276,32 @@
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
         marketPage.hidden = false;
-        document.title = marketSettingsRouteScope
-          ? `${settingsTitle} - ${marketSettingsRouteScope.currencyCode}`
-          : settingsTitle;
+        document.title = settingsTitle;
         renderMarketPage();
         return;
       }
 
       if (isMarketRoute()) {
+        const marketKind = activeMarketKind();
+        const marketRouteKey = marketKind === "charts"
+          ? "market-charts"
+          : marketKind === "data-management"
+            ? "market-data-management"
+            : "market-quote-stream";
+        const marketTitle = marketKind === "charts"
+          ? "Charts"
+          : marketKind === "data-management"
+            ? "Data Management"
+            : "Quote Stream";
         syncMarketSettingsRouteView();
-        setWorkspaceRoute("market");
+        setWorkspaceRoute(marketRouteKey);
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
         marketPage.hidden = false;
-        document.title = "Market Pulse";
+        document.title = `${marketTitle} | Market Pulse`;
         renderMarketPage();
         return;
       }
@@ -311,9 +342,7 @@
         pricingRulesPage.hidden = true;
         pricingPage.hidden = false;
         syncPricingContextRouteView();
-        document.title = pricingContextRouteScope
-          ? `Execution Contexts - ${pricingContextRouteScope.value}`
-          : "Execution Context";
+        document.title = "Trade Context";
         return;
       }
 
@@ -327,7 +356,7 @@
         pricingPage.hidden = true;
         pricingRulesPage.hidden = true;
         referenceDataPage.hidden = false;
-        document.title = `Reference Data - ${referenceDataPluralLabel(activeReferenceDataKind())}`;
+        document.title = `Trade Context Components - ${referenceDataPluralLabel(activeReferenceDataKind())}`;
         return;
       }
 
@@ -343,14 +372,12 @@
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = false;
-        document.title = pricingRulesRouteScope
-          ? `Pricing Rules - ${pricingRulesRouteScope.currencyPair}`
-          : "Pricing Rules";
+        document.title = "Pricing Rules";
         return;
       }
 
       if (isBatchingBlotterRoute()) {
-        setActiveFxPositionMode(fxPositionModeFromLocation());
+        setActivePositionMode(positionModeFromLocation());
         setWorkspaceRoute("batching");
         marketPage.hidden = true;
         mainPage.hidden = false;
@@ -358,7 +385,7 @@
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        document.title = "FX Position";
+        document.title = "Position";
         return;
       }
 
@@ -441,7 +468,7 @@
       "click",
       () => openAddHedgeDealDialog()
     );
-    fxPositionGridFrame.addEventListener(
+    positionGridFrame.addEventListener(
       "scroll",
       scheduleHedgeQuickModeQuoteAlignment,
       { passive: true }
@@ -495,7 +522,6 @@
         setHedgeQuickModeUnlocked(false);
       }
     });
-    editDealButton.addEventListener("click", openSelectedEditDialog);
     resetDemoTradesButton.addEventListener("click", openResetDemoTradesDialog);
     resetDemoTradesDialogClose.addEventListener("click", closeResetDemoTradesDialog);
     resetDemoTradesCancelButton.addEventListener("click", closeResetDemoTradesDialog);
@@ -506,22 +532,22 @@
     });
     generateClientDealButton.addEventListener("click", generateClientDeal);
     runClientDealGenerationButton.addEventListener("click", toggleClientDealGenerationProcess);
-    sendToAutoPositionModeButton.addEventListener("click", openSendToAutoPositionModeDialog);
-    sendToAutoPositionModeDialogClose.addEventListener(
+    moveToAutoManagementButton.addEventListener("click", openMoveToAutoManagementDialog);
+    moveToAutoManagementDialogClose.addEventListener(
       "click",
-      closeSendToAutoPositionModeDialog
+      closeMoveToAutoManagementDialog
     );
-    sendToAutoPositionModeCancelButton.addEventListener(
+    moveToAutoManagementCancelButton.addEventListener(
       "click",
-      closeSendToAutoPositionModeDialog
+      closeMoveToAutoManagementDialog
     );
-    sendToAutoPositionModeConfirmButton.addEventListener(
+    moveToAutoManagementConfirmButton.addEventListener(
       "click",
-      confirmSendToAutoPositionMode
+      confirmMoveToAutoManagement
     );
-    sendToAutoPositionModeDialog.addEventListener("cancel", event => {
+    moveToAutoManagementDialog.addEventListener("cancel", event => {
       event.preventDefault();
-      closeSendToAutoPositionModeDialog();
+      closeMoveToAutoManagementDialog();
     });
     oneBatchButton.addEventListener("click", formOneBatchFromSelection);
     oneBatchTenorDialogClose.addEventListener("click", () => closeOneBatchTenorDialog());
@@ -535,7 +561,7 @@
 
       if (sourceDeals.length === 0) {
         setOneBatchTenorStatus(
-          "Select a compatible Batching Key group containing at least one FX Trade."
+          "Select a compatible Batching Key group containing at least one Trade."
         );
         return;
       }
@@ -546,7 +572,7 @@
       event.preventDefault();
       closeOneBatchTenorDialog();
     });
-    autoBatchButton.addEventListener("click", toggleFxAutoBatchingProcess);
+    autoBatchButton.addEventListener("click", toggleAutoBatchingProcess);
     batchRollbackDialogClose.addEventListener("click", closeBatchRollbackDialog);
     batchRollbackCancelButton.addEventListener("click", closeBatchRollbackDialog);
     batchRollbackConfirmButton.addEventListener("click", confirmBatchRollback);
@@ -560,7 +586,7 @@
     });
     hedgeQuickModeSettingsButton.addEventListener("click", event => {
       event.stopPropagation();
-      location.hash = hedgingSettingsRoute();
+      location.hash = positionManagementSettingsRoute("quick");
     });
     autoBatchingSettingsButton.addEventListener("click", event => {
       event.stopPropagation();
@@ -668,10 +694,6 @@
       "click",
       () => openHedgeQuickModeSettingsEditor()
     );
-    hedgeQuickModeSettingsBackButton.addEventListener(
-      "click",
-      () => showHedgeQuickModeSettingsOverview()
-    );
     hedgeQuickModeSettingsCancelButton.addEventListener(
       "click",
       () => {
@@ -684,9 +706,6 @@
       "click",
       deleteHedgeQuickModeSettings
     );
-    editForm.addEventListener("submit", saveEditedDeal);
-    editDialogClose.addEventListener("click", closeEditDialog);
-    editCancelButton.addEventListener("click", closeEditDialog);
     clientDealGenerationProcessSettingsForm.addEventListener(
       "submit",
       saveClientDealGenerationProcessSettings
@@ -769,6 +788,7 @@
       }
     });
     marketPairOptionNewButton.addEventListener("click", () => startMarketPairOptionEdit());
+    marketPairClearFiltersButton.addEventListener("click", clearMarketPairFilters);
     marketPairOptionRowsEl.addEventListener("input", event => {
       const row = event.target.closest("[data-market-pair-option-edit-index]");
 
@@ -789,6 +809,7 @@
     marketSimulationDialog.addEventListener("close", () => {
       editingMarketSimulationCurrencyPair = null;
     });
+    marketHistoryForm.addEventListener("submit", loadMarketHistoryCandles);
     marketStreamToggleButton.addEventListener("click", toggleMarketStream);
     databaseRefreshButton.addEventListener("click", () => loadDatabaseExplorer());
     databaseTableSearchEl.addEventListener("input", () => {
@@ -856,10 +877,65 @@
       updateClientProfileSubmitAvailability();
     });
     clientProfileNewButton.addEventListener("click", () => {
-      if (!clientProfileRouteScope) {
-        startTradingCounterpartyRowCreate();
+      startTradingCounterpartyRowCreate();
+    });
+    tradingCounterpartyTradeContextFilter.addEventListener("change", () => {
+      tradingCounterpartyRowEditState = null;
+      setClientProfileStatus("");
+      location.hash = tradingCounterpartiesForTradeContextRoute(
+        tradingCounterpartyTradeContextFilter.value
+      );
+    });
+    tradingCounterpartyTradeContextToggle.addEventListener("click", () => {
+      setTradingCounterpartyTradeContextMenuOpen(
+        tradingCounterpartyTradeContextMenu.hidden
+      );
+    });
+    tradingCounterpartyTradeContextMenu.addEventListener("click", event => {
+      const option = event.target.closest("[data-trading-counterparty-trade-context-value]");
+
+      if (!option) {
+        return;
+      }
+
+      tradingCounterpartyTradeContextFilter.value = option.dataset.tradingCounterpartyTradeContextValue;
+      setTradingCounterpartyTradeContextMenuOpen(false);
+      tradingCounterpartyTradeContextToggle.focus();
+      tradingCounterpartyTradeContextFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    tradingCounterpartyTradeContextClear.addEventListener("click", () => {
+      if (!tradingCounterpartyTradeContextFilter.value) {
+        return;
+      }
+
+      tradingCounterpartyTradeContextFilter.value = "";
+      setTradingCounterpartyTradeContextMenuOpen(false);
+      tradingCounterpartyTradeContextFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    tradingCounterpartyFilterToolbar.addEventListener("keydown", event => {
+      if (event.key !== "Escape" || tradingCounterpartyTradeContextMenu.hidden) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      setTradingCounterpartyTradeContextMenuOpen(false);
+      tradingCounterpartyTradeContextToggle.focus();
+    });
+    document.addEventListener("click", event => {
+      if (!tradingCounterpartyTradeContextMenu.hidden
+        && !tradingCounterpartyFilterToolbar.contains(event.target)) {
+        setTradingCounterpartyTradeContextMenuOpen(false);
       }
     });
+    if (typeof ResizeObserver === "function") {
+      const tradingCounterpartyTableResizeObserver = new ResizeObserver(
+        syncTradingCounterpartyFilterToolbarWidth
+      );
+      tradingCounterpartyTableResizeObserver.observe(clientProfileListView);
+    }
+    window.addEventListener("resize", syncTradingCounterpartyFilterToolbarWidth);
+    window.requestAnimationFrame(syncTradingCounterpartyFilterToolbarWidth);
     tradingCounterpartyScopeTabs.addEventListener("click", event => {
       const button = event.target.closest("[data-trading-counterparty-scope]");
 
@@ -869,12 +945,11 @@
 
       tradingCounterpartyRowEditState = null;
       setTradingCounterpartyScopeTab(button.dataset.tradingCounterpartyScope);
-      if (!clientProfileRouteScope || clientProfileRouteScope.status === "loaded") {
+      if (!clientProfileTradeContextFilter || clientProfileTradeContextFilter.status === "loaded") {
         setClientProfileStatus("");
       }
       renderClientProfiles();
     });
-    clientProfileBackButton.addEventListener("click", navigateBackFromClientProfileRoute);
     tradingCounterpartyIdSortButton.addEventListener("click", () => {
       tradingCounterpartyIdSortDirection = tradingCounterpartyIdSortDirection === "asc" ? "desc" : "asc";
       renderClientProfiles();
@@ -886,16 +961,15 @@
     clientProfileResetButton.addEventListener("click", () => {
       navigateBackFromClientProfileRoute();
     });
+    clientProfileBackButton.addEventListener("click", () => {
+      navigateBackFromClientProfileRoute();
+    });
     clientProfileDeleteButton.addEventListener("click", () => {
       if (editingClientProfileIndex !== null) {
         removeClientProfile(editingClientProfileIndex);
       }
     });
     clientProfileRowsEl.addEventListener("click", event => {
-      if (clientProfileRouteScope) {
-        return;
-      }
-
       const actionButton = event.target.closest("[data-profile-action]");
 
       if (actionButton) {
@@ -974,7 +1048,7 @@
       }
     });
     clientProfileRowsEl.addEventListener("keydown", event => {
-      if (clientProfileRouteScope || (event.key !== "Enter" && event.key !== " ")) {
+      if (event.key !== "Enter" && event.key !== " ") {
         return;
       }
 
@@ -1002,7 +1076,6 @@
     });
     usersForm.addEventListener("change", updateUsersSubmitAvailability);
     usersNewButton.addEventListener("click", startUserRowCreate);
-    usersBackButton.addEventListener("click", () => navigateToUsersRoute());
     usersIdSortButton.addEventListener("click", () => {
       usersIdSortDirection = usersIdSortDirection === "asc" ? "desc" : "asc";
       renderUsers();
@@ -1073,21 +1146,21 @@
         updateUserRowSaveAvailability(row);
       }
     });
-    clientExecutionContextsAttachButton.addEventListener("click", () => {
+    clientTradeContextsAttachButton.addEventListener("click", () => {
       const profile = selectedClientProfile();
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
-      const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
+      const loadState = tradingCounterpartyTradeContextLoadStates.get(counterpartyId);
 
       if (profile && loadState?.status === "error") {
-        refreshTradingCounterpartyExecutionContexts(profile);
+        refreshTradingCounterpartyTradeContexts(profile);
         return;
       }
 
-      openClientExecutionContextAttachDialog();
+      openClientTradeContextAttachDialog();
     });
-    clientExecutionContextsPanel.addEventListener("click", event => {
+    clientTradeContextsPanel.addEventListener("click", event => {
       const inlineEditorButton = event.target.closest("[data-client-pricing-rule-inline-action]");
-      const contextButton = event.target.closest("[data-client-execution-context-action]");
+      const contextButton = event.target.closest("[data-client-trade-context-action]");
       const pricingRuleButton = event.target.closest("[data-client-pricing-rule-action]");
 
       if (inlineEditorButton) {
@@ -1123,13 +1196,13 @@
       }
 
       const profile = selectedClientProfile();
-      const contextId = normalizedIntegerId(contextButton.dataset.clientExecutionContextId);
+      const contextId = normalizedIntegerId(contextButton.dataset.clientTradeContextId);
 
       if (!profile || !contextId) {
         return;
       }
 
-      if (contextButton.dataset.clientExecutionContextAction === "toggle") {
+      if (contextButton.dataset.clientTradeContextAction === "toggle") {
         const collapsedContexts = clientPricingConfigurationCollapsedSet(profile);
         const contextKey = String(contextId);
 
@@ -1139,24 +1212,24 @@
           collapsedContexts.add(contextKey);
         }
 
-        renderClientExecutionContextsPanel(profile);
-        clientExecutionContextsPanel
-          .querySelector(`[data-client-execution-context-action="toggle"][data-client-execution-context-id="${contextId}"]`)
+        renderClientTradeContextsPanel(profile);
+        clientTradeContextsPanel
+          .querySelector(`[data-client-trade-context-action="toggle"][data-client-trade-context-id="${contextId}"]`)
           ?.focus();
         return;
       }
 
-      if (contextButton.dataset.clientExecutionContextAction === "add-rule") {
+      if (contextButton.dataset.clientTradeContextAction === "add-rule") {
         startClientPricingRuleCreate(contextId);
         return;
       }
 
-      if (contextButton.dataset.clientExecutionContextAction === "detach") {
-        detachClientExecutionContext(profile, contextId);
+      if (contextButton.dataset.clientTradeContextAction === "detach") {
+        detachClientTradeContext(profile, contextId);
       }
     });
     ["input", "change"].forEach(eventName => {
-      clientExecutionContextsPanel.addEventListener(eventName, event => {
+      clientTradeContextsPanel.addEventListener(eventName, event => {
         const row = event.target.closest("[data-client-pricing-rule-inline-editor]");
 
         if (row) {
@@ -1164,7 +1237,7 @@
         }
       });
     });
-    clientExecutionContextsPanel.addEventListener("keydown", event => {
+    clientTradeContextsPanel.addEventListener("keydown", event => {
       const row = event.target.closest("[data-client-pricing-rule-inline-editor]");
 
       if (!row) {
@@ -1179,38 +1252,38 @@
         cancelClientPricingRuleInlineEditor();
       }
     });
-    clientExecutionContextAttachForm.addEventListener("submit", attachSelectedExecutionContexts);
-    clientExecutionContextAttachDialogClose.addEventListener("click", closeClientExecutionContextAttachDialog);
-    clientExecutionContextAttachCancelButton.addEventListener("click", closeClientExecutionContextAttachDialog);
-    clientExecutionContextAttachDialog.addEventListener("cancel", event => {
-      if (clientExecutionContextAttachSaving) {
+    clientTradeContextAttachForm.addEventListener("submit", attachSelectedTradeContexts);
+    clientTradeContextAttachDialogClose.addEventListener("click", closeClientTradeContextAttachDialog);
+    clientTradeContextAttachCancelButton.addEventListener("click", closeClientTradeContextAttachDialog);
+    clientTradeContextAttachDialog.addEventListener("cancel", event => {
+      if (clientTradeContextAttachSaving) {
         event.preventDefault();
       }
     });
-    clientExecutionContextAttachDialog.addEventListener("close", () => {
-      clientExecutionContextAttachCounterpartyId = "";
-      selectedClientExecutionContextIds.clear();
-      setClientExecutionContextAttachStatus("");
+    clientTradeContextAttachDialog.addEventListener("close", () => {
+      clientTradeContextAttachCounterpartyId = "";
+      selectedClientTradeContextIds.clear();
+      setClientTradeContextAttachStatus("");
     });
-    clientExecutionContextAttachFilterControls.forEach(control => {
-      control.addEventListener("input", renderClientExecutionContextAttachTable);
-      control.addEventListener("change", renderClientExecutionContextAttachTable);
+    clientTradeContextAttachFilterControls.forEach(control => {
+      control.addEventListener("input", renderClientTradeContextAttachTable);
+      control.addEventListener("change", renderClientTradeContextAttachTable);
     });
-    clientExecutionContextAttachIdSort.addEventListener("click", () => {
-      clientExecutionContextAttachSortDirection = clientExecutionContextAttachSortDirection === "asc" ? "desc" : "asc";
-      renderClientExecutionContextAttachTable();
+    clientTradeContextAttachIdSort.addEventListener("click", () => {
+      clientTradeContextAttachSortDirection = clientTradeContextAttachSortDirection === "asc" ? "desc" : "asc";
+      renderClientTradeContextAttachTable();
     });
-    clientExecutionContextAttachSelectAll.addEventListener("change", () => {
-      filteredAvailableExecutionContextsForAttach().forEach(context => {
-        if (clientExecutionContextAttachSelectAll.checked) {
-          selectedClientExecutionContextIds.add(context.pricingContextId);
+    clientTradeContextAttachSelectAll.addEventListener("change", () => {
+      filteredAvailableTradeContextsForAttach().forEach(context => {
+        if (clientTradeContextAttachSelectAll.checked) {
+          selectedClientTradeContextIds.add(context.pricingContextId);
         } else {
-          selectedClientExecutionContextIds.delete(context.pricingContextId);
+          selectedClientTradeContextIds.delete(context.pricingContextId);
         }
       });
-      renderClientExecutionContextAttachTable();
+      renderClientTradeContextAttachTable();
     });
-    clientExecutionContextAttachRows.addEventListener("change", event => {
+    clientTradeContextAttachRows.addEventListener("change", event => {
       const checkbox = event.target.closest("[data-client-context-attach-select]");
 
       if (!checkbox) {
@@ -1220,14 +1293,14 @@
       const contextId = normalizedIntegerId(checkbox.dataset.clientContextAttachSelect);
 
       if (checkbox.checked) {
-        selectedClientExecutionContextIds.add(contextId);
+        selectedClientTradeContextIds.add(contextId);
       } else {
-        selectedClientExecutionContextIds.delete(contextId);
+        selectedClientTradeContextIds.delete(contextId);
       }
-      renderClientExecutionContextAttachTable();
-      focusClientExecutionContextAttachCheckbox(contextId);
+      renderClientTradeContextAttachTable();
+      focusClientTradeContextAttachCheckbox(contextId);
     });
-    clientExecutionContextAttachRows.addEventListener("click", event => {
+    clientTradeContextAttachRows.addEventListener("click", event => {
       if (event.target.closest("input, button, a, select")) {
         return;
       }
@@ -1235,16 +1308,16 @@
       const row = event.target.closest("[data-client-context-attach-id]");
       const contextId = normalizedIntegerId(row?.dataset.clientContextAttachId);
 
-      if (!contextId || clientExecutionContextAttachSaving) {
+      if (!contextId || clientTradeContextAttachSaving) {
         return;
       }
 
-      if (selectedClientExecutionContextIds.has(contextId)) {
-        selectedClientExecutionContextIds.delete(contextId);
+      if (selectedClientTradeContextIds.has(contextId)) {
+        selectedClientTradeContextIds.delete(contextId);
       } else {
-        selectedClientExecutionContextIds.add(contextId);
+        selectedClientTradeContextIds.add(contextId);
       }
-      renderClientExecutionContextAttachTable();
+      renderClientTradeContextAttachTable();
     });
     clientPricingRuleForm.addEventListener("submit", event => {
       event.preventDefault();
@@ -1259,7 +1332,7 @@
         renderClientPricingContextBuilder();
       }
 
-      syncClientPricingRuleAutoHedgingAdmissionControl();
+      syncClientPricingRuleAutoManagementAdmissionControl();
       updateClientPricingRuleSubmitAvailability();
     });
     clientPricingRuleForm.addEventListener("change", event => {
@@ -1271,7 +1344,7 @@
         renderClientPricingContextBuilder();
       }
 
-      syncClientPricingRuleAutoHedgingAdmissionControl();
+      syncClientPricingRuleAutoManagementAdmissionControl();
       updateClientPricingRuleSubmitAvailability();
     });
     clientPricingRuleForm.addEventListener("click", event => {
@@ -1396,6 +1469,7 @@
       renderClientPricingRulesPanel(selectedClientProfile());
     });
     pricingContextNewButton.addEventListener("click", startPricingContextCreate);
+    pricingContextClearFiltersButton.addEventListener("click", clearPricingContextFilters);
     pricingContextIdSortButton.addEventListener("click", () => {
       pricingContextIdSortDirection = pricingContextIdSortDirection === "asc" ? "desc" : "asc";
       renderPricingContexts();
@@ -1405,8 +1479,8 @@
       renderPricingRules();
     });
     pricingContextHeaderFilterControls.forEach(control => {
-      control.addEventListener("input", renderPricingContexts);
-      control.addEventListener("change", renderPricingContexts);
+      control.addEventListener("input", handlePricingContextHeaderFilterChange);
+      control.addEventListener("change", handlePricingContextHeaderFilterChange);
     });
     pricingContextRowsEl.addEventListener("click", event => {
       const button = event.target.closest("[data-pricing-context-action]");
@@ -1461,7 +1535,11 @@
       });
     });
     pricingRuleHeaderFilterControls.forEach(control => {
-      control.addEventListener("input", renderPricingRules);
+      control.addEventListener("input", handlePricingRuleHeaderFilterInput);
+    });
+    pricingRulesClearFiltersButton.addEventListener("click", clearPricingRuleFilters);
+    pricingRulesAdvancedViewToggle.addEventListener("change", () => {
+      setPricingRulesAdvancedView(pricingRulesAdvancedViewToggle.checked);
     });
     ["input", "change"].forEach(eventName => {
       pricingRuleRowsEl.addEventListener(eventName, event => {
@@ -1473,11 +1551,11 @@
 
         if (event.target.matches("[data-pricing-rule-field='inn']")) {
           const profile = clientProfileByInn(event.target.value.trim());
-          const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
-          const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+          const counterpartyId = tradingCounterpartyTradeContextKey(profile);
+          const loadState = tradingCounterpartyTradeContextLoadStates.get(counterpartyId);
 
           if (loadState?.status === "error") {
-            tradingCounterpartyExecutionContextLoadStates.delete(counterpartyId);
+            tradingCounterpartyTradeContextLoadStates.delete(counterpartyId);
           }
         }
 
@@ -1544,10 +1622,17 @@
     servicingBranchRowsEl.addEventListener("click", handleReferenceDataClick);
     settlementSystemRowsEl.addEventListener("click", handleReferenceDataClick);
     tradeCaptureChannelRowsEl.addEventListener("click", handleReferenceDataClick);
+    tradePurposeNewButton.addEventListener("click", () => startReferenceDataCreate("tradePurpose"));
+    tradePurposeIdSortButton.addEventListener("click", () => {
+      tradePurposeIdSortDirection = tradePurposeIdSortDirection === "asc" ? "desc" : "asc";
+      renderReferenceData();
+    });
+    tradePurposeRowsEl.addEventListener("click", handleReferenceDataClick);
     [
       servicingBranchRowsEl,
       settlementSystemRowsEl,
-      tradeCaptureChannelRowsEl
+      tradeCaptureChannelRowsEl,
+      tradePurposeRowsEl
     ].forEach(rowsElement => {
       rowsElement.addEventListener("input", event => {
         const row = event.target.closest("[data-reference-edit-row]");
@@ -1702,7 +1787,7 @@
     });
     addHedgeDealSideControl.addEventListener("change", () => {
       addHedgeDealForm.elements.side.value =
-        oppositeFxSide(addHedgeDealSideControl.value);
+        oppositeSide(addHedgeDealSideControl.value);
       syncAddHedgeDealDerivedFields();
     });
     addHedgeDealPricingModeControl.addEventListener("change", () => {
@@ -1853,58 +1938,28 @@
       });
       input.addEventListener("blur", () => groupDecimalInputValue(input));
     });
-    [
-      editForm.elements.clientCode,
-      editForm.elements.clientName,
-      editForm.elements.currencyPair,
-      editForm.elements.side,
-      editForm.elements.amountFixingCurrency,
-      editForm.elements.amount,
-      editForm.elements.quoteAmount,
-      editForm.elements.clientRate,
-      editForm.elements.autoBatchRate,
-      editForm.elements.tenor,
-      editForm.elements.tradeDate
-    ].forEach(element => {
-      element.addEventListener("input", syncDealFormDerivedFields);
-      element.addEventListener("change", syncDealFormDerivedFields);
-    });
-    editForm.elements.amount.addEventListener("blur", formatDealAmountInputs);
-    editForm.elements.quoteAmount.addEventListener("blur", formatDealAmountInputs);
-    editForm.elements.pricingRuleId.addEventListener("input", handleDealPricingRuleInput);
-    editForm.elements.pricingRuleId.addEventListener("change", handleDealPricingRuleInput);
-    editForm.elements.clientRate.addEventListener("input", () => {
-      syncSyntheticAutoBatchRate();
-      syncDealFormDerivedFields();
-    });
-    editDialog.addEventListener("close", () => {
-      editingDealId = null;
-      prepareEditDealForm();
-      clearFormValidity();
-    });
-
-    fxDealsAuditToggles.forEach(toggle => {
+    dealsAuditToggles.forEach(toggle => {
       toggle.addEventListener("change", () => {
-        setFxDealsViewMode(
-          toggle.dataset.fxDealsViewScope,
-          toggle.checked ? FX_DEALS_VIEW_MODE_AUDIT : FX_DEALS_VIEW_MODE_STANDARD
+        setDealsViewMode(
+          toggle.dataset.dealsViewScope,
+          toggle.checked ? DEALS_VIEW_MODE_AUDIT : DEALS_VIEW_MODE_STANDARD
         );
       });
     });
-    syncFxDealsAuditToggle("client");
-    syncFxDealsAuditToggle("hedge");
+    syncDealsAuditToggle("client");
+    syncDealsAuditToggle("hedge");
 
-    fxBatchesAuditViewToggle.addEventListener("change", () => {
-      setFxBatchesViewMode(
-        fxBatchesAuditViewToggle.checked
-          ? FX_BATCHES_VIEW_MODE_AUDIT
-          : FX_BATCHES_VIEW_MODE_STANDARD
+    batchesAuditViewToggle.addEventListener("change", () => {
+      setBatchesViewMode(
+        batchesAuditViewToggle.checked
+          ? BATCHES_VIEW_MODE_AUDIT
+          : BATCHES_VIEW_MODE_STANDARD
       );
     });
-    syncFxBatchesAuditToggle();
+    syncBatchesAuditToggle();
 
-    fxPositionModeTabs.forEach(tab => {
-      tab.addEventListener("keydown", handleFxPositionModeTabKeydown);
+    positionModeTabs.forEach(tab => {
+      tab.addEventListener("keydown", handlePositionModeTabKeydown);
     });
 
     initializeAnalyticalPnlReportDefaultDateRange();
@@ -1999,25 +2054,25 @@
 
     window.addEventListener("hashchange", () => {
       applyInitialPageMode();
-      render(fxPositions);
+      render(positions);
     });
     window.addEventListener("beforeunload", () => marketStreamEventSource?.close());
     window.addEventListener("resize", repositionAppTooltip);
     window.addEventListener("resize", scheduleSmartColumnSizing);
     window.addEventListener("resize", scheduleHedgeQuickModeQuoteAlignment);
-    window.addEventListener("resize", scheduleFxPositionGridFillHeight);
+    window.addEventListener("resize", schedulePositionGridFillHeight);
     window.addEventListener("scroll", repositionAppTooltip, true);
 
-    if (fxPositionGridFrame && typeof ResizeObserver === "function") {
-      const fxPositionLayoutObserver = new ResizeObserver(() => {
-        scheduleFxPositionGridFillHeight();
+    if (positionGridFrame && typeof ResizeObserver === "function") {
+      const positionLayoutObserver = new ResizeObserver(() => {
+        schedulePositionGridFillHeight();
         scheduleHedgeQuickModeQuoteAlignment();
       });
 
-      fxPositionLayoutObserver.observe(fxPositionGridFrame);
+      positionLayoutObserver.observe(positionGridFrame);
 
-      if (fxPositionGrid) {
-        fxPositionLayoutObserver.observe(fxPositionGrid);
+      if (positionGrid) {
+        positionLayoutObserver.observe(positionGrid);
       }
     }
 
@@ -2057,8 +2112,8 @@
 
     connectMarketPulseSimulation();
     connectClientDealGenerationProcess();
-    connectFxAutoBatchingProcess();
+    connectAutoBatchingProcess();
     initializeHedgeQuickModeToolbar();
     setTradingCounterpartyScopeTab(activeTradingCounterpartyScope);
     applyInitialPageMode();
-    render(fxPositions);
+    render(positions);

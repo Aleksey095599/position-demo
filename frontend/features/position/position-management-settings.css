@@ -1,0 +1,913 @@
+    #positionManagementSettingsPage .auto-management-settings-section {
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-lg);
+      background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-head {
+      display: grid;
+      gap: 5px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-head :is(h2, h4) {
+      margin: 0;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-title-row .reference-grid-action {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      min-height: 30px;
+      padding: 0;
+      line-height: 1;
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-title-row .reference-grid-action .button-icon {
+      margin: 0;
+      line-height: 1;
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-head p,
+    #positionManagementSettingsPage .auto-management-policy-guidance,
+    #positionManagementSettingsPage .auto-management-policy-inheritance-note p {
+      margin: 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      line-height: 1.5;
+    }
+
+    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link {
+      color: inherit;
+      text-decoration-line: underline;
+      text-decoration-style: dotted;
+      text-decoration-color: color-mix(in srgb, currentColor 58%, transparent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link:hover,
+    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link:focus-visible {
+      color: var(--bs-body-color);
+      text-decoration-style: solid;
+      text-decoration-color: currentColor;
+    }
+
+    #positionManagementSettingsPage .auto-management-policy-guidance {
+      padding: 12px 20px;
+      border-top: 1px solid var(--bs-border-color);
+    }
+
+    #positionManagementSettingsPage .auto-management-policy-inheritance-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 12px 20px;
+      border-top: 1px solid var(--bs-border-color);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #positionManagementSettingsPage .auto-management-policy-inheritance-note > .button-icon {
+      color: var(--palette-blue-600);
+      font-size: 18px;
+    }
+
+    #positionManagementSettingsPage .auto-management-admission-settings-status {
+      padding: 0 20px;
+    }
+
+    #positionManagementSettingsPage .auto-management-admission-settings-status:not(:empty) {
+      padding-bottom: 12px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-workspace-layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
+      align-items: start;
+      gap: 20px;
+      margin-top: 12px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-sidebar {
+      position: sticky;
+      top: 12px;
+      overflow: hidden;
+      border-color: var(--bs-border-color);
+      background: var(--bs-body-bg);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation {
+      display: grid;
+      gap: 4px;
+      padding: 8px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation-link {
+      width: 100%;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      padding: 9px 10px;
+      border: 1px solid transparent;
+      border-radius: var(--bs-border-radius);
+      background: transparent;
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-control);
+      font-weight: 600;
+      line-height: 1.25;
+      text-align: left;
+      text-decoration: none;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation-link:hover {
+      background: var(--bs-tertiary-bg);
+      color: var(--bs-body-color);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation-link:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--bs-primary) 22%, transparent);
+      outline-offset: 1px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation-link.is-active {
+      border-color: var(--selection-accent);
+      background: var(--control-soft-bg);
+      color: var(--bs-body-color);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation-link > .button-icon {
+      color: var(--palette-blue-600);
+      font-size: 20px;
+    }
+
+    #positionManagementSettingsPage .position-management-settings-navigation-link > span:only-child {
+      grid-column: 1 / -1;
+    }
+
+    #positionManagementSettingsPage .position-management-trade-tabs {
+      margin: 0 0 16px;
+      flex-wrap: wrap;
+    }
+
+    #positionManagementSettingsPage .position-management-trade-tabs[hidden] {
+      display: none;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-content {
+      min-width: 0;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-content-panel[hidden] {
+      display: none;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-entry-route-head h3 {
+      margin: 0;
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-entry-route-head p,
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-copy p {
+      margin: 4px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-entry-route-destination {
+      color: var(--bs-body-color);
+      font-weight: var(--app-font-weight-semibold);
+      white-space: nowrap;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-entry-route-panel {
+      display: grid;
+      gap: 16px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-panel {
+      display: block;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-body {
+      --auto-management-admission-tree-bg: color-mix(
+        in srgb,
+        var(--bs-tertiary-bg) 42%,
+        var(--bs-body-bg)
+      );
+      position: relative;
+      display: grid;
+      gap: 4px;
+      padding: 12px 20px 16px 54px;
+      background: var(--auto-management-admission-tree-bg);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-rule-tree::before {
+      position: absolute;
+      top: 0;
+      bottom: 16px;
+      left: 27px;
+      width: 1px;
+      background: var(--bs-border-color);
+      content: "";
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-copy :is(h3, h5) {
+      margin: 0;
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      min-height: 54px;
+      padding: 7px 0;
+      background: transparent;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block::before {
+      position: absolute;
+      top: 50%;
+      left: -27px;
+      width: 20px;
+      border-top: 1px solid var(--bs-border-color);
+      content: "";
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block:last-of-type::after {
+      position: absolute;
+      top: calc(50% + 1px);
+      bottom: -20px;
+      left: -28px;
+      width: 3px;
+      background: var(--auto-management-admission-tree-bg);
+      content: "";
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-icon {
+      flex: 0 0 auto;
+      color: var(--palette-blue-600);
+      font-size: 22px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-copy {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-core-rule-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block .reference-grid-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      min-height: 30px;
+      padding: 0;
+      line-height: 1;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block .reference-grid-action .button-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      line-height: 1;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-actions {
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-actions .reference-grid-action {
+      background: var(--app-table-action-bg);
+    }
+
+    .auto-management-admission-pair-table-viewport {
+      position: relative;
+      width: fit-content;
+      max-width: 100%;
+      max-height: min(56vh, 520px);
+      overflow: auto;
+      border: var(--data-grid-line-width) solid var(--data-grid-line-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    .auto-management-admission-pair-table {
+      width: auto;
+      margin: 0;
+      border: 0;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+      background: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      font-family: var(--bs-body-font-family);
+      font-size: var(--workbench-grid-size);
+    }
+
+    .auto-management-admission-pair-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--workbench-grid-header-bg);
+    }
+
+    .auto-management-admission-pair-table :is(th, td) {
+      height: var(--workbench-grid-row-height);
+      padding: 7px 8px;
+      border: 0;
+      border-right: var(--data-grid-line-width) solid var(--data-grid-line-color);
+      border-bottom: var(--data-grid-line-width) solid var(--data-grid-line-color);
+      box-shadow: none;
+      font-size: var(--workbench-grid-size);
+      line-height: 1.5;
+      vertical-align: middle;
+    }
+
+    .auto-management-admission-pair-table tr > :last-child {
+      border-right: 0;
+    }
+
+    .auto-management-admission-pair-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .auto-management-admission-pair-table thead th {
+      height: 65px;
+      padding: 5px 7px;
+      background: var(--workbench-grid-header-bg);
+      color: var(--bs-emphasis-color);
+      font-weight: 500;
+      letter-spacing: 0;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .auto-management-admission-pair-table tbody tr:nth-child(even) td {
+      background: var(--workbench-grid-stripe-bg);
+    }
+
+    #positionManagementSettingsPage
+    .auto-management-admission-pair-table tbody tr:hover > td {
+      background: var(--bs-body-bg) !important;
+    }
+
+    #positionManagementSettingsPage
+    .auto-management-admission-pair-table
+    tbody tr:nth-child(even):hover > td {
+      background: var(--workbench-grid-stripe-bg) !important;
+    }
+
+    #positionManagementSettingsPage
+    .auto-management-admission-pair-table
+    tbody tr:hover > .auto-mode-eligibility-pair-cell {
+      background: var(--bs-body-bg) !important;
+    }
+
+    #positionManagementSettingsPage
+    .auto-management-admission-pair-table
+    tbody tr:has(> td:not(.auto-mode-eligibility-pair-cell):hover)
+    > td:not(.auto-mode-eligibility-pair-cell) {
+      background: var(--workbench-grid-hover-bg) !important;
+    }
+
+    .auto-management-admission-pair-table .auto-mode-eligibility-pair-cell {
+      vertical-align: middle;
+      background: var(--bs-body-bg);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-row-actions .reference-grid-action {
+      display: inline-flex;
+      width: 32px;
+      height: 30px;
+      min-height: 30px;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-row-actions .reference-grid-action .button-icon {
+      display: inline-flex;
+      width: 1em;
+      height: 1em;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      line-height: 1;
+    }
+
+    .auto-management-admission-pair-table .reference-column-head {
+      display: flex;
+      min-width: 0;
+      min-height: 53px;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 5px;
+    }
+
+    .auto-management-admission-pair-table .reference-column-head-static {
+      justify-content: center;
+    }
+
+    .auto-management-admission-pair-table .reference-column-head-right {
+      align-items: flex-end;
+      text-align: right;
+    }
+
+    .auto-management-admission-pair-table .reference-column-title {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      gap: 3px;
+      line-height: 17px;
+      white-space: nowrap;
+    }
+
+    .auto-management-admission-pair-table .reference-header-filter {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      min-height: 28px;
+      height: 28px;
+      margin: 0;
+      padding: 3px 7px;
+      border: 1px solid var(--palette-gray-400);
+      border-radius: var(--workbench-radius);
+      background-color: rgba(var(--bs-white-rgb), 0.95);
+      color: var(--bs-body-color);
+      font-family: var(--bs-body-font-family);
+      font-size: 11px;
+      font-weight: 400;
+      line-height: 20px;
+    }
+
+    .auto-management-admission-pair-table select.reference-header-filter {
+      padding-right: 28px;
+      background-size: 12px 9px;
+    }
+
+    .auto-management-admission-pair-table .reference-header-filter:focus {
+      border-color: var(--bs-primary);
+      outline: 0;
+      box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);
+    }
+
+    .auto-management-admission-deviation-limit {
+      width: 100%;
+    }
+
+    .auto-management-admission-deviation-limit .input-group-text {
+      min-width: 42px;
+      justify-content: center;
+      font-weight: 600;
+    }
+
+    .auto-management-admission-pair-table th:nth-child(3) {
+      text-align: center;
+    }
+
+    .auto-management-admission-pair-table th:nth-child(3) .reference-column-head {
+      align-items: center;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-enabled {
+      display: flex;
+      justify-content: center;
+      margin: 0;
+      min-height: 24px;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-enabled .form-check-input {
+      margin-top: 0;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-limit {
+      width: 100%;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-limit .input-group-text {
+      min-width: 54px;
+      justify-content: center;
+      font-weight: 600;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-empty {
+      padding: 24px 16px;
+      color: var(--bs-secondary-color);
+      text-align: center;
+    }
+
+    .auto-management-admission-criteria-page {
+      min-width: 0;
+    }
+
+    .auto-management-admission-criteria-page .workbench-page-header {
+      border-bottom: 0;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-criteria-panel {
+      display: flex;
+      width: fit-content;
+      max-width: 100%;
+      min-height: 0;
+      align-self: flex-start;
+      flex-direction: column;
+      overflow: hidden;
+      border: var(--data-grid-line-width) solid var(--data-grid-line-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    .auto-management-admission-criteria-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .auto-management-admission-criteria-heading {
+      display: grid;
+      flex: 1 1 auto;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .auto-management-admission-criteria-tools,
+    .auto-management-admission-criteria-edit-actions {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .auto-management-admission-criteria-edit-actions[hidden] {
+      display: none;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-criteria-tools .reference-grid-action {
+      display: inline-flex;
+      width: 32px;
+      height: 30px;
+      min-height: 30px;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border-radius: var(--workbench-radius);
+      background: var(--app-table-action-bg);
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-criteria-tools .reference-grid-action .button-icon {
+      font-size: 16px;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-table-viewport {
+      min-height: 0;
+      max-height: calc(100vh - 250px);
+      border: 0;
+      border-radius: 0;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-table :is(th, td) {
+      border: 0;
+      border-right: var(--data-grid-line-width) solid var(--data-grid-line-color);
+      border-bottom: var(--data-grid-line-width) solid var(--data-grid-line-color);
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-table tr > :last-child {
+      border-right: 0;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-table
+    .auto-mode-eligibility-pair-cell.is-table-end {
+      border-bottom: 0;
+    }
+
+    .auto-management-admission-read-value {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .auto-mode-eligibility-trade-type {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-policy-empty-state,
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-note {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: flex-start;
+      margin: 16px;
+      padding: 14px 16px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-policy-empty-state > .button-icon,
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-note > .button-icon {
+      color: var(--palette-blue-600);
+      font-size: 22px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-policy-empty-state p,
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-note p {
+      margin: 3px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-note {
+      border-left: 1px solid var(--bs-border-color);
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin: 0;
+      padding: 0 16px 16px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary > div {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--bs-border-color);
+      border-right: 0;
+      background: var(--bs-body-bg);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary > div:first-child {
+      border-radius: var(--bs-border-radius) 0 0 var(--bs-border-radius);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary > div:last-child {
+      border-right: 1px solid var(--bs-border-color);
+      border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary dt {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      font-weight: 500;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary dd {
+      margin: 0;
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-control);
+      font-weight: 700;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-technical-trade-types {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-technical-trade-types > div {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-technical-trade-types > div > .button-icon {
+      color: var(--palette-blue-600);
+      font-size: 21px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-technical-trade-types > div > span:nth-child(2) {
+      display: grid;
+      gap: 2px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-technical-trade-types small {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-status {
+      min-height: 20px;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-status:empty {
+      display: none;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-status.is-error {
+      color: var(--bs-danger-text-emphasis);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-status.is-success {
+      color: var(--bs-success-text-emphasis);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-panel[aria-busy="true"]
+    .auto-management-admission-settings-body {
+      opacity: 0.68;
+      pointer-events: none;
+    }
+
+    @media (max-width: 900px) {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .position-management-settings-workspace-layout {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .position-management-settings-sidebar {
+        position: static;
+      }
+    }
+
+    @media (max-width: 720px) {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-trade-segment-toggle {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-trade-segment-toggle .badge {
+        grid-column: 2;
+        justify-self: start;
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-trade-segment-chevron {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-shared-policy-summary {
+        grid-template-columns: 1fr;
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-shared-policy-summary > div {
+        border-right: 1px solid var(--bs-border-color);
+        border-bottom: 0;
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-shared-policy-summary > div:first-child {
+        border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-shared-policy-summary > div:last-child {
+        border-bottom: 1px solid var(--bs-border-color);
+        border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius);
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-admission-policy-block {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-admission-core-rule-actions,
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-admission-policy-block-actions {
+        grid-column: 1 / -1;
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-admission-core-rule-actions {
+        justify-content: flex-start;
+      }
+
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-admission-policy-block-actions {
+        justify-content: space-between;
+      }
+
+    }

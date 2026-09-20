@@ -2,28 +2,36 @@
       ? window.__DEMO_API_BOOTSTRAP__
       : null;
     const DEMO_API_ENABLED = DEMO_API_BOOTSTRAP?.available === true;
-    const UI_TABLE_COLUMN_WIDTH_MIN_PX = 48;
+    const UI_TABLE_COLUMN_WIDTH_MIN_PX = 50;
     const UI_TABLE_COLUMN_WIDTH_MAX_PX = 1600;
     const UI_TABLE_LAYOUT_COLUMN_ALIASES = Object.freeze({
       external_counterparties_grid: Object.freeze({ status: "active" }),
       internal_units_grid: Object.freeze({ status: "active" }),
       users_grid: Object.freeze({ status: "active" }),
+      trade_contexts_grid: Object.freeze({
+        auto_hedging_admission_mode: "auto_management_admission_mode",
+        auto_hedging_admission_policy: "auto_management_admission_mode",
+        auto_management_admission_policy: "auto_management_admission_mode"
+      }),
+      auto_management_admission_criteria_grid: Object.freeze({
+        eligible_for_auto_management: "eligible_for_auto_mode"
+      }),
       batching_history_grid: Object.freeze({
         formation_reason: "formation_reason_code",
         created_at: "formed_at"
       }),
       pricing_rules_grid: Object.freeze({
-        position_management_mode: "auto_hedging_admission"
+        position_management_mode: "auto_management_admission"
       }),
       internal_pricing_rules_grid: Object.freeze({
-        position_management_mode: "auto_hedging_admission"
+        position_management_mode: "auto_management_admission"
       })
     });
     const UI_TABLE_LAYOUT_BOOTSTRAP = Array.isArray(DEMO_API_BOOTSTRAP?.uiTableLayouts)
       ? DEMO_API_BOOTSTRAP.uiTableLayouts
       : [];
     const CLIENT_DEAL_GENERATION_REFRESH_INTERVAL_MS = 1000;
-    const FX_AUTO_BATCHING_REFRESH_INTERVAL_MS = 1000;
+    const AUTO_BATCHING_REFRESH_INTERVAL_MS = 1000;
     const DEFAULT_MARKET_PAIRS = DemoDb.defaults.marketPairs;
     const DEFAULT_CCY_OPTIONS = DemoDb.defaults.ccyOptions;
     const DEFAULT_QUOTE_DECIMALS = 4;
@@ -94,6 +102,7 @@
     const DEFAULT_SERVICING_BRANCHES = DemoDb.defaults.servicingBranches;
     const DEFAULT_SETTLEMENT_SYSTEMS = DemoDb.defaults.settlementSystems;
     const DEFAULT_TRADE_CAPTURE_CHANNELS = DemoDb.defaults.tradeCaptureChannels;
+    const DEFAULT_TRADE_PURPOSES = DemoDb.defaults.tradePurposes;
     const LEGACY_DEALER_ASSISTED_CHANNEL_ID = "DEALER_ASSISTED";
     const LEGACY_CREATE_CLIENT_DEAL_CHANNEL_ID = "CREATE_CLIENT_DEAL";
     const MANUAL_CLIENT_DEAL_ENTRY_CHANNEL_ID = "MANUAL_CLIENT_DEAL_ENTRY";
@@ -101,15 +110,19 @@
     const PRICING_TYPES = ["AUTO_PRICED", "DEALER_PRICED", "DEALER_APPROVED"];
     const POSITION_MANAGEMENT_MODES = Object.freeze(["MANUAL", "AUTO"]);
     const POSITION_MANAGEMENT_MODE_LABELS = Object.freeze({
-      MANUAL: "Manual Control",
-      AUTO: "Auto Hedging"
+      MANUAL: "Manual Management",
+      AUTO: "Auto Management"
     });
-    const AUTO_HEDGING_ADMISSION_MODES = Object.freeze(["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED", "MANUAL_ONLY"]);
-    const AUTO_HEDGING_ADMISSION_MODE_LABELS = Object.freeze({
-      AUTO_IF_ELIGIBLE: "Auto if eligible",
-      REVIEW_REQUIRED: "Review required",
-      MANUAL_ONLY: "Manual only"
+    const AUTO_MANAGEMENT_ADMISSION_MODES = Object.freeze(["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED"]);
+    const AUTO_MANAGEMENT_ADMISSION_MODE_LABELS = Object.freeze({
+      AUTO_IF_ELIGIBLE: "Auto Mode if Eligible",
+      REVIEW_REQUIRED: "Manual Mode"
     });
+    const AUTO_MODE_ELIGIBILITY_TRADE_TYPES = Object.freeze([
+      "CLIENT_DEAL",
+      "HEDGE_DEAL",
+      "BATCH_POSITION_OUT"
+    ]);
     const HEDGE_DEAL_PRICING_MODES = ["AUTO_PRICED", "DEALER_PRICED"];
     const PRICING_TYPE_PRESENTATION = Object.freeze({
       AUTO_PRICED: Object.freeze({
@@ -154,10 +167,10 @@
       },
       {
         field: "tradeCaptureChannelId",
-        inputName: "contextExecutionSystem",
-        menuId: "clientPricingExecutionMenu",
-        label: "Execution System",
-        icon: "terminal"
+        inputName: "contextOriginatingSystem",
+        menuId: "clientPricingOriginatingMenu",
+        label: "Originating System",
+        icon: "web_asset"
       }
     ];
     let ccyOptions = loadCcyOptions();
@@ -167,17 +180,18 @@
     let servicingBranches = loadServicingBranches();
     let settlementSystems = loadSettlementSystems();
     let tradeCaptureChannels = loadTradeCaptureChannels();
+    let tradePurposes = loadTradePurposes();
     let pricingContexts = loadPricingContexts();
     let clientPricingRules = loadClientPricingRules();
     let hedgeQuickModeSettings = loadHedgeQuickModeSettings();
-    let autoHedgingAdmissionPolicy = loadAutoHedgingAdmissionPolicy();
-    let batchingSettings = loadFxBatchingSettings();
-    let autoBatchingSettings = loadFxAutoBatchingSettings();
-    let clientFxDeals = loadClientFxDeals();
-    let hedgeFxDeals = loadHedgeFxDeals();
-    let fxBatchHistory = loadFxBatches();
-    let fxPositionRecords = Array.isArray(DEMO_API_BOOTSTRAP.fxPositions)
-      ? DEMO_API_BOOTSTRAP.fxPositions
+    let autoManagementAdmissionPolicy = loadAutoManagementAdmissionPolicy();
+    let batchingSettings = loadBatchingSettings();
+    let autoBatchingSettings = loadAutoBatchingSettings();
+    let clientDeals = loadClientDeals();
+    let hedgeDeals = loadHedgeDeals();
+    let batchHistory = loadBatches();
+    let positionRecords = Array.isArray(DEMO_API_BOOTSTRAP.positions)
+      ? DEMO_API_BOOTSTRAP.positions
       : [];
     let clientDealGenerationSettings = [];
     let clientDealGenerationProcessSettings = {
@@ -204,51 +218,51 @@
     };
     let clientDealGenerationRefreshTimer = null;
     let clientDealGenerationRefreshInFlight = false;
-    let fxAutoBatchingProcessState = {
-      running: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.running === true,
-      status: String(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.status || "STOPPED"),
-      phase: String(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.phase || "STOPPED"),
-      startedAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.startedAt || null,
-      intervalMs: Number(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.intervalMs) || 60000,
+    let autoBatchingProcessState = {
+      running: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.running === true,
+      status: String(DEMO_API_BOOTSTRAP?.autoBatchingProcess?.status || "STOPPED"),
+      phase: String(DEMO_API_BOOTSTRAP?.autoBatchingProcess?.phase || "STOPPED"),
+      startedAt: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.startedAt || null,
+      intervalMs: Number(DEMO_API_BOOTSTRAP?.autoBatchingProcess?.intervalMs) || 60000,
       batchingInProgress: false,
       formedBatchCount: Number(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.formedBatchCount
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.formedBatchCount
       ) || 0,
       lastCandidateTradeCount: 0,
       lastCandidatePairCount: Number(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCandidatePairCount
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastCandidatePairCount
       ) || 0,
       lastOpenWindowCount: Number(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastOpenWindowCount
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastOpenWindowCount
       ) || 0,
       lastCycleBatchCount: Number(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCycleBatchCount
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastCycleBatchCount
       ) || 0,
       lastFormedBatchId: Number(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedBatchId
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastFormedBatchId
       ) || null,
       lastFormedBatchIds: Array.isArray(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedBatchIds
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastFormedBatchIds
       )
-        ? [...DEMO_API_BOOTSTRAP.fxAutoBatchingProcess.lastFormedBatchIds]
+        ? [...DEMO_API_BOOTSTRAP.autoBatchingProcess.lastFormedBatchIds]
         : [],
-      lastFormedAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedAt || null,
-      lastCycleAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCycleAt || null,
-      nextCycleAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.nextCycleAt || null,
-      lastError: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastError || null
+      lastFormedAt: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastFormedAt || null,
+      lastCycleAt: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastCycleAt || null,
+      nextCycleAt: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.nextCycleAt || null,
+      lastError: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastError || null
     };
-    let fxAutoBatchingRefreshTimer = null;
-    let fxAutoBatchingRefreshInFlight = false;
-    let fxAutoBatchingToggleInFlight = false;
-    let fxPositionsRequestSequence = 0;
+    let autoBatchingRefreshTimer = null;
+    let autoBatchingRefreshInFlight = false;
+    let autoBatchingToggleInFlight = false;
+    let positionsRequestSequence = 0;
     let oneBatchInFlight = false;
-    let sendToAutoPositionModeInFlight = false;
+    let moveToAutoManagementInFlight = false;
     let pendingSendToAutoTrades = [];
     let pendingOneBatchRequest = null;
     let pendingOneBatchTenorSelection = null;
-    const fxPositions = [];
+    const positions = [];
 
-    loadFxPositionsFromDatabase();
+    loadPositionsFromDatabase();
 
     const amountFormatter = new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 2,
@@ -306,7 +320,7 @@
       count: { min: 64, max: 80, pad: 12, ellipsize: false },
       date: { min: 104, max: 172, pad: 18, ellipsize: false },
       default: { min: 92, max: 280, pad: 18, ellipsize: true },
-      executionSystemId: { min: 120, max: 360, pad: 18, ellipsize: false },
+      originatingSystemId: { min: 120, max: 360, pad: 18, ellipsize: false },
       marketRate: { min: 70, max: 76, pad: 12, ellipsize: false },
       name: { min: 140, max: 360, pad: 18, ellipsize: true },
       number: { min: 82, max: 160, pad: 18, ellipsize: false },
@@ -847,6 +861,11 @@
         return;
       }
 
+      if (table.closest("[data-disable-tooltips]")) {
+        table.querySelectorAll("th, td").forEach(clearTableOverflowTooltip);
+        return;
+      }
+
       table.querySelectorAll("th, td").forEach(syncSmartCellTooltip);
     }
 
@@ -965,9 +984,6 @@
     const marketPage = document.getElementById("marketPage");
     const marketPageHeader = document.getElementById("marketPageHeader");
     const marketPageTitle = document.getElementById("marketPageTitle");
-    const marketSettingsBreadcrumb = document.getElementById("marketSettingsBreadcrumb");
-    const marketSettingsBreadcrumbBackLink = document.getElementById("marketSettingsBreadcrumbBackLink");
-    const marketSettingsBreadcrumbCurrent = document.getElementById("marketSettingsBreadcrumbCurrent");
     const databasePage = document.getElementById("databasePage");
     const processesPage = document.getElementById("processesPage");
     const processCatalogViewLinks = Array.from(
@@ -998,20 +1014,21 @@
     const manualProcessInspectorTraceability = document.getElementById("manualProcessInspectorTraceability");
     const manualProcessInspectorResult = document.getElementById("manualProcessInspectorResult");
     const mainPage = document.getElementById("mainPage");
-    const fxPositionModeTabs = Array.from(
-      document.querySelectorAll("[data-fx-position-mode]")
+    const positionModeTabs = Array.from(
+      document.querySelectorAll("[data-position-management-mode]")
     );
-    const fxPositionManualCount = document.getElementById("fxPositionManualCount");
-    const fxPositionAutoCount = document.getElementById("fxPositionAutoCount");
-    const fxPositionGridPanel = document.getElementById("fxPositionGridPanel");
+    const positionManualCount = document.getElementById("positionManualCount");
+    const positionAutoCount = document.getElementById("positionAutoCount");
+    const positionGridPanel = document.getElementById("positionGridPanel");
     const batchingSettingsPage = document.getElementById("batchingSettingsPage");
-    const hedgingSettingsPage = document.getElementById("hedgingSettingsPage");
-    const fxBatchesPage = document.getElementById("fxBatchesPage");
+    const positionManagementSettingsPage = document.getElementById("positionManagementSettingsPage");
+    const autoManagementAdmissionCriteriaPage = document.getElementById("autoManagementAdmissionCriteriaPage");
+    const batchesPage = document.getElementById("batchesPage");
     const batchingHistoryPage = document.getElementById("batchingHistoryPage");
     const batchingHistoryGridEl = document.getElementById("batchingHistoryGrid");
     const batchingHistoryCountEl = document.getElementById("batchingHistoryCount");
     const batchingHistoryStatusEl = document.getElementById("batchingHistoryStatus");
-    const fxBatchesAuditViewToggle = document.getElementById("fxBatchesAuditView");
+    const batchesAuditViewToggle = document.getElementById("batchesAuditView");
     const batchDetailsPage = document.getElementById("batchDetailsPage");
     const batchDetailsStatusEl = document.getElementById("batchDetailsStatus");
     const batchDetailsPrompt = document.getElementById("batchDetailsPrompt");
@@ -1062,17 +1079,17 @@
     const batchRollbackStatus = document.getElementById("batchRollbackStatus");
     const batchRollbackCancelButton = document.getElementById("batchRollbackCancelButton");
     const batchRollbackConfirmButton = document.getElementById("batchRollbackConfirmButton");
-    const fxDealsPage = document.getElementById("fxDealsPage");
-    const fxDealsTabs = Array.from(document.querySelectorAll("[data-fx-deals-route]"));
-    const fxDealsAuditToggles = Array.from(
-      document.querySelectorAll("[data-fx-deals-audit-toggle]")
+    const dealsPage = document.getElementById("dealsPage");
+    const dealsTabs = Array.from(document.querySelectorAll("[data-deals-route]"));
+    const dealsAuditToggles = Array.from(
+      document.querySelectorAll("[data-deals-audit-toggle]")
     );
-    const clientFxDealsPage = document.getElementById("clientFxDealsPage");
-    const clientFxDealsGridEl = document.getElementById("clientFxDealsGrid");
-    const clientFxDealsCountEl = document.getElementById("clientFxDealsCount");
-    const hedgeFxDealsPage = document.getElementById("hedgeFxDealsPage");
-    const hedgeFxDealsGridEl = document.getElementById("hedgeFxDealsGrid");
-    const hedgeFxDealsCountEl = document.getElementById("hedgeFxDealsCount");
+    const clientDealsPage = document.getElementById("clientDealsPage");
+    const clientDealsGridEl = document.getElementById("clientDealsGrid");
+    const clientDealsCountEl = document.getElementById("clientDealsCount");
+    const hedgeDealsPage = document.getElementById("hedgeDealsPage");
+    const hedgeDealsGridEl = document.getElementById("hedgeDealsGrid");
+    const hedgeDealsCountEl = document.getElementById("hedgeDealsCount");
     const analyticalPnlReportPage = document.getElementById("analyticalPnlReportPage");
     const analyticalPnlReportStatusEl = document.getElementById("analyticalPnlReportStatus");
     const analyticalPnlReportFiltersForm = document.getElementById("analyticalPnlReportFilters");
@@ -1084,26 +1101,27 @@
     const clientProfileLayout = document.getElementById("clientProfileLayout");
     const clientProfileListView = document.getElementById("clientProfileListView");
     const clientProfileDetailView = document.getElementById("clientProfileDetailView");
-    const clientProfileBackButton = document.getElementById("clientProfileBackButton");
     const clientProfilePageTitle = document.getElementById("clientProfilePageTitle");
-    const clientProfileBreadcrumb = document.getElementById("clientProfileBreadcrumb");
-    const clientProfileBreadcrumbBackLink = document.getElementById("clientProfileBreadcrumbBackLink");
-    const clientProfileBreadcrumbCurrent = document.getElementById("clientProfileBreadcrumbCurrent");
+    const clientProfileContextLabel = document.getElementById("clientProfileContextLabel");
     const tradingCounterpartyScopeTabs = document.getElementById("tradingCounterpartyScopeTabs");
+    const tradingCounterpartyFilterToolbar = document.getElementById("tradingCounterpartyFilterToolbar");
     const tradingCounterpartyScopeButtons = Array.from(document.querySelectorAll("[data-trading-counterparty-scope]"));
     const tradingCounterpartiesTable = document.getElementById("tradingCounterpartiesTable");
     const usersView = document.getElementById("usersView");
     const usersLayout = document.getElementById("usersLayout");
     const usersListView = document.getElementById("usersListView");
     const usersDetailView = document.getElementById("usersDetailView");
-    const usersBackButton = document.getElementById("usersBackButton");
     const usersPageTitle = document.getElementById("usersPageTitle");
     const usersPageSubtitle = document.getElementById("usersPageSubtitle");
     const pricingPage = document.getElementById("pricingPage");
     const referenceDataPage = document.getElementById("referenceDataPage");
+    const tradeContractPage = document.getElementById("tradeContractPage");
+    const tradeIntakeMessagesPage = document.getElementById("tradeIntakeMessagesPage");
     const pricingRulesPage = document.getElementById("pricingRulesPage");
     const pricingRulesTable = document.getElementById("pricingRulesTable");
+    const pricingRulesClearFiltersButton = document.getElementById("pricingRulesClearFiltersButton");
     const pricingRulesTableLayoutButton = document.getElementById("pricingRulesTableLayoutButton");
+    const pricingRulesAdvancedViewToggle = document.getElementById("pricingRulesAdvancedView");
     const pricingRulesTableLayoutDialog = document.getElementById("pricingRulesTableLayoutDialog");
     const pricingRulesTableLayoutForm = document.getElementById("pricingRulesTableLayoutForm");
     const pricingRulesTableLayoutDialogTitle = document.getElementById("pricingRulesTableLayoutDialogTitle");
@@ -1131,6 +1149,11 @@
     const tradingCounterpartyCodeTypeFilter = document.getElementById("tradingCounterpartyCodeTypeFilter");
     const tradingCounterpartyExternalKindFilter = document.getElementById("tradingCounterpartyExternalKindFilter");
     const tradingCounterpartyActiveFilter = document.getElementById("tradingCounterpartyActiveFilter");
+    const tradingCounterpartyTradeContextFilter = document.getElementById("tradingCounterpartyTradeContextFilter");
+    const tradingCounterpartyTradeContextToggle = document.getElementById("tradingCounterpartyTradeContextToggle");
+    const tradingCounterpartyTradeContextValue = document.getElementById("tradingCounterpartyTradeContextValue");
+    const tradingCounterpartyTradeContextMenu = document.getElementById("tradingCounterpartyTradeContextMenu");
+    const tradingCounterpartyTradeContextClear = document.getElementById("tradingCounterpartyTradeContextClear");
     const usersRowsEl = document.getElementById("usersRows");
     const usersNewButton = document.getElementById("usersNewButton");
     const usersIdSortButton = document.getElementById("usersIdSort");
@@ -1141,11 +1164,10 @@
     const pricingContextIdHeader = document.getElementById("pricingContextIdHeader");
     const pricingContextHeaderFilterControls = Array.from(document.querySelectorAll("[data-pricing-context-header-filter]"));
     const pricingContextNewButton = document.getElementById("pricingContextNewButton");
-    const executionContextsTable = document.getElementById("executionContextsTable");
-    const pricingContextAutoHedgingAdmissionHeader = document.getElementById("pricingContextAutoHedgingAdmissionHeader");
-    const pricingContextBreadcrumb = document.getElementById("pricingContextBreadcrumb");
-    const pricingContextBreadcrumbBackLink = document.getElementById("pricingContextBreadcrumbBackLink");
-    const pricingContextBreadcrumbCurrent = document.getElementById("pricingContextBreadcrumbCurrent");
+    const pricingContextClearFiltersButton = document.getElementById("pricingContextClearFiltersButton");
+    const tradeContextsTable = document.getElementById("tradeContextsTable");
+    const pricingContextAutoManagementAdmissionHeader = document.getElementById("pricingContextAutoManagementAdmissionHeader");
+    const pricingContextPageContextLabel = document.getElementById("pricingContextPageContextLabel");
     const referenceDataStatusEl = document.getElementById("referenceDataStatus");
     const referenceDataPanels = Array.from(document.querySelectorAll("[data-reference-panel]"));
     const referenceDataRouteLinks = Array.from(document.querySelectorAll("[data-reference-route]"));
@@ -1161,13 +1183,16 @@
     const tradeCaptureChannelRowsEl = document.getElementById("tradeCaptureChannelRows");
     const tradeCaptureChannelNewButton = document.getElementById("tradeCaptureChannelNewButton");
     const tradeCaptureChannelIdSortButton = document.getElementById("tradeCaptureChannelIdSort");
+    const tradePurposeRowsEl = document.getElementById("tradePurposeRows");
+    const tradePurposeNewButton = document.getElementById("tradePurposeNewButton");
+    const tradePurposeIdSortButton = document.getElementById("tradePurposeIdSort");
+    const tradePurposeIdHeader = document.getElementById("tradePurposeIdHeader");
     const tradeCaptureChannelIdHeader = document.getElementById("tradeCaptureChannelIdHeader");
     const pricingRuleRowsEl = document.getElementById("pricingRuleRows");
     const pricingRulesScopeButtons = Array.from(document.querySelectorAll("[data-pricing-rules-scope]"));
-    const pricingRulesBreadcrumb = document.getElementById("pricingRulesBreadcrumb");
-    const pricingRulesBreadcrumbBackLink = document.getElementById("pricingRulesBreadcrumbBackLink");
-    const pricingRulesBreadcrumbCurrent = document.getElementById("pricingRulesBreadcrumbCurrent");
-    const pricingRuleAutoHedgingAdmissionHeader = document.getElementById("pricingRuleAutoHedgingAdmissionHeader");
+    const pricingRulesContextLabel = document.getElementById("pricingRulesContextLabel");
+    const pricingRuleTradeContextHeader = document.getElementById("pricingRuleTradeContextHeader");
+    const pricingRuleAutoManagementAdmissionHeader = document.getElementById("pricingRuleAutoManagementAdmissionHeader");
     const pricingRuleCounterpartyCodeTitle = document.getElementById("pricingRuleCounterpartyCodeTitle");
     const pricingRuleCounterpartyCodeFilter = document.getElementById("pricingRuleCounterpartyCodeFilter");
     const pricingRuleQuickHedgeHeader = document.getElementById("pricingRuleQuickHedgeHeader");
@@ -1175,7 +1200,6 @@
     const pricingRuleIdHeader = document.getElementById("pricingRuleIdHeader");
     const pricingRuleHeaderFilterControls = Array.from(document.querySelectorAll("[data-pricing-rule-header-filter]"));
     const pricingRuleStatusEl = document.getElementById("pricingRuleStatus");
-    const editDealButton = document.getElementById("editDealButton");
     const createDealButton = document.getElementById("createDealButton");
     const resetDemoTradesButton = document.getElementById("resetDemoTradesButton");
     const resetDemoTradesDialog = document.getElementById("resetDemoTradesDialog");
@@ -1188,13 +1212,14 @@
     const runClientDealGenerationIcon = document.getElementById("runClientDealGenerationIcon");
     const runClientDealGenerationLabel = document.getElementById("runClientDealGenerationLabel");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
-    const sendToAutoPositionModeButton = document.getElementById("sendToAutoPositionModeButton");
-    const sendToAutoPositionModeDialog = document.getElementById("sendToAutoPositionModeDialog");
-    const sendToAutoPositionModeDialogClose = document.getElementById("sendToAutoPositionModeDialogClose");
-    const sendToAutoPositionModeSummary = document.getElementById("sendToAutoPositionModeSummary");
-    const sendToAutoPositionModeStatus = document.getElementById("sendToAutoPositionModeStatus");
-    const sendToAutoPositionModeCancelButton = document.getElementById("sendToAutoPositionModeCancelButton");
-    const sendToAutoPositionModeConfirmButton = document.getElementById("sendToAutoPositionModeConfirmButton");
+    const moveToAutoManagementButton = document.getElementById("moveToAutoManagementButton");
+    const moveToAutoManagementDialog = document.getElementById("moveToAutoManagementDialog");
+    const moveToAutoManagementDialogClose = document.getElementById("moveToAutoManagementDialogClose");
+    const moveToAutoManagementSummary = document.getElementById("moveToAutoManagementSummary");
+    const moveToAutoManagementStatus = document.getElementById("moveToAutoManagementStatus");
+    const moveToAutoManagementCancelButton = document.getElementById("moveToAutoManagementCancelButton");
+    const moveToAutoManagementConfirmButton = document.getElementById("moveToAutoManagementConfirmButton");
+    const selectedTradesCount = document.getElementById("selectedTradesCount");
     const oneBatchButton = document.getElementById("oneBatchButton");
     const oneBatchTenorDialog = document.getElementById("oneBatchTenorDialog");
     const oneBatchTenorDialogClose = document.getElementById("oneBatchTenorDialogClose");
@@ -1210,9 +1235,9 @@
     const addHedgeDealButton = document.getElementById("addHedgeDealButton");
     const hedgeQuickModeSettingsButton = document.getElementById("hedgeQuickModeSettingsButton");
     const hedgeQuickModeToolbar = document.getElementById("hedgeQuickModeToolbar");
-    const fxPositionGridFrame = document.querySelector(".fx-position-grid-frame");
-    const fxPositionGrid = fxPositionGridFrame?.querySelector(".fx-position-grid");
-    let fxPositionGridFillFrame = null;
+    const positionGridFrame = document.querySelector(".position-grid-frame");
+    const positionGrid = positionGridFrame?.querySelector(".position-grid");
+    let positionGridFillFrame = null;
     const clientProfileForm = document.getElementById("clientProfileForm");
     const clientProfileFormTitle = document.getElementById("clientProfileFormTitle");
     const clientProfileCodeTypeField = document.getElementById("clientProfileCodeTypeField");
@@ -1223,6 +1248,8 @@
     const clientProfileSubmitButton = document.getElementById("clientProfileSubmitButton");
     const clientProfileDeleteButton = document.getElementById("clientProfileDeleteButton");
     const clientProfileResetButton = document.getElementById("clientProfileResetButton");
+    const clientProfileBackNavigation = document.getElementById("clientProfileBackNavigation");
+    const clientProfileBackButton = document.getElementById("clientProfileBackButton");
     const clientProfileDetailHint = document.getElementById("clientProfileDetailHint");
     const clientProfileStatusEl = document.getElementById("clientProfileStatus");
     const usersForm = document.getElementById("usersForm");
@@ -1232,25 +1259,25 @@
     const usersDeleteButton = document.getElementById("usersDeleteButton");
     const usersDetailHint = document.getElementById("usersDetailHint");
     const usersStatusEl = document.getElementById("usersStatus");
-    const clientExecutionContextsPanel = document.getElementById("clientExecutionContextsPanel");
-    const clientExecutionContextsList = document.getElementById("clientExecutionContextsList");
-    const clientExecutionContextsCount = document.getElementById("clientExecutionContextsCount");
-    const clientExecutionContextsAttachButton = document.getElementById("clientExecutionContextsAttachButton");
-    const clientExecutionContextsAttachButtonIcon = document.getElementById("clientExecutionContextsAttachButtonIcon");
-    const clientExecutionContextsAttachButtonLabel = document.getElementById("clientExecutionContextsAttachButtonLabel");
-    const clientExecutionContextAttachDialog = document.getElementById("clientExecutionContextAttachDialog");
-    const clientExecutionContextAttachForm = document.getElementById("clientExecutionContextAttachForm");
-    const clientExecutionContextAttachDialogClose = document.getElementById("clientExecutionContextAttachDialogClose");
-    const clientExecutionContextAttachDialogSubtitle = document.getElementById("clientExecutionContextAttachDialogSubtitle");
-    const clientExecutionContextAttachCancelButton = document.getElementById("clientExecutionContextAttachCancelButton");
-    const clientExecutionContextAttachSubmitButton = document.getElementById("clientExecutionContextAttachSubmitButton");
-    const clientExecutionContextAttachSubmitLabel = document.getElementById("clientExecutionContextAttachSubmitLabel");
-    const clientExecutionContextAttachSelectAll = document.getElementById("clientExecutionContextAttachSelectAll");
-    const clientExecutionContextAttachSelection = document.getElementById("clientExecutionContextAttachSelection");
-    const clientExecutionContextAttachStatus = document.getElementById("clientExecutionContextAttachStatus");
-    const clientExecutionContextAttachRows = document.getElementById("clientExecutionContextAttachRows");
-    const clientExecutionContextAttachIdSort = document.getElementById("clientExecutionContextAttachIdSort");
-    const clientExecutionContextAttachFilterControls = Array.from(document.querySelectorAll("[data-client-context-attach-filter]"));
+    const clientTradeContextsPanel = document.getElementById("clientTradeContextsPanel");
+    const clientTradeContextsList = document.getElementById("clientTradeContextsList");
+    const clientTradeContextsCount = document.getElementById("clientTradeContextsCount");
+    const clientTradeContextsAttachButton = document.getElementById("clientTradeContextsAttachButton");
+    const clientTradeContextsAttachButtonIcon = document.getElementById("clientTradeContextsAttachButtonIcon");
+    const clientTradeContextsAttachButtonLabel = document.getElementById("clientTradeContextsAttachButtonLabel");
+    const clientTradeContextAttachDialog = document.getElementById("clientTradeContextAttachDialog");
+    const clientTradeContextAttachForm = document.getElementById("clientTradeContextAttachForm");
+    const clientTradeContextAttachDialogClose = document.getElementById("clientTradeContextAttachDialogClose");
+    const clientTradeContextAttachDialogSubtitle = document.getElementById("clientTradeContextAttachDialogSubtitle");
+    const clientTradeContextAttachCancelButton = document.getElementById("clientTradeContextAttachCancelButton");
+    const clientTradeContextAttachSubmitButton = document.getElementById("clientTradeContextAttachSubmitButton");
+    const clientTradeContextAttachSubmitLabel = document.getElementById("clientTradeContextAttachSubmitLabel");
+    const clientTradeContextAttachSelectAll = document.getElementById("clientTradeContextAttachSelectAll");
+    const clientTradeContextAttachSelection = document.getElementById("clientTradeContextAttachSelection");
+    const clientTradeContextAttachStatus = document.getElementById("clientTradeContextAttachStatus");
+    const clientTradeContextAttachRows = document.getElementById("clientTradeContextAttachRows");
+    const clientTradeContextAttachIdSort = document.getElementById("clientTradeContextAttachIdSort");
+    const clientTradeContextAttachFilterControls = Array.from(document.querySelectorAll("[data-client-context-attach-filter]"));
     const clientPricingRuleEditor = document.getElementById("clientPricingRuleEditor");
     const clientPricingRuleDialog = document.getElementById("clientPricingRuleDialog");
     const clientPricingRuleForm = document.getElementById("clientPricingRuleForm");
@@ -1301,7 +1328,6 @@
     const addHedgeDealPricingRulePicker = document.getElementById("addHedgeDealPricingRulePicker");
     const hedgeQuickModeSettingsForm = document.getElementById("hedgeQuickModeSettingsForm");
     const hedgeQuickModeSettingsHeader = document.getElementById("hedgeQuickModeSettingsHeader");
-    const hedgeQuickModeSettingsBackButton = document.getElementById("hedgeQuickModeSettingsBackButton");
     const hedgeQuickModeSettingsActiveField = document.getElementById("hedgeQuickModeSettingsActiveField");
     const hedgeQuickModeSettingsOverview = document.getElementById("hedgeQuickModeSettingsOverview");
     const hedgeQuickModeSettingsEditor = document.getElementById("hedgeQuickModeSettingsEditor");
@@ -1319,36 +1345,20 @@
     const hedgeQuickModeCounterpartyPickerToggle = document.getElementById("hedgeQuickModeCounterpartyPickerToggle");
     const hedgeQuickModeCounterpartyOptions = document.getElementById("hedgeQuickModeCounterpartyOptions");
     const hedgeQuickModePricingRulePicker = document.getElementById("hedgeQuickModePricingRulePicker");
-    const hedgingSettingsSectionLinks = Array.from(
-      document.querySelectorAll("[data-hedging-settings-section]")
+    const positionManagementSettingsSectionLinks = Array.from(
+      document.querySelectorAll("[data-position-management-settings-section]")
     );
-    const hedgingSettingsSectionPanels = Array.from(
-      document.querySelectorAll("[data-hedging-settings-section-panel]")
+    const positionManagementSettingsSectionPanels = Array.from(
+      document.querySelectorAll("[data-position-management-settings-section-panel]")
     );
-    const hedgingSettingsAutoGroupToggle = document.getElementById("autoHedgingSettingsGroupToggle");
-    const hedgingSettingsAutoSubnav = document.getElementById("autoHedgingSettingsSubnav");
-    const autoHedgingSettingsSegmentToggles = Array.from(
-      document.querySelectorAll("[data-auto-hedging-segment-toggle]")
-    );
-    const autoHedgingAdmissionPolicyPanel = document.getElementById("autoHedgingAdmissionPolicyPanel");
-    const autoHedgingAdmissionPolicyRevision = document.getElementById("autoHedgingAdmissionPolicyRevision");
-    const autoHedgingAdmissionCcyPairEditButton = document.getElementById("autoHedgingAdmissionCcyPairEditButton");
-    const autoHedgingAdmissionAmountLimitEditButton = document.getElementById("autoHedgingAdmissionAmountLimitEditButton");
-    const autoHedgingAdmissionDeviationEditButton = document.getElementById("autoHedgingAdmissionDeviationEditButton");
-    const autoHedgingAdmissionPairDialog = document.getElementById("autoHedgingAdmissionPairDialog");
-    const autoHedgingAdmissionPairDialogForm = document.getElementById("autoHedgingAdmissionPairDialogForm");
-    const autoHedgingAdmissionPairDialogClose = document.getElementById("autoHedgingAdmissionPairDialogClose");
-    const autoHedgingAdmissionPairDialogCancel = document.getElementById("autoHedgingAdmissionPairDialogCancel");
-    const autoHedgingAdmissionPairDialogSave = document.getElementById("autoHedgingAdmissionPairDialogSave");
-    const autoHedgingAdmissionPairDialogStatus = document.getElementById("autoHedgingAdmissionPairDialogStatus");
-    const autoHedgingAdmissionPairSearch = document.getElementById("autoHedgingAdmissionPairSearch");
-    const autoHedgingAdmissionPairFilter = document.getElementById("autoHedgingAdmissionPairFilter");
-    const autoHedgingAdmissionPairRows = document.getElementById("autoHedgingAdmissionPairRows");
-    const autoHedgingAdmissionPairEmpty = document.getElementById("autoHedgingAdmissionPairEmpty");
-    const autoHedgingAdmissionPolicyStatus = document.getElementById("autoHedgingAdmissionPolicyStatus");
-    const autoHedgingManualReleaseSharedRevision = document.getElementById("autoHedgingManualReleaseSharedRevision");
-    const autoHedgingManualReleaseSharedPairSummary = document.getElementById("autoHedgingManualReleaseSharedPairSummary");
-    const autoHedgingManualReleaseSharedDeviation = document.getElementById("autoHedgingManualReleaseSharedDeviation");
+    const autoManagementAdmissionCriteriaForm = document.getElementById("autoManagementAdmissionCriteriaForm");
+    let autoManagementAdmissionCriteriaSave = null;
+    const autoManagementAdmissionCriteriaStatus = document.getElementById("autoManagementAdmissionCriteriaStatus");
+    const autoManagementAdmissionTradeTypeFilter = document.getElementById("autoManagementAdmissionTradeTypeFilter");
+    const autoManagementAdmissionPairSearch = document.getElementById("autoManagementAdmissionPairSearch");
+    const autoManagementAdmissionPairFilter = document.getElementById("autoManagementAdmissionPairFilter");
+    const autoManagementAdmissionPairRows = document.getElementById("autoManagementAdmissionPairRows");
+    const autoManagementAdmissionPairEmpty = document.getElementById("autoManagementAdmissionPairEmpty");
     const batchingSettingsTabs = Array.from(
       document.querySelectorAll("[data-batching-settings-tab]")
     );
@@ -1375,12 +1385,6 @@
     const clientDealDuplicateCheckStatus = document.getElementById("clientDealDuplicateCheckStatus");
     const clientDealDuplicateCheckCancelButton = document.getElementById("clientDealDuplicateCheckCancelButton");
     const clientDealDuplicateCheckConfirmButton = document.getElementById("clientDealDuplicateCheckConfirmButton");
-    const editDialog = document.getElementById("editDealDialog");
-    const editForm = document.getElementById("editDealForm");
-    const dealIdentitySection = document.getElementById("dealIdentitySection");
-    const dealPricingRuleResults = document.getElementById("dealPricingRuleResults");
-    const editDialogClose = document.getElementById("editDialogClose");
-    const editCancelButton = document.getElementById("editCancelButton");
     const clientDealGenerationDialog = document.getElementById("clientDealGenerationDialog");
     const clientDealGenerationProcessSettingsForm =
       document.getElementById("clientDealGenerationProcessSettingsForm");
@@ -1391,11 +1395,21 @@
     const generationDialogClose = document.getElementById("generationDialogClose");
     const generationCancelButton = document.getElementById("generationCancelButton");
     const marketPanels = Array.from(document.querySelectorAll("[data-market-panel]"));
+    const marketHistoryForm = document.getElementById("marketHistoryForm");
+    const marketHistoryInstrument = document.getElementById("marketHistoryInstrument");
+    const marketHistoryTimeframe = document.getElementById("marketHistoryTimeframe");
+    const marketHistoryFrom = document.getElementById("marketHistoryFrom");
+    const marketHistoryTill = document.getElementById("marketHistoryTill");
+    const marketHistoryLoadButton = document.getElementById("marketHistoryLoadButton");
+    const marketHistorySummary = document.getElementById("marketHistorySummary");
+    const marketHistoryChartEl = document.getElementById("marketHistoryChart");
+    const marketHistoryEmpty = document.getElementById("marketHistoryEmpty");
     const marketCcyOptionRowsEl = document.getElementById("marketCcyOptionRows");
     const marketCcyOptionNewButton = document.getElementById("marketCcyOptionNewButton");
     const marketPairOptionRowsEl = document.getElementById("marketPairOptionRows");
     const marketStreamTable = document.getElementById("marketStreamTable");
     const marketPairOptionNewButton = document.getElementById("marketPairOptionNewButton");
+    const marketPairClearFiltersButton = document.getElementById("marketPairClearFiltersButton");
     const marketStatusEl = document.getElementById("marketStatus");
     const marketStreamToggleButton = document.getElementById("marketStreamToggleButton");
     const marketStreamToggleIcon = document.getElementById("marketStreamToggleIcon");
@@ -1419,33 +1433,43 @@
     const databaseCreateSqlEl = document.getElementById("databaseCreateSql");
     const DATABASE_TABLE_SECTIONS = Object.freeze([
       {
-        id: "fx-trading",
-        label: "FX Trades",
+        id: "trading",
+        label: "Trades",
         icon: "currency_exchange",
         tables: [
-          "client_fx_deals",
-          "fx_hedge_deals",
-          "fx_trade_exposure",
-          "fx_batch_balance_trade",
-          "fx_batch_position_output"
+          "client_deals",
+          "hedge_deals",
+          "trade_exposures",
+          "batch_balance_trades",
+          "batch_position_outputs"
         ]
       },
       {
-        id: "fx-position",
-        label: "FX Position",
+        id: "position",
+        label: "Position",
         icon: "table_chart",
         tables: [
-          "fx_trade_position_management"
+          "trade_position_management"
         ]
       },
       {
-        id: "fx-batching",
-        label: "FX Batching",
+        id: "market-pulse",
+        label: "Market Pulse",
+        icon: "monitoring",
+        tables: [
+          "market_source_candles",
+          "market_aggregated_candles",
+          "market_candle_load_ranges"
+        ]
+      },
+      {
+        id: "batches",
+        label: "Batches",
         icon: "stacks",
         tables: [
-          "fx_batches",
-          "fx_batch_members",
-          "fx_batch_quote_cash_output"
+          "batches",
+          "batch_members",
+          "batch_quote_cash_outputs"
         ]
       },
       {
@@ -1455,8 +1479,9 @@
         tables: [
           "pricing_rules",
           "accounting_systems",
-          "execution_contexts",
-          "execution_systems",
+          "trade_contexts",
+          "originating_systems",
+          "trade_purposes",
           "servicing_locations"
         ]
       },
@@ -1467,14 +1492,11 @@
         tables: [
           "ccy_options",
           "ccy_pair_options",
-          "fx_hedge_quick_mode_settings",
-          "fx_batching_settings",
-          "fx_auto_batching_settings",
-          "fx_auto_batching_ccy_pairs",
-          "auto_hedging_admission_policy_current",
-          "auto_hedging_admission_policy_revisions",
-          "auto_hedging_admission_policy_pair_deviations",
-          "auto_hedging_admission_policy_pair_rules"
+          "hedge_quick_mode_settings",
+          "batching_settings",
+          "auto_batching_settings",
+          "auto_batching_ccy_pairs",
+          "auto_mode_eligibility_rules"
         ]
       },
       {
@@ -1492,7 +1514,7 @@
         icon: "group",
         tables: [
           "trading_counterparties",
-          "trading_counterparty_execution_contexts",
+          "trading_counterparty_trade_contexts",
           "external_counterparties",
           "internal_units",
           "trading_counterparty_roles",
@@ -1514,10 +1536,10 @@
         label: "Audit",
         icon: "policy",
         tables: [
-          "fx_trade_position_management_transitions",
-          "fx_trade_market_snapshot",
-          "fx_auto_hedging_admission_decisions",
-          "v_fx_batch_formation_audit"
+          "trade_position_management_transitions",
+          "trade_market_snapshots",
+          "auto_management_admission_decisions",
+          "v_batch_formation_audit"
         ]
       },
       {
@@ -1536,38 +1558,37 @@
       )
     );
     const selectedTradeIds = new Set();
-    let activeFxPositionMode = "MANUAL";
-    const FX_DEALS_VIEW_MODE_STANDARD = "STANDARD";
-    const FX_DEALS_VIEW_MODE_AUDIT = "AUDIT";
-    const FX_BATCHES_VIEW_MODE_STANDARD = "STANDARD";
-    const FX_BATCHES_VIEW_MODE_AUDIT = "AUDIT";
-    let clientFxDealsGrid = null;
-    let clientFxDealsGridReady = false;
-    let clientFxDealsPendingData = [];
-    let clientFxDealsTotalCount = 0;
-    let clientFxDealsViewMode = FX_DEALS_VIEW_MODE_STANDARD;
+    let activePositionMode = "MANUAL";
+    const DEALS_VIEW_MODE_STANDARD = "STANDARD";
+    const DEALS_VIEW_MODE_AUDIT = "AUDIT";
+    const BATCHES_VIEW_MODE_STANDARD = "STANDARD";
+    const BATCHES_VIEW_MODE_AUDIT = "AUDIT";
+    let clientDealsGrid = null;
+    let clientDealsGridReady = false;
+    let clientDealsPendingData = [];
+    let clientDealsTotalCount = 0;
+    let clientDealsViewMode = DEALS_VIEW_MODE_STANDARD;
     let batchingHistoryGrid = null;
     let batchingHistoryGridReady = false;
-    let fxBatchesViewMode = FX_BATCHES_VIEW_MODE_STANDARD;
+    let batchesViewMode = BATCHES_VIEW_MODE_STANDARD;
     let batchDetailsMembersGrid = null;
     let batchDetailsCashOutputGrid = null;
     let batchDetailsOutputsGrid = null;
     let batchDetailsRequestSequence = 0;
     let rollbackBatchId = null;
-    let hedgeFxDealsGrid = null;
-    let hedgeFxDealsGridReady = false;
-    let hedgeFxDealsPendingData = [];
-    let hedgeFxDealsTotalCount = 0;
-    let hedgeFxDealsViewMode = FX_DEALS_VIEW_MODE_STANDARD;
+    let hedgeDealsGrid = null;
+    let hedgeDealsGridReady = false;
+    let hedgeDealsPendingData = [];
+    let hedgeDealsTotalCount = 0;
+    let hedgeDealsViewMode = DEALS_VIEW_MODE_STANDARD;
     let analyticalPnlReportRequestSequence = 0;
     let analyticalPnlReportSummaryGrid = null;
     let analyticalPnlReportSummaryGridReady = false;
     let analyticalPnlReportSummaryPendingData = null;
     let selectedCurrencyPair = loadSelectedCurrencyPair();
-    let editingDealId = null;
     let marketCcyOptionsEditState = null;
     let marketPairOptionsEditState = null;
-    let marketSettingsRouteScope = null;
+    let marketPairRouteCurrencyFilter = "";
     let editingMarketSimulationCurrencyPair = null;
     let marketCcyOptionGrid = null;
     let marketPairOptionGrid = null;
@@ -1580,6 +1601,10 @@
     let marketStreamRunning = false;
     let marketStreamConnected = false;
     let marketStreamEventSource = null;
+    let marketHistoryChart = null;
+    let marketHistorySeries = null;
+    let marketHistoryResizeObserver = null;
+    let marketHistoryLoading = false;
     let selectedDatabaseTable = "";
     let databaseTables = [];
     let databaseTableSearchQuery = "";
@@ -1602,31 +1627,29 @@
     let hedgeQuickModeSettingsGridReady = false;
     let hedgeQuickModeSettingsView = "overview";
     let hedgeQuickModeSettingsSaving = false;
-    let autoHedgingAdmissionPolicySaving = false;
-    let autoHedgingAdmissionPolicyLoaded = false;
-    let autoHedgingAdmissionPolicyEventsBound = false;
-    let autoHedgingAdmissionPairDialogSnapshot = null;
-    let autoHedgingAdmissionPairDialogReturnFocus = null;
-    let autoHedgingAdmissionPairDialogFocus = "ccy-pair";
-    let autoHedgingAdmissionPairDialogFocusTimer = null;
+    let autoManagementAdmissionPolicySaving = false;
+    let autoManagementAdmissionPolicyLoaded = false;
+    let autoManagementAdmissionPolicyEventsBound = false;
+    let autoManagementAdmissionEditingTradeType = null;
+    let autoManagementAdmissionEditingPairCode = null;
     let hedgeQuickModeDealCreating = false;
     let addClientDealSubmitWithControl = false;
     let clientDealDuplicateCheckGrid = null;
     let pendingClientDealCreation = null;
     let editingClientProfileIndex = null;
-    const tradingCounterpartyExecutionContexts = new Map();
-    const tradingCounterpartyExecutionContextLoadStates = new Map();
-    let clientExecutionContextRequestSequence = 0;
-    let clientExecutionContextAttachCounterpartyId = "";
-    let clientExecutionContextAttachSortDirection = "asc";
-    let clientExecutionContextAttachSaving = false;
-    const selectedClientExecutionContextIds = new Set();
-    const pendingClientExecutionContextDetaches = new Set();
+    const tradingCounterpartyTradeContexts = new Map();
+    const tradingCounterpartyTradeContextLoadStates = new Map();
+    let clientTradeContextRequestSequence = 0;
+    let clientTradeContextAttachCounterpartyId = "";
+    let clientTradeContextAttachSortDirection = "asc";
+    let clientTradeContextAttachSaving = false;
+    const selectedClientTradeContextIds = new Set();
+    const pendingClientTradeContextDetaches = new Set();
     let activeTradingCounterpartyScope = "EXTERNAL";
     let editingUserIndex = null;
     let tradingCounterpartyRowEditState = null;
-    let clientProfileRouteScope = null;
-    let clientProfileRouteScopeRequestSequence = 0;
+    let clientProfileTradeContextFilter = null;
+    let clientProfileTradeContextFilterRequestSequence = 0;
     let userRowEditState = null;
     let referenceDataEditState = null;
     let tradingCounterpartyIdSortDirection = "asc";
@@ -1640,6 +1663,7 @@
     let servicingBranchIdSortDirection = "asc";
     let settlementSystemIdSortDirection = "asc";
     let tradeCaptureChannelIdSortDirection = "asc";
+    let tradePurposeIdSortDirection = "asc";
     const tradingCounterpartyFilterFields = ["partyType", "clientCodeType", "counterpartyType", "active"];
     const tradingCounterpartyFilterState = {
       partyType: new Set(),
@@ -1657,6 +1681,7 @@
     let pricingContextEditState = null;
     let pricingRuleEditState = null;
     let activePricingRulesScope = "EXTERNAL";
+    let pricingRulesAdvancedViewEnabled = false;
     let clientPricingRuleEditState = null;
     let clientPricingRuleInlineEditorState = null;
     const clientPricingConfigurationCollapsedContexts = new Map();
@@ -1685,8 +1710,8 @@
     };
     const sortAccessors = {
       positionId: deal => positionIdSortValue(deal),
-      tradeRate: deal => fxPositionTradeRate(deal),
-      transferRate: deal => fxPositionTransferRate(deal),
+      tradeRate: deal => positionTradeRate(deal),
+      transferRate: deal => positionTransferRate(deal),
       marketBid: deal => marketBid(deal),
       marketOffer: deal => marketOffer(deal)
     };
@@ -1725,6 +1750,10 @@
         return null;
       }
 
+      if (element.closest("[data-disable-tooltips]")) {
+        return null;
+      }
+
       if (!element.dataset.tooltip?.trim()) {
         return null;
       }
@@ -1743,6 +1772,12 @@
 
     function migrateNativeTooltipElement(element) {
       if (!(element instanceof Element) || !element.hasAttribute("title")) {
+        return;
+      }
+
+      if (element.closest("[data-disable-tooltips]")) {
+        element.removeAttribute("title");
+        element.removeAttribute("data-tooltip");
         return;
       }
 
@@ -1782,7 +1817,7 @@
     function showAppTooltip(target) {
       const tooltipText = target?.dataset.tooltip?.trim();
 
-      if (!tooltipText) {
+      if (!tooltipText || target.closest("[data-disable-tooltips]")) {
         hideAppTooltip();
         return;
       }
@@ -2046,7 +2081,7 @@
       return minor === 0n ? "" : formattedMinorAmount(minor.toString(), fractionDigits);
     }
 
-    function exactFxAmountsFromDealt({
+    function exactAmountsFromDealt({
       dealtAmount,
       dealtCcyCode,
       baseCcyCode,
@@ -2192,7 +2227,7 @@
       }
 
       button.disabled = !canSave;
-      button.title = canSave ? "Save" : disabledTitle;
+      button.title = canSave || button.closest("[data-disable-tooltips]") ? "" : disabledTitle;
     }
 
     function parseFormNumber(input, label, options = {}) {
@@ -2769,22 +2804,30 @@
       settlementSystems = normalizedSettlementSystems(freshAccountingSystems, []);
     }
 
-    async function refreshExecutionSystemsFromApi() {
+    async function refreshOriginatingSystemsFromApi() {
       if (!DEMO_API_ENABLED) {
         return;
       }
 
-      const freshExecutionSystems = await demoApiRequest("/api/v1/execution-systems");
-      tradeCaptureChannels = normalizedTradeCaptureChannels(freshExecutionSystems, []);
+      const freshOriginatingSystems = await demoApiRequest("/api/v1/originating-systems");
+      tradeCaptureChannels = normalizedTradeCaptureChannels(freshOriginatingSystems, []);
     }
 
-    async function refreshExecutionContextsFromApi() {
+    async function refreshTradePurposesFromApi() {
       if (!DEMO_API_ENABLED) {
         return;
       }
 
-      const freshExecutionContexts = await demoApiRequest("/api/v1/execution-contexts");
-      pricingContexts = normalizedPricingContexts(freshExecutionContexts, []);
+      tradePurposes = normalizedTradePurposes(await demoApiRequest("/api/v1/trade-purposes"), []);
+    }
+
+    async function refreshTradeContextsFromApi() {
+      if (!DEMO_API_ENABLED) {
+        return;
+      }
+
+      const freshTradeContexts = await demoApiRequest("/api/v1/trade-contexts");
+      pricingContexts = normalizedPricingContexts(freshTradeContexts, []);
     }
 
     async function refreshTradingCounterpartiesFromApi() {
@@ -2927,57 +2970,67 @@
       return POSITION_MANAGEMENT_MODES.includes(fallbackMode) ? fallbackMode : "MANUAL";
     }
 
-    function normalizedPositionManagementModeOverride(value) {
-      const mode = normalizedReferenceCode(value);
-
-      return POSITION_MANAGEMENT_MODES.includes(mode) ? mode : null;
-    }
-
     function positionManagementModeLabel(value) {
       return POSITION_MANAGEMENT_MODE_LABELS[normalizedPositionManagementMode(value)];
     }
 
-    function normalizedAutoHedgingAdmissionMode(value, defaultPositionManagementMode = "MANUAL") {
+    function normalizedAutoManagementAdmissionMode(value) {
       const mode = normalizedReferenceCode(value);
 
-      if (AUTO_HEDGING_ADMISSION_MODES.includes(mode)) {
+      if (AUTO_MANAGEMENT_ADMISSION_MODES.includes(mode)) {
         return mode;
       }
 
-      return normalizedPositionManagementMode(defaultPositionManagementMode) === "AUTO"
-        ? "AUTO_IF_ELIGIBLE"
-        : "MANUAL_ONLY";
+      return "REVIEW_REQUIRED";
     }
 
-    function autoHedgingAdmissionModeLabel(value) {
-      return AUTO_HEDGING_ADMISSION_MODE_LABELS[normalizedAutoHedgingAdmissionMode(value)];
+    function autoManagementAdmissionModeLabel(value) {
+      return AUTO_MANAGEMENT_ADMISSION_MODE_LABELS[normalizedAutoManagementAdmissionMode(value)];
     }
 
-    function autoHedgingAdmissionModeBadgeMarkup(value) {
-      const mode = normalizedAutoHedgingAdmissionMode(value);
+    function initialModeAssignmentLabel(value) {
+      return normalizedAutoManagementAdmissionMode(value) === "AUTO_IF_ELIGIBLE"
+        ? "Auto Mode if Eligible"
+        : "Manual Mode";
+    }
+
+    function initialModeAssignmentIcon(value) {
+      return normalizedAutoManagementAdmissionMode(value) === "AUTO_IF_ELIGIBLE"
+        ? "smart_toy"
+        : "touch_app";
+    }
+
+    function initialModeAssignmentMarkup(value) {
+      return `<span class="d-inline-flex align-items-center gap-2"><span class="button-icon" aria-hidden="true">${initialModeAssignmentIcon(value)}</span><span>${escapeHtml(initialModeAssignmentLabel(value))}</span></span>`;
+    }
+
+    function autoManagementAdmissionModeBadgeMarkup(value, label = autoManagementAdmissionModeLabel(value)) {
+      const mode = normalizedAutoManagementAdmissionMode(value);
       const toneClass = mode === "AUTO_IF_ELIGIBLE"
         ? " is-auto"
-        : mode === "REVIEW_REQUIRED" ? " is-review-required" : " is-manual-only";
+        : " is-review-required";
 
-      return `<span class="position-management-mode-badge auto-hedging-admission-mode-badge${toneClass}">${escapeHtml(autoHedgingAdmissionModeLabel(mode))}</span>`;
+      return `<span class="position-management-mode-badge auto-management-admission-mode-badge${toneClass}">${escapeHtml(label)}</span>`;
     }
 
-    function normalizedPricingRuleAutoHedgingAdmissionModeOverride(value) {
-      return normalizedReferenceCode(value) === "MANUAL_ONLY"
-        ? "MANUAL_ONLY"
+    function normalizedPricingRuleAutoManagementAdmissionModeOverride(value) {
+      return ["REVIEW_REQUIRED", "MANUAL_ONLY"].includes(normalizedReferenceCode(value))
+        ? "REVIEW_REQUIRED"
         : null;
     }
 
-    function pricingRuleAutoHedgingAdmissionModeOverrideFromControl(control) {
+    function pricingRuleAutoManagementAdmissionModeOverrideFromControl(control) {
       if (!control) {
         return undefined;
       }
 
-      const value = normalizedReferenceCode(control.value);
-      const valid = value === "" || value === "MANUAL_ONLY";
+      const value = control.type === "checkbox"
+        ? control.checked ? "REVIEW_REQUIRED" : ""
+        : normalizedReferenceCode(control.value);
+      const valid = value === "" || value === "REVIEW_REQUIRED";
 
       control.setCustomValidity?.(
-        valid ? "" : "Select an Auto Hedging Admission policy."
+        valid ? "" : "Select an Initial Mode Assignment value."
       );
 
       if (!valid) {
@@ -2987,24 +3040,38 @@
       return value || null;
     }
 
-    function pricingRuleAutoHedgingAdmissionSourceLabel(value) {
-      return normalizedPricingRuleAutoHedgingAdmissionModeOverride(value) === "MANUAL_ONLY"
-        ? "Manual Control"
-        : "Execution Context Admission Policy";
+    function pricingRuleInitialModeAssignmentLabel(overrideValue, effectiveMode) {
+      if (
+        normalizedPricingRuleAutoManagementAdmissionModeOverride(overrideValue)
+          === "REVIEW_REQUIRED"
+      ) {
+        return "Manual Mode by Pricing Rule Override";
+      }
+
+      return normalizedReferenceCode(effectiveMode) === "AUTO_IF_ELIGIBLE"
+        ? "Auto Mode by Trade Context"
+        : "Manual Mode by Trade Context";
     }
 
-    function pricingRuleAutoHedgingAdmissionOptions(selectedValue = null) {
-      const selected = normalizedPricingRuleAutoHedgingAdmissionModeOverride(selectedValue);
+    function pricingRuleAutoManagementAdmissionOptions(
+      selectedValue = null,
+      tradeContextMode = null
+    ) {
+      const selected = normalizedPricingRuleAutoManagementAdmissionModeOverride(selectedValue);
+      const tradeContextLabel = pricingRuleInitialModeAssignmentLabel(
+        null,
+        tradeContextMode
+      );
 
       return `
-        <option value=""${selected === null ? " selected" : ""}>Execution Context Admission Policy</option>
-        <option value="MANUAL_ONLY"${selected === "MANUAL_ONLY" ? " selected" : ""}>Manual Control</option>
+        <option value=""${selected === null ? " selected" : ""}>${tradeContextLabel}</option>
+        <option value="REVIEW_REQUIRED"${selected === "REVIEW_REQUIRED" ? " selected" : ""}>Manual Mode by Pricing Rule Override</option>
       `;
     }
 
-    function effectiveAutoHedgingAdmissionModeForRule(rule, context = null) {
-      const override = normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-        rule?.autoHedgingAdmissionModeOverride
+    function effectiveAutoManagementAdmissionModeForRule(rule, context = null) {
+      const override = normalizedPricingRuleAutoManagementAdmissionModeOverride(
+        rule?.autoManagementAdmissionModeOverride
       );
 
       if (override) {
@@ -3012,41 +3079,45 @@
       }
 
       const effectiveMode = normalizedReferenceCode(
-        rule?.effectiveAutoHedgingAdmissionMode
+        rule?.effectiveAutoManagementAdmissionMode
       );
 
-      if (AUTO_HEDGING_ADMISSION_MODES.includes(effectiveMode)) {
+      if (AUTO_MANAGEMENT_ADMISSION_MODES.includes(effectiveMode)) {
         return effectiveMode;
       }
 
       const resolvedContext = pricingContextById(rule?.pricingContextId) || context;
-      const executionContextMode = normalizedReferenceCode(
-        rule?.executionContextAdmissionMode ?? resolvedContext?.autoHedgingAdmissionMode
+      const tradeContextMode = normalizedReferenceCode(
+        rule?.tradeContextAdmissionMode ?? resolvedContext?.autoManagementAdmissionMode
       );
 
-      return AUTO_HEDGING_ADMISSION_MODES.includes(executionContextMode)
-        ? executionContextMode
-        : normalizedAutoHedgingAdmissionMode(
-            resolvedContext?.autoHedgingAdmissionMode,
-            resolvedContext?.defaultPositionManagementMode
+      return AUTO_MANAGEMENT_ADMISSION_MODES.includes(tradeContextMode)
+        ? tradeContextMode
+        : normalizedAutoManagementAdmissionMode(
+            resolvedContext?.autoManagementAdmissionMode
           );
     }
 
-    function pricingRuleAutoHedgingAdmissionMarkup(rule) {
-      const label = pricingRuleAutoHedgingAdmissionSourceLabel(
-        rule?.autoHedgingAdmissionModeOverride
+    function pricingRuleAutoManagementAdmissionMarkup(rule) {
+      const effectiveMode = effectiveAutoManagementAdmissionModeForRule(rule);
+      const label = pricingRuleInitialModeAssignmentLabel(
+        rule?.autoManagementAdmissionModeOverride,
+        effectiveMode
       );
+      const icon = initialModeAssignmentIcon(effectiveMode);
 
       return `
-        <span class="position-management-mode-value pricing-rule-admission-policy-source" data-smart-width-content>
-          ${escapeHtml(label)}
+        <span class="position-management-mode-value pricing-rule-admission-policy-source d-inline-flex align-items-center gap-2" data-smart-width-content>
+          <span class="button-icon" aria-hidden="true">${icon}</span>
+          <span>${escapeHtml(label)}</span>
         </span>
       `;
     }
 
-    function clientPricingRuleAutoHedgingAdmissionMarkup(rule) {
-      const label = pricingRuleAutoHedgingAdmissionSourceLabel(
-        rule?.autoHedgingAdmissionModeOverride
+    function clientPricingRuleAutoManagementAdmissionMarkup(rule) {
+      const label = pricingRuleInitialModeAssignmentLabel(
+        rule?.autoManagementAdmissionModeOverride,
+        effectiveAutoManagementAdmissionModeForRule(rule)
       );
 
       return `
@@ -3095,7 +3166,7 @@
       `;
     }
 
-    function executionSystemLabelMarkup(name, pricingType) {
+    function originatingSystemLabelMarkup(name, pricingType) {
       const normalizedName = String(name || "").trim();
       const presentation = pricingTypePresentation(pricingType);
       const pricingIcon = presentation.icon;
@@ -3104,16 +3175,16 @@
 
       return `
         <span
-          class="execution-system-label"
+          class="originating-system-label"
           data-smart-width-content
           data-disable-overflow-tooltip
-          aria-label="Execution System ${escapeHtml(displayName)}; Pricing Mode ${escapeHtml(presentation.label)}"
+          aria-label="Originating System ${escapeHtml(displayName)}; Pricing Mode ${escapeHtml(presentation.label)}"
         >
-          <span class="execution-system-label__system" aria-hidden="true">
-            <span class="button-icon">terminal</span>
+          <span class="originating-system-label__system" aria-hidden="true">
+            <span class="button-icon">web_asset</span>
           </span>
-          <span class="execution-system-label__name${nameClass}">${escapeHtml(displayName)}</span>
-          <span class="execution-system-label__pricing" aria-hidden="true">
+          <span class="originating-system-label__name${nameClass}">${escapeHtml(displayName)}</span>
+          <span class="originating-system-label__pricing" aria-hidden="true">
             <span class="button-icon">${escapeHtml(pricingIcon)}</span>
           </span>
         </span>
@@ -3122,9 +3193,9 @@
 
     function pricingModeForRule(rule, context = null) {
       const resolvedContext = context || pricingContextById(rule?.pricingContextId);
-      const executionSystem = tradeCaptureChannelById(resolvedContext?.tradeCaptureChannelId);
+      const originatingSystem = tradeCaptureChannelById(resolvedContext?.tradeCaptureChannelId);
 
-      return normalizedPricingType(rule?.pricingMode ?? executionSystem?.pricingType);
+      return normalizedPricingType(rule?.pricingMode ?? originatingSystem?.pricingType);
     }
 
     function marginIndicatorMarkup(marginPercent, extraClass = "", showTooltip = true) {
@@ -3223,12 +3294,12 @@
             servicingBranchCode
           );
           const isActive = normalizedReferenceActive(item?.active ?? item?.isActive ?? item?.is_active, true);
-          const executionContextCount = Math.max(
+          const tradeContextCount = Math.max(
             0,
-            Number(item?.executionContextCount ?? item?.execution_context_count) || 0
+            Number(item?.tradeContextCount ?? item?.trade_context_count) || 0
           );
 
-          return { servicingBranchCode, servicingBranchName, region, locationType, isActive, executionContextCount };
+          return { servicingBranchCode, servicingBranchName, region, locationType, isActive, tradeContextCount };
         })
         .filter(item => {
           const valid = isValidServicingLocationId(item.servicingBranchCode) && item.servicingBranchName;
@@ -3261,11 +3332,11 @@
             item?.settlement_system_name
           );
           const isActive = normalizedReferenceActive(item?.active ?? item?.isActive ?? item?.is_active, true);
-          const executionContextCount = Math.max(
+          const tradeContextCount = Math.max(
             0,
-            Number(item?.executionContextCount ?? item?.execution_context_count) || 0
+            Number(item?.tradeContextCount ?? item?.trade_context_count) || 0
           );
-          return { settlementSystemId, settlementSystemName, isActive, executionContextCount };
+          return { settlementSystemId, settlementSystemName, isActive, tradeContextCount };
         })
         .filter(item => {
           const valid = /^[A-Z0-9_-]{2,20}$/.test(item.settlementSystemId) && item.settlementSystemName;
@@ -3287,8 +3358,8 @@
       const normalized = source
         .map(item => {
           const rawTradeCaptureChannelId = normalizedReferenceCode(
-            item?.executionSystemId ??
-            item?.execution_system_id ??
+            item?.originatingSystemId ??
+            item?.originating_system_id ??
             item?.tradeCaptureChannelId ??
             item?.trade_capture_channel_id
           );
@@ -3312,12 +3383,12 @@
             item?.channel_type
           );
           const isActive = normalizedReferenceActive(item?.active ?? item?.isActive ?? item?.is_active, true);
-          const executionContextCount = Math.max(
+          const tradeContextCount = Math.max(
             0,
-            Number(item?.executionContextCount ?? item?.execution_context_count) || 0
+            Number(item?.tradeContextCount ?? item?.trade_context_count) || 0
           );
 
-          return { tradeCaptureChannelId, tradeCaptureChannelName, pricingType, isActive, executionContextCount };
+          return { tradeCaptureChannelId, tradeCaptureChannelName, pricingType, isActive, tradeContextCount };
         })
           .filter(item => {
             const valid = /^[A-Z0-9_-]{2,30}$/.test(item.tradeCaptureChannelId) && item.tradeCaptureChannelName;
@@ -3331,6 +3402,36 @@
         });
 
       return normalized.length > 0 ? normalized : fallback.map(item => ({ ...item }));
+    }
+
+    function normalizedTradePurposes(value, fallback = DEFAULT_TRADE_PURPOSES) {
+      const source = Array.isArray(value) ? value : fallback;
+      const seen = new Set();
+      return source.map(item => ({
+        tradePurposeId: normalizedReferenceCode(item?.tradePurposeId),
+        name: normalizedReferenceText(item?.name),
+        tradeContextCount: 0
+      })).filter(item => {
+        if (!/^[A-Z0-9_-]{2,30}$/.test(item.tradePurposeId)
+          || !item.name || item.name.length > 100 || seen.has(item.tradePurposeId)) {
+          return false;
+        }
+        seen.add(item.tradePurposeId);
+        return true;
+      });
+    }
+
+    function loadTradePurposes() {
+      return normalizedTradePurposes(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.tradePurposes : DemoDb.get("tradePurposes"),
+        DEMO_API_ENABLED ? [] : DEFAULT_TRADE_PURPOSES
+      );
+    }
+
+    function saveTradePurposes() {
+      if (!DEMO_API_ENABLED) {
+        saveReferenceCollection("tradePurposes", tradePurposes);
+      }
     }
 
     function loadReferenceCollection(tableName, defaults, normalizer) {
@@ -3374,7 +3475,7 @@
     function loadTradeCaptureChannels() {
       return normalizedTradeCaptureChannels(
         DEMO_API_ENABLED
-          ? DEMO_API_BOOTSTRAP.executionSystems
+          ? DEMO_API_BOOTSTRAP.originatingSystems
           : DemoDb.get("tradeCaptureChannels"),
         DEFAULT_TRADE_CAPTURE_CHANNELS
       );
@@ -3412,7 +3513,7 @@
         ? value
         : Array.isArray(fallback) ? fallback : [];
       const reservedIds = new Set(source
-        .map(item => normalizedIntegerId(item?.executionContextId ?? item?.execution_context_id ?? item?.pricingContextId))
+        .map(item => normalizedIntegerId(item?.tradeContextId ?? item?.trade_context_id ?? item?.pricingContextId))
         .filter(Boolean));
       const seenIds = new Set();
       const seenNaturalKeys = new Set();
@@ -3440,22 +3541,18 @@
             NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID
           );
           const tradeCaptureChannelId = normalizedTradeCaptureChannelId(
-            item?.executionSystemId ??
-            item?.execution_system_id ??
+            item?.originatingSystemId ??
+            item?.originating_system_id ??
             item?.tradeCaptureChannelId ??
             item?.trade_capture_channel_id ??
             MANUAL_CLIENT_DEAL_ENTRY_CHANNEL_ID
           );
-          const defaultPositionManagementMode = normalizedPositionManagementMode(
-            item?.defaultPositionManagementMode ?? item?.default_position_management_mode
-          );
-          const autoHedgingAdmissionMode = normalizedAutoHedgingAdmissionMode(
-            item?.autoHedgingAdmissionMode ??
-            item?.auto_hedging_admission_mode,
-            defaultPositionManagementMode
+          const autoManagementAdmissionMode = normalizedAutoManagementAdmissionMode(
+            item?.autoManagementAdmissionMode ??
+            item?.auto_management_admission_mode
           );
           let pricingContextIdValue = normalizedIntegerId(
-            item?.executionContextId ?? item?.execution_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
+            item?.tradeContextId ?? item?.trade_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
           );
           const rawAssignedCounterpartyCount =
             item?.assignedCounterpartyCount ??
@@ -3487,8 +3584,7 @@
             servicingBranchCode,
             settlementSystemId,
             tradeCaptureChannelId,
-            defaultPositionManagementMode,
-            autoHedgingAdmissionMode,
+            autoManagementAdmissionMode,
             assignedCounterpartyCount,
             pricingRulesCount
           };
@@ -3519,7 +3615,7 @@
 
     function loadPricingContexts() {
       return DEMO_API_ENABLED
-        ? normalizedPricingContexts(DEMO_API_BOOTSTRAP.executionContexts, [])
+        ? normalizedPricingContexts(DEMO_API_BOOTSTRAP.tradeContexts, [])
         : normalizedPricingContexts(DemoDb.get("pricingContexts"), DEFAULT_PRICING_CONTEXTS);
     }
 
@@ -3582,36 +3678,26 @@
             item?.ccyPairCode ?? item?.ccy_pair_code ?? currencyPair.replace("/", "_")
           ).trim().toUpperCase();
           const pricingContextIdValue = normalizedPricingContextIdValue(
-            item?.executionContextId ?? item?.execution_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
+            item?.tradeContextId ?? item?.trade_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
           );
           const marginPercent = Number(item?.marginPercent ?? item?.margin_percent);
           const sourcePricingMode = item?.pricingMode ?? item?.pricing_mode;
-          const positionManagementModeOverride = normalizedPositionManagementModeOverride(
-            item?.positionManagementModeOverride ?? item?.position_management_mode_override
-          );
-          const effectivePositionManagementMode = positionManagementModeOverride || normalizedPositionManagementMode(
-            item?.effectivePositionManagementMode ??
-            item?.effective_position_management_mode ??
-            pricingContextById(pricingContextIdValue)?.defaultPositionManagementMode
-          );
           const resolvedPricingContext = pricingContextById(pricingContextIdValue);
-          const autoHedgingAdmissionModeOverride =
-            normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-              item?.autoHedgingAdmissionModeOverride ??
-              item?.auto_hedging_admission_mode_override
+          const autoManagementAdmissionModeOverride =
+            normalizedPricingRuleAutoManagementAdmissionModeOverride(
+              item?.autoManagementAdmissionModeOverride ??
+              item?.auto_management_admission_mode_override
             );
-          const executionContextAdmissionMode = normalizedAutoHedgingAdmissionMode(
-            item?.executionContextAdmissionMode ??
-            item?.execution_context_admission_mode ??
-            resolvedPricingContext?.autoHedgingAdmissionMode,
-            resolvedPricingContext?.defaultPositionManagementMode
+          const tradeContextAdmissionMode = normalizedAutoManagementAdmissionMode(
+            item?.tradeContextAdmissionMode ??
+            item?.trade_context_admission_mode ??
+            resolvedPricingContext?.autoManagementAdmissionMode
           );
-          const effectiveAutoHedgingAdmissionMode = autoHedgingAdmissionModeOverride ||
-            normalizedAutoHedgingAdmissionMode(
-              item?.effectiveAutoHedgingAdmissionMode ??
-              item?.effective_auto_hedging_admission_mode ??
-              executionContextAdmissionMode,
-              resolvedPricingContext?.defaultPositionManagementMode
+          const effectiveAutoManagementAdmissionMode = autoManagementAdmissionModeOverride ||
+            normalizedAutoManagementAdmissionMode(
+              item?.effectiveAutoManagementAdmissionMode ??
+              item?.effective_auto_management_admission_mode ??
+              tradeContextAdmissionMode
             );
           const sourcePricingRuleId = item?.pricingRuleId ?? item?.pricing_rule_id;
           let pricingRuleIdValue = normalizedIntegerId(sourcePricingRuleId);
@@ -3648,11 +3734,9 @@
             pricingMode: sourcePricingMode
               ? normalizedPricingType(sourcePricingMode)
               : null,
-            positionManagementModeOverride,
-            effectivePositionManagementMode,
-            autoHedgingAdmissionModeOverride,
-            executionContextAdmissionMode,
-            effectiveAutoHedgingAdmissionMode,
+            autoManagementAdmissionModeOverride,
+            tradeContextAdmissionMode,
+            effectiveAutoManagementAdmissionMode,
             quickHedgeSettingsCount: Math.max(
               0,
               Number(item?.quickHedgeSettingsCount ?? item?.quick_hedge_settings_count) || 0
@@ -3753,7 +3837,7 @@
         pricingRuleId,
         counterpartyId,
         counterpartyName: String(source.counterpartyName || "").trim(),
-        executionContextId: String(source.executionContextId || "").trim(),
+        tradeContextId: String(source.tradeContextId || "").trim(),
         defaultTenor,
         active: source.active === true || Number(source.active) === 1,
         available: source.available === true || Number(source.available) === 1,
@@ -3774,7 +3858,7 @@
       );
     }
 
-    function normalizedAutoHedgingAdmissionPolicyPair(source) {
+    function normalizedAutoManagementAdmissionPolicyPair(source) {
       const ccyPairCode = String(source?.ccyPairCode || "").trim().toUpperCase();
       const currencyPair = normalizedPricingRuleCurrencyPair(
         source?.currencyPair || ccyPairCode.replace("_", "/")
@@ -3822,13 +3906,12 @@
       };
     }
 
-    function normalizedAutoHedgingAdmissionPolicy(source) {
-      const revision = Number(source?.revision);
+    function normalizedAutoManagementAdmissionPolicy(source) {
       const seenCodes = new Set();
       const currencyPairs = (Array.isArray(source?.currencyPairs)
         ? source.currencyPairs
         : [])
-        .map(normalizedAutoHedgingAdmissionPolicyPair)
+        .map(normalizedAutoManagementAdmissionPolicyPair)
         .filter(pair => {
           if (!pair || seenCodes.has(pair.ccyPairCode)) {
             return false;
@@ -3838,32 +3921,36 @@
         })
         .sort((left, right) => left.currencyPair.localeCompare(right.currencyPair));
 
+      const requestedTradeType = String(source?.tradeType || "").trim().toUpperCase();
+
       return {
-        revision: Number.isInteger(revision) && revision >= 0 ? revision : 0,
+        tradeType: AUTO_MODE_ELIGIBILITY_TRADE_TYPES.includes(requestedTradeType)
+          ? requestedTradeType
+          : "CLIENT_DEAL",
         currencyPairs
       };
     }
 
-    function loadAutoHedgingAdmissionPolicy() {
-      return normalizedAutoHedgingAdmissionPolicy(
-        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.autoHedgingAdmissionPolicy : null
+    function loadAutoManagementAdmissionPolicy() {
+      return normalizedAutoManagementAdmissionPolicy(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.autoModeEligibilityRules : null
       );
     }
 
-    function normalizedFxBatchingSettings(source) {
+    function normalizedBatchingSettings(source) {
       return {
         allowCrossTenorBatching: source?.allowCrossTenorBatching === true,
         updatedAt: String(source?.updatedAt || "")
       };
     }
 
-    function loadFxBatchingSettings() {
-      return normalizedFxBatchingSettings(
-        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.fxBatchingSettings : null
+    function loadBatchingSettings() {
+      return normalizedBatchingSettings(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.batchingSettings : null
       );
     }
 
-    function normalizedFxAutoBatchingSettings(source) {
+    function normalizedAutoBatchingSettings(source) {
       const maxIntervalSeconds = Number(source?.maxIntervalSeconds);
       const maxTransferRateSpreadPercent = positiveDecimalInputText(
         source?.maxTransferRateSpreadPercent
@@ -3913,9 +4000,9 @@
       };
     }
 
-    function loadFxAutoBatchingSettings() {
-      return normalizedFxAutoBatchingSettings(
-        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.fxAutoBatchingSettings : null
+    function loadAutoBatchingSettings() {
+      return normalizedAutoBatchingSettings(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.autoBatchingSettings : null
       );
     }
 
@@ -3953,7 +4040,7 @@
       }
     }
 
-    function isoDateFromClientFxDealValue(value) {
+    function isoDateFromClientDealValue(value) {
       const text = String(value || "").trim();
       const displayDateMatch = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(text);
 
@@ -3962,7 +4049,7 @@
         : text;
     }
 
-    function normalizedClientFxDeal(value) {
+    function normalizedClientDeal(value) {
       const source = value && typeof value === "object" ? value : {};
       const legacyPair = normalizedPricingRuleCurrencyPair(source.currencyPair);
       const ccyPairCode = String(source.ccyPairCode || legacyPair.replace("/", "_")).trim().toUpperCase();
@@ -4009,23 +4096,23 @@
           quoteCcyFractionDigits
         ));
       }
-      const entryDate = isoDateFromClientFxDealValue(source.entryDate);
+      const entryDate = isoDateFromClientDealValue(source.entryDate);
       const executionTimestamp = String(source.executionTimestamp || "").trim()
         || (entryDate ? `${entryDate}T00:00:00.000Z` : "");
       const receivedTimestamp = String(source.receivedTimestamp || "").trim()
         || executionTimestamp;
-      const tradeDate = isoDateFromClientFxDealValue(source.tradeDate);
-      const baseCcyValueDate = isoDateFromClientFxDealValue(
+      const tradeDate = isoDateFromClientDealValue(source.tradeDate);
+      const baseCcyValueDate = isoDateFromClientDealValue(
         source.baseCcyValueDate ?? source.baseCurrencySettlementDay ?? source.valueDate
       );
-      const quoteCcyValueDate = isoDateFromClientFxDealValue(
+      const quoteCcyValueDate = isoDateFromClientDealValue(
         source.quoteCcyValueDate ?? source.quoteCurrencySettlementDay ?? source.valueDate
       );
       const side = String(source.side || (Number(source.amountBuy) > 0 ? "BUY" : Number(source.amountSell) > 0 ? "SELL" : ""))
         .trim()
         .toUpperCase();
-      const executionContextId = Number(
-        source.executionContextId ?? source.execution_context_id ?? source.pricingContextId ?? source.pricing_context_id
+      const tradeContextId = Number(
+        source.tradeContextId ?? source.trade_context_id ?? source.pricingContextId ?? source.pricing_context_id
       );
       const pricingRuleId = Number(source.pricingRuleId ?? source.pricing_rule_id);
       const pricingRuleMarginSource = source.pricingRuleMargin ?? source.pricing_rule_margin;
@@ -4090,29 +4177,29 @@
         source.marketPulseTimestamp ?? source.market_pulse_timestamp ?? ""
       ).trim();
 
-      const tradeId = Number(source.tradeId ?? source.clientDealId ?? source.clientFxDealId ?? source.id);
-      const currentFxPositionMode = normalizedPositionManagementMode(
-        source.currentFxPositionMode
-        ?? source.current_fx_position_mode
-        ?? source.fxPositionMode
-        ?? source.fx_position_mode
+      const tradeId = Number(source.tradeId ?? source.clientDealId ?? source.id);
+      const currentPositionManagementMode = normalizedPositionManagementMode(
+        source.currentPositionManagementMode
+        ?? source.current_position_management_mode
+        ?? source.positionManagementMode
+        ?? source.position_mode
       );
-      const initialFxPositionMode = normalizedPositionManagementMode(
-        source.initialFxPositionMode
-        ?? source.initial_fx_position_mode,
-        currentFxPositionMode
+      const initialPositionManagementMode = normalizedPositionManagementMode(
+        source.initialPositionManagementMode
+        ?? source.initial_position_management_mode,
+        currentPositionManagementMode
       );
 
       return {
         tradeId,
         clientDealId: tradeId,
-        initialFxPositionMode,
-        currentFxPositionMode,
+        initialPositionManagementMode,
+        currentPositionManagementMode,
         executionTimestamp,
         receivedTimestamp,
         counterpartyId: Number(source.counterpartyId) || null,
-        executionContextId: Number.isInteger(executionContextId) && executionContextId > 0
-          ? executionContextId
+        tradeContextId: Number.isInteger(tradeContextId) && tradeContextId > 0
+          ? tradeContextId
           : null,
         pricingRuleId: Number.isInteger(pricingRuleId) && pricingRuleId > 0 ? pricingRuleId : null,
         pricingRuleMargin: Number.isFinite(pricingRuleMargin) ? pricingRuleMargin : null,
@@ -4156,33 +4243,33 @@
       };
     }
 
-    function loadClientFxDeals() {
-      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.clientFxDeals : [];
+    function loadClientDeals() {
+      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.clientDeals : [];
 
       return (Array.isArray(source) ? source : [])
-        .map(normalizedClientFxDeal)
+        .map(normalizedClientDeal)
         .filter(deal => Number.isInteger(deal.clientDealId) && deal.clientDealId > 0)
         .sort((left, right) => left.clientDealId - right.clientDealId);
     }
 
-    async function reloadClientFxDealsFromApi() {
-      const records = await demoApiRequest("/api/v1/client-fx-deals");
-      clientFxDeals = (Array.isArray(records) ? records : [])
-        .map(normalizedClientFxDeal)
+    async function reloadClientDealsFromApi() {
+      const records = await demoApiRequest("/api/v1/client-deals");
+      clientDeals = (Array.isArray(records) ? records : [])
+        .map(normalizedClientDeal)
         .filter(deal => Number.isInteger(deal.clientDealId) && deal.clientDealId > 0)
         .sort((left, right) => left.clientDealId - right.clientDealId);
-      return clientFxDeals;
+      return clientDeals;
     }
 
-    function normalizedHedgeFxDeal(value) {
+    function normalizedHedgeDeal(value) {
       const source = value && typeof value === "object" ? value : {};
-      const sharedTrade = normalizedClientFxDeal({
+      const sharedTrade = normalizedClientDeal({
         ...source,
         clientCode: source.counterpartyCode ?? source.clientCode,
         clientCodeType: source.counterpartyCodeType ?? source.clientCodeType,
         clientName: source.counterpartyName ?? source.clientName
       });
-      const tradeId = Number(source.tradeId ?? source.hedgeDealId ?? source.hedgeFxDealId ?? source.id);
+      const tradeId = Number(source.tradeId ?? source.hedgeDealId ?? source.id);
 
       return {
         ...sharedTrade,
@@ -4197,25 +4284,25 @@
       };
     }
 
-    function loadHedgeFxDeals() {
-      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.hedgeFxDeals : [];
+    function loadHedgeDeals() {
+      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.hedgeDeals : [];
 
       return (Array.isArray(source) ? source : [])
-        .map(normalizedHedgeFxDeal)
+        .map(normalizedHedgeDeal)
         .filter(deal => Number.isInteger(deal.hedgeDealId) && deal.hedgeDealId > 0)
         .sort((left, right) => left.hedgeDealId - right.hedgeDealId);
     }
 
-    async function reloadHedgeFxDealsFromApi() {
-      const records = await demoApiRequest("/api/v1/hedge-fx-deals");
-      hedgeFxDeals = (Array.isArray(records) ? records : [])
-        .map(normalizedHedgeFxDeal)
+    async function reloadHedgeDealsFromApi() {
+      const records = await demoApiRequest("/api/v1/hedge-deals");
+      hedgeDeals = (Array.isArray(records) ? records : [])
+        .map(normalizedHedgeDeal)
         .filter(deal => Number.isInteger(deal.hedgeDealId) && deal.hedgeDealId > 0)
         .sort((left, right) => left.hedgeDealId - right.hedgeDealId);
-      return hedgeFxDeals;
+      return hedgeDeals;
     }
 
-    function normalizedFxBatch(value) {
+    function normalizedBatch(value) {
       const source = value && typeof value === "object" ? value : {};
       const sourceBatchingKey = source.batchingKey
         && typeof source.batchingKey === "object"
@@ -4274,23 +4361,23 @@
       };
     }
 
-    function loadFxBatches() {
-      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.fxBatches : [];
+    function loadBatches() {
+      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.batches : [];
 
       return (Array.isArray(source) ? source : [])
-        .map(normalizedFxBatch)
+        .map(normalizedBatch)
         .filter(batch => Number.isInteger(batch.batchId) && batch.batchId > 0)
         .sort((left, right) => right.batchId - left.batchId);
     }
 
-    async function reloadFxBatchesFromApi() {
-      const records = await demoApiRequest("/api/v1/fx-batches");
-      fxBatchHistory = (Array.isArray(records) ? records : [])
-        .map(normalizedFxBatch)
+    async function reloadBatchesFromApi() {
+      const records = await demoApiRequest("/api/v1/batches");
+      batchHistory = (Array.isArray(records) ? records : [])
+        .map(normalizedBatch)
         .filter(batch => Number.isInteger(batch.batchId) && batch.batchId > 0)
         .sort((left, right) => right.batchId - left.batchId);
-      renderBatchingHistory(fxBatchHistory);
-      return fxBatchHistory;
+      renderBatchingHistory(batchHistory);
+      return batchHistory;
     }
 
     function normalizedBatchBalanceMinor(
@@ -4462,9 +4549,9 @@
       };
     }
 
-    function normalizedFxBatchDetails(value) {
+    function normalizedBatchDetails(value) {
       const source = value && typeof value === "object" ? value : {};
-      const batch = normalizedFxBatch(source);
+      const batch = normalizedBatch(source);
       const batchingKeySource = source.batchingKey
         && typeof source.batchingKey === "object"
         ? source.batchingKey
@@ -4507,12 +4594,12 @@
       };
     }
 
-    async function loadFxBatchDetailsFromApi(batchId) {
+    async function loadBatchDetailsFromApi(batchId) {
       const record = await demoApiRequest(
-        `/api/v1/fx-batches/${encodeURIComponent(batchId)}`
+        `/api/v1/batches/${encodeURIComponent(batchId)}`
       );
 
-      return normalizedFxBatchDetails(record);
+      return normalizedBatchDetails(record);
     }
 
     function normalizedBatchBalancingTrade(value) {
@@ -4560,43 +4647,43 @@
       };
     }
 
-    async function reloadFxPositionsFromApi() {
-      const requestSequence = ++fxPositionsRequestSequence;
-      const records = await demoApiRequest("/api/v1/fx-positions");
+    async function reloadPositionsFromApi() {
+      const requestSequence = ++positionsRequestSequence;
+      const records = await demoApiRequest("/api/v1/positions");
 
-      if (requestSequence !== fxPositionsRequestSequence) {
-        return fxPositionRecords;
+      if (requestSequence !== positionsRequestSequence) {
+        return positionRecords;
       }
 
-      fxPositionRecords = Array.isArray(records) ? records : [];
-      loadFxPositionsFromDatabase();
-      return fxPositionRecords;
+      positionRecords = Array.isArray(records) ? records : [];
+      loadPositionsFromDatabase();
+      return positionRecords;
     }
 
     async function refreshClientDealViewsFromApi() {
       await Promise.all([
-        reloadClientFxDealsFromApi(),
-        reloadFxPositionsFromApi()
+        reloadClientDealsFromApi(),
+        reloadPositionsFromApi()
       ]);
     }
 
     async function refreshHedgeDealViewsFromApi() {
       await Promise.all([
-        reloadHedgeFxDealsFromApi(),
-        reloadFxPositionsFromApi()
+        reloadHedgeDealsFromApi(),
+        reloadPositionsFromApi()
       ]);
     }
 
-    function fxPositionFromClientFxDeal(record) {
+    function positionFromClientDeal(record) {
       const [baseCcy = "EUR", quoteCcy = "USD"] = record.currencyPair.split("/");
       const side = record.side.toUpperCase();
 
       return {
         id: String(record.clientDealId),
-        clientFxDealId: record.clientDealId,
-        databaseBackedClientFxDeal: true,
+        clientDealId: record.clientDealId,
+        databaseBackedClientDeal: true,
         counterpartyId: record.counterpartyId,
-        positionId: `FXP-CLIENT_DEAL-${record.clientDealId}`,
+        positionId: `POS-CLIENT_DEAL-${record.clientDealId}`,
         branchCode: "",
         inn: record.clientCode,
         clientCodeType: record.clientCodeType,
@@ -4609,11 +4696,11 @@
         clientName: record.clientName,
         executionTimestamp: record.executionTimestamp,
         receivedTimestamp: record.receivedTimestamp,
-        entryDate: clientFxDealsDateLabel(record.executionTimestamp.slice(0, 10)),
-        tradeDate: clientFxDealsDateLabel(record.tradeDate),
-        valueDate: clientFxDealsDateLabel(record.baseCcyValueDate),
-        baseCurrencySettlementDay: clientFxDealsDateLabel(record.baseCcyValueDate),
-        quoteCurrencySettlementDay: clientFxDealsDateLabel(record.quoteCcyValueDate),
+        entryDate: clientDealsDateLabel(record.executionTimestamp.slice(0, 10)),
+        tradeDate: clientDealsDateLabel(record.tradeDate),
+        valueDate: clientDealsDateLabel(record.baseCcyValueDate),
+        baseCurrencySettlementDay: clientDealsDateLabel(record.baseCcyValueDate),
+        quoteCurrencySettlementDay: clientDealsDateLabel(record.quoteCcyValueDate),
         settlementMethod: "PVP",
         tenor: record.tenor,
         baseCurrency: baseCcy,
@@ -4636,7 +4723,7 @@
         pricingRuleControlStatus: record.pricingRuleId === null
           ? "CLIENT_ONBOARDING_MANUAL_PRICING"
           : "PRICING_RULE_APPLIED",
-        pricingContextId: record.executionContextId === null ? "" : String(record.executionContextId),
+        pricingContextId: record.tradeContextId === null ? "" : String(record.tradeContextId),
         manualPricingReason: record.pricingRuleId === null
           ? CLIENT_ONBOARDING_MANUAL_PRICING
           : null,
@@ -4653,16 +4740,16 @@
       };
     }
 
-    function fxPositionFromHedgeFxDeal(record) {
+    function positionFromHedgeDeal(record) {
       const [baseCcy = "EUR", quoteCcy = "USD"] = record.currencyPair.split("/");
       const side = record.side.toUpperCase();
 
       return {
         id: String(record.hedgeDealId),
-        hedgeFxDealId: record.hedgeDealId,
-        databaseBackedHedgeFxDeal: true,
+        hedgeDealId: record.hedgeDealId,
+        databaseBackedHedgeDeal: true,
         counterpartyId: record.counterpartyId,
-        positionId: `FXP-HEDGE_DEAL-${record.hedgeDealId}`,
+        positionId: `POS-HEDGE_DEAL-${record.hedgeDealId}`,
         branchCode: "",
         inn: record.counterpartyCode,
         clientCodeType: record.counterpartyCodeType,
@@ -4675,11 +4762,11 @@
         clientName: "",
         executionTimestamp: record.executionTimestamp,
         receivedTimestamp: record.receivedTimestamp,
-        entryDate: clientFxDealsDateLabel(record.executionTimestamp.slice(0, 10)),
-        tradeDate: clientFxDealsDateLabel(record.tradeDate),
-        valueDate: clientFxDealsDateLabel(record.baseCcyValueDate),
-        baseCurrencySettlementDay: clientFxDealsDateLabel(record.baseCcyValueDate),
-        quoteCurrencySettlementDay: clientFxDealsDateLabel(record.quoteCcyValueDate),
+        entryDate: clientDealsDateLabel(record.executionTimestamp.slice(0, 10)),
+        tradeDate: clientDealsDateLabel(record.tradeDate),
+        valueDate: clientDealsDateLabel(record.baseCcyValueDate),
+        baseCurrencySettlementDay: clientDealsDateLabel(record.baseCcyValueDate),
+        quoteCurrencySettlementDay: clientDealsDateLabel(record.quoteCcyValueDate),
         settlementMethod: "PVP",
         tenor: record.tenor,
         baseCurrency: baseCcy,
@@ -4700,7 +4787,7 @@
         pricingRuleId: record.pricingRuleId === null ? "" : String(record.pricingRuleId),
         pricingRuleMargin: record.pricingRuleMargin,
         pricingRuleControlStatus: "",
-        pricingContextId: record.executionContextId === null ? "" : String(record.executionContextId),
+        pricingContextId: record.tradeContextId === null ? "" : String(record.tradeContextId),
         entryMarketBid: record.marketPulseBid,
         entryMarketOffer: record.marketPulseOffer,
         entryMarketTimestamp: record.marketPulseTimestamp,
@@ -4712,7 +4799,7 @@
       };
     }
 
-    function fxPositionFromBatchBalancingTrade(record) {
+    function positionFromBatchBalancingTrade(record) {
       const [baseCcy = "EUR", quoteCcy = "USD"] = record.currencyPair.split("/");
       const side = record.side.toUpperCase();
 
@@ -4722,7 +4809,7 @@
         batchTradeId: record.batchTradeId,
         batchPairId: record.batchPairId,
         databaseBackedBatchBalancingTrade: true,
-        positionId: `FXP-${record.tradeType}-${record.tradeId}`,
+        positionId: `POS-${record.tradeType}-${record.tradeId}`,
         branchCode: "",
         inn: "",
         clientCodeType: "",
@@ -4735,11 +4822,11 @@
         clientName: "",
         executionTimestamp: record.executionTimestamp,
         receivedTimestamp: record.receivedTimestamp,
-        entryDate: clientFxDealsDateLabel(record.executionTimestamp.slice(0, 10)),
-        tradeDate: clientFxDealsDateLabel(record.tradeDate),
-        valueDate: clientFxDealsDateLabel(record.baseCcyValueDate),
-        baseCurrencySettlementDay: clientFxDealsDateLabel(record.baseCcyValueDate),
-        quoteCurrencySettlementDay: clientFxDealsDateLabel(record.quoteCcyValueDate),
+        entryDate: clientDealsDateLabel(record.executionTimestamp.slice(0, 10)),
+        tradeDate: clientDealsDateLabel(record.tradeDate),
+        valueDate: clientDealsDateLabel(record.baseCcyValueDate),
+        baseCurrencySettlementDay: clientDealsDateLabel(record.baseCcyValueDate),
+        quoteCurrencySettlementDay: clientDealsDateLabel(record.quoteCcyValueDate),
         settlementMethod: "PVP",
         tenor: record.tenor,
         baseCurrency: baseCcy,
@@ -4771,11 +4858,11 @@
       };
     }
 
-    function clientFxDealApiPayloadFromFxPosition(deal) {
+    function clientDealApiPayloadFromPosition(deal) {
       const profile = clientProfiles.find(item => item.counterpartyId === Number(deal.counterpartyId))
-        || clientProfileByInn(clientFxDealClientCode(deal));
+        || clientProfileByInn(clientDealClientCode(deal));
       const executionTimestamp = String(deal.executionTimestamp || "").trim();
-      const executionContextId = Number(deal.pricingContextId);
+      const tradeContextId = Number(deal.pricingContextId);
       const pricingRuleId = Number(deal.pricingRuleId);
       const manualPricing = deal.manualPricingReason === CLIENT_ONBOARDING_MANUAL_PRICING
         || deal.pricingRuleControlStatus === "CLIENT_ONBOARDING_MANUAL_PRICING";
@@ -4794,8 +4881,8 @@
       return {
         executionTimestamp: persistedExecutionTimestamp,
         counterpartyId: profile?.counterpartyId ?? null,
-        executionContextId: Number.isInteger(executionContextId) && executionContextId > 0
-          ? executionContextId
+        tradeContextId: Number.isInteger(tradeContextId) && tradeContextId > 0
+          ? tradeContextId
           : null,
         pricingRuleId: Number.isInteger(pricingRuleId) && pricingRuleId > 0 ? pricingRuleId : null,
         manualPricingReason: manualPricing
@@ -4804,15 +4891,15 @@
         transferRate: manualPricing
           ? String(deal.manualTransferRateText || deal.autoBatchRate || "")
           : null,
-        tradeDate: isoDateFromClientFxDealValue(positionTradeDate(deal)),
+        tradeDate: isoDateFromClientDealValue(positionTradeDate(deal)),
         ccyPairCode: currencyPair(deal).replace("/", "_"),
-        side: fxPositionSide(deal).toUpperCase(),
+        side: positionSide(deal).toUpperCase(),
         dealtCcyCode: String(deal.dealtCcyCode || deal.baseCurrency || "").trim().toUpperCase(),
         dealtCcyAmount: String(deal.dealtCcyAmount || ""),
         tradeRate: String(deal.tradeRateText || deal.clientRate || ""),
         tenor: positionTenor(deal).toUpperCase(),
-        baseCcyValueDate: isoDateFromClientFxDealValue(baseCurrencyValueDate(deal)),
-        quoteCcyValueDate: isoDateFromClientFxDealValue(quoteCurrencyValueDate(deal)),
+        baseCcyValueDate: isoDateFromClientDealValue(baseCurrencyValueDate(deal)),
+        quoteCcyValueDate: isoDateFromClientDealValue(quoteCurrencyValueDate(deal)),
         marketPulseStreamStatus,
         marketPulseBid: hasMarketPulseSnapshot ? marketPulseBid : null,
         marketPulseOffer: hasMarketPulseSnapshot ? marketPulseOffer : null,
@@ -4825,28 +4912,28 @@
       };
     }
 
-    async function createClientFxDealRecord(deal) {
+    async function createClientDealRecord(deal) {
       if (!DEMO_API_ENABLED) {
-        throw new Error("SQLite API is required to save a Client FX Deal.");
+        throw new Error("SQLite API is required to save a Client Deal.");
       }
 
       const saved = await demoApiRequest(
-        "/api/v1/client-fx-deals",
+        "/api/v1/client-deals",
         {
           method: "POST",
-          body: JSON.stringify(clientFxDealApiPayloadFromFxPosition(deal))
+          body: JSON.stringify(clientDealApiPayloadFromPosition(deal))
         }
       );
-      return normalizedClientFxDeal(saved);
+      return normalizedClientDeal(saved);
     }
 
     function pricingRuleApiPayload(rule, currentRule = null) {
       if (currentRule) {
         return {
           marginPercent: Number(rule?.marginPercent),
-          autoHedgingAdmissionModeOverride:
-            normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-              rule?.autoHedgingAdmissionModeOverride
+          autoManagementAdmissionModeOverride:
+            normalizedPricingRuleAutoManagementAdmissionModeOverride(
+              rule?.autoManagementAdmissionModeOverride
             )
         };
       }
@@ -4855,12 +4942,12 @@
 
       return {
         counterpartyId: profile?.counterpartyId ?? null,
-        executionContextId: normalizedPricingContextIdValue(rule?.pricingContextId),
+        tradeContextId: normalizedPricingContextIdValue(rule?.pricingContextId),
         ccyPairCode: String(rule?.ccyPairCode || rule?.currencyPair?.replace("/", "_") || "").toUpperCase(),
         marginPercent: Number(rule?.marginPercent),
-        autoHedgingAdmissionModeOverride:
-          normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-            rule?.autoHedgingAdmissionModeOverride
+        autoManagementAdmissionModeOverride:
+          normalizedPricingRuleAutoManagementAdmissionModeOverride(
+            rule?.autoManagementAdmissionModeOverride
           )
       };
     }
@@ -4869,21 +4956,20 @@
       if (!DEMO_API_ENABLED) {
         const mergedRule = currentRule ? { ...currentRule, ...rule } : { ...rule };
         const context = pricingContextById(mergedRule.pricingContextId);
-        const executionContextAdmissionMode = normalizedAutoHedgingAdmissionMode(
-          context?.autoHedgingAdmissionMode,
-          context?.defaultPositionManagementMode
+        const tradeContextAdmissionMode = normalizedAutoManagementAdmissionMode(
+          context?.autoManagementAdmissionMode
         );
-        const autoHedgingAdmissionModeOverride =
-          normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-            mergedRule.autoHedgingAdmissionModeOverride
+        const autoManagementAdmissionModeOverride =
+          normalizedPricingRuleAutoManagementAdmissionModeOverride(
+            mergedRule.autoManagementAdmissionModeOverride
           );
 
         return {
           ...mergedRule,
-          autoHedgingAdmissionModeOverride,
-          executionContextAdmissionMode,
-          effectiveAutoHedgingAdmissionMode:
-            autoHedgingAdmissionModeOverride || executionContextAdmissionMode
+          autoManagementAdmissionModeOverride,
+          tradeContextAdmissionMode,
+          effectiveAutoManagementAdmissionMode:
+            autoManagementAdmissionModeOverride || tradeContextAdmissionMode
         };
       }
 
@@ -4969,7 +5055,7 @@
       ).size;
     }
 
-    function executionContextDependencyDescription(pricingContextIdValue) {
+    function tradeContextDependencyDescription(pricingContextIdValue) {
       const counterpartyCount = pricingContextUsageCount(pricingContextIdValue);
       return counterpartyCount > 0
         ? `${counterpartyCount} trading ${counterpartyCount === 1 ? "counterparty" : "counterparties"}`
@@ -5006,7 +5092,7 @@
       return rules.find(rule => rule.currencyPair === pair) || rules[0] || null;
     }
 
-    function pricingRuleForFxPosition(deal) {
+    function pricingRuleForPosition(deal) {
       if (deal?.pricingRuleControlStatus === "PRICING_RULE_REQUIRED") {
         return null;
       }
@@ -5014,7 +5100,7 @@
       const rules = clientPricingRulesForInn(deal?.inn || deal?.clientCode || "");
       const storedRuleId = String(deal?.pricingRuleId || deal?.pricing_rule_id || "").trim();
       const pair = currencyPair(deal);
-      const storedContextId = fxPositionExecutionContextId(deal);
+      const storedContextId = positionTradeContextId(deal);
 
       return rules.find(rule => rule.pricingRuleId === storedRuleId)
         || rules.find(rule => rule.currencyPair === pair && rule.pricingContextId === storedContextId)
@@ -5022,16 +5108,16 @@
         || null;
     }
 
-    function fxDealPricingRuleId(deal) {
+    function dealPricingRuleId(deal) {
       if (deal?.pricingRuleControlStatus === "PRICING_RULE_REQUIRED") {
         return "";
       }
 
       const storedRuleId = String(deal?.pricingRuleId || deal?.pricing_rule_id || "").trim();
-      return storedRuleId || pricingRuleForFxPosition(deal)?.pricingRuleId || "";
+      return storedRuleId || pricingRuleForPosition(deal)?.pricingRuleId || "";
     }
 
-    function fxDealPricingRuleMargin(deal) {
+    function dealPricingRuleMargin(deal) {
       if (deal?.pricingRuleControlStatus === "PRICING_RULE_REQUIRED") {
         return null;
       }
@@ -5046,15 +5132,15 @@
         }
       }
 
-      return pricingRuleForFxPosition(deal)?.marginPercent ?? null;
+      return pricingRuleForPosition(deal)?.marginPercent ?? null;
     }
 
-    function fxDealPricingRuleMarginCell(deal) {
-      const margin = fxDealPricingRuleMargin(deal);
+    function dealPricingRuleMarginCell(deal) {
+      const margin = dealPricingRuleMargin(deal);
       return Number.isFinite(margin) ? `${editNumber(margin, 4)}%` : "";
     }
 
-    function fxPositionExecutionContextId(deal) {
+    function positionTradeContextId(deal) {
       const storedId = normalizedPricingContextIdValue(deal?.pricingContextId ?? deal?.pricing_context_id);
 
       if (storedId) {
@@ -5070,18 +5156,18 @@
         : "";
     }
 
-    function pricingContextForFxPosition(deal) {
+    function pricingContextForPosition(deal) {
       if (deal?.pricingRuleControlStatus === "PRICING_RULE_REQUIRED") {
         return null;
       }
 
-      const storedContext = pricingContextById(fxPositionExecutionContextId(deal));
-      const rule = pricingRuleForFxPosition(deal);
+      const storedContext = pricingContextById(positionTradeContextId(deal));
+      const rule = pricingRuleForPosition(deal);
 
       return storedContext || pricingContextById(rule?.pricingContextId) || null;
     }
 
-    function applyPricingContextToFxPosition(deal, options = {}) {
+    function applyPricingContextToPosition(deal, options = {}) {
       const type = String(deal?.type || "client_deal").toLowerCase();
       const force = options.force === true;
 
@@ -5095,7 +5181,7 @@
         return;
       }
 
-      const context = pricingContextForFxPosition(deal);
+      const context = pricingContextForPosition(deal);
 
       if (force || !deal.pricingContextId) {
         deal.pricingContextId = context?.pricingContextId || "";
@@ -5122,23 +5208,23 @@
         .join("");
     }
 
-    function pricingRuleCounterpartyExecutionContextState(inn = "") {
+    function pricingRuleCounterpartyTradeContextState(inn = "") {
       const profile = clientProfileByInn(inn);
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
 
       if (!profile || !counterpartyId) {
         return { status: "missing-counterparty", profile: null, contexts: [] };
       }
 
-      if (!DEMO_API_ENABLED || tradingCounterpartyExecutionContexts.has(counterpartyId)) {
+      if (!DEMO_API_ENABLED || tradingCounterpartyTradeContexts.has(counterpartyId)) {
         return {
           status: "loaded",
           profile,
-          contexts: assignedExecutionContextsForProfile(profile)
+          contexts: assignedTradeContextsForProfile(profile)
         };
       }
 
-      const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+      const loadState = tradingCounterpartyTradeContextLoadStates.get(counterpartyId);
 
       return {
         status: loadState?.status || "unloaded",
@@ -5148,15 +5234,15 @@
       };
     }
 
-    function availablePricingRuleExecutionContextIds(inn = "") {
-      return pricingRuleCounterpartyExecutionContextState(inn).contexts
+    function availablePricingRuleTradeContextIds(inn = "") {
+      return pricingRuleCounterpartyTradeContextState(inn).contexts
         .map(context => context.pricingContextId)
         .filter(Boolean)
         .sort((left, right) => left.localeCompare(right, "en", { numeric: true, sensitivity: "base" }));
     }
 
-    function resolvedPricingRuleExecutionContextId(selectedPricingContextId = "", inn = "") {
-      const availableContextIds = availablePricingRuleExecutionContextIds(inn);
+    function resolvedPricingRuleTradeContextId(selectedPricingContextId = "", inn = "") {
+      const availableContextIds = availablePricingRuleTradeContextIds(inn);
 
       if (availableContextIds.includes(selectedPricingContextId)) {
         return selectedPricingContextId;
@@ -5166,24 +5252,24 @@
     }
 
     function pricingRuleContextOptions(selectedPricingContextId = "", inn = "") {
-      const state = pricingRuleCounterpartyExecutionContextState(inn);
-      const availableContextIds = availablePricingRuleExecutionContextIds(inn);
-      const resolvedContextId = resolvedPricingRuleExecutionContextId(selectedPricingContextId, inn);
+      const state = pricingRuleCounterpartyTradeContextState(inn);
+      const availableContextIds = availablePricingRuleTradeContextIds(inn);
+      const resolvedContextId = resolvedPricingRuleTradeContextId(selectedPricingContextId, inn);
 
       if (state.status === "missing-counterparty") {
         return '<option value="">Select a Trading Counterparty first</option>';
       }
 
       if (state.status === "loading" || state.status === "unloaded") {
-        return '<option value="">Loading attached Execution Contexts...</option>';
+        return '<option value="">Loading attached Trade Contexts...</option>';
       }
 
       if (state.status === "error") {
-        return '<option value="">Attached Execution Contexts unavailable</option>';
+        return '<option value="">Attached Trade Contexts unavailable</option>';
       }
 
       if (availableContextIds.length === 0) {
-        return '<option value="">No attached Execution Contexts</option>';
+        return '<option value="">No attached Trade Contexts</option>';
       }
 
       return `${availableContextIds.length > 1 ? `<option value=""></option>` : ""}${availableContextIds
@@ -5197,18 +5283,18 @@
       }
 
       if (state.status === "error") {
-        return state.message || "Attached Execution Contexts could not be loaded.";
+        return state.message || "Attached Trade Contexts could not be loaded.";
       }
 
       if (state.status === "loaded" && state.contexts.length === 0) {
-        return "Attach an Execution Context to this Trading Counterparty before adding a Pricing Rule.";
+        return "Attach a Trade Context to this Trading Counterparty before adding a Pricing Rule.";
       }
 
       return "";
     }
 
-    function ensurePricingRuleCounterpartyExecutionContexts(row, inn) {
-      const state = pricingRuleCounterpartyExecutionContextState(inn);
+    function ensurePricingRuleCounterpartyTradeContexts(row, inn) {
+      const state = pricingRuleCounterpartyTradeContextState(inn);
 
       if (state.status !== "unloaded" || !state.profile) {
         return;
@@ -5216,7 +5302,7 @@
 
       const expectedCounterpartyId = state.profile.counterpartyId;
 
-      refreshTradingCounterpartyExecutionContexts(state.profile, { render: false }).then(() => {
+      refreshTradingCounterpartyTradeContexts(state.profile, { render: false }).then(() => {
         if (!row.isConnected) {
           return;
         }
@@ -5250,18 +5336,18 @@
       const selectedContextId = (
         contextSelect.value || contextSelect.dataset.pricingRuleContextPreferred || ""
       ).trim().toUpperCase();
-      const initialState = pricingRuleCounterpartyExecutionContextState(inn);
+      const initialState = pricingRuleCounterpartyTradeContextState(inn);
 
-      ensurePricingRuleCounterpartyExecutionContexts(row, inn);
+      ensurePricingRuleCounterpartyTradeContexts(row, inn);
 
       const state = initialState.status === "unloaded"
-        ? pricingRuleCounterpartyExecutionContextState(inn)
+        ? pricingRuleCounterpartyTradeContextState(inn)
         : initialState;
-      const availableContextIds = availablePricingRuleExecutionContextIds(inn);
+      const availableContextIds = availablePricingRuleTradeContextIds(inn);
       const help = row.querySelector("[data-pricing-rule-context-help]");
 
       contextSelect.innerHTML = pricingRuleContextOptions(selectedContextId, inn);
-      contextSelect.value = resolvedPricingRuleExecutionContextId(selectedContextId, inn);
+      contextSelect.value = resolvedPricingRuleTradeContextId(selectedContextId, inn);
       contextSelect.disabled = state.status !== "loaded" || availableContextIds.length === 0;
       if (state.status === "loaded") {
         contextSelect.dataset.pricingRuleContextPreferred = contextSelect.value;
@@ -5275,24 +5361,47 @@
       }
     }
 
-    function pricingRuleRowAutoHedgingAdmissionModeOverride(row) {
+    function pricingRuleRowAutoManagementAdmissionModeOverride(row) {
       const overrideControl = row?.querySelector(
-        "[data-pricing-rule-field='autoHedgingAdmissionModeOverride']"
+        "[data-pricing-rule-field='autoManagementAdmissionModeOverride']"
       );
 
-      return pricingRuleAutoHedgingAdmissionModeOverrideFromControl(overrideControl);
+      return pricingRuleAutoManagementAdmissionModeOverrideFromControl(overrideControl);
     }
 
-    function syncPricingRuleRowAutoHedgingAdmissionControls(row) {
+    function syncPricingRuleRowAutoManagementAdmissionControls(row) {
       const overrideControl = row?.querySelector(
-        "[data-pricing-rule-field='autoHedgingAdmissionModeOverride']"
+        "[data-pricing-rule-field='autoManagementAdmissionModeOverride']"
       );
 
       if (!overrideControl) {
         return null;
       }
 
-      return pricingRuleRowAutoHedgingAdmissionModeOverride(row);
+      const override = pricingRuleRowAutoManagementAdmissionModeOverride(row);
+      const contextId = row.querySelector(
+        "[data-pricing-rule-field='pricingContextId']"
+      )?.value;
+      const context = pricingContextById(contextId);
+      const icon = row.querySelector(
+        "[data-pricing-rule-initial-mode-assignment-icon]"
+      );
+      const tradeContextOption = overrideControl.querySelector?.('option[value=""]');
+
+      if (icon) {
+        icon.textContent = initialModeAssignmentIcon(
+          override || context?.autoManagementAdmissionMode
+        );
+      }
+
+      if (tradeContextOption) {
+        tradeContextOption.textContent = pricingRuleInitialModeAssignmentLabel(
+          null,
+          context?.autoManagementAdmissionMode
+        );
+      }
+
+      return override;
     }
 
     function syncPricingRuleRowPreview(row) {
@@ -5300,9 +5409,10 @@
       const inn = row.querySelector("[data-pricing-rule-field='inn']")?.value.trim() || "";
       const currencyPairValue = normalizedPricingRuleCurrencyPair(row.querySelector("[data-pricing-rule-field='currencyPair']")?.value);
       const pricingContextIdValue = row.querySelector("[data-pricing-rule-field='pricingContextId']")?.value.trim().toUpperCase() || "";
-      syncPricingRuleRowAutoHedgingAdmissionControls(row);
+      syncPricingRuleRowAutoManagementAdmissionControls(row);
       const preview = row.querySelector("[data-pricing-rule-preview]");
       const clientNameCell = row.querySelector("[data-pricing-rule-client-name]");
+      const tradeContextDisplay = row.querySelector("[data-pricing-rule-context-display]");
 
       if (preview) {
         preview.textContent = pricingRulePreview(
@@ -5317,6 +5427,14 @@
         clientNameCell.textContent = clientNameForInn(inn);
       }
 
+      if (tradeContextDisplay) {
+        tradeContextDisplay.innerHTML = `
+          <span class="client-pricing-context-candidate-path pricing-rules-context-path">
+            ${pricingContextFacetsMarkup(pricingContextIdValue, { originatingSystemLabel: true })}
+          </span>
+        `;
+      }
+
       updatePricingRuleRowSaveAvailability(row);
     }
 
@@ -5324,18 +5442,18 @@
       const inn = row.querySelector("[data-pricing-rule-field='inn']")?.value.trim() || "";
       const currencyPair = normalizedPricingRuleCurrencyPair(row.querySelector("[data-pricing-rule-field='currencyPair']")?.value);
       const pricingContextIdValue = row.querySelector("[data-pricing-rule-field='pricingContextId']")?.value.trim().toUpperCase() || "";
-      const autoHedgingAdmissionModeOverride = syncPricingRuleRowAutoHedgingAdmissionControls(row);
+      const autoManagementAdmissionModeOverride = syncPricingRuleRowAutoManagementAdmissionControls(row);
       const marginPercent = normalizeNumber(row.querySelector("[data-pricing-rule-field='marginPercent']")?.value);
       const profile = clientProfileByInn(inn);
-      const contextState = pricingRuleCounterpartyExecutionContextState(inn);
-      const contextAttached = availablePricingRuleExecutionContextIds(inn).includes(pricingContextIdValue);
+      const contextState = pricingRuleCounterpartyTradeContextState(inn);
+      const contextAttached = availablePricingRuleTradeContextIds(inn).includes(pricingContextIdValue);
 
       if (
         !isValidClientCodeForProfile(inn) ||
         !currencyPair ||
         contextState.status !== "loaded" ||
         !contextAttached ||
-        autoHedgingAdmissionModeOverride === undefined ||
+        autoManagementAdmissionModeOverride === undefined ||
         marginPercent === null ||
         !Number.isFinite(marginPercent) ||
         marginPercent < 0 ||
@@ -5352,7 +5470,7 @@
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoHedgingAdmissionModeOverride,
+        autoManagementAdmissionModeOverride,
         marginPercent
       };
     }
@@ -5372,8 +5490,8 @@
     function samePricingRule(left, right) {
       return Boolean(left && right) &&
         samePricingRuleIdentity(left, right) &&
-        normalizedPricingRuleAutoHedgingAdmissionModeOverride(left.autoHedgingAdmissionModeOverride) ===
-          normalizedPricingRuleAutoHedgingAdmissionModeOverride(right.autoHedgingAdmissionModeOverride) &&
+        normalizedPricingRuleAutoManagementAdmissionModeOverride(left.autoManagementAdmissionModeOverride) ===
+          normalizedPricingRuleAutoManagementAdmissionModeOverride(right.autoManagementAdmissionModeOverride) &&
         sameNumber(left.marginPercent, right.marginPercent);
     }
 
@@ -5382,12 +5500,12 @@
       const contextStatus = row.dataset.pricingRuleContextStatus;
 
       if (contextStatus === "loading" || contextStatus === "unloaded") {
-        setSaveButtonAvailability(button, false, "Wait until attached Execution Contexts are loaded");
+        setSaveButtonAvailability(button, false, "Wait until attached Trade Contexts are loaded");
         return;
       }
 
       if (contextStatus === "error") {
-        setSaveButtonAvailability(button, false, "Attached Execution Contexts could not be loaded");
+        setSaveButtonAvailability(button, false, "Attached Trade Contexts could not be loaded");
         return;
       }
 
@@ -5434,7 +5552,7 @@
 
     function pricingRuleDefaultDraft(inn = pricingRulesClientInnFilter) {
       const profile = clientProfileByInn(inn) || clientProfiles[0] || null;
-      const pricingContextIdValue = resolvedPricingRuleExecutionContextId("", profile?.inn || "");
+      const pricingContextIdValue = resolvedPricingRuleTradeContextId("", profile?.inn || "");
 
       return {
         pricingRuleId: "",
@@ -5444,7 +5562,7 @@
         currencyPair: activeCurrencyPairOrDefault(),
         ccyPairCode: activeCurrencyPairOrDefault().replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoHedgingAdmissionModeOverride: null,
+        autoManagementAdmissionModeOverride: null,
         marginPercent: profile?.marginPercent ?? 0
       };
     }
@@ -5453,28 +5571,28 @@
       const innSelect = row.querySelector("[data-pricing-rule-field='inn']");
       const currencyPairInput = row.querySelector("[data-pricing-rule-field='currencyPair']");
       const contextSelect = row.querySelector("[data-pricing-rule-field='pricingContextId']");
-      const autoHedgingAdmissionModeOverrideSelect = row.querySelector(
-        "[data-pricing-rule-field='autoHedgingAdmissionModeOverride']"
+      const autoManagementAdmissionModeOverrideSelect = row.querySelector(
+        "[data-pricing-rule-field='autoManagementAdmissionModeOverride']"
       );
       const marginInput = row.querySelector("[data-pricing-rule-field='marginPercent']");
       const inn = innSelect?.value.trim() || "";
       const currencyPair = parsePricingRuleCurrencyPairInput(currencyPairInput);
       const pricingContextIdValue = contextSelect?.value.trim().toUpperCase() || "";
-      const autoHedgingAdmissionModeOverride = syncPricingRuleRowAutoHedgingAdmissionControls(row);
+      const autoManagementAdmissionModeOverride = syncPricingRuleRowAutoManagementAdmissionControls(row);
       const marginPercent = parsePercentInput(marginInput, "Margin", 100);
       const profile = clientProfileByInn(inn);
 
       innSelect.setCustomValidity(isValidClientCodeForProfile(inn) ? "" : "Counterparty Code is required.");
-      const contextState = pricingRuleCounterpartyExecutionContextState(inn);
+      const contextState = pricingRuleCounterpartyTradeContextState(inn);
       const contextAttached = contextState.status === "loaded"
-        && availablePricingRuleExecutionContextIds(inn).includes(pricingContextIdValue);
+        && availablePricingRuleTradeContextIds(inn).includes(pricingContextIdValue);
       const contextMessage = contextState.status === "loading" || contextState.status === "unloaded"
-        ? "Wait until attached Execution Contexts are loaded."
+        ? "Wait until attached Trade Contexts are loaded."
         : contextState.status === "error"
-          ? "Attached Execution Contexts could not be loaded."
+          ? "Attached Trade Contexts could not be loaded."
           : contextState.status === "loaded" && contextState.contexts.length === 0
-            ? "Attach an Execution Context to this Trading Counterparty first."
-            : "Select an Execution Context attached to this Trading Counterparty.";
+            ? "Attach a Trade Context to this Trading Counterparty first."
+            : "Select a Trade Context attached to this Trading Counterparty.";
       contextSelect.setCustomValidity(contextAttached ? "" : contextMessage);
 
       if (innSelect.validationMessage) {
@@ -5487,8 +5605,8 @@
         return null;
       }
 
-      if (autoHedgingAdmissionModeOverride === undefined) {
-        autoHedgingAdmissionModeOverrideSelect?.reportValidity();
+      if (autoManagementAdmissionModeOverride === undefined) {
+        autoManagementAdmissionModeOverrideSelect?.reportValidity();
         return null;
       }
 
@@ -5505,7 +5623,7 @@
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoHedgingAdmissionModeOverride,
+        autoManagementAdmissionModeOverride,
         marginPercent
       };
       const currentIndex = pricingRuleEditStateIndex();
@@ -5523,10 +5641,10 @@
       return rule;
     }
 
-    function pricingRuleExecutionContextSearchText(rule) {
+    function pricingRuleTradeContextSearchText(rule) {
       const pricingMode = pricingModeForRule(rule);
 
-      return `${rule.pricingContextId} ${pricingContextDisplayPath(rule.pricingContextId)} ${pricingMode} ${pricingTypePresentation(pricingMode).label}`;
+      return `${pricingContextDisplayPath(rule.pricingContextId)} ${pricingMode} ${pricingTypePresentation(pricingMode).label}`;
     }
 
     function pricingRuleHeaderFilterControl(field) {
@@ -5534,36 +5652,81 @@
         .find(control => control.dataset.pricingRuleHeaderFilter === field) || null;
     }
 
-    function pricingRuleMatchesRouteScope(rule) {
-      return !pricingRulesRouteScope
-        || rule.ccyPairCode === pricingRulesRouteScope.pairCode;
+    function pricingRuleFiltersAreActive() {
+      return pricingRuleHeaderFilterControls.some(control =>
+        control.value.trim() !== ""
+      );
     }
 
-    function highlightPricingRuleAutoHedgingAdmissionColumn(enabled) {
+    function syncPricingRulesClearFiltersButton() {
+      pricingRulesClearFiltersButton.disabled = !pricingRuleFiltersAreActive();
+    }
+
+    function clearPricingRuleFilterRoute() {
+      if (!pricingRulesRouteScope) {
+        return;
+      }
+
+      pricingRulesRouteScope = null;
+      history.replaceState(
+        null,
+        "",
+        `${location.pathname}${location.search}${pricingRulesRoute(activePricingRulesScope)}`
+      );
+      renderWorkspacePageHeading();
+      document.title = "Pricing Rules";
+    }
+
+    function handlePricingRuleHeaderFilterInput(event) {
+      const control = event.currentTarget;
+
+      if (
+        pricingRulesRouteScope
+        && control.dataset.pricingRuleHeaderFilter === "currencyPair"
+        && control.value.trim().toUpperCase() !== pricingRulesRouteScope.currencyPair
+      ) {
+        clearPricingRuleFilterRoute();
+      }
+
+      renderPricingRules();
+    }
+
+    function clearPricingRuleFilters() {
+      pricingRuleHeaderFilterControls.forEach(control => {
+        control.value = "";
+        control.readOnly = false;
+        control.removeAttribute("aria-readonly");
+      });
+
+      clearPricingRuleFilterRoute();
+      renderPricingRules();
+    }
+
+    function highlightPricingRuleAutoManagementAdmissionColumn(enabled) {
       if (pricingRulesFocusTimer) {
         window.clearTimeout(pricingRulesFocusTimer);
         pricingRulesFocusTimer = null;
       }
 
-      pricingRulesTable?.classList.remove("is-auto-hedging-admission-focused");
+      pricingRulesTable?.classList.remove("is-auto-management-admission-focused");
 
-      if (!enabled || !pricingRulesTable || !pricingRuleAutoHedgingAdmissionHeader) {
+      if (!enabled || !pricingRulesTable || !pricingRuleAutoManagementAdmissionHeader) {
         return;
       }
 
       // Restart the brief emphasis when this route is entered again.
       void pricingRulesTable.offsetWidth;
-      pricingRulesTable.classList.add("is-auto-hedging-admission-focused");
-      pricingRuleAutoHedgingAdmissionHeader.scrollIntoView({
+      pricingRulesTable.classList.add("is-auto-management-admission-focused");
+      pricingRuleAutoManagementAdmissionHeader.scrollIntoView({
         behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
           ? "auto"
           : "smooth",
         block: "nearest",
         inline: "center"
       });
-      pricingRuleAutoHedgingAdmissionHeader.focus({ preventScroll: true });
+      pricingRuleAutoManagementAdmissionHeader.focus({ preventScroll: true });
       pricingRulesFocusTimer = window.setTimeout(() => {
-        pricingRulesTable.classList.remove("is-auto-hedging-admission-focused");
+        pricingRulesTable.classList.remove("is-auto-management-admission-focused");
         pricingRulesFocusTimer = null;
       }, 2600);
     }
@@ -5573,7 +5736,7 @@
       const previousScope = pricingRulesRouteScope;
       const relatedView = routeState.mode === "related" && routeState.pairCode;
       const focusedAdmissionView = routeState.mode === "focused"
-        && routeState.focus === "auto-hedging-admission";
+        && routeState.focus === "auto-management-admission";
       const pairChanged = previousScope?.pairCode !== routeState.pairCode;
 
       pricingRuleEditState = null;
@@ -5600,30 +5763,22 @@
             returnHash: routeState.returnHash
           }
         : null;
-      pricingRulesPage.classList.toggle("is-related-view", Boolean(pricingRulesRouteScope));
-      pricingRulesBreadcrumb.hidden = !pricingRulesRouteScope && !focusedAdmissionView;
+      pricingRulesPage.classList.remove("is-related-view");
+      pricingRulesContextLabel.hidden = !focusedAdmissionView;
 
       if (pricingRulesRouteScope) {
         const currencyPairFilter = pricingRuleHeaderFilterControl("currencyPair");
 
         if (currencyPairFilter) {
           currencyPairFilter.value = pricingRulesRouteScope.currencyPair;
-          currencyPairFilter.readOnly = true;
-          currencyPairFilter.setAttribute("aria-readonly", "true");
         }
-
-        pricingRulesBreadcrumbBackLink.href = pricingRulesRouteScope.returnHash;
-        pricingRulesBreadcrumbBackLink.textContent = "Currency Pair Settings";
-        pricingRulesBreadcrumbCurrent.textContent = `Pricing Rules for ${pricingRulesRouteScope.currencyPair}`;
       } else if (focusedAdmissionView) {
-        pricingRulesBreadcrumbBackLink.href = routeState.returnHash;
-        pricingRulesBreadcrumbBackLink.textContent = "Initial Auto Hedging Admission Policy";
-        pricingRulesBreadcrumbCurrent.textContent = "Pricing Rules — Auto Hedging Admission";
+        pricingRulesContextLabel.textContent = "Pricing Rules — Initial Mode Assignment";
       }
 
       setPricingRuleStatus("");
       window.requestAnimationFrame(() => {
-        highlightPricingRuleAutoHedgingAdmissionColumn(focusedAdmissionView);
+        highlightPricingRuleAutoManagementAdmissionColumn(focusedAdmissionView);
       });
     }
 
@@ -5636,16 +5791,15 @@
         }
 
         const field = control.dataset.pricingRuleHeaderFilter;
-          const value = field === "clientName"
+        const value = field === "clientName"
           ? clientNameForInn(rule.inn)
-          : field === "pricingContextId"
-            ? pricingRuleExecutionContextSearchText(rule)
-            : field === "autoHedgingAdmissionModeOverride"
-              ? `${pricingRuleAutoHedgingAdmissionSourceLabel(
-                  rule.autoHedgingAdmissionModeOverride
-                )} ${autoHedgingAdmissionModeLabel(
-                  effectiveAutoHedgingAdmissionModeForRule(rule)
-                )}`
+          : field === "pricingContextPath"
+            ? pricingRuleTradeContextSearchText(rule)
+            : field === "autoManagementAdmissionModeOverride"
+              ? pricingRuleInitialModeAssignmentLabel(
+                  rule.autoManagementAdmissionModeOverride,
+                  effectiveAutoManagementAdmissionModeForRule(rule)
+                )
             : rule[field] || "";
 
         return String(value).toLowerCase().includes(query);
@@ -5656,7 +5810,6 @@
       return clientPricingRules
         .map((rule, index) => ({ rule, index }))
         .filter(({ rule }) => rule.counterpartyScope === activePricingRulesScope)
-        .filter(({ rule }) => pricingRuleMatchesRouteScope(rule))
         .filter(({ rule }) => !pricingRulesClientInnFilter || rule.inn === pricingRulesClientInnFilter)
         .filter(({ rule }) => pricingRuleMatchesColumnFilters(rule))
         .sort((left, right) => {
@@ -5676,17 +5829,18 @@
       const pricingRuleIdAttribute = rule.pricingRuleId
         ? ` data-pricing-rule-id="${escapeHtml(rule.pricingRuleId)}"`
         : "";
-      const contextState = pricingRuleCounterpartyExecutionContextState(rule.inn);
-      const availableContextIds = availablePricingRuleExecutionContextIds(rule.inn);
+      const contextState = pricingRuleCounterpartyTradeContextState(rule.inn);
+      const availableContextIds = availablePricingRuleTradeContextIds(rule.inn);
       const contextDisabled = contextState.status !== "loaded" || availableContextIds.length === 0
         ? " disabled"
         : "";
       const contextHelpId = `pricing-rule-context-help-${rule.pricingRuleId || "new"}`;
       const contextHelp = pricingRuleContextHelp(contextState);
-      const autoHedgingAdmissionModeOverride =
-        normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-          rule.autoHedgingAdmissionModeOverride
+      const autoManagementAdmissionModeOverride =
+        normalizedPricingRuleAutoManagementAdmissionModeOverride(
+          rule.autoManagementAdmissionModeOverride
         );
+      const tradeContextHidden = pricingRulesAdvancedViewEnabled ? "" : " hidden";
 
       return `
         <tr class="is-selected is-editing"${indexAttribute}${pricingRuleIdAttribute} data-pricing-rule-edit-row data-pricing-rule-context-status="${escapeHtml(contextState.status)}">
@@ -5705,24 +5859,36 @@
               <span class="pricing-rule-context-help" id="${escapeHtml(contextHelpId)}" data-pricing-rule-context-help role="status"${contextHelp ? "" : " hidden"}>${escapeHtml(contextHelp)}</span>
             </span>
           </td>
+          <td class="pricing-rule-context-column" data-pricing-rule-context-display${tradeContextHidden}>
+            <span class="client-pricing-context-candidate-path pricing-rules-context-path">
+              ${pricingContextFacetsMarkup(rule.pricingContextId, { originatingSystemLabel: true })}
+            </span>
+          </td>
           <td>
             <input class="inline-edit-control" type="text" data-pricing-rule-field="currencyPair" value="${escapeHtml(rule.currencyPair)}" maxlength="7" required>
           </td>
-          <td data-pricing-rule-column="autoHedgingAdmissionModeOverride">
-            <select class="inline-edit-control" data-pricing-rule-field="autoHedgingAdmissionModeOverride" aria-label="Auto Hedging Admission">
-              ${pricingRuleAutoHedgingAdmissionOptions(autoHedgingAdmissionModeOverride)}
-            </select>
+          <td data-pricing-rule-column="autoManagementAdmissionModeOverride">
+            <span class="d-flex align-items-center gap-2">
+              <span class="button-icon" aria-hidden="true" data-pricing-rule-initial-mode-assignment-icon>${initialModeAssignmentIcon(effectiveAutoManagementAdmissionModeForRule(rule))}</span>
+              <select class="inline-edit-control flex-grow-1" data-pricing-rule-field="autoManagementAdmissionModeOverride" aria-label="Initial Mode Assignment">
+                ${pricingRuleAutoManagementAdmissionOptions(
+                  autoManagementAdmissionModeOverride,
+                  rule.tradeContextAdmissionMode
+                    ?? pricingContextById(rule.pricingContextId)?.autoManagementAdmissionMode
+                )}
+              </select>
+            </span>
           </td>
-          <td>
+          <td class="pricing-rule-margin-column">
             <input class="inline-edit-control" type="text" data-pricing-rule-field="marginPercent" value="${escapeHtml(editNumber(rule.marginPercent, 4))}" inputmode="decimal" required>
           </td>
           <td class="pricing-rule-quick-hedge-column"${activePricingRulesScope === "INTERNAL" ? "" : " hidden"}>—</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
-              <button type="button" class="icon-action" data-pricing-rule-action="save" aria-label="Save pricing rule" title="Save">
+              <button type="button" class="icon-action" data-pricing-rule-action="save" aria-label="Save pricing rule">
                 <span class="button-icon" aria-hidden="true">save</span>
               </button>
-              <button type="button" class="icon-action" data-pricing-rule-action="cancel" aria-label="Cancel editing" title="Cancel">
+              <button type="button" class="icon-action" data-pricing-rule-action="cancel" aria-label="Cancel editing">
                 <span class="button-icon" aria-hidden="true">close</span>
               </button>
             </span>
@@ -5744,41 +5910,43 @@
       const profile = clientProfiles.find(item =>
         String(item.counterpartyId ?? "") === String(rule.counterpartyId ?? "")
       ) || clientProfileByInn(rule.inn);
-      const editRoute = profile
+      const viewRoute = profile
         ? pricingRuleClientProfileRoute(
             profile.counterpartyId,
             rule.pricingRuleId,
             location.hash
           )
         : "";
-      const editActionMarkup = editRoute
+      const viewActionMarkup = viewRoute
         ? `
-            <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="${escapeHtml(editRoute)}" data-pricing-rule-action="edit-counterparty" aria-label="Edit Pricing Rule ${escapeHtml(rule.pricingRuleId)} in Trading Counterparty card" data-tooltip="Edit Pricing Rule">
-              <span class="button-icon" aria-hidden="true">edit</span>
+            <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="${escapeHtml(viewRoute)}" data-pricing-rule-action="view-counterparty" aria-label="View Pricing Rule ${escapeHtml(rule.pricingRuleId)} in Trading Counterparty settings">
+              <span class="button-icon" aria-hidden="true">visibility</span>
             </a>
           `
         : `
-            <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" aria-label="Trading Counterparty unavailable for Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Trading Counterparty unavailable" disabled>
-              <span class="button-icon" aria-hidden="true">edit</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" aria-label="Trading Counterparty unavailable for Pricing Rule ${escapeHtml(rule.pricingRuleId)}" disabled>
+              <span class="button-icon" aria-hidden="true">visibility</span>
             </button>
           `;
+      const tradeContextHidden = pricingRulesAdvancedViewEnabled ? "" : " hidden";
 
       return `
         <tr data-pricing-rule-index="${index}">
           <td>${escapeHtml(rule.pricingRuleId)}</td>
           <td>${escapeHtml(rule.inn)}</td>
           <td>${escapeHtml(clientNameForInn(rule.inn))}</td>
-          <td>
+          <td>${escapeHtml(rule.pricingContextId)}</td>
+          <td class="pricing-rule-context-column"${tradeContextHidden}>
             <span class="client-pricing-context-candidate-path pricing-rules-context-path">
-              ${pricingContextFacetsMarkup(rule.pricingContextId, { executionSystemLabel: true })}
+              ${pricingContextFacetsMarkup(rule.pricingContextId, { originatingSystemLabel: true })}
             </span>
           </td>
           <td>${escapeHtml(rule.currencyPair)}</td>
-          <td data-pricing-rule-column="autoHedgingAdmissionModeOverride">${pricingRuleAutoHedgingAdmissionMarkup(rule)}</td>
-          <td>${escapeHtml(editNumber(rule.marginPercent, 2))}%</td>
+          <td data-pricing-rule-column="autoManagementAdmissionModeOverride">${pricingRuleAutoManagementAdmissionMarkup(rule)}</td>
+          <td class="pricing-rule-margin-column">${escapeHtml(editNumber(rule.marginPercent, 2))}%</td>
           <td class="pricing-rule-quick-hedge-column"${activePricingRulesScope === "INTERNAL" ? "" : " hidden"}>${quickHedgeMarkup}</td>
           <td class="profile-actions-cell">
-            <span class="profile-row-actions">${editActionMarkup}</span>
+            <span class="profile-row-actions">${viewActionMarkup}</span>
           </td>
         </tr>
       `;
@@ -5809,19 +5977,26 @@
             || sourceColumnKey;
           const columnLabel = sourceColumnKey === "status" && columnKey === "active"
             ? "Active"
+            : tableKey === "trade_contexts_grid" && columnKey === "auto_management_admission_mode"
+            ? "Initial Mode Assignment"
+            : tableKey === "trade_contexts_grid" && columnKey === "counterparties_count"
+            ? "Attached Counterparties"
             : String(row?.columnLabel || columnKey).trim();
-          const defaultWidthPx = validWidth(row?.defaultWidthPx);
+          const minimumWidthPx = UI_TABLE_COLUMN_WIDTH_MIN_PX;
+          const defaultWidthPx = Math.max(validWidth(row?.defaultWidthPx), minimumWidthPx);
 
           return columnKey && columnLabel
             ? {
                 tableKey,
                 columnKey,
+                apiColumnKey: sourceColumnKey,
                 columnLabel,
                 displayOrder: Number.isInteger(Number(row?.displayOrder))
                   ? Number(row.displayOrder)
                   : sourceIndex,
+                minimumWidthPx,
                 defaultWidthPx,
-                widthPx: validWidth(row?.widthPx, defaultWidthPx),
+                widthPx: Math.max(validWidth(row?.widthPx, defaultWidthPx), minimumWidthPx),
                 updatedAt: String(row?.updatedAt || "")
               }
             : null;
@@ -5864,7 +6039,7 @@
           ? {
               ...alignedColumn,
               width: setting.widthPx,
-              minWidth: UI_TABLE_COLUMN_WIDTH_MIN_PX,
+              minWidth: setting.minimumWidthPx,
               maxWidth: UI_TABLE_COLUMN_WIDTH_MAX_PX
             }
           : alignedColumn;
@@ -5936,7 +6111,7 @@
       window.requestAnimationFrame(() => syncNativeTableOverflowTooltips(table));
     }
 
-    function applyFxPositionGridLayout(tableLayout) {
+    function applyPositionGridLayout(tableLayout) {
       if (!tableLayout) {
         return;
       }
@@ -5952,12 +6127,12 @@
         && ccyPairSelectorWidth >= UI_TABLE_COLUMN_WIDTH_MIN_PX
         && ccyPairSelectorWidth <= UI_TABLE_COLUMN_WIDTH_MAX_PX) {
         mainPage.style.setProperty(
-          "--fx-position-ccy-pair-selector-width",
+          "--position-ccy-pair-selector-width",
           `${ccyPairSelectorWidth}px`
         );
       }
 
-      const table = nativeUiTable("fx_position_grid");
+      const table = nativeUiTable("position_grid");
 
       if (!table) {
         return;
@@ -5967,7 +6142,7 @@
 
       table.querySelectorAll("col").forEach(column => {
         const setting = settingsByKey.get(column.dataset.uiColumnKey);
-        const fixedWidth = Number(column.dataset.fxPositionFixedWidth);
+        const fixedWidth = Number(column.dataset.positionFixedWidth);
         const width = setting?.widthPx || fixedWidth;
 
         if (!Number.isFinite(width) || width <= 0) {
@@ -5987,34 +6162,36 @@
       table.style.setProperty("min-width", `${totalWidth}px`, "important");
       table.style.setProperty("max-width", `${totalWidth}px`, "important");
       table.style.setProperty("table-layout", "fixed", "important");
-      scheduleFxPositionGridFillHeight();
+      schedulePositionGridFillHeight();
       scheduleHedgeQuickModeQuoteAlignment();
       window.requestAnimationFrame(() => syncNativeTableOverflowTooltips(table));
     }
 
     function applyTabulatorUiTableLayout(tableKey, tableLayout) {
-      const table = uiTableTabulatorInstances.get(tableKey);
+      const tables = uiTableTabulatorInstances.get(tableKey);
 
-      if (!table) {
+      if (!tables) {
         return;
       }
 
-      tableLayout.columns.forEach(setting => {
-        const column = table.getColumn(uiTableFieldName(setting.columnKey));
+      tables.forEach(table => {
+        tableLayout.columns.forEach(setting => {
+          const column = table.getColumn(uiTableFieldName(setting.columnKey));
 
-        if (!column) {
-          return;
-        }
+          if (!column) {
+            return;
+          }
 
-        const definition = column.getDefinition();
-        definition.width = setting.widthPx;
-        definition.minWidth = UI_TABLE_COLUMN_WIDTH_MIN_PX;
-        definition.maxWidth = UI_TABLE_COLUMN_WIDTH_MAX_PX;
-        column.setWidth(setting.widthPx);
+          const definition = column.getDefinition();
+          definition.width = setting.widthPx;
+          definition.minWidth = UI_TABLE_COLUMN_WIDTH_MIN_PX;
+          definition.maxWidth = UI_TABLE_COLUMN_WIDTH_MAX_PX;
+          column.setWidth(setting.widthPx);
+        });
       });
     }
 
-    function applyClientExecutionContextAttachColumnLayout(tableLayout = uiTableLayout("execution_contexts_grid")) {
+    function applyClientTradeContextAttachColumnLayout(tableLayout = uiTableLayout("trade_contexts_grid")) {
       const table = document.querySelector(".client-context-attach-table");
 
       if (!table || !tableLayout) {
@@ -6054,7 +6231,7 @@
       table.style.setProperty("min-width", `${totalWidth}px`, "important");
       table.style.setProperty("max-width", `${totalWidth}px`, "important");
       table.style.setProperty("table-layout", "fixed", "important");
-      clientExecutionContextAttachDialog.style.setProperty(
+      clientTradeContextAttachDialog.style.setProperty(
         "--client-context-attach-table-width",
         `${totalWidth}px`
       );
@@ -6068,16 +6245,16 @@
         return;
       }
 
-      if (tableKey === "fx_position_grid") {
-        applyFxPositionGridLayout(tableLayout);
+      if (tableKey === "position_grid") {
+        applyPositionGridLayout(tableLayout);
         return;
       }
 
       applyNativeUiTableLayout(tableKey, tableLayout);
       applyTabulatorUiTableLayout(tableKey, tableLayout);
 
-      if (tableKey === "execution_contexts_grid") {
-        applyClientExecutionContextAttachColumnLayout(tableLayout);
+      if (tableKey === "trade_contexts_grid") {
+        applyClientTradeContextAttachColumnLayout(tableLayout);
       }
     }
 
@@ -6092,7 +6269,10 @@
         return;
       }
 
-      uiTableTabulatorInstances.set(tableKey, table);
+      const tables = uiTableTabulatorInstances.get(tableKey) || new Set();
+
+      tables.add(table);
+      uiTableTabulatorInstances.set(tableKey, tables);
       applyUiTableLayout(tableKey);
       table.on?.("tableBuilt", () => applyUiTableLayout(tableKey));
     }
@@ -6187,7 +6367,7 @@
                 <input
                   class="form-control"
                   type="number"
-                  min="${UI_TABLE_COLUMN_WIDTH_MIN_PX}"
+                  min="${setting.minimumWidthPx}"
                   max="${UI_TABLE_COLUMN_WIDTH_MAX_PX}"
                   step="1"
                   value="${setting.widthPx}"
@@ -6213,12 +6393,16 @@
 
       for (const control of controls) {
         const widthPx = Number(control.value);
+        const setting = tableLayout?.columns.find(
+          item => item.columnKey === control.dataset.uiTableColumnWidth
+        );
+        const minimumWidthPx = setting?.minimumWidthPx ?? UI_TABLE_COLUMN_WIDTH_MIN_PX;
         const valid = Number.isInteger(widthPx)
-          && widthPx >= UI_TABLE_COLUMN_WIDTH_MIN_PX
+          && widthPx >= minimumWidthPx
           && widthPx <= UI_TABLE_COLUMN_WIDTH_MAX_PX;
         control.setCustomValidity(valid
           ? ""
-          : `Width must be an integer from ${UI_TABLE_COLUMN_WIDTH_MIN_PX} to ${UI_TABLE_COLUMN_WIDTH_MAX_PX} pixels.`);
+          : `Width must be an integer from ${minimumWidthPx} to ${UI_TABLE_COLUMN_WIDTH_MAX_PX} pixels.`);
 
         if (!valid) {
           control.reportValidity();
@@ -6230,7 +6414,7 @@
 
       return {
         columns: (tableLayout?.columns || []).map(setting => ({
-          columnKey: setting.columnKey,
+          columnKey: setting.apiColumnKey ?? setting.columnKey,
           widthPx: editedWidthsByKey.get(setting.columnKey) ?? setting.widthPx
         }))
       };
@@ -6321,7 +6505,7 @@
                 method: "PUT",
                 body: JSON.stringify({
                   columns: tableLayout.columns.map(setting => ({
-                    columnKey: setting.columnKey,
+                    columnKey: setting.apiColumnKey ?? setting.columnKey,
                     widthPx: activeUiTableLayoutColumnKeys.has(setting.columnKey)
                       ? setting.defaultWidthPx
                       : setting.widthPx
@@ -6409,12 +6593,43 @@
         : "pricing_rules_grid";
     }
 
+    function syncPricingRulesAdvancedViewPresentation() {
+      pricingRulesAdvancedViewToggle.checked = pricingRulesAdvancedViewEnabled;
+      pricingRuleTradeContextHeader.hidden = !pricingRulesAdvancedViewEnabled;
+      pricingRulesTable
+        .querySelector('col[data-ui-column-key="trade_context"]')
+        .hidden = !pricingRulesAdvancedViewEnabled;
+      pricingRulesTable
+        .querySelectorAll("tbody .pricing-rule-context-column")
+        .forEach(cell => {
+          cell.hidden = !pricingRulesAdvancedViewEnabled;
+        });
+      pricingRulesTable.classList.toggle(
+        "is-advanced-view",
+        pricingRulesAdvancedViewEnabled
+      );
+    }
+
+    function setPricingRulesAdvancedView(enabled) {
+      pricingRulesAdvancedViewEnabled = Boolean(enabled);
+
+      if (!pricingRulesAdvancedViewEnabled) {
+        const tradeContextFilter = pricingRuleHeaderFilterControl("pricingContextPath");
+
+        if (tradeContextFilter) {
+          tradeContextFilter.value = "";
+        }
+      }
+
+      renderPricingRules();
+    }
+
     function syncPricingRulesScopePresentation() {
       const internalScope = activePricingRulesScope === "INTERNAL";
       const layoutKey = activePricingRulesLayoutKey();
       const routeState = pricingRulesRouteStateFromLocation();
       const focusedAdmissionView = routeState.mode === "focused"
-        && routeState.focus === "auto-hedging-admission";
+        && routeState.focus === "auto-management-admission";
 
       pricingRulesScopeButtons.forEach(button => {
         const selected = button.dataset.pricingRulesScope === activePricingRulesScope;
@@ -6427,7 +6642,7 @@
               button.dataset.pricingRulesScope
             )
           : focusedAdmissionView
-            ? autoHedgingAdmissionPricingRulesRoute(
+            ? autoManagementAdmissionPricingRulesRoute(
                 routeState.returnHash,
                 button.dataset.pricingRulesScope
               )
@@ -6456,6 +6671,7 @@
           : "External Counterparty Pricing Rules table layout"
       );
       pricingRulesTableLayoutButton.disabled = !DEMO_API_ENABLED || !uiTableLayout(layoutKey);
+      syncPricingRulesAdvancedViewPresentation();
     }
 
     function renderPricingRules() {
@@ -6465,22 +6681,19 @@
 
       syncPricingRulesScopePresentation();
       updatePricingRuleIdSortControl();
+      syncPricingRulesClearFiltersButton();
 
       const rows = filteredPricingRules();
       const scopeRules = clientPricingRules.filter(rule =>
         rule.counterpartyScope === activePricingRulesScope
-        && pricingRuleMatchesRouteScope(rule)
       );
-      const columnCount = activePricingRulesScope === "INTERNAL" ? 9 : 8;
+      const columnCount = activePricingRulesScope === "INTERNAL" ? 10 : 9;
       const layoutKey = activePricingRulesLayoutKey();
 
       if (scopeRules.length === 0) {
-        const emptyMessage = pricingRulesRouteScope
-          ? `No Pricing Rules for ${pricingRulesRouteScope.currencyPair} in this counterparty scope.`
-          : "No pricing rules for this counterparty scope yet.";
         pricingRuleRowsEl.innerHTML = `
           <tr>
-            <td class="profile-empty" colspan="${columnCount}">${emptyMessage}</td>
+            <td class="profile-empty" colspan="${columnCount}">No pricing rules for this counterparty scope yet.</td>
           </tr>
         `;
         applyUiTableLayout(layoutKey);
@@ -6761,7 +6974,7 @@
         const inactiveClient = settings.counterpartyActive === false
           ? '<span class="badge text-bg-secondary ms-1">Inactive</span>'
           : "";
-        const inactiveExecutionSystem = settings.executionSystemActive === false
+        const inactiveOriginatingSystem = settings.originatingSystemActive === false
           ? '<span class="badge text-bg-secondary ms-1">Inactive System</span>'
           : "";
         const editing = Number(settings.pricingRuleId)
@@ -6795,10 +7008,10 @@
           `;
         const actions = editing
           ? `
-            <button type="button" class="btn btn-sm btn-outline-primary generation-settings-save" data-generation-settings-save aria-label="Save Pricing Rule #${settings.pricingRuleId} settings" title="No changes to save" disabled>
+            <button type="button" class="btn btn-sm btn-primary generation-settings-save" data-generation-settings-save aria-label="Save Pricing Rule #${settings.pricingRuleId} settings" title="No changes to save" disabled>
               <span class="button-icon" aria-hidden="true">save</span>
             </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary generation-settings-cancel" data-generation-settings-cancel aria-label="Cancel Pricing Rule #${settings.pricingRuleId} editing" title="Cancel">
+            <button type="button" class="btn btn-sm btn-outline-secondary generation-settings-cancel" data-generation-settings-cancel aria-label="Cancel Pricing Rule #${settings.pricingRuleId} editing">
               <span class="button-icon" aria-hidden="true">close</span>
             </button>
           `
@@ -6820,7 +7033,7 @@
                 settings.pricingMode,
                 escapeHtml(pricingTypePresentation(settings.pricingMode).label),
                 false
-              )}${inactiveExecutionSystem}
+              )}${inactiveOriginatingSystem}
             </td>
             ${valueCells}
             <td class="text-center">

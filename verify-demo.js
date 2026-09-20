@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { EventEmitter } = require("node:events");
 const { DatabaseSync } = require("node:sqlite");
-const { MarketPulseSimulator } = require("./backend/market-pulse-simulation/market-pulse-simulator");
+const { MarketPulseSimulator } = require("./backend/market-pulse/simulation/market-pulse-simulator");
 
 const root = __dirname;
 const verificationDatabasePath = path.join(root, "data", `verify-demo-${process.pid}.sqlite`);
@@ -66,20 +66,20 @@ function createLegacyDatabase() {
       is_active             INTEGER NOT NULL
     );
 
-    CREATE TABLE execution_systems
+    CREATE TABLE originating_systems
     (
-      execution_system_id TEXT PRIMARY KEY,
+      originating_system_id TEXT PRIMARY KEY,
       name                TEXT NOT NULL,
       pricing_mode        TEXT NOT NULL,
       is_active           INTEGER NOT NULL
     );
 
-    CREATE TABLE execution_contexts
+    CREATE TABLE trade_contexts
     (
-      execution_context_id  TEXT PRIMARY KEY,
+      trade_context_id  TEXT PRIMARY KEY,
       servicing_location_id TEXT NOT NULL REFERENCES servicing_locations (servicing_location_id),
       accounting_system_id  TEXT REFERENCES accounting_systems (accounting_system_id),
-      execution_system_id   TEXT NOT NULL REFERENCES execution_systems (execution_system_id)
+      originating_system_id   TEXT NOT NULL REFERENCES originating_systems (originating_system_id)
     );
 
     CREATE TABLE trading_counterparties
@@ -97,12 +97,12 @@ function createLegacyDatabase() {
     (
       pricing_rule_id      INTEGER PRIMARY KEY,
       counterparty_id             INTEGER NOT NULL REFERENCES trading_counterparties (counterparty_id),
-      execution_context_id TEXT NOT NULL REFERENCES execution_contexts (execution_context_id),
+      trade_context_id TEXT NOT NULL REFERENCES trade_contexts (trade_context_id),
       ccy_pair_code        TEXT NOT NULL REFERENCES ccy_pair_options (ccy_pair_code),
       margin_percent       REAL NOT NULL
     );
 
-    CREATE TABLE client_fx_deals
+    CREATE TABLE client_deals
     (
       client_deal_id       INTEGER PRIMARY KEY,
       entry_timestamp      TEXT    NOT NULL,
@@ -118,13 +118,13 @@ function createLegacyDatabase() {
       quote_ccy_value_date TEXT    NOT NULL
     );
 
-    CREATE TABLE trading_counterparty_execution_contexts
+    CREATE TABLE trading_counterparty_trade_contexts
     (
       counterparty_id INTEGER NOT NULL,
-      execution_context_id TEXT NOT NULL
+      trade_context_id TEXT NOT NULL
     );
 
-    CREATE TABLE fx_trade_audit
+    CREATE TABLE trade_audit
     (
       trade_id               INTEGER PRIMARY KEY,
       trade_type             TEXT    NOT NULL,
@@ -133,7 +133,7 @@ function createLegacyDatabase() {
       market_pulse_timestamp TEXT    NOT NULL
     );
 
-    CREATE TABLE fx_trade_market_snapshot
+    CREATE TABLE trade_market_snapshots
     (
       trade_id               INTEGER PRIMARY KEY,
       trade_type             TEXT    NOT NULL,
@@ -142,7 +142,7 @@ function createLegacyDatabase() {
       market_pulse_timestamp TEXT    NOT NULL
     );
 
-    CREATE TABLE fx_batch_outputs
+    CREATE TABLE batch_outputs
     (
       batch_id    INTEGER NOT NULL,
       trade_id    INTEGER NOT NULL,
@@ -150,7 +150,7 @@ function createLegacyDatabase() {
       output_role TEXT    NOT NULL
     );
 
-    CREATE TABLE fx_batch_quote_cash_members
+    CREATE TABLE batch_quote_cash_members
     (
       batch_id                         INTEGER PRIMARY KEY,
       quote_ccy_code                   TEXT    NOT NULL,
@@ -184,17 +184,17 @@ function createLegacyDatabase() {
       (accounting_system_id, name, description, is_active)
     VALUES
       ('AFINA', 'Afina Core Ledger', 'Primary settlement and posting system.', 1),
-      ('CTF3', 'CTF3 Treasury Settlement', 'Treasury settlement system for FX operations.', 1);
+      ('CTF3', 'CTF3 Treasury Settlement', 'Treasury settlement system for operations.', 1);
 
-    INSERT INTO execution_systems
-      (execution_system_id, name, pricing_mode, is_active)
+    INSERT INTO originating_systems
+      (originating_system_id, name, pricing_mode, is_active)
     VALUES
       ('CLICK_TRADE_EFX', 'Click Trade eFX', 'AUTO_PRICED', 1),
       ('RFQ', 'Request for Quote', 'DEALER_APPROVED', 1),
       ('MANUAL_CLIENT_DEAL_ENTRY', 'Manual Client Deal Entry', 'DEALER_PRICED', 1);
 
-    INSERT INTO execution_contexts
-      (execution_context_id, servicing_location_id, accounting_system_id, execution_system_id)
+    INSERT INTO trade_contexts
+      (trade_context_id, servicing_location_id, accounting_system_id, originating_system_id)
     VALUES
       ('002:AFINA:CLICK_TRADE_EFX', '002', 'AFINA', 'CLICK_TRADE_EFX'),
       ('002:AFINA:RFQ', '002', 'AFINA', 'RFQ'),
@@ -211,13 +211,13 @@ function createLegacyDatabase() {
       (4, 'EXTERNAL_COUNTERPARTY', 'LEGACY_EXTERNAL', 'OTHER', 'Legacy External Counterparty', 1),
       (5, 'INTERNAL_DESK', 'LEGACY_INTERNAL', 'OTHER', 'Legacy Internal Desk', 1);
 
-    INSERT INTO trading_counterparty_execution_contexts
-      (counterparty_id, execution_context_id)
+    INSERT INTO trading_counterparty_trade_contexts
+      (counterparty_id, trade_context_id)
     VALUES
       (2, '002:AFINA:CLICK_TRADE_EFX');
 
     INSERT INTO pricing_rules
-      (pricing_rule_id, counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
+      (pricing_rule_id, counterparty_id, trade_context_id, ccy_pair_code, margin_percent)
     VALUES
       (1, 1, '002:AFINA:CLICK_TRADE_EFX', 'EUR_USD', 0.10),
       (2, 1, '002:AFINA:RFQ', 'EUR_USD', 0.12),
@@ -225,7 +225,7 @@ function createLegacyDatabase() {
       (4, 2, '1234:AFINA:RFQ', 'EUR_USD', 0.05),
       (5, 3, '001:CTF3:CLICK_TRADE_EFX', 'EUR_USD', 0.20);
 
-    INSERT INTO client_fx_deals
+    INSERT INTO client_deals
       (
         client_deal_id, entry_timestamp, counterparty_id, trade_date, ccy_pair_code, side,
         base_ccy_amount, quote_ccy_amount, trade_rate, tenor,
@@ -249,9 +249,9 @@ function verifyFreshSchemaAndSeed() {
   let ccyPairOptionsConstraintsEnforced = true;
   let servicingLocationConstraintsEnforced = true;
   let accountingSystemTextLimitsEnforced = false;
-  let executionSystemConstraintsEnforced = true;
+  let originatingSystemConstraintsEnforced = true;
   let tradingCounterpartyConstraintsEnforced = true;
-  let counterpartyExecutionContextConstraintsEnforced = true;
+  let counterpartyTradeContextConstraintsEnforced = true;
   let userConstraintsEnforced = true;
   let uiTableColumnSettingsConstraintsEnforced = true;
   let normalizedTradingCounterpartyProfilesSupported = false;
@@ -260,16 +260,16 @@ function verifyFreshSchemaAndSeed() {
   let clientDealGenerationSettingsCounterpartyTypeEnforced = true;
   let clientDealGenerationSettingsPricingModeEnforced = true;
   let clientDealGenerationSettingsCascadeDeleteEnforced = true;
-  let fxTradeExposureConstraintsEnforced = true;
-  let clientFxDealConstraintsEnforced = true;
-  let clientFxDealParentRestrictionEnforced = true;
-  let clientFxDealAttributionReferencesRestricted = true;
-  let clientFxDealCounterpartyTypeEnforced = true;
-  let hedgeFxDealConstraintsEnforced = true;
-  let hedgeFxDealParentRestrictionEnforced = true;
-  let hedgeFxDealCounterpartyTypeEnforced = true;
-  let fxTradeBatchDefaultsSupported = false;
-  let fxTradeBatchConstraintsEnforced = true;
+  let tradeExposureConstraintsEnforced = true;
+  let clientDealConstraintsEnforced = true;
+  let clientDealParentRestrictionEnforced = true;
+  let clientDealAttributionReferencesRestricted = true;
+  let clientDealCounterpartyTypeEnforced = true;
+  let hedgeDealConstraintsEnforced = true;
+  let hedgeDealParentRestrictionEnforced = true;
+  let hedgeDealCounterpartyTypeEnforced = true;
+  let tradeBatchDefaultsSupported = false;
+  let tradeBatchConstraintsEnforced = true;
   let batchTradeTypesSupported = false;
   let batchBalancingTradeConstraintsEnforced = true;
   let batchBalancingTradeParentRestrictionEnforced = true;
@@ -280,35 +280,35 @@ function verifyFreshSchemaAndSeed() {
   let batchQuoteCashNeutralityEnforced = false;
   let completedBatchQuoteCashMemberImmutable = false;
 
-  const seededCounterpartyExecutionContext = database.prepare(`
-    SELECT counterparty_id, execution_context_id
-    FROM trading_counterparty_execution_contexts
-    ORDER BY counterparty_id, execution_context_id
+  const seededCounterpartyTradeContext = database.prepare(`
+    SELECT counterparty_id, trade_context_id
+    FROM trading_counterparty_trade_contexts
+    ORDER BY counterparty_id, trade_context_id
     LIMIT 1
   `).get();
-  const counterpartyExecutionContextProbes = [
+  const counterpartyTradeContextProbes = [
     [
-      seededCounterpartyExecutionContext.counterparty_id,
-      seededCounterpartyExecutionContext.execution_context_id
+      seededCounterpartyTradeContext.counterparty_id,
+      seededCounterpartyTradeContext.trade_context_id
     ],
-    [999999, seededCounterpartyExecutionContext.execution_context_id],
-    [seededCounterpartyExecutionContext.counterparty_id, 999999]
+    [999999, seededCounterpartyTradeContext.trade_context_id],
+    [seededCounterpartyTradeContext.counterparty_id, 999999]
   ];
 
-  counterpartyExecutionContextProbes.forEach(([counterpartyId, executionContextId], index) => {
-    database.exec(`SAVEPOINT verify_counterparty_execution_context_${index}`);
+  counterpartyTradeContextProbes.forEach(([counterpartyId, tradeContextId], index) => {
+    database.exec(`SAVEPOINT verify_counterparty_trade_context_${index}`);
 
     try {
       database.prepare(`
-        INSERT INTO trading_counterparty_execution_contexts
-          (counterparty_id, execution_context_id)
+        INSERT INTO trading_counterparty_trade_contexts
+          (counterparty_id, trade_context_id)
         VALUES (?, ?)
-      `).run(counterpartyId, executionContextId);
-      counterpartyExecutionContextConstraintsEnforced = false;
+      `).run(counterpartyId, tradeContextId);
+      counterpartyTradeContextConstraintsEnforced = false;
     } catch {} finally {
       database.exec(`
-        ROLLBACK TO verify_counterparty_execution_context_${index};
-        RELEASE verify_counterparty_execution_context_${index};
+        ROLLBACK TO verify_counterparty_trade_context_${index};
+        RELEASE verify_counterparty_trade_context_${index};
       `);
     }
   });
@@ -400,18 +400,18 @@ function verifyFreshSchemaAndSeed() {
   }
 
   [
-    ["X".repeat(31), "Valid execution system", "AUTO_PRICED", 1],
+    ["X".repeat(31), "Valid originating system", "AUTO_PRICED", 1],
     ["VERIFY_EXECUTION_NAME", "X".repeat(51), "AUTO_PRICED", 1],
-    ["VERIFY_EXECUTION_MODE", "Valid execution system", "MANUAL_PRICING_MODE", 1],
-    ["VERIFY_EXECUTION_ACTIVE", "Valid execution system", "AUTO_PRICED", 2]
+    ["VERIFY_EXECUTION_MODE", "Valid originating system", "MANUAL_PRICING_MODE", 1],
+    ["VERIFY_EXECUTION_ACTIVE", "Valid originating system", "AUTO_PRICED", 2]
   ].forEach(([id, name, pricingMode, isActive]) => {
     try {
       database.prepare(`
-        INSERT INTO execution_systems
-          (execution_system_id, name, pricing_mode, is_active)
+        INSERT INTO originating_systems
+          (originating_system_id, name, pricing_mode, is_active)
         VALUES (?, ?, ?, ?)
       `).run(id, name, pricingMode, isActive);
-      executionSystemConstraintsEnforced = false;
+      originatingSystemConstraintsEnforced = false;
     } catch {}
   });
 
@@ -422,8 +422,8 @@ function verifyFreshSchemaAndSeed() {
   ].forEach(([counterpartyName, isActive]) => {
     try {
       database.prepare(`
-        INSERT INTO trading_counterparties (counterparty_name, is_active)
-        VALUES (?, ?)
+        INSERT INTO trading_counterparties (counterparty_scope, counterparty_name, is_active)
+        VALUES ('EXTERNAL', ?, ?)
       `).run(counterpartyName, isActive);
       tradingCounterpartyConstraintsEnforced = false;
     } catch {}
@@ -439,8 +439,8 @@ function verifyFreshSchemaAndSeed() {
 
     try {
       const counterpartyId = database.prepare(`
-        INSERT INTO trading_counterparties (counterparty_name, is_active)
-        VALUES ('Verification External Counterparty', 1)
+        INSERT INTO trading_counterparties (counterparty_scope, counterparty_name, is_active)
+        VALUES ('EXTERNAL', 'Verification External Counterparty', 1)
       `).run().lastInsertRowid;
       database.prepare(`
         INSERT INTO external_counterparties
@@ -457,8 +457,8 @@ function verifyFreshSchemaAndSeed() {
 
   try {
     const counterpartyId = database.prepare(`
-      INSERT INTO trading_counterparties (counterparty_name, is_active)
-      VALUES ('Verification Internal Unit', 1)
+      INSERT INTO trading_counterparties (counterparty_scope, counterparty_name, is_active)
+      VALUES ('INTERNAL', 'Verification Internal Unit', 1)
     `).run().lastInsertRowid;
     database.prepare(`
       INSERT INTO internal_units (counterparty_id, unit_code, unit_type)
@@ -506,8 +506,8 @@ function verifyFreshSchemaAndSeed() {
     INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
     INNER JOIN trading_counterparty_roles role
       ON role.counterparty_id = p.counterparty_id AND role.role_code = 'CLIENT'
-    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     WHERE e.pricing_mode = 'AUTO_PRICED'
     ORDER BY r.pricing_rule_id
     LIMIT 1
@@ -526,8 +526,8 @@ function verifyFreshSchemaAndSeed() {
     INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
     INNER JOIN trading_counterparty_roles role
       ON role.counterparty_id = p.counterparty_id AND role.role_code = 'CLIENT'
-    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     WHERE e.pricing_mode <> 'AUTO_PRICED'
     ORDER BY r.pricing_rule_id
     LIMIT 1
@@ -668,20 +668,20 @@ function verifyFreshSchemaAndSeed() {
 
   try {
     database.prepare(`
-      UPDATE execution_systems
+      UPDATE originating_systems
       SET pricing_mode = 'DEALER_PRICED'
-      WHERE execution_system_id = 'CLICK_TRADE_EFX'
+      WHERE originating_system_id = 'CLICK_TRADE_EFX'
     `).run();
     clientDealGenerationSettingsPricingModeEnforced = false;
   } catch {}
 
   try {
     database.prepare(`
-      UPDATE execution_contexts
-      SET execution_system_id = 'RFQ'
-      WHERE execution_context_id =
+      UPDATE trade_contexts
+      SET originating_system_id = 'RFQ'
+      WHERE trade_context_id =
       (
-        SELECT r.execution_context_id
+        SELECT r.trade_context_id
         FROM pricing_rules r
         INNER JOIN client_deal_generation_settings s
           ON s.pricing_rule_id = r.pricing_rule_id
@@ -731,13 +731,13 @@ function verifyFreshSchemaAndSeed() {
 
   const cascadePricingRuleId = Number(database.prepare(`
     INSERT INTO pricing_rules
-      (counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
-    SELECT ?, c.execution_context_id, pair.ccy_pair_code, 0.01
-    FROM execution_contexts c
-    INNER JOIN trading_counterparty_execution_contexts assignment
-      ON assignment.execution_context_id = c.execution_context_id
+      (counterparty_id, trade_context_id, ccy_pair_code, margin_percent)
+    SELECT ?, c.trade_context_id, pair.ccy_pair_code, 0.01
+    FROM trade_contexts c
+    INNER JOIN trading_counterparty_trade_contexts assignment
+      ON assignment.trade_context_id = c.trade_context_id
       AND assignment.counterparty_id = ?
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     CROSS JOIN ccy_pair_options pair
     WHERE e.pricing_mode = 'AUTO_PRICED'
       AND NOT EXISTS
@@ -745,10 +745,10 @@ function verifyFreshSchemaAndSeed() {
         SELECT 1
         FROM pricing_rules existing_rule
         WHERE existing_rule.counterparty_id = ?
-          AND existing_rule.execution_context_id = c.execution_context_id
+          AND existing_rule.trade_context_id = c.trade_context_id
           AND existing_rule.ccy_pair_code = pair.ccy_pair_code
       )
-    ORDER BY c.execution_context_id, pair.ccy_pair_code
+    ORDER BY c.trade_context_id, pair.ccy_pair_code
     LIMIT 1
   `).run(
     clientGenerationCounterpartyId,
@@ -798,7 +798,7 @@ function verifyFreshSchemaAndSeed() {
   ].forEach(values => {
     try {
       database.prepare(`
-        INSERT INTO fx_trade_exposure
+        INSERT INTO trade_exposures
           (
             execution_timestamp, received_timestamp, trade_type, trade_date, ccy_pair_code, base_ccy_side,
             dealt_ccy_code,
@@ -809,13 +809,13 @@ function verifyFreshSchemaAndSeed() {
           )
         VALUES (?, ?, ?, ?, ?, ?, 'EUR', ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(...values);
-      fxTradeExposureConstraintsEnforced = false;
+      tradeExposureConstraintsEnforced = false;
     } catch {}
   });
 
   try {
     database.prepare(`
-      INSERT INTO fx_trade_exposure
+      INSERT INTO trade_exposures
         (
           execution_timestamp, received_timestamp, trade_type, trade_date, ccy_pair_code, base_ccy_side,
           dealt_ccy_code,
@@ -826,11 +826,11 @@ function verifyFreshSchemaAndSeed() {
         )
       VALUES ('2026-07-15T09:30:00.000Z', '2026-07-15T09:30:00.000Z', 'CLIENT_DEAL', '2026-07-15', 'EUR_USD', 'BUY', 'JPY', 10000, 2, 11231, 2, 1.1231, 'TOD', '2026-07-15', '2026-07-15')
     `).run();
-    fxTradeExposureConstraintsEnforced = false;
+    tradeExposureConstraintsEnforced = false;
   } catch {}
 
   database.prepare(`
-    INSERT INTO fx_trade_exposure
+    INSERT INTO trade_exposures
       (
         execution_timestamp, received_timestamp, trade_type, trade_date, ccy_pair_code, base_ccy_side,
         dealt_ccy_code,
@@ -843,7 +843,7 @@ function verifyFreshSchemaAndSeed() {
   `).run();
 
   database.prepare(`
-    INSERT INTO fx_trade_exposure
+    INSERT INTO trade_exposures
       (
         execution_timestamp, received_timestamp, trade_type, trade_date, ccy_pair_code, base_ccy_side,
         dealt_ccy_code,
@@ -856,7 +856,7 @@ function verifyFreshSchemaAndSeed() {
   `).run();
 
   database.prepare(`
-    INSERT INTO fx_trade_exposure
+    INSERT INTO trade_exposures
       (
         execution_timestamp, received_timestamp, trade_type, trade_date, ccy_pair_code, base_ccy_side,
         dealt_ccy_code,
@@ -869,7 +869,7 @@ function verifyFreshSchemaAndSeed() {
   `).run();
 
   database.prepare(`
-    INSERT INTO fx_trade_exposure
+    INSERT INTO trade_exposures
       (
         execution_timestamp, received_timestamp, trade_type, trade_date, ccy_pair_code, base_ccy_side,
         dealt_ccy_code,
@@ -883,44 +883,44 @@ function verifyFreshSchemaAndSeed() {
 
   const seededClientTradeId = Number(database.prepare(`
     SELECT trade_id
-    FROM client_fx_deals
+    FROM client_deals
     LIMIT 1
   `).get().trade_id);
   const hedgeTradeId = Number(database.prepare(`
     SELECT trade_id
-    FROM fx_trade_exposure
+    FROM trade_exposures
     WHERE execution_timestamp = '2026-07-15T09:31:00.000Z'
   `).get().trade_id);
   const unlinkedClientTradeId = Number(database.prepare(`
     SELECT trade_id
-    FROM fx_trade_exposure
+    FROM trade_exposures
     WHERE execution_timestamp = '2026-07-15T09:32:00.000Z'
   `).get().trade_id);
   const seededHedgeTradeId = Number(database.prepare(`
     SELECT trade_id
-    FROM fx_hedge_deals
+    FROM hedge_deals
     LIMIT 1
   `).get().trade_id);
   const unlinkedHedgeTradeId = Number(database.prepare(`
     SELECT trade_id
-    FROM fx_trade_exposure
+    FROM trade_exposures
     WHERE execution_timestamp = '2026-07-15T09:33:00.000Z'
   `).get().trade_id);
 
   database.exec("SAVEPOINT verify_batches");
   try {
     const batchId = Number(database.prepare(`
-      INSERT INTO fx_batches
+      INSERT INTO batches
         (idempotency_key, ccy_pair_code)
       VALUES ('verify-batch', 'EUR_USD')
     `).run().lastInsertRowid);
     const storedBatch = database.prepare(`
       SELECT *
-      FROM fx_batches
+      FROM batches
       WHERE batch_id = ?
     `).get(batchId);
 
-    fxTradeBatchDefaultsSupported = batchId > 0
+    tradeBatchDefaultsSupported = batchId > 0
       && storedBatch?.idempotency_key === "verify-batch"
       && storedBatch?.ccy_pair_code === "EUR_USD"
       && storedBatch?.batch_status === "BUILDING"
@@ -931,7 +931,7 @@ function verifyFreshSchemaAndSeed() {
       && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(storedBatch?.created_at || "");
 
     const insertQuoteCashMember = database.prepare(`
-      INSERT INTO fx_batch_quote_cash_output
+      INSERT INTO batch_quote_cash_outputs
         (
           batch_id,
           quote_ccy_code,
@@ -950,7 +950,7 @@ function verifyFreshSchemaAndSeed() {
     );
     const storedQuoteCashMember = database.prepare(`
       SELECT *
-      FROM fx_batch_quote_cash_output
+      FROM batch_quote_cash_outputs
       WHERE batch_id = ?
     `).get(batchId);
     batchQuoteCashMemberSupported =
@@ -963,7 +963,7 @@ function verifyFreshSchemaAndSeed() {
         .test(storedQuoteCashMember?.created_at || "");
 
     try {
-      database.prepare("DELETE FROM fx_batches WHERE batch_id = ?").run(batchId);
+      database.prepare("DELETE FROM batches WHERE batch_id = ?").run(batchId);
     } catch {
       batchQuoteCashMemberParentRestrictionEnforced = true;
     }
@@ -975,7 +975,7 @@ function verifyFreshSchemaAndSeed() {
     }
 
     database.prepare(`
-      DELETE FROM fx_batch_quote_cash_output
+      DELETE FROM batch_quote_cash_outputs
       WHERE batch_id = ?
     `).run(batchId);
 
@@ -990,19 +990,19 @@ function verifyFreshSchemaAndSeed() {
         insertQuoteCashMember.run(batchId, ...values);
         batchQuoteCashMemberConstraintsEnforced = false;
         database.prepare(`
-          DELETE FROM fx_batch_quote_cash_output
+          DELETE FROM batch_quote_cash_outputs
           WHERE batch_id = ?
         `).run(batchId);
       } catch {}
     });
 
     const settlementBatchId = Number(database.prepare(`
-      INSERT INTO fx_batches
+      INSERT INTO batches
         (idempotency_key, ccy_pair_code)
       VALUES ('verify-cash-settlement-batch', 'EUR_USD')
     `).run().lastInsertRowid);
     database.prepare(`
-      INSERT INTO fx_batch_members
+      INSERT INTO batch_members
         (batch_id, trade_id, trade_type, member_role)
       VALUES (?, ?, 'CLIENT_DEAL', 'TRADE')
     `).run(settlementBatchId, seededClientTradeId);
@@ -1020,10 +1020,10 @@ function verifyFreshSchemaAndSeed() {
 
     try {
       database.prepare(`
-        INSERT INTO fx_batches (idempotency_key, ccy_pair_code, batch_status)
+        INSERT INTO batches (idempotency_key, ccy_pair_code, batch_status)
         VALUES ('verify-invalid-batch', 'EUR_USD', 'COMPLETED')
       `).run();
-      fxTradeBatchConstraintsEnforced = false;
+      tradeBatchConstraintsEnforced = false;
     } catch {}
 
     [
@@ -1033,7 +1033,7 @@ function verifyFreshSchemaAndSeed() {
     ].forEach(([idempotencyKey, reasonCode, detailsJson]) => {
       try {
         database.prepare(`
-          INSERT INTO fx_batches
+          INSERT INTO batches
             (
               idempotency_key,
               ccy_pair_code,
@@ -1042,7 +1042,7 @@ function verifyFreshSchemaAndSeed() {
             )
           VALUES (?, 'EUR_USD', ?, ?)
         `).run(idempotencyKey, reasonCode, detailsJson);
-        fxTradeBatchConstraintsEnforced = false;
+        tradeBatchConstraintsEnforced = false;
       } catch {}
     });
   } finally {
@@ -1054,18 +1054,18 @@ function verifyFreshSchemaAndSeed() {
 
   try {
     const cashNeutralityBatchId = Number(database.prepare(`
-      INSERT INTO fx_batches (idempotency_key, ccy_pair_code)
+      INSERT INTO batches (idempotency_key, ccy_pair_code)
       VALUES ('verify-quote-cash-neutrality', 'EUR_USD')
     `).run().lastInsertRowid);
     const insertMember = database.prepare(`
-      INSERT INTO fx_batch_members
+      INSERT INTO batch_members
         (batch_id, trade_id, trade_type, member_role)
       VALUES (?, ?, ?, 'TRADE')
     `);
     insertMember.run(cashNeutralityBatchId, seededClientTradeId, "CLIENT_DEAL");
     insertMember.run(cashNeutralityBatchId, seededHedgeTradeId, "HEDGE_DEAL");
     const insertCashMember = database.prepare(`
-      INSERT INTO fx_batch_quote_cash_output
+      INSERT INTO batch_quote_cash_outputs
         (
           batch_id,
           quote_ccy_code,
@@ -1079,7 +1079,7 @@ function verifyFreshSchemaAndSeed() {
 
     try {
       database.prepare(`
-        UPDATE fx_batches
+        UPDATE batches
         SET batch_status = 'FORMED'
         WHERE batch_id = ?
       `).run(cashNeutralityBatchId);
@@ -1088,19 +1088,19 @@ function verifyFreshSchemaAndSeed() {
     }
 
     database.prepare(`
-      DELETE FROM fx_batch_quote_cash_output
+      DELETE FROM batch_quote_cash_outputs
       WHERE batch_id = ?
     `).run(cashNeutralityBatchId);
     insertCashMember.run(cashNeutralityBatchId, -2700000);
     database.prepare(`
-      UPDATE fx_batches
+      UPDATE batches
       SET batch_status = 'FORMED'
       WHERE batch_id = ?
     `).run(cashNeutralityBatchId);
 
     try {
       database.prepare(`
-        UPDATE fx_batch_quote_cash_output
+        UPDATE batch_quote_cash_outputs
         SET quote_balance_contribution_minor = 0
         WHERE batch_id = ?
       `).run(cashNeutralityBatchId);
@@ -1122,10 +1122,10 @@ function verifyFreshSchemaAndSeed() {
   ].forEach(values => {
     try {
       database.prepare(`
-        INSERT INTO client_fx_deals (trade_id, trade_type, counterparty_id)
+        INSERT INTO client_deals (trade_id, trade_type, counterparty_id)
         VALUES (?, ?, ?)
       `).run(...values);
-      clientFxDealConstraintsEnforced = false;
+      clientDealConstraintsEnforced = false;
     } catch {}
   });
 
@@ -1137,17 +1137,17 @@ function verifyFreshSchemaAndSeed() {
   ].forEach(values => {
     try {
       database.prepare(`
-        INSERT INTO fx_hedge_deals
+        INSERT INTO hedge_deals
           (trade_id, trade_type, request_timestamp, counterparty_id)
         VALUES (?, ?, '2026-07-15T09:31:00.000Z', ?)
       `).run(...values);
-      hedgeFxDealConstraintsEnforced = false;
+      hedgeDealConstraintsEnforced = false;
     } catch {}
   });
 
   const hedgePricingRuleReference = database.prepare(`
-    SELECT pricing_rule_id, counterparty_id, execution_context_id
-    FROM fx_hedge_deals
+    SELECT pricing_rule_id, counterparty_id, trade_context_id
+    FROM hedge_deals
     WHERE trade_id = ?
   `).get(seededHedgeTradeId);
 
@@ -1156,17 +1156,17 @@ function verifyFreshSchemaAndSeed() {
     [unlinkedHedgeTradeId, hedgePricingRuleReference.counterparty_id, null, null, 1.12, "INVALID", 2],
     [unlinkedHedgeTradeId, hedgePricingRuleReference.counterparty_id, null, null, 1.12, 0, null],
     [unlinkedHedgeTradeId, hedgePricingRuleReference.counterparty_id, null, hedgePricingRuleReference.pricing_rule_id, 1.12, 0, 2],
-    [unlinkedHedgeTradeId, 1, hedgePricingRuleReference.execution_context_id, hedgePricingRuleReference.pricing_rule_id, 1.12, 0, 2]
+    [unlinkedHedgeTradeId, 1, hedgePricingRuleReference.trade_context_id, hedgePricingRuleReference.pricing_rule_id, 1.12, 0, 2]
   ].forEach(values => {
     try {
       database.prepare(`
-        INSERT INTO fx_hedge_deals
+        INSERT INTO hedge_deals
           (
             trade_id,
             trade_type,
             request_timestamp,
             counterparty_id,
-            execution_context_id,
+            trade_context_id,
             pricing_rule_id,
             transfer_rate,
             analytical_pnl_quote_minor,
@@ -1174,40 +1174,40 @@ function verifyFreshSchemaAndSeed() {
           )
         VALUES (?, 'HEDGE_DEAL', '2026-07-15T09:33:00.000Z', ?, ?, ?, ?, ?, ?)
       `).run(...values);
-      hedgeFxDealConstraintsEnforced = false;
+      hedgeDealConstraintsEnforced = false;
     } catch {}
   });
 
   const pricingRuleReference = database.prepare(`
-    SELECT pricing_rule_id, execution_context_id
+    SELECT pricing_rule_id, trade_context_id
     FROM pricing_rules
     WHERE counterparty_id = 1
     ORDER BY pricing_rule_id
     LIMIT 1
   `).get();
-  const mismatchedExecutionContextId = Number(database.prepare(`
-    SELECT execution_context_id
-    FROM execution_contexts
-    WHERE execution_context_id <> ?
-    ORDER BY execution_context_id
+  const mismatchedTradeContextId = Number(database.prepare(`
+    SELECT trade_context_id
+    FROM trade_contexts
+    WHERE trade_context_id <> ?
+    ORDER BY trade_context_id
     LIMIT 1
-  `).get(pricingRuleReference.execution_context_id).execution_context_id);
+  `).get(pricingRuleReference.trade_context_id).trade_context_id);
 
   [
     [unlinkedClientTradeId, 1, null, null, 0, 0, 2],
     [unlinkedClientTradeId, 1, null, null, 1.12, "INVALID", 2],
     [unlinkedClientTradeId, 1, null, null, 1.12, 0, null],
     [unlinkedClientTradeId, 1, null, pricingRuleReference.pricing_rule_id, 1.12, 0, 2],
-    [unlinkedClientTradeId, 1, mismatchedExecutionContextId, pricingRuleReference.pricing_rule_id, 1.12, 0, 2]
+    [unlinkedClientTradeId, 1, mismatchedTradeContextId, pricingRuleReference.pricing_rule_id, 1.12, 0, 2]
   ].forEach(values => {
     try {
       database.prepare(`
-        INSERT INTO client_fx_deals
+        INSERT INTO client_deals
           (
             trade_id,
             trade_type,
             counterparty_id,
-            execution_context_id,
+            trade_context_id,
             pricing_rule_id,
             transfer_rate,
             analytical_pnl_quote_minor,
@@ -1215,63 +1215,63 @@ function verifyFreshSchemaAndSeed() {
           )
         VALUES (?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?)
       `).run(...values);
-      clientFxDealConstraintsEnforced = false;
+      clientDealConstraintsEnforced = false;
     } catch {}
   });
 
   ["X".repeat(501), "First line\nSecond line"].forEach(comment => {
     try {
       database.prepare(`
-        UPDATE client_fx_deals
+        UPDATE client_deals
         SET comment = ?
         WHERE trade_id = ?
       `).run(comment, seededClientTradeId);
-      clientFxDealConstraintsEnforced = false;
+      clientDealConstraintsEnforced = false;
     } catch {}
   });
 
   try {
-    database.prepare("DELETE FROM fx_trade_exposure WHERE trade_id = ?").run(seededClientTradeId);
-    clientFxDealParentRestrictionEnforced = false;
+    database.prepare("DELETE FROM trade_exposures WHERE trade_id = ?").run(seededClientTradeId);
+    clientDealParentRestrictionEnforced = false;
   } catch {}
 
   try {
-    database.prepare("DELETE FROM fx_trade_exposure WHERE trade_id = ?").run(seededHedgeTradeId);
-    hedgeFxDealParentRestrictionEnforced = false;
+    database.prepare("DELETE FROM trade_exposures WHERE trade_id = ?").run(seededHedgeTradeId);
+    hedgeDealParentRestrictionEnforced = false;
   } catch {}
 
   try {
     database.prepare(`
-      UPDATE fx_trade_exposure
+      UPDATE trade_exposures
       SET trade_type = 'CLIENT_DEAL'
       WHERE trade_id = ?
     `).run(seededHedgeTradeId);
-    hedgeFxDealParentRestrictionEnforced = false;
+    hedgeDealParentRestrictionEnforced = false;
   } catch {}
 
   try {
     database.prepare(`
-      UPDATE fx_trade_exposure
+      UPDATE trade_exposures
       SET trade_type = 'HEDGE_DEAL'
       WHERE trade_id = ?
     `).run(seededClientTradeId);
-    clientFxDealParentRestrictionEnforced = false;
+    clientDealParentRestrictionEnforced = false;
   } catch {}
 
   const seededPricingRuleId = Number(database.prepare(`
     SELECT pricing_rule_id
-    FROM client_fx_deals
+    FROM client_deals
     WHERE trade_id = ?
   `).get(seededClientTradeId).pricing_rule_id);
 
   try {
     database.prepare("DELETE FROM pricing_rules WHERE pricing_rule_id = ?").run(seededPricingRuleId);
-    clientFxDealAttributionReferencesRestricted = false;
+    clientDealAttributionReferencesRestricted = false;
   } catch {}
 
   const nonClientCounterpartyId = Number(database.prepare(`
-    INSERT INTO trading_counterparties (counterparty_name, is_active)
-    VALUES ('Verification Deal Counterparty', 1)
+    INSERT INTO trading_counterparties (counterparty_scope, counterparty_name, is_active)
+    VALUES ('EXTERNAL', 'Verification Deal Counterparty', 1)
   `).run().lastInsertRowid);
   database.prepare(`
     INSERT INTO external_counterparties
@@ -1285,10 +1285,10 @@ function verifyFreshSchemaAndSeed() {
 
   try {
     database.prepare(`
-      INSERT INTO client_fx_deals (trade_id, trade_type, counterparty_id)
+      INSERT INTO client_deals (trade_id, trade_type, counterparty_id)
       VALUES (?, 'CLIENT_DEAL', ?)
     `).run(unlinkedClientTradeId, nonClientCounterpartyId);
-    clientFxDealCounterpartyTypeEnforced = false;
+    clientDealCounterpartyTypeEnforced = false;
   } catch {}
 
   try {
@@ -1296,16 +1296,16 @@ function verifyFreshSchemaAndSeed() {
       DELETE FROM trading_counterparty_roles
       WHERE counterparty_id = 1 AND role_code = 'CLIENT'
     `).run();
-    clientFxDealCounterpartyTypeEnforced = false;
+    clientDealCounterpartyTypeEnforced = false;
   } catch {}
 
   try {
     database.prepare(`
-      INSERT INTO fx_hedge_deals
+      INSERT INTO hedge_deals
         (trade_id, trade_type, request_timestamp, counterparty_id)
       VALUES (?, 'HEDGE_DEAL', '2026-07-15T09:33:00.000Z', 1)
     `).run(unlinkedHedgeTradeId);
-    hedgeFxDealCounterpartyTypeEnforced = false;
+    hedgeDealCounterpartyTypeEnforced = false;
   } catch {}
 
   try {
@@ -1313,7 +1313,7 @@ function verifyFreshSchemaAndSeed() {
       DELETE FROM trading_counterparty_roles
       WHERE counterparty_id = 4 AND role_code = 'HEDGE_COUNTERPARTY'
     `).run();
-    hedgeFxDealCounterpartyTypeEnforced = false;
+    hedgeDealCounterpartyTypeEnforced = false;
   } catch {}
 
   database.prepare("DELETE FROM trading_counterparties WHERE counterparty_id = ?").run(nonClientCounterpartyId);
@@ -1337,18 +1337,18 @@ function verifyFreshSchemaAndSeed() {
     `).all(),
     servicingLocations: database.prepare("SELECT COUNT(*) AS count FROM servicing_locations").get().count,
     accountingSystems: database.prepare("SELECT COUNT(*) AS count FROM accounting_systems").get().count,
-    executionSystems: database.prepare("SELECT COUNT(*) AS count FROM execution_systems").get().count,
-    executionContexts: database.prepare("SELECT COUNT(*) AS count FROM execution_contexts").get().count,
-    executionContextIdType: database.prepare("PRAGMA table_info(execution_contexts)").all()
-      .find(column => column.name === "execution_context_id")?.type,
-    executionContextDefaultPositionManagementModeColumn:
-      database.prepare("PRAGMA table_info(execution_contexts)").all()
-        .find(column => column.name === "default_position_management_mode"),
-    executionContextPositionManagementModeCounts: database.prepare(`
-      SELECT default_position_management_mode AS mode, COUNT(*) AS count
-      FROM execution_contexts
-      GROUP BY default_position_management_mode
-      ORDER BY default_position_management_mode
+    originatingSystems: database.prepare("SELECT COUNT(*) AS count FROM originating_systems").get().count,
+    tradeContexts: database.prepare("SELECT COUNT(*) AS count FROM trade_contexts").get().count,
+    tradeContextIdType: database.prepare("PRAGMA table_info(trade_contexts)").all()
+      .find(column => column.name === "trade_context_id")?.type,
+    tradeContextAdmissionModeColumn:
+      database.prepare("PRAGMA table_info(trade_contexts)").all()
+        .find(column => column.name === "auto_management_admission_mode"),
+    tradeContextAdmissionModeCounts: database.prepare(`
+      SELECT auto_management_admission_mode AS mode, COUNT(*) AS count
+      FROM trade_contexts
+      GROUP BY auto_management_admission_mode
+      ORDER BY auto_management_admission_mode
     `).all(),
     tradingCounterparties: database.prepare("SELECT COUNT(*) AS count FROM trading_counterparties").get().count,
     tradingCounterpartyRoles: database.prepare(`
@@ -1364,18 +1364,18 @@ function verifyFreshSchemaAndSeed() {
       .map(column => column.name),
     tradingCounterpartyRoleColumns: database.prepare("PRAGMA table_info(trading_counterparty_roles)").all()
       .map(column => column.name),
-    counterpartyExecutionContexts: database.prepare(`
+    counterpartyTradeContexts: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM trading_counterparty_execution_contexts
+      FROM trading_counterparty_trade_contexts
     `).get().count,
-    counterpartyExecutionContextColumns: database.prepare(`
-      PRAGMA table_info(trading_counterparty_execution_contexts)
+    counterpartyTradeContextColumns: database.prepare(`
+      PRAGMA table_info(trading_counterparty_trade_contexts)
     `).all().map(column => column.name),
-    counterpartyExecutionContextForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(trading_counterparty_execution_contexts)
+    counterpartyTradeContextForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(trading_counterparty_trade_contexts)
     `).all(),
-    counterpartyExecutionContextIndexColumns: database.prepare(`
-      PRAGMA index_info(idx_trading_counterparty_execution_contexts_context)
+    counterpartyTradeContextIndexColumns: database.prepare(`
+      PRAGMA index_info(idx_trading_counterparty_trade_contexts_context)
     `).all().map(column => column.name),
     users: database.prepare("SELECT COUNT(*) AS count FROM users").get().count,
     userColumns: database.prepare("PRAGMA table_info(users)").all().map(column => column.name),
@@ -1430,11 +1430,11 @@ function verifyFreshSchemaAndSeed() {
     pricingRules: database.prepare("SELECT COUNT(*) AS count FROM pricing_rules").get().count,
     pricingRulePositionManagementModeOverrideColumn:
       database.prepare("PRAGMA table_info(pricing_rules)").all()
-        .find(column => column.name === "position_management_mode_override"),
+        .find(column => column.name === "auto_management_admission_mode_override"),
     pricingRuleNullPositionManagementModeOverrides: database.prepare(`
       SELECT COUNT(*) AS count
       FROM pricing_rules
-      WHERE position_management_mode_override IS NULL
+      WHERE auto_management_admission_mode_override IS NULL
     `).get().count,
     legacyMonetaryColumns: database.prepare(`
       SELECT
@@ -1468,33 +1468,33 @@ function verifyFreshSchemaAndSeed() {
     clientDealGenerationProcessSettingsColumns: database.prepare(`
       PRAGMA table_info(client_deal_generation_process_settings)
     `).all().map(column => column.name),
-    fxBatchingSettings: database.prepare(`
+    batchingSettings: database.prepare(`
       SELECT *
-      FROM fx_batching_settings
+      FROM batching_settings
       WHERE settings_id = 1
     `).get(),
-    fxBatchingSettingsColumns: database.prepare(`
-      PRAGMA table_info(fx_batching_settings)
+    batchingSettingsColumns: database.prepare(`
+      PRAGMA table_info(batching_settings)
     `).all().map(column => column.name),
-    fxAutoBatchingSettings: database.prepare(`
+    autoBatchingSettings: database.prepare(`
       SELECT *
-      FROM fx_auto_batching_settings
+      FROM auto_batching_settings
       WHERE settings_id = 1
     `).get(),
-    fxAutoBatchingSettingsColumns: database.prepare(`
-      PRAGMA table_info(fx_auto_batching_settings)
+    autoBatchingSettingsColumns: database.prepare(`
+      PRAGMA table_info(auto_batching_settings)
     `).all().map(column => column.name),
-    fxAutoBatchingCcyPairs: database.prepare(`
+    autoBatchingCcyPairs: database.prepare(`
       SELECT ccy_pair_code
-      FROM fx_auto_batching_ccy_pairs
+      FROM auto_batching_ccy_pairs
       WHERE settings_id = 1
       ORDER BY ccy_pair_code
     `).all(),
-    fxAutoBatchingCcyPairColumns: database.prepare(`
-      PRAGMA table_info(fx_auto_batching_ccy_pairs)
+    autoBatchingCcyPairColumns: database.prepare(`
+      PRAGMA table_info(auto_batching_ccy_pairs)
     `).all().map(column => column.name),
-    fxAutoBatchingCcyPairForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(fx_auto_batching_ccy_pairs)
+    autoBatchingCcyPairForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(auto_batching_ccy_pairs)
     `).all(),
     clientDealGenerationSettingsColumns: database.prepare(`
       PRAGMA table_info(client_deal_generation_settings)
@@ -1512,110 +1512,110 @@ function verifyFreshSchemaAndSeed() {
       INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
       INNER JOIN trading_counterparty_roles role
         ON role.counterparty_id = p.counterparty_id AND role.role_code = 'CLIENT'
-      INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-      INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+      INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+      INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
       ORDER BY s.pricing_rule_id
     `).all(),
-    fxTradeExposures: database.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count,
-    fxTradeExposureColumns: database.prepare("PRAGMA table_info(fx_trade_exposure)").all().map(column => column.name),
-    fxTradeExposureForeignKeys: database.prepare("PRAGMA foreign_key_list(fx_trade_exposure)").all(),
-    fxTradeExposureIdentityIndex: database.prepare("PRAGMA index_list(fx_trade_exposure)").all()
-      .some(index => index.name === "uq_fx_trade_exposure_identity" && index.unique === 1),
-    fxTradeExposureIdentityIndexColumns: database.prepare("PRAGMA index_info(uq_fx_trade_exposure_identity)").all()
+    tradeExposures: database.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count,
+    tradeExposureColumns: database.prepare("PRAGMA table_info(trade_exposures)").all().map(column => column.name),
+    tradeExposureForeignKeys: database.prepare("PRAGMA foreign_key_list(trade_exposures)").all(),
+    tradeExposureIdentityIndex: database.prepare("PRAGMA index_list(trade_exposures)").all()
+      .some(index => index.name === "uq_trade_exposures_identity" && index.unique === 1),
+    tradeExposureIdentityIndexColumns: database.prepare("PRAGMA index_info(uq_trade_exposures_identity)").all()
       .map(column => column.name),
-    fxTradePositionManagementRows: database.prepare(`
+    tradePositionManagementRows: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_trade_position_management
+      FROM trade_position_management
     `).get().count,
-    fxTradePositionManagementColumns: database.prepare(`
-      PRAGMA table_info(fx_trade_position_management)
+    tradePositionManagementColumns: database.prepare(`
+      PRAGMA table_info(trade_position_management)
     `).all().map(column => column.name),
-    fxTradePositionManagementForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(fx_trade_position_management)
+    tradePositionManagementForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(trade_position_management)
     `).all(),
-    fxTradePositionManagementInitialModeCounts: database.prepare(`
+    tradePositionManagementInitialModeCounts: database.prepare(`
       SELECT initial_position_management_mode AS mode, COUNT(*) AS count
-      FROM fx_trade_position_management
+      FROM trade_position_management
       GROUP BY initial_position_management_mode
       ORDER BY initial_position_management_mode
     `).all(),
-    fxTradePositionManagementCurrentModeCounts: database.prepare(`
+    tradePositionManagementCurrentModeCounts: database.prepare(`
       SELECT current_position_management_mode AS mode, COUNT(*) AS count
-      FROM fx_trade_position_management
+      FROM trade_position_management
       GROUP BY current_position_management_mode
       ORDER BY current_position_management_mode
     `).all(),
-    fxTradePositionManagementMissingRows: database.prepare(`
+    tradePositionManagementMissingRows: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_trade_exposure exposure
-      LEFT JOIN fx_trade_position_management management
+      FROM trade_exposures exposure
+      LEFT JOIN trade_position_management management
         ON management.trade_id = exposure.trade_id
         AND management.trade_type = exposure.trade_type
       WHERE management.trade_id IS NULL
     `).get().count,
-    fxTradePositionManagementOrphanRows: database.prepare(`
+    tradePositionManagementOrphanRows: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_trade_position_management management
-      LEFT JOIN fx_trade_exposure exposure
+      FROM trade_position_management management
+      LEFT JOIN trade_exposures exposure
         ON exposure.trade_id = management.trade_id
         AND exposure.trade_type = management.trade_type
       WHERE exposure.trade_id IS NULL
     `).get().count,
-    fxTradePositionManagementTrigger: database.prepare(`
+    tradePositionManagementTrigger: database.prepare(`
       SELECT name, sql
       FROM sqlite_master
       WHERE type = 'trigger'
-        AND name = 'trg_fx_trade_position_management_initialize'
+        AND name = 'trg_trade_position_management_initialize'
     `).get(),
-    fxTradePositionManagementTransitionRows: database.prepare(`
+    tradePositionManagementTransitionRows: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_trade_position_management_transitions
+      FROM trade_position_management_transitions
     `).get().count,
-    fxTradePositionManagementTransitionColumns: database.prepare(`
-      PRAGMA table_info(fx_trade_position_management_transitions)
+    tradePositionManagementTransitionColumns: database.prepare(`
+      PRAGMA table_info(trade_position_management_transitions)
     `).all().map(column => column.name),
-    fxTradePositionManagementTransitionForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(fx_trade_position_management_transitions)
+    tradePositionManagementTransitionForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(trade_position_management_transitions)
     `).all(),
-    fxTradePositionManagementTransitionCreateSql: database.prepare(`
+    tradePositionManagementTransitionCreateSql: database.prepare(`
       SELECT sql
       FROM sqlite_master
       WHERE type = 'table'
-        AND name = 'fx_trade_position_management_transitions'
+        AND name = 'trade_position_management_transitions'
     `).get()?.sql || "",
-    fxTradeMarketSnapshots: database.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count,
-    fxTradeMarketSnapshotColumns: database.prepare("PRAGMA table_info(fx_trade_market_snapshot)").all()
+    tradeMarketSnapshots: database.prepare("SELECT COUNT(*) AS count FROM trade_market_snapshots").get().count,
+    tradeMarketSnapshotColumns: database.prepare("PRAGMA table_info(trade_market_snapshots)").all()
       .map(column => column.name),
-    fxTradeMarketSnapshotForeignKeys: database.prepare("PRAGMA foreign_key_list(fx_trade_market_snapshot)").all(),
-    fxTradeMarketSnapshotSeedRows: database.prepare(`
+    tradeMarketSnapshotForeignKeys: database.prepare("PRAGMA foreign_key_list(trade_market_snapshots)").all(),
+    tradeMarketSnapshotSeedRows: database.prepare(`
       SELECT *
-      FROM fx_trade_market_snapshot
+      FROM trade_market_snapshots
       ORDER BY trade_id
     `).all(),
-    clientFxDeals: database.prepare("SELECT COUNT(*) AS count FROM client_fx_deals").get().count,
-    clientFxDealColumns: database.prepare("PRAGMA table_info(client_fx_deals)").all().map(column => column.name),
-    clientFxDealForeignKeys: database.prepare("PRAGMA foreign_key_list(client_fx_deals)").all(),
-    clientFxDealSeedRow: database.prepare("SELECT * FROM client_fx_deals LIMIT 1").get(),
-    hedgeFxDeals: database.prepare("SELECT COUNT(*) AS count FROM fx_hedge_deals").get().count,
-    hedgeFxDealColumns: database.prepare("PRAGMA table_info(fx_hedge_deals)").all().map(column => column.name),
-    hedgeFxDealForeignKeys: database.prepare("PRAGMA foreign_key_list(fx_hedge_deals)").all(),
-    hedgeFxDealSeedRow: database.prepare("SELECT * FROM fx_hedge_deals LIMIT 1").get(),
+    clientDeals: database.prepare("SELECT COUNT(*) AS count FROM client_deals").get().count,
+    clientDealColumns: database.prepare("PRAGMA table_info(client_deals)").all().map(column => column.name),
+    clientDealForeignKeys: database.prepare("PRAGMA foreign_key_list(client_deals)").all(),
+    clientDealSeedRow: database.prepare("SELECT * FROM client_deals LIMIT 1").get(),
+    hedgeDeals: database.prepare("SELECT COUNT(*) AS count FROM hedge_deals").get().count,
+    hedgeDealColumns: database.prepare("PRAGMA table_info(hedge_deals)").all().map(column => column.name),
+    hedgeDealForeignKeys: database.prepare("PRAGMA foreign_key_list(hedge_deals)").all(),
+    hedgeDealSeedRow: database.prepare("SELECT * FROM hedge_deals LIMIT 1").get(),
     hedgeQuickModeSettings: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_hedge_quick_mode_settings
+      FROM hedge_quick_mode_settings
     `).get().count,
     hedgeQuickModeSettingsColumns: database.prepare(`
-      PRAGMA table_info(fx_hedge_quick_mode_settings)
+      PRAGMA table_info(hedge_quick_mode_settings)
     `).all().map(column => column.name),
     hedgeQuickModeSettingsForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(fx_hedge_quick_mode_settings)
+      PRAGMA foreign_key_list(hedge_quick_mode_settings)
     `).all(),
     hedgeQuickModeSettingsSeedRow: database.prepare(`
       SELECT
         settings.*,
         role.role_code AS counterparty_type,
         execution.pricing_mode
-      FROM fx_hedge_quick_mode_settings settings
+      FROM hedge_quick_mode_settings settings
       INNER JOIN pricing_rules rule
         ON rule.pricing_rule_id = settings.pricing_rule_id
         AND rule.counterparty_id = settings.counterparty_id
@@ -1623,10 +1623,10 @@ function verifyFreshSchemaAndSeed() {
       INNER JOIN trading_counterparties counterparty ON counterparty.counterparty_id = settings.counterparty_id
       INNER JOIN trading_counterparty_roles role
         ON role.counterparty_id = counterparty.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
-      INNER JOIN execution_contexts context
-        ON context.execution_context_id = rule.execution_context_id
-      INNER JOIN execution_systems execution
-        ON execution.execution_system_id = context.execution_system_id
+      INNER JOIN trade_contexts context
+        ON context.trade_context_id = rule.trade_context_id
+      INNER JOIN originating_systems execution
+        ON execution.originating_system_id = context.originating_system_id
       WHERE settings.ccy_pair_code = 'EUR_USD'
     `).get(),
     hedgeQuickModeSettingsReferenceIndex: database.prepare(`
@@ -1645,118 +1645,118 @@ function verifyFreshSchemaAndSeed() {
         AND name LIKE '%hedge_quick_mode_settings%'
       ORDER BY name
     `).all().map(trigger => trigger.name),
-    fxTradeBatches: database.prepare(`
+    tradeBatches: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_batches
+      FROM batches
     `).get().count,
     batchFormationAuditView: database.prepare(`
       SELECT type, sql
       FROM sqlite_schema
-      WHERE name = 'v_fx_batch_formation_audit'
+      WHERE name = 'v_batch_formation_audit'
     `).get(),
     batchFormationAuditViewColumns: database.prepare(`
-      PRAGMA table_info(v_fx_batch_formation_audit)
+      PRAGMA table_info(v_batch_formation_audit)
     `).all().map(column => column.name),
-    fxTradeBatchColumns: database.prepare(`
-      PRAGMA table_info(fx_batches)
+    tradeBatchColumns: database.prepare(`
+      PRAGMA table_info(batches)
     `).all().map(column => column.name),
-    fxTradeBatchForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(fx_batches)
+    tradeBatchForeignKeys: database.prepare(`
+      PRAGMA foreign_key_list(batches)
     `).all(),
-    fxTradeBatchCreateSql: database.prepare(`
+    tradeBatchCreateSql: database.prepare(`
       SELECT sql
       FROM sqlite_schema
-      WHERE type = 'table' AND name = 'fx_batches'
+      WHERE type = 'table' AND name = 'batches'
     `).get()?.sql || "",
-    fxTradeBatchStatusPairIndexColumns: database.prepare(`
-      PRAGMA index_info(idx_fx_batches_status_pair)
+    tradeBatchStatusPairIndexColumns: database.prepare(`
+      PRAGMA index_info(idx_batches_status_pair)
     `).all().map(column => column.name),
     batchBalancingTrades: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_batch_members
+      FROM batch_members
     `).get().count,
     batchBalancingTradeColumns: database.prepare(`
-      PRAGMA table_info(fx_batch_members)
+      PRAGMA table_info(batch_members)
     `).all().map(column => column.name),
     batchBalancingTradeForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(fx_batch_members)
+      PRAGMA foreign_key_list(batch_members)
     `).all(),
     batchMemberCreateSql: database.prepare(`
       SELECT sql
       FROM sqlite_schema
-      WHERE type = 'table' AND name = 'fx_batch_members'
+      WHERE type = 'table' AND name = 'batch_members'
     `).get()?.sql || "",
     batchMemberTechnicalOriginIndex: database.prepare(`
-      PRAGMA index_list(fx_batch_members)
+      PRAGMA index_list(batch_members)
     `).all().some(index =>
-      index.name === "uq_fx_batch_members_single_technical_origin"
+      index.name === "uq_batch_members_single_technical_origin"
       && index.unique === 1
     ),
     batchBalanceTrades: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_batch_balance_trade
+      FROM batch_balance_trades
     `).get().count,
     batchBalanceTradeColumns: database.prepare(`
-      PRAGMA table_info(fx_batch_balance_trade)
+      PRAGMA table_info(batch_balance_trades)
     `).all(),
     batchBalanceTradeForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(fx_batch_balance_trade)
+      PRAGMA foreign_key_list(batch_balance_trades)
     `).all(),
     batchBalanceTradeCreateSql: database.prepare(`
       SELECT sql
       FROM sqlite_schema
-      WHERE type = 'table' AND name = 'fx_batch_balance_trade'
+      WHERE type = 'table' AND name = 'batch_balance_trades'
     `).get()?.sql || "",
     batchPositionOutputs: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_batch_position_output
+      FROM batch_position_outputs
     `).get().count,
     batchPositionOutputColumns: database.prepare(`
-      PRAGMA table_info(fx_batch_position_output)
+      PRAGMA table_info(batch_position_outputs)
     `).all(),
     batchPositionOutputForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(fx_batch_position_output)
+      PRAGMA foreign_key_list(batch_position_outputs)
     `).all(),
     batchPositionOutputCreateSql: database.prepare(`
       SELECT sql
       FROM sqlite_schema
-      WHERE type = 'table' AND name = 'fx_batch_position_output'
+      WHERE type = 'table' AND name = 'batch_position_outputs'
     `).get()?.sql || "",
     batchQuoteCashMembers: database.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_batch_quote_cash_output
+      FROM batch_quote_cash_outputs
     `).get().count,
     batchQuoteCashMemberColumns: database.prepare(`
-      PRAGMA table_info(fx_batch_quote_cash_output)
+      PRAGMA table_info(batch_quote_cash_outputs)
     `).all().map(column => column.name),
     batchQuoteCashMemberForeignKeys: database.prepare(`
-      PRAGMA foreign_key_list(fx_batch_quote_cash_output)
+      PRAGMA foreign_key_list(batch_quote_cash_outputs)
     `).all(),
     batchQuoteCashMemberCreateSql: database.prepare(`
       SELECT sql
       FROM sqlite_schema
-      WHERE type = 'table' AND name = 'fx_batch_quote_cash_output'
+      WHERE type = 'table' AND name = 'batch_quote_cash_outputs'
     `).get()?.sql || "",
     batchQuoteCashMemberTriggers: database.prepare(`
       SELECT name
       FROM sqlite_schema
       WHERE type = 'trigger'
-        AND tbl_name = 'fx_batch_quote_cash_output'
+        AND tbl_name = 'batch_quote_cash_outputs'
       ORDER BY name
     `).all().map(trigger => trigger.name),
     pricingRuleReferenceIndex: database.prepare("PRAGMA index_list(pricing_rules)").all()
       .some(index => index.name === "uq_pricing_rules_client_deal_reference" && index.unique === 1),
     pricingRuleReferenceIndexColumns: database.prepare("PRAGMA index_info(uq_pricing_rules_client_deal_reference)").all()
       .map(column => column.name),
-    pricingRuleExecutionContextIdType: database.prepare("PRAGMA table_info(pricing_rules)").all()
-      .find(column => column.name === "execution_context_id")?.type,
+    pricingRuleTradeContextIdType: database.prepare("PRAGMA table_info(pricing_rules)").all()
+      .find(column => column.name === "trade_context_id")?.type,
     ccyOptionsConstraintsEnforced,
     ccyPairOptionsConstraintsEnforced,
     servicingLocationConstraintsEnforced,
     accountingSystemTextLimitsEnforced,
-    executionSystemConstraintsEnforced,
+    originatingSystemConstraintsEnforced,
     tradingCounterpartyConstraintsEnforced,
-    counterpartyExecutionContextConstraintsEnforced,
+    counterpartyTradeContextConstraintsEnforced,
     userConstraintsEnforced,
     uiTableColumnSettingsConstraintsEnforced,
     normalizedTradingCounterpartyProfilesSupported,
@@ -1765,16 +1765,16 @@ function verifyFreshSchemaAndSeed() {
     clientDealGenerationSettingsCounterpartyTypeEnforced,
     clientDealGenerationSettingsPricingModeEnforced,
     clientDealGenerationSettingsCascadeDeleteEnforced,
-    fxTradeExposureConstraintsEnforced,
-    clientFxDealConstraintsEnforced,
-    clientFxDealParentRestrictionEnforced,
-    clientFxDealAttributionReferencesRestricted,
-    clientFxDealCounterpartyTypeEnforced,
-    hedgeFxDealConstraintsEnforced,
-    hedgeFxDealParentRestrictionEnforced,
-    hedgeFxDealCounterpartyTypeEnforced,
-    fxTradeBatchDefaultsSupported,
-    fxTradeBatchConstraintsEnforced,
+    tradeExposureConstraintsEnforced,
+    clientDealConstraintsEnforced,
+    clientDealParentRestrictionEnforced,
+    clientDealAttributionReferencesRestricted,
+    clientDealCounterpartyTypeEnforced,
+    hedgeDealConstraintsEnforced,
+    hedgeDealParentRestrictionEnforced,
+    hedgeDealCounterpartyTypeEnforced,
+    tradeBatchDefaultsSupported,
+    tradeBatchConstraintsEnforced,
     batchTradeTypesSupported,
     batchBalancingTradeConstraintsEnforced,
     batchBalancingTradeParentRestrictionEnforced,
@@ -1784,10 +1784,10 @@ function verifyFreshSchemaAndSeed() {
     batchQuoteCashMemberSinglePerBatchEnforced,
     batchQuoteCashNeutralityEnforced,
     completedBatchQuoteCashMemberImmutable,
-    counterpartyExecutionContextTablePresent: Boolean(database.prepare(`
+    counterpartyTradeContextTablePresent: Boolean(database.prepare(`
       SELECT 1 AS present
       FROM sqlite_master
-      WHERE type = 'table' AND name = 'trading_counterparty_execution_contexts'
+      WHERE type = 'table' AND name = 'trading_counterparty_trade_contexts'
     `).get()),
     foreignKeyViolations: database.prepare("PRAGMA foreign_key_check").all().length
   };
@@ -1809,46 +1809,46 @@ function verifyFrontendStructure() {
     path.join("backend", "ui-table-layout", "ui-table-layouts.js")
   );
   const demoDatabaseSource = normalizedSource("demo-db.js");
-  const fxBatchFormationDomainSource = normalizedSource(
-    path.join("backend", "fx-batching", "domain", "fx-batch-formation.js")
+  const batchFormationDomainSource = normalizedSource(
+    path.join("backend", "batching", "domain", "batch-formation.js")
   );
-  const fxBatchBalanceDomainSource = normalizedSource(
-    path.join("backend", "fx-batching", "domain", "fx-batch-balance.js")
+  const batchBalanceDomainSource = normalizedSource(
+    path.join("backend", "batching", "domain", "batch-balance.js")
   );
-  const fxBatchFormationApplicationSource = normalizedSource(
-    path.join("backend", "fx-batching", "application", "form-fx-batch-use-case.js")
+  const batchFormationApplicationSource = normalizedSource(
+    path.join("backend", "batching", "application", "form-batch-use-case.js")
   );
-  const fxAutoBatchingProcessSource = normalizedSource(
-    path.join("backend", "fx-batching", "application", "fx-auto-batching-process.js")
+  const autoBatchingProcessSource = normalizedSource(
+    path.join("backend", "batching", "application", "auto-batching-process.js")
   );
-  const fxAutoBatchingTradeScopeSource = normalizedSource(
-    path.join("backend", "fx-batching", "application", "fx-auto-batching-trade-scope.js")
+  const autoBatchingTradeScopeSource = normalizedSource(
+    path.join("backend", "batching", "application", "auto-batching-trade-scope.js")
   );
-  const fxAutoBatchSelectionSource = normalizedSource(
-    path.join("backend", "fx-batching", "domain", "fx-auto-batch-selection.js")
+  const autoBatchSelectionSource = normalizedSource(
+    path.join("backend", "batching", "domain", "auto-batch-selection.js")
   );
-  const sendFxTradesToAutoPositionManagementSource = normalizedSource(
+  const sendTradesToAutoPositionManagementSource = normalizedSource(
     path.join(
       "backend",
-      "fx-position-management",
+      "position-management",
       "application",
-      "send-fx-trades-to-auto-position-management-use-case.js"
+      "move-trades-to-auto-management-use-case.js"
     )
   );
-  const fxAutoBatchingPolicySource = normalizedSource(
-    path.join("backend", "fx-batching", "domain", "fx-auto-batching-policy.js")
+  const autoBatchingPolicySource = normalizedSource(
+    path.join("backend", "batching", "domain", "auto-batching-policy.js")
   );
-  const fxBatchingWindowPlannerSource = normalizedSource(
-    path.join("backend", "fx-batching", "domain", "fx-batching-window-planner.js")
+  const batchingWindowPlannerSource = normalizedSource(
+    path.join("backend", "batching", "domain", "batching-window-planner.js")
   );
-  const fxBatchFormationReasonSource = normalizedSource(
-    path.join("backend", "fx-batching", "domain", "fx-batch-formation-reason.js")
+  const batchFormationReasonSource = normalizedSource(
+    path.join("backend", "batching", "domain", "batch-formation-reason.js")
   );
   const clientDealGeneratorSource = normalizedSource(
-    path.join("backend", "client-fx-deal", "client-fx-deal-generator.js")
+    path.join("backend", "client-deal", "client-deal-generator.js")
   );
   const clientDealGenerationProcessSource = normalizedSource(
-    path.join("backend", "client-fx-deal", "client-deal-generation-process.js")
+    path.join("backend", "client-deal", "client-deal-generation-process.js")
   );
   const moneyDomainSource = normalizedSource(
     path.join("backend", "money", "money.js")
@@ -1882,8 +1882,8 @@ function verifyFrontendStructure() {
   const addHedgeDealDialogMarkup = html.match(
     /<dialog class="client-deal-create-dialog hedge-deal-create-dialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
-  const hedgingSettingsPageMarkup = html.match(
-    /<main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page hedging-settings-page" id="hedgingSettingsPage"[\s\S]*?<\/main>/
+  const positionManagementSettingsPageMarkup = html.match(
+    /<main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page position-management-settings-page" id="positionManagementSettingsPage"[\s\S]*?<\/main>/
   )?.[0] || "";
   const batchingSettingsPageMarkup = html.match(
     /<main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page batching-settings-page" id="batchingSettingsPage"[\s\S]*?<\/main>/
@@ -1913,41 +1913,41 @@ function verifyFrontendStructure() {
     /<dialog class="client-deal-create-dialog" id="editDealDialog"[\s\S]*?<\/dialog>/
   )?.[0] || "";
   const clientDealDuplicateCheckMarkup = html.match(/<dialog class="client-deal-create-dialog client-deal-duplicate-dialog"[\s\S]*?<\/dialog>/)?.[0] || "";
-  const fxPositionPageMarkup = html.match(
-    /<main class="shell fx-position-bootstrap workbench-page" id="mainPage"[\s\S]*?<\/main>/
+  const positionPageMarkup = html.match(
+    /<main class="shell position-bootstrap workbench-page" id="mainPage"[\s\S]*?<\/main>/
   )?.[0] || "";
-  const fxPositionModeTabsMarkup = fxPositionPageMarkup.match(
-    /<nav\b[^>]*id="fxPositionModeTabs"[\s\S]*?<\/nav>/
+  const positionModeTabsMarkup = positionPageMarkup.match(
+    /<nav\b[^>]*id="positionModeTabs"[\s\S]*?<\/nav>/
   )?.[0] || "";
-  const fxPositionGridMarkup = fxPositionPageMarkup.match(
-    /<table\b[^>]*class="[^"]*\bfx-position-grid\b[^"]*"[^>]*>[\s\S]*?<\/table>/
+  const positionGridMarkup = positionPageMarkup.match(
+    /<table\b[^>]*class="[^"]*\bposition-grid\b[^"]*"[^>]*>[\s\S]*?<\/table>/
   )?.[0] || "";
-  const fxPositionModeRoutingSource = inlineScript.match(
-    /function fxPositionRoute\([\s\S]*?function batchingHistoryRoute/
+  const positionModeRoutingSource = inlineScript.match(
+    /function positionRoute\([\s\S]*?function batchingHistoryRoute/
   )?.[0] || "";
-  const fxPositionModeViewSource = inlineScript.match(
-    /function fxPositionRowsForMode\([\s\S]*?function updateSortButtons/
+  const positionModeViewSource = inlineScript.match(
+    /function positionRowsForMode\([\s\S]*?function updateSortButtons/
   )?.[0] || "";
   const selectedBatchSourceTradesSource = inlineScript.match(
-    /function selectedBatchSourceTrades\([\s\S]*?(?=function isManualReviewTradeEligibleForAuto)/
+    /function selectedBatchSourceTrades\([\s\S]*?(?=function isTradeEligibleForAutoManagement)/
   )?.[0] || "";
-  const sendToAutoPositionModeSource = inlineScript.match(
-    /function isManualReviewTradeEligibleForAuto\([\s\S]*?function oneBatchCompatibilityKey/
+  const moveToAutoManagementSource = inlineScript.match(
+    /function isTradeEligibleForAutoManagement\([\s\S]*?function oneBatchCompatibilityKey/
   )?.[0] || "";
-  const fxPositionsEndpointSource = serverSource.match(
-    /if \(pathname === "\/api\/v1\/fx-positions" && method === "GET"\) \{[\s\S]*?return true;\s*\}/
+  const positionsEndpointSource = serverSource.match(
+    /if \(pathname === "\/api\/v1\/positions" && method === "GET"\) \{[\s\S]*?return true;\s*\}/
   )?.[0] || "";
-  const fxPositionDealToolbarMarkup = fxPositionPageMarkup.match(
+  const positionDealToolbarMarkup = positionPageMarkup.match(
     /<section class="deal-toolbar\b[^"]*"[\s\S]*?<\/section>/
   )?.[0] || "";
   const batchingSummaryRendererSource = inlineScript.match(
-    /function renderBatchingSummary\(source\)[\s\S]*?function clientFxDealClientCode/
+    /function renderBatchingSummary\(source\)[\s\S]*?function clientDealClientCode/
   )?.[0] || "";
-  const fxPositionWorkspaceMainCss = html.match(
-    /#mainPage\.fx-position-bootstrap\.workbench-page \.batching-workspace-main \{([\s\S]*?)\}/
+  const positionWorkspaceMainCss = html.match(
+    /#mainPage\.position-bootstrap\.workbench-page \.batching-workspace-main \{([\s\S]*?)\}/
   )?.[1] || "";
-  const fxPositionGridFrameCss = html.match(
-    /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid-frame \{([\s\S]*?)\}/
+  const positionGridFrameCss = html.match(
+    /#mainPage\.position-bootstrap\.workbench-page \.position-grid-frame \{([\s\S]*?)\}/
   )?.[1] || "";
   const generationSettingsDialogMarkup = html.match(
     /<dialog class="deal-dialog generation-dialog" id="clientDealGenerationDialog"[\s\S]*?<\/dialog>/
@@ -1957,11 +1957,11 @@ function verifyFrontendStructure() {
   const saveEditedDealFunction = inlineScript.match(
     /async function saveEditedDeal\(event\) \{[\s\S]*?\n    \}\n\n    function renderDealRow/
   )?.[0] || "";
-  const reloadClientFxDealsFunction = inlineScript.match(
-    /async function reloadClientFxDealsFromApi\(\) \{[\s\S]*?\n    \}/
+  const reloadClientDealsFunction = inlineScript.match(
+    /async function reloadClientDealsFromApi\(\) \{[\s\S]*?\n    \}/
   )?.[0] || "";
-  const reloadHedgeFxDealsFunction = inlineScript.match(
-    /async function reloadHedgeFxDealsFromApi\(\) \{[\s\S]*?\n    \}/
+  const reloadHedgeDealsFunction = inlineScript.match(
+    /async function reloadHedgeDealsFromApi\(\) \{[\s\S]*?\n    \}/
   )?.[0] || "";
   const persistCreatedClientDealFunction = inlineScript.match(
     /async function persistCreatedClientDeal\(targetDeal\) \{[\s\S]*?\n    \}(?=\n\n    async function confirmClientDealDuplicateCheck)/
@@ -1972,67 +1972,11 @@ function verifyFrontendStructure() {
   const clientPricingRuleFormMarkup = html.match(
     /<form\b[^>]*\bid="clientPricingRuleForm"[\s\S]*?<\/form>/
   )?.[0] || "";
-  const pricingRulePositionModeOptionsSource = inlineScript.match(
-    /function positionManagementModeOptions\([\s\S]*?function positionManagementModeOverrideFromControls/
-  )?.[0] || "";
-  const positionModeOverrideControlSource = inlineScript.match(
-    /function positionManagementModeOverrideFromControls\([\s\S]*?function pricingTypePresentation/
-  )?.[0] || "";
-  const pricingRulePositionModeViewSource = inlineScript.match(
-    /function pricingRulePositionManagementModeMarkup\([\s\S]*?function positionManagementModeOptions/
-  )?.[0] || "";
-  const globalPricingRuleEditorSource = inlineScript.match(
-    /function renderPricingRuleEditRow\([\s\S]*?function renderPricingRuleViewRow/
-  )?.[0] || "";
-  const globalPricingRulePositionModeSource = inlineScript.match(
-    /function pricingRuleRowPositionManagementModeOverride\([\s\S]*?function syncPricingRuleRowPreview/
-  )?.[0] || "";
-  const clientPricingRuleDialogPositionModeSource = inlineScript.match(
-    /function clientPricingRuleDialogPositionManagementModeOverride\([\s\S]*?function clientPricingRuleDraftFromDialog/
-  )?.[0] || "";
-  const clientPricingRuleInlineEditorSource = inlineScript.match(
-    /function clientPricingRuleInlineEditorMarkup\([\s\S]*?function renderClientExecutionContextsPanel/
-  )?.[0] || "";
-  const clientPricingRuleInlinePositionModeSource = inlineScript.match(
-    /function clientPricingRuleInlinePositionManagementModeOverride\([\s\S]*?function clientPricingRuleFromInlineEditorRow/
-  )?.[0] || "";
-  const usesPricingRulePositionModeInheritanceControls =
-    (html.match(/>Execution Context Default<\/span>/g) || []).length === 3
-    && clientPricingRuleFormMarkup.includes('id="clientPricingRuleUseExecutionContextDefault"')
-    && clientPricingRuleFormMarkup.includes('name="useExecutionContextDefault"')
-    && clientPricingRuleFormMarkup.includes('aria-controls="clientPricingRulePositionManagementModeOverride"')
-    && clientPricingRuleFormMarkup.includes('id="clientPricingRulePositionManagementModeOverride"')
-    && clientPricingRuleFormMarkup.includes('name="positionManagementModeOverride"')
-    && clientPricingRuleFormMarkup.includes('>Execution Context Default</span>')
-    && globalPricingRuleEditorSource.includes('data-pricing-rule-field="useExecutionContextDefault"')
-    && globalPricingRuleEditorSource.includes('data-pricing-rule-field="positionManagementModeOverride"')
-    && globalPricingRuleEditorSource.includes('>Execution Context Default</span>')
-    && clientPricingRuleInlineEditorSource.includes('data-client-pricing-rule-inline-field="useExecutionContextDefault"')
-    && clientPricingRuleInlineEditorSource.includes('data-client-pricing-rule-inline-field="positionManagementModeOverride"')
-    && clientPricingRuleInlineEditorSource.includes('>Execution Context Default</span>')
-    && pricingRulePositionModeOptionsSource.includes('<option value="MANUAL"')
-    && pricingRulePositionModeOptionsSource.includes('<option value="AUTO"')
-    && !pricingRulePositionModeOptionsSource.includes('<option value=""')
-    && positionModeOverrideControlSource.includes('return inherited ? null : override || undefined;')
-    && positionModeOverrideControlSource.includes('overrideControl.required = !inherited;')
-    && globalPricingRulePositionModeSource.includes(
-      'return positionManagementModeOverrideFromControls(inheritControl, overrideControl);'
-    )
-    && globalPricingRulePositionModeSource.includes('overrideControl.disabled = inherited;')
-    && clientPricingRuleDialogPositionModeSource.includes(
-      'return positionManagementModeOverrideFromControls(inheritControl, overrideControl);'
-    )
-    && clientPricingRuleDialogPositionModeSource.includes('overrideControl.disabled = inherited;')
-    && clientPricingRuleInlinePositionModeSource.includes(
-      'return positionManagementModeOverrideFromControls(inheritControl, overrideControl);'
-    )
-    && clientPricingRuleInlinePositionModeSource.includes(
-      'positionManagementModeOverrideControl.disabled = state.saving || inherited;'
-    )
-    && inlineScript.includes('positionManagementModeOverride: normalizedPositionManagementModeOverride(')
-    && schemaSource.includes('position_management_mode_override TEXT')
-    && !schemaSource.includes('use_execution_context_default')
-    && !serverSource.includes('useExecutionContextDefault');
+  const usesPricingRuleAdmissionInheritanceControls =
+    clientPricingRuleFormMarkup.includes('name="autoManagementAdmissionModeOverride"')
+    && inlineScript.includes('data-pricing-rule-field="autoManagementAdmissionModeOverride"')
+    && inlineScript.includes('data-client-pricing-rule-inline-field="autoManagementAdmissionModeOverride"')
+    && !schemaSource.includes('position_management_mode_override TEXT');
 
   return {
     inlineJavaScript: "OK",
@@ -2042,14 +1986,14 @@ function verifyFrontendStructure() {
     usesBackendSimulationStream: inlineScript.includes("/market-pulse-simulation/stream"),
     usesServicingLocationsEndpoint: inlineScript.includes("/api/v1/servicing-locations"),
     usesAccountingSystemsEndpoint: inlineScript.includes("/api/v1/accounting-systems"),
-    usesExecutionSystemsEndpoint: inlineScript.includes("/api/v1/execution-systems"),
+    usesOriginatingSystemsEndpoint: inlineScript.includes("/api/v1/originating-systems"),
     persistsReferenceDataItemsWithoutUndefinedAlias:
-      inlineScript.includes("executionSystemId: item.tradeCaptureChannelId")
+      inlineScript.includes("originatingSystemId: item.tradeCaptureChannelId")
       && inlineScript.includes("name: item.tradeCaptureChannelName")
       && inlineScript.includes("pricingMode: item.pricingType")
       && inlineScript.includes("collection.push(item);")
       && !inlineScript.includes("persistedItem"),
-    usesExecutionContextsEndpoint: inlineScript.includes("/api/v1/execution-contexts"),
+    usesTradeContextsEndpoint: inlineScript.includes("/api/v1/trade-contexts"),
     usesTradingCounterpartiesEndpoint: inlineScript.includes("/api/v1/trading-counterparties"),
     usesUsersWorkspace: inlineScript.includes("/api/v1/users")
       && html.includes('href="#users" data-workspace-route="users"')
@@ -2070,21 +2014,14 @@ function verifyFrontendStructure() {
       && inlineScript.includes('<span class="button-icon" aria-hidden="true">delete</span>'),
     usesPricingRulesEndpoint: inlineScript.includes("/api/v1/pricing-rules"),
     usesPricingRulesBootstrap: inlineScript.includes("DEMO_API_BOOTSTRAP.pricingRules"),
-    usesPricingRulePositionModeInheritanceControls,
-    usesFxPositionManagementPolicyConfiguration:
-      schemaSource.includes("default_position_management_mode")
-      && schemaSource.includes("auto_hedging_admission_mode")
-      && schemaSource.includes("position_management_mode_override")
-      && serverSource.includes("ensureFxPositionManagementPolicyColumns(database)")
-      && serverSource.includes("effectivePositionManagementMode: resolveFxPositionManagementMode")
-      && html.includes('data-ui-column-key="default_position_management_mode"')
-      && html.includes('data-ui-column-key="auto_hedging_admission_mode"')
-      && html.includes('data-ui-column-key="position_management_mode"')
-      && html.includes('name="positionManagementModeOverride"')
-      && inlineScript.includes("function effectivePositionManagementModeForRule(rule, context = null)")
-      && inlineScript.includes("defaultPositionManagementMode: context.defaultPositionManagementMode")
-      && inlineScript.includes("autoHedgingAdmissionMode: context.autoHedgingAdmissionMode")
-      && inlineScript.includes("positionManagementModeOverride: normalizedPositionManagementModeOverride"),
+    usesPricingRuleAdmissionInheritanceControls,
+    usesPositionManagementPolicyConfiguration:
+      schemaSource.includes("auto_management_admission_mode")
+      && !schemaSource.includes("default_position_management_mode")
+      && !schemaSource.includes("position_management_mode_override")
+      && serverSource.includes("function materializeTradeAdmission(")
+      && html.includes('data-ui-column-key="auto_management_admission_mode"')
+      && html.includes('name="autoManagementAdmissionModeOverride"'),
     usesUiColorTokenPalette:
       schemaSource.includes("CREATE TABLE IF NOT EXISTS ui_color_tokens")
       && databaseTableSectionsSource.includes('"ui_color_tokens"')
@@ -2093,7 +2030,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes('tableName === "ui_color_tokens"')
       && inlineScript.includes("function renderDatabaseColorPalette(tableName, rows)")
       && html.includes(".database-color-token-swatch"),
-    usesFxPositionColorPalette:
+    usesPositionColorPalette:
       html.includes("--palette-gray-300: #DEE2E6;")
       && html.includes("--palette-blue-500: #0D6EFD;")
       && html.includes("--app-primary: var(--palette-blue-500);")
@@ -2101,32 +2038,32 @@ function verifyFrontendStructure() {
       && html.includes("--app-process-idle-hover: var(--palette-blue-300);")
       && html.includes("--data-grid-line-color: var(--palette-gray-300);")
       && html.includes("--market-trade-bg: var(--palette-yellow-100);")
-      && html.includes(".fx-position-grid .sell-head")
+      && html.includes(".position-grid .sell-head")
       && html.includes("background: rgba(var(--bs-danger-rgb), 0.055);")
-      && html.includes(".fx-position-grid .buy-head")
+      && html.includes(".position-grid .buy-head")
       && html.includes("background: rgba(var(--bs-success-rgb), 0.055);"),
     usesDatabaseBackedUiTableColumnLayouts:
       schemaSource.includes("CREATE TABLE IF NOT EXISTS ui_table_column_settings")
       && uiTableLayoutsSource.includes("const UI_TABLE_LAYOUTS = Object.freeze({")
       && uiTableLayoutsSource.includes('hedge_quick_mode_settings_grid: layout("Quick Hedge Settings"')
-      && uiTableLayoutsSource.includes('fx_position_grid: layout("FX Position"')
+      && uiTableLayoutsSource.includes('position_grid: layout("Position"')
       && serverSource.includes("function ensureUiTableColumnSettings(sqlite)")
       && serverSource.includes("const uiTableColumnSettingsMatch =")
       && serverSource.includes("uiTableLayouts: Object.entries(UI_TABLE_LAYOUTS)")
       && inlineScript.includes("/api/v1/ui-table-column-settings/${encodeURIComponent")
       && databaseTableSectionsSource.includes('"ui_table_column_settings"')
       && html.includes('id="pricingRulesTableLayoutButton"')
-      && html.includes('data-ui-table-layout-host="client_fx_deals_grid"')
+      && html.includes('data-ui-table-layout-host="client_deals_grid"')
       && html.includes('data-ui-table-layout-host="servicing_locations_grid"')
-      && html.includes('data-ui-table-layout-host="fx_position_grid"')
+      && html.includes('data-ui-table-layout-host="position_grid"')
       && html.includes('id="pricingRulesTable" data-ui-table-layout-key="pricing_rules_grid"')
-      && html.includes('data-ui-table-layout-key="fx_position_grid"')
-      && html.includes('data-ui-column-key="execution_context"')
+      && html.includes('data-ui-table-layout-key="position_grid"')
+      && html.includes('data-ui-column-key="trade_context"')
       && html.includes('id="pricingRulesTableLayoutDialog"')
       && html.includes('id="pricingRulesTableLayoutSaveDefaultButton"')
       && html.includes('class="btn btn-sm btn-outline-primary with-icon" id="pricingRulesTableLayoutSaveButton"')
       && inlineScript.includes("function applyNativeUiTableLayout(tableKey, tableLayout)")
-      && inlineScript.includes("function applyFxPositionGridLayout(tableLayout)")
+      && inlineScript.includes("function applyPositionGridLayout(tableLayout)")
       && inlineScript.includes("function saveUiTableLayoutAsDefault(event)")
       && inlineScript.includes('confirmation: "SAVE_AS_DEFAULT"')
       && serverSource.includes("function updateUiTableColumnDefaults(payload)")
@@ -2140,11 +2077,11 @@ function verifyFrontendStructure() {
       && inlineScript.includes("counterpartyRoles: normalizedCounterpartyRoles(")
       && inlineScript.includes("data-pricing-rule-counterparty-type")
       && inlineScript.includes("counterpartyTypeForInn(rule.inn)"),
-    embedsPricingModeInPricingRuleExecutionContext: serverSource.includes("e.pricing_mode AS pricingMode")
+    embedsPricingModeInPricingRuleTradeContext: serverSource.includes("e.pricing_mode AS pricingMode")
       && !html.includes('data-pricing-rule-header-filter="pricingMode"')
       && !html.includes('<col data-ui-column-key="pricing_mode">\n              <col data-ui-column-key="position_management_mode">')
       && inlineScript.includes("pricingMode: sourcePricingMode")
-      && inlineScript.includes("pricingContextFacetsMarkup(rule.pricingContextId, { executionSystemLabel: true })"),
+      && inlineScript.includes("pricingContextFacetsMarkup(rule.pricingContextId, { originatingSystemLabel: true })"),
     usesDealerPricedClientDealRules: serverSource.includes('function clientDealPricingRules()')
       && serverSource.includes('pricingRules("DEALER_PRICED")')
       && serverSource.includes('pathname === "/api/v1/client-deal-pricing-rules"')
@@ -2157,19 +2094,19 @@ function verifyFrontendStructure() {
       && inlineScript.includes("return clientPricingRules")
       && inlineScript.includes('pricingModeForRule(rule) === pricingMode')
       && !inlineScript.includes("clientDealEligiblePricingRules"),
-    usesClientFxDealsEndpoint: serverSource.includes('pathname === "/api/v1/client-fx-deals"')
+    usesClientDealsEndpoint: serverSource.includes('pathname === "/api/v1/client-deals"')
       && serverSource.includes('r.margin_percent AS pricingRuleMargin')
       && serverSource.includes('LEFT JOIN pricing_rules r ON r.pricing_rule_id = d.pricing_rule_id')
-      && serverSource.includes('calculateClientFxDealEconomics')
-      && serverSource.includes('function clientFxDealWithCalculatedEconomics(payload, exposureAmounts)')
-      && serverSource.includes('clientFxDealWithCalculatedEconomics(validation, exposureAmounts)')
-      && inlineScript.includes("DEMO_API_BOOTSTRAP.clientFxDeals"),
-    usesHedgeFxDealsEndpoint: serverSource.includes('pathname === "/api/v1/hedge-fx-deals"')
-      && serverSource.includes("function hedgeFxDeals()")
-      && serverSource.includes("FROM fx_hedge_deals d")
-      && serverSource.includes('"HEDGE_FX_DEAL_IMMUTABLE"')
-      && !serverSource.includes("function deleteHedgeFxDeal(tradeId)")
-      && inlineScript.includes("DEMO_API_BOOTSTRAP.hedgeFxDeals"),
+      && serverSource.includes('calculateClientDealEconomics')
+      && serverSource.includes('function clientDealWithCalculatedEconomics(payload, exposureAmounts)')
+      && serverSource.includes('clientDealWithCalculatedEconomics(validation, exposureAmounts)')
+      && inlineScript.includes("DEMO_API_BOOTSTRAP.clientDeals"),
+    usesHedgeDealsEndpoint: serverSource.includes('pathname === "/api/v1/hedge-deals"')
+      && serverSource.includes("function hedgeDeals()")
+      && serverSource.includes("FROM hedge_deals d")
+      && serverSource.includes('"HEDGE_DEAL_IMMUTABLE"')
+      && !serverSource.includes("function deleteHedgeDeal(tradeId)")
+      && inlineScript.includes("DEMO_API_BOOTSTRAP.hedgeDeals"),
     usesDedicatedAddHedgeDealFlow: addHedgeDealDialogMarkup.includes('id="addHedgeDealDialog"')
       && addHedgeDealDialogMarkup.includes('id="addHedgeDealForm"')
       && addHedgeDealDialogMarkup.includes('name="pricingRuleId"')
@@ -2200,12 +2137,12 @@ function verifyFrontendStructure() {
       && inlineScript.includes('pricingMode = "DEALER_PRICED"')
       && inlineScript.includes("addHedgeDealPricingModeControl.value = normalizedPricingMode;")
       && inlineScript.includes("function selectedAddHedgeDealPricingMode()")
-      && inlineScript.includes("const ourSide = oppositeFxSide(positionSide);")
+      && inlineScript.includes("const ourSide = oppositeSide(positionSide);")
       && inlineScript.includes("addHedgeDealSideControl.innerHTML = `\n        <option value=\"\">Select...</option>")
-      && inlineScript.includes("addHedgeDealForm.elements.side.value = oppositeFxSide(normalizedOurSide);")
-      && inlineScript.includes("oppositeFxSide(addHedgeDealSideControl.value)")
-      && inlineScript.includes('"/api/v1/hedge-fx-deals/auto-priced"')
-      && inlineScript.includes('"/api/v1/hedge-fx-deals"')
+      && inlineScript.includes("addHedgeDealForm.elements.side.value = oppositeSide(normalizedOurSide);")
+      && inlineScript.includes("oppositeSide(addHedgeDealSideControl.value)")
+      && inlineScript.includes('"/api/v1/hedge-deals/auto-priced"')
+      && inlineScript.includes('"/api/v1/hedge-deals"')
       && inlineScript.includes('selectedAddHedgeDealPricingMode() === "AUTO_PRICED"')
       && inlineScript.includes("tradeRateInput.readOnly = autoPriced;")
       && inlineScript.includes('ourSide === "SELL"')
@@ -2219,17 +2156,17 @@ function verifyFrontendStructure() {
       && !inlineScript.includes("baseCcyAmount,\n            tradeRate,")
       && inlineScript.includes("function selectAddHedgeDealAmountFixingCurrency(event)")
       && inlineScript.includes('addHedgeDealForm.addEventListener("click", selectAddHedgeDealAmountFixingCurrency)')
-      && inlineScript.includes("async function reloadHedgeFxDealsFromApi()"),
+      && inlineScript.includes("async function reloadHedgeDealsFromApi()"),
     usesQuickHedgeMode:
       serverSource.includes('pathname === "/api/v1/hedge-quick-mode-settings"')
-      && serverSource.includes('pathname === "/api/v1/hedge-fx-deals/quick-mode"')
+      && serverSource.includes('pathname === "/api/v1/hedge-deals/quick-mode"')
       && serverSource.includes("function validateHedgeQuickModeDealPayload(body)")
       && serverSource.includes("hedgeQuickModeSettings: hedgeQuickModeSettings(),")
       && inlineScript.includes("DEMO_API_BOOTSTRAP.hedgeQuickModeSettings")
       && inlineScript.includes('demoApiRequest("/api/v1/hedge-quick-mode-settings")')
-      && fxPositionPageMarkup.includes('id="hedgeQuickModeToolbar"')
-      && /<section class="table-wrap fx-position-grid-frame"[\s\S]*?<\/section>\s*<section class="hedge-toolbar btn-toolbar"[\s\S]*?id="hedgeQuickModeToolbar"/.test(
-        fxPositionPageMarkup
+      && positionPageMarkup.includes('id="hedgeQuickModeToolbar"')
+      && /<section class="table-wrap position-grid-frame"[\s\S]*?<\/section>\s*<section class="hedge-toolbar btn-toolbar"[\s\S]*?id="hedgeQuickModeToolbar"/.test(
+        positionPageMarkup
       )
       && inlineScript.includes("function renderHedgeQuickModeToolbar()")
       && inlineScript.includes("function hedgeQuickModeToolbarStructureSignature(")
@@ -2250,7 +2187,7 @@ function verifyFrontendStructure() {
       && html.includes('--bs-btn-bg: rgba(var(--bs-danger-rgb), 0.055);')
       && html.includes('.hedge-quick-action-buy {')
       && html.includes('--bs-btn-bg: rgba(var(--bs-success-rgb), 0.055);')
-      && !/#mainPage\.fx-position-bootstrap\.workbench-page \.hedge-quick-action(?:-sell|-buy)? \{[^}]*\bbackground\s*:/.test(html)
+      && !/#mainPage\.position-bootstrap\.workbench-page \.hedge-quick-action(?:-sell|-buy)? \{[^}]*\bbackground\s*:/.test(html)
       && inlineScript.includes('data-hedge-quick-action')
       && inlineScript.includes('hedgeQuickModeBoundaryMarkup("start")')
       && inlineScript.includes('hedgeQuickModeBoundaryMarkup("end")')
@@ -2275,9 +2212,9 @@ function verifyFrontendStructure() {
       && !html.includes(".hedge-deal-quick-menu")
       && inlineScript.includes("async function createQuickHedgeDeal(ourSide, presetCode)")
       && inlineScript.includes(
-        'demoApiRequest("/api/v1/hedge-fx-deals/quick-mode"'
+        'demoApiRequest("/api/v1/hedge-deals/quick-mode"'
       )
-      && inlineScript.includes("side: oppositeFxSide(normalizedOurSide)")
+      && inlineScript.includes("side: oppositeSide(normalizedOurSide)")
       && inlineScript.includes("if (hedgeQuickModeDealCreating)")
       && inlineScript.includes("!event.ctrlKey")
       && inlineScript.includes("Hold Ctrl")
@@ -2285,63 +2222,63 @@ function verifyFrontendStructure() {
       && /hedgeQuickModeToolbar\.addEventListener\(\s*"click"/.test(inlineScript)
       && /hedgeQuickModeToolbar\.addEventListener\(\s*"keydown"/.test(inlineScript),
     usesHedgeQuickModeSettingsEditor:
-      fxPositionPageMarkup.includes('id="hedgeQuickModeSettingsButton"')
-      && fxPositionPageMarkup.includes('aria-label="Hedging Settings"')
-      && fxPositionPageMarkup.includes('class="batch-control hedge-toolbar-settings"')
-      && hedgingSettingsPageMarkup.includes(
-        '<h1 class="settings-title">Hedging Settings</h1>'
+      positionPageMarkup.includes('id="hedgeQuickModeSettingsButton"')
+      && positionPageMarkup.includes('aria-label="Position Management Settings"')
+      && positionPageMarkup.includes('class="batch-control hedge-toolbar-settings"')
+      && positionManagementSettingsPageMarkup.includes(
+        '<h1 class="settings-title">Position Management Settings</h1>'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsHeader" hidden'
       )
-      && !hedgingSettingsPageMarkup.includes(
+      && !positionManagementSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsTitle">Quick Hedge Settings</h2>'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         '<h3 class="table-panel__title">Quick Hedge Settings</h3>'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsCurrencyPair" name="currencyPair"'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         'id="hedgeQuickModePricingMode" name="pricingMode" aria-readonly="true" disabled'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         '<option value="AUTO_PRICED">Auto Priced</option>'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         'pricing-mode-indicator client-deal-pricing-mode-icon is-auto-priced'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         '<span class="button-icon" aria-hidden="true">flash_auto</span>'
       )
-      && hedgingSettingsPageMarkup.includes(
-        'Only Auto Priced Execution Systems are available for Quick Hedging.'
+      && positionManagementSettingsPageMarkup.includes(
+        'Only Auto Priced Originating Systems are available for Quick Hedging.'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsOverview"'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsGrid"'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsNewButton"'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         'id="hedgeQuickModeSettingsEditor" hidden'
       )
-      && hedgingSettingsPageMarkup.includes(
+      && positionManagementSettingsPageMarkup.includes(
         'id="hedgeQuickModeCounterpartyId" name="counterpartyId"'
       )
-      && hedgingSettingsPageMarkup.includes('name="pricingRuleId"')
-      && (hedgingSettingsPageMarkup.match(/name="(?:small|medium|large|xlarge)BaseCcyAmount"/g) || []).length === 4
-      && hedgingSettingsPageMarkup.includes('name="defaultTenor"')
-      && hedgingSettingsPageMarkup.includes('name="active"')
-      && inlineScript.includes('function hedgingSettingsRoute()')
-      && inlineScript.includes('function isHedgingSettingsRoute()')
-      && inlineScript.includes('async function loadHedgingSettingsPage()')
-      && /function applyInitialPageMode\(\)[\s\S]*?if \(isHedgingSettingsRoute\(\)\)[\s\S]*?loadHedgingSettingsPage\(\)/.test(inlineScript)
-      && /hedgeQuickModeSettingsButton\.addEventListener\("click",[\s\S]*?location\.hash = hedgingSettingsRoute\(\)/.test(inlineScript)
+      && positionManagementSettingsPageMarkup.includes('name="pricingRuleId"')
+      && (positionManagementSettingsPageMarkup.match(/name="(?:small|medium|large|xlarge)BaseCcyAmount"/g) || []).length === 4
+      && positionManagementSettingsPageMarkup.includes('name="defaultTenor"')
+      && positionManagementSettingsPageMarkup.includes('name="active"')
+      && inlineScript.includes('function positionManagementSettingsRoute()')
+      && inlineScript.includes('function isPositionManagementSettingsRoute()')
+      && inlineScript.includes('async function loadPositionManagementSettingsPage()')
+      && /function applyInitialPageMode\(\)[\s\S]*?if \(isPositionManagementSettingsRoute\(\)\)[\s\S]*?loadPositionManagementSettingsPage\(\)/.test(inlineScript)
+      && /hedgeQuickModeSettingsButton\.addEventListener\("click",[\s\S]*?location\.hash = positionManagementSettingsRoute\(\)/.test(inlineScript)
       && inlineScript.includes("function hedgeQuickModeCounterpartyProfiles()")
       && inlineScript.includes("function selectedHedgeQuickModePricingMode()")
       && inlineScript.includes('return pricingMode === "AUTO_PRICED" ? pricingMode : "";')
@@ -2350,7 +2287,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("hedgeQuickModeEligiblePricingRules().map")
       && inlineScript.includes("function initializeHedgeQuickModeSettingsGrid(data)")
       && inlineScript.includes("function renderHedgeQuickModeSettingsOverview()")
-      && inlineScript.includes("pricingContextFacetsMarkup(setting.context, { executionSystemLabel: true })")
+      && inlineScript.includes("pricingContextFacetsMarkup(setting.context, { originatingSystemLabel: true })")
       && inlineScript.includes("function openHedgeQuickModeSettingsEditor(setting = null)")
       && inlineScript.includes("function hedgeQuickModeUnconfiguredPairs()")
       && inlineScript.includes("function renderHedgeQuickModePricingRules()")
@@ -2361,18 +2298,18 @@ function verifyFrontendStructure() {
       && schemaSource.includes(
         "FOREIGN KEY (pricing_rule_id, counterparty_id, ccy_pair_code)"
       ),
-    usesFxAutoBatchingSettings:
-      schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_batching_settings")
-      && schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_auto_batching_settings")
-      && schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_auto_batching_ccy_pairs")
-      && serverSource.includes("function ensureFxBatchingSettings(sqlite)")
-      && serverSource.includes("function fxBatchingSettings()")
-      && serverSource.includes('pathname === "/api/v1/fx-batching-settings"')
-      && serverSource.includes("fxBatchingSettings: fxBatchingSettings()")
-      && serverSource.includes("function ensureFxAutoBatchingSettings(sqlite)")
-      && serverSource.includes("function fxAutoBatchingSettings()")
-      && serverSource.includes('pathname === "/api/v1/fx-auto-batching-settings"')
-      && serverSource.includes("fxAutoBatchingSettings: fxAutoBatchingSettings()")
+    usesAutoBatchingSettings:
+      schemaSource.includes("CREATE TABLE IF NOT EXISTS batching_settings")
+      && schemaSource.includes("CREATE TABLE IF NOT EXISTS auto_batching_settings")
+      && schemaSource.includes("CREATE TABLE IF NOT EXISTS auto_batching_ccy_pairs")
+      && serverSource.includes("function ensureBatchingSettings(sqlite)")
+      && serverSource.includes("function batchingSettings()")
+      && serverSource.includes('pathname === "/api/v1/batching-settings"')
+      && serverSource.includes("batchingSettings: batchingSettings()")
+      && serverSource.includes("function ensureAutoBatchingSettings(sqlite)")
+      && serverSource.includes("function autoBatchingSettings()")
+      && serverSource.includes('pathname === "/api/v1/auto-batching-settings"')
+      && serverSource.includes("autoBatchingSettings: autoBatchingSettings()")
       && batchingSettingsPageMarkup.includes(">Batching Settings</h1>")
       && batchingSettingsPageMarkup.includes(">Manual Batch Settings</span>")
       && batchingSettingsPageMarkup.includes(">Auto Batching Settings</span>")
@@ -2403,7 +2340,7 @@ function verifyFrontendStructure() {
       && manualBatchFormationProcessPageMarkup.includes(">Process Catalog</h1>")
       && !manualBatchFormationProcessPageMarkup.includes(">Process Catalog</h2>")
       && manualBatchFormationProcessPageMarkup.includes(
-        ">Create the FX Batch Aggregate</div>"
+        ">Create the Batch Aggregate</div>"
       )
       && manualBatchFormationProcessPageMarkup.includes(
         'aria-label="Manual Batching process map"'
@@ -2418,7 +2355,7 @@ function verifyFrontendStructure() {
       && !manualBatchFormationProcessPageMarkup.includes('data-process-catalog-view="admission"')
       && !manualBatchFormationProcessPageMarkup.includes('data-process-catalog-group="auto-hedging"')
       && !manualBatchFormationProcessPageMarkup.includes('href="#processes:auto-hedging"')
-      && !manualBatchFormationProcessPageMarkup.includes('href="#processes:auto-hedging-admission"')
+      && !manualBatchFormationProcessPageMarkup.includes('href="#processes:auto-management-admission"')
       && autoHedgingProcessViewMarkup === ""
       && automationAdmissionProcessViewMarkup === ""
       && !html.includes(".auto-hedging-subcatalog-link")
@@ -2429,25 +2366,25 @@ function verifyFrontendStructure() {
       && domainGlossaryProcessViewMarkup.includes(
         'id="domainGlossaryTitle" data-process-copy="domainGlossary">Domain Glossary</h2>'
       )
-      && domainGlossaryProcessViewMarkup.includes('<dt>FX Position</dt>')
-      && !domainGlossaryProcessViewMarkup.includes('href="#fx-position"')
+      && domainGlossaryProcessViewMarkup.includes('<dt>Position</dt>')
+      && !domainGlossaryProcessViewMarkup.includes('href="#position"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-auto-hedging"')
-      && domainGlossaryProcessViewMarkup.includes('id="process-term-auto-hedging-admission"')
-      && domainGlossaryProcessViewMarkup.includes('id="process-term-execution-context-admission-mode"')
-      && domainGlossaryProcessViewMarkup.includes('id="process-term-auto-hedging-admission-policy"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-auto-management-admission"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-trade-context-admission-mode"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-auto-mode-eligibility"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-eligibility-check"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-admission-state"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-ccy-pair"')
-      && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-batch"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-batch"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-batching"')
-      && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-trade"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-trade"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-client-deal"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-hedge-deal"')
-      && domainGlossaryProcessViewMarkup.includes('id="process-term-fx-position"')
-      && domainGlossaryProcessViewMarkup.includes('id="process-term-execution-context"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-position"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-trade-context"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-servicing-location"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-accounting-system"')
-      && domainGlossaryProcessViewMarkup.includes('id="process-term-execution-system"')
+      && domainGlossaryProcessViewMarkup.includes('id="process-term-originating-system"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-pricing-mode"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-market-pulse"')
       && domainGlossaryProcessViewMarkup.includes('id="process-term-base-currency"')
@@ -2463,13 +2400,13 @@ function verifyFrontendStructure() {
         '>Stage goal:</span>'
       )
       && manualBatchFormationProcessViewMarkup.includes(
-        'data-process-copy="selectedFxTrades" data-process-linked-copy>Selected FX Trades</span>'
+        'data-process-copy="selectedTrades" data-process-linked-copy>Selected Trades</span>'
       )
       && manualBatchFormationProcessViewMarkup.includes(
-        'data-process-copy="formedFxBatch" data-process-linked-copy>Formed FX Batch</span>'
+        'data-process-copy="formedBatch" data-process-linked-copy>Formed Batch</span>'
       )
       && manualBatchFormationProcessViewMarkup.includes(
-        'data-process-copy="fxPositionUnchanged" data-process-linked-copy>FX Position unchanged</span>'
+        'data-process-copy="positionUnchanged" data-process-linked-copy>Position unchanged</span>'
       )
       && !manualBatchFormationProcessPageMarkup.includes(
         'Saved together or not at all'
@@ -2478,7 +2415,7 @@ function verifyFrontendStructure() {
         'data-manual-process-stage="select"'
       )
       && manualBatchFormationProcessPageMarkup.includes(
-        'data-process-copy="selectFxTrades">FX Trade Selection for FX Batch Formation</span>'
+        'data-process-copy="selectTrades">Trade Selection for Batch Formation</span>'
       )
       && !manualBatchFormationProcessPageMarkup.includes(
         'data-process-copy="eligibleTradeSnapshot"'
@@ -2502,10 +2439,10 @@ function verifyFrontendStructure() {
       && inlineScript.includes("function setProcessCatalogLanguage")
       && inlineScript.includes("position.processCatalogLanguage")
       && inlineScript.includes('manualBatching: "Ручной Batching"')
-      && inlineScript.includes('selectedFxTrades: "Выбранные FX Trades"')
-      && inlineScript.includes('selectFxTrades: "Выбор FX Trades для создания FX Batch"')
-      && inlineScript.includes("Зафиксировать корректный набор FX Trades, выбранных пользователем в FX Position, для создания FX Batch.")
-      && inlineScript.includes("Получить выбранные FX Trades из FX Position.")
+      && inlineScript.includes('selectedTrades: "Выбранные Trades"')
+      && inlineScript.includes('selectTrades: "Выбор Trades для создания Batch"')
+      && inlineScript.includes("Зафиксировать корректный набор Trades, выбранных пользователем в Position, для создания Batch.")
+      && inlineScript.includes("Получить выбранные Trades из Position.")
       && inlineScript.includes("Сопоставить selectedTradeIds со строками, отображаемыми для выбранной валютной пары.")
       && inlineScript.includes("function renderManualBatchProcessInspector")
       && inlineScript.includes("function setManualProcessLinkedText")
@@ -2518,8 +2455,8 @@ function verifyFrontendStructure() {
       && inlineScript.includes('{ text: "Auto Hedging", key: "auto-hedging" }')
       && inlineScript.includes('{ text: "Servicing Location", key: "servicing-location" }')
       && inlineScript.includes('{ text: "Accounting System", key: "accounting-system" }')
-      && inlineScript.includes('{ text: "Execution Context", key: "execution-context" }')
-      && inlineScript.includes('{ text: "Execution System", key: "execution-system" }')
+      && inlineScript.includes('{ text: "Trade Context", key: "trade-context" }')
+      && inlineScript.includes('{ text: "Originating System", key: "originating-system" }')
       && inlineScript.includes('{ text: "Pricing Mode", key: "pricing-mode" }')
       && inlineScript.includes('{ text: "Cross-Tenor Batching", key: "cross-tenor-batching" }')
       && inlineScript.includes('{ text: "Batch Internal Swap", key: "batch-internal-swap" }')
@@ -2527,18 +2464,18 @@ function verifyFrontendStructure() {
       && inlineScript.includes('{ text: "Quote Currency", key: "quote-currency" }')
       && inlineScript.includes('{ text: "Trade Date", key: "trade-date" }')
       && inlineScript.includes('{ text: "Value Date", key: "value-date" }')
-      && !inlineScript.includes('{ text: "Batch", key: "fx-batch" }')
-      && !inlineScript.includes('{ text: "FX-сделка", key: "fx-trade" }')
+      && !inlineScript.includes('{ text: "Batch", key: "batch" }')
+      && !inlineScript.includes('{ text: "сделка", key: "trade" }')
       && inlineScript.includes("linkDomainGlossaryDefinitions();")
       && !inlineScript.includes("function highlightAutomationAdmissionTechnicalTokens()")
-      && inlineScript.includes('{ text: "Execution Context Admission Mode", key: "execution-context-admission-mode" }')
-      && inlineScript.includes('{ text: "Auto Hedging Admission Policy", key: "auto-hedging-admission-policy" }')
+      && inlineScript.includes('{ text: "Trade Context Admission Mode", key: "trade-context-admission-mode" }')
+      && inlineScript.includes('{ text: "Auto Mode Eligibility", key: "auto-mode-eligibility" }')
       && inlineScript.includes('{ text: "Eligibility Check", key: "eligibility-check" }')
       && inlineScript.includes('{ text: "Ccy Pair", key: "ccy-pair" }')
       && inlineScript.includes("function showManualProcessDefinition")
       && inlineScript.includes("function domainGlossaryRoute")
       && !inlineScript.includes('return "#processes:auto-hedging";')
-      && !inlineScript.includes('return "#processes:auto-hedging-admission";')
+      && !inlineScript.includes('return "#processes:auto-management-admission";')
       && !inlineScript.includes('return "#processes:automation-admission";')
       && inlineScript.includes("function isDomainGlossaryRoute")
       && inlineScript.includes("function isProcessCatalogRoute")
@@ -2568,57 +2505,57 @@ function verifyFrontendStructure() {
       && inlineScript.includes("async function loadBatchingSettingsPage()")
       && inlineScript.includes("async function saveBatchingSettings(event)")
       && inlineScript.includes("async function saveAutoBatchingSettings(event)")
-      && fxPositionPageMarkup.includes('id="autoBatchingSettingsButton"')
+      && positionPageMarkup.includes('id="autoBatchingSettingsButton"')
       && /autoBatchingSettingsButton\.addEventListener\("click",[\s\S]*?location\.hash = batchingSettingsRoute\(\)/.test(inlineScript)
       && /class="batch-control batch-toolbar-settings"[\s\S]*?id="autoBatchingSettingsButton"/.test(batchToolbarMarkup),
-    usesFxAutoBatchingProcess:
-      fxAutoBatchingProcessSource.includes("class FxAutoBatchingProcess")
-      && fxAutoBatchingProcessSource.includes("scheduleNextCycle(")
-      && fxAutoBatchingProcessSource.includes("batchingInProgress")
-      && fxAutoBatchingProcessSource.includes("requestEvaluation()")
-      && fxAutoBatchingProcessSource.includes("nextEvaluationDelayMs")
-      && fxAutoBatchingProcessSource.includes("WAITING_FOR_FIRST_TRADE")
-      && fxAutoBatchingProcessSource.includes("getLatestTradeId")
-      && fxAutoBatchingProcessSource.includes("afterTradeId")
-      && fxAutoBatchingProcessSource.includes("keepTradesUnderManualControl")
-      && !fxAutoBatchingProcessSource.includes("setIntervalFn")
-      && fxAutoBatchingTradeScopeSource.includes("function currentFxPositionMode(trade)")
-      && fxAutoBatchingTradeScopeSource.includes("function wasReleasedFromManualControl(trade)")
-      && fxAutoBatchingTradeScopeSource.includes('currentFxPositionMode(trade) === "AUTO"')
-      && fxAutoBatchingTradeScopeSource.includes(
-        "tradeId > startBoundaryTradeId || releasedFromManualControl"
+    usesAutoBatchingProcess:
+      autoBatchingProcessSource.includes("class AutoBatchingProcess")
+      && autoBatchingProcessSource.includes("scheduleNextCycle(")
+      && autoBatchingProcessSource.includes("batchingInProgress")
+      && autoBatchingProcessSource.includes("requestEvaluation()")
+      && autoBatchingProcessSource.includes("nextEvaluationDelayMs")
+      && autoBatchingProcessSource.includes("WAITING_FOR_FIRST_TRADE")
+      && autoBatchingProcessSource.includes("getLatestTradeId")
+      && autoBatchingProcessSource.includes("afterTradeId")
+      && autoBatchingProcessSource.includes("excludeTradesFromCurrentRun")
+      && !autoBatchingProcessSource.includes("setIntervalFn")
+      && autoBatchingTradeScopeSource.includes("function currentPositionManagementMode(trade)")
+      && autoBatchingTradeScopeSource.includes("function wasMovedToAutoManagement(trade)")
+      && autoBatchingTradeScopeSource.includes('currentPositionManagementMode(trade) === "AUTO"')
+      && autoBatchingTradeScopeSource.includes(
+        "tradeId > startBoundaryTradeId || movedToAutoManagement"
       )
-      && fxAutoBatchingTradeScopeSource.includes("positionManagementModeChangedAt")
-      && fxAutoBatchSelectionSource.includes("batchingKey")
-      && fxAutoBatchingPolicySource.includes("function planFxAutoBatching(")
-      && fxAutoBatchingPolicySource.includes("DEFAULT_MIN_TRADES_PER_AUTO_BATCH = 2")
-      && fxAutoBatchingPolicySource.includes("TRANSFER_RATE_CORRIDOR_BREACHED")
-      && fxAutoBatchingPolicySource.includes("MAX_INTERVAL_REACHED")
-      && fxAutoBatchingPolicySource.includes("nextArrivalAtMilliseconds")
-      && fxBatchingWindowPlannerSource.includes("FX_BATCHING_WINDOW_STATUS")
-      && fxBatchingWindowPlannerSource.includes("incomingAtMilliseconds >= deadlineAtMilliseconds")
-      && fxBatchingWindowPlannerSource.includes("before its Received Timestamp")
-      && fxBatchFormationReasonSource.includes("MANUAL_SELECTION")
-      && fxAutoBatchingProcessSource.includes("lastCandidatePairCount")
-      && fxAutoBatchingProcessSource.includes("for (const candidate of candidates)")
-      && serverSource.includes("new FxAutoBatchingProcess")
-      && serverSource.includes("planFxAutoBatching({")
-      && serverSource.includes("fxAutoBatchingProcess.notifyTradeCreated()")
-      && serverSource.includes("fxAutoBatchingProcess.keepTradesUnderManualControl(")
-      && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process"')
-      && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process/start"')
-      && serverSource.includes('pathname === "/api/v1/fx-auto-batching/process/stop"')
-      && serverSource.includes("fxAutoBatchingProcess: fxAutoBatchingProcess.status()")
-      && inlineScript.includes("async function toggleFxAutoBatchingProcess()")
-      && inlineScript.includes("async function refreshFxAutoBatchingProcess()")
+      && autoBatchingTradeScopeSource.includes("positionManagementModeChangedAt")
+      && autoBatchSelectionSource.includes("batchingKey")
+      && autoBatchingPolicySource.includes("function planAutoBatching(")
+      && autoBatchingPolicySource.includes("DEFAULT_MIN_TRADES_PER_AUTO_BATCH = 2")
+      && autoBatchingPolicySource.includes("TRANSFER_RATE_CORRIDOR_BREACHED")
+      && autoBatchingPolicySource.includes("MAX_INTERVAL_REACHED")
+      && autoBatchingPolicySource.includes("nextArrivalAtMilliseconds")
+      && batchingWindowPlannerSource.includes("BATCHING_WINDOW_STATUS")
+      && batchingWindowPlannerSource.includes("incomingAtMilliseconds >= deadlineAtMilliseconds")
+      && batchingWindowPlannerSource.includes("before its Received Timestamp")
+      && batchFormationReasonSource.includes("MANUAL_SELECTION")
+      && autoBatchingProcessSource.includes("lastCandidatePairCount")
+      && autoBatchingProcessSource.includes("for (const candidate of candidates)")
+      && serverSource.includes("new AutoBatchingProcess")
+      && serverSource.includes("planAutoBatching({")
+      && serverSource.includes("autoBatchingProcess.notifyTradeCreated()")
+      && serverSource.includes("autoBatchingProcess.excludeTradesFromCurrentRun(")
+      && serverSource.includes('pathname === "/api/v1/auto-batching/process"')
+      && serverSource.includes('pathname === "/api/v1/auto-batching/process/start"')
+      && serverSource.includes('pathname === "/api/v1/auto-batching/process/stop"')
+      && serverSource.includes("autoBatchingProcess: autoBatchingProcess.status()")
+      && inlineScript.includes("async function toggleAutoBatchingProcess()")
+      && inlineScript.includes("async function refreshAutoBatchingProcess()")
       && inlineScript.includes("is waiting for the first new Trade")
       && inlineScript.includes(
-        'autoBatchButton.addEventListener("click", toggleFxAutoBatchingProcess)'
+        'autoBatchButton.addEventListener("click", toggleAutoBatchingProcess)'
       ),
     usesCompactHedgingSettingsLayout:
-      /#hedgingSettingsPage\.unified-bootstrap-workspace\.workbench-page \.hedging-settings-panel \{[\s\S]*?width: fit-content;[\s\S]*?max-width: 100%;/.test(html)
+      /#positionManagementSettingsPage\.unified-bootstrap-workspace\.workbench-page \.position-management-settings-panel \{[\s\S]*?width: fit-content;[\s\S]*?max-width: 100%;/.test(html)
       && html.includes(
-        "#hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator {"
+        "#positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator {"
       )
       && html.includes("width: fit-content;")
       && html.includes("min-width: 0;")
@@ -2630,10 +2567,10 @@ function verifyFrontendStructure() {
         "border: var(--data-grid-line-width) solid var(--data-grid-line-color);"
       )
       && html.includes(
-        "#hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-col-title {"
+        "#positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-col-title {"
       )
       && inlineScript.includes("rowHeight: 36")
-      && /tabulatorSizedColumn\("contextPath",\s*\{\s*title: "Execution Context",\s*field: "contextPath",\s*formatter: hedgeQuickModeSettingsContextFormatter/.test(inlineScript)
+      && /tabulatorSizedColumn\("contextPath",\s*\{\s*title: "Trade Context",\s*field: "contextPath",\s*formatter: hedgeQuickModeSettingsContextFormatter/.test(inlineScript)
       && /tabulatorSizedColumn\("compactActions",\s*\{\s*title: "Actions"/.test(inlineScript)
       && html.includes("#hedgeQuickModeSettingsNewButton:disabled {")
       && html.includes(".app-status-token.is-active {")
@@ -2645,8 +2582,8 @@ function verifyFrontendStructure() {
       && serverSource.includes('pathname === "/api/v1/hedge-deal-pricing-rules"')
       && serverSource.includes('url.searchParams.get("pricingMode")')
       && serverSource.includes("...autoPricedHedgeDealPricingRules()")
-      && serverSource.includes("createHedgeFxDealTerms")
-      && serverSource.includes("hedgeFxDealWithCalculatedTerms(payload, exposureAmounts)")
+      && serverSource.includes("createHedgeDealTerms")
+      && serverSource.includes("hedgeDealWithCalculatedTerms(payload, exposureAmounts)")
       && inlineScript.includes('function isHedgeDealPricingRule(rule, pricingMode)')
       && inlineScript.includes("rulePricingMode === requestedPricingMode")
       && inlineScript.includes("function eligibleHedgeDealCounterpartyIds(")
@@ -2662,7 +2599,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("Select Pricing Rule")
       && inlineScript.includes("Select a Pricing Rule.")
       && inlineScript.includes("function addHedgeDealPricingRuleContentMarkup(rule, context)")
-      && inlineScript.includes("{ executionSystemLabel: true, showPricingModeIndicator: false }")
+      && inlineScript.includes("{ originatingSystemLabel: true, showPricingModeIndicator: false }")
       && addHedgeDealDialogMarkup.includes('id="addHedgeDealCounterpartyPicker"')
       && addHedgeDealDialogMarkup.includes(">Hedge Counterparty</span>")
       && inlineScript.includes("selectedAddHedgeDealCounterparty")
@@ -2686,22 +2623,22 @@ function verifyFrontendStructure() {
       && inlineScript.includes("pricingModeIndicatorMarkup(\n            item.pricingType,")
       && inlineScript.includes("highlightedReferenceDataText(kind, pricingTypeLabel),\n            false")
       && inlineScript.includes('data-tooltip="${escapeHtml(presentation.label)}"'),
-    usesExecutionSystemLabels:
-      html.includes('data-ui-column-key="execution_system_label" data-ui-fallback-width="250"')
-      && html.includes('<span>Execution System Label</span>')
-      && html.includes('data-reference-filter-field="executionSystemLabel"')
-      && uiTableLayoutsSource.includes('["execution_system_label", "Execution System Label", 250]')
-      && /\.execution-system-label\s*\{[^}]*border: 1px solid var\(--palette-purple-200\);[^}]*background: var\(--palette-purple-100\);/.test(html)
-      && inlineScript.includes("function executionSystemLabelMarkup(name, pricingType)")
-      && inlineScript.includes('class="execution-system-label"')
-      && inlineScript.includes('class="execution-system-label__pricing"')
-      && !inlineScript.includes('class="execution-system-label__pricing is-${')
+    usesOriginatingSystemLabels:
+      html.includes('data-ui-column-key="originating_system_label" data-ui-fallback-width="250"')
+      && html.includes('<span>Originating System Label</span>')
+      && html.includes('data-reference-filter-field="originatingSystemLabel"')
+      && uiTableLayoutsSource.includes('["originating_system_label", "Originating System Label", 250]')
+      && /\.originating-system-label\s*\{[^}]*border: 1px solid var\(--palette-purple-200\);[^}]*background: var\(--palette-purple-100\);/.test(html)
+      && inlineScript.includes("function originatingSystemLabelMarkup(name, pricingType)")
+      && inlineScript.includes('class="originating-system-label"')
+      && inlineScript.includes('class="originating-system-label__pricing"')
+      && !inlineScript.includes('class="originating-system-label__pricing is-${')
       && inlineScript.includes("const pricingTypeLabel = pricingTypePresentation(item.pricingType).label;")
       && inlineScript.includes("highlightedReferenceDataText(kind, pricingTypeLabel)")
       && inlineScript.includes("data-disable-overflow-tooltip")
-      && inlineScript.includes('data-execution-system-label-preview')
-      && inlineScript.includes("function syncExecutionSystemLabelPreview(row)")
-      && !/class="execution-system-label"[^>]*data-tooltip/.test(inlineScript),
+      && inlineScript.includes('data-originating-system-label-preview')
+      && inlineScript.includes("function syncOriginatingSystemLabelPreview(row)")
+      && !/class="originating-system-label"[^>]*data-tooltip/.test(inlineScript),
     usesUnifiedMarginIndicators:
       inlineScript.includes("function marginIndicatorMarkup(marginPercent")
       && inlineScript.includes('data-tooltip="Margin"')
@@ -2714,9 +2651,9 @@ function verifyFrontendStructure() {
       html.includes('id="databaseTableSearch"')
       && html.includes('placeholder="Find table..."')
       && [
-        "FX Trades",
-        "FX Position",
-        "FX Batching",
+        "Trades",
+        "Position",
+        "Batches",
         "Pricing",
         "Settings",
         "Trading Counterparties & Users",
@@ -2724,156 +2661,160 @@ function verifyFrontendStructure() {
         "Audit",
         "Other"
       ].every(label => databaseTableSectionsSource.includes(`label: "${label}"`))
-      && databaseTableSectionsSource.includes('"fx_trade_exposure"')
-      && databaseTableSectionsSource.includes('"fx_trade_position_management"')
-      && /id: "fx-trading",[\s\S]*?label: "FX Trades",[\s\S]*?tables: \[\s*"client_fx_deals",\s*"fx_hedge_deals",\s*"fx_trade_exposure",\s*"fx_batch_balance_trade",\s*"fx_batch_position_output"\s*\]/.test(
+      && databaseTableSectionsSource.includes('"trade_exposures"')
+      && databaseTableSectionsSource.includes('"trade_position_management"')
+      && /id: "trading",[\s\S]*?label: "Trades",[\s\S]*?tables: \[\s*"client_deals",\s*"hedge_deals",\s*"trade_exposures",\s*"batch_balance_trades",\s*"batch_position_outputs"\s*\]/.test(
         databaseTableSectionsSource
       )
-      && /id: "fx-position",[\s\S]*?label: "FX Position",[\s\S]*?tables: \[\s*"fx_trade_position_management"\s*\]/.test(
+      && /id: "position",[\s\S]*?label: "Position",[\s\S]*?tables: \[\s*"trade_position_management"\s*\]/.test(
         databaseTableSectionsSource
       )
-      && /id: "fx-batching",[\s\S]*?tables: \[\s*"fx_batches",\s*"fx_batch_members",\s*"fx_batch_quote_cash_output"\s*\]/.test(
+      && /id: "batches",[\s\S]*?tables: \[\s*"batches",\s*"batch_members",\s*"batch_quote_cash_outputs"\s*\]/.test(
         databaseTableSectionsSource
       )
-      && databaseTableSectionsSource.includes('"fx_batch_quote_cash_output"')
-      && !databaseTableSectionsSource.includes('"fx_manual_batch_formations"')
-      && !databaseTableSectionsSource.includes('"fx_manual_batch_formation_batches"')
+      && databaseTableSectionsSource.includes('"batch_quote_cash_outputs"')
+      && !databaseTableSectionsSource.includes('"manual_batch_formations"')
+      && !databaseTableSectionsSource.includes('"manual_batch_formation_batches"')
       && databaseTableSectionsSource.includes('"pricing_rules"')
-      && databaseTableSectionsSource.includes('"execution_contexts"')
+      && databaseTableSectionsSource.includes('"trade_contexts"')
       && databaseTableSectionsSource.includes('"ccy_pair_options"')
       && databaseTableSectionsSource.includes('"trading_counterparties"')
       && databaseTableSectionsSource.includes('"client_deal_generation_settings"')
-      && /id: "pricing",[\s\S]*?label: "Pricing",[\s\S]*?icon: "price_change",[\s\S]*?tables: \[\s*"pricing_rules",\s*"accounting_systems",\s*"execution_contexts",\s*"execution_systems",\s*"servicing_locations"\s*\]/.test(
+      && /id: "pricing",[\s\S]*?label: "Pricing",[\s\S]*?icon: "price_change",[\s\S]*?tables: \[\s*"pricing_rules",\s*"accounting_systems",\s*"trade_contexts",\s*"originating_systems",\s*"servicing_locations"\s*\]/.test(
         databaseTableSectionsSource
       )
-      && !databaseTableSectionsSource.includes('id: "execution-context"')
-      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"fx_hedge_quick_mode_settings",\s*"fx_batching_settings",\s*"fx_auto_batching_settings",\s*"fx_auto_batching_ccy_pairs",\s*"auto_hedging_admission_policy_current",\s*"auto_hedging_admission_policy_revisions",\s*"auto_hedging_admission_policy_pair_deviations",\s*"auto_hedging_admission_policy_pair_rules"\s*\]/.test(
+      && !databaseTableSectionsSource.includes('id: "trade-context"')
+      && /id: "settings",[\s\S]*?label: "Settings",[\s\S]*?icon: "settings",[\s\S]*?tables: \[\s*"ccy_options",\s*"ccy_pair_options",\s*"hedge_quick_mode_settings",\s*"batching_settings",\s*"auto_batching_settings",\s*"auto_batching_ccy_pairs",\s*"auto_mode_eligibility_rules"\s*\]/.test(
         databaseTableSectionsSource
       )
-      && !databaseTableSectionsSource.includes('id: "hedging-settings"')
+      && !databaseTableSectionsSource.includes('id: "position-management-settings"')
       && !databaseTableSectionsSource.includes('id: "market-pulse"')
       && /id: "demo-generation",[\s\S]*?tables: \[\s*"client_deal_generation_process_settings",\s*"client_deal_generation_settings",\s*"market_quote_simulation_settings"\s*\]/.test(
         databaseTableSectionsSource
       )
       && databaseTableSectionsSource.includes('label: "Audit"')
       && databaseTableSectionsSource.includes('icon: "policy"')
-      && /id: "audit",[\s\S]*?tables: \[\s*"fx_trade_position_management_transitions",\s*"fx_trade_market_snapshot",\s*"fx_auto_hedging_admission_decisions",\s*"v_fx_batch_formation_audit"\s*\]/.test(
+      && /id: "audit",[\s\S]*?tables: \[\s*"trade_position_management_transitions",\s*"trade_market_snapshots",\s*"auto_management_admission_decisions",\s*"v_batch_formation_audit"\s*\]/.test(
         databaseTableSectionsSource
       )
-      && (databaseTableSectionsSource.match(/"fx_trade_position_management_transitions"/g) || []).length === 1
-      && (databaseTableSectionsSource.match(/"fx_trade_market_snapshot"/g) || []).length === 1
-      && (databaseTableSectionsSource.match(/"fx_auto_hedging_admission_decisions"/g) || []).length === 1
-      && (databaseTableSectionsSource.match(/"v_fx_batch_formation_audit"/g) || []).length === 1
-      && (databaseTableSectionsSource.match(/"fx_batch_balance_trade"/g) || []).length === 1
-      && (databaseTableSectionsSource.match(/"fx_batch_position_output"/g) || []).length === 1
-      && (databaseTableSectionsSource.match(/"fx_trade_position_management"/g) || []).length === 1
+      && (databaseTableSectionsSource.match(/"trade_position_management_transitions"/g) || []).length === 1
+      && (databaseTableSectionsSource.match(/"trade_market_snapshots"/g) || []).length === 1
+      && (databaseTableSectionsSource.match(/"auto_management_admission_decisions"/g) || []).length === 1
+      && (databaseTableSectionsSource.match(/"v_batch_formation_audit"/g) || []).length === 1
+      && (databaseTableSectionsSource.match(/"batch_balance_trades"/g) || []).length === 1
+      && (databaseTableSectionsSource.match(/"batch_position_outputs"/g) || []).length === 1
+      && (databaseTableSectionsSource.match(/"trade_position_management"/g) || []).length === 1
       && inlineScript.includes('function databaseTableGroups(query = "")')
       && inlineScript.includes('data-database-section="${escapeHtml(section.id)}"')
       && inlineScript.includes('databaseTableSearchEl.addEventListener("input"')
       && !inlineScript.includes("const containsSelectedTable")
       && inlineScript.includes('expandedDatabaseTableSections.add(databaseTableSection(selectedDatabaseTable).id)'),
-    usesDatabaseBackedFxPositions: inlineScript.includes("function loadFxPositionsFromDatabase()")
-      && inlineScript.includes("fxPositionRecords.map(record =>")
-      && inlineScript.includes('demoApiRequest("/api/v1/fx-positions")')
-      && serverSource.includes("function fxPositions()")
-      && serverSource.includes('pathname === "/api/v1/fx-positions"')
+    usesDatabaseBackedPositions: inlineScript.includes("function loadPositionsFromDatabase()")
+      && inlineScript.includes("positionRecords.map(record =>")
+      && inlineScript.includes('demoApiRequest("/api/v1/positions")')
+      && serverSource.includes("function positions()")
+      && serverSource.includes('pathname === "/api/v1/positions"')
       && serverSource.includes("management.initial_position_management_mode")
-      && serverSource.includes("AS initialFxPositionMode")
+      && serverSource.includes("AS initialPositionManagementMode")
       && serverSource.includes("management.current_position_management_mode")
-      && serverSource.includes("AS currentFxPositionMode")
-      && serverSource.includes("AS fxPositionMode")
+      && serverSource.includes("AS currentPositionManagementMode")
+      && serverSource.includes("AS positionManagementMode")
       && serverSource.includes("management.updated_at AS positionManagementModeChangedAt")
-      && serverSource.includes("LEFT JOIN fx_trade_position_management management")
-      && inlineScript.includes("initialFxPositionMode: normalizedPositionManagementMode(")
-      && inlineScript.includes("record?.initialFxPositionMode")
-      && inlineScript.includes("currentFxPositionMode")
-      && inlineScript.includes("record?.currentFxPositionMode")
-      && inlineScript.includes("fxPositionMode: currentFxPositionMode")
+      && serverSource.includes("LEFT JOIN trade_position_management management")
+      && inlineScript.includes("initialPositionManagementMode: normalizedPositionManagementMode(")
+      && inlineScript.includes("record?.initialPositionManagementMode")
+      && inlineScript.includes("currentPositionManagementMode")
+      && inlineScript.includes("record?.currentPositionManagementMode")
+      && inlineScript.includes("positionManagementMode: currentPositionManagementMode")
       && serverSource.includes("NOT EXISTS")
-      && !inlineScript.includes('DemoDb.get("fxPositions")')
-      && !inlineScript.includes('DemoDb.get("technicalFxDeals")')
-      && !inlineScript.includes("function applyStoredFxPosition(")
-      && !["clientFxDeals", "hedgeFxDeals", "technicalFxDeals", "fxPositions"]
+      && !inlineScript.includes('DemoDb.get("positions")')
+      && !inlineScript.includes('DemoDb.get("technicalDeals")')
+      && !inlineScript.includes("function applyStoredPosition(")
+      && !["clientDeals", "hedgeDeals", "technicalDeals", "positions"]
         .some(tableName => demoDatabaseSource.includes(`${tableName}:`)
           || demoDatabaseSource.includes(`"${tableName}"`))
-      && serverSource.includes("LEFT JOIN fx_trade_market_snapshot a")
+      && serverSource.includes("LEFT JOIN trade_market_snapshots a")
       && serverSource.includes("a.market_pulse_stream_status AS marketPulseStreamStatus")
       && serverSource.includes("a.market_pulse_bid AS marketPulseBid")
       && serverSource.includes("a.market_pulse_offer AS marketPulseOffer"),
-    usesModeSeparatedFxPositionWorkspace:
-      fxPositionModeTabsMarkup.includes('id="fxPositionManualTab"')
-      && fxPositionModeTabsMarkup.includes('href="#fx-position:manual"')
-      && fxPositionModeTabsMarkup.includes('data-fx-position-mode="MANUAL"')
-      && fxPositionModeTabsMarkup.includes('id="fxPositionManualCount"')
-      && fxPositionModeTabsMarkup.includes('>Manual Review</span>')
-      && fxPositionModeTabsMarkup.includes('id="fxPositionAutoTab"')
-      && fxPositionModeTabsMarkup.includes('href="#fx-position:auto"')
-      && fxPositionModeTabsMarkup.includes('data-fx-position-mode="AUTO"')
-      && fxPositionModeTabsMarkup.includes('id="fxPositionAutoCount"')
-      && fxPositionModeTabsMarkup.includes('>Auto Hedging</span>')
-      && fxPositionModeTabsMarkup.includes('aria-controls="fxPositionGridPanel"')
-      && fxPositionPageMarkup.includes('id="fxPositionGridPanel"')
-      && (fxPositionPageMarkup.match(/<table\b[^>]*\bfx-position-grid\b/g) || []).length === 1
-      && (fxPositionPageMarkup.match(/\bid="dealRows"/g) || []).length === 1
-      && !/data-ui-column-key="(?:fx_)?position_management_mode"|>\s*FX Position Mode\s*</i
-        .test(fxPositionGridMarkup)
-      && html.includes('class="workspace-nav-link" href="#fx-position:manual" data-workspace-route="batching"')
-      && fxPositionModeRoutingSource.includes("function fxPositionRoute(")
-      && fxPositionModeRoutingSource.includes("#fx-position:${")
-      && fxPositionModeRoutingSource.includes("function fxPositionModeFromLocation(")
-      && fxPositionModeRoutingSource.includes("(manual|auto)")
-      && fxPositionModeRoutingSource.includes('? "AUTO" : "MANUAL"')
-      && fxPositionModeViewSource.includes("function fxPositionRowsForMode(")
-      && fxPositionModeViewSource.includes(
-        "deal?.currentFxPositionMode ?? deal?.fxPositionMode"
+    usesModeSeparatedPositionWorkspace:
+      positionModeTabsMarkup.includes('id="positionManualTab"')
+      && positionModeTabsMarkup.includes('href="#position:manual"')
+      && positionModeTabsMarkup.includes('data-position-management-mode="MANUAL"')
+      && positionModeTabsMarkup.includes('id="positionManualCount"')
+      && positionModeTabsMarkup.includes('>Manual Management</span>')
+      && positionModeTabsMarkup.includes('id="positionAutoTab"')
+      && positionModeTabsMarkup.includes('href="#position:auto"')
+      && positionModeTabsMarkup.includes('data-position-management-mode="AUTO"')
+      && positionModeTabsMarkup.includes(
+        'class="button-icon position-mode-icon" aria-hidden="true">smart_toy</span>'
       )
-      && fxPositionModeViewSource.includes("function fxPositionModeCounts(")
-      && fxPositionModeViewSource.includes(
+      && !positionModeTabsMarkup.includes('>verified_user</span>')
+      && positionModeTabsMarkup.includes('id="positionAutoCount"')
+      && positionModeTabsMarkup.includes('>Auto Management</span>')
+      && positionModeTabsMarkup.includes('aria-controls="positionGridPanel"')
+      && positionPageMarkup.includes('id="positionGridPanel"')
+      && (positionPageMarkup.match(/<table\b[^>]*\bposition-grid\b/g) || []).length === 1
+      && (positionPageMarkup.match(/\bid="dealRows"/g) || []).length === 1
+      && !/data-ui-column-key="(?:)?position_management_mode"|>\s*Position Management Mode\s*</i
+        .test(positionGridMarkup)
+      && html.includes('class="workspace-nav-link" href="#position:manual" data-workspace-route="batching"')
+      && positionModeRoutingSource.includes("function positionRoute(")
+      && positionModeRoutingSource.includes("#position:${")
+      && positionModeRoutingSource.includes("function positionModeFromLocation(")
+      && positionModeRoutingSource.includes("(manual|auto)")
+      && positionModeRoutingSource.includes('? "AUTO" : "MANUAL"')
+      && positionModeViewSource.includes("function positionRowsForMode(")
+      && positionModeViewSource.includes(
+        "deal?.currentPositionManagementMode ?? deal?.positionManagementMode"
+      )
+      && positionModeViewSource.includes("function positionModeCounts(")
+      && positionModeViewSource.includes(
         "const pairRows = activeCurrencyPairRows(source)"
       )
-      && fxPositionModeViewSource.includes('fxPositionRowsForMode(pairRows, "MANUAL").length')
-      && fxPositionModeViewSource.includes('fxPositionRowsForMode(pairRows, "AUTO").length')
-      && fxPositionModeViewSource.includes("fxPositionManualCount.textContent = String(counts.MANUAL)")
-      && fxPositionModeViewSource.includes("fxPositionAutoCount.textContent = String(counts.AUTO)")
-      && fxPositionModeViewSource.includes("function clearHiddenFxPositionSelection(")
-      && fxPositionModeViewSource.includes("selectedTradeIds.delete(tradeId)")
-      && fxPositionModeViewSource.includes("function setActiveFxPositionMode(")
-      && fxPositionModeViewSource.includes("clearHiddenFxPositionSelection()")
+      && positionModeViewSource.includes('positionRowsForMode(pairRows, "MANUAL").length')
+      && positionModeViewSource.includes('positionRowsForMode(pairRows, "AUTO").length')
+      && positionModeViewSource.includes("positionManualCount.textContent = String(counts.MANUAL)")
+      && positionModeViewSource.includes("positionAutoCount.textContent = String(counts.AUTO)")
+      && positionModeViewSource.includes("function clearHiddenPositionSelection(")
+      && positionModeViewSource.includes("selectedTradeIds.delete(tradeId)")
+      && positionModeViewSource.includes("function setActivePositionMode(")
+      && positionModeViewSource.includes("clearHiddenPositionSelection()")
       && inlineScript.includes(
-        "return sortedDeals(activeCurrencyPairRows(fxPositionRowsForMode(fxPositions)))"
+        "return sortedDeals(activeCurrencyPairRows(positionRowsForMode(positions)))"
       )
-      && inlineScript.includes("setActiveFxPositionMode(fxPositionModeFromLocation())")
-      && inlineScript.includes('demoApiRequest("/api/v1/fx-positions")')
+      && inlineScript.includes("setActivePositionMode(positionModeFromLocation())")
+      && inlineScript.includes('demoApiRequest("/api/v1/positions")')
       && selectedBatchSourceTradesSource.includes("currentDisplayRows().filter")
-      && !selectedBatchSourceTradesSource.includes("fxPositionMode")
-      && fxPositionsEndpointSource.includes("sendJson(response, 200, fxPositions())")
-      && !fxPositionsEndpointSource.includes("searchParams"),
-    usesManualToAutoFxPositionTransition:
-      fxPositionPageMarkup.includes('id="sendToAutoPositionModeButton"')
-      && fxPositionPageMarkup.includes(
-        'aria-label="Send selected Trades to Auto Hedging"'
+      && !selectedBatchSourceTradesSource.includes("positionManagementMode")
+      && positionsEndpointSource.includes("sendJson(response, 200, positions())")
+      && !positionsEndpointSource.includes("searchParams"),
+    usesManualToAutoPositionTransition:
+      positionPageMarkup.includes('id="moveToAutoManagementButton"')
+      && positionPageMarkup.includes(
+        'aria-label="Move selected Trades to Auto Management"'
       )
-      && fxPositionPageMarkup.includes('>Send to Auto</span>')
-      && html.includes('id="sendToAutoPositionModeDialog"')
-      && !html.includes("Initial FX Position Mode will remain Manual Control")
-      && sendToAutoPositionModeSource.includes("to Auto Hedging?`")
-      && !sendToAutoPositionModeSource.includes("from Manual Control?")
-      && sendToAutoPositionModeSource.includes("function selectedManualReviewTradesForAuto()")
-      && sendToAutoPositionModeSource.includes('activeFxPositionMode !== "MANUAL"')
-      && sendToAutoPositionModeSource.includes('initialMode === "MANUAL"')
-      && sendToAutoPositionModeSource.includes('currentMode === "MANUAL"')
-      && sendToAutoPositionModeSource.includes(
-        '"/api/v1/fx-positions/send-to-auto-batching"'
+      && positionPageMarkup.includes('>Move to Auto Management</span>')
+      && html.includes('id="moveToAutoManagementDialog"')
+      && !html.includes("Initial Position Management Mode will remain Manual Management")
+      && moveToAutoManagementSource.includes("to Auto Management?`")
+      && !moveToAutoManagementSource.includes("from Manual Management?")
+      && moveToAutoManagementSource.includes("function selectedTradesForAutoManagement()")
+      && moveToAutoManagementSource.includes('activePositionMode !== "MANUAL"')
+      && moveToAutoManagementSource.includes('initialMode === "MANUAL"')
+      && moveToAutoManagementSource.includes('currentMode === "MANUAL"')
+      && moveToAutoManagementSource.includes(
+        '"/api/v1/positions/move-to-auto-management"'
       )
-      && sendToAutoPositionModeSource.includes("JSON.stringify({ trades: submittedTrades })")
-      && serverSource.includes("new SendFxTradesToAutoPositionManagementUseCase")
-      && serverSource.includes("function saveFxTradePositionManagementTransition")
-      && serverSource.includes('pathname === "/api/v1/fx-positions/send-to-auto-batching"')
-      && serverSource.includes("fxAutoBatchingProcess.requestEvaluation()")
-      && sendFxTradesToAutoPositionManagementSource.includes(
-        "planFxTradePositionManagementTransitionToAuto"
+      && moveToAutoManagementSource.includes("JSON.stringify({ trades: submittedTrades })")
+      && serverSource.includes("new MoveTradesToAutoManagementUseCase")
+      && serverSource.includes("function saveTradePositionManagementTransition")
+      && serverSource.includes('pathname === "/api/v1/positions/move-to-auto-management"')
+      && serverSource.includes("autoBatchingProcess.requestEvaluation()")
+      && sendTradesToAutoPositionManagementSource.includes(
+        "planTradePositionManagementTransitionToAuto"
       )
-      && schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_trade_position_management_transitions"),
+      && schemaSource.includes("CREATE TABLE IF NOT EXISTS trade_position_management_transitions"),
     usesClientDealCommentOnlyEditing:
       html.includes('id="editDealButton" disabled>Edit Comment</button>')
       && editClientDealDialogMarkup.includes(">Edit Client Deal Comment</h2>")
@@ -2886,9 +2827,9 @@ function verifyFrontendStructure() {
       && inlineScript.includes("showDealDialog();")
       && saveEditedDealFunction.includes('method: "PATCH"')
       && saveEditedDealFunction.includes("JSON.stringify({ comment })")
-      && serverSource.includes("function updateClientFxDealComment(tradeId, comment)")
-      && serverSource.includes('"CLIENT_FX_DEAL_IMMUTABLE"')
-      && !serverSource.includes("function deleteClientFxDeal(tradeId)"),
+      && serverSource.includes("function updateClientDealComment(tradeId, comment)")
+      && serverSource.includes('"CLIENT_DEAL_IMMUTABLE"')
+      && !serverSource.includes("function deleteClientDeal(tradeId)"),
     usesDatabaseBackedClientDealGeneration: serverSource.includes(
       'pathname === "/api/v1/client-deal-generation/one"'
     )
@@ -2933,26 +2874,26 @@ function verifyFrontendStructure() {
       && !inlineScript.includes('DemoDb.get("clientDealGenerationSettings")')
       && !demoDatabaseSource.includes('"clientDealGenerationSettings"')
       && !demoDatabaseSource.includes("clientDealGenerationSettings:"),
-    usesFxBatchFormation:
+    usesBatchFormation:
       batchToolbarMarkup.includes('id="oneBatchButton"')
       && batchToolbarMarkup.includes(">Create Batch</button>")
-      && serverSource.includes('pathname === "/api/v1/fx-batches"')
-      && serverSource.includes("new FormFxBatchUseCase")
-      && !serverSource.includes("new FormManualFxBatchesUseCase")
-      && !schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_manual_batch_formations")
-      && !schemaSource.includes("CREATE TABLE IF NOT EXISTS fx_manual_batch_formation_batches")
-      && serverSource.includes("INSERT INTO fx_batch_members")
-      && serverSource.includes("INSERT INTO fx_batch_balance_trade")
-      && serverSource.includes("INSERT INTO fx_batch_position_output")
-      && fxBatchFormationApplicationSource.includes("class FormFxBatchUseCase")
+      && serverSource.includes('pathname === "/api/v1/batches"')
+      && serverSource.includes("new FormBatchUseCase")
+      && !serverSource.includes("new FormManualBatchesUseCase")
+      && !schemaSource.includes("CREATE TABLE IF NOT EXISTS manual_batch_formations")
+      && !schemaSource.includes("CREATE TABLE IF NOT EXISTS manual_batch_formation_batches")
+      && serverSource.includes("INSERT INTO batch_members")
+      && serverSource.includes("INSERT INTO batch_balance_trades")
+      && serverSource.includes("INSERT INTO batch_position_outputs")
+      && batchFormationApplicationSource.includes("class FormBatchUseCase")
       && serverSource.includes("migrateLegacyManualBatchFormations")
-      && serverSource.includes("Manual batching creates exactly one FX Batch")
+      && serverSource.includes("Manual batching creates exactly one Batch")
       && inlineScript.includes("formOneBatchFromSelection")
       && inlineScript.includes("submitOneBatchSelection")
       && inlineScript.includes(
         "oneBatchCompatibilityGroups(sourceDeals).length > 1"
       )
-      && /function oneBatchCompatibilityKey\(deal\)[\s\S]*?ccyPairCode[\s\S]*?fxPositionBaseCcyFractionDigits\(deal\)[\s\S]*?fxPositionQuoteCcyFractionDigits\(deal\)[\s\S]*?positionTradeDate\(deal\)[\s\S]*?positionTenor\(deal\)[\s\S]*?baseCurrencyValueDate\(deal\)[\s\S]*?quoteCurrencyValueDate\(deal\)/.test(
+      && /function oneBatchCompatibilityKey\(deal\)[\s\S]*?ccyPairCode[\s\S]*?positionBaseCcyFractionDigits\(deal\)[\s\S]*?positionQuoteCcyFractionDigits\(deal\)[\s\S]*?positionTradeDate\(deal\)[\s\S]*?positionTenor\(deal\)[\s\S]*?baseCurrencyValueDate\(deal\)[\s\S]*?quoteCurrencyValueDate\(deal\)/.test(
         inlineScript
       )
       && inlineScript.includes(
@@ -2966,7 +2907,7 @@ function verifyFrontendStructure() {
       )
       && !oneBatchTenorDialogMarkup.includes("Create Independent Batches")
       && !inlineScript.includes("SEPARATE_BY_TENOR")
-      && inlineScript.includes('"/api/v1/fx-batches"')
+      && inlineScript.includes('"/api/v1/batches"')
       && inlineScript.includes(
         'oneBatchButton.addEventListener("click", formOneBatchFromSelection)'
       )
@@ -2982,7 +2923,7 @@ function verifyFrontendStructure() {
       && !inlineScript.includes('DemoDb.get("batchSettings")')
       && !demoDatabaseSource.includes('"batchSettings"')
       && !demoDatabaseSource.includes("batchSettings:"),
-    serializesFxBatchUiRequests:
+    serializesBatchUiRequests:
       inlineScript.includes("let oneBatchInFlight = false;")
       && inlineScript.includes("if (oneBatchInFlight) {")
       && inlineScript.includes("oneBatchInFlight = true;")
@@ -2993,24 +2934,24 @@ function verifyFrontendStructure() {
       && inlineScript.includes("if (clientDealGenerationRefreshInFlight) {")
       && inlineScript.includes("void refreshClientDealGenerationViews();")
       && !inlineScript.includes("clientDealGenerationRefreshTimer = window.setInterval(async")
-      && inlineScript.includes("let fxPositionsRequestSequence = 0;")
-      && inlineScript.includes("requestSequence !== fxPositionsRequestSequence"),
+      && inlineScript.includes("let positionsRequestSequence = 0;")
+      && inlineScript.includes("requestSequence !== positionsRequestSequence"),
     usesBatchingHistory:
       html.includes('id="workspaceBatchesLink"')
       && !html.includes('id="workspaceBatchesMenu"')
       && html.includes('href="#batching:history"')
-      && html.includes('>FX Batches</span>')
-      && html.includes('id="fxBatchesPage"')
+      && html.includes('>Batches</span>')
+      && html.includes('id="batchesPage"')
       && html.includes('id="batchingHistoryPage"')
       && html.includes('id="batchingHistoryGrid"')
-      && html.includes('id="fxBatchesAuditView"')
-      && html.includes('for="fxBatchesAuditView">Audit View</label>')
-      && !html.includes('id="fxBatchesTabs"')
+      && html.includes('id="batchesAuditView"')
+      && html.includes('for="batchesAuditView">Audit View</label>')
+      && !html.includes('id="batchesTabs"')
       && !html.includes('id="batchFormationAuditPage"')
       && !html.includes('id="batchFormationAuditGrid"')
-      && html.includes('<h1 class="page-title">FX Batches</h1>')
+      && html.includes('<h1 class="page-title">Batches</h1>')
       && inlineScript.includes("function initializeBatchingHistoryGrid(data)")
-      && inlineScript.includes('demoApiRequest("/api/v1/fx-batches")')
+      && inlineScript.includes('demoApiRequest("/api/v1/batches")')
       && inlineScript.includes('title: "Batch ID"')
       && inlineScript.includes('title: "Ccy Pair Code"')
       && inlineScript.includes('title: "Batch Status"')
@@ -3019,18 +2960,18 @@ function verifyFrontendStructure() {
       && !inlineScript.includes('title: "Trigger Details (Demo)"')
       && !inlineScript.includes('field: "formationReasonDescription"')
        && inlineScript.includes('title: "Formed At"')
-       && html.includes('#fxBatchesPage:not([hidden])')
+       && html.includes('#batchesPage:not([hidden])')
        && html.includes('height: calc(100vh - var(--workspace-nav-height));')
       && html.includes('#batchingHistoryPage .batching-history-content')
       && html.includes('#batchingHistoryPage .batching-history-grid')
       && /function initializeBatchingHistoryGrid\(data\) \{[\s\S]*?renderVertical: "virtual",[\s\S]*?maxHeight: "calc\(100vh - var\(--workspace-nav-height\) - 170px\)",/.test(inlineScript)
       && /tabulatorSizedColumn\("timestamp", \{[\s\S]*?title: "Formed At",[\s\S]*?field: "formedAt",/.test(inlineScript)
-      && serverSource.includes("function fxBatches()")
-      && serverSource.includes("function fxBatchFormationReasonDescription(")
+      && serverSource.includes("function batches()")
+      && serverSource.includes("function batchFormationReasonDescription(")
       && schemaSource.includes("formation_reason_code")
       && schemaSource.includes("formation_reason_details_json")
       && serverSource.includes(
-        'pathname === "/api/v1/fx-batches" && method === "GET"'
+        'pathname === "/api/v1/batches" && method === "GET"'
       ),
     usesUnifiedBatchHeaderFilterFocus: html.includes(
       '#batchingHistoryPage .tabulator .tabulator-header-filter :is(input, select):focus {'
@@ -3040,21 +2981,21 @@ function verifyFrontendStructure() {
     usesBatchFormationAudit:
       inlineScript.includes('return "#batching:formation-audit";')
       && html.includes('data-ui-table-layout-host="batching_history_grid"')
-      && inlineScript.includes("function applyFxBatchesViewMode()")
-      && inlineScript.includes("function setFxBatchesViewMode(mode)")
-      && inlineScript.includes('fxBatchesAuditViewToggle.addEventListener("change"')
-      && inlineScript.includes('setFxBatchesViewMode(FX_BATCHES_VIEW_MODE_AUDIT)')
+      && inlineScript.includes("function applyBatchesViewMode()")
+      && inlineScript.includes("function setBatchesViewMode(mode)")
+      && inlineScript.includes('batchesAuditViewToggle.addEventListener("change"')
+      && inlineScript.includes('setBatchesViewMode(BATCHES_VIEW_MODE_AUDIT)')
       && inlineScript.includes('title: "Batching Key"')
       && inlineScript.includes('title: "Window Opened At"')
       && inlineScript.includes('title: "Window Closed At"')
       && inlineScript.includes('title: "Duration"')
       && inlineScript.includes('title: "Source Trades"')
-      && inlineScript.includes('visible: fxBatchesAuditViewEnabled()')
+      && inlineScript.includes('visible: batchesAuditViewEnabled()')
       && inlineScript.includes('column?.show()')
       && inlineScript.includes('column?.hide()')
-      && serverSource.includes("function fxBatchWithAuditFields(row)")
-      && serverSource.includes("LEFT JOIN v_fx_batch_formation_audit audit")
-      && schemaSource.includes("CREATE VIEW IF NOT EXISTS v_fx_batch_formation_audit")
+      && serverSource.includes("function batchWithAuditFields(row)")
+      && serverSource.includes("LEFT JOIN v_batch_formation_audit audit")
+      && schemaSource.includes("CREATE VIEW IF NOT EXISTS v_batch_formation_audit")
       && schemaSource.includes("member.member_role = 'TRADE'"),
     usesBatchStructure:
       html.includes('data-workspace-routes="batching-history batch-formation-audit batch-details"')
@@ -3069,30 +3010,30 @@ function verifyFrontendStructure() {
       && html.includes('id="batchDetailsCashOutputGrid"')
       && html.includes('id="batchDetailsOutputsGrid"')
       && html.includes(
-        '<h2 class="batch-details-section-title" id="batchDetailsMembersTitle">FX Trade Members</h2>'
+        'id="batchDetailsMembersTitle">Batch Members</h2>'
       )
       && html.includes(
-        '<h2 class="batch-details-section-title" id="batchDetailsCashOutputTitle">Cash Output</h2>'
+        'id="batchDetailsCashOutputTitle">Batch Quote Cash Outputs</h2>'
       )
       && html.includes(
-        '<h2 class="batch-details-section-title" id="batchDetailsOutputsTitle">Net Position Output</h2>'
+        'id="batchDetailsOutputsTitle">Batch Position Outputs</h2>'
       )
       && html.includes(
-        'class="btn btn-sm btn-outline-secondary workbench-detail-back-button" href="#batching:history" aria-label="Back to FX Batches"'
+        'class="workbench-back-link" href="#batching:history" aria-label="Back to Batches"'
       )
       && html.includes('<span class="button-icon" aria-hidden="true">arrow_back</span>')
       && html.includes("source position was already flat")
       && html.includes('id="batchNeutralityMembersBase"')
       && html.includes('id="batchNeutralityCashQuote"')
-      && html.includes(">FX Position Neutral</span>")
+      && html.includes(">Position Neutral</span>")
       && html.includes(">Cash Balance Neutral</span>")
       && inlineScript.includes("function batchDetailsRoute(batchId)")
       && inlineScript.includes("/^#batching:details\\/(\\d+)$/")
-      && inlineScript.includes("async function loadFxBatchDetailsFromApi(batchId)")
-      && inlineScript.includes("function normalizedFxBatchDetails(value)")
+      && inlineScript.includes("async function loadBatchDetailsFromApi(batchId)")
+      && inlineScript.includes("function normalizedBatchDetails(value)")
       && inlineScript.includes("function initializeBatchDetailsGrid(")
       && batchDetailsPageLoaderSource.includes("await loadSelectedBatchDetails(batchId)")
-      && !batchDetailsPageLoaderSource.includes("reloadFxBatchesFromApi")
+      && !batchDetailsPageLoaderSource.includes("reloadBatchesFromApi")
       && !batchDetailsPageLoaderSource.includes("renderBatchDetailsSelect")
       && inlineScript.includes('if (location.hash === "#batching:details")')
       && inlineScript.includes("location.hash = batchingHistoryRoute()")
@@ -3166,7 +3107,7 @@ function verifyFrontendStructure() {
       && batchStructureColumnsSource.includes('bottomCalc: () => "NET"')
       && batchStructureColumnsSource.includes('bottomCalc: "sum"')
       && batchStructureColumnsSource.includes("function batchStructureTradeTypeFormatter")
-      && batchStructureColumnsSource.includes("fxPositionTradeTypePresentation(trade)")
+      && batchStructureColumnsSource.includes("positionTradeTypePresentation(trade)")
       && inlineScript.includes('index: "batchContentKey"')
       && inlineScript.includes("function normalizedBatchCashOutput(value)")
       && !inlineScript.includes('member.tradeType === "BATCH_QUOTE_CASH_OUT"')
@@ -3180,9 +3121,9 @@ function verifyFrontendStructure() {
       && inlineScript.includes('data-batching-history-action="view"')
       && inlineScript.includes("location.hash = batchDetailsRoute(batch.batchId)")
       && !inlineScript.includes("batchDetailsSelect")
-      && serverSource.includes("function fxBatchContent(batchId)")
-      && serverSource.includes("function fxBatchBalanceRow(row)")
-      && serverSource.includes(".map(fxBatchBalanceRow)")
+      && serverSource.includes("function batchContent(batchId)")
+      && serverSource.includes("function batchBalanceRow(row)")
+      && serverSource.includes(".map(batchBalanceRow)")
       && serverSource.includes(
         "WHEN 'CLIENT_DEAL' THEN client.analytical_pnl_quote_minor"
       )
@@ -3191,18 +3132,18 @@ function verifyFrontendStructure() {
       )
       && serverSource.includes("END AS analyticalPnlQuoteMinor")
       && serverSource.includes("END AS analyticalPnlQuoteFractionDigits")
-      && fxBatchBalanceDomainSource.includes(
+      && batchBalanceDomainSource.includes(
         'baseBalanceContributionMinor: normalizedSide === "SELL"'
       )
-      && fxBatchBalanceDomainSource.includes(
+      && batchBalanceDomainSource.includes(
         'quoteBalanceContributionMinor: normalizedSide === "BUY"'
       )
-      && serverSource.includes("function fxBatchDetails(batchId)")
+      && serverSource.includes("function batchDetails(batchId)")
       && serverSource.includes("members: content.members")
       && serverSource.includes("outputs: content.outputs")
       && serverSource.includes("cashOutput")
       && !serverSource.includes("content.members.push")
-      && serverSource.includes("sendJson(response, 200, fxBatchDetails(batchId))"),
+      && serverSource.includes("sendJson(response, 200, batchDetails(batchId))"),
     removesBatchingPositionsWorkspace:
       !html.includes('href="#batching-positions"')
       && !html.includes('data-workspace-route="batching-positions"')
@@ -3210,9 +3151,9 @@ function verifyFrontendStructure() {
       && !html.includes(">Batching Positions</span>")
       && !inlineScript.includes("function initializeBatchingPositionsGrid(data)")
       && !inlineScript.includes('demoApiRequest("/api/v1/batching-positions")')
-      && !serverSource.includes("batchingPositions: fxBatchTrades()")
+      && !serverSource.includes("batchingPositions: batchTrades()")
       && inlineScript.includes('type === "BATCH_BALANCE_TRADE"')
-      && fxBatchFormationDomainSource.includes('"BATCH_BALANCE_TRADE"')
+      && batchFormationDomainSource.includes('"BATCH_BALANCE_TRADE"')
       && serverSource.includes(
         'pathname === "/api/v1/batching-positions" && method === "GET"'
       ),
@@ -3222,26 +3163,26 @@ function verifyFrontendStructure() {
       && inlineScript.includes("function confirmBatchRollback()")
       && inlineScript.includes("batchingHistoryActionFormatter")
       && inlineScript.includes("/rollback`")
-      && serverSource.includes("function rollbackFxBatch(batchId)")
+      && serverSource.includes("function rollbackBatch(batchId)")
       && serverSource.includes("batch_status = 'ROLLED_BACK'")
       && serverSource.includes("/rollback$/.exec(pathname)")
       && schemaSource.includes("'ROLLED_BACK'")
       && schemaSource.includes("rolled_back_at"),
     usesMinorUnitBatchBalancing:
-      fxBatchFormationDomainSource.includes("baseCcyAmountMinor")
-      && fxBatchFormationDomainSource.includes("quoteCcyAmountMinor")
-      && fxBatchFormationDomainSource.includes("exactNetTransferQuoteAmountMinor")
-      && fxBatchFormationDomainSource.includes("calculateQuoteMinor")
-      && fxBatchFormationDomainSource.includes("formQuoteCashOut")
-      && fxBatchFormationDomainSource.includes(
+      batchFormationDomainSource.includes("baseCcyAmountMinor")
+      && batchFormationDomainSource.includes("quoteCcyAmountMinor")
+      && batchFormationDomainSource.includes("exactNetTransferQuoteAmountMinor")
+      && batchFormationDomainSource.includes("calculateQuoteMinor")
+      && batchFormationDomainSource.includes("formQuoteCashOut")
+      && batchFormationDomainSource.includes(
         "quoteCashOutContributionMinor"
       )
-      && fxBatchBalanceDomainSource.includes(
-        "fxTradeBalanceContributionsMinor"
+      && batchBalanceDomainSource.includes(
+        "tradeBalanceContributionsMinor"
       )
-      && fxBatchFormationDomainSource.includes("dealtCcyCode: first.baseCcyCode")
-      && fxBatchFormationDomainSource.includes('sourceNetSide: "FLAT"')
-      && !fxBatchFormationDomainSource.includes(
+      && batchFormationDomainSource.includes("dealtCcyCode: first.baseCcyCode")
+      && batchFormationDomainSource.includes('sourceNetSide: "FLAT"')
+      && !batchFormationDomainSource.includes(
         "trade.baseCcyAmount * trade.transferRate"
       )
       && serverSource.includes(
@@ -3250,12 +3191,12 @@ function verifyFrontendStructure() {
       && serverSource.includes(
         'minorToSafeInteger(trade.quoteCcyAmountMinor, "Batch Quote Ccy Amount Minor")'
       )
-      && serverSource.includes("INSERT INTO fx_batch_quote_cash_output")
+      && serverSource.includes("INSERT INTO batch_quote_cash_outputs")
       && schemaSource.includes(
         "formed batch must have zero quote currency cash balance"
       )
       && !serverSource.includes(
-        "const exposureAmounts = fxTradeExposureAmounts(trade);"
+        "const exposureAmounts = tradeExposureAmounts(trade);"
       ),
     usesMinorUnitAnalyticalPnl:
       serverSource.includes("analytical_pnl_quote_minor")
@@ -3282,14 +3223,14 @@ function verifyFrontendStructure() {
       && !clientDealGeneratorSource.includes(
         "settings.minBaseCcyAmount,"
       ),
-    usesMinorUnitFxPositionSummary:
+    usesMinorUnitPositionSummary:
       inlineScript.includes("function sideAmountMinor(")
       && inlineScript.includes("function scaledMinorAmount(")
       && inlineScript.includes("amountMinor: sideRows.reduce(")
       && inlineScript.includes("const netMinor = sell.amountMinor - buy.amountMinor;")
       && inlineScript.includes("new Big(String(value))")
       && inlineScript.includes("minorAmountCell(sell.amountMinor, fractionDigits)")
-      && inlineScript.includes("function fxPositionQuoteAmountMinor(")
+      && inlineScript.includes("function positionQuoteAmountMinor(")
       && inlineScript.includes("deal?.analyticalPnlQuoteMinor")
       && inlineScript.includes("minorToMajorDecimal(pnlMinor, fractionDigits)")
       && !inlineScript.includes("acc.sell += deal.amountSell")
@@ -3297,57 +3238,57 @@ function verifyFrontendStructure() {
       && !inlineScript.includes("function quoteCurrencyAmount(")
       && !inlineScript.includes("function pnlCashFromTransfer(")
       && !inlineScript.includes("baseCcyAmount * tradeRate"),
-    usesBootstrapFxPositionWorkspace: fxPositionPageMarkup.includes(
-      'class="table table-sm align-middle batching-table fx-position-grid"'
+    usesBootstrapPositionWorkspace: positionPageMarkup.includes(
+      'class="table table-sm align-middle batching-table position-grid"'
     )
-      && fxPositionPageMarkup.includes('class="deal-toolbar btn-toolbar"')
-      && fxPositionPageMarkup.includes('class="batch-toolbar btn-toolbar"')
-      && fxPositionPageMarkup.includes('class="position-toolbar-row"')
-      && fxPositionPageMarkup.includes('class="hedge-toolbar btn-toolbar"')
-      && fxPositionPageMarkup.includes('aria-label="Hedging Toolbar"')
-      && fxPositionPageMarkup.includes('class="batch-toolbar-title hedge-toolbar-title"')
-      && fxPositionPageMarkup.includes('data-tooltip="Hedging Toolbar"')
-      && fxPositionPageMarkup.includes('aria-hidden="true">shield</span>')
+      && positionPageMarkup.includes('class="deal-toolbar btn-toolbar"')
+      && positionPageMarkup.includes('class="batch-toolbar btn-toolbar"')
+      && positionPageMarkup.includes('class="position-toolbar-row"')
+      && positionPageMarkup.includes('class="hedge-toolbar btn-toolbar"')
+      && positionPageMarkup.includes('aria-label="Hedging Toolbar"')
+      && positionPageMarkup.includes('class="batch-toolbar-title hedge-toolbar-title"')
+      && positionPageMarkup.includes('data-tooltip="Hedging Toolbar"')
+      && positionPageMarkup.includes('aria-hidden="true">shield</span>')
       && html.includes('.action-button:not(.btn) {')
       && html.includes('.action-button:not(.btn):hover:not(:disabled) {')
-      && !fxPositionPageMarkup.includes('>Hedge Toolbar</span>')
-      && fxPositionPageMarkup.includes('class="form-check-input select-all-checkbox"')
-      && fxPositionPageMarkup.includes('aria-label="Ccy pair selector"')
-      && fxPositionPageMarkup.includes('id="runClientDealGenerationLabel">Auto Generate</span>')
-      && fxPositionPageMarkup.includes('id="autoBatchButton" aria-label="Start Auto Batching"')
-      && fxPositionPageMarkup.includes('id="autoBatchLabel">Auto Batch</span>')
-      && !fxPositionPageMarkup.includes(">play_arrow</span>")
-      && (fxPositionPageMarkup.match(/>settings<\/span>/g) || []).length === 3
-      && !fxPositionPageMarkup.includes("&#9654;")
-      && !fxPositionPageMarkup.includes("&#9881;")
-      && !fxPositionPageMarkup.includes('type="search"')
-      && !fxPositionPageMarkup.includes("header-filter")
-      && html.includes("#mainPage.fx-position-bootstrap.workbench-page .fx-position-grid")
+      && !positionPageMarkup.includes('>Hedge Toolbar</span>')
+      && positionPageMarkup.includes('class="form-check-input select-all-checkbox"')
+      && positionPageMarkup.includes('aria-label="Ccy pair selector"')
+      && positionPageMarkup.includes('id="runClientDealGenerationLabel">Auto Generate</span>')
+      && positionPageMarkup.includes('id="autoBatchButton" aria-label="Start Auto Batching"')
+      && positionPageMarkup.includes('id="autoBatchLabel">Auto Batch</span>')
+      && !positionPageMarkup.includes(">play_arrow</span>")
+      && (positionPageMarkup.match(/>settings<\/span>/g) || []).length === 3
+      && !positionPageMarkup.includes("&#9654;")
+      && !positionPageMarkup.includes("&#9881;")
+      && !positionPageMarkup.includes('type="search"')
+      && !positionPageMarkup.includes("header-filter")
+      && html.includes("#mainPage.position-bootstrap.workbench-page .position-grid")
       && html.includes("grid-template-columns: 136px minmax(0, 1fr)")
-      && fxPositionWorkspaceMainCss.includes("display: flex;")
-      && fxPositionWorkspaceMainCss.includes("flex-direction: column;")
-      && !fxPositionWorkspaceMainCss.includes("grid-template-rows:")
-      && fxPositionGridFrameCss.includes("flex: 1 1 auto;")
-      && fxPositionGridFrameCss.includes("min-height: 0;")
-      && fxPositionGridFrameCss.includes("overflow: auto;")
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.hedge-toolbar \{[\s\S]*?flex: 0 0 auto;[\s\S]*?\}/.test(html)
-      && !fxPositionPageMarkup.includes('class="fx-position-toolbar-spacer"')
-      && inlineScript.includes("function fxPositionGridFillRow()")
-      && inlineScript.includes('class="fx-position-grid-fill"')
-      && inlineScript.includes("function syncFxPositionGridFillHeight()")
-      && inlineScript.includes("fxPositionLayoutObserver.observe(fxPositionGridFrame)")
-      && inlineScript.includes("fxPositionLayoutObserver.observe(fxPositionGrid)")
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid thead \{\s*position: static;\s*\}/.test(html)
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid tfoot \{[\s\S]*?position: sticky;[\s\S]*?bottom: 0;[\s\S]*?\}/.test(html)
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid tfoot tr:last-child td \{[\s\S]*?border-bottom: 0;[\s\S]*?\}/.test(html)
-      && html.includes("--fx-position-section-rule-width: 2px;")
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid \.section-name::before \{[\s\S]*?position: absolute;[\s\S]*?top: 7px;[\s\S]*?height: var\(--fx-position-section-rule-width\);[\s\S]*?margin: 0;/.test(html)
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.fx-position-grid \.batching-summary-total td \{[\s\S]*?border-top: 3px solid var\(--palette-gray-500\);[\s\S]*?border-bottom: 0;/.test(html)
+      && positionWorkspaceMainCss.includes("display: flex;")
+      && positionWorkspaceMainCss.includes("flex-direction: column;")
+      && !positionWorkspaceMainCss.includes("grid-template-rows:")
+      && positionGridFrameCss.includes("flex: 1 1 auto;")
+      && positionGridFrameCss.includes("min-height: 0;")
+      && positionGridFrameCss.includes("overflow: auto;")
+      && /#mainPage\.position-bootstrap\.workbench-page \.hedge-toolbar \{[\s\S]*?flex: 0 0 auto;[\s\S]*?\}/.test(html)
+      && !positionPageMarkup.includes('class="position-toolbar-spacer"')
+      && inlineScript.includes("function positionGridFillRow()")
+      && inlineScript.includes('class="position-grid-fill"')
+      && inlineScript.includes("function syncPositionGridFillHeight()")
+      && inlineScript.includes("positionLayoutObserver.observe(positionGridFrame)")
+      && inlineScript.includes("positionLayoutObserver.observe(positionGrid)")
+      && /#mainPage\.position-bootstrap\.workbench-page \.position-grid thead \{\s*position: static;\s*\}/.test(html)
+      && /#mainPage\.position-bootstrap\.workbench-page \.position-grid tfoot \{[\s\S]*?position: sticky;[\s\S]*?bottom: 0;[\s\S]*?\}/.test(html)
+      && /#mainPage\.position-bootstrap\.workbench-page \.position-grid tfoot tr:last-child td \{[\s\S]*?border-bottom: 0;[\s\S]*?\}/.test(html)
+      && html.includes("--position-section-rule-width: 2px;")
+      && /#mainPage\.position-bootstrap\.workbench-page \.position-grid \.section-name::before \{[\s\S]*?position: absolute;[\s\S]*?top: 7px;[\s\S]*?height: var\(--position-section-rule-width\);[\s\S]*?margin: 0;/.test(html)
+      && /#mainPage\.position-bootstrap\.workbench-page \.position-grid \.batching-summary-total td \{[\s\S]*?border-top: 3px solid var\(--palette-gray-500\);[\s\S]*?border-bottom: 0;/.test(html)
       && html.includes(".sell-check-zone .select-all-checkbox:is(:checked, :indeterminate)")
       && html.includes(".buy-check-zone .select-all-checkbox:is(:checked, :indeterminate)")
-      && fxPositionPageMarkup.includes('title="Select all SELL deals · Shortcut: S"')
-      && fxPositionPageMarkup.includes('title="Select all BUY deals · Shortcut: B"')
-      && fxPositionPageMarkup.includes('class="action-button primary btn btn-sm btn-soft-primary with-icon" id="createDealButton"')
+      && positionPageMarkup.includes('title="Select all SELL deals · Shortcut: S"')
+      && positionPageMarkup.includes('title="Select all BUY deals · Shortcut: B"')
+      && positionPageMarkup.includes('class="action-button primary btn btn-sm btn-soft-primary with-icon" id="createDealButton"')
       && html.includes(".toolbar-secondary-action:is("),
     usesBootstrapDealGenerationSettings: generationSettingsDialogMarkup.includes(
       'class="generation-dialog-title-block"'
@@ -3366,6 +3307,9 @@ function verifyFrontendStructure() {
       && html.includes(".generation-dialog .modal-header")
       && /\.generation-dialog \{\s*width: fit-content;\s*max-width: calc\(100vw - 32px\);/.test(html)
       && html.includes("font-family: var(--bs-body-font-family);")
+      && html.includes(
+        ".generation-settings-table-toolbar.semantic-section-head {\n      border-bottom: 1px solid var(--bs-border-color);"
+      )
       && /\.generation-cycle-settings-range-label\s*\{[\s\S]*?color: var\(--bs-emphasis-color, #212529\);[\s\S]*?font-size: 11px;[\s\S]*?font-weight: 500;[\s\S]*?text-transform: none;[\s\S]*?\}/.test(
         html
       )
@@ -3379,13 +3323,13 @@ function verifyFrontendStructure() {
     showsAutoPricedClientDealGenerationMode:
       generationSettingsDialogMarkup.includes(">Pricing Mode</span>")
       && generationSettingsDialogMarkup.includes(
-        "Only Auto Priced Execution Systems are available for Client Deal generation."
+        "Only Auto Priced Originating Systems are available for Client Deal generation."
       )
       && generationSettingsDialogMarkup.indexOf(
-        "Only Auto Priced Execution Systems are available for Client Deal generation."
+        "Only Auto Priced Originating Systems are available for Client Deal generation."
       ) > generationSettingsDialogMarkup.indexOf("<table")
       && generationSettingsDialogMarkup.indexOf(
-        "Only Auto Priced Execution Systems are available for Client Deal generation."
+        "Only Auto Priced Originating Systems are available for Client Deal generation."
       ) < generationSettingsDialogMarkup.indexOf("</thead>")
       && generationSettingsDialogMarkup.includes('class="button-icon form-label-help"')
       && !generationSettingsDialogMarkup.includes("configured for deal generation")
@@ -3408,23 +3352,23 @@ function verifyFrontendStructure() {
       && html.includes('>price_change</span>')
       && html.includes('id="workspacePricingMenu" role="menu" aria-label="Pricing" data-workspace-nav-menu hidden')
       && html.includes('class="workspace-nav-menu-link" href="#reference-data"')
-      && html.includes('class="workspace-nav-menu-link" href="#execution-context"')
+      && html.includes('class="workspace-nav-menu-link" href="#trade-context"')
       && html.includes('class="workspace-nav-menu-link" href="#pricing-rules"')
       && inlineScript.includes("function setWorkspaceNavMenuOpen")
       && inlineScript.includes("workspaceNavMenuEntries.forEach(entry =>"),
     usesTabbedTradesWorkspace: html.includes('id="workspaceTradesLink"')
-      && html.includes('href="#client-fx-deals"')
-      && html.includes('data-workspace-routes="client-fx-deals hedge-fx-deals"')
+      && html.includes('href="#client-deals"')
+      && html.includes('data-workspace-routes="client-deals hedge-deals"')
       && html.includes('>currency_exchange</span>')
       && !html.includes('id="workspaceTradesMenu"')
-      && html.includes('id="fxDealsPage"')
+      && html.includes('id="dealsPage"')
       && html.includes('<h1 class="page-title">Trades</h1>')
-      && html.includes('id="clientFxDealsTab" href="#client-fx-deals"')
-      && html.includes('id="hedgeFxDealsTab" href="#hedge-fx-deals"')
-      && html.includes('role="tabpanel" aria-labelledby="clientFxDealsTab"')
-      && html.includes('role="tabpanel" aria-labelledby="hedgeFxDealsTab"')
-      && inlineScript.includes("function setFxDealsActiveTab(activeRoute)")
-      && !html.includes('class="workspace-nav-link" href="#hedging-settings" data-workspace-route="hedging-settings"'),
+      && html.includes('id="clientDealsTab" href="#client-deals"')
+      && html.includes('id="hedgeDealsTab" href="#hedge-deals"')
+      && html.includes('role="tabpanel" aria-labelledby="clientDealsTab"')
+      && html.includes('role="tabpanel" aria-labelledby="hedgeDealsTab"')
+      && inlineScript.includes("function setDealsActiveTab(activeRoute)")
+      && !html.includes('class="workspace-nav-link" href="#position-management-settings" data-workspace-route="position-management-settings"'),
     usesGroupedSettingsNavigation: html.includes('id="workspaceSettingsToggle"')
       && html.includes('aria-controls="workspaceSettingsMenu"')
       && html.includes('data-workspace-nav-menu-toggle="workspaceSettingsMenu"')
@@ -3432,17 +3376,17 @@ function verifyFrontendStructure() {
       && html.includes('id="workspaceSettingsMenu" role="menu" aria-label="Settings" data-workspace-nav-menu hidden')
       && html.includes('href="#settings:currencies" data-workspace-route="settings-currencies"')
       && html.includes('href="#settings:currency-pairs" data-workspace-route="settings-currency-pairs"')
-      && html.includes('href="#hedging-settings" data-workspace-route="hedging-settings"')
+      && html.includes('href="#position-management-settings" data-workspace-route="position-management-settings"')
       && html.includes('<span>Currency Settings</span>')
       && html.includes('<span>Currency Pair Settings</span>')
-      && html.includes('<span>Hedging Settings</span>'),
-    usesFxPositionAsDefaultWorkspace: !html.includes('id="homePage"')
+      && html.includes('<span>Position Management Settings</span>'),
+    usesPositionAsDefaultWorkspace: !html.includes('id="homePage"')
       && !html.includes('data-workspace-route="home"')
-      && html.includes('<title>FX Position</title>')
+      && html.includes('<title>Position</title>')
       && inlineScript.includes('function batchingBlotterRoute()')
-      && inlineScript.includes('return fxPositionRoute("MANUAL");')
+      && inlineScript.includes('return positionRoute("MANUAL");')
       && inlineScript.includes('location.hash = batchingBlotterRoute();'),
-    usesImmutableClientFxDealEdit: editClientDealDialogMarkup.includes(">Edit Client Deal Comment</h2>")
+    usesImmutableClientDealEdit: editClientDealDialogMarkup.includes(">Edit Client Deal Comment</h2>")
       && editClientDealDialogMarkup.includes('class="modal-content"')
       && editClientDealDialogMarkup.includes(">Trade Context</div>")
       && editClientDealDialogMarkup.includes(">Trade Economics</div>")
@@ -3463,27 +3407,27 @@ function verifyFrontendStructure() {
       && !editClientDealDialogMarkup.includes('<section class="client-deal-create-section" aria-label="Comment">')
       && editClientDealDialogMarkup.includes(">Save Comment</button>")
       && inlineScript.includes("function renderLockedEditClientDealContext(deal)")
-      && inlineScript.includes('return fxPositions.find(deal => String(deal.id ?? "") === normalizedDealId) || null;')
+      && inlineScript.includes('return positions.find(deal => String(deal.id ?? "") === normalizedDealId) || null;')
       && !inlineScript.includes("batchingRowsWithReplacement")
       && inlineScript.includes("addClientDealProfileIdentityMarkup(profile)")
       && inlineScript.includes("addClientDealPricingRuleContentMarkup(rule, context)")
       && inlineScript.includes('control.name === "comment"')
-      && inlineScript.includes('deal.databaseBackedClientFxDeal !== true')
+      && inlineScript.includes('deal.databaseBackedClientDeal !== true')
       && saveEditedDealFunction.includes('method: "PATCH"')
       && saveEditedDealFunction.includes("await refreshClientDealViewsFromApi();")
-      && !saveEditedDealFunction.includes("persistClientFxDealRecord")
+      && !saveEditedDealFunction.includes("persistClientDealRecord")
       && !saveEditedDealFunction.includes("targetDeal.")
-      && serverSource.includes("function updateClientFxDealComment(tradeId, comment)")
+      && serverSource.includes("function updateClientDealComment(tradeId, comment)")
       && serverSource.includes("SET comment = ?")
-      && serverSource.includes('"CLIENT_FX_DEAL_IMMUTABLE"')
-      && !serverSource.includes("function replaceClientFxDeal("),
+      && serverSource.includes('"CLIENT_DEAL_IMMUTABLE"')
+      && !serverSource.includes("function replaceClientDeal("),
     usesAuthoritativeClientDealRefresh:
       inlineScript.includes("async function refreshClientDealViewsFromApi()")
       && inlineScript.includes("async function refreshHedgeDealViewsFromApi()")
-      && !reloadClientFxDealsFunction.includes("reloadFxPositionsFromApi")
-      && !reloadHedgeFxDealsFunction.includes("reloadFxPositionsFromApi")
+      && !reloadClientDealsFunction.includes("reloadPositionsFromApi")
+      && !reloadHedgeDealsFunction.includes("reloadPositionsFromApi")
       && persistCreatedClientDealFunction.includes(
-        "const createdDeal = await createClientFxDealRecord(targetDeal);"
+        "const createdDeal = await createClientDealRecord(targetDeal);"
       )
       && persistCreatedClientDealFunction.includes(
         "await refreshClientDealViewsFromApi();"
@@ -3491,26 +3435,26 @@ function verifyFrontendStructure() {
       && persistCreatedClientDealFunction.includes(
         "selectedCurrencyPair = createdDeal.currencyPair;"
       )
-      && !persistCreatedClientDealFunction.includes("fxPositions.push")
-      && inlineScript.includes("return normalizedClientFxDeal(saved);"),
-    usesHedgeFxDealsTabulator: html.includes('id="hedgeFxDealsGrid"')
-      && html.includes('id="hedgeFxDealsColumnMenu"')
-      && inlineScript.includes("hedgeFxDealsGrid = new Tabulator")
-      && /function initializeHedgeFxDealsGrid\(data\) \{[\s\S]*?maxHeight: "calc\(100vh - 225px\)",/.test(inlineScript)
+      && !persistCreatedClientDealFunction.includes("positions.push")
+      && inlineScript.includes("return normalizedClientDeal(saved);"),
+    usesHedgeDealsTabulator: html.includes('id="hedgeDealsGrid"')
+      && html.includes('id="hedgeDealsColumnMenu"')
+      && inlineScript.includes("hedgeDealsGrid = new Tabulator")
+      && /function initializeHedgeDealsGrid\(data\) \{[\s\S]*?maxHeight: "calc\(100vh - 225px\)",/.test(inlineScript)
       && inlineScript.includes('title: "Trading Counterparty Details"')
       && inlineScript.includes('title: "Trade Economics"')
       && inlineScript.includes('title: "Value Date Details"')
       && inlineScript.includes('title: "Pricing Details"')
-      && inlineScript.includes('formatter: fxDealsExecutionContextFormatter')
-      && !html.includes('id="hedgeFxDealsTable"'),
-    persistsClientFxDealAttribution: inlineScript.includes("executionContextId:")
+      && inlineScript.includes('formatter: dealsTradeContextFormatter')
+      && !html.includes('id="hedgeDealsTable"'),
+    persistsClientDealAttribution: inlineScript.includes("tradeContextId:")
       && inlineScript.includes("pricingRuleId:")
       && inlineScript.includes("transferRate,")
       && inlineScript.includes("analyticalPnl,"),
     usesDedicatedAddClientDealFlow: addClientDealDialogMarkup.includes('id="addClientDealDialog"')
       && addClientDealDialogMarkup.includes('id="addClientDealForm"')
       && addClientDealDialogMarkup.includes('name="counterpartyId"')
-      && addClientDealDialogMarkup.includes('name="executionContextId"')
+      && addClientDealDialogMarkup.includes('name="tradeContextId"')
       && addClientDealDialogMarkup.includes('name="pricingRuleId"')
       && addClientDealDialogMarkup.includes('id="addClientDealPricingRulePicker"')
       && addClientDealDialogMarkup.includes('id="addClientDealMarketPulse"')
@@ -3542,12 +3486,12 @@ function verifyFrontendStructure() {
       && serverSource.includes("payload.pricingRuleId === null")
       && serverSource.includes("Manual Pricing Reason cannot be used together with a Pricing Rule."),
     usesContextRichPricingRulePicker: !addClientDealDialogMarkup.includes('for="addClientDealPricingRuleId"')
-      && !addClientDealDialogMarkup.includes('id="addClientDealExecutionContext"')
+      && !addClientDealDialogMarkup.includes('id="addClientDealTradeContext"')
       && inlineScript.includes("function addClientDealPricingRuleOptions()")
       && inlineScript.includes("function renderAddClientDealPricingRules()")
       && inlineScript.includes("Select Pricing Rule")
       && inlineScript.includes("client-deal-pricing-rule-margin")
-      && inlineScript.includes("options.executionSystemLabel === true ? { executionSystemLabel: true } : {}")
+      && inlineScript.includes("options.originatingSystemLabel === true ? { originatingSystemLabel: true } : {}")
       && inlineScript.includes("options.showPricingModeIndicator === false")
       && /\.client-deal-create-dialog \.client-deal-context-picker-label \{\s*margin-bottom: 0;/.test(html)
       && inlineScript.includes('addClientDealPricingRulePicker.addEventListener("click", handleAddClientDealPricingRulePicker)'),
@@ -3575,8 +3519,8 @@ function verifyFrontendStructure() {
       && html.includes("grid-template-columns: max-content max-content minmax(0, 1fr);")
       && html.includes(".client-deal-create-dialog .client-deal-currency-pair-field .form-select")
       && html.includes("width: calc(7ch + 4rem);")
-      && /:is\(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage\)[\s\S]*?:is\(\.client-deal-currency-pair-field, \.client-deal-pricing-mode-field\) \.form-select \{[\s\S]*?height: 44px;[\s\S]*?min-height: 44px;/.test(html)
-      && /:is\(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage\)[\s\S]*?\.client-deal-currency-pair-field \.form-select,[\s\S]*?#hedgingSettingsPage \.client-deal-pricing-mode-field \.form-select \{[\s\S]*?font-size: var\(--app-font-size-control-emphasis\);[\s\S]*?font-weight: var\(--app-font-weight-semibold\);/.test(html)
+      && /:is\(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage\)[\s\S]*?:is\(\.client-deal-currency-pair-field, \.client-deal-pricing-mode-field\) \.form-select \{[\s\S]*?height: 44px;[\s\S]*?min-height: 44px;/.test(html)
+      && /:is\(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage\)[\s\S]*?\.client-deal-currency-pair-field \.form-select,[\s\S]*?#positionManagementSettingsPage \.client-deal-pricing-mode-field \.form-select \{[\s\S]*?font-size: var\(--app-font-size-control-emphasis\);[\s\S]*?font-weight: var\(--app-font-weight-semibold\);/.test(html)
       && /:is\(#addClientDealDialog, #addHedgeDealDialog\)[\s\S]*?\.client-deal-pricing-mode-field \.form-select \{[\s\S]*?font-size: var\(--app-font-size-control\);[\s\S]*?font-weight: var\(--app-font-weight-medium\);/.test(html),
     usesWrappingClientPicker: addClientDealDialogMarkup.includes('id="addClientDealClientPicker"')
       && addClientDealDialogMarkup.includes('id="addClientDealClientPickerValue"')
@@ -3687,7 +3631,7 @@ function verifyFrontendStructure() {
       && addClientDealDialogMarkup.includes('class="form-select"')
       && addClientDealDialogMarkup.includes('class="form-control')
       && addClientDealDialogMarkup.includes('class="btn btn-primary btn-sm"')
-      && inlineScript.includes("clientFxDealsGrid = new Tabulator"),
+      && inlineScript.includes("clientDealsGrid = new Tabulator"),
     usesStructuredTradeEconomicsLayout: addClientDealDialogMarkup.includes('class="client-deal-main-economics-row"')
       && (addClientDealDialogMarkup.match(/client-deal-economics-field/g) || []).length === 4
       && addClientDealDialogMarkup.includes('class="client-deal-pricing-row is-market-first"')
@@ -3745,10 +3689,12 @@ function verifyFrontendStructure() {
       && clientDealDuplicateCheckMarkup.includes('>Check Existing Client Deals</h2>')
       && clientDealDuplicateCheckMarkup.includes('>Client Deal</span>')
       && clientDealDuplicateCheckMarkup.includes('>Cancel</button>')
-      && html.includes('.client-deal-duplicate-dialog .tabulator')
+      && clientDealDuplicateCheckMarkup.includes('table-panel__viewport client-deals-bootstrap')
+      && html.includes('#clientDealDuplicateCheckGrid .tabulator-tableholder')
+      && inlineScript.includes('layout: "fitColumns"')
       && inlineScript.includes('async function currentClientDealsForDuplicateCheck()')
       && inlineScript.includes('async function clientDealDuplicateCandidates(targetDeal)')
-      && inlineScript.includes('return reloadClientFxDealsFromApi();')
+      && inlineScript.includes('return reloadClientDealsFromApi();')
       && inlineScript.includes('const currentDeals = await currentClientDealsForDuplicateCheck();')
       && !inlineScript.includes('function clientDealTradeEconomicsMatch(existingDeal, draftDeal)')
       && !inlineScript.includes('exactEconomicsMatch')
@@ -3834,8 +3780,8 @@ function verifyFrontendStructure() {
       && inlineScript.includes("function applySmartTableSizing(table)")
       && inlineScript.includes('"[data-smart-width-content], "')
       && inlineScript.includes("smartElementOuterWidth(composite)")
-      && inlineScript.includes("executionSystemId: { min: 120, max: 360, pad: 18, ellipsize: false }")
-      && html.includes('id="tradeCaptureChannelIdHeader" data-column-kind="executionSystemId"')
+      && inlineScript.includes("originatingSystemId: { min: 120, max: 360, pad: 18, ellipsize: false }")
+      && html.includes('id="tradeCaptureChannelIdHeader" data-column-kind="originatingSystemId"')
       && inlineScript.includes("function syncSmartCellTooltip(cell, ellipsize)")
       && inlineScript.includes("cell.dataset.tooltip = text;")
       && !inlineScript.includes("cell.dataset.smartSizingTitle")
@@ -3857,48 +3803,13 @@ function verifyFrontendStructure() {
       && html.includes(".pricing-rule-bootstrap-dialog .pricing-rule-bootstrap-section")
       && html.includes(".pricing-rule-bootstrap-dialog .modal-footer .btn"),
     usesPolicyAwarePricingRuleEditing:
-      html.includes('id="clientPricingRuleContextSearchSection" aria-label="Find Execution Context"')
-      && html.includes('id="clientPricingRuleFixedTermsSection" aria-label="Pricing Rule fixed terms" hidden')
-      && html.includes('id="clientPricingRuleCurrencyPairField"')
-      && html.includes('name="positionManagementModeOverride"')
-      && inlineScript.includes('clientPricingRuleContextSearchSection.hidden = contextFixed;')
-      && inlineScript.includes('clientPricingRuleFixedTermsSection.hidden = !contextFixed;')
-      && inlineScript.includes('clientPricingRuleCurrencyPairField.hidden = editing;')
-      && inlineScript.includes('function clientPricingRulePositionManagementModeMarkup(rule, context = null)')
-      && pricingRulePositionModeViewSource.includes(
-        "client-pricing-configuration-node-copy is-read-only"
-      )
-      && !pricingRulePositionModeViewSource.includes(
-        "client-pricing-configuration-inheritance-indicator"
-      )
-      && !pricingRulePositionModeViewSource.includes(">link</span>")
-      && !pricingRulePositionModeViewSource.includes(">edit</span>")
-      && !pricingRulePositionModeViewSource.includes("Execution Context Default")
-      && !/Pricing Rule override|Effective:/.test(pricingRulePositionModeViewSource)
-      && inlineScript.includes("client-pricing-configuration-rule-piece is-pair")
-      && inlineScript.includes('data-tooltip="Ccy Pair">swap_horiz</span>')
-      && inlineScript.includes("client-pricing-configuration-rule-piece is-mode")
-      && inlineScript.includes('data-tooltip="FX Position Mode">table_chart</span>')
-      && inlineScript.includes("client-pricing-configuration-rule-piece is-margin")
-      && inlineScript.includes('data-tooltip="Margin">savings</span>')
-      && inlineScript.includes('client-pricing-configuration-context-title">\n                    <span class="button-icon" aria-hidden="true">hub</span>')
-      && !inlineScript.includes('data-tooltip="Execution Context">hub</span>')
-      && inlineScript.includes('client-pricing-configuration-context-label">Execution Context</span>')
-      && inlineScript.includes("pricingContextFacetsMarkup(context, { executionSystemLabel: true })")
-      && !inlineScript.includes('client-pricing-configuration-context-meta')
-      && !inlineScript.includes('data-tooltip="Pricing Mode">price_change</span>')
-      && !inlineScript.includes('client-pricing-configuration-context-label">Pricing Context</span>')
-      && !inlineScript.includes("with Pricing Mode =")
-      && html.includes(".client-pricing-configuration-branch {")
-      && html.includes("border-left: 1px solid var(--bs-border-color);")
-      && usesPricingRulePositionModeInheritanceControls
-      && !clientPricingRuleInlineEditorSource.includes('positionManagementModeChoice')
-      && inlineScript.includes('? savedRule.currencyPair')
+      html.includes('id="clientPricingRuleFixedTermsSection" aria-label="Pricing Rule fixed terms" hidden')
+      && html.includes('name="autoManagementAdmissionModeOverride"')
+      && usesPricingRuleAdmissionInheritanceControls
       && serverSource.includes('function validatePricingRuleUpdatePayload(body, current)')
       && serverSource.includes('function pricingRuleImmutableTermsChanged(body, current)')
       && serverSource.includes('"PRICING_RULE_TERMS_IMMUTABLE"')
-      && serverSource.includes('SET margin_percent = ?,')
-      && serverSource.includes('position_management_mode_override = ?'),
+      && serverSource.includes('auto_management_admission_mode_override = ?'),
     usesMutedUnavailablePricingContextOptions: inlineScript.includes('option.matchCount === 0 ? " is-unavailable" : ""')
       && html.includes(".pricing-rule-bootstrap-dialog .client-pricing-context-option.is-unavailable")
       && html.includes("color: var(--bs-tertiary-color, #6c757d)")
@@ -3907,33 +3818,33 @@ function verifyFrontendStructure() {
       && inlineScript.includes('headerCell.querySelector(".reference-filterable-head")')
       && inlineScript.includes("smartElementOuterWidth(filterTrigger)")
       && inlineScript.includes("const headerWidth = smartHeaderMinimumWidth(headerCell, policy)"),
-    usesTradingCounterpartyExecutionContextAssignments:
-      html.includes('id="clientExecutionContextsPanel"')
-      && html.includes('id="clientExecutionContextsAttachButton"')
-      && html.includes('class="btn btn-sm btn-primary reference-new-button" id="clientExecutionContextsAttachButton"')
-      && html.includes('<span id="clientExecutionContextsAttachButtonLabel">Attach Execution Context</span>')
+    usesTradingCounterpartyTradeContextAssignments:
+      html.includes('id="clientTradeContextsPanel"')
+      && html.includes('id="clientTradeContextsAttachButton"')
+      && html.includes('class="btn btn-sm btn-primary reference-new-button" id="clientTradeContextsAttachButton"')
+      && html.includes('<span id="clientTradeContextsAttachButtonLabel">Attach Trade Context</span>')
       && inlineScript.includes('class="btn btn-sm btn-primary reference-new-button client-pricing-configuration-add-rule"')
-      && html.includes('id="clientExecutionContextAttachDialogTitle">Attach Execution Contexts</h2>')
+      && html.includes('id="clientTradeContextAttachDialogTitle">Attach Trade Contexts</h2>')
       && (html.match(/data-client-context-attach-filter=/g) || []).length === 5
       && html.includes('<option value="AUTO_PRICED">Auto Priced</option>')
       && html.includes('<option value="DEALER_PRICED">Dealer Priced</option>')
       && html.includes('<option value="DEALER_APPROVED">Dealer Approved</option>')
-      && html.includes('id="clientExecutionContextAttachSelectAll"')
-      && html.includes('id="clientExecutionContextAttachSubmitButton" disabled')
-      && inlineScript.includes("async function refreshTradingCounterpartyExecutionContexts(profile, options = {})")
-      && inlineScript.includes("function availableExecutionContextsForProfile(profile)")
-      && inlineScript.includes("async function attachSelectedExecutionContexts(event)")
-      && inlineScript.includes("JSON.stringify({ executionContextIds: executionContextIds.map(Number) })")
-      && inlineScript.includes("async function detachClientExecutionContext(profile, contextId)")
-      && inlineScript.includes("data-client-execution-context-action=\"detach\"")
+      && html.includes('id="clientTradeContextAttachSelectAll"')
+      && html.includes('id="clientTradeContextAttachSubmitButton" disabled')
+      && inlineScript.includes("async function refreshTradingCounterpartyTradeContexts(profile, options = {})")
+      && inlineScript.includes("function availableTradeContextsForProfile(profile)")
+      && inlineScript.includes("async function attachSelectedTradeContexts(event)")
+      && inlineScript.includes("JSON.stringify({ tradeContextIds: tradeContextIds.map(Number) })")
+      && inlineScript.includes("async function detachClientTradeContext(profile, contextId)")
+      && inlineScript.includes("data-client-trade-context-action=\"detach\"")
       && inlineScript.includes("pricingRuleCount > 0"),
-    pricingRulesUseDirectExecutionContexts: html.includes('id="clientPricingRuleContextSearchSection" aria-label="Find Execution Context"')
-      && inlineScript.includes("availablePricingRuleExecutionContextIds()")
-      && inlineScript.includes("Select an existing Execution Context."),
+    pricingRulesUseDirectTradeContexts: html.includes('id="clientPricingRuleContextSearchSection" aria-label="Find Trade Context"')
+      && inlineScript.includes("availablePricingRuleTradeContextIds()")
+      && inlineScript.includes("Select an existing Trade Context."),
     usesPricingRuleContextBuilder: html.includes('id="clientPricingContextBuilder"')
-      && html.includes('aria-label="Find Execution Context"')
+      && html.includes('aria-label="Find Trade Context"')
       && html.includes('<span class="button-icon" aria-hidden="true">filter_alt</span>')
-      && html.includes("Use the filters below to find an existing Execution Context.")
+      && html.includes("Use the filters below to find an existing Trade Context.")
       && (html.match(/placeholder="Filter by code or name"/g) || []).length === 3
       && html.includes('data-pricing-context-facet="servicingBranchCode"')
       && html.includes('data-pricing-context-facet="settlementSystemId"')
@@ -3947,7 +3858,7 @@ function verifyFrontendStructure() {
       && inlineScript.includes("selectClientPricingContext")
       && inlineScript.includes("clientPricingContextCandidatesExpanded")
       && inlineScript.includes("data-pricing-context-results-toggle")
-      && inlineScript.includes("No matching Execution Context"),
+      && inlineScript.includes("No matching Trade Context"),
     usesVerticalPricingRuleContextLayout: html.includes("width: min(720px, calc(100vw - 32px))")
       && html.includes(".client-pricing-context-facets {\n      display: grid;\n      grid-template-columns: minmax(0, 1fr);")
       && html.includes("grid-template-columns: 28px minmax(0, 1fr) auto 28px"),
@@ -3958,7 +3869,7 @@ function verifyFrontendStructure() {
     usesHumanReadablePricingContextCandidates: inlineScript.includes("return pricingContextFacetDisplayName(field, code) || code")
       && inlineScript.includes('class="client-pricing-context-candidate-path"')
       && inlineScript.includes('class="button-icon client-pricing-context-candidate-facet-icon"')
-      && inlineScript.includes("Execution Context selected")
+      && inlineScript.includes("Trade Context selected")
       && inlineScript.includes("const searchable = [")
       && inlineScript.includes("const selectedDisplayValue = clientPricingContextBuilderState[field]")
       && !html.includes("client-pricing-context-candidate-code")
@@ -4004,7 +3915,7 @@ function verifyFrontendStructure() {
       && fs.existsSync(path.join(root, "vendor", "material-symbols", "material-symbols-outlined.woff2")),
     explicitTooltipCount: (html.match(/\bdata-tooltip=/g) || []).length,
     usesExplicitTradeIdCopy: html.includes('data-copy-trade-id="${safeTradeId}"')
-      && inlineScript.includes("function fxPositionTradeId(deal)")
+      && inlineScript.includes("function positionTradeId(deal)")
       && inlineScript.includes("showTradeIdCopyFeedback(copyButton, copied)")
       && html.includes('data-tooltip="Copy Trade ID"')
       && html.includes('<th class="trade-id-column common-head">ID</th>')
@@ -4039,14 +3950,14 @@ function verifyFrontendStructure() {
     usesAccountingSystemIdSort: html.includes('id="settlementSystemIdSort"')
       && html.includes('id="settlementSystemIdHeader" aria-sort="ascending"')
       && inlineScript.includes('settlementSystemIdSortDirection = "asc"'),
-    usesExecutionSystemTextLimits: html.includes('data-reference-field="tradeCaptureChannelId" value="${escapeHtml(item.tradeCaptureChannelId)}" maxlength="30"')
+    usesOriginatingSystemTextLimits: html.includes('data-reference-field="tradeCaptureChannelId" value="${escapeHtml(item.tradeCaptureChannelId)}" maxlength="30"')
       && html.includes('data-reference-field="tradeCaptureChannelName" value="${escapeHtml(item.tradeCaptureChannelName)}" maxlength="50"')
-      && serverSource.includes('EXECUTION_SYSTEM_ID_MAX_LENGTH = 30')
-      && serverSource.includes('EXECUTION_SYSTEM_NAME_MAX_LENGTH = 50')
+      && serverSource.includes('ORIGINATING_SYSTEM_ID_MAX_LENGTH = 30')
+      && serverSource.includes('ORIGINATING_SYSTEM_NAME_MAX_LENGTH = 50')
       && inlineScript.includes('count: { min: 64, max: 80')
       && html.includes('data-reference-panel="tradeCaptureChannel"')
-      && !html.includes('id="executionSystemUsageInfo"'),
-    usesExecutionSystemIdSort: html.includes('id="tradeCaptureChannelIdSort"')
+      && !html.includes('id="originatingSystemUsageInfo"'),
+    usesOriginatingSystemIdSort: html.includes('id="tradeCaptureChannelIdSort"')
       && html.includes('aria-sort="ascending"')
       && inlineScript.includes('tradeCaptureChannelIdSortDirection = "asc"')
       && (html.match(/class="reference-sort-indicator"/g) || []).length >= 6
@@ -4055,7 +3966,7 @@ function verifyFrontendStructure() {
       && serverSource.includes('let shutdownStarted = false;')
       && startScript.includes('if not "%EXIT_CODE%"=="0" (')
       && startScript.includes("  pause\n)"),
-    usesInlineExecutionContextEditor: !html.includes('id="pricingContextDialog"')
+    usesInlineTradeContextEditor: !html.includes('id="pricingContextDialog"')
       && !html.includes('id="pricingContextForm"')
       && inlineScript.includes("function renderPricingContextEditRow(context, index)")
       && inlineScript.includes("function savePricingContextFromRow(row)")
@@ -4064,28 +3975,28 @@ function verifyFrontendStructure() {
       && html.includes('#pricingPage.unified-bootstrap-workspace [data-pricing-context-action="save"]')
       && html.includes("--bs-btn-color: var(--app-primary);")
       && html.includes("--bs-btn-border-color: var(--app-primary);"),
-    usesReferenceLabelsInExecutionContexts:
+    usesReferenceLabelsInTradeContexts:
       inlineScript.includes("item => item.tradeCaptureChannelName")
       && inlineScript.includes('pricingContextFacetMarkup(context, "servicingBranchCode")')
       && inlineScript.includes('pricingContextFacetMarkup(context, "settlementSystemId")')
-      && inlineScript.includes("executionSystemLabelMarkup(executionSystemName, executionSystem?.pricingType)")
+      && inlineScript.includes("originatingSystemLabelMarkup(originatingSystemName, originatingSystem?.pricingType)")
       && inlineScript.includes("pricingTypePresentation(pricingMode).label"),
-    usesExecutionContextNames: html.includes(">Servicing Location</span>")
+    usesTradeContextNames: html.includes(">Servicing Location</span>")
       && html.includes(">Accounting System</span>")
-      && html.includes(">Execution System</span>"),
-    usesExecutionContextUsage:
+      && html.includes(">Originating System</span>"),
+    usesTradeContextUsage:
       html.includes('aria-label="Attached Trading Counterparties"')
       && html.includes('data-tooltip="Attached Trading Counterparties"')
       && !html.includes('id="pricingContextUsageInfo"'),
-    usesExecutionContextColumnWidths:
-      html.includes('id="executionContextsTable" data-ui-table-layout-key="execution_contexts_grid"')
+    usesTradeContextColumnWidths:
+      html.includes('id="tradeContextsTable" data-ui-table-layout-key="trade_contexts_grid"')
       && html.includes('data-ui-column-key="servicing_location"')
       && html.includes('data-ui-column-key="counterparties_count"')
-      && uiTableLayoutsSource.includes('execution_contexts_grid: layout("Execution Context", [')
+      && uiTableLayoutsSource.includes('trade_contexts_grid: layout("Trade Context", [')
       && uiTableLayoutsSource.includes('["servicing_location", "Servicing Location", 250]')
       && uiTableLayoutsSource.includes('["accounting_system", "Accounting System", 300]')
-      && uiTableLayoutsSource.includes('["execution_system", "Execution System", 250]')
-      && uiTableLayoutsSource.includes('["auto_hedging_admission_mode", "Auto Hedging Admission", 232]')
+      && uiTableLayoutsSource.includes('["originating_system", "Originating System", 250]')
+      && uiTableLayoutsSource.includes('["auto_management_admission_mode", "Initial Mode Assignment", 232]')
       && uiTableLayoutsSource.includes(
         '["counterparties_count", "Trading Counterparties Count", 64]'
       )
@@ -4093,14 +4004,14 @@ function verifyFrontendStructure() {
       && uiTableLayoutsSource.includes('columnKey: "counterparties_count"')
       && inlineScript.includes("function applyNativeUiTableLayout(tableKey, tableLayout)")
       && !html.includes("data-fixed-column-widths")
-      && !html.includes(">Execution Context List<"),
-    usesExecutionContextHeaderFiltersAndSort: html.includes('id="pricingContextIdSort"')
+      && !html.includes(">Trade Context List<"),
+    usesTradeContextHeaderFiltersAndSort: html.includes('id="pricingContextIdSort"')
       && html.includes('id="pricingContextIdHeader" aria-sort="ascending"')
-      && (html.match(/data-pricing-context-header-filter=/g) || []).length === 6
+      && (html.match(/data-pricing-context-header-filter=/g) || []).length === 5
       && inlineScript.includes('pricingContextIdSortDirection = "asc"')
       && inlineScript.includes("pricingContextMatchesHeaderFilters"),
     usesConciseIntegerIdHeaders: html.includes('class="profile-table pricing-context-table unified-data-table"')
-      && html.includes('data-ui-table-layout-key="execution_contexts_grid"')
+      && html.includes('data-ui-table-layout-key="trade_contexts_grid"')
       && html.includes('<table class="profile-table pricing-rules-table unified-data-table" id="pricingRulesTable"')
       && html.includes('id="pricingRuleIdSort"')
       && html.includes('id="pricingRuleIdHeader" aria-sort="ascending"')
@@ -4114,15 +4025,15 @@ function verifyFrontendStructure() {
       )
       && !html.includes('<input type="text" name="pricingContextId" placeholder="Assigned on save" readonly>')
       && !html.includes('id="pricingContextSearchInput"')
-      && !html.includes("<th>Execution Context ID</th>")
+      && !html.includes("<th>Trade Context ID</th>")
       && !html.includes("<th>Pricing Rule ID</th>"),
     usesHumanReadablePricingRuleContexts: inlineScript.includes("function pricingContextDisplayPath(contextOrId)")
       && inlineScript.includes("pricingContextDisplayPath(rule.pricingContextId)")
       && inlineScript.includes('class="client-pricing-context-candidate-path pricing-rules-context-path"')
-      && inlineScript.includes("pricingContextFacetsMarkup(rule.pricingContextId, { executionSystemLabel: true })")
-      && inlineScript.includes('if (options.executionSystemLabel === true && field === "tradeCaptureChannelId")')
+      && inlineScript.includes("pricingContextFacetsMarkup(rule.pricingContextId, { originatingSystemLabel: true })")
+      && inlineScript.includes('if (options.originatingSystemLabel === true && field === "tradeCaptureChannelId")')
       && html.includes('<th class="pricing-rule-context-column">')
-      && html.includes('<span class="reference-column-title">Execution Context</span>')
+      && html.includes('<span class="reference-column-title">Trade Context</span>')
       && inlineScript.includes('contextPath: { min: 280, max: 620')
       && inlineScript.includes('classes.contains("pricing-rule-context-column")')
       && inlineScript.includes(".pricing-rules-context-path, .client-pricing-context-candidate-path")
@@ -4196,8 +4107,8 @@ function verifyFrontendStructure() {
       && inlineScript.includes('Delete unavailable: ${item.currencyPair} is used in ${pricingRulesCount} ${ruleLabel}.')
       && !html.includes('[data-market-panel="pairs"] .market-grid-frame {\n      width: min(680px'),
     usesCurrencySettingsRelatedDrilldowns:
-      html.includes('id="marketSettingsBreadcrumb" hidden')
-      && html.includes('id="pricingRulesBreadcrumb" hidden')
+      html.includes('id="marketSettingsReturnNavigation" aria-label="Return navigation" hidden')
+      && html.includes('id="pricingRulesReturnNavigation" aria-label="Return navigation" hidden')
       && inlineScript.includes('data-market-grid-action="${escapeHtml(action)}"')
       && inlineScript.includes('"view-currency-pairs"')
       && inlineScript.includes('"view-pricing-rules"')
@@ -4256,13 +4167,13 @@ function verifyFrontendStructure() {
     avoidsDoubleTabbedPageDividers: html.includes('class="settings-topbar workbench-page-header" id="marketPageHeader"')
       && html.includes('class="settings-topbar workbench-page-header" aria-label="Reference Data header"')
       && /\.workbench-page-header\s*\{\s*border-bottom:\s*0;/.test(html),
-    usesLargeClientFxDealsTabulator: html.includes('id="clientFxDealsPage"')
+    usesLargeClientDealsTabulator: html.includes('id="clientDealsPage"')
       && html.includes('client-deals-bootstrap unified-bootstrap-workspace workbench-page')
-      && html.includes('id="clientFxDealsGrid"')
-      && !html.includes('id="clientFxDealsTable"')
-      && !html.includes('id="clientFxDealRows"')
-      && inlineScript.includes('clientFxDealsGrid = new Tabulator')
-      && /function initializeClientFxDealsGrid\(data\) \{[\s\S]*?maxHeight: "calc\(100vh - 225px\)",/.test(inlineScript)
+      && html.includes('id="clientDealsGrid"')
+      && !html.includes('id="clientDealsTable"')
+      && !html.includes('id="clientDealRows"')
+      && inlineScript.includes('clientDealsGrid = new Tabulator')
+      && /function initializeClientDealsGrid\(data\) \{[\s\S]*?maxHeight: "calc\(100vh - 225px\)",/.test(inlineScript)
       && inlineScript.includes('renderVertical: "virtual"')
       && inlineScript.includes('layout: "fitData"')
       && inlineScript.includes('title: "Trade Details"')
@@ -4276,57 +4187,57 @@ function verifyFrontendStructure() {
       && inlineScript.includes('field: "baseCcyValueDate"')
       && inlineScript.includes('field: "quoteCcyValueDate"')
       && inlineScript.includes('title: "Pricing Details"')
-      && inlineScript.includes('title: "Execution Context"')
+      && inlineScript.includes('title: "Trade Context"')
       && inlineScript.includes('title: "Margin %", field: "pricingRuleMargin"')
-      && inlineScript.includes('pricingRuleMargin: fxDealPricingRuleMargin(deal)')
+      && inlineScript.includes('pricingRuleMargin: dealPricingRuleMargin(deal)')
       && !inlineScript.includes('field: "pricingRuleLabel"')
       && inlineScript.includes('transferRate: "rate"')
       && inlineScript.includes('tabulatorSizedColumn("transferRate", { title: "Transfer Rate"')
       && inlineScript.includes('deal?.inn || deal?.clientCode || ""')
-      && inlineScript.includes('title: "FX Position Processing"')
+      && inlineScript.includes('title: "Position Processing"')
       && inlineScript.includes('title: "Transfer Rate"')
       && inlineScript.includes('title: "Analytical PnL"')
       && inlineScript.includes('title: "Identifier"')
       && inlineScript.includes('field: "identifier"')
-      && inlineScript.includes('formatter: clientFxDealsIdentifierFormatter')
-      && inlineScript.includes('headerFilter: clientFxDealsIdentifierHeaderFilter')
+      && inlineScript.includes('formatter: clientDealsIdentifierFormatter')
+      && inlineScript.includes('headerFilter: clientDealsIdentifierHeaderFilter')
       && inlineScript.includes('title: "Client Side", field: "side", headerSort: false')
       && inlineScript.includes('title: "Tenor", field: "tenor", headerSort: false')
-      && inlineScript.includes('title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter')
+      && inlineScript.includes('title: "Trade Context", field: "tradeContextLabel", headerSort: false, formatter: dealsTradeContextFormatter')
       && (inlineScript.match(/client-deals-group-end/g) || []).length === 10
       && html.includes('.tabulator-header .tabulator-col.client-deals-group-end,')
       && html.includes('.tabulator-row .tabulator-cell.client-deals-group-end {')
-      && /#fxDealsPage \.tabulator \.tabulator-col-group > \.tabulator-col-content \.tabulator-col-title \{\s*padding-inline: 12px;\s*text-align: center;/.test(html)
-      && inlineScript.includes('class="client-pricing-context-candidate-path fx-deals-execution-context-path"')
+      && /#dealsPage \.tabulator \.tabulator-col-group > \.tabulator-col-content \.tabulator-col-title \{\s*padding-inline: 12px;\s*text-align: center;/.test(html)
+      && inlineScript.includes('class="client-pricing-context-candidate-path deals-trade-context-path"')
       && inlineScript.includes('pricingContextFacetsMarkup(context)')
-      && html.includes('.client-deals-bootstrap .fx-deals-execution-context-path {')
+      && html.includes('.client-deals-bootstrap .deals-trade-context-path {')
       && html.includes('.client-deals-bootstrap .tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-sorter {')
       && html.includes('transition: opacity 120ms ease;')
       && html.includes('.tabulator-col.tabulator-sortable[aria-sort="none"]:hover .tabulator-col-sorter {')
       && html.includes('.tabulator-col.tabulator-sortable:is([aria-sort="ascending"], [aria-sort="descending"]) .tabulator-col-sorter {')
       && inlineScript.includes('initialSort: [{ column: "tradeId", dir: "asc" }]')
-      && !html.includes('id="clientFxDealsPinMode"')
-      && !inlineScript.includes('applyClientFxDealsPinMode'),
-    usesClientFxDealsDataTools: !html.includes('id="clientFxDealsSearchInput"')
-      && !inlineScript.includes('function applyClientFxDealsSearch()')
-      && !html.includes('id="clientFxDealsClearFiltersButton"')
-      && !inlineScript.includes('clientFxDealsGrid.clearFilter(true)')
-      && !inlineScript.includes('updateClientFxDealsClearAvailability')
-      && html.includes('id="clientFxDealsColumnPicker"')
-      && html.includes('id="clientFxDealsColumnMenu"')
-      && inlineScript.includes('function renderClientFxDealsColumnMenu(definitions)')
+      && !html.includes('id="clientDealsPinMode"')
+      && !inlineScript.includes('applyClientDealsPinMode'),
+    usesClientDealsDataTools: !html.includes('id="clientDealsSearchInput"')
+      && !inlineScript.includes('function applyClientDealsSearch()')
+      && !html.includes('id="clientDealsClearFiltersButton"')
+      && !inlineScript.includes('clientDealsGrid.clearFilter(true)')
+      && !inlineScript.includes('updateClientDealsClearAvailability')
+      && html.includes('id="clientDealsColumnPicker"')
+      && html.includes('id="clientDealsColumnMenu"')
+      && inlineScript.includes('function renderClientDealsColumnMenu(definitions)')
       && html.includes('justify-content: flex-end;')
       && html.includes('margin-top: 10px;'),
-    usesClientFxDealsVerticalGridlines: html.includes('.client-deals-bootstrap .tabulator .tabulator-cell')
+    usesClientDealsVerticalGridlines: html.includes('.client-deals-bootstrap .tabulator .tabulator-cell')
       && html.includes('border-right: 1px solid var(--bs-border-color);')
       && html.includes('text-align: center;'),
-    usesClientFxDealsFixedHeaders: html.includes('height: max(360px, calc(100vh - 178px));')
+    usesClientDealsFixedHeaders: html.includes('height: max(360px, calc(100vh - 178px));')
       && inlineScript.includes('renderVertical: "virtual"'),
-    removesLegacyFxPositionBlotter: !html.includes('FX Position Blotter')
-      && !html.includes('#fx-position-blotter')
-      && !inlineScript.includes('fxPositionBlotter')
-      && html.includes('aria-hidden="true">table_chart</span>\n        <span>FX Position</span>'),
-    usesFxPositionExposureDates: html.includes('<th class="base-value-date common-head">Base Ccy Value Date</th>')
+    removesLegacyPositionBlotter: !html.includes('Position Blotter')
+      && !html.includes('#position-blotter')
+      && !inlineScript.includes('positionBlotter')
+      && html.includes('aria-hidden="true">table_chart</span>\n        <span>Position</span>'),
+    usesPositionExposureDates: html.includes('<th class="base-value-date common-head">Base Ccy Value Date</th>')
       && html.includes('<th class="section-name common-title" colspan="4">SHARED TRADE ATTRIBUTES</th>')
       && !html.includes('<th class="tenor common-head">Tenor</th>')
       && inlineScript.includes('${escapeHtml(positionTradeDate(deal))}')
@@ -4336,7 +4247,7 @@ function verifyFrontendStructure() {
       && serverSource.includes('e.trade_date AS tradeDate')
       && serverSource.includes('e.tenor')
       && serverSource.includes('e.base_ccy_value_date AS baseCcyValueDate'),
-    usesFxPositionTradeAttributes: html.includes('<th class="section-name sell-title" colspan="3">SELL SIDE</th>')
+    usesPositionTradeAttributes: html.includes('<th class="section-name sell-title" colspan="3">SELL SIDE</th>')
       && html.includes('<th class="section-name buy-title" colspan="3">BUY SIDE</th>')
       && (html.match(/>Base Ccy Amount<\/th>/g) || []).length === 2
       && inlineScript.includes('class="identity client position-label-cell">${tradeCell}</td>')
@@ -4346,29 +4257,29 @@ function verifyFrontendStructure() {
       && inlineScript.includes('class="position-label-text" data-smart-tooltip-content')
       && (html.match(/data-sort-key="tradeRate" title="Trade Rate">Trade<\/button>/g) || []).length === 2
       && (html.match(/data-sort-key="transferRate" title="Transfer Rate">Transfer<\/button>/g) || []).length === 2
-      && inlineScript.includes("function fxPositionTradeRate(deal)")
+      && inlineScript.includes("function positionTradeRate(deal)")
       && inlineScript.includes("return deal?.clientRate ?? null;")
       && inlineScript.includes("return deal?.autoBatchRate ?? null;")
       && inlineScript.includes("const baseCcyAmount = flatActive")
-      && inlineScript.includes(": fxPositionBaseAmountCell(deal);")
-      && inlineScript.includes("fxPositionTradeRate,\n          targetFractionDigits")
-      && inlineScript.includes("fxPositionTransferRate,\n          targetFractionDigits")
+      && inlineScript.includes(": positionBaseAmountCell(deal);")
+      && inlineScript.includes("positionTradeRate,\n          targetFractionDigits")
+      && inlineScript.includes("positionTransferRate,\n          targetFractionDigits")
       && inlineScript.includes('{ label: "Trade", type: "rate" }')
       && inlineScript.includes("column.label === label && column.type === type")
-      && serverSource.includes("function fxTradeRowWithMajorAmounts(row)")
+      && serverSource.includes("function tradeRowWithMajorAmounts(row)")
       && serverSource.includes('e.trade_rate AS tradeRate')
       && serverSource.includes('d.transfer_rate AS transferRate'),
-    removesFxPositionTradeTypeIndicators:
+    removesPositionTradeTypeIndicators:
       !html.includes("amount-with-trade-type")
       && !html.includes("sell-trade-type-amount")
       && !html.includes("buy-trade-type-amount")
       && !html.includes("trade-type-indicator")
-      && !inlineScript.includes("function fxPositionTradeTypeIndicator(deal)")
-      && !inlineScript.includes("const tradeTypeIndicator = fxPositionTradeTypeIndicator(deal);"),
-    usesFxPositionTradeTypeChips:
+      && !inlineScript.includes("function positionTradeTypeIndicator(deal)")
+      && !inlineScript.includes("const tradeTypeIndicator = positionTradeTypeIndicator(deal);"),
+    usesPositionTradeTypeChips:
       html.includes(".position-trade-type-chip")
       && html.includes(".position-trade-type-icon")
-      && inlineScript.includes("function fxPositionTradeTypePresentation(deal)")
+      && inlineScript.includes("function positionTradeTypePresentation(deal)")
       && inlineScript.includes('{ type, label: "CLIENT DEAL", icon: "handshake" }')
       && inlineScript.includes('{ type, label: "HEDGE DEAL", icon: "shield" }')
       && inlineScript.includes(
@@ -4377,37 +4288,37 @@ function verifyFrontendStructure() {
       && inlineScript.includes(
         '{ type, label: "BATCH BALANCE TRADE", icon: "balance" }'
       )
-      && inlineScript.includes('function fxPositionTradeContext(deal, tradeType')
+      && inlineScript.includes('function positionTradeContext(deal, tradeType')
       && inlineScript.includes('`Position Out · Batch #${batchId}`')
       && inlineScript.includes('`Batch Balance · Batch #${batchId}`')
-      && inlineScript.includes('function fxPositionTradeTypeTooltip(deal, presentation)')
+      && inlineScript.includes('function positionTradeTypeTooltip(deal, presentation)')
       && inlineScript.includes(
-        '`BATCH POSITION OUT · created by FX Batch #${batchId}`'
+        '`BATCH POSITION OUT · created by Batch #${batchId}`'
       )
       && inlineScript.includes('data-tooltip="${escapeHtml(tradeTypeTooltip)}"')
       && !inlineScript.includes("position-trade-type-label"),
-    removesFxPositionDemoDeleteActions:
+    removesPositionDemoDeleteActions:
       !html.includes("Delete (Demo)")
       && !html.includes('id="deleteDealButton"')
       && !html.includes('id="deleteBatchTechnicalTradesButton"')
       && !html.includes('id="deleteHedgeDealDemoButton"')
-      && inlineScript.includes("function isBatchableFxPositionTrade(deal)")
+      && inlineScript.includes("function isBatchablePositionTrade(deal)")
       && inlineScript.includes('${sellActive || flatActive ? selectionBox : ""}')
       && !inlineScript.includes("function selectedTechnicalBatchIds()")
       && !inlineScript.includes("async function deleteSelectedBatchTechnicalTradesForDemo()")
       && !inlineScript.includes("async function deleteSelectedClientDeal()")
       && !inlineScript.includes("async function deleteSelectedHedgeDealsForDemo()")
-      && !inlineScript.includes('"/api/v1/fx-batches/demo-hide-technical-trades"')
-      && !serverSource.includes("function hideFxBatchTechnicalTradesForDemo(batchIds)")
-      && !serverSource.includes('"/api/v1/fx-batches/demo-hide-technical-trades"')
-      && !serverSource.includes('"FX_BATCH_TECHNICAL_TRADES_IMMUTABLE"')
-      && !schemaSource.includes("fx_demo_hidden_batches"),
+      && !inlineScript.includes('"/api/v1/batches/demo-hide-technical-trades"')
+      && !serverSource.includes("function hideBatchTechnicalTradesForDemo(batchIds)")
+      && !serverSource.includes('"/api/v1/batches/demo-hide-technical-trades"')
+      && !serverSource.includes('"BATCH_TECHNICAL_TRADES_IMMUTABLE"')
+      && !schemaSource.includes("demo_hidden_batches"),
     usesDemoTradeReset:
       html.includes('id="resetDemoTradesButton">Reset Trades (Demo)</button>')
-      && fxPositionPageMarkup.includes('class="fx-position-footer"')
-      && fxPositionPageMarkup.includes('id="batchStatus"')
-      && !fxPositionDealToolbarMarkup.includes('id="resetDemoTradesButton"')
-      && !fxPositionDealToolbarMarkup.includes('id="batchStatus"')
+      && positionPageMarkup.includes('class="position-footer"')
+      && positionPageMarkup.includes('id="batchStatus"')
+      && !positionDealToolbarMarkup.includes('id="resetDemoTradesButton"')
+      && !positionDealToolbarMarkup.includes('id="batchStatus"')
       && html.includes('id="resetDemoTradesDialog"')
       && html.includes('id="resetDemoTradesConfirmButton"')
       && html.includes('id="resetDemoTradesDialogTitle">Reset Trading Demo</h2>')
@@ -4417,27 +4328,27 @@ function verifyFrontendStructure() {
       && !inlineScript.includes("window.confirm(")
       && inlineScript.includes('"/api/v1/demo/trades/reset"')
       && inlineScript.includes('confirmation: "RESET_ALL_TRADES"')
-      && inlineScript.includes("reloadClientFxDealsFromApi()")
-      && inlineScript.includes("reloadHedgeFxDealsFromApi()")
-      && inlineScript.includes("reloadFxBatchesFromApi()")
+      && inlineScript.includes("reloadClientDealsFromApi()")
+      && inlineScript.includes("reloadHedgeDealsFromApi()")
+      && inlineScript.includes("reloadBatchesFromApi()")
       && serverSource.includes("function resetDemoTrades()")
       && serverSource.includes("positionManagementStates")
       && serverSource.includes("positionManagementTransitions")
-      && serverSource.includes("fx_trade_position_management_transitions")
-      && serverSource.includes('DELETE FROM fx_trade_exposure;')
-      && serverSource.includes('DELETE FROM fx_batches;')
+      && serverSource.includes("trade_position_management_transitions")
+      && serverSource.includes('DELETE FROM trade_exposures;')
+      && serverSource.includes('DELETE FROM batches;')
       && serverSource.includes("DELETE FROM sqlite_sequence")
-      && serverSource.includes("'fx_trade_position_management_transitions'")
+      && serverSource.includes("'trade_position_management_transitions'")
       && serverSource.includes("runInImmediateTransaction(database, () =>")
       && serverSource.includes("Demo Trade reset requires confirmation"),
-    supportsLargeFxPositionAmounts:
+    supportsLargePositionAmounts:
       (html.match(/data-smart-min-text="100 000 000 000\.00"/g) || []).length === 2
       && !html.includes('data-smart-extra-width="48"')
       && inlineScript.includes("function smartRequestedMinimumWidth(headerCell)")
       && inlineScript.includes("const minimumText = headerCell.dataset.smartMinText;")
       && inlineScript.includes("const extraWidth = smartCssPixels(headerCell.dataset.smartExtraWidth);")
       && inlineScript.includes("requestedMinimumWidth"),
-    usesFxPositionMarketPulseBrand: html.includes('<span class="button-icon market-reference-icon market-pulse-icon" role="img" aria-label="Market Pulse" tabindex="0" data-tooltip="Market Pulse">monitoring</span>')
+    usesPositionMarketPulseBrand: html.includes('<span class="button-icon market-reference-icon market-pulse-icon" role="img" aria-label="Market Pulse" tabindex="0" data-tooltip="Market Pulse">monitoring</span>')
       && (html.match(/class="[^"]*market-pulse-icon[^"]*"[^>]*>monitoring<\/span>/g) || []).length >= 6
       && html.includes('.market-pulse-icon {')
       && !html.includes('market-pulse-icon-chart')
@@ -4448,12 +4359,12 @@ function verifyFrontendStructure() {
       && !html.includes('market-reference-info')
       && !html.includes('Market Pulse rates captured when the trade was entered.')
       && inlineScript.includes('marketRate: { min: 70, max: 76, pad: 12, ellipsize: false }'),
-    usesFxPositionHedgeDealTerminology:
+    usesPositionHedgeDealTerminology:
       inlineScript.includes('hedgeQuickModeActionMarkup("SELL", setting.baseCcyCode')
       && inlineScript.includes('hedgeQuickModeActionMarkup("BUY", setting.baseCcyCode')
       && html.includes('class="action-button primary btn btn-sm btn-soft-primary with-icon" id="addHedgeDealButton">')
       && html.includes('<span>Hedge Deal</span>')
-      && fxPositionPageMarkup.includes('id="hedgeQuickModeToolbar"')
+      && positionPageMarkup.includes('id="hedgeQuickModeToolbar"')
       && !html.includes('id="addHedgeSellDealButton"')
       && !html.includes('id="addHedgeBuyDealButton"')
       && !inlineScript.includes("addAutoHedge")
@@ -4462,37 +4373,37 @@ function verifyFrontendStructure() {
       && !inlineScript.includes('class="hedge-deal-quick-control"')
       && inlineScript.includes('data-hedge-quick-preset')
       && inlineScript.includes('data-hedge-quick-action')
-      && inlineScript.includes("function oppositeFxSide(side)")
+      && inlineScript.includes("function oppositeSide(side)")
       && inlineScript.includes("const positionSide = addHedgeDealForm.elements.side.value;")
-      && inlineScript.includes("const ourSide = oppositeFxSide(positionSide);")
-      && inlineScript.includes("addHedgeDealForm.elements.side.value = oppositeFxSide(normalizedOurSide);")
+      && inlineScript.includes("const ourSide = oppositeSide(positionSide);")
+      && inlineScript.includes("addHedgeDealForm.elements.side.value = oppositeSide(normalizedOurSide);")
       && inlineScript.includes("() => openAddHedgeDealDialog()")
-      && inlineScript.includes("oppositeFxSide(addHedgeDealSideControl.value)")
+      && inlineScript.includes("oppositeSide(addHedgeDealSideControl.value)")
       && !html.includes('id="deleteHedgeDealDemoButton"')
       && !inlineScript.includes("function selectedDeletableHedgeDeals()")
       && !inlineScript.includes("async function deleteSelectedHedgeDealsForDemo()")
       && !html.includes("Add Market Deal")
       && !html.includes("Market Deals"),
     usesCompactClientDealToolbarTitle:
-      fxPositionPageMarkup.includes(
+      positionPageMarkup.includes(
         'class="deal-toolbar-title client-deal-toolbar-title" role="img" aria-label="Client Deal Toolbar"'
       )
-      && fxPositionPageMarkup.includes(
+      && positionPageMarkup.includes(
         '<span class="button-icon" aria-hidden="true">handshake</span>'
       )
       && html.includes(".client-deal-toolbar-title"),
     usesCompactBatchToolbarTitle:
-      fxPositionPageMarkup.includes(
+      positionPageMarkup.includes(
         'class="batch-toolbar-title batch-toolbar-icon-title" role="img" aria-label="Batch Toolbar"'
       )
-      && fxPositionPageMarkup.includes(
+      && positionPageMarkup.includes(
         '<span class="button-icon" aria-hidden="true">stacks</span>'
       )
       && html.includes(".batch-toolbar-icon-title"),
     usesStandaloneToolbarCommands:
-      /#mainPage\.fx-position-bootstrap\.workbench-page \.batch-control \{[\s\S]*?gap: 6px;[\s\S]*?border: 0;[\s\S]*?background: transparent;/.test(html)
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.batch-control \.action-button \{[\s\S]*?border-width: 1px;[\s\S]*?border-radius: var\(--workbench-radius\);/.test(html)
-      && /#mainPage\.fx-position-bootstrap\.workbench-page :is\(\.deal-toolbar, \.batch-toolbar, \.hedge-toolbar\) \.action-button:disabled \{[\s\S]*?opacity: 1;/.test(html)
+      /#mainPage\.position-bootstrap\.workbench-page \.batch-control \{[\s\S]*?gap: 6px;[\s\S]*?border: 0;[\s\S]*?background: transparent;/.test(html)
+      && /#mainPage\.position-bootstrap\.workbench-page \.batch-control \.action-button \{[\s\S]*?border-width: 1px;[\s\S]*?border-radius: var\(--workbench-radius\);/.test(html)
+      && /#mainPage\.position-bootstrap\.workbench-page :is\(\.deal-toolbar, \.batch-toolbar, \.hedge-toolbar\) \.action-button:disabled \{[\s\S]*?opacity: 1;/.test(html)
       && batchToolbarMarkup.includes('class="action-button primary btn btn-sm btn-outline-primary batch-main" id="oneBatchButton"')
       && !html.includes(".batch-toolbar #oneBatchButton:is(")
       && html.includes('class="batch-control client-deal-actions" aria-label="Client Deal actions"')
@@ -4502,30 +4413,30 @@ function verifyFrontendStructure() {
       && html.includes('id="runClientDealGenerationLabel">Auto Generate</span>')
       && html.includes('id="autoBatchButton" aria-label="Start Auto Batching"')
       && html.includes('id="autoBatchLabel">Auto Batch</span>')
-      && (fxPositionPageMarkup.match(/toolbar-secondary-action/g) || []).length === 5
-      && fxPositionPageMarkup.includes('class="action-button btn btn-sm btn-outline-primary batch-process process-toggle-button with-icon" id="runClientDealGenerationButton"')
-      && fxPositionPageMarkup.includes('class="action-button btn btn-sm btn-outline-primary batch-process process-toggle-button with-icon" id="autoBatchButton"')
-      && !fxPositionPageMarkup.includes('btn-outline-success batch-process" id="autoBatchButton"')
+      && (positionPageMarkup.match(/toolbar-secondary-action/g) || []).length === 5
+      && positionPageMarkup.includes('class="action-button btn btn-sm btn-outline-primary batch-process process-toggle-button with-icon" id="runClientDealGenerationButton"')
+      && positionPageMarkup.includes('class="action-button btn btn-sm btn-outline-primary batch-process process-toggle-button with-icon" id="autoBatchButton"')
+      && !positionPageMarkup.includes('btn-outline-success batch-process" id="autoBatchButton"')
       && !html.includes("batch-control input-group")
       && !html.includes("batch-label input-group-text")
-      && html.includes('#mainPage.fx-position-bootstrap.workbench-page .batch-toolbar {')
+      && html.includes('#mainPage.position-bootstrap.workbench-page .batch-toolbar {')
       && html.includes('background: var(--bs-body-bg);')
       && html.includes('.process-toggle-button:not(.is-running) {')
       && html.includes('--bs-btn-bg: transparent;')
-      && /#mainPage\.fx-position-bootstrap\.workbench-page \.toolbar-secondary-action:is\([\s\S]*?:hover,[\s\S]*?:focus-visible,[\s\S]*?:active[\s\S]*?\):not\(:disabled\):not\(\.is-running\) \{[\s\S]*?border-color: var\(--bs-secondary\);[\s\S]*?background: var\(--bs-secondary-bg\);/.test(html)
+      && /#mainPage\.position-bootstrap\.workbench-page \.toolbar-secondary-action:is\([\s\S]*?:hover,[\s\S]*?:focus-visible,[\s\S]*?:active[\s\S]*?\):not\(:disabled\):not\(\.is-running\) \{[\s\S]*?border-color: var\(--bs-secondary\);[\s\S]*?background: var\(--bs-secondary-bg\);/.test(html)
       && html.includes('--bs-btn-hover-color: var(--bs-btn-color);')
       && html.includes('--bs-btn-active-color: var(--bs-btn-color);')
       && inlineScript.includes('runClientDealGenerationLabel.textContent = running ? "Stop Generation" : "Auto Generate";'),
-    keepsSpecialFxPositionTradesVisuallyNeutral:
+    keepsSpecialPositionTradesVisuallyNeutral:
       !html.includes('.position-amount-chip')
       && !html.includes('--hedge-deal-side-accent')
       && !html.includes('tr.is-hedge-deal .position-trade-type-chip')
       && !html.includes('tr.is-batch-technical .position-trade-type-chip')
       && !html.includes('.position-label-cell::before {')
-      && !html.includes('--fx-position-row-highlight-bg')
-      && inlineScript.includes('positionType === "HEDGE_DEAL"')
+      && !html.includes('--position-row-highlight-bg')
+      && inlineScript.includes('tradeType === "HEDGE_DEAL"')
       && inlineScript.includes('" is-hedge-deal"')
-      && inlineScript.includes('["BATCH_POSITION_OUT", "BATCH_BALANCE_TRADE"].includes(positionType)')
+      && inlineScript.includes('["BATCH_POSITION_OUT", "BATCH_BALANCE_TRADE"].includes(tradeType)')
       && inlineScript.includes('" is-batch-technical"'),
     usesCentralTabulatorColumnSizing:
       inlineScript.includes('const TABLE_COLUMN_POLICIES = Object.freeze({')
@@ -4533,7 +4444,7 @@ function verifyFrontendStructure() {
       && !inlineScript.includes('const TABULATOR_COLUMN_SIZES = Object.freeze({')
       && inlineScript.includes('function tabulatorSizedColumn(size, definition)')
       && inlineScript.includes('const policy = tableColumnPolicy(size);')
-      && inlineScript.includes('clientFxDealsFilterableColumn("date"')
+      && inlineScript.includes('clientDealsFilterableColumn("date"')
       && inlineScript.includes('tabulatorSizedColumn("amount"'),
     usesUnifiedBootstrapWorkspaceStyle: (html.match(/unified-bootstrap-workspace/g) || []).length >= 6
       && (html.match(/unified-data-table/g) || []).length >= 9
@@ -4544,7 +4455,7 @@ function verifyFrontendStructure() {
     usesReferenceDataColumnFilters: (html.match(/data-reference-filter-kind=/g) || []).length === 12
       && inlineScript.includes('const referenceDataFilterControls = Array.from')
       && inlineScript.includes('function referenceDataMatchesFilters(kind, item)'),
-    usesFluidReferenceDataTables: html.includes('Execution Context, Pricing Rules, and Reference Data tables use their natural column width on wide screens and scroll only when needed.')
+    usesFluidReferenceDataTables: html.includes('Trade Context, Pricing Rules, and Reference Data tables use their natural column width on wide screens and scroll only when needed.')
       && html.includes('width: fit-content;')
       && html.includes('max-width: calc(100vw - var(--workbench-page-inline-total));'),
     usesFluidPricingContextTable: html.includes('#pricingPage.unified-bootstrap-workspace.workbench-page .pricing-layout .profile-table-panel,')
@@ -4557,33 +4468,33 @@ function verifyFrontendStructure() {
     usesPricingRulesHeaderLayout: html.includes(':is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-column-head {')
       && html.includes(':is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-header-filter {')
       && html.includes(':is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-sort-control {'),
-    usesExecutionContextRoute: html.includes('href="#execution-context" data-workspace-route="pricing"')
+    usesTradeContextRoute: html.includes('href="#trade-context" data-workspace-route="pricing"')
       && inlineScript.includes('function pricingRoute(referenceKind = "", referenceId = "")')
       && inlineScript.includes('function pricingRouteStateFromLocation(hash = location.hash)')
       && inlineScript.includes('return pricingRouteStateFromLocation().matches;'),
-    usesReferenceDataExecutionContextDrilldown:
-      html.includes('id="pricingContextBreadcrumb" aria-label="breadcrumb" hidden')
+    usesReferenceDataTradeContextDrilldown:
+      html.includes('id="pricingContextReturnNavigation" aria-label="Return navigation" hidden')
       && html.includes('data-pricing-context-actions-column')
-      && inlineScript.includes('data-reference-action="view-execution-contexts"')
+      && inlineScript.includes('data-reference-action="view-trade-contexts"')
       && inlineScript.includes('View ${count} attached ${contextLabel}')
       && inlineScript.includes('parameter: "servicing-location"')
       && inlineScript.includes('parameter: "accounting-system"')
-      && inlineScript.includes('parameter: "execution-system"')
+      && inlineScript.includes('parameter: "originating-system"')
       && inlineScript.includes('pricingContextNewButton.hidden = Boolean(pricingContextRouteScope)')
       && inlineScript.includes('String(context?.[pricingContextRouteScope.field] ?? "") !== pricingContextRouteScope.value'),
-    usesExecutionContextTradingCounterpartyDrilldown:
-      html.includes('id="clientProfileBreadcrumb" aria-label="breadcrumb" hidden')
+    usesTradeContextTradingCounterpartyDrilldown:
+      html.includes('id="clientProfileReturnNavigation" aria-label="Return navigation" hidden')
       && html.includes('data-client-profile-actions-column')
       && inlineScript.includes('data-pricing-context-action="view-trading-counterparties"')
       && inlineScript.includes('View ${count} attached ${counterpartyLabel}')
-      && inlineScript.includes('function tradingCounterpartiesForExecutionContextRoute(executionContextId, returnHash = location.hash)')
+      && inlineScript.includes('function tradingCounterpartiesForTradeContextRoute(tradeContextId, returnHash = location.hash)')
       && inlineScript.includes('mode: "related"')
       && inlineScript.includes('/trading-counterparties`')
       && inlineScript.includes('function tradingCounterpartyMatchesRouteScope(profile)')
       && inlineScript.includes('clientProfileNewButton.hidden = true')
       && inlineScript.includes('if (clientProfileRouteScope) {')
-      && serverSource.includes('function executionContextTradingCounterparties(executionContextId)')
-      && serverSource.includes('executionContextTradingCounterpartiesMatch'),
+      && serverSource.includes('function tradeContextTradingCounterparties(tradeContextId)')
+      && serverSource.includes('tradeContextTradingCounterpartiesMatch'),
     usesBootstrapReferenceDataControls: (html.match(/btn btn-sm btn-primary reference-new-button/g) || []).length >= 6
       && inlineScript.includes('btn btn-sm btn-outline-secondary reference-grid-action')
       && inlineScript.includes('btn btn-sm btn-outline-danger reference-grid-action')
@@ -4613,11 +4524,11 @@ function verifyFrontendStructure() {
       )
       && html.includes('background: var(--workbench-grid-hover-bg) !important;')
       && html.includes('.workbench-page .batching-table th:has(.sort-button):hover {')
-      && html.includes('.fx-position-grid .column-title :is(.common-head, .market-head):has(.sort-button):hover {')
+      && html.includes('.position-grid .column-title :is(.common-head, .market-head):has(.sort-button):hover {')
       && html.includes('background: var(--palette-gray-200) !important;')
-      && html.includes('.fx-position-grid .column-title .sell-head:has(.sort-button):hover {')
+      && html.includes('.position-grid .column-title .sell-head:has(.sort-button):hover {')
       && html.includes('background: rgba(var(--bs-danger-rgb), 0.12) !important;')
-      && html.includes('.fx-position-grid .column-title .buy-head:has(.sort-button):hover {')
+      && html.includes('.position-grid .column-title .buy-head:has(.sort-button):hover {')
       && html.includes('background: rgba(var(--bs-success-rgb), 0.12) !important;')
       && html.includes(
         '.tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-sorter {'
@@ -4631,7 +4542,7 @@ function verifyFrontendStructure() {
       && html.includes('--app-table-action-hover-bg: var(--palette-gray-300);')
       && html.includes('Tables share one hover and neutral row-action contract across the application.')
       && html.includes('.tabulator-row:hover:not(.tabulator-selected):not(.market-inline-edit-row) {')
-      && html.includes('tr:hover:not(.is-selected):not(.is-editing):not(.fx-position-grid-fill)')
+      && html.includes('tr:hover:not(.is-selected):not(.is-editing):not(.position-grid-fill)')
       && html.includes('.icon-action:not(.profile-danger-action)')
       && html.includes('background: var(--app-table-action-hover-bg) !important;')
       && html.includes('.generation-settings-table tbody tr:hover {\n      background: var(--workbench-grid-hover-bg);')
@@ -4786,8 +4697,8 @@ async function verifyApiAndMigration() {
     const settingsTable = await request("GET", "/api/database/tables/market_quote_simulation_settings");
     const servicingLocationsTable = await request("GET", "/api/database/tables/servicing_locations");
     const accountingSystemsTable = await request("GET", "/api/database/tables/accounting_systems");
-    const executionSystemsTable = await request("GET", "/api/database/tables/execution_systems");
-    const executionContextsTable = await request("GET", "/api/database/tables/execution_contexts");
+    const originatingSystemsTable = await request("GET", "/api/database/tables/originating_systems");
+    const tradeContextsTable = await request("GET", "/api/database/tables/trade_contexts");
     const tradingCounterpartiesTable = await request("GET", "/api/database/tables/trading_counterparties");
     const externalCounterpartiesTable = await request("GET", "/api/database/tables/external_counterparties");
     const internalUnitsTable = await request("GET", "/api/database/tables/internal_units");
@@ -4803,169 +4714,169 @@ async function verifyApiAndMigration() {
       "GET",
       "/api/database/tables/client_deal_generation_settings"
     );
-    const fxTradeExposureTable = await request("GET", "/api/database/tables/fx_trade_exposure");
-    const fxTradePositionManagementTable = await request(
+    const tradeExposureTable = await request("GET", "/api/database/tables/trade_exposures");
+    const tradePositionManagementTable = await request(
       "GET",
-      "/api/database/tables/fx_trade_position_management"
+      "/api/database/tables/trade_position_management"
     );
-    const fxTradePositionManagementTransitionsTable = await request(
+    const tradePositionManagementTransitionsTable = await request(
       "GET",
-      "/api/database/tables/fx_trade_position_management_transitions"
+      "/api/database/tables/trade_position_management_transitions"
     );
-    const fxTradeMarketSnapshotTable = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
-    const clientFxDealsTable = await request("GET", "/api/database/tables/client_fx_deals");
-    const hedgeFxDealsTable = await request("GET", "/api/database/tables/fx_hedge_deals");
+    const tradeMarketSnapshotTable = await request("GET", "/api/database/tables/trade_market_snapshots");
+    const clientDealsTable = await request("GET", "/api/database/tables/client_deals");
+    const hedgeDealsTable = await request("GET", "/api/database/tables/hedge_deals");
     const hedgeQuickModeSettingsTable = await request(
       "GET",
-      "/api/database/tables/fx_hedge_quick_mode_settings"
+      "/api/database/tables/hedge_quick_mode_settings"
     );
-    const fxTradeBatchesTable = await request(
+    const tradeBatchesTable = await request(
       "GET",
-      "/api/database/tables/fx_batches"
+      "/api/database/tables/batches"
     );
     const batchBalancingTradesTable = await request(
       "GET",
-      "/api/database/tables/fx_batch_members"
+      "/api/database/tables/batch_members"
     );
     const batchBalanceTradeTable = await request(
       "GET",
-      "/api/database/tables/fx_batch_balance_trade"
+      "/api/database/tables/batch_balance_trades"
     );
     const batchPositionOutputTable = await request(
       "GET",
-      "/api/database/tables/fx_batch_position_output"
+      "/api/database/tables/batch_position_outputs"
     );
     const batchQuoteCashMembersTable = await request(
       "GET",
-      "/api/database/tables/fx_batch_quote_cash_output"
+      "/api/database/tables/batch_quote_cash_outputs"
     );
-    const counterpartyExecutionContextsTable = await request(
+    const counterpartyTradeContextsTable = await request(
       "GET",
-      "/api/database/tables/trading_counterparty_execution_contexts"
+      "/api/database/tables/trading_counterparty_trade_contexts"
     );
     const servicingLocations = await request("GET", "/api/v1/servicing-locations");
     const accountingSystems = await request("GET", "/api/v1/accounting-systems");
-    const executionSystems = await request("GET", "/api/v1/execution-systems");
-    const executionContexts = await request("GET", "/api/v1/execution-contexts");
+    const originatingSystems = await request("GET", "/api/v1/originating-systems");
+    const tradeContexts = await request("GET", "/api/v1/trade-contexts");
     const tradingCounterparties = await request("GET", "/api/v1/trading-counterparties");
     const users = await request("GET", "/api/v1/users");
     const pricingRules = await request("GET", "/api/v1/pricing-rules");
-    const migratedFxPositions = await request("GET", "/api/v1/fx-positions");
-    const migratedClient1ExecutionContexts = await request(
+    const migratedPositions = await request("GET", "/api/v1/positions");
+    const migratedClient1TradeContexts = await request(
       "GET",
-      "/api/v1/trading-counterparties/1/execution-contexts"
+      "/api/v1/trading-counterparties/1/trade-contexts"
     );
-    const migratedClient2ExecutionContexts = await request(
+    const migratedClient2TradeContexts = await request(
       "GET",
-      "/api/v1/trading-counterparties/2/execution-contexts"
+      "/api/v1/trading-counterparties/2/trade-contexts"
     );
-    const missingCounterpartyExecutionContexts = await request(
+    const missingCounterpartyTradeContexts = await request(
       "GET",
-      "/api/v1/trading-counterparties/999999/execution-contexts"
+      "/api/v1/trading-counterparties/999999/trade-contexts"
     );
     const clientDealPricingRules = await request("GET", "/api/v1/client-deal-pricing-rules");
-    const clientFxDeals = await request("GET", "/api/v1/client-fx-deals");
-    const hedgeFxDeals = await request("GET", "/api/v1/hedge-fx-deals");
-    const fxPositionsBeforeBatch = await request("GET", "/api/v1/fx-positions");
+    const clientDeals = await request("GET", "/api/v1/client-deals");
+    const hedgeDeals = await request("GET", "/api/v1/hedge-deals");
+    const positionsBeforeBatch = await request("GET", "/api/v1/positions");
     const batchSourceProbe = new DatabaseSync(verificationDatabasePath);
     batchSourceProbe.prepare(`
-      UPDATE client_fx_deals
+      UPDATE client_deals
       SET transfer_rate = 1.123
       WHERE trade_id = 41
     `).run();
     batchSourceProbe.close();
     const rejectedSplitBatchMode = await request(
       "POST",
-      "/api/v1/fx-batches",
+      "/api/v1/batches",
       {
         idempotencyKey: "verify-removed-split-mode",
         tradeIds: [41],
         mode: "SEPARATE_BY_TENOR"
       }
     );
-    const createFxBatch = await request(
+    const createBatch = await request(
       "POST",
-      "/api/v1/fx-batches",
+      "/api/v1/batches",
       { idempotencyKey: "verify-batch-41", tradeIds: [41] }
     );
-    const fxBatchHistoryAfterCreate = await request("GET", "/api/v1/fx-batches");
+    const batchHistoryAfterCreate = await request("GET", "/api/v1/batches");
     const batchFormationAuditAfterCreate = await request(
       "GET",
-      "/api/v1/fx-batch-formation-audit"
+      "/api/v1/batch-formation-audit"
     );
     const batchBalancingTradesAfterCreate = await request(
       "GET",
-      `/api/v1/fx-batches/${createFxBatch.body?.batchId}`
+      `/api/v1/batches/${createBatch.body?.batchId}`
     );
-    const missingFxBatchDetails = await request(
+    const missingBatchDetails = await request(
       "GET",
-      "/api/v1/fx-batches/999999"
+      "/api/v1/batches/999999"
     );
     const duplicateBatchSelection = await request(
       "POST",
-      "/api/v1/fx-batches",
+      "/api/v1/batches",
       { idempotencyKey: "verify-duplicate-batch", tradeIds: [41, 41] }
     );
     const missingBatchSourceTrade = await request(
       "POST",
-      "/api/v1/fx-batches",
+      "/api/v1/batches",
       { idempotencyKey: "verify-missing-batch", tradeIds: [999999] }
     );
-    const replayFxBatch = await request(
+    const replayBatch = await request(
       "POST",
-      "/api/v1/fx-batches",
+      "/api/v1/batches",
       { idempotencyKey: "verify-batch-41", tradeIds: [41] }
     );
     const idempotencyConflict = await request(
       "POST",
-      "/api/v1/fx-batches",
+      "/api/v1/batches",
       { idempotencyKey: "verify-batch-41", tradeIds: [999999] }
     );
     const batchBalancingTradesAfterReplay = await request(
       "GET",
-      `/api/v1/fx-batches/${createFxBatch.body?.batchId}`
+      `/api/v1/batches/${createBatch.body?.batchId}`
     );
-    const fxPositionsAfterBatch = await request("GET", "/api/v1/fx-positions");
-    const rollbackFxBatch = await request(
+    const positionsAfterBatch = await request("GET", "/api/v1/positions");
+    const rollbackBatch = await request(
       "POST",
-      `/api/v1/fx-batches/${createFxBatch.body?.batchId}/rollback`
+      `/api/v1/batches/${createBatch.body?.batchId}/rollback`
     );
-    const fxBatchHistoryAfterRollback = await request("GET", "/api/v1/fx-batches");
+    const batchHistoryAfterRollback = await request("GET", "/api/v1/batches");
     const batchFormationAuditAfterRollback = await request(
       "GET",
-      "/api/v1/fx-batch-formation-audit"
+      "/api/v1/batch-formation-audit"
     );
     const batchFormationAuditCreatedRecord = batchFormationAuditAfterCreate.body
-      ?.find(record => record.batchId === createFxBatch.body?.batchId);
+      ?.find(record => record.batchId === createBatch.body?.batchId);
     const batchFormationAuditRolledBackRecord = batchFormationAuditAfterRollback.body
-      ?.find(record => record.batchId === createFxBatch.body?.batchId);
-    const fxPositionsAfterRollback = await request("GET", "/api/v1/fx-positions");
-    const replayRollbackFxBatch = await request(
+      ?.find(record => record.batchId === createBatch.body?.batchId);
+    const positionsAfterRollback = await request("GET", "/api/v1/positions");
+    const replayRollbackBatch = await request(
       "POST",
-      `/api/v1/fx-batches/${createFxBatch.body?.batchId}/rollback`
+      `/api/v1/batches/${createBatch.body?.batchId}/rollback`
     );
-    const reformedFxBatch = await request(
+    const reformedBatch = await request(
       "POST",
-      "/api/v1/fx-batches",
+      "/api/v1/batches",
       { idempotencyKey: "verify-reformed-batch-41", tradeIds: [41] }
     );
-    const fxPositionsAfterReformedBatch = await request("GET", "/api/v1/fx-positions");
-    const fxBatchHistoryAfterReformedBatch = await request("GET", "/api/v1/fx-batches");
-    const fxTradeExposureAfterReformedBatch = await request(
+    const positionsAfterReformedBatch = await request("GET", "/api/v1/positions");
+    const batchHistoryAfterReformedBatch = await request("GET", "/api/v1/batches");
+    const tradeExposureAfterReformedBatch = await request(
       "GET",
-      "/api/database/tables/fx_trade_exposure"
+      "/api/database/tables/trade_exposures"
     );
-    const fxBatchMembersAfterReformedBatch = await request(
+    const batchMembersAfterReformedBatch = await request(
       "GET",
-      "/api/database/tables/fx_batch_members"
+      "/api/database/tables/batch_members"
     );
-    const fxBatchBalanceTradesAfterReformedBatch = await request(
+    const batchBalanceTradesAfterReformedBatch = await request(
       "GET",
-      "/api/database/tables/fx_batch_balance_trade"
+      "/api/database/tables/batch_balance_trades"
     );
-    const fxBatchOutputsAfterReformedBatch = await request(
+    const batchOutputsAfterReformedBatch = await request(
       "GET",
-      "/api/database/tables/fx_batch_position_output"
+      "/api/database/tables/batch_position_outputs"
     );
     const signedBasePosition = records => (Array.isArray(records) ? records : [])
       .reduce((total, trade) => {
@@ -4984,7 +4895,7 @@ async function verifyApiAndMigration() {
 
     try {
       rolledBackTradeImmutableProbe.prepare(`
-        UPDATE fx_trade_exposure
+        UPDATE trade_exposures
         SET trade_rate = trade_rate + 0.0001
         WHERE trade_id = 41
       `).run();
@@ -4993,30 +4904,30 @@ async function verifyApiAndMigration() {
     } finally {
       rolledBackTradeImmutableProbe.close();
     }
-    const clientDealExecutionContextId = executionContexts.body?.find(context =>
+    const clientDealTradeContextId = tradeContexts.body?.find(context =>
       context.servicingLocationId === "002"
       && context.accountingSystemId === "CTF3"
-      && context.executionSystemId === "MANUAL_CLIENT_DEAL_ENTRY"
-    )?.executionContextId;
+      && context.originatingSystemId === "MANUAL_CLIENT_DEAL_ENTRY"
+    )?.tradeContextId;
     const clientDealPricingRuleId = pricingRules.body?.find(rule =>
       rule.counterpartyId === 1
-      && rule.executionContextId === clientDealExecutionContextId
+      && rule.tradeContextId === clientDealTradeContextId
       && rule.ccyPairCode === "EUR_USD"
     )?.pricingRuleId;
-    const nonDealerPricedExecutionContextId = executionContexts.body?.find(context =>
+    const nonDealerPricedTradeContextId = tradeContexts.body?.find(context =>
       context.servicingLocationId === "002"
       && context.accountingSystemId === "AFINA"
-      && context.executionSystemId === "CLICK_TRADE_EFX"
-    )?.executionContextId;
+      && context.originatingSystemId === "CLICK_TRADE_EFX"
+    )?.tradeContextId;
     const nonDealerPricedPricingRuleId = pricingRules.body?.find(rule =>
       rule.counterpartyId === 1
-      && rule.executionContextId === nonDealerPricedExecutionContextId
+      && rule.tradeContextId === nonDealerPricedTradeContextId
       && rule.ccyPairCode === "EUR_USD"
     )?.pricingRuleId;
-    const clientFxDealPayload = {
+    const clientDealPayload = {
       executionTimestamp: "2026-07-16T10:15:30.000Z",
       counterpartyId: 1,
-      executionContextId: clientDealExecutionContextId,
+      tradeContextId: clientDealTradeContextId,
       pricingRuleId: clientDealPricingRuleId,
       tradeDate: "2026-07-16",
       ccyPairCode: "EUR_USD",
@@ -5037,113 +4948,113 @@ async function verifyApiAndMigration() {
     const rollbackProbe = new DatabaseSync(verificationDatabasePath);
     rollbackProbe.exec("PRAGMA busy_timeout = 5000");
     const rollbackCountsBefore = {
-      exposures: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count),
-      clientDeals: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM client_fx_deals").get().count),
-      marketSnapshots: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count)
+      exposures: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count),
+      clientDeals: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM client_deals").get().count),
+      marketSnapshots: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM trade_market_snapshots").get().count)
     };
-    let rollbackClientFxDeal;
+    let rollbackClientDeal;
     let rollbackCountsAfter;
 
     try {
       rollbackProbe.exec(`
-        CREATE TRIGGER verify_client_fx_deal_transaction_rollback
-        BEFORE INSERT ON client_fx_deals
+        CREATE TRIGGER verify_client_deal_transaction_rollback
+        BEFORE INSERT ON client_deals
         BEGIN
           SELECT RAISE(ABORT, 'verification forced client insert failure');
         END;
       `);
-      rollbackClientFxDeal = await request("POST", "/api/v1/client-fx-deals", clientFxDealPayload);
+      rollbackClientDeal = await request("POST", "/api/v1/client-deals", clientDealPayload);
       rollbackCountsAfter = {
-        exposures: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count),
-        clientDeals: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM client_fx_deals").get().count),
-        marketSnapshots: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count)
+        exposures: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count),
+        clientDeals: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM client_deals").get().count),
+        marketSnapshots: Number(rollbackProbe.prepare("SELECT COUNT(*) AS count FROM trade_market_snapshots").get().count)
       };
     } finally {
-      rollbackProbe.exec("DROP TRIGGER IF EXISTS verify_client_fx_deal_transaction_rollback");
+      rollbackProbe.exec("DROP TRIGGER IF EXISTS verify_client_deal_transaction_rollback");
       rollbackProbe.close();
     }
 
-    const createClientFxDeal = await request("POST", "/api/v1/client-fx-deals", clientFxDealPayload);
-    const clientFxDealId = encodeURIComponent(createClientFxDeal.body?.clientDealId ?? "");
-    const fxTradeExposureAfterCreate = await request("GET", "/api/database/tables/fx_trade_exposure");
-    const fxTradeMarketSnapshotAfterCreate = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
-    const clientFxDealsAfterCreate = await request("GET", "/api/database/tables/client_fx_deals");
-    const immutableClientFxDealUpdate = await request("PUT", `/api/v1/client-fx-deals/${clientFxDealId}`, {
-      ...clientFxDealPayload,
+    const createClientDeal = await request("POST", "/api/v1/client-deals", clientDealPayload);
+    const clientDealId = encodeURIComponent(createClientDeal.body?.clientDealId ?? "");
+    const tradeExposureAfterCreate = await request("GET", "/api/database/tables/trade_exposures");
+    const tradeMarketSnapshotAfterCreate = await request("GET", "/api/database/tables/trade_market_snapshots");
+    const clientDealsAfterCreate = await request("GET", "/api/database/tables/client_deals");
+    const immutableClientDealUpdate = await request("PUT", `/api/v1/client-deals/${clientDealId}`, {
+      ...clientDealPayload,
       dealtCcyAmount: "2807750",
       marketPulseStreamStatus: "STOPPED",
       marketPulseBid: 1.1200,
       marketPulseOffer: 1.1202,
       marketPulseTimestamp: "2026-07-16T10:20:00.000Z"
     });
-    const updateClientFxDealComment = await request(
+    const updateClientDealComment = await request(
       "PATCH",
-      `/api/v1/client-fx-deals/${clientFxDealId}`,
+      `/api/v1/client-deals/${clientDealId}`,
       { comment: "Reviewed verification comment" }
     );
-    const invalidClientFxDealComment = await request(
+    const invalidClientDealComment = await request(
       "PATCH",
-      `/api/v1/client-fx-deals/${clientFxDealId}`,
+      `/api/v1/client-deals/${clientDealId}`,
       { comment: "X".repeat(501) }
     );
-    const fxTradeExposureAfterCommentUpdate = await request("GET", "/api/database/tables/fx_trade_exposure");
-    const fxTradeMarketSnapshotAfterCommentUpdate = await request("GET", "/api/database/tables/fx_trade_market_snapshot");
-    const clientFxDealsAfterCommentUpdate = await request("GET", "/api/database/tables/client_fx_deals");
-    const invalidClientFxDealSide = await request("POST", "/api/v1/client-fx-deals", {
-      ...clientFxDealPayload,
+    const tradeExposureAfterCommentUpdate = await request("GET", "/api/database/tables/trade_exposures");
+    const tradeMarketSnapshotAfterCommentUpdate = await request("GET", "/api/database/tables/trade_market_snapshots");
+    const clientDealsAfterCommentUpdate = await request("GET", "/api/database/tables/client_deals");
+    const invalidClientDealSide = await request("POST", "/api/v1/client-deals", {
+      ...clientDealPayload,
       side: "HOLD"
     });
-    const invalidClientFxDealCounterparty = await request("POST", "/api/v1/client-fx-deals", {
-      ...clientFxDealPayload,
+    const invalidClientDealCounterparty = await request("POST", "/api/v1/client-deals", {
+      ...clientDealPayload,
       counterpartyId: 999999
     });
-    const invalidClientFxDealTransferRate = await request("POST", "/api/v1/client-fx-deals", {
-      ...clientFxDealPayload,
-      executionContextId: null,
+    const invalidClientDealTransferRate = await request("POST", "/api/v1/client-deals", {
+      ...clientDealPayload,
+      tradeContextId: null,
       pricingRuleId: null,
       manualPricingReason: "CLIENT_ONBOARDING",
       transferRate: "0"
     });
-    const invalidClientFxDealSubMinorAmount = await request("POST", "/api/v1/client-fx-deals", {
-      ...clientFxDealPayload,
+    const invalidClientDealSubMinorAmount = await request("POST", "/api/v1/client-deals", {
+      ...clientDealPayload,
       dealtCcyAmount: "2246200.001"
     });
-    const invalidClientFxDealPricingScope = await request("POST", "/api/v1/client-fx-deals", {
-      ...clientFxDealPayload,
+    const invalidClientDealPricingScope = await request("POST", "/api/v1/client-deals", {
+      ...clientDealPayload,
       counterpartyId: 2
     });
-    const invalidClientFxDealPricingMode = await request("POST", "/api/v1/client-fx-deals", {
-      ...clientFxDealPayload,
-      executionContextId: nonDealerPricedExecutionContextId,
+    const invalidClientDealPricingMode = await request("POST", "/api/v1/client-deals", {
+      ...clientDealPayload,
+      tradeContextId: nonDealerPricedTradeContextId,
       pricingRuleId: nonDealerPricedPricingRuleId
     });
-    const rejectClientFxDealDelete = await request(
+    const rejectClientDealDelete = await request(
       "DELETE",
-      `/api/v1/client-fx-deals/${clientFxDealId}`
+      `/api/v1/client-deals/${clientDealId}`
     );
-    const clientFxDealsAfterRejectedDelete = await request("GET", "/api/v1/client-fx-deals");
-    const fxTradeExposureAfterRejectedClientDelete = await request(
+    const clientDealsAfterRejectedDelete = await request("GET", "/api/v1/client-deals");
+    const tradeExposureAfterRejectedClientDelete = await request(
       "GET",
-      "/api/database/tables/fx_trade_exposure"
+      "/api/database/tables/trade_exposures"
     );
-    const fxTradeMarketSnapshotAfterRejectedClientDelete = await request(
+    const tradeMarketSnapshotAfterRejectedClientDelete = await request(
       "GET",
-      "/api/database/tables/fx_trade_market_snapshot"
+      "/api/database/tables/trade_market_snapshots"
     );
-    const clientFxDealsTableAfterRejectedDelete = await request(
+    const clientDealsTableAfterRejectedDelete = await request(
       "GET",
-      "/api/database/tables/client_fx_deals"
+      "/api/database/tables/client_deals"
     );
     const integrityProbe = new DatabaseSync(verificationDatabasePath);
     integrityProbe.exec("PRAGMA foreign_keys = ON");
     const foreignKeyViolations = integrityProbe.prepare("PRAGMA foreign_key_check").all().length;
     integrityProbe.close();
-    const contextIdByComponents = (servicingLocationId, accountingSystemId, executionSystemId) =>
-      executionContexts.body?.find(context =>
+    const contextIdByComponents = (servicingLocationId, accountingSystemId, originatingSystemId) =>
+      tradeContexts.body?.find(context =>
         context.servicingLocationId === servicingLocationId
         && context.accountingSystemId === accountingSystemId
-        && context.executionSystemId === executionSystemId
-      )?.executionContextId;
+        && context.originatingSystemId === originatingSystemId
+      )?.tradeContextId;
     const emeraldClickContextId = contextIdByComponents("001", "CTF3", "CLICK_TRADE_EFX");
     const wonderlandRfqContextId = contextIdByComponents("1234", "AFINA", "RFQ");
     const neverlandRfqContextId = contextIdByComponents("002", "AFINA", "RFQ");
@@ -5213,17 +5124,17 @@ async function verifyApiAndMigration() {
       WHERE ccy_code = ?
     `).run(0, generationPairCurrencies[1]);
     generationFractionDigitsProbe.close();
-    const generatedClientFxDeal = await request(
+    const generatedClientDeal = await request(
       "POST",
       "/api/v1/client-deal-generation/one"
     );
-    const generatedClientFxDealId = Number(generatedClientFxDeal.body?.tradeId);
+    const generatedClientDealId = Number(generatedClientDeal.body?.tradeId);
     const generatedExposureTable = await request(
       "GET",
-      "/api/database/tables/fx_trade_exposure"
+      "/api/database/tables/trade_exposures"
     );
     const generatedExposureRow = generatedExposureTable.body?.rows
-      ?.find(row => row.trade_id === generatedClientFxDealId) || null;
+      ?.find(row => row.trade_id === generatedClientDealId) || null;
     const restoreGenerationFractionDigitsProbe = new DatabaseSync(verificationDatabasePath);
     restoreGenerationFractionDigitsProbe.exec("PRAGMA busy_timeout = 5000");
 
@@ -5236,9 +5147,9 @@ async function verifyApiAndMigration() {
     }
 
     restoreGenerationFractionDigitsProbe.close();
-    const rejectGeneratedClientFxDealDelete = await request(
+    const rejectGeneratedClientDealDelete = await request(
       "DELETE",
-      `/api/v1/client-fx-deals/${generatedClientFxDealId}`
+      `/api/v1/client-deals/${generatedClientDealId}`
     );
     const generationProcessSettingsBefore = await request(
       "GET",
@@ -5292,9 +5203,9 @@ async function verifyApiAndMigration() {
     const processGeneratedTradeId = Number(
       clientDealGenerationProcessStatus.body?.lastGeneratedTradeId
     );
-    const rejectProcessGeneratedClientFxDealDelete = await request(
+    const rejectProcessGeneratedClientDealDelete = await request(
       "DELETE",
-      `/api/v1/client-fx-deals/${processGeneratedTradeId}`
+      `/api/v1/client-deals/${processGeneratedTradeId}`
     );
     const restoredGenerationProcessSettings = await request(
       "PUT",
@@ -5404,38 +5315,38 @@ async function verifyApiAndMigration() {
     });
     const blockedAccountingSystemDelete = await request("DELETE", "/api/v1/accounting-systems/AFINA");
     const deleteAccountingSystem = await request("DELETE", "/api/v1/accounting-systems/UPDATED_LEDGER");
-    const createExecutionSystem = await request("POST", "/api/v1/execution-systems", {
-      executionSystemId: "VERIFY_EXECUTION",
-      name: "Verification Execution System",
+    const createOriginatingSystem = await request("POST", "/api/v1/originating-systems", {
+      originatingSystemId: "VERIFY_EXECUTION",
+      name: "Verification Originating System",
       pricingMode: "DEALER_APPROVED",
       active: true
     });
-    const updateExecutionSystem = await request("PUT", "/api/v1/execution-systems/VERIFY_EXECUTION", {
-      executionSystemId: "UPDATED_EXECUTION",
-      name: "Updated Verification Execution System",
+    const updateOriginatingSystem = await request("PUT", "/api/v1/originating-systems/VERIFY_EXECUTION", {
+      originatingSystemId: "UPDATED_EXECUTION",
+      name: "Updated Verification Originating System",
       pricingMode: "AUTO_PRICED",
       active: false
     });
-    const blockedExecutionSystemDelete = await request("DELETE", "/api/v1/execution-systems/CLICK_TRADE_EFX");
-    const deleteExecutionSystem = await request("DELETE", "/api/v1/execution-systems/UPDATED_EXECUTION");
-    const createExecutionContext = await request("POST", "/api/v1/execution-contexts", {
+    const blockedOriginatingSystemDelete = await request("DELETE", "/api/v1/originating-systems/CLICK_TRADE_EFX");
+    const deleteOriginatingSystem = await request("DELETE", "/api/v1/originating-systems/UPDATED_EXECUTION");
+    const createTradeContext = await request("POST", "/api/v1/trade-contexts", {
       servicingLocationId: "SITE-998",
       accountingSystemId: "NOT_APPLICABLE",
-      executionSystemId: "RFQ"
+      originatingSystemId: "RFQ"
     });
-    const contextId = encodeURIComponent(createExecutionContext.body?.executionContextId ?? "");
+    const contextId = encodeURIComponent(createTradeContext.body?.tradeContextId ?? "");
     const servicingLocationsAfterContextCreate = await request("GET", "/api/v1/servicing-locations");
-    const updateExecutionContext = await request("PUT", `/api/v1/execution-contexts/${contextId}`, {
+    const updateTradeContext = await request("PUT", `/api/v1/trade-contexts/${contextId}`, {
       servicingLocationId: "SITE-998",
       accountingSystemId: "CTF3",
-      executionSystemId: "RFQ"
+      originatingSystemId: "RFQ"
     });
-    const invalidExecutionContext = await request("POST", "/api/v1/execution-contexts", {
+    const invalidTradeContext = await request("POST", "/api/v1/trade-contexts", {
       servicingLocationId: "SITE-998",
       accountingSystemId: "UNKNOWN_LEDGER",
-      executionSystemId: "RFQ"
+      originatingSystemId: "RFQ"
     });
-    const deleteExecutionContext = await request("DELETE", `/api/v1/execution-contexts/${contextId}`);
+    const deleteTradeContext = await request("DELETE", `/api/v1/trade-contexts/${contextId}`);
     const servicingLocationsAfterContextDelete = await request("GET", "/api/v1/servicing-locations");
     const deleteServicingLocation = await request("DELETE", "/api/v1/servicing-locations/SITE-998");
     const createTradingCounterparty = await request("POST", "/api/v1/trading-counterparties", {
@@ -5443,7 +5354,7 @@ async function verifyApiAndMigration() {
       counterpartyRoles: ["HEDGE_COUNTERPARTY"],
       unitCode: "FRONT_FOLDER_1",
       unitType: "DESK",
-      counterpartyName: "Verification FX Desk",
+      counterpartyName: "Verification Desk",
       active: true
     });
     const tradingCounterpartyId = encodeURIComponent(createTradingCounterparty.body?.counterpartyId ?? "");
@@ -5455,47 +5366,47 @@ async function verifyApiAndMigration() {
       counterpartyName: "Verification Counterparty",
       active: false
     });
-    const counterpartyExecutionContextsPath =
-      `/api/v1/trading-counterparties/${tradingCounterpartyId}/execution-contexts`;
-    const attachCounterpartyExecutionContexts = await request(
+    const counterpartyTradeContextsPath =
+      `/api/v1/trading-counterparties/${tradingCounterpartyId}/trade-contexts`;
+    const attachCounterpartyTradeContexts = await request(
       "PUT",
-      counterpartyExecutionContextsPath,
-      { executionContextIds: [emeraldClickContextId, wonderlandRfqContextId] }
+      counterpartyTradeContextsPath,
+      { tradeContextIds: [emeraldClickContextId, wonderlandRfqContextId] }
     );
-    const idempotentCounterpartyExecutionContextAttach = await request(
+    const idempotentCounterpartyTradeContextAttach = await request(
       "PUT",
-      counterpartyExecutionContextsPath,
-      { executionContextIds: [emeraldClickContextId] }
+      counterpartyTradeContextsPath,
+      { tradeContextIds: [emeraldClickContextId] }
     );
-    const invalidCounterpartyExecutionContextAssignments = await request(
+    const invalidCounterpartyTradeContextAssignments = await request(
       "PUT",
-      counterpartyExecutionContextsPath,
-      { executionContextIds: [] }
+      counterpartyTradeContextsPath,
+      { tradeContextIds: [] }
     );
-    const atomicCounterpartyExecutionContextAttach = await request(
+    const atomicCounterpartyTradeContextAttach = await request(
       "PUT",
-      counterpartyExecutionContextsPath,
-      { executionContextIds: [neverlandRfqContextId, 999999] }
+      counterpartyTradeContextsPath,
+      { tradeContextIds: [neverlandRfqContextId, 999999] }
     );
-    const counterpartyExecutionContextsAfterAtomicFailure = await request(
+    const counterpartyTradeContextsAfterAtomicFailure = await request(
       "GET",
-      counterpartyExecutionContextsPath
+      counterpartyTradeContextsPath
     );
-    const attachSingleCounterpartyExecutionContext = await request(
+    const attachSingleCounterpartyTradeContext = await request(
       "PUT",
-      `${counterpartyExecutionContextsPath}/${neverlandRfqContextId}`
+      `${counterpartyTradeContextsPath}/${neverlandRfqContextId}`
     );
-    const detachSingleCounterpartyExecutionContext = await request(
+    const detachSingleCounterpartyTradeContext = await request(
       "DELETE",
-      `${counterpartyExecutionContextsPath}/${neverlandRfqContextId}`
+      `${counterpartyTradeContextsPath}/${neverlandRfqContextId}`
     );
-    const idempotentCounterpartyExecutionContextDetach = await request(
+    const idempotentCounterpartyTradeContextDetach = await request(
       "DELETE",
-      `${counterpartyExecutionContextsPath}/${neverlandRfqContextId}`
+      `${counterpartyTradeContextsPath}/${neverlandRfqContextId}`
     );
-    const counterpartyExecutionContextsAfterDetach = await request(
+    const counterpartyTradeContextsAfterDetach = await request(
       "GET",
-      counterpartyExecutionContextsPath
+      counterpartyTradeContextsPath
     );
     const duplicateTradingCounterparty = await request("POST", "/api/v1/trading-counterparties", {
       counterpartyScope: "EXTERNAL",
@@ -5590,7 +5501,7 @@ async function verifyApiAndMigration() {
     const usersAfterDelete = await request("GET", "/api/v1/users");
     const createPricingRule = await request("POST", "/api/v1/pricing-rules", {
       counterpartyId: createTradingCounterparty.body?.counterpartyId,
-      executionContextId: emeraldClickContextId,
+      tradeContextId: emeraldClickContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0.25
     });
@@ -5599,7 +5510,7 @@ async function verifyApiAndMigration() {
       marginPercent: 0.3
     });
     const immutablePricingRuleUpdate = await request("PUT", `/api/v1/pricing-rules/${pricingRuleId}`, {
-      executionContextId: wonderlandRfqContextId,
+      tradeContextId: wonderlandRfqContextId,
       marginPercent: 0.35
     });
     const pricingRulesAfterImmutableUpdate = await request("GET", "/api/v1/pricing-rules");
@@ -5607,31 +5518,31 @@ async function verifyApiAndMigration() {
       ?.find(rule => rule.pricingRuleId === Number(pricingRuleId));
     const duplicatePricingRule = await request("POST", "/api/v1/pricing-rules", {
       counterpartyId: createTradingCounterparty.body?.counterpartyId,
-      executionContextId: emeraldClickContextId,
+      tradeContextId: emeraldClickContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0.4
     });
     const invalidPricingRuleCounterparty = await request("POST", "/api/v1/pricing-rules", {
       counterpartyId: 999999,
-      executionContextId: wonderlandRfqContextId,
+      tradeContextId: wonderlandRfqContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0.4
     });
     const invalidPricingRuleMargin = await request("POST", "/api/v1/pricing-rules", {
       counterpartyId: createTradingCounterparty.body?.counterpartyId,
-      executionContextId: neverlandRfqContextId,
+      tradeContextId: neverlandRfqContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 100
     });
-    const blockedCounterpartyExecutionContextDetach = await request(
+    const blockedCounterpartyTradeContextDetach = await request(
       "DELETE",
-      `${counterpartyExecutionContextsPath}/${emeraldClickContextId}`
+      `${counterpartyTradeContextsPath}/${emeraldClickContextId}`
     );
     const blockedTradingCounterpartyDelete = await request("DELETE", `/api/v1/trading-counterparties/${tradingCounterpartyId}`);
     const deletePricingRule = await request("DELETE", `/api/v1/pricing-rules/${pricingRuleId}`);
-    const detachCounterpartyExecutionContextAfterPricingRuleDelete = await request(
+    const detachCounterpartyTradeContextAfterPricingRuleDelete = await request(
       "DELETE",
-      `${counterpartyExecutionContextsPath}/${emeraldClickContextId}`
+      `${counterpartyTradeContextsPath}/${emeraldClickContextId}`
     );
     const deleteTradingCounterparty = await request("DELETE", `/api/v1/trading-counterparties/${tradingCounterpartyId}`);
     const tradingCounterpartiesAfterDelete = await request("GET", "/api/v1/trading-counterparties");
@@ -5644,32 +5555,32 @@ async function verifyApiAndMigration() {
       counterpartyName: "Verification Hedge Counterparty",
       active: true
     });
-    const attachHedgeCounterpartyExecutionContexts = await request(
+    const attachHedgeCounterpartyTradeContexts = await request(
       "PUT",
-      `/api/v1/trading-counterparties/${createHedgeCounterparty.body?.counterpartyId}/execution-contexts`,
+      `/api/v1/trading-counterparties/${createHedgeCounterparty.body?.counterpartyId}/trade-contexts`,
       {
-        executionContextIds: [
+        tradeContextIds: [
           neverlandRfqContextId,
-          clientDealExecutionContextId,
-          nonDealerPricedExecutionContextId
+          clientDealTradeContextId,
+          nonDealerPricedTradeContextId
         ]
       }
     );
     const createDealerApprovedHedgePricingRule = await request("POST", "/api/v1/pricing-rules", {
       counterpartyId: createHedgeCounterparty.body?.counterpartyId,
-      executionContextId: neverlandRfqContextId,
+      tradeContextId: neverlandRfqContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0.12
     });
     const createHedgePricingRule = await request("POST", "/api/v1/pricing-rules", {
       counterpartyId: createHedgeCounterparty.body?.counterpartyId,
-      executionContextId: clientDealExecutionContextId,
+      tradeContextId: clientDealTradeContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0.15
     });
     const createAutoPricedHedgePricingRule = await request("POST", "/api/v1/pricing-rules", {
       counterpartyId: createHedgeCounterparty.body?.counterpartyId,
-      executionContextId: nonDealerPricedExecutionContextId,
+      tradeContextId: nonDealerPricedTradeContextId,
       ccyPairCode: "EUR_USD",
       marginPercent: 0
     });
@@ -5682,7 +5593,7 @@ async function verifyApiAndMigration() {
       "GET",
       "/api/v1/hedge-deal-pricing-rules?pricingMode=DEALER_APPROVED"
     );
-    const createHedgeFxDeal = await request("POST", "/api/v1/hedge-fx-deals", {
+    const createHedgeDeal = await request("POST", "/api/v1/hedge-deals", {
       pricingRuleId: createHedgePricingRule.body?.pricingRuleId,
       ccyPairCode: "EUR_USD",
       side: "BUY",
@@ -5691,9 +5602,9 @@ async function verifyApiAndMigration() {
       tradeRate: "1.1234",
       tenor: "TOD"
     });
-    const invalidManualHedgeFxDealAutoPricedRule = await request(
+    const invalidManualHedgeDealAutoPricedRule = await request(
       "POST",
-      "/api/v1/hedge-fx-deals",
+      "/api/v1/hedge-deals",
       {
         pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
         ccyPairCode: "EUR_USD",
@@ -5704,7 +5615,7 @@ async function verifyApiAndMigration() {
         tenor: "TOD"
       }
     );
-    const invalidHedgeFxDealDealerApprovedRule = await request("POST", "/api/v1/hedge-fx-deals", {
+    const invalidHedgeDealDealerApprovedRule = await request("POST", "/api/v1/hedge-deals", {
       pricingRuleId: createDealerApprovedHedgePricingRule.body?.pricingRuleId,
       ccyPairCode: "EUR_USD",
       side: "BUY",
@@ -5713,7 +5624,7 @@ async function verifyApiAndMigration() {
       tradeRate: "1.1234",
       tenor: "TOD"
     });
-    const invalidHedgeFxDealSubMinorAmount = await request("POST", "/api/v1/hedge-fx-deals", {
+    const invalidHedgeDealSubMinorAmount = await request("POST", "/api/v1/hedge-deals", {
       pricingRuleId: createHedgePricingRule.body?.pricingRuleId,
       ccyPairCode: "EUR_USD",
       side: "BUY",
@@ -5726,7 +5637,7 @@ async function verifyApiAndMigration() {
       "DELETE",
       `/api/v1/pricing-rules/${createDealerApprovedHedgePricingRule.body?.pricingRuleId}`
     );
-    const invalidHedgeFxDealClientRule = await request("POST", "/api/v1/hedge-fx-deals", {
+    const invalidHedgeDealClientRule = await request("POST", "/api/v1/hedge-deals", {
       pricingRuleId: clientDealPricingRuleId,
       ccyPairCode: "EUR_USD",
       side: "BUY",
@@ -5735,80 +5646,80 @@ async function verifyApiAndMigration() {
       tradeRate: "1.1234",
       tenor: "TOD"
     });
-    const hedgeFxDealsAfterCreate = await request("GET", "/api/v1/hedge-fx-deals");
-    const fxTradeExposureAfterHedgeCreate = await request("GET", "/api/database/tables/fx_trade_exposure");
-    const fxHedgeDealsAfterCreate = await request("GET", "/api/database/tables/fx_hedge_deals");
-    const fxTradeMarketSnapshotAfterHedgeCreate = await request(
+    const hedgeDealsAfterCreate = await request("GET", "/api/v1/hedge-deals");
+    const tradeExposureAfterHedgeCreate = await request("GET", "/api/database/tables/trade_exposures");
+    const hedgeDealsTableAfterCreate = await request("GET", "/api/database/tables/hedge_deals");
+    const tradeMarketSnapshotAfterHedgeCreate = await request(
       "GET",
-      "/api/database/tables/fx_trade_market_snapshot"
+      "/api/database/tables/trade_market_snapshots"
     );
-    const createdTradeId = Number(createClientFxDeal.body?.tradeId);
-    const createdHedgeTradeId = Number(createHedgeFxDeal.body?.tradeId);
+    const createdTradeId = Number(createClientDeal.body?.tradeId);
+    const createdHedgeTradeId = Number(createHedgeDeal.body?.tradeId);
     const sendCreatedClientDealToAuto = await request(
       "POST",
-      "/api/v1/fx-positions/send-to-auto-batching",
+      "/api/v1/positions/move-to-auto-management",
       { trades: [{ tradeId: createdTradeId, tradeType: "CLIENT_DEAL" }] }
     );
     const replayCreatedClientDealToAuto = await request(
       "POST",
-      "/api/v1/fx-positions/send-to-auto-batching",
+      "/api/v1/positions/move-to-auto-management",
       { trades: [{ tradeId: createdTradeId, tradeType: "CLIENT_DEAL" }] }
     );
-    const fxPositionsAfterSendToAuto = await request("GET", "/api/v1/fx-positions");
-    const fxTradePositionManagementTransitionsAfterSend = await request(
+    const positionsAfterSendToAuto = await request("GET", "/api/v1/positions");
+    const tradePositionManagementTransitionsAfterSend = await request(
       "GET",
-      "/api/database/tables/fx_trade_position_management_transitions"
+      "/api/database/tables/trade_position_management_transitions"
     );
-    const transitionedCreatedFxPosition = fxPositionsAfterSendToAuto.body
+    const transitionedCreatedPosition = positionsAfterSendToAuto.body
       ?.find(row => row.tradeId === createdTradeId && row.tradeType === "CLIENT_DEAL") || null;
     const createdTradePositionManagementTransitions =
-      fxTradePositionManagementTransitionsAfterSend.body?.rows?.filter(row =>
+      tradePositionManagementTransitionsAfterSend.body?.rows?.filter(row =>
         row.trade_id === createdTradeId && row.trade_type === "CLIENT_DEAL"
       ) || [];
-    const migratedExposureRow = fxTradeExposureTable.body?.rows?.find(row => row.trade_id === 41) || null;
-    const migratedPositionManagementRow = fxTradePositionManagementTable.body?.rows
+    const migratedExposureRow = tradeExposureTable.body?.rows?.find(row => row.trade_id === 41) || null;
+    const migratedPositionManagementRow = tradePositionManagementTable.body?.rows
       ?.find(row => row.trade_id === 41 && row.trade_type === "CLIENT_DEAL") || null;
-    const migratedFxPosition = migratedFxPositions.body
+    const migratedPosition = migratedPositions.body
       ?.find(row => row.tradeId === 41 && row.tradeType === "CLIENT_DEAL") || null;
-    const migratedClientRow = clientFxDealsTable.body?.rows?.find(row => row.trade_id === 41) || null;
-    const createdExposureRow = fxTradeExposureAfterCreate.body?.rows
+    const migratedClientRow = clientDealsTable.body?.rows?.find(row => row.trade_id === 41) || null;
+    const createdExposureRow = tradeExposureAfterCreate.body?.rows
       ?.find(row => row.trade_id === createdTradeId) || null;
-    const createdClientRow = clientFxDealsAfterCreate.body?.rows
+    const createdClientRow = clientDealsAfterCreate.body?.rows
       ?.find(row => row.trade_id === createdTradeId) || null;
-    const updatedExposureRow = fxTradeExposureAfterCommentUpdate.body?.rows
+    const updatedExposureRow = tradeExposureAfterCommentUpdate.body?.rows
       ?.find(row => row.trade_id === createdTradeId) || null;
-    const updatedClientRow = clientFxDealsAfterCommentUpdate.body?.rows
+    const updatedClientRow = clientDealsAfterCommentUpdate.body?.rows
       ?.find(row => row.trade_id === createdTradeId) || null;
-    const createdMarketSnapshotRow = fxTradeMarketSnapshotAfterCreate.body?.rows
+    const createdMarketSnapshotRow = tradeMarketSnapshotAfterCreate.body?.rows
       ?.find(row => row.trade_id === createdTradeId) || null;
-    const updatedMarketSnapshotRow = fxTradeMarketSnapshotAfterCommentUpdate.body?.rows
+    const updatedMarketSnapshotRow = tradeMarketSnapshotAfterCommentUpdate.body?.rows
       ?.find(row => row.trade_id === createdTradeId) || null;
-    const createdHedgeExposureRow = fxTradeExposureAfterHedgeCreate.body?.rows
+    const createdHedgeExposureRow = tradeExposureAfterHedgeCreate.body?.rows
       ?.find(row => row.trade_id === createdHedgeTradeId) || null;
-    const createdHedgeDealRow = fxHedgeDealsAfterCreate.body?.rows
+    const createdHedgeDealRow = hedgeDealsTableAfterCreate.body?.rows
       ?.find(row => row.trade_id === createdHedgeTradeId) || null;
-    const createdHedgeMarketSnapshotRow = fxTradeMarketSnapshotAfterHedgeCreate.body?.rows
+    const createdHedgeMarketSnapshotRow = tradeMarketSnapshotAfterHedgeCreate.body?.rows
       ?.find(row => row.trade_id === createdHedgeTradeId) || null;
-    const rejectHedgeFxDealDelete = await request(
+    const rejectHedgeDealDelete = await request(
       "DELETE",
-      `/api/v1/hedge-fx-deals/${createdHedgeTradeId}`
+      `/api/v1/hedge-deals/${createdHedgeTradeId}`
     );
-    const hedgeFxDealsAfterRejectedDelete = await request("GET", "/api/v1/hedge-fx-deals");
-    const fxTradeExposureAfterRejectedHedgeDelete = await request(
+    const hedgeDealsAfterRejectedDelete = await request("GET", "/api/v1/hedge-deals");
+    const tradeExposureAfterRejectedHedgeDelete = await request(
       "GET",
-      "/api/database/tables/fx_trade_exposure"
+      "/api/database/tables/trade_exposures"
     );
-    const fxHedgeDealsAfterRejectedDelete = await request(
+    const hedgeDealsTableAfterRejectedDelete = await request(
       "GET",
-      "/api/database/tables/fx_hedge_deals"
+      "/api/database/tables/hedge_deals"
     );
-    const fxTradeMarketSnapshotAfterRejectedHedgeDelete = await request(
+    const tradeMarketSnapshotAfterRejectedHedgeDelete = await request(
       "GET",
-      "/api/database/tables/fx_trade_market_snapshot"
+      "/api/database/tables/trade_market_snapshots"
     );
-    const invalidAutoPricedHedgeFxDealDealerRule = await request(
+    const invalidAutoPricedHedgeDealDealerRule = await request(
       "POST",
-      "/api/v1/hedge-fx-deals/auto-priced",
+      "/api/v1/hedge-deals/auto-priced",
       {
         pricingRuleId: createHedgePricingRule.body?.pricingRuleId,
         ccyPairCode: "EUR_USD",
@@ -5818,9 +5729,9 @@ async function verifyApiAndMigration() {
         tenor: "TOD"
       }
     );
-    const invalidAutoPricedHedgeFxDealSuppliedRate = await request(
+    const invalidAutoPricedHedgeDealSuppliedRate = await request(
       "POST",
-      "/api/v1/hedge-fx-deals/auto-priced",
+      "/api/v1/hedge-deals/auto-priced",
       {
         pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
         ccyPairCode: "EUR_USD",
@@ -5864,7 +5775,7 @@ async function verifyApiAndMigration() {
     );
     const invalidHedgeQuickModeOwnedField = await request(
       "POST",
-      "/api/v1/hedge-fx-deals/quick-mode",
+      "/api/v1/hedge-deals/quick-mode",
       {
         ccyPairCode: "EUR_USD",
         side: "BUY",
@@ -5875,7 +5786,7 @@ async function verifyApiAndMigration() {
     );
     const invalidHedgeQuickModeExtraField = await request(
       "POST",
-      "/api/v1/hedge-fx-deals/quick-mode",
+      "/api/v1/hedge-deals/quick-mode",
       {
         ccyPairCode: "EUR_USD",
         side: "BUY",
@@ -5886,7 +5797,7 @@ async function verifyApiAndMigration() {
     );
     const invalidHedgeQuickModePreset = await request(
       "POST",
-      "/api/v1/hedge-fx-deals/quick-mode",
+      "/api/v1/hedge-deals/quick-mode",
       {
         ccyPairCode: "EUR_USD",
         side: "BUY",
@@ -5894,18 +5805,18 @@ async function verifyApiAndMigration() {
         tenor: "TOD"
       }
     );
-    const createQuickModeBankSellHedgeFxDeal = await request(
+    const createQuickModeBankSellHedgeDeal = await request(
       "POST",
-      "/api/v1/hedge-fx-deals/quick-mode",
+      "/api/v1/hedge-deals/quick-mode",
       {
         ccyPairCode: "EUR_USD",
         side: "BUY",
         presetCode: "MEDIUM"
       }
     );
-    const createQuickModeBankBuyHedgeFxDeal = await request(
+    const createQuickModeBankBuyHedgeDeal = await request(
       "POST",
-      "/api/v1/hedge-fx-deals/quick-mode",
+      "/api/v1/hedge-deals/quick-mode",
       {
         ccyPairCode: "EUR_USD",
         side: "SELL",
@@ -5923,7 +5834,7 @@ async function verifyApiAndMigration() {
     );
     const rejectDisabledHedgeQuickMode = await request(
       "POST",
-      "/api/v1/hedge-fx-deals/quick-mode",
+      "/api/v1/hedge-deals/quick-mode",
       {
         ccyPairCode: "EUR_USD",
         side: "BUY",
@@ -5948,9 +5859,9 @@ async function verifyApiAndMigration() {
       "GET",
       "/api/v1/hedge-quick-mode-settings"
     );
-    const createAutoPricedBankSellHedgeFxDeal = await request(
+    const createAutoPricedBankSellHedgeDeal = await request(
       "POST",
-      "/api/v1/hedge-fx-deals/auto-priced",
+      "/api/v1/hedge-deals/auto-priced",
       {
         pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
         ccyPairCode: "EUR_USD",
@@ -5960,9 +5871,9 @@ async function verifyApiAndMigration() {
         tenor: "TOD"
       }
     );
-    const createAutoPricedBankBuyHedgeFxDeal = await request(
+    const createAutoPricedBankBuyHedgeDeal = await request(
       "POST",
-      "/api/v1/hedge-fx-deals/auto-priced",
+      "/api/v1/hedge-deals/auto-priced",
       {
         pricingRuleId: createAutoPricedHedgePricingRule.body?.pricingRuleId,
         ccyPairCode: "EUR_USD",
@@ -5972,70 +5883,70 @@ async function verifyApiAndMigration() {
         tenor: "TOD"
       }
     );
-    const fxTradeExposureAfterAutoPricedHedgeCreate = await request(
+    const tradeExposureAfterAutoPricedHedgeCreate = await request(
       "GET",
-      "/api/database/tables/fx_trade_exposure"
+      "/api/database/tables/trade_exposures"
     );
-    const fxHedgeDealsAfterAutoPricedHedgeCreate = await request(
+    const hedgeDealsAfterAutoPricedHedgeCreate = await request(
       "GET",
-      "/api/database/tables/fx_hedge_deals"
+      "/api/database/tables/hedge_deals"
     );
-    const fxTradeMarketSnapshotAfterAutoPricedHedgeCreate = await request(
+    const tradeMarketSnapshotAfterAutoPricedHedgeCreate = await request(
       "GET",
-      "/api/database/tables/fx_trade_market_snapshot"
+      "/api/database/tables/trade_market_snapshots"
     );
     const autoPricedBankSellTradeId = Number(
-      createAutoPricedBankSellHedgeFxDeal.body?.tradeId
+      createAutoPricedBankSellHedgeDeal.body?.tradeId
     );
     const autoPricedBankBuyTradeId = Number(
-      createAutoPricedBankBuyHedgeFxDeal.body?.tradeId
+      createAutoPricedBankBuyHedgeDeal.body?.tradeId
     );
     const quickModeBankSellTradeId = Number(
-      createQuickModeBankSellHedgeFxDeal.body?.tradeId
+      createQuickModeBankSellHedgeDeal.body?.tradeId
     );
     const quickModeBankBuyTradeId = Number(
-      createQuickModeBankBuyHedgeFxDeal.body?.tradeId
+      createQuickModeBankBuyHedgeDeal.body?.tradeId
     );
     const autoPricedBankSellExposureRow =
-      fxTradeExposureAfterAutoPricedHedgeCreate.body?.rows
+      tradeExposureAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === autoPricedBankSellTradeId) || null;
     const autoPricedBankBuyExposureRow =
-      fxTradeExposureAfterAutoPricedHedgeCreate.body?.rows
+      tradeExposureAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === autoPricedBankBuyTradeId) || null;
     const autoPricedBankSellDealRow =
-      fxHedgeDealsAfterAutoPricedHedgeCreate.body?.rows
+      hedgeDealsAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === autoPricedBankSellTradeId) || null;
     const autoPricedBankBuyDealRow =
-      fxHedgeDealsAfterAutoPricedHedgeCreate.body?.rows
+      hedgeDealsAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === autoPricedBankBuyTradeId) || null;
     const autoPricedBankSellSnapshotRow =
-      fxTradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
+      tradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === autoPricedBankSellTradeId) || null;
     const autoPricedBankBuySnapshotRow =
-      fxTradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
+      tradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === autoPricedBankBuyTradeId) || null;
     const quickModeBankSellExposureRow =
-      fxTradeExposureAfterAutoPricedHedgeCreate.body?.rows
+      tradeExposureAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === quickModeBankSellTradeId) || null;
     const quickModeBankBuyExposureRow =
-      fxTradeExposureAfterAutoPricedHedgeCreate.body?.rows
+      tradeExposureAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === quickModeBankBuyTradeId) || null;
     const quickModeBankSellDealRow =
-      fxHedgeDealsAfterAutoPricedHedgeCreate.body?.rows
+      hedgeDealsAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === quickModeBankSellTradeId) || null;
     const quickModeBankBuyDealRow =
-      fxHedgeDealsAfterAutoPricedHedgeCreate.body?.rows
+      hedgeDealsAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === quickModeBankBuyTradeId) || null;
     const quickModeBankSellSnapshotRow =
-      fxTradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
+      tradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === quickModeBankSellTradeId) || null;
     const quickModeBankBuySnapshotRow =
-      fxTradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
+      tradeMarketSnapshotAfterAutoPricedHedgeCreate.body?.rows
         ?.find(row => row.trade_id === quickModeBankBuyTradeId) || null;
     const flatBatchSourceDatabase = new DatabaseSync(verificationDatabasePath);
     flatBatchSourceDatabase.exec("PRAGMA foreign_keys = ON");
     const insertFlatBatchExposure = flatBatchSourceDatabase.prepare(`
-      INSERT INTO fx_trade_exposure
+      INSERT INTO trade_exposures
         (
           execution_timestamp,
           received_timestamp,
@@ -6057,12 +5968,12 @@ async function verifyApiAndMigration() {
         100000000, 2, ?, 2, ?, 'TOM', '2026-07-16', '2026-07-16')
     `);
     const insertFlatBatchClientDeal = flatBatchSourceDatabase.prepare(`
-      INSERT INTO client_fx_deals
+      INSERT INTO client_deals
         (
           trade_id,
           trade_type,
           counterparty_id,
-          execution_context_id,
+          trade_context_id,
           pricing_rule_id,
           transfer_rate,
           analytical_pnl_quote_minor,
@@ -6093,8 +6004,8 @@ async function verifyApiAndMigration() {
     insertFlatBatchClientDeal.run(flatBuyTradeId, 1.124);
     flatBatchSourceDatabase.close();
 
-    const fxPositionsBeforeFlatBatch = await request("GET", "/api/v1/fx-positions");
-    const createParentPositionOutBatch = await request("POST", "/api/v1/fx-batches", {
+    const positionsBeforeFlatBatch = await request("GET", "/api/v1/positions");
+    const createParentPositionOutBatch = await request("POST", "/api/v1/batches", {
       idempotencyKey: "verify-position-out-source-parent",
       tradeIds: [flatSellTradeId]
     });
@@ -6106,9 +6017,9 @@ async function verifyApiAndMigration() {
     ) || null;
     const parentPositionOutTradeId = Number(parentPositionOutTrade?.tradeId);
     const parentBalanceTradeId = Number(parentBalanceTrade?.tradeId);
-    const fxPositionsAfterParentPositionOut = await request(
+    const positionsAfterParentPositionOut = await request(
       "GET",
-      "/api/v1/fx-positions"
+      "/api/v1/positions"
     );
     const batchingPositionsWhileParentFormed = await request(
       "GET",
@@ -6116,7 +6027,7 @@ async function verifyApiAndMigration() {
     );
     const rejectBalanceSourceWhileParentFormed = await request(
       "POST",
-      "/api/v1/fx-batches",
+      "/api/v1/batches",
       {
         idempotencyKey: "verify-balance-trade-source-active-rejection",
         tradeIds: [parentBalanceTradeId]
@@ -6129,11 +6040,11 @@ async function verifyApiAndMigration() {
     try {
       activeMembershipProbe.exec("BEGIN IMMEDIATE");
       const probeBatchId = Number(activeMembershipProbe.prepare(`
-        INSERT INTO fx_batches (idempotency_key, ccy_pair_code)
+        INSERT INTO batches (idempotency_key, ccy_pair_code)
         VALUES ('verify-active-membership-db-guard', 'EUR_USD')
       `).run().lastInsertRowid);
       activeMembershipProbe.prepare(`
-        INSERT INTO fx_batch_members
+        INSERT INTO batch_members
           (batch_id, trade_id, trade_type, member_role)
         VALUES (?, ?, 'BATCH_BALANCE_TRADE', 'TRADE')
       `).run(probeBatchId, parentBalanceTradeId);
@@ -6146,55 +6057,55 @@ async function verifyApiAndMigration() {
       } catch {}
       activeMembershipProbe.close();
     }
-    const rollbackParentFxBatch = await request(
+    const rollbackParentBatch = await request(
       "POST",
-      `/api/v1/fx-batches/${createParentPositionOutBatch.body?.batchId}/rollback`
+      `/api/v1/batches/${createParentPositionOutBatch.body?.batchId}/rollback`
     );
-    const fxPositionsAfterParentRollback = await request(
+    const positionsAfterParentRollback = await request(
       "GET",
-      "/api/v1/fx-positions"
+      "/api/v1/positions"
     );
     const batchingPositionsAfterParentRollback = await request(
       "GET",
       "/api/v1/batching-positions"
     );
-    const createBalanceSourceBatch = await request("POST", "/api/v1/fx-batches", {
+    const createBalanceSourceBatch = await request("POST", "/api/v1/batches", {
       idempotencyKey: "verify-balance-trade-source",
       tradeIds: [parentBalanceTradeId]
     });
     const balanceSourceBatchDetails = await request(
       "GET",
-      `/api/v1/fx-batches/${createBalanceSourceBatch.body?.batchId}`
+      `/api/v1/batches/${createBalanceSourceBatch.body?.batchId}`
     );
-    const fxPositionsAfterBalanceRebatch = await request(
+    const positionsAfterBalanceRebatch = await request(
       "GET",
-      "/api/v1/fx-positions"
+      "/api/v1/positions"
     );
     const batchingPositionsAfterBalanceRebatch = await request(
       "GET",
       "/api/v1/batching-positions"
     );
-    const createFlatFxBatch = await request("POST", "/api/v1/fx-batches", {
+    const createFlatBatch = await request("POST", "/api/v1/batches", {
       idempotencyKey: "verify-flat-batch",
       tradeIds: [parentPositionOutTradeId, flatBuyTradeId]
     });
-    const flatBatchId = Number(createFlatFxBatch.body?.batchId);
+    const flatBatchId = Number(createFlatBatch.body?.batchId);
     const flatBatchDetails = Number.isInteger(flatBatchId) && flatBatchId > 0
-      ? await request("GET", `/api/v1/fx-batches/${flatBatchId}`)
+      ? await request("GET", `/api/v1/batches/${flatBatchId}`)
       : { statusCode: 0, body: null };
-    const fxPositionsAfterFlatBatch = await request("GET", "/api/v1/fx-positions");
-    const rollbackFlatFxBatch = Number.isInteger(flatBatchId) && flatBatchId > 0
-      ? await request("POST", `/api/v1/fx-batches/${flatBatchId}/rollback`)
+    const positionsAfterFlatBatch = await request("GET", "/api/v1/positions");
+    const rollbackFlatBatch = Number.isInteger(flatBatchId) && flatBatchId > 0
+      ? await request("POST", `/api/v1/batches/${flatBatchId}/rollback`)
       : { statusCode: 0, body: null };
-    const fxPositionsAfterFlatRollback = await request(
+    const positionsAfterFlatRollback = await request(
       "GET",
-      "/api/v1/fx-positions"
+      "/api/v1/positions"
     );
     const flatBatchIntegrityDatabase = new DatabaseSync(verificationDatabasePath);
     flatBatchIntegrityDatabase.exec("PRAGMA foreign_keys = ON");
     const flatBatchMembers = flatBatchIntegrityDatabase.prepare(`
       SELECT trade_id AS tradeId, member_role AS memberRole, trade_type AS tradeType
-      FROM fx_batch_members
+      FROM batch_members
       WHERE batch_id = ?
       ORDER BY trade_id
     `).all(Number.isInteger(flatBatchId) ? flatBatchId : -1);
@@ -6207,11 +6118,11 @@ async function verifyApiAndMigration() {
         e.base_ccy_amount_minor AS baseCcyAmountMinor,
         e.quote_ccy_amount_minor AS quoteCcyAmountMinor,
         e.trade_rate AS tradeRate
-      FROM fx_batch_members member
-      INNER JOIN fx_batch_position_output o
+      FROM batch_members member
+      INNER JOIN batch_position_outputs o
         ON o.trade_id = member.trade_id
         AND o.trade_type = member.trade_type
-      INNER JOIN fx_trade_exposure e
+      INNER JOIN trade_exposures e
         ON e.trade_id = o.trade_id AND e.trade_type = o.trade_type
       WHERE member.batch_id = ?
         AND member.member_role = 'POSITION_OUT'
@@ -6220,7 +6131,7 @@ async function verifyApiAndMigration() {
 
     try {
       flatBatchIntegrityDatabase.prepare(`
-        UPDATE fx_batch_members
+        UPDATE batch_members
         SET member_role = member_role
         WHERE batch_id = ?
       `).run(Number.isInteger(flatBatchId) ? flatBatchId : -1);
@@ -6235,7 +6146,7 @@ async function verifyApiAndMigration() {
     const demoResetReferenceBefore = await Promise.all([
       request("GET", "/api/v1/ccy-options"),
       request("GET", "/api/v1/ccy-pair-options"),
-      request("GET", "/api/v1/execution-contexts"),
+      request("GET", "/api/v1/trade-contexts"),
       request("GET", "/api/v1/trading-counterparties"),
       request("GET", "/api/v1/pricing-rules"),
       request("GET", "/api/v1/client-deal-generation/settings"),
@@ -6254,34 +6165,34 @@ async function verifyApiAndMigration() {
     const demoResetReferenceAfter = await Promise.all([
       request("GET", "/api/v1/ccy-options"),
       request("GET", "/api/v1/ccy-pair-options"),
-      request("GET", "/api/v1/execution-contexts"),
+      request("GET", "/api/v1/trade-contexts"),
       request("GET", "/api/v1/trading-counterparties"),
       request("GET", "/api/v1/pricing-rules"),
       request("GET", "/api/v1/client-deal-generation/settings"),
       request("GET", "/api/v1/hedge-quick-mode-settings")
     ]);
     const demoResetTradeReads = await Promise.all([
-      request("GET", "/api/v1/client-fx-deals"),
-      request("GET", "/api/v1/hedge-fx-deals"),
-      request("GET", "/api/v1/fx-positions"),
-      request("GET", "/api/v1/fx-batches"),
+      request("GET", "/api/v1/client-deals"),
+      request("GET", "/api/v1/hedge-deals"),
+      request("GET", "/api/v1/positions"),
+      request("GET", "/api/v1/batches"),
       request("GET", "/api/v1/batching-positions")
     ]);
     const demoResetProbe = new DatabaseSync(verificationDatabasePath);
     demoResetProbe.exec("PRAGMA foreign_keys = ON");
     const demoResetTradeTableCounts = [
-      "fx_trade_exposure",
-      "fx_trade_position_management",
-      "fx_trade_position_management_transitions",
-      "client_fx_deals",
-      "fx_hedge_deals",
-      "fx_trade_market_snapshot",
-      "fx_auto_hedging_admission_decisions",
-      "fx_batches",
-      "fx_batch_members",
-      "fx_batch_balance_trade",
-      "fx_batch_position_output",
-      "fx_batch_quote_cash_output"
+      "trade_exposures",
+      "trade_position_management",
+      "trade_position_management_transitions",
+      "client_deals",
+      "hedge_deals",
+      "trade_market_snapshots",
+      "auto_management_admission_decisions",
+      "batches",
+      "batch_members",
+      "batch_balance_trades",
+      "batch_position_outputs",
+      "batch_quote_cash_outputs"
     ].map(tableName => Number(
       demoResetProbe.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count
     ));
@@ -6291,12 +6202,12 @@ async function verifyApiAndMigration() {
       WHERE type = 'trigger'
         AND name IN
         (
-          'trg_fx_auto_hedging_admission_decisions_immutable_delete',
-          'trg_fx_batch_members_immutable_delete',
-          'trg_fx_batch_balance_trade_immutable_delete',
-          'trg_fx_batch_position_output_immutable_delete',
-          'trg_fx_batch_quote_cash_output_immutable_delete',
-          'trg_fx_batches_immutable_delete'
+          'trg_auto_management_admission_decisions_immutable_delete',
+          'trg_batch_members_immutable_delete',
+          'trg_batch_balance_trades_immutable_delete',
+          'trg_batch_position_outputs_immutable_delete',
+          'trg_batch_quote_cash_outputs_immutable_delete',
+          'trg_batches_immutable_delete'
         )
       ORDER BY name
     `).all();
@@ -6305,8 +6216,8 @@ async function verifyApiAndMigration() {
       FROM sqlite_sequence
       WHERE name IN
         (
-          'fx_batches',
-          'fx_trade_position_management_transitions'
+          'batches',
+          'trade_position_management_transitions'
         )
     `).all();
     const demoResetForeignKeyViolations =
@@ -6325,7 +6236,7 @@ async function verifyApiAndMigration() {
       tables: tables.body?.map(table => table.tableName) || [],
       ccyOptionsConstraintMigrated: ccyOptionsTable.body?.createSql?.includes("chk_ccy_options_latin_text"),
       ccyPairOptionsConstraintMigrated: pairTable.body?.createSql?.includes("chk_ccy_pair_options_format"),
-      executionSystemConstraintMigrated: executionSystemsTable.body?.createSql?.includes("length('DEALER_APPROVED')"),
+      originatingSystemConstraintMigrated: originatingSystemsTable.body?.createSql?.includes("length('DEALER_APPROVED')"),
       tradingCounterpartyConstraintsMigrated: tradingCounterpartiesTable.body?.createSql?.includes("length(counterparty_name) BETWEEN 1 AND 200")
         && tradingCounterpartiesTable.body?.createSql?.includes("is_active IN (0, 1)")
         && externalCounterpartiesTable.body?.createSql?.includes("length(counterparty_code) <= 20")
@@ -6358,90 +6269,90 @@ async function verifyApiAndMigration() {
       servicingLocationColumns: servicingLocationsTable.body?.columns?.map(column => column.name) || [],
       servicingLocations: {
         count: servicingLocations.body?.length ?? -1,
-        location002ContextCount: servicingLocations.body?.find(location => location.servicingLocationId === "002")?.executionContextCount
+        location002ContextCount: servicingLocations.body?.find(location => location.servicingLocationId === "002")?.tradeContextCount
       },
       accountingSystemColumns: accountingSystemsTable.body?.columns?.map(column => column.name) || [],
       accountingSystems: {
         count: accountingSystems.body?.length ?? -1,
-        afinaContextCount: accountingSystems.body?.find(system => system.accountingSystemId === "AFINA")?.executionContextCount
+        afinaContextCount: accountingSystems.body?.find(system => system.accountingSystemId === "AFINA")?.tradeContextCount
       },
-      executionSystemColumns: executionSystemsTable.body?.columns?.map(column => column.name) || [],
-      executionSystems: {
-        count: executionSystems.body?.length ?? -1,
-        clickTradeContextCount: executionSystems.body?.find(system => system.executionSystemId === "CLICK_TRADE_EFX")?.executionContextCount
+      originatingSystemColumns: originatingSystemsTable.body?.columns?.map(column => column.name) || [],
+      originatingSystems: {
+        count: originatingSystems.body?.length ?? -1,
+        clickTradeContextCount: originatingSystems.body?.find(system => system.originatingSystemId === "CLICK_TRADE_EFX")?.tradeContextCount
       },
-      executionContextColumns: executionContextsTable.body?.columns?.map(column => column.name) || [],
-      executionContextIdType: executionContextsTable.body?.columns
-        ?.find(column => column.name === "execution_context_id")?.type,
-      executionContextForeignKeys: executionContextsTable.body?.foreignKeys || [],
-      executionContexts: {
-        count: executionContexts.body?.length ?? -1,
-        migratedIdsAreIntegers: executionContexts.body?.every(context => Number.isInteger(context.executionContextId)),
-        migratedModesUseSafeManualDefault: executionContexts.body?.every(
-          context => context.defaultPositionManagementMode === "MANUAL"
+      tradeContextColumns: tradeContextsTable.body?.columns?.map(column => column.name) || [],
+      tradeContextIdType: tradeContextsTable.body?.columns
+        ?.find(column => column.name === "trade_context_id")?.type,
+      tradeContextForeignKeys: tradeContextsTable.body?.foreignKeys || [],
+      tradeContexts: {
+        count: tradeContexts.body?.length ?? -1,
+        migratedIdsAreIntegers: tradeContexts.body?.every(context => Number.isInteger(context.tradeContextId)),
+        migratedModesUseSafeManualDefault: tradeContexts.body?.every(
+          context => context.autoManagementAdmissionMode === "REVIEW_REQUIRED"
         ) === true,
-        assignedCounterpartyCounts: (executionContexts.body || []).map(context => ({
-          executionContextId: context.executionContextId,
+        assignedCounterpartyCounts: (tradeContexts.body || []).map(context => ({
+          tradeContextId: context.tradeContextId,
           servicingLocationId: context.servicingLocationId,
           accountingSystemId: context.accountingSystemId,
-          executionSystemId: context.executionSystemId,
+          originatingSystemId: context.originatingSystemId,
           assignedCounterpartyCount: context.assignedCounterpartyCount
         })),
-        createdId: createExecutionContext.body?.executionContextId,
-        createdAccountingSystemId: createExecutionContext.body?.accountingSystemId,
-        createdDefaultPositionManagementMode:
-          createExecutionContext.body?.defaultPositionManagementMode,
-        updatedId: updateExecutionContext.body?.executionContextId,
-        updatedDefaultPositionManagementMode:
-          updateExecutionContext.body?.defaultPositionManagementMode,
+        createdId: createTradeContext.body?.tradeContextId,
+        createdAccountingSystemId: createTradeContext.body?.accountingSystemId,
+        createdAdmissionMode:
+          createTradeContext.body?.autoManagementAdmissionMode,
+        updatedId: updateTradeContext.body?.tradeContextId,
+        updatedAdmissionMode:
+          updateTradeContext.body?.autoManagementAdmissionMode,
         usageAfterCreate: servicingLocationsAfterContextCreate.body
-          ?.find(location => location.servicingLocationId === "SITE-998")?.executionContextCount,
+          ?.find(location => location.servicingLocationId === "SITE-998")?.tradeContextCount,
         usageAfterDelete: servicingLocationsAfterContextDelete.body
-          ?.find(location => location.servicingLocationId === "SITE-998")?.executionContextCount
+          ?.find(location => location.servicingLocationId === "SITE-998")?.tradeContextCount
       },
       tradingCounterpartyColumns: tradingCounterpartiesTable.body?.columns?.map(column => column.name) || [],
       externalCounterpartyColumns: externalCounterpartiesTable.body?.columns?.map(column => column.name) || [],
       internalUnitColumns: internalUnitsTable.body?.columns?.map(column => column.name) || [],
       tradingCounterpartyRoleColumns: tradingCounterpartyRolesTable.body?.columns?.map(column => column.name) || [],
       userColumns: usersTable.body?.columns?.map(column => column.name) || [],
-      counterpartyExecutionContextTable: {
-        status: counterpartyExecutionContextsTable.statusCode,
-        columns: counterpartyExecutionContextsTable.body?.columns?.map(column => column.name) || [],
-        foreignKeys: counterpartyExecutionContextsTable.body?.foreignKeys || [],
-        createSql: counterpartyExecutionContextsTable.body?.createSql || "",
-        rowCount: counterpartyExecutionContextsTable.body?.rowCount ?? -1
+      counterpartyTradeContextTable: {
+        status: counterpartyTradeContextsTable.statusCode,
+        columns: counterpartyTradeContextsTable.body?.columns?.map(column => column.name) || [],
+        foreignKeys: counterpartyTradeContextsTable.body?.foreignKeys || [],
+        createSql: counterpartyTradeContextsTable.body?.createSql || "",
+        rowCount: counterpartyTradeContextsTable.body?.rowCount ?? -1
       },
-      counterpartyExecutionContextMigration: {
-        client1Status: migratedClient1ExecutionContexts.statusCode,
-        client1Assignments: migratedClient1ExecutionContexts.body || [],
-        client2Status: migratedClient2ExecutionContexts.statusCode,
-        client2Assignments: migratedClient2ExecutionContexts.body || [],
-        missingCounterpartyStatus: missingCounterpartyExecutionContexts.statusCode,
-        missingCounterpartyCode: missingCounterpartyExecutionContexts.body?.code
+      counterpartyTradeContextMigration: {
+        client1Status: migratedClient1TradeContexts.statusCode,
+        client1Assignments: migratedClient1TradeContexts.body || [],
+        client2Status: migratedClient2TradeContexts.statusCode,
+        client2Assignments: migratedClient2TradeContexts.body || [],
+        missingCounterpartyStatus: missingCounterpartyTradeContexts.statusCode,
+        missingCounterpartyCode: missingCounterpartyTradeContexts.body?.code
       },
-      counterpartyExecutionContextLifecycle: {
-        attachStatus: attachCounterpartyExecutionContexts.statusCode,
-        attached: attachCounterpartyExecutionContexts.body || [],
-        idempotentAttachStatus: idempotentCounterpartyExecutionContextAttach.statusCode,
-        idempotentAttached: idempotentCounterpartyExecutionContextAttach.body || [],
-        invalidBodyStatus: invalidCounterpartyExecutionContextAssignments.statusCode,
-        invalidBodyCode: invalidCounterpartyExecutionContextAssignments.body?.code,
-        atomicFailureStatus: atomicCounterpartyExecutionContextAttach.statusCode,
-        atomicFailureCode: atomicCounterpartyExecutionContextAttach.body?.code,
-        assignmentsAfterAtomicFailure: counterpartyExecutionContextsAfterAtomicFailure.body || [],
-        singleAttachStatus: attachSingleCounterpartyExecutionContext.statusCode,
-        singleAttached: attachSingleCounterpartyExecutionContext.body,
-        singleDetachStatus: detachSingleCounterpartyExecutionContext.statusCode,
-        idempotentDetachStatus: idempotentCounterpartyExecutionContextDetach.statusCode,
-        assignmentsAfterDetach: counterpartyExecutionContextsAfterDetach.body || [],
-        blockedDetachStatus: blockedCounterpartyExecutionContextDetach.statusCode,
-        blockedDetachCode: blockedCounterpartyExecutionContextDetach.body?.code,
+      counterpartyTradeContextLifecycle: {
+        attachStatus: attachCounterpartyTradeContexts.statusCode,
+        attached: attachCounterpartyTradeContexts.body || [],
+        idempotentAttachStatus: idempotentCounterpartyTradeContextAttach.statusCode,
+        idempotentAttached: idempotentCounterpartyTradeContextAttach.body || [],
+        invalidBodyStatus: invalidCounterpartyTradeContextAssignments.statusCode,
+        invalidBodyCode: invalidCounterpartyTradeContextAssignments.body?.code,
+        atomicFailureStatus: atomicCounterpartyTradeContextAttach.statusCode,
+        atomicFailureCode: atomicCounterpartyTradeContextAttach.body?.code,
+        assignmentsAfterAtomicFailure: counterpartyTradeContextsAfterAtomicFailure.body || [],
+        singleAttachStatus: attachSingleCounterpartyTradeContext.statusCode,
+        singleAttached: attachSingleCounterpartyTradeContext.body,
+        singleDetachStatus: detachSingleCounterpartyTradeContext.statusCode,
+        idempotentDetachStatus: idempotentCounterpartyTradeContextDetach.statusCode,
+        assignmentsAfterDetach: counterpartyTradeContextsAfterDetach.body || [],
+        blockedDetachStatus: blockedCounterpartyTradeContextDetach.statusCode,
+        blockedDetachCode: blockedCounterpartyTradeContextDetach.body?.code,
         detachAfterRuleDeleteStatus:
-          detachCounterpartyExecutionContextAfterPricingRuleDelete.statusCode
+          detachCounterpartyTradeContextAfterPricingRuleDelete.statusCode
       },
       pricingRuleColumns: pricingRulesTable.body?.columns?.map(column => column.name) || [],
-      pricingRuleExecutionContextIdType: pricingRulesTable.body?.columns
-        ?.find(column => column.name === "execution_context_id")?.type,
+      pricingRuleTradeContextIdType: pricingRulesTable.body?.columns
+        ?.find(column => column.name === "trade_context_id")?.type,
       pricingRuleForeignKeys: pricingRulesTable.body?.foreignKeys || [],
       clientDealGenerationProcessSettingsColumns:
         clientDealGenerationProcessSettingsTable.body?.columns
@@ -6466,70 +6377,70 @@ async function verifyApiAndMigration() {
           )?.pricingMode === "AUTO_PRICED"
         ) === true
       },
-      fxTradeExposureColumns: fxTradeExposureTable.body?.columns?.map(column => column.name) || [],
-      fxTradeExposureForeignKeys: fxTradeExposureTable.body?.foreignKeys || [],
-      fxTradeExposureCreateSql: fxTradeExposureTable.body?.createSql || "",
-      fxTradeExposures: {
-        count: fxTradeExposureTable.body?.rowCount ?? -1,
+      tradeExposureColumns: tradeExposureTable.body?.columns?.map(column => column.name) || [],
+      tradeExposureForeignKeys: tradeExposureTable.body?.foreignKeys || [],
+      tradeExposureCreateSql: tradeExposureTable.body?.createSql || "",
+      tradeExposures: {
+        count: tradeExposureTable.body?.rowCount ?? -1,
         migratedRow: migratedExposureRow
       },
-      fxTradePositionManagementColumns:
-        fxTradePositionManagementTable.body?.columns?.map(column => column.name) || [],
-      fxTradePositionManagementForeignKeys:
-        fxTradePositionManagementTable.body?.foreignKeys || [],
-      fxTradePositionManagementCreateSql:
-        fxTradePositionManagementTable.body?.createSql || "",
-      fxTradePositionManagement: {
-        status: fxTradePositionManagementTable.statusCode,
-        count: fxTradePositionManagementTable.body?.rowCount ?? -1,
+      tradePositionManagementColumns:
+        tradePositionManagementTable.body?.columns?.map(column => column.name) || [],
+      tradePositionManagementForeignKeys:
+        tradePositionManagementTable.body?.foreignKeys || [],
+      tradePositionManagementCreateSql:
+        tradePositionManagementTable.body?.createSql || "",
+      tradePositionManagement: {
+        status: tradePositionManagementTable.statusCode,
+        count: tradePositionManagementTable.body?.rowCount ?? -1,
         migratedRow: migratedPositionManagementRow,
-        projectedInitialMode: migratedFxPosition?.initialFxPositionMode,
-        projectedCurrentMode: migratedFxPosition?.currentFxPositionMode,
-        projectedCompatibilityMode: migratedFxPosition?.fxPositionMode
+        projectedInitialMode: migratedPosition?.initialPositionManagementMode,
+        projectedCurrentMode: migratedPosition?.currentPositionManagementMode,
+        projectedCompatibilityMode: migratedPosition?.positionManagementMode
       },
-      fxTradePositionManagementTransitionColumns:
-        fxTradePositionManagementTransitionsTable.body?.columns
+      tradePositionManagementTransitionColumns:
+        tradePositionManagementTransitionsTable.body?.columns
           ?.map(column => column.name) || [],
-      fxTradePositionManagementTransitionForeignKeys:
-        fxTradePositionManagementTransitionsTable.body?.foreignKeys || [],
-      fxTradePositionManagementTransitionCreateSql:
-        fxTradePositionManagementTransitionsTable.body?.createSql || "",
-      fxTradePositionManagementTransitions: {
-        status: fxTradePositionManagementTransitionsTable.statusCode,
-        initialCount: fxTradePositionManagementTransitionsTable.body?.rowCount ?? -1,
+      tradePositionManagementTransitionForeignKeys:
+        tradePositionManagementTransitionsTable.body?.foreignKeys || [],
+      tradePositionManagementTransitionCreateSql:
+        tradePositionManagementTransitionsTable.body?.createSql || "",
+      tradePositionManagementTransitions: {
+        status: tradePositionManagementTransitionsTable.statusCode,
+        initialCount: tradePositionManagementTransitionsTable.body?.rowCount ?? -1,
         sendStatus: sendCreatedClientDealToAuto.statusCode,
         targetMode: sendCreatedClientDealToAuto.body?.targetPositionManagementMode,
         transitionedCount: sendCreatedClientDealToAuto.body?.transitionedCount,
         replayStatus: replayCreatedClientDealToAuto.statusCode,
         replayed: replayCreatedClientDealToAuto.body?.replayed,
         replayedCount: replayCreatedClientDealToAuto.body?.replayedCount,
-        projectedInitialMode: transitionedCreatedFxPosition?.initialFxPositionMode,
-        projectedCurrentMode: transitionedCreatedFxPosition?.currentFxPositionMode,
-        projectedCompatibilityMode: transitionedCreatedFxPosition?.fxPositionMode,
+        projectedInitialMode: transitionedCreatedPosition?.initialPositionManagementMode,
+        projectedCurrentMode: transitionedCreatedPosition?.currentPositionManagementMode,
+        projectedCompatibilityMode: transitionedCreatedPosition?.positionManagementMode,
         auditRows: createdTradePositionManagementTransitions
       },
-      fxTradeMarketSnapshotColumns: fxTradeMarketSnapshotTable.body?.columns?.map(column => column.name) || [],
-      fxTradeMarketSnapshotForeignKeys: fxTradeMarketSnapshotTable.body?.foreignKeys || [],
-      fxTradeMarketSnapshots: {
-        count: fxTradeMarketSnapshotTable.body?.rowCount ?? -1
+      tradeMarketSnapshotColumns: tradeMarketSnapshotTable.body?.columns?.map(column => column.name) || [],
+      tradeMarketSnapshotForeignKeys: tradeMarketSnapshotTable.body?.foreignKeys || [],
+      tradeMarketSnapshots: {
+        count: tradeMarketSnapshotTable.body?.rowCount ?? -1
       },
-      clientFxDealColumns: clientFxDealsTable.body?.columns?.map(column => column.name) || [],
-      clientFxDealForeignKeys: clientFxDealsTable.body?.foreignKeys || [],
-      hedgeFxDealColumns: hedgeFxDealsTable.body?.columns?.map(column => column.name) || [],
-      hedgeFxDealForeignKeys: hedgeFxDealsTable.body?.foreignKeys || [],
+      clientDealColumns: clientDealsTable.body?.columns?.map(column => column.name) || [],
+      clientDealForeignKeys: clientDealsTable.body?.foreignKeys || [],
+      hedgeDealColumns: hedgeDealsTable.body?.columns?.map(column => column.name) || [],
+      hedgeDealForeignKeys: hedgeDealsTable.body?.foreignKeys || [],
       hedgeQuickModeSettingsColumns: hedgeQuickModeSettingsTable.body?.columns
         ?.map(column => column.name) || [],
       hedgeQuickModeSettingsForeignKeys:
         hedgeQuickModeSettingsTable.body?.foreignKeys || [],
       hedgeQuickModeSettingsCreateSql:
         hedgeQuickModeSettingsTable.body?.createSql || "",
-      fxTradeBatchColumns: fxTradeBatchesTable.body?.columns
+      tradeBatchColumns: tradeBatchesTable.body?.columns
         ?.map(column => column.name) || [],
-      fxTradeBatchForeignKeys: fxTradeBatchesTable.body?.foreignKeys || [],
-      fxTradeBatchCreateSql: fxTradeBatchesTable.body?.createSql || "",
-      fxTradeBatches: {
-        status: fxTradeBatchesTable.statusCode,
-        count: fxTradeBatchesTable.body?.rowCount ?? -1
+      tradeBatchForeignKeys: tradeBatchesTable.body?.foreignKeys || [],
+      tradeBatchCreateSql: tradeBatchesTable.body?.createSql || "",
+      tradeBatches: {
+        status: tradeBatchesTable.statusCode,
+        count: tradeBatchesTable.body?.rowCount ?? -1
       },
       batchBalancingTradeColumns: batchBalancingTradesTable.body?.columns
         ?.map(column => column.name) || [],
@@ -6568,31 +6479,31 @@ async function verifyApiAndMigration() {
       batchBalancingFlow: {
         rejectedSplitModeStatus: rejectedSplitBatchMode.statusCode,
         rejectedSplitModeCode: rejectedSplitBatchMode.body?.code,
-        createStatus: createFxBatch.statusCode,
-        createErrorCode: createFxBatch.body?.code,
-        createErrorMessage: createFxBatch.body?.message,
-        batchId: createFxBatch.body?.batchId,
-        batchPairId: createFxBatch.body?.batchPairId,
-        sourceTradeIds: createFxBatch.body?.sourceTradeIds || [],
-        sourceNetSide: createFxBatch.body?.sourceNetSide,
-        sourceNetBaseCcyAmount: createFxBatch.body?.sourceNetBaseCcyAmount,
+        createStatus: createBatch.statusCode,
+        createErrorCode: createBatch.body?.code,
+        createErrorMessage: createBatch.body?.message,
+        batchId: createBatch.body?.batchId,
+        batchPairId: createBatch.body?.batchPairId,
+        sourceTradeIds: createBatch.body?.sourceTradeIds || [],
+        sourceNetSide: createBatch.body?.sourceNetSide,
+        sourceNetBaseCcyAmount: createBatch.body?.sourceNetBaseCcyAmount,
         sourceNetBaseCcyAmountMinor:
-          createFxBatch.body?.sourceNetBaseCcyAmountMinor,
+          createBatch.body?.sourceNetBaseCcyAmountMinor,
         sourceNetBaseCcyFractionDigits:
-          createFxBatch.body?.sourceNetBaseCcyFractionDigits,
+          createBatch.body?.sourceNetBaseCcyFractionDigits,
         sourceNetTransferQuoteAmountMinor:
-          createFxBatch.body?.sourceNetTransferQuoteAmountMinor,
+          createBatch.body?.sourceNetTransferQuoteAmountMinor,
         sourceNetTransferQuoteFractionDigits:
-          createFxBatch.body?.sourceNetTransferQuoteFractionDigits,
+          createBatch.body?.sourceNetTransferQuoteFractionDigits,
         netQuoteCcyAmountMinorBeforeCash:
-          createFxBatch.body?.netQuoteCcyAmountMinorBeforeCash,
-        quoteCashOut: createFxBatch.body?.quoteCashOut || null,
+          createBatch.body?.netQuoteCcyAmountMinorBeforeCash,
+        quoteCashOut: createBatch.body?.quoteCashOut || null,
         roundingResidualQuoteAmountMinor:
-          createFxBatch.body?.roundingResidualQuoteAmountMinor,
-        historyStatus: fxBatchHistoryAfterCreate.statusCode,
-        historyCount: fxBatchHistoryAfterCreate.body?.length ?? -1,
-        historyFields: Object.keys(fxBatchHistoryAfterCreate.body?.[0] || {}).sort(),
-        historyHidesIdempotencyKey: fxBatchHistoryAfterCreate.body?.every(batch =>
+          createBatch.body?.roundingResidualQuoteAmountMinor,
+        historyStatus: batchHistoryAfterCreate.statusCode,
+        historyCount: batchHistoryAfterCreate.body?.length ?? -1,
+        historyFields: Object.keys(batchHistoryAfterCreate.body?.[0] || {}).sort(),
+        historyHidesIdempotencyKey: batchHistoryAfterCreate.body?.every(batch =>
           !Object.hasOwn(batch, "idempotencyKey")
         ) === true,
         formationAuditStatus: batchFormationAuditAfterCreate.statusCode,
@@ -6602,19 +6513,19 @@ async function verifyApiAndMigration() {
           batchFormationAuditAfterRollback.statusCode,
         formationAuditRolledBackRecord:
           batchFormationAuditRolledBackRecord || null,
-        createdTypes: createFxBatch.body?.trades?.map(trade => trade.tradeType) || [],
-        createdSides: createFxBatch.body?.trades?.map(trade => trade.side) || [],
-        createdAmounts: createFxBatch.body?.trades?.map(trade => trade.baseCcyAmount) || [],
+        createdTypes: createBatch.body?.trades?.map(trade => trade.tradeType) || [],
+        createdSides: createBatch.body?.trades?.map(trade => trade.side) || [],
+        createdAmounts: createBatch.body?.trades?.map(trade => trade.baseCcyAmount) || [],
         createdDealtCcyCodes:
-          createFxBatch.body?.trades?.map(trade => trade.dealtCcyCode) || [],
+          createBatch.body?.trades?.map(trade => trade.dealtCcyCode) || [],
         createdBaseAmountMinors:
-          createFxBatch.body?.trades?.map(trade => trade.baseCcyAmountMinor) || [],
+          createBatch.body?.trades?.map(trade => trade.baseCcyAmountMinor) || [],
         createdBaseFractionDigits:
-          createFxBatch.body?.trades?.map(trade => trade.baseCcyFractionDigits) || [],
+          createBatch.body?.trades?.map(trade => trade.baseCcyFractionDigits) || [],
         createdQuoteAmountMinors:
-          createFxBatch.body?.trades?.map(trade => trade.quoteCcyAmountMinor) || [],
+          createBatch.body?.trades?.map(trade => trade.quoteCcyAmountMinor) || [],
         createdQuoteFractionDigits:
-          createFxBatch.body?.trades?.map(trade => trade.quoteCcyFractionDigits) || [],
+          createBatch.body?.trades?.map(trade => trade.quoteCcyFractionDigits) || [],
         storedCount: batchBalancingTradesAfterCreate.body?.trades?.length ?? -1,
         detailStatus: batchBalancingTradesAfterCreate.statusCode,
         detailCurrencyPair: batchBalancingTradesAfterCreate.body?.currencyPair,
@@ -6654,7 +6565,7 @@ async function verifyApiAndMigration() {
           ].filter(trade =>
             ["BATCH_BALANCE_TRADE", "BATCH_POSITION_OUT"].includes(trade.tradeType)
           ).every(trade =>
-            trade.createdByBatchId === createFxBatch.body?.batchId
+            trade.createdByBatchId === createBatch.body?.batchId
             && trade.transferRate === trade.tradeRate
             && trade.analyticalPnlQuoteMinor === 0
             && trade.analyticalPnlQuoteFractionDigits
@@ -6695,102 +6606,102 @@ async function verifyApiAndMigration() {
               (total, trade) => total + trade.quoteBalanceContributionMinor,
               0
             ),
-        missingDetailStatus: missingFxBatchDetails.statusCode,
-        missingDetailCode: missingFxBatchDetails.body?.code,
+        missingDetailStatus: missingBatchDetails.statusCode,
+        missingDetailCode: missingBatchDetails.body?.code,
         duplicateSelectionStatus: duplicateBatchSelection.statusCode,
         missingSourceStatus: missingBatchSourceTrade.statusCode,
-        replayStatus: replayFxBatch.statusCode,
-        replayed: replayFxBatch.body?.replayed === true,
-        replayBatchId: replayFxBatch.body?.batchId,
+        replayStatus: replayBatch.statusCode,
+        replayed: replayBatch.body?.replayed === true,
+        replayBatchId: replayBatch.body?.batchId,
         idempotencyConflictStatus: idempotencyConflict.statusCode,
         storedCountAfterReplay: batchBalancingTradesAfterReplay.body?.trades?.length ?? -1,
-        sourceVisibleBeforeBatch: fxPositionsBeforeBatch.body?.some(
+        sourceVisibleBeforeBatch: positionsBeforeBatch.body?.some(
           trade => trade.tradeId === 41
         ) === true,
-        sourceHiddenAfterBatch: fxPositionsAfterBatch.body?.every(
+        sourceHiddenAfterBatch: positionsAfterBatch.body?.every(
           trade => trade.tradeId !== 41
         ) === true,
         balanceHiddenAfterBatch:
-          createFxBatch.body?.trades
+          createBatch.body?.trades
             ?.filter(trade => trade.tradeType === "BATCH_BALANCE_TRADE")
             .every(balanceTrade =>
-              fxPositionsAfterBatch.body?.every(trade =>
+              positionsAfterBatch.body?.every(trade =>
                 trade.tradeId !== balanceTrade.tradeId
               )
             ) === true,
-        outputVisibleAfterBatch: fxPositionsAfterBatch.body?.some(
+        outputVisibleAfterBatch: positionsAfterBatch.body?.some(
           trade => trade.tradeType === "BATCH_POSITION_OUT"
-            && trade.batchId === createFxBatch.body?.batchId
+            && trade.batchId === createBatch.body?.batchId
         ) === true,
-        rollbackStatus: rollbackFxBatch.statusCode,
-        rolledBackBatchStatus: rollbackFxBatch.body?.batchStatus,
+        rollbackStatus: rollbackBatch.statusCode,
+        rolledBackBatchStatus: rollbackBatch.body?.batchStatus,
         rolledBackAtRecorded: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-          .test(String(rollbackFxBatch.body?.rolledBackAt || "")),
-        historyShowsRolledBack: fxBatchHistoryAfterRollback.body?.some(batch =>
-          batch.batchId === createFxBatch.body?.batchId
+          .test(String(rollbackBatch.body?.rolledBackAt || "")),
+        historyShowsRolledBack: batchHistoryAfterRollback.body?.some(batch =>
+          batch.batchId === createBatch.body?.batchId
           && batch.batchStatus === "ROLLED_BACK"
         ) === true,
-        sourceVisibleAfterRollback: fxPositionsAfterRollback.body?.some(
+        sourceVisibleAfterRollback: positionsAfterRollback.body?.some(
           trade => trade.tradeId === 41
             && trade.tradeType === "CLIENT_DEAL"
             && Number(trade.historicalBatchMember) === 1
         ) === true,
-        balanceVisibleAfterRollback: fxPositionsAfterRollback.body?.some(
+        balanceVisibleAfterRollback: positionsAfterRollback.body?.some(
           trade => trade.tradeType === "BATCH_BALANCE_TRADE"
-            && trade.batchId === createFxBatch.body?.batchId
+            && trade.batchId === createBatch.body?.batchId
         ) === true,
         originalTechnicalTradesPreservedAfterRollback:
-          createFxBatch.body?.trades?.every(createdTrade =>
-            fxPositionsAfterRollback.body?.some(trade =>
+          createBatch.body?.trades?.every(createdTrade =>
+            positionsAfterRollback.body?.some(trade =>
               trade.tradeId === createdTrade.tradeId
               && trade.tradeType === createdTrade.tradeType
             )
           ) === true,
         positionPreservedByRollback:
-          signedBasePosition(fxPositionsBeforeBatch.body)
-          === signedBasePosition(fxPositionsAfterRollback.body),
-        rollbackReplayStatus: replayRollbackFxBatch.statusCode,
-        rollbackReplayed: replayRollbackFxBatch.body?.replayed === true,
+          signedBasePosition(positionsBeforeBatch.body)
+          === signedBasePosition(positionsAfterRollback.body),
+        rollbackReplayStatus: replayRollbackBatch.statusCode,
+        rollbackReplayed: replayRollbackBatch.body?.replayed === true,
         rolledBackTradeImmutable,
-        reformedStatus: reformedFxBatch.statusCode,
-        reformedBatchId: reformedFxBatch.body?.batchId,
-        sourceHiddenAfterReformedBatch: fxPositionsAfterReformedBatch.body?.every(
+        reformedStatus: reformedBatch.statusCode,
+        reformedBatchId: reformedBatch.body?.batchId,
+        sourceHiddenAfterReformedBatch: positionsAfterReformedBatch.body?.every(
           trade => trade.tradeId !== 41
         ) === true,
         reformedBatchRemainsFormed:
-          fxBatchHistoryAfterReformedBatch.body?.some(batch =>
-            batch.batchId === reformedFxBatch.body?.batchId
+          batchHistoryAfterReformedBatch.body?.some(batch =>
+            batch.batchId === reformedBatch.body?.batchId
             && batch.batchStatus === "FORMED"
           ) === true,
         balanceTradeHiddenAfterReformedBatch:
-          reformedFxBatch.body?.trades
+          reformedBatch.body?.trades
             ?.filter(trade => trade.tradeType === "BATCH_BALANCE_TRADE")
             .every(balanceTrade =>
-              fxPositionsAfterReformedBatch.body?.every(trade =>
+              positionsAfterReformedBatch.body?.every(trade =>
                 trade.tradeId !== balanceTrade.tradeId
               )
             ) === true,
         positionOutVisibleAfterReformedBatch:
-          reformedFxBatch.body?.trades
+          reformedBatch.body?.trades
             ?.filter(trade => trade.tradeType === "BATCH_POSITION_OUT")
             .every(positionOut =>
-              fxPositionsAfterReformedBatch.body?.some(trade =>
+              positionsAfterReformedBatch.body?.some(trade =>
                 trade.tradeId === positionOut.tradeId
               )
             ) === true,
         positionPreservedAfterReformedBatch:
-          signedBasePosition(fxPositionsBeforeBatch.body)
-          === signedBasePosition(fxPositionsAfterReformedBatch.body),
+          signedBasePosition(positionsBeforeBatch.body)
+          === signedBasePosition(positionsAfterReformedBatch.body),
         technicalTradeAuditRowsRetained:
-          reformedFxBatch.body?.trades?.every(createdTrade =>
-            fxTradeExposureAfterReformedBatch.body?.rows?.some(row =>
+          reformedBatch.body?.trades?.every(createdTrade =>
+            tradeExposureAfterReformedBatch.body?.rows?.some(row =>
               row.trade_id === createdTrade.tradeId
               && row.trade_type === createdTrade.tradeType
             )
           ) === true
-          && reformedFxBatch.body?.trades?.every(createdTrade =>
-            fxBatchMembersAfterReformedBatch.body?.rows?.some(row =>
-              row.batch_id === reformedFxBatch.body?.batchId
+          && reformedBatch.body?.trades?.every(createdTrade =>
+            batchMembersAfterReformedBatch.body?.rows?.some(row =>
+              row.batch_id === reformedBatch.body?.batchId
               && row.trade_id === createdTrade.tradeId
               && row.trade_type === createdTrade.tradeType
               && row.member_role === (
@@ -6800,14 +6711,14 @@ async function verifyApiAndMigration() {
               )
             )
           ) === true
-          && fxBatchBalanceTradesAfterReformedBatch.body?.rows?.some(row =>
-            row.trade_id === reformedFxBatch.body?.trades?.find(
+          && batchBalanceTradesAfterReformedBatch.body?.rows?.some(row =>
+            row.trade_id === reformedBatch.body?.trades?.find(
               trade => trade.tradeType === "BATCH_BALANCE_TRADE"
             )?.tradeId
             && row.trade_type === "BATCH_BALANCE_TRADE"
           ) === true
-          && fxBatchOutputsAfterReformedBatch.body?.rows?.some(row =>
-            row.trade_id === reformedFxBatch.body?.trades?.find(
+          && batchOutputsAfterReformedBatch.body?.rows?.some(row =>
+            row.trade_id === reformedBatch.body?.trades?.find(
               trade => trade.tradeType === "BATCH_POSITION_OUT"
             )?.tradeId
             && row.trade_type === "BATCH_POSITION_OUT"
@@ -6820,24 +6731,24 @@ async function verifyApiAndMigration() {
         parentBatchId: createParentPositionOutBatch.body?.batchId,
         parentPositionOutTradeId,
         parentPositionOutVisible:
-          fxPositionsAfterParentPositionOut.body?.some(trade =>
+          positionsAfterParentPositionOut.body?.some(trade =>
             trade.tradeId === parentPositionOutTradeId
             && trade.tradeType === "BATCH_POSITION_OUT"
           ) === true,
-        createStatus: createFlatFxBatch.statusCode,
-        createCode: createFlatFxBatch.body?.code,
-        createMessage: createFlatFxBatch.body?.message,
-        batchStatus: createFlatFxBatch.body?.batchStatus,
-        sourceTradeIds: createFlatFxBatch.body?.sourceTradeIds || [],
-        sourceNetSide: createFlatFxBatch.body?.sourceNetSide,
+        createStatus: createFlatBatch.statusCode,
+        createCode: createFlatBatch.body?.code,
+        createMessage: createFlatBatch.body?.message,
+        batchStatus: createFlatBatch.body?.batchStatus,
+        sourceTradeIds: createFlatBatch.body?.sourceTradeIds || [],
+        sourceNetSide: createFlatBatch.body?.sourceNetSide,
         sourceNetBaseCcyAmountMinor:
-          createFlatFxBatch.body?.sourceNetBaseCcyAmountMinor,
+          createFlatBatch.body?.sourceNetBaseCcyAmountMinor,
         sourceNetTransferQuoteAmountMinor:
-          createFlatFxBatch.body?.sourceNetTransferQuoteAmountMinor,
+          createFlatBatch.body?.sourceNetTransferQuoteAmountMinor,
         netQuoteCcyAmountMinorBeforeCash:
-          createFlatFxBatch.body?.netQuoteCcyAmountMinorBeforeCash,
-        quoteCashOut: createFlatFxBatch.body?.quoteCashOut || null,
-        createdTrades: createFlatFxBatch.body?.trades || [],
+          createFlatBatch.body?.netQuoteCcyAmountMinorBeforeCash,
+        quoteCashOut: createFlatBatch.body?.quoteCashOut || null,
+        createdTrades: createFlatBatch.body?.trades || [],
         members: flatBatchMembers,
         outputs: flatBatchOutputs,
         detailStatus: flatBatchDetails.statusCode,
@@ -6863,16 +6774,16 @@ async function verifyApiAndMigration() {
             && member.transferRate === member.tradeRate
           ) === true,
         sourcesVisibleBefore: [flatSellTradeId, flatBuyTradeId].every(tradeId =>
-          fxPositionsBeforeFlatBatch.body?.some(trade => trade.tradeId === tradeId)
+          positionsBeforeFlatBatch.body?.some(trade => trade.tradeId === tradeId)
         ),
         sourcesHiddenAfter: [parentPositionOutTradeId, flatBuyTradeId].every(tradeId =>
-          fxPositionsAfterFlatBatch.body?.every(trade => trade.tradeId !== tradeId)
+          positionsAfterFlatBatch.body?.every(trade => trade.tradeId !== tradeId)
         ),
-        rollbackStatus: rollbackFlatFxBatch.statusCode,
-        rolledBackBatchStatus: rollbackFlatFxBatch.body?.batchStatus,
+        rollbackStatus: rollbackFlatBatch.statusCode,
+        rolledBackBatchStatus: rollbackFlatBatch.body?.batchStatus,
         sourcesVisibleAfterRollback:
           [parentPositionOutTradeId, flatBuyTradeId].every(tradeId =>
-            fxPositionsAfterFlatRollback.body?.some(trade => trade.tradeId === tradeId)
+            positionsAfterFlatRollback.body?.some(trade => trade.tradeId === tradeId)
           ),
         immutable: flatBatchImmutable,
         foreignKeyViolations: flatBatchForeignKeyViolations
@@ -6902,7 +6813,7 @@ async function verifyApiAndMigration() {
       balanceTradeSourceFlow: {
         parentBalanceTradeId,
         hiddenWhileParentFormed:
-          fxPositionsAfterParentPositionOut.body?.every(trade =>
+          positionsAfterParentPositionOut.body?.every(trade =>
             trade.tradeId !== parentBalanceTradeId
           ) === true,
         unavailableWhileParentFormed:
@@ -6915,9 +6826,9 @@ async function verifyApiAndMigration() {
         activeRebatchStatus: rejectBalanceSourceWhileParentFormed.statusCode,
         activeRebatchCode: rejectBalanceSourceWhileParentFormed.body?.code,
         activeMembershipConstraintEnforced,
-        parentRollbackStatus: rollbackParentFxBatch.statusCode,
+        parentRollbackStatus: rollbackParentBatch.statusCode,
         visibleAfterParentRollback:
-          fxPositionsAfterParentRollback.body?.some(trade =>
+          positionsAfterParentRollback.body?.some(trade =>
             trade.tradeId === parentBalanceTradeId
             && trade.tradeType === "BATCH_BALANCE_TRADE"
             && trade.transferRate === trade.tradeRate
@@ -6940,7 +6851,7 @@ async function verifyApiAndMigration() {
               === createParentPositionOutBatch.body?.batchId
           ) === true,
         hiddenAfterBatching:
-          fxPositionsAfterBalanceRebatch.body?.every(trade =>
+          positionsAfterBalanceRebatch.body?.every(trade =>
             trade.tradeId !== parentBalanceTradeId
           ) === true,
         listedAsConsumed:
@@ -6951,11 +6862,11 @@ async function verifyApiAndMigration() {
             && trade.consumedByBatchStatus === "FORMED"
           ) === true
       },
-      hedgeFxDeals: {
-        status: hedgeFxDeals.statusCode,
-        count: hedgeFxDeals.body?.length ?? -1,
-        executionContextAssignmentStatus:
-          attachHedgeCounterpartyExecutionContexts.statusCode,
+      hedgeDeals: {
+        status: hedgeDeals.statusCode,
+        count: hedgeDeals.body?.length ?? -1,
+        tradeContextAssignmentStatus:
+          attachHedgeCounterpartyTradeContexts.statusCode,
         eligiblePricingRulesStatus: hedgeDealPricingRules.statusCode,
         eligiblePricingRulesCount: hedgeDealPricingRules.body?.length ?? -1,
         allHedgeCounterpartyRules: hedgeDealPricingRules.body?.every(rule =>
@@ -6984,76 +6895,76 @@ async function verifyApiAndMigration() {
           invalidPricingModeStatus: invalidHedgeDealPricingMode.statusCode,
           invalidPricingModeCode: invalidHedgeDealPricingMode.body?.code,
           manualEndpointAutoRuleStatus:
-            invalidManualHedgeFxDealAutoPricedRule.statusCode,
+            invalidManualHedgeDealAutoPricedRule.statusCode,
           manualEndpointAutoRuleCode:
-            invalidManualHedgeFxDealAutoPricedRule.body?.code,
+            invalidManualHedgeDealAutoPricedRule.body?.code,
           manualEndpointAutoRuleMessage:
-            invalidManualHedgeFxDealAutoPricedRule.body?.message,
+            invalidManualHedgeDealAutoPricedRule.body?.message,
           autoEndpointDealerRuleStatus:
-            invalidAutoPricedHedgeFxDealDealerRule.statusCode,
+            invalidAutoPricedHedgeDealDealerRule.statusCode,
           autoEndpointDealerRuleCode:
-            invalidAutoPricedHedgeFxDealDealerRule.body?.code,
+            invalidAutoPricedHedgeDealDealerRule.body?.code,
           autoEndpointDealerRuleMessage:
-            invalidAutoPricedHedgeFxDealDealerRule.body?.message,
+            invalidAutoPricedHedgeDealDealerRule.body?.message,
           suppliedTradeRateStatus:
-            invalidAutoPricedHedgeFxDealSuppliedRate.statusCode,
+            invalidAutoPricedHedgeDealSuppliedRate.statusCode,
           suppliedTradeRateCode:
-            invalidAutoPricedHedgeFxDealSuppliedRate.body?.code,
+            invalidAutoPricedHedgeDealSuppliedRate.body?.code,
           suppliedTradeRateMessage:
-            invalidAutoPricedHedgeFxDealSuppliedRate.body?.message,
+            invalidAutoPricedHedgeDealSuppliedRate.body?.message,
           bankSell: {
-            status: createAutoPricedBankSellHedgeFxDeal.statusCode,
-            tradeId: createAutoPricedBankSellHedgeFxDeal.body?.tradeId,
-            counterpartySide: createAutoPricedBankSellHedgeFxDeal.body?.side,
-            tradeRate: createAutoPricedBankSellHedgeFxDeal.body?.tradeRate,
-            marketBid: createAutoPricedBankSellHedgeFxDeal.body?.marketPulseBid,
+            status: createAutoPricedBankSellHedgeDeal.statusCode,
+            tradeId: createAutoPricedBankSellHedgeDeal.body?.tradeId,
+            counterpartySide: createAutoPricedBankSellHedgeDeal.body?.side,
+            tradeRate: createAutoPricedBankSellHedgeDeal.body?.tradeRate,
+            marketBid: createAutoPricedBankSellHedgeDeal.body?.marketPulseBid,
             marketOffer:
-              createAutoPricedBankSellHedgeFxDeal.body?.marketPulseOffer,
+              createAutoPricedBankSellHedgeDeal.body?.marketPulseOffer,
             usesBid:
-              createAutoPricedBankSellHedgeFxDeal.body?.tradeRate
-                === createAutoPricedBankSellHedgeFxDeal.body?.marketPulseBid,
+              createAutoPricedBankSellHedgeDeal.body?.tradeRate
+                === createAutoPricedBankSellHedgeDeal.body?.marketPulseBid,
             persistedFromSameSnapshot:
               autoPricedBankSellExposureRow?.base_ccy_side === "BUY"
               && autoPricedBankSellExposureRow?.trade_rate
-                === createAutoPricedBankSellHedgeFxDeal.body?.tradeRate
+                === createAutoPricedBankSellHedgeDeal.body?.tradeRate
               && autoPricedBankSellDealRow?.pricing_rule_id
                 === createAutoPricedHedgePricingRule.body?.pricingRuleId
               && autoPricedBankSellDealRow?.transfer_rate
-                === createAutoPricedBankSellHedgeFxDeal.body?.transferRate
+                === createAutoPricedBankSellHedgeDeal.body?.transferRate
               && autoPricedBankSellSnapshotRow?.market_pulse_bid
-                === createAutoPricedBankSellHedgeFxDeal.body?.marketPulseBid
+                === createAutoPricedBankSellHedgeDeal.body?.marketPulseBid
               && autoPricedBankSellSnapshotRow?.market_pulse_offer
-                === createAutoPricedBankSellHedgeFxDeal.body?.marketPulseOffer
+                === createAutoPricedBankSellHedgeDeal.body?.marketPulseOffer
               && autoPricedBankSellSnapshotRow?.market_pulse_timestamp
-                === createAutoPricedBankSellHedgeFxDeal.body
+                === createAutoPricedBankSellHedgeDeal.body
                   ?.marketPulseTimestamp
           },
           bankBuy: {
-            status: createAutoPricedBankBuyHedgeFxDeal.statusCode,
-            tradeId: createAutoPricedBankBuyHedgeFxDeal.body?.tradeId,
-            counterpartySide: createAutoPricedBankBuyHedgeFxDeal.body?.side,
-            tradeRate: createAutoPricedBankBuyHedgeFxDeal.body?.tradeRate,
-            marketBid: createAutoPricedBankBuyHedgeFxDeal.body?.marketPulseBid,
+            status: createAutoPricedBankBuyHedgeDeal.statusCode,
+            tradeId: createAutoPricedBankBuyHedgeDeal.body?.tradeId,
+            counterpartySide: createAutoPricedBankBuyHedgeDeal.body?.side,
+            tradeRate: createAutoPricedBankBuyHedgeDeal.body?.tradeRate,
+            marketBid: createAutoPricedBankBuyHedgeDeal.body?.marketPulseBid,
             marketOffer:
-              createAutoPricedBankBuyHedgeFxDeal.body?.marketPulseOffer,
+              createAutoPricedBankBuyHedgeDeal.body?.marketPulseOffer,
             usesOffer:
-              createAutoPricedBankBuyHedgeFxDeal.body?.tradeRate
-                === createAutoPricedBankBuyHedgeFxDeal.body
+              createAutoPricedBankBuyHedgeDeal.body?.tradeRate
+                === createAutoPricedBankBuyHedgeDeal.body
                   ?.marketPulseOffer,
             persistedFromSameSnapshot:
               autoPricedBankBuyExposureRow?.base_ccy_side === "SELL"
               && autoPricedBankBuyExposureRow?.trade_rate
-                === createAutoPricedBankBuyHedgeFxDeal.body?.tradeRate
+                === createAutoPricedBankBuyHedgeDeal.body?.tradeRate
               && autoPricedBankBuyDealRow?.pricing_rule_id
                 === createAutoPricedHedgePricingRule.body?.pricingRuleId
               && autoPricedBankBuyDealRow?.transfer_rate
-                === createAutoPricedBankBuyHedgeFxDeal.body?.transferRate
+                === createAutoPricedBankBuyHedgeDeal.body?.transferRate
               && autoPricedBankBuySnapshotRow?.market_pulse_bid
-                === createAutoPricedBankBuyHedgeFxDeal.body?.marketPulseBid
+                === createAutoPricedBankBuyHedgeDeal.body?.marketPulseBid
               && autoPricedBankBuySnapshotRow?.market_pulse_offer
-                === createAutoPricedBankBuyHedgeFxDeal.body?.marketPulseOffer
+                === createAutoPricedBankBuyHedgeDeal.body?.marketPulseOffer
               && autoPricedBankBuySnapshotRow?.market_pulse_timestamp
-                === createAutoPricedBankBuyHedgeFxDeal.body
+                === createAutoPricedBankBuyHedgeDeal.body
                   ?.marketPulseTimestamp
           }
         },
@@ -7081,18 +6992,18 @@ async function verifyApiAndMigration() {
           invalidPresetStatus: invalidHedgeQuickModePreset.statusCode,
           invalidPresetCode: invalidHedgeQuickModePreset.body?.code,
           bankSell: {
-            status: createQuickModeBankSellHedgeFxDeal.statusCode,
-            tradeId: createQuickModeBankSellHedgeFxDeal.body?.tradeId,
-            counterpartySide: createQuickModeBankSellHedgeFxDeal.body?.side,
+            status: createQuickModeBankSellHedgeDeal.statusCode,
+            tradeId: createQuickModeBankSellHedgeDeal.body?.tradeId,
+            counterpartySide: createQuickModeBankSellHedgeDeal.body?.side,
             baseCcyAmountMinor:
-              createQuickModeBankSellHedgeFxDeal.body?.baseCcyAmountMinor,
-            tradeRate: createQuickModeBankSellHedgeFxDeal.body?.tradeRate,
-            marketBid: createQuickModeBankSellHedgeFxDeal.body?.marketPulseBid,
+              createQuickModeBankSellHedgeDeal.body?.baseCcyAmountMinor,
+            tradeRate: createQuickModeBankSellHedgeDeal.body?.tradeRate,
+            marketBid: createQuickModeBankSellHedgeDeal.body?.marketPulseBid,
             marketOffer:
-              createQuickModeBankSellHedgeFxDeal.body?.marketPulseOffer,
+              createQuickModeBankSellHedgeDeal.body?.marketPulseOffer,
             usesBid:
-              createQuickModeBankSellHedgeFxDeal.body?.tradeRate
-                === createQuickModeBankSellHedgeFxDeal.body?.marketPulseBid,
+              createQuickModeBankSellHedgeDeal.body?.tradeRate
+                === createQuickModeBankSellHedgeDeal.body?.marketPulseBid,
             persistedFromSameSnapshot:
               quickModeBankSellExposureRow?.base_ccy_side === "BUY"
               && quickModeBankSellExposureRow?.base_ccy_amount_minor
@@ -7100,26 +7011,26 @@ async function verifyApiAndMigration() {
               && quickModeBankSellDealRow?.pricing_rule_id
                 === createAutoPricedHedgePricingRule.body?.pricingRuleId
               && quickModeBankSellSnapshotRow?.market_pulse_bid
-                === createQuickModeBankSellHedgeFxDeal.body?.marketPulseBid
+                === createQuickModeBankSellHedgeDeal.body?.marketPulseBid
               && quickModeBankSellSnapshotRow?.market_pulse_offer
-                === createQuickModeBankSellHedgeFxDeal.body?.marketPulseOffer
+                === createQuickModeBankSellHedgeDeal.body?.marketPulseOffer
               && quickModeBankSellSnapshotRow?.market_pulse_timestamp
-                === createQuickModeBankSellHedgeFxDeal.body
+                === createQuickModeBankSellHedgeDeal.body
                   ?.marketPulseTimestamp
           },
           bankBuy: {
-            status: createQuickModeBankBuyHedgeFxDeal.statusCode,
-            tradeId: createQuickModeBankBuyHedgeFxDeal.body?.tradeId,
-            counterpartySide: createQuickModeBankBuyHedgeFxDeal.body?.side,
+            status: createQuickModeBankBuyHedgeDeal.statusCode,
+            tradeId: createQuickModeBankBuyHedgeDeal.body?.tradeId,
+            counterpartySide: createQuickModeBankBuyHedgeDeal.body?.side,
             baseCcyAmountMinor:
-              createQuickModeBankBuyHedgeFxDeal.body?.baseCcyAmountMinor,
-            tradeRate: createQuickModeBankBuyHedgeFxDeal.body?.tradeRate,
-            marketBid: createQuickModeBankBuyHedgeFxDeal.body?.marketPulseBid,
+              createQuickModeBankBuyHedgeDeal.body?.baseCcyAmountMinor,
+            tradeRate: createQuickModeBankBuyHedgeDeal.body?.tradeRate,
+            marketBid: createQuickModeBankBuyHedgeDeal.body?.marketPulseBid,
             marketOffer:
-              createQuickModeBankBuyHedgeFxDeal.body?.marketPulseOffer,
+              createQuickModeBankBuyHedgeDeal.body?.marketPulseOffer,
             usesOffer:
-              createQuickModeBankBuyHedgeFxDeal.body?.tradeRate
-                === createQuickModeBankBuyHedgeFxDeal.body?.marketPulseOffer,
+              createQuickModeBankBuyHedgeDeal.body?.tradeRate
+                === createQuickModeBankBuyHedgeDeal.body?.marketPulseOffer,
             persistedFromSameSnapshot:
               quickModeBankBuyExposureRow?.base_ccy_side === "SELL"
               && quickModeBankBuyExposureRow?.base_ccy_amount_minor
@@ -7127,11 +7038,11 @@ async function verifyApiAndMigration() {
               && quickModeBankBuyDealRow?.pricing_rule_id
                 === createAutoPricedHedgePricingRule.body?.pricingRuleId
               && quickModeBankBuySnapshotRow?.market_pulse_bid
-                === createQuickModeBankBuyHedgeFxDeal.body?.marketPulseBid
+                === createQuickModeBankBuyHedgeDeal.body?.marketPulseBid
               && quickModeBankBuySnapshotRow?.market_pulse_offer
-                === createQuickModeBankBuyHedgeFxDeal.body?.marketPulseOffer
+                === createQuickModeBankBuyHedgeDeal.body?.marketPulseOffer
               && quickModeBankBuySnapshotRow?.market_pulse_timestamp
-                === createQuickModeBankBuyHedgeFxDeal.body
+                === createQuickModeBankBuyHedgeDeal.body
                   ?.marketPulseTimestamp
           },
           disableSettingsStatus: disableHedgeQuickModeSettings.statusCode,
@@ -7145,44 +7056,44 @@ async function verifyApiAndMigration() {
           restoredAvailable:
             hedgeQuickModeSettingsAfterRestore.body?.[0]?.available
         },
-        rejectedDealerApprovedRuleStatus: invalidHedgeFxDealDealerApprovedRule.statusCode,
+        rejectedDealerApprovedRuleStatus: invalidHedgeDealDealerApprovedRule.statusCode,
         dealerApprovedRuleDeleteStatus: deleteDealerApprovedHedgePricingRule.statusCode,
-        createdStatus: createHedgeFxDeal.statusCode,
-        createdTradeId: createHedgeFxDeal.body?.tradeId,
-        createdRequestTimestamp: createHedgeFxDeal.body?.requestTimestamp,
-        createdExecutionTimestamp: createHedgeFxDeal.body?.executionTimestamp,
-        createdReceivedTimestamp: createHedgeFxDeal.body?.receivedTimestamp,
-        createdSide: createHedgeFxDeal.body?.side,
-        createdCounterpartyId: createHedgeFxDeal.body?.counterpartyId,
+        createdStatus: createHedgeDeal.statusCode,
+        createdTradeId: createHedgeDeal.body?.tradeId,
+        createdRequestTimestamp: createHedgeDeal.body?.requestTimestamp,
+        createdExecutionTimestamp: createHedgeDeal.body?.executionTimestamp,
+        createdReceivedTimestamp: createHedgeDeal.body?.receivedTimestamp,
+        createdSide: createHedgeDeal.body?.side,
+        createdCounterpartyId: createHedgeDeal.body?.counterpartyId,
         expectedCounterpartyId: createHedgeCounterparty.body?.counterpartyId,
-        createdPricingRuleId: createHedgeFxDeal.body?.pricingRuleId,
+        createdPricingRuleId: createHedgeDeal.body?.pricingRuleId,
         expectedPricingRuleId: createHedgePricingRule.body?.pricingRuleId,
-        createdTransferRate: createHedgeFxDeal.body?.transferRate,
-        createdAnalyticalPnl: createHedgeFxDeal.body?.analyticalPnl,
-        createdAnalyticalPnlQuoteMinor: createHedgeFxDeal.body?.analyticalPnlQuoteMinor,
+        createdTransferRate: createHedgeDeal.body?.transferRate,
+        createdAnalyticalPnl: createHedgeDeal.body?.analyticalPnl,
+        createdAnalyticalPnlQuoteMinor: createHedgeDeal.body?.analyticalPnlQuoteMinor,
         createdAnalyticalPnlQuoteFractionDigits:
-          createHedgeFxDeal.body?.analyticalPnlQuoteFractionDigits,
-        createdDealtCcyCode: createHedgeFxDeal.body?.dealtCcyCode,
-        createdBaseCcyAmountMinor: createHedgeFxDeal.body?.baseCcyAmountMinor,
-        createdBaseCcyFractionDigits: createHedgeFxDeal.body?.baseCcyFractionDigits,
-        createdQuoteCcyAmountMinor: createHedgeFxDeal.body?.quoteCcyAmountMinor,
-        createdQuoteCcyFractionDigits: createHedgeFxDeal.body?.quoteCcyFractionDigits,
-        createdMarketPulseStreamStatus: createHedgeFxDeal.body?.marketPulseStreamStatus,
-        subMinorAmountStatus: invalidHedgeFxDealSubMinorAmount.statusCode,
-        subMinorAmountCode: invalidHedgeFxDealSubMinorAmount.body?.code,
-        invalidClientRuleStatus: invalidHedgeFxDealClientRule.statusCode,
-        countAfterCreate: hedgeFxDealsAfterCreate.body?.length ?? -1,
-        deleteStatus: rejectHedgeFxDealDelete.statusCode,
-        deleteCode: rejectHedgeFxDealDelete.body?.code,
-        countAfterRejectedDelete: hedgeFxDealsAfterRejectedDelete.body?.length ?? -1,
+          createHedgeDeal.body?.analyticalPnlQuoteFractionDigits,
+        createdDealtCcyCode: createHedgeDeal.body?.dealtCcyCode,
+        createdBaseCcyAmountMinor: createHedgeDeal.body?.baseCcyAmountMinor,
+        createdBaseCcyFractionDigits: createHedgeDeal.body?.baseCcyFractionDigits,
+        createdQuoteCcyAmountMinor: createHedgeDeal.body?.quoteCcyAmountMinor,
+        createdQuoteCcyFractionDigits: createHedgeDeal.body?.quoteCcyFractionDigits,
+        createdMarketPulseStreamStatus: createHedgeDeal.body?.marketPulseStreamStatus,
+        subMinorAmountStatus: invalidHedgeDealSubMinorAmount.statusCode,
+        subMinorAmountCode: invalidHedgeDealSubMinorAmount.body?.code,
+        invalidClientRuleStatus: invalidHedgeDealClientRule.statusCode,
+        countAfterCreate: hedgeDealsAfterCreate.body?.length ?? -1,
+        deleteStatus: rejectHedgeDealDelete.statusCode,
+        deleteCode: rejectHedgeDealDelete.body?.code,
+        countAfterRejectedDelete: hedgeDealsAfterRejectedDelete.body?.length ?? -1,
         preservedAfterRejectedDelete:
-          fxTradeExposureAfterRejectedHedgeDelete.body?.rows?.some(row =>
+          tradeExposureAfterRejectedHedgeDelete.body?.rows?.some(row =>
             row.trade_id === createdHedgeTradeId && row.trade_type === "HEDGE_DEAL"
           )
-          && fxHedgeDealsAfterRejectedDelete.body?.rows?.some(row =>
+          && hedgeDealsTableAfterRejectedDelete.body?.rows?.some(row =>
             row.trade_id === createdHedgeTradeId && row.trade_type === "HEDGE_DEAL"
           )
-          && fxTradeMarketSnapshotAfterRejectedHedgeDelete.body?.rows?.some(row =>
+          && tradeMarketSnapshotAfterRejectedHedgeDelete.body?.rows?.some(row =>
             row.trade_id === createdHedgeTradeId && row.trade_type === "HEDGE_DEAL"
           ),
         createdRowsShareId: createdHedgeExposureRow?.trade_id === createdHedgeTradeId
@@ -7195,20 +7106,20 @@ async function verifyApiAndMigration() {
           && createdHedgeExposureRow?.quote_ccy_amount_minor === 280850000
           && createdHedgeExposureRow?.quote_ccy_fraction_digits === 2
           && createdHedgeExposureRow?.execution_timestamp
-            === createHedgeFxDeal.body?.executionTimestamp
+            === createHedgeDeal.body?.executionTimestamp
           && createdHedgeExposureRow?.received_timestamp
-            === createHedgeFxDeal.body?.receivedTimestamp
+            === createHedgeDeal.body?.receivedTimestamp
           && createdHedgeDealRow?.trade_id === createdHedgeTradeId
           && createdHedgeDealRow?.trade_type === "HEDGE_DEAL"
           && createdHedgeDealRow?.request_timestamp
-            === createHedgeFxDeal.body?.requestTimestamp
+            === createHedgeDeal.body?.requestTimestamp
           && createdHedgeDealRow?.counterparty_id === createHedgeCounterparty.body?.counterpartyId
           && createdHedgeDealRow?.pricing_rule_id === createHedgePricingRule.body?.pricingRuleId
-          && createdHedgeDealRow?.transfer_rate === createHedgeFxDeal.body?.transferRate
+          && createdHedgeDealRow?.transfer_rate === createHedgeDeal.body?.transferRate
           && createdHedgeDealRow?.analytical_pnl_quote_minor
-            === createHedgeFxDeal.body?.analyticalPnlQuoteMinor
+            === createHedgeDeal.body?.analyticalPnlQuoteMinor
           && createdHedgeDealRow?.analytical_pnl_quote_fraction_digits
-            === createHedgeFxDeal.body?.analyticalPnlQuoteFractionDigits
+            === createHedgeDeal.body?.analyticalPnlQuoteFractionDigits
           && createdHedgeMarketSnapshotRow?.trade_id === createdHedgeTradeId
           && createdHedgeMarketSnapshotRow?.trade_type === "HEDGE_DEAL"
       },
@@ -7217,42 +7128,42 @@ async function verifyApiAndMigration() {
         count: clientDealPricingRules.body?.length ?? -1,
         allDealerPriced: clientDealPricingRules.body?.every(rule => rule.pricingMode === "DEALER_PRICED") === true
       },
-      clientFxDeals: {
-        count: clientFxDeals.body?.length ?? -1,
-        first: clientFxDeals.body?.[0] || null,
-        createdId: createClientFxDeal.body?.clientDealId,
-        createdTradeId: createClientFxDeal.body?.tradeId,
-        createdExecutionTimestamp: createClientFxDeal.body?.executionTimestamp,
-        createdReceivedTimestamp: createClientFxDeal.body?.receivedTimestamp,
-        createdSide: createClientFxDeal.body?.side,
-        createdExecutionContextId: createClientFxDeal.body?.executionContextId,
-        createdPricingRuleId: createClientFxDeal.body?.pricingRuleId,
-        expectedExecutionContextId: clientDealExecutionContextId,
+      clientDeals: {
+        count: clientDeals.body?.length ?? -1,
+        first: clientDeals.body?.[0] || null,
+        createdId: createClientDeal.body?.clientDealId,
+        createdTradeId: createClientDeal.body?.tradeId,
+        createdExecutionTimestamp: createClientDeal.body?.executionTimestamp,
+        createdReceivedTimestamp: createClientDeal.body?.receivedTimestamp,
+        createdSide: createClientDeal.body?.side,
+        createdTradeContextId: createClientDeal.body?.tradeContextId,
+        createdPricingRuleId: createClientDeal.body?.pricingRuleId,
+        expectedTradeContextId: clientDealTradeContextId,
         expectedPricingRuleId: clientDealPricingRuleId,
-        createdTransferRate: createClientFxDeal.body?.transferRate,
-        createdAnalyticalPnl: createClientFxDeal.body?.analyticalPnl,
-        createdAnalyticalPnlQuoteMinor: createClientFxDeal.body?.analyticalPnlQuoteMinor,
+        createdTransferRate: createClientDeal.body?.transferRate,
+        createdAnalyticalPnl: createClientDeal.body?.analyticalPnl,
+        createdAnalyticalPnlQuoteMinor: createClientDeal.body?.analyticalPnlQuoteMinor,
         createdAnalyticalPnlQuoteFractionDigits:
-          createClientFxDeal.body?.analyticalPnlQuoteFractionDigits,
-        createdDealtCcyCode: createClientFxDeal.body?.dealtCcyCode,
-        createdBaseCcyAmountMinor: createClientFxDeal.body?.baseCcyAmountMinor,
-        createdBaseCcyFractionDigits: createClientFxDeal.body?.baseCcyFractionDigits,
-        createdQuoteCcyAmountMinor: createClientFxDeal.body?.quoteCcyAmountMinor,
-        createdQuoteCcyFractionDigits: createClientFxDeal.body?.quoteCcyFractionDigits,
-        createdMarketPulseStreamStatus: createClientFxDeal.body?.marketPulseStreamStatus,
-        createdMarketPulseBid: createClientFxDeal.body?.marketPulseBid,
-        createdMarketPulseOffer: createClientFxDeal.body?.marketPulseOffer,
-        createdMarketPulseTimestamp: createClientFxDeal.body?.marketPulseTimestamp,
-        createdComment: createClientFxDeal.body?.comment,
-        immutableUpdateStatus: immutableClientFxDealUpdate.statusCode,
-        immutableUpdateCode: immutableClientFxDealUpdate.body?.code,
-        updatedComment: updateClientFxDealComment.body?.comment,
-        invalidCommentStatus: invalidClientFxDealComment.statusCode,
-        deleteStatus: rejectClientFxDealDelete.statusCode,
-        deleteCode: rejectClientFxDealDelete.body?.code,
-        countAfterRejectedDelete: clientFxDealsAfterRejectedDelete.body?.length ?? -1,
+          createClientDeal.body?.analyticalPnlQuoteFractionDigits,
+        createdDealtCcyCode: createClientDeal.body?.dealtCcyCode,
+        createdBaseCcyAmountMinor: createClientDeal.body?.baseCcyAmountMinor,
+        createdBaseCcyFractionDigits: createClientDeal.body?.baseCcyFractionDigits,
+        createdQuoteCcyAmountMinor: createClientDeal.body?.quoteCcyAmountMinor,
+        createdQuoteCcyFractionDigits: createClientDeal.body?.quoteCcyFractionDigits,
+        createdMarketPulseStreamStatus: createClientDeal.body?.marketPulseStreamStatus,
+        createdMarketPulseBid: createClientDeal.body?.marketPulseBid,
+        createdMarketPulseOffer: createClientDeal.body?.marketPulseOffer,
+        createdMarketPulseTimestamp: createClientDeal.body?.marketPulseTimestamp,
+        createdComment: createClientDeal.body?.comment,
+        immutableUpdateStatus: immutableClientDealUpdate.statusCode,
+        immutableUpdateCode: immutableClientDealUpdate.body?.code,
+        updatedComment: updateClientDealComment.body?.comment,
+        invalidCommentStatus: invalidClientDealComment.statusCode,
+        deleteStatus: rejectClientDealDelete.statusCode,
+        deleteCode: rejectClientDealDelete.body?.code,
+        countAfterRejectedDelete: clientDealsAfterRejectedDelete.body?.length ?? -1,
         migratedRow: migratedClientRow,
-        rollbackStatus: rollbackClientFxDeal?.statusCode,
+        rollbackStatus: rollbackClientDeal?.statusCode,
         rollbackPreservedCounts: rollbackCountsBefore.exposures === rollbackCountsAfter.exposures
           && rollbackCountsBefore.clientDeals === rollbackCountsAfter.clientDeals
           && rollbackCountsBefore.marketSnapshots === rollbackCountsAfter.marketSnapshots,
@@ -7260,12 +7171,12 @@ async function verifyApiAndMigration() {
           && createdExposureRow?.base_ccy_side === "SELL"
           && createdExposureRow?.dealt_ccy_code === "USD"
           && createdExposureRow?.execution_timestamp
-            === createClientFxDeal.body?.executionTimestamp
+            === createClientDeal.body?.executionTimestamp
           && createdExposureRow?.received_timestamp
-            === createClientFxDeal.body?.receivedTimestamp
+            === createClientDeal.body?.receivedTimestamp
           && createdClientRow?.trade_id === createdTradeId
           && createdClientRow?.trade_type === "CLIENT_DEAL"
-          && createdClientRow?.execution_context_id === clientDealExecutionContextId
+          && createdClientRow?.trade_context_id === clientDealTradeContextId
           && createdClientRow?.pricing_rule_id === clientDealPricingRuleId
           && createdClientRow?.transfer_rate === 1.124
           && createdClientRow?.analytical_pnl_quote_minor === 180000
@@ -7284,7 +7195,7 @@ async function verifyApiAndMigration() {
           && updatedExposureRow?.trade_rate === 1.1231
           && updatedClientRow?.trade_id === createdTradeId
           && updatedClientRow?.counterparty_id === 1
-          && updatedClientRow?.execution_context_id === clientDealExecutionContextId
+          && updatedClientRow?.trade_context_id === clientDealTradeContextId
           && updatedClientRow?.pricing_rule_id === clientDealPricingRuleId
           && updatedClientRow?.transfer_rate === 1.124
           && updatedClientRow?.analytical_pnl_quote_minor === 180000
@@ -7295,29 +7206,29 @@ async function verifyApiAndMigration() {
           && updatedMarketSnapshotRow?.market_pulse_offer === 1.123
           && updatedMarketSnapshotRow?.market_pulse_timestamp === "2026-07-16T10:15:29.000Z",
         preservedAfterRejectedDelete:
-          fxTradeExposureAfterRejectedClientDelete.body?.rows
+          tradeExposureAfterRejectedClientDelete.body?.rows
             ?.some(row => row.trade_id === createdTradeId && row.trade_type === "CLIENT_DEAL")
-          && clientFxDealsTableAfterRejectedDelete.body?.rows
+          && clientDealsTableAfterRejectedDelete.body?.rows
             ?.some(row => row.trade_id === createdTradeId && row.trade_type === "CLIENT_DEAL")
-          && fxTradeMarketSnapshotAfterRejectedClientDelete.body?.rows
+          && tradeMarketSnapshotAfterRejectedClientDelete.body?.rows
             ?.some(row => row.trade_id === createdTradeId && row.trade_type === "CLIENT_DEAL"),
         foreignKeyViolations,
-        subMinorAmountStatus: invalidClientFxDealSubMinorAmount.statusCode,
-        subMinorAmountCode: invalidClientFxDealSubMinorAmount.body?.code,
-        nonDealerPricingRuleStatus: invalidClientFxDealPricingMode.statusCode,
-        nonDealerPricingRuleMessage: invalidClientFxDealPricingMode.body?.message,
+        subMinorAmountStatus: invalidClientDealSubMinorAmount.statusCode,
+        subMinorAmountCode: invalidClientDealSubMinorAmount.body?.code,
+        nonDealerPricingRuleStatus: invalidClientDealPricingMode.statusCode,
+        nonDealerPricingRuleMessage: invalidClientDealPricingMode.body?.message,
         lifecycle: [
-          createClientFxDeal.statusCode,
-          immutableClientFxDealUpdate.statusCode,
-          updateClientFxDealComment.statusCode,
-          invalidClientFxDealComment.statusCode,
-          invalidClientFxDealSide.statusCode,
-          invalidClientFxDealCounterparty.statusCode,
-          invalidClientFxDealTransferRate.statusCode,
-          invalidClientFxDealSubMinorAmount.statusCode,
-          invalidClientFxDealPricingScope.statusCode,
-          invalidClientFxDealPricingMode.statusCode,
-          rejectClientFxDealDelete.statusCode
+          createClientDeal.statusCode,
+          immutableClientDealUpdate.statusCode,
+          updateClientDealComment.statusCode,
+          invalidClientDealComment.statusCode,
+          invalidClientDealSide.statusCode,
+          invalidClientDealCounterparty.statusCode,
+          invalidClientDealTransferRate.statusCode,
+          invalidClientDealSubMinorAmount.statusCode,
+          invalidClientDealPricingScope.statusCode,
+          invalidClientDealPricingMode.statusCode,
+          rejectClientDealDelete.statusCode
         ]
       },
       pricingRules: {
@@ -7327,31 +7238,31 @@ async function verifyApiAndMigration() {
           ["AUTO_PRICED", "DEALER_PRICED", "DEALER_APPROVED"].includes(rule.pricingMode)
         ) === true,
         migratedIdsPreserved: pricingRules.body?.map(rule => rule.pricingRuleId).sort((left, right) => left - right).join(",") === "1,2,3,4,5",
-        migratedContextIdsAreIntegers: pricingRules.body?.every(rule => Number.isInteger(rule.executionContextId)),
+        migratedContextIdsAreIntegers: pricingRules.body?.every(rule => Number.isInteger(rule.tradeContextId)),
         migratedOverridesAreNull: pricingRules.body?.every(
-          rule => rule.positionManagementModeOverride === null
+          rule => rule.autoManagementAdmissionModeOverride === null
         ) === true,
         migratedEffectiveModesUseSafeManualDefault: pricingRules.body?.every(
-          rule => rule.effectivePositionManagementMode === "MANUAL"
+          rule => rule.effectiveAutoManagementAdmissionMode === "REVIEW_REQUIRED"
         ) === true,
         createdId: createPricingRule.body?.pricingRuleId,
         createdCounterpartyId: createPricingRule.body?.counterpartyId,
         createdCounterpartyType: createPricingRule.body?.counterpartyType,
         createdPairCode: createPricingRule.body?.ccyPairCode,
         createdCurrencyPair: createPricingRule.body?.currencyPair,
-        createdPositionManagementModeOverride:
-          createPricingRule.body?.positionManagementModeOverride,
-        createdEffectivePositionManagementMode:
-          createPricingRule.body?.effectivePositionManagementMode,
+        createdAdmissionModeOverride:
+          createPricingRule.body?.autoManagementAdmissionModeOverride,
+        createdEffectiveAdmissionMode:
+          createPricingRule.body?.effectiveAutoManagementAdmissionMode,
         updatedId: updatePricingRule.body?.pricingRuleId,
-        updatedContextId: updatePricingRule.body?.executionContextId,
+        updatedContextId: updatePricingRule.body?.tradeContextId,
         expectedUpdatedContextId: emeraldClickContextId,
         updatedMargin: updatePricingRule.body?.marginPercent,
-        updatedPositionManagementModeOverride:
-          updatePricingRule.body?.positionManagementModeOverride,
+        updatedAdmissionModeOverride:
+          updatePricingRule.body?.autoManagementAdmissionModeOverride,
         immutableUpdateStatus: immutablePricingRuleUpdate.statusCode,
         immutableUpdateCode: immutablePricingRuleUpdate.body?.code,
-        immutableUpdateContextId: pricingRuleAfterImmutableUpdate?.executionContextId,
+        immutableUpdateContextId: pricingRuleAfterImmutableUpdate?.tradeContextId,
         immutableUpdateMargin: pricingRuleAfterImmutableUpdate?.marginPercent,
         lifecycle: [
           createPricingRule.statusCode,
@@ -7435,25 +7346,25 @@ async function verifyApiAndMigration() {
         configuredActiveCount: generationSettingsConfigured.body
           ?.filter(settings => settings.active).length ?? -1,
         invalidSettingsStatus: invalidGenerationSettings.statusCode,
-        generatedStatus: generatedClientFxDeal.statusCode,
-        generatedErrorCode: generatedClientFxDeal.body?.code,
-        generatedErrorMessage: generatedClientFxDeal.body?.message,
-        generatedTradeId: generatedClientFxDeal.body?.tradeId,
-        generatedPricingRuleId: generatedClientFxDeal.body?.pricingRuleId,
+        generatedStatus: generatedClientDeal.statusCode,
+        generatedErrorCode: generatedClientDeal.body?.code,
+        generatedErrorMessage: generatedClientDeal.body?.message,
+        generatedTradeId: generatedClientDeal.body?.tradeId,
+        generatedPricingRuleId: generatedClientDeal.body?.pricingRuleId,
         expectedPricingRuleId: generationRule?.pricingRuleId,
-        generatedSide: generatedClientFxDeal.body?.side,
-        generatedBaseCcyAmount: generatedClientFxDeal.body?.baseCcyAmount,
-        generatedTenor: generatedClientFxDeal.body?.tenor,
-        generatedMarketPulseStatus: generatedClientFxDeal.body?.marketPulseStreamStatus,
-        generatedMarketPulseBid: generatedClientFxDeal.body?.marketPulseBid,
-        generatedMarketPulseOffer: generatedClientFxDeal.body?.marketPulseOffer,
+        generatedSide: generatedClientDeal.body?.side,
+        generatedBaseCcyAmount: generatedClientDeal.body?.baseCcyAmount,
+        generatedTenor: generatedClientDeal.body?.tenor,
+        generatedMarketPulseStatus: generatedClientDeal.body?.marketPulseStreamStatus,
+        generatedMarketPulseBid: generatedClientDeal.body?.marketPulseBid,
+        generatedMarketPulseOffer: generatedClientDeal.body?.marketPulseOffer,
         generatedDealtCcyCode: generatedExposureRow?.dealt_ccy_code,
         expectedDealtCcyCode: generationRule?.currencyPair?.split("/")[0],
         generatedBaseFractionDigits: generatedExposureRow?.base_ccy_fraction_digits,
         expectedBaseFractionDigits: 3,
         generatedQuoteFractionDigits: generatedExposureRow?.quote_ccy_fraction_digits,
         expectedQuoteFractionDigits: 0,
-        generatedDeleteStatus: rejectGeneratedClientFxDealDelete.statusCode,
+        generatedDeleteStatus: rejectGeneratedClientDealDelete.statusCode,
         processSettingsStatus: generationProcessSettingsBefore.statusCode,
         processSettings: generationProcessSettingsBefore.body,
         invalidProcessSettingsStatus: invalidGenerationProcessSettings.statusCode,
@@ -7473,7 +7384,7 @@ async function verifyApiAndMigration() {
           clientDealGenerationProcessStatus.body?.lastCycleGeneratedDealCount,
         processStopStatus: stopClientDealGenerationProcess.statusCode,
         processStoppedRunning: stopClientDealGenerationProcess.body?.running,
-        processGeneratedDeleteStatus: rejectProcessGeneratedClientFxDealDelete.statusCode,
+        processGeneratedDeleteStatus: rejectProcessGeneratedClientDealDelete.statusCode,
         processSettingsRestored:
           restoredGenerationProcessSettings.statusCode === 200
           && Object.entries(generationProcessSettingsBefore.body || {}).every(
@@ -7523,14 +7434,14 @@ async function verifyApiAndMigration() {
         updateAccountingSystem.statusCode,
         blockedAccountingSystemDelete.statusCode,
         deleteAccountingSystem.statusCode,
-        createExecutionSystem.statusCode,
-        updateExecutionSystem.statusCode,
-        blockedExecutionSystemDelete.statusCode,
-        deleteExecutionSystem.statusCode,
-        createExecutionContext.statusCode,
-        updateExecutionContext.statusCode,
-        invalidExecutionContext.statusCode,
-        deleteExecutionContext.statusCode,
+        createOriginatingSystem.statusCode,
+        updateOriginatingSystem.statusCode,
+        blockedOriginatingSystemDelete.statusCode,
+        deleteOriginatingSystem.statusCode,
+        createTradeContext.statusCode,
+        updateTradeContext.statusCode,
+        invalidTradeContext.statusCode,
+        deleteTradeContext.statusCode,
         deleteServicingLocation.statusCode
       ]
     };
@@ -7549,44 +7460,41 @@ async function main() {
     const apiAndMigration = await verifyApiAndMigration();
     const expectedTables = [
       "accounting_systems",
-      "auto_hedging_admission_policy_current",
-      "auto_hedging_admission_policy_pair_deviations",
-      "auto_hedging_admission_policy_pair_rules",
-      "auto_hedging_admission_policy_revisions",
+      "auto_mode_eligibility_rules",
       "ccy_options",
       "ccy_pair_options",
       "client_deal_generation_process_settings",
       "client_deal_generation_settings",
-      "client_fx_deals",
-      "execution_contexts",
-      "execution_systems",
+      "client_deals",
+      "trade_contexts",
+      "originating_systems",
       "external_counterparties",
-      "fx_auto_batching_ccy_pairs",
-      "fx_auto_batching_settings",
-      "fx_auto_hedging_admission_decisions",
-      "fx_batch_balance_trade",
-      "fx_batch_members",
-      "fx_batch_position_output",
-      "fx_batch_quote_cash_output",
-      "fx_batches",
-      "fx_batching_settings",
-      "fx_hedge_deals",
-      "fx_hedge_quick_mode_settings",
-      "fx_trade_exposure",
-      "fx_trade_market_snapshot",
-      "fx_trade_position_management",
-      "fx_trade_position_management_transitions",
+      "auto_batching_ccy_pairs",
+      "auto_batching_settings",
+      "auto_management_admission_decisions",
+      "batch_balance_trades",
+      "batch_members",
+      "batch_position_outputs",
+      "batch_quote_cash_outputs",
+      "batches",
+      "batching_settings",
+      "hedge_deals",
+      "hedge_quick_mode_settings",
+      "trade_exposures",
+      "trade_market_snapshots",
+      "trade_position_management",
+      "trade_position_management_transitions",
       "internal_units",
       "market_quote_simulation_settings",
       "pricing_rules",
       "servicing_locations",
       "trading_counterparties",
-      "trading_counterparty_execution_contexts",
+      "trading_counterparty_trade_contexts",
       "trading_counterparty_roles",
       "ui_color_tokens",
       "ui_table_column_settings",
       "users",
-      "v_fx_batch_formation_audit"
+      "v_batch_formation_audit"
     ];
     const simulationForeignKey = apiAndMigration.settingsForeignKeys[0];
     const failed = freshSchema.currencies !== 5
@@ -7600,36 +7508,37 @@ async function main() {
       )
       || freshSchema.servicingLocations !== 6
       || freshSchema.accountingSystems !== 2
-      || freshSchema.executionSystems !== 3
-      || freshSchema.executionContexts !== 5
-      || freshSchema.executionContextIdType !== "INTEGER"
-      || freshSchema.executionContextDefaultPositionManagementModeColumn?.notnull !== 1
-      || freshSchema.executionContextDefaultPositionManagementModeColumn?.dflt_value !== "'MANUAL'"
-      || freshSchema.executionContextPositionManagementModeCounts
-        .map(row => `${row.mode}:${row.count}`).join(",") !== "AUTO:2,MANUAL:3"
+      || freshSchema.originatingSystems !== 3
+      || freshSchema.tradeContexts !== 5
+      || freshSchema.tradeContextIdType !== "INTEGER"
+      || freshSchema.tradeContextAdmissionModeColumn?.notnull !== 1
+      || freshSchema.tradeContextAdmissionModeColumn?.dflt_value !== "'REVIEW_REQUIRED'"
+      || freshSchema.tradeContextAdmissionModeCounts
+        .map(row => `${row.mode}:${row.count}`).join(",") !== "AUTO_IF_ELIGIBLE:2,REVIEW_REQUIRED:3"
       || freshSchema.tradingCounterparties !== 5
       || freshSchema.tradingCounterpartyRoles.join(",") !== "CLIENT,HEDGE_COUNTERPARTY"
-      || freshSchema.tradingCounterpartyColumns.join(",") !== "counterparty_id,counterparty_name,is_active"
+      || freshSchema.tradingCounterpartyColumns.join(",")
+        !== "counterparty_id,counterparty_scope,counterparty_name,is_active"
       || freshSchema.externalCounterpartyColumns.join(",")
         !== "counterparty_id,counterparty_code,counterparty_code_type,external_counterparty_kind"
       || freshSchema.internalUnitColumns.join(",") !== "counterparty_id,unit_code,unit_type"
       || freshSchema.tradingCounterpartyRoleColumns.join(",") !== "counterparty_id,role_code"
-      || freshSchema.counterpartyExecutionContexts !== 7
-      || freshSchema.counterpartyExecutionContextColumns.join(",")
-        !== "counterparty_id,execution_context_id"
-      || freshSchema.counterpartyExecutionContextForeignKeys.length !== 2
-      || !freshSchema.counterpartyExecutionContextForeignKeys.some(foreignKey =>
+      || freshSchema.counterpartyTradeContexts !== 7
+      || freshSchema.counterpartyTradeContextColumns.join(",")
+        !== "counterparty_id,trade_context_id"
+      || freshSchema.counterpartyTradeContextForeignKeys.length !== 2
+      || !freshSchema.counterpartyTradeContextForeignKeys.some(foreignKey =>
         foreignKey.table === "trading_counterparties"
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "CASCADE"
       )
-      || !freshSchema.counterpartyExecutionContextForeignKeys.some(foreignKey =>
-        foreignKey.table === "execution_contexts"
+      || !freshSchema.counterpartyTradeContextForeignKeys.some(foreignKey =>
+        foreignKey.table === "trade_contexts"
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "RESTRICT"
       )
-      || freshSchema.counterpartyExecutionContextIndexColumns.join(",")
-        !== "execution_context_id,counterparty_id"
+      || freshSchema.counterpartyTradeContextIndexColumns.join(",")
+        !== "trade_context_id,counterparty_id"
       || freshSchema.users !== 3
       || freshSchema.userColumns.join(",") !== "user_id,user_code,first_name,last_name,user_role,is_active"
       || freshSchema.userRoles.join(",") !== "ADMIN,DEALER,SUPERVISOR"
@@ -7643,12 +7552,12 @@ async function main() {
       || freshSchema.uiTableColumnSettings !== 202
       || freshSchema.uiTableColumnLayoutKeys.map(row =>
         `${row.table_key}:${row.column_count}`
-      ).join(",") !== "accounting_systems_grid:5,analytical_pnl_report_grid:12,analytical_pnl_summary_grid:3,batch_cash_output_grid:3,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:11,ccy_options_grid:6,ccy_pair_options_grid:6,client_fx_deals_grid:21,deal_generation_settings_grid:11,execution_contexts_grid:8,execution_systems_grid:7,external_counterparties_grid:8,fx_position_grid:13,hedge_fx_deals_grid:22,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:8,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:7,servicing_locations_grid:7,users_grid:7"
+      ).join(",") !== "accounting_systems_grid:5,analytical_pnl_report_grid:12,analytical_pnl_summary_grid:3,batch_cash_output_grid:3,batch_members_grid:9,batch_position_output_grid:9,batching_history_grid:11,ccy_options_grid:6,ccy_pair_options_grid:6,client_deals_grid:21,deal_generation_settings_grid:11,trade_contexts_grid:8,originating_systems_grid:7,external_counterparties_grid:8,position_grid:13,hedge_deals_grid:22,hedge_quick_mode_settings_grid:7,internal_pricing_rules_grid:8,internal_units_grid:8,market_stream_grid:4,pricing_rules_grid:7,servicing_locations_grid:7,users_grid:7"
       || freshSchema.uiTableColumnSettingColumns.join(",")
         !== "table_key,column_key,column_label,display_order,default_width_px,width_px,updated_at"
       || freshSchema.uiTableColumnSettingRows.map(row =>
         `${row.column_key}:${row.default_width_px}:${row.width_px}`
-      ).join(",") !== "id:64:64,counterparty_code:122:122,counterparty_name:158:158,execution_context:596:596,ccy_pair:88:88,position_management_mode:232:232,margin:82:82"
+      ).join(",") !== "id:64:64,counterparty_code:122:122,counterparty_name:158:158,trade_context:596:596,ccy_pair:88:88,position_management_mode:232:232,margin:82:82"
       || !freshSchema.uiTableColumnSettingsConstraintsEnforced
       || freshSchema.pricingRules !== 7
       || freshSchema.pricingRulePositionManagementModeOverrideColumn?.notnull !== 0
@@ -7661,21 +7570,21 @@ async function main() {
       || freshSchema.clientDealGenerationProcessSettings?.max_interval_seconds !== 3
       || freshSchema.clientDealGenerationProcessSettings?.min_deals_per_cycle !== 3
       || freshSchema.clientDealGenerationProcessSettings?.max_deals_per_cycle !== 7
-      || freshSchema.fxBatchingSettingsColumns.join(",")
+      || freshSchema.batchingSettingsColumns.join(",")
         !== "settings_id,allow_cross_tenor_batching,updated_at"
-      || freshSchema.fxBatchingSettings?.settings_id !== 1
-      || freshSchema.fxBatchingSettings?.allow_cross_tenor_batching !== 0
-      || freshSchema.fxAutoBatchingSettingsColumns.join(",")
+      || freshSchema.batchingSettings?.settings_id !== 1
+      || freshSchema.batchingSettings?.allow_cross_tenor_batching !== 0
+      || freshSchema.autoBatchingSettingsColumns.join(",")
         !== "settings_id,max_interval_seconds,default_transfer_rate_spread_percent,tenor_compatibility_mode,updated_at"
-      || freshSchema.fxAutoBatchingSettings?.settings_id !== 1
-      || freshSchema.fxAutoBatchingSettings?.max_interval_seconds !== 60
-      || freshSchema.fxAutoBatchingSettings?.default_transfer_rate_spread_percent !== "0.05"
-      || freshSchema.fxAutoBatchingSettings?.tenor_compatibility_mode !== "SAME_TENOR_ONLY"
-      || freshSchema.fxAutoBatchingCcyPairs.map(row => row.ccy_pair_code).join(",")
+      || freshSchema.autoBatchingSettings?.settings_id !== 1
+      || freshSchema.autoBatchingSettings?.max_interval_seconds !== 60
+      || freshSchema.autoBatchingSettings?.default_transfer_rate_spread_percent !== "0.05"
+      || freshSchema.autoBatchingSettings?.tenor_compatibility_mode !== "SAME_TENOR_ONLY"
+      || freshSchema.autoBatchingCcyPairs.map(row => row.ccy_pair_code).join(",")
         !== "EUR_USD,GBP_USD"
-      || freshSchema.fxAutoBatchingCcyPairColumns.join(",")
+      || freshSchema.autoBatchingCcyPairColumns.join(",")
         !== "settings_id,ccy_pair_code"
-      || freshSchema.fxAutoBatchingCcyPairForeignKeys.length !== 2
+      || freshSchema.autoBatchingCcyPairForeignKeys.length !== 2
       || freshSchema.clientDealGenerationSettings !== 2
       || freshSchema.clientDealGenerationSettingsColumns.join(",") !== "pricing_rule_id,min_base_ccy_amount_minor,max_base_ccy_amount_minor,base_ccy_amount_step_minor,base_ccy_fraction_digits,buy_probability_percent,is_active"
       || freshSchema.clientDealGenerationSettingsForeignKeys.length !== 1
@@ -7692,105 +7601,105 @@ async function main() {
         && row.buy_probability_percent === 50
         && row.is_active === 1
       )
-      || freshSchema.fxTradeExposures !== 6
-      || freshSchema.fxTradeExposureColumns.join(",") !== "trade_id,execution_timestamp,received_timestamp,trade_type,trade_date,ccy_pair_code,base_ccy_side,dealt_ccy_code,base_ccy_amount_minor,base_ccy_fraction_digits,quote_ccy_amount_minor,quote_ccy_fraction_digits,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
-      || freshSchema.fxTradeExposureForeignKeys.length !== 2
-      || !freshSchema.fxTradeExposureIdentityIndex
-      || freshSchema.fxTradeExposureIdentityIndexColumns.join(",") !== "trade_id,trade_type"
-      || freshSchema.fxTradePositionManagementRows !== freshSchema.fxTradeExposures
-      || freshSchema.fxTradePositionManagementColumns.join(",")
+      || freshSchema.tradeExposures !== 6
+      || freshSchema.tradeExposureColumns.join(",") !== "trade_id,execution_timestamp,received_timestamp,trade_type,trade_date,ccy_pair_code,base_ccy_side,dealt_ccy_code,base_ccy_amount_minor,base_ccy_fraction_digits,quote_ccy_amount_minor,quote_ccy_fraction_digits,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
+      || freshSchema.tradeExposureForeignKeys.length !== 2
+      || !freshSchema.tradeExposureIdentityIndex
+      || freshSchema.tradeExposureIdentityIndexColumns.join(",") !== "trade_id,trade_type"
+      || freshSchema.tradePositionManagementRows !== freshSchema.tradeExposures
+      || freshSchema.tradePositionManagementColumns.join(",")
         !== "trade_id,trade_type,initial_position_management_mode,current_position_management_mode,created_at,updated_at"
-      || freshSchema.fxTradePositionManagementInitialModeCounts.length !== 1
-      || freshSchema.fxTradePositionManagementInitialModeCounts[0]?.mode !== "MANUAL"
-      || freshSchema.fxTradePositionManagementInitialModeCounts[0]?.count
-        !== freshSchema.fxTradeExposures
-      || freshSchema.fxTradePositionManagementCurrentModeCounts.length !== 1
-      || freshSchema.fxTradePositionManagementCurrentModeCounts[0]?.mode !== "MANUAL"
-      || freshSchema.fxTradePositionManagementCurrentModeCounts[0]?.count
-        !== freshSchema.fxTradeExposures
-      || freshSchema.fxTradePositionManagementMissingRows !== 0
-      || freshSchema.fxTradePositionManagementOrphanRows !== 0
-      || freshSchema.fxTradePositionManagementForeignKeys.length !== 2
-      || !freshSchema.fxTradePositionManagementForeignKeys.every(foreignKey =>
-        foreignKey.table === "fx_trade_exposure"
+      || freshSchema.tradePositionManagementInitialModeCounts.length !== 1
+      || freshSchema.tradePositionManagementInitialModeCounts[0]?.mode !== "MANUAL"
+      || freshSchema.tradePositionManagementInitialModeCounts[0]?.count
+        !== freshSchema.tradeExposures
+      || freshSchema.tradePositionManagementCurrentModeCounts.length !== 1
+      || freshSchema.tradePositionManagementCurrentModeCounts[0]?.mode !== "MANUAL"
+      || freshSchema.tradePositionManagementCurrentModeCounts[0]?.count
+        !== freshSchema.tradeExposures
+      || freshSchema.tradePositionManagementMissingRows !== 0
+      || freshSchema.tradePositionManagementOrphanRows !== 0
+      || freshSchema.tradePositionManagementForeignKeys.length !== 2
+      || !freshSchema.tradePositionManagementForeignKeys.every(foreignKey =>
+        foreignKey.table === "trade_exposures"
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "CASCADE"
       )
-      || freshSchema.fxTradePositionManagementForeignKeys
+      || freshSchema.tradePositionManagementForeignKeys
         .slice()
         .sort((left, right) => left.seq - right.seq)
         .map(foreignKey => `${foreignKey.from}:${foreignKey.to}`).join(",")
         !== "trade_id:trade_id,trade_type:trade_type"
-      || freshSchema.fxTradePositionManagementTrigger?.name
-        !== "trg_fx_trade_position_management_initialize"
-      || !freshSchema.fxTradePositionManagementTrigger?.sql
-        ?.includes("AFTER INSERT ON fx_trade_exposure")
-      || !freshSchema.fxTradePositionManagementTrigger?.sql
-        ?.includes("INSERT INTO fx_trade_position_management")
-      || !freshSchema.fxTradePositionManagementTrigger?.sql
+      || freshSchema.tradePositionManagementTrigger?.name
+        !== "trg_trade_position_management_initialize"
+      || !freshSchema.tradePositionManagementTrigger?.sql
+        ?.includes("AFTER INSERT ON trade_exposures")
+      || !freshSchema.tradePositionManagementTrigger?.sql
+        ?.includes("INSERT INTO trade_position_management")
+      || !freshSchema.tradePositionManagementTrigger?.sql
         ?.includes("(NEW.trade_id, NEW.trade_type, 'MANUAL', 'MANUAL')")
-      || freshSchema.fxTradePositionManagementTransitionRows !== 0
-      || freshSchema.fxTradePositionManagementTransitionColumns.join(",")
+      || freshSchema.tradePositionManagementTransitionRows !== 0
+      || freshSchema.tradePositionManagementTransitionColumns.join(",")
         !== "transition_id,trade_id,trade_type,from_position_management_mode,to_position_management_mode,reason_code,transition_source,transitioned_at"
-      || freshSchema.fxTradePositionManagementTransitionForeignKeys.length !== 2
-      || !freshSchema.fxTradePositionManagementTransitionForeignKeys.every(foreignKey =>
-        foreignKey.table === "fx_trade_exposure"
+      || freshSchema.tradePositionManagementTransitionForeignKeys.length !== 2
+      || !freshSchema.tradePositionManagementTransitionForeignKeys.every(foreignKey =>
+        foreignKey.table === "trade_exposures"
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "CASCADE"
       )
-      || freshSchema.fxTradePositionManagementTransitionForeignKeys
+      || freshSchema.tradePositionManagementTransitionForeignKeys
         .slice()
         .sort((left, right) => left.seq - right.seq)
         .map(foreignKey => `${foreignKey.from}:${foreignKey.to}`).join(",")
         !== "trade_id:trade_id,trade_type:trade_type"
-      || !freshSchema.fxTradePositionManagementTransitionCreateSql
+      || !freshSchema.tradePositionManagementTransitionCreateSql
         .includes("from_position_management_mode = 'MANUAL'")
-      || !freshSchema.fxTradePositionManagementTransitionCreateSql
+      || !freshSchema.tradePositionManagementTransitionCreateSql
         .includes("to_position_management_mode = 'AUTO'")
-      || !freshSchema.fxTradePositionManagementTransitionCreateSql
+      || !freshSchema.tradePositionManagementTransitionCreateSql
         .includes("reason_code = 'MANUAL_REVIEW_COMPLETED'")
-      || !freshSchema.fxTradePositionManagementTransitionCreateSql
+      || !freshSchema.tradePositionManagementTransitionCreateSql
         .includes("transition_source = 'OPERATOR'")
-      || freshSchema.fxTradeMarketSnapshots !== 2
-      || freshSchema.fxTradeMarketSnapshotColumns.join(",") !== "trade_id,trade_type,market_pulse_stream_status,market_pulse_bid,market_pulse_offer,market_pulse_timestamp"
-      || freshSchema.fxTradeMarketSnapshotForeignKeys.length !== 2
-      || !freshSchema.fxTradeMarketSnapshotForeignKeys.every(foreignKey =>
+      || freshSchema.tradeMarketSnapshots !== 2
+      || freshSchema.tradeMarketSnapshotColumns.join(",") !== "trade_id,trade_type,market_pulse_stream_status,market_pulse_bid,market_pulse_offer,market_pulse_timestamp"
+      || freshSchema.tradeMarketSnapshotForeignKeys.length !== 2
+      || !freshSchema.tradeMarketSnapshotForeignKeys.every(foreignKey =>
         foreignKey.on_update === "RESTRICT" && foreignKey.on_delete === "RESTRICT"
       )
-      || !freshSchema.fxTradeMarketSnapshotForeignKeys.every(foreignKey =>
-        foreignKey.table === "fx_trade_exposure"
+      || !freshSchema.tradeMarketSnapshotForeignKeys.every(foreignKey =>
+        foreignKey.table === "trade_exposures"
       )
-      || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_bid !== 1.122
-      || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_offer !== 1.1222
-      || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_stream_status !== "RUNNING"
-      || freshSchema.fxTradeMarketSnapshotSeedRows[0]?.market_pulse_timestamp !== "2026-07-15T09:30:00.000Z"
-      || freshSchema.clientFxDeals !== 1
-      || freshSchema.clientFxDealColumns.join(",") !== "trade_id,trade_type,counterparty_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits,comment"
-      || freshSchema.clientFxDealForeignKeys.length !== 7
-      || !freshSchema.clientFxDealForeignKeys.every(foreignKey =>
+      || freshSchema.tradeMarketSnapshotSeedRows[0]?.market_pulse_bid !== 1.122
+      || freshSchema.tradeMarketSnapshotSeedRows[0]?.market_pulse_offer !== 1.1222
+      || freshSchema.tradeMarketSnapshotSeedRows[0]?.market_pulse_stream_status !== "RUNNING"
+      || freshSchema.tradeMarketSnapshotSeedRows[0]?.market_pulse_timestamp !== "2026-07-15T09:30:00.000Z"
+      || freshSchema.clientDeals !== 1
+      || freshSchema.clientDealColumns.join(",") !== "trade_id,trade_type,counterparty_id,trade_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits,comment"
+      || freshSchema.clientDealForeignKeys.length !== 7
+      || !freshSchema.clientDealForeignKeys.every(foreignKey =>
         foreignKey.on_update === "RESTRICT" && foreignKey.on_delete === "RESTRICT"
       )
-      || !["trading_counterparties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
-        freshSchema.clientFxDealForeignKeys.some(foreignKey => foreignKey.table === referencedTable)
+      || !["trading_counterparties", "trade_contexts", "pricing_rules", "trade_exposures"].every(referencedTable =>
+        freshSchema.clientDealForeignKeys.some(foreignKey => foreignKey.table === referencedTable)
       )
-      || freshSchema.clientFxDealSeedRow?.execution_context_id !== 3
-      || freshSchema.clientFxDealSeedRow?.pricing_rule_id !== 3
-      || freshSchema.clientFxDealSeedRow?.transfer_rate !== 1.1222
-      || freshSchema.clientFxDealSeedRow?.analytical_pnl_quote_minor !== 2700000
-      || freshSchema.clientFxDealSeedRow?.analytical_pnl_quote_fraction_digits !== 2
-      || freshSchema.hedgeFxDeals !== 1
-      || freshSchema.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,request_timestamp,counterparty_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits"
-      || freshSchema.hedgeFxDealForeignKeys.length !== 7
-      || !freshSchema.hedgeFxDealForeignKeys.every(foreignKey =>
+      || freshSchema.clientDealSeedRow?.trade_context_id !== 3
+      || freshSchema.clientDealSeedRow?.pricing_rule_id !== 3
+      || freshSchema.clientDealSeedRow?.transfer_rate !== 1.1222
+      || freshSchema.clientDealSeedRow?.analytical_pnl_quote_minor !== 2700000
+      || freshSchema.clientDealSeedRow?.analytical_pnl_quote_fraction_digits !== 2
+      || freshSchema.hedgeDeals !== 1
+      || freshSchema.hedgeDealColumns.join(",") !== "trade_id,trade_type,request_timestamp,counterparty_id,trade_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits"
+      || freshSchema.hedgeDealForeignKeys.length !== 7
+      || !freshSchema.hedgeDealForeignKeys.every(foreignKey =>
         foreignKey.on_update === "RESTRICT" && foreignKey.on_delete === "RESTRICT"
       )
-      || !["trading_counterparties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
-        freshSchema.hedgeFxDealForeignKeys.some(foreignKey => foreignKey.table === referencedTable)
+      || !["trading_counterparties", "trade_contexts", "pricing_rules", "trade_exposures"].every(referencedTable =>
+        freshSchema.hedgeDealForeignKeys.some(foreignKey => foreignKey.table === referencedTable)
       )
-      || freshSchema.hedgeFxDealSeedRow?.trade_type !== "HEDGE_DEAL"
-      || freshSchema.hedgeFxDealSeedRow?.transfer_rate !== 1.1222
-      || freshSchema.hedgeFxDealSeedRow?.analytical_pnl_quote_minor !== 0
-      || freshSchema.hedgeFxDealSeedRow?.analytical_pnl_quote_fraction_digits !== 2
+      || freshSchema.hedgeDealSeedRow?.trade_type !== "HEDGE_DEAL"
+      || freshSchema.hedgeDealSeedRow?.transfer_rate !== 1.1222
+      || freshSchema.hedgeDealSeedRow?.analytical_pnl_quote_minor !== 0
+      || freshSchema.hedgeDealSeedRow?.analytical_pnl_quote_fraction_digits !== 2
       || freshSchema.hedgeQuickModeSettings !== 1
       || freshSchema.hedgeQuickModeSettingsColumns.join(",")
         !== "ccy_pair_code,counterparty_id,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
@@ -7822,24 +7731,24 @@ async function main() {
       || freshSchema.hedgeQuickModeSettingsReferenceIndexColumns.join(",")
         !== "pricing_rule_id,ccy_pair_code"
       || freshSchema.hedgeQuickModeSettingsTriggers.length < 9
-      || freshSchema.fxTradeBatches !== 0
-      || freshSchema.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,formation_reason_code,formation_reason_details_json,window_opened_at,window_closed_at,created_at,rolled_back_at"
+      || freshSchema.tradeBatches !== 0
+      || freshSchema.tradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,formation_reason_code,formation_reason_details_json,window_opened_at,window_closed_at,created_at,rolled_back_at"
       || freshSchema.batchFormationAuditView?.type !== "view"
       || freshSchema.batchFormationAuditViewColumns.join(",")
         !== "batch_id,batch_status,ccy_pair_code,trade_date,tenor,base_ccy_value_date,quote_ccy_value_date,base_ccy_fraction_digits,quote_ccy_fraction_digits,window_opened_at,window_closed_at,formed_at,formation_reason_code,formation_reason_details_json,source_trade_count,rolled_back_at"
-      || freshSchema.fxTradeBatchForeignKeys.length !== 1
-      || freshSchema.fxTradeBatchForeignKeys[0]?.table !== "ccy_pair_options"
-      || freshSchema.fxTradeBatchForeignKeys[0]?.on_update !== "RESTRICT"
-      || freshSchema.fxTradeBatchForeignKeys[0]?.on_delete !== "RESTRICT"
-      || !freshSchema.fxTradeBatchCreateSql.includes("AUTOINCREMENT")
-      || freshSchema.fxTradeBatchStatusPairIndexColumns.join(",") !== "batch_status,ccy_pair_code"
-      || !freshSchema.fxTradeBatchDefaultsSupported
-      || !freshSchema.fxTradeBatchConstraintsEnforced
+      || freshSchema.tradeBatchForeignKeys.length !== 1
+      || freshSchema.tradeBatchForeignKeys[0]?.table !== "ccy_pair_options"
+      || freshSchema.tradeBatchForeignKeys[0]?.on_update !== "RESTRICT"
+      || freshSchema.tradeBatchForeignKeys[0]?.on_delete !== "RESTRICT"
+      || !freshSchema.tradeBatchCreateSql.includes("AUTOINCREMENT")
+      || freshSchema.tradeBatchStatusPairIndexColumns.join(",") !== "batch_status,ccy_pair_code"
+      || !freshSchema.tradeBatchDefaultsSupported
+      || !freshSchema.tradeBatchConstraintsEnforced
       || freshSchema.batchBalancingTrades !== 0
       || freshSchema.batchBalancingTradeColumns.join(",") !== "batch_id,trade_id,trade_type,member_role"
       || freshSchema.batchBalancingTradeForeignKeys.length !== 3
       || !freshSchema.batchBalancingTradeForeignKeys.every(foreignKey =>
-        ["fx_trade_exposure", "fx_batches"].includes(foreignKey.table)
+        ["trade_exposures", "batches"].includes(foreignKey.table)
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "RESTRICT"
       )
@@ -7856,7 +7765,7 @@ async function main() {
         .find(column => column.name === "trade_id")?.pk !== 1
       || freshSchema.batchBalanceTradeForeignKeys.length !== 2
       || !freshSchema.batchBalanceTradeForeignKeys.every(foreignKey =>
-        foreignKey.table === "fx_trade_exposure"
+        foreignKey.table === "trade_exposures"
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "RESTRICT"
       )
@@ -7871,7 +7780,7 @@ async function main() {
         .find(column => column.name === "trade_id")?.pk !== 1
       || freshSchema.batchPositionOutputForeignKeys.length !== 2
       || !freshSchema.batchPositionOutputForeignKeys.every(foreignKey =>
-        foreignKey.table === "fx_trade_exposure"
+        foreignKey.table === "trade_exposures"
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "RESTRICT"
       )
@@ -7885,7 +7794,7 @@ async function main() {
         !== "batch_id,quote_ccy_code,quote_balance_contribution_minor,quote_ccy_fraction_digits,quote_ccy_value_date,created_at"
       || freshSchema.batchQuoteCashMemberForeignKeys.length !== 2
       || !freshSchema.batchQuoteCashMemberForeignKeys.every(foreignKey =>
-        ["fx_batches", "ccy_options"].includes(foreignKey.table)
+        ["batches", "ccy_options"].includes(foreignKey.table)
         && foreignKey.on_update === "RESTRICT"
         && foreignKey.on_delete === "RESTRICT"
       )
@@ -7893,7 +7802,7 @@ async function main() {
         .test(freshSchema.batchQuoteCashMemberCreateSql)
       || freshSchema.batchQuoteCashMemberColumns.includes("batch_status")
       || freshSchema.batchQuoteCashMemberTriggers.join(",")
-        !== "trg_fx_batch_quote_cash_output_immutable_delete,trg_fx_batch_quote_cash_output_immutable_update,trg_fx_batch_quote_cash_output_validate_insert"
+        !== "trg_batch_quote_cash_outputs_immutable_delete,trg_batch_quote_cash_outputs_immutable_update,trg_batch_quote_cash_outputs_validate_insert"
       || !freshSchema.batchQuoteCashMemberSupported
       || !freshSchema.batchQuoteCashMemberConstraintsEnforced
       || !freshSchema.batchQuoteCashMemberParentRestrictionEnforced
@@ -7904,15 +7813,15 @@ async function main() {
       || !freshSchema.batchBalancingTradeConstraintsEnforced
       || !freshSchema.batchBalancingTradeParentRestrictionEnforced
       || !freshSchema.pricingRuleReferenceIndex
-      || freshSchema.pricingRuleReferenceIndexColumns.join(",") !== "pricing_rule_id,counterparty_id,execution_context_id"
-      || freshSchema.pricingRuleExecutionContextIdType !== "INTEGER"
+      || freshSchema.pricingRuleReferenceIndexColumns.join(",") !== "pricing_rule_id,counterparty_id,trade_context_id"
+      || freshSchema.pricingRuleTradeContextIdType !== "INTEGER"
       || !freshSchema.ccyOptionsConstraintsEnforced
       || !freshSchema.ccyPairOptionsConstraintsEnforced
       || !freshSchema.servicingLocationConstraintsEnforced
       || !freshSchema.accountingSystemTextLimitsEnforced
-      || !freshSchema.executionSystemConstraintsEnforced
+      || !freshSchema.originatingSystemConstraintsEnforced
       || !freshSchema.tradingCounterpartyConstraintsEnforced
-      || !freshSchema.counterpartyExecutionContextConstraintsEnforced
+      || !freshSchema.counterpartyTradeContextConstraintsEnforced
       || !freshSchema.userConstraintsEnforced
       || !freshSchema.normalizedTradingCounterpartyProfilesSupported
       || !freshSchema.clientDealGenerationProcessSettingsConstraintsEnforced
@@ -7920,42 +7829,42 @@ async function main() {
       || !freshSchema.clientDealGenerationSettingsCounterpartyTypeEnforced
       || !freshSchema.clientDealGenerationSettingsPricingModeEnforced
       || !freshSchema.clientDealGenerationSettingsCascadeDeleteEnforced
-      || !freshSchema.fxTradeExposureConstraintsEnforced
-      || !freshSchema.clientFxDealConstraintsEnforced
-      || !freshSchema.clientFxDealParentRestrictionEnforced
-      || !freshSchema.clientFxDealAttributionReferencesRestricted
-      || !freshSchema.clientFxDealCounterpartyTypeEnforced
-      || !freshSchema.hedgeFxDealConstraintsEnforced
-      || !freshSchema.hedgeFxDealParentRestrictionEnforced
-      || !freshSchema.hedgeFxDealCounterpartyTypeEnforced
-      || !freshSchema.counterpartyExecutionContextTablePresent
+      || !freshSchema.tradeExposureConstraintsEnforced
+      || !freshSchema.clientDealConstraintsEnforced
+      || !freshSchema.clientDealParentRestrictionEnforced
+      || !freshSchema.clientDealAttributionReferencesRestricted
+      || !freshSchema.clientDealCounterpartyTypeEnforced
+      || !freshSchema.hedgeDealConstraintsEnforced
+      || !freshSchema.hedgeDealParentRestrictionEnforced
+      || !freshSchema.hedgeDealCounterpartyTypeEnforced
+      || !freshSchema.counterpartyTradeContextTablePresent
       || freshSchema.foreignKeyViolations !== 0
       || frontend.duplicateIds.length > 0
       || frontend.missingDomIds.length > 0
       || !frontend.usesSimulationSettingsEndpoint
       || !frontend.usesBackendSimulationStream
       || !frontend.usesServicingLocationsEndpoint
-      || !frontend.usesHedgeFxDealsEndpoint
+      || !frontend.usesHedgeDealsEndpoint
       || !frontend.usesDedicatedAddHedgeDealFlow
       || !frontend.usesQuickHedgeMode
       || !frontend.usesHedgeQuickModeSettingsEditor
-      || !frontend.usesFxAutoBatchingSettings
+      || !frontend.usesAutoBatchingSettings
       || !frontend.usesCompactHedgingSettingsLayout
       || !frontend.usesHedgeCounterpartyPricingRules
       || !frontend.usesPricingModeIndicators
-      || !frontend.usesExecutionSystemLabels
+      || !frontend.usesOriginatingSystemLabels
       || !frontend.usesUnifiedMarginIndicators
       || !frontend.usesGroupedDatabaseExplorer
       || !frontend.usesUiColorTokenPalette
-      || !frontend.usesFxPositionColorPalette
-      || !frontend.usesDatabaseBackedFxPositions
-      || !frontend.usesModeSeparatedFxPositionWorkspace
-      || !frontend.usesManualToAutoFxPositionTransition
+      || !frontend.usesPositionColorPalette
+      || !frontend.usesDatabaseBackedPositions
+      || !frontend.usesModeSeparatedPositionWorkspace
+      || !frontend.usesManualToAutoPositionTransition
       || !frontend.usesClientDealCommentOnlyEditing
       || !frontend.usesDatabaseBackedClientDealGeneration
       || !frontend.removesBrowserClientDealGeneration
-      || !frontend.usesFxBatchFormation
-      || !frontend.serializesFxBatchUiRequests
+      || !frontend.usesBatchFormation
+      || !frontend.serializesBatchUiRequests
       || !frontend.usesBatchingHistory
       || !frontend.usesUnifiedBatchHeaderFilterFocus
       || !frontend.usesBatchFormationAudit
@@ -7967,35 +7876,35 @@ async function main() {
       || !frontend.usesStrictMinorUnitDealInputs
       || !frontend.usesMinorUnitDealGridFormatting
       || !frontend.usesMinorUnitClientDealGenerationSettings
-      || !frontend.usesMinorUnitFxPositionSummary
-      || !frontend.usesBootstrapFxPositionWorkspace
+      || !frontend.usesMinorUnitPositionSummary
+      || !frontend.usesBootstrapPositionWorkspace
       || !frontend.usesBootstrapDealGenerationSettings
       || !frontend.showsAutoPricedClientDealGenerationMode
       || !frontend.usesNeutralMarketPulseNavigationIcon
       || !frontend.usesGroupedPricingNavigation
       || !frontend.usesTabbedTradesWorkspace
       || !frontend.usesGroupedSettingsNavigation
-      || !frontend.usesFxPositionAsDefaultWorkspace
-      || !frontend.usesImmutableClientFxDealEdit
+      || !frontend.usesPositionAsDefaultWorkspace
+      || !frontend.usesImmutableClientDealEdit
       || !frontend.usesAuthoritativeClientDealRefresh
-      || !frontend.usesHedgeFxDealsTabulator
+      || !frontend.usesHedgeDealsTabulator
       || !frontend.usesAccountingSystemsEndpoint
-      || !frontend.usesExecutionSystemsEndpoint
+      || !frontend.usesOriginatingSystemsEndpoint
       || !frontend.persistsReferenceDataItemsWithoutUndefinedAlias
-      || !frontend.usesExecutionContextsEndpoint
+      || !frontend.usesTradeContextsEndpoint
       || !frontend.usesTradingCounterpartiesEndpoint
       || !frontend.usesUsersWorkspace
       || !frontend.usesInlineUsersEditor
       || !frontend.usesPricingRulesEndpoint
       || !frontend.usesPricingRulesBootstrap
-      || !frontend.usesPricingRulePositionModeInheritanceControls
-      || !frontend.usesFxPositionManagementPolicyConfiguration
+      || !frontend.usesPricingRuleAdmissionInheritanceControls
+      || !frontend.usesPositionManagementPolicyConfiguration
       || !frontend.usesDatabaseBackedUiTableColumnLayouts
       || !frontend.displaysPricingRuleCounterpartyType
-      || !frontend.embedsPricingModeInPricingRuleExecutionContext
+      || !frontend.embedsPricingModeInPricingRuleTradeContext
       || !frontend.usesDealerPricedClientDealRules
-      || !frontend.usesClientFxDealsEndpoint
-      || !frontend.persistsClientFxDealAttribution
+      || !frontend.usesClientDealsEndpoint
+      || !frontend.persistsClientDealAttribution
       || !frontend.usesDedicatedAddClientDealFlow
       || !frontend.supportsClientOnboardingManualPricing
       || !frontend.usesContextRichPricingRulePicker
@@ -8029,8 +7938,8 @@ async function main() {
       || !frontend.usesPolicyAwarePricingRuleEditing
       || !frontend.usesMutedUnavailablePricingContextOptions
       || !frontend.usesFilterAwareSmartSizing
-      || !frontend.usesTradingCounterpartyExecutionContextAssignments
-      || !frontend.pricingRulesUseDirectExecutionContexts
+      || !frontend.usesTradingCounterpartyTradeContextAssignments
+      || !frontend.pricingRulesUseDirectTradeContexts
       || !frontend.usesPricingRuleContextBuilder
       || !frontend.usesVerticalPricingRuleContextLayout
       || !frontend.suppressesDuplicatePricingContextClear
@@ -8050,15 +7959,15 @@ async function main() {
       || !frontend.usesServicingLocationIdSort
       || !frontend.usesAccountingSystemTextLimits
       || !frontend.usesAccountingSystemIdSort
-      || !frontend.usesExecutionSystemTextLimits
-      || !frontend.usesExecutionSystemIdSort
+      || !frontend.usesOriginatingSystemTextLimits
+      || !frontend.usesOriginatingSystemIdSort
       || !frontend.usesGracefulWindowsShutdown
-      || !frontend.usesInlineExecutionContextEditor
-      || !frontend.usesReferenceLabelsInExecutionContexts
-      || !frontend.usesExecutionContextNames
-      || !frontend.usesExecutionContextUsage
-      || !frontend.usesExecutionContextColumnWidths
-      || !frontend.usesExecutionContextHeaderFiltersAndSort
+      || !frontend.usesInlineTradeContextEditor
+      || !frontend.usesReferenceLabelsInTradeContexts
+      || !frontend.usesTradeContextNames
+      || !frontend.usesTradeContextUsage
+      || !frontend.usesTradeContextColumnWidths
+      || !frontend.usesTradeContextHeaderFiltersAndSort
       || !frontend.usesConciseIntegerIdHeaders
       || !frontend.usesHumanReadablePricingRuleContexts
       || !frontend.usesLocalBootstrapAndTabulator
@@ -8079,22 +7988,22 @@ async function main() {
       || !frontend.usesSemanticMarketCommands
       || !frontend.usesSeparatedDialogActions
       || !frontend.avoidsDoubleTabbedPageDividers
-      || !frontend.usesLargeClientFxDealsTabulator
-      || !frontend.usesClientFxDealsDataTools
-      || !frontend.usesClientFxDealsVerticalGridlines
-      || !frontend.usesClientFxDealsFixedHeaders
-      || !frontend.removesLegacyFxPositionBlotter
-      || !frontend.usesFxPositionExposureDates
-      || !frontend.usesFxPositionTradeAttributes
-      || !frontend.removesFxPositionTradeTypeIndicators
-      || !frontend.usesFxPositionTradeTypeChips
-      || !frontend.removesFxPositionDemoDeleteActions
+      || !frontend.usesLargeClientDealsTabulator
+      || !frontend.usesClientDealsDataTools
+      || !frontend.usesClientDealsVerticalGridlines
+      || !frontend.usesClientDealsFixedHeaders
+      || !frontend.removesLegacyPositionBlotter
+      || !frontend.usesPositionExposureDates
+      || !frontend.usesPositionTradeAttributes
+      || !frontend.removesPositionTradeTypeIndicators
+      || !frontend.usesPositionTradeTypeChips
+      || !frontend.removesPositionDemoDeleteActions
       || !frontend.usesDemoTradeReset
-      || !frontend.supportsLargeFxPositionAmounts
-      || !frontend.usesFxPositionMarketPulseBrand
-      || !frontend.usesFxPositionHedgeDealTerminology
+      || !frontend.supportsLargePositionAmounts
+      || !frontend.usesPositionMarketPulseBrand
+      || !frontend.usesPositionHedgeDealTerminology
       || !frontend.usesStandaloneToolbarCommands
-      || !frontend.keepsSpecialFxPositionTradesVisuallyNeutral
+      || !frontend.keepsSpecialPositionTradesVisuallyNeutral
       || !frontend.usesCentralTabulatorColumnSizing
       || !frontend.usesUnifiedBootstrapWorkspaceStyle
       || !frontend.usesMarketVerticalGridlines
@@ -8103,9 +8012,9 @@ async function main() {
       || !frontend.usesFluidPricingContextTable
       || !frontend.usesFluidPricingRulesTable
       || !frontend.usesPricingRulesHeaderLayout
-      || !frontend.usesExecutionContextRoute
-      || !frontend.usesReferenceDataExecutionContextDrilldown
-      || !frontend.usesExecutionContextTradingCounterpartyDrilldown
+      || !frontend.usesTradeContextRoute
+      || !frontend.usesReferenceDataTradeContextDrilldown
+      || !frontend.usesTradeContextTradingCounterpartyDrilldown
       || !frontend.usesBootstrapReferenceDataControls
       || !frontend.usesUniformReferenceDataGrid
       || !frontend.usesHoverTabWithoutBottomBorder
@@ -8145,10 +8054,10 @@ async function main() {
       || !apiAndMigration.demoTradeReset.deleteTriggersRestored
       || !apiAndMigration.demoTradeReset.tradeSequencesCleared
       || apiAndMigration.demoTradeReset.foreignKeyViolations !== 0
-      || apiAndMigration.tables.join(",") !== expectedTables.join(",")
+      || apiAndMigration.tables.join(",") !== expectedTables.toSorted().join(",")
       || !apiAndMigration.ccyOptionsConstraintMigrated
       || !apiAndMigration.ccyPairOptionsConstraintMigrated
-      || !apiAndMigration.executionSystemConstraintMigrated
+      || !apiAndMigration.originatingSystemConstraintMigrated
       || !apiAndMigration.tradingCounterpartyConstraintsMigrated
       || !apiAndMigration.userConstraintsMigrated
       || apiAndMigration.pairColumns.some(column => ["bid_min", "spread", "bid_max"].includes(column))
@@ -8159,28 +8068,29 @@ async function main() {
       || apiAndMigration.accountingSystemColumns.join(",") !== "accounting_system_id,name,is_active"
       || apiAndMigration.accountingSystems.count !== 2
       || apiAndMigration.accountingSystems.afinaContextCount !== 3
-      || apiAndMigration.executionSystemColumns.join(",") !== "execution_system_id,name,pricing_mode,is_active"
-      || apiAndMigration.executionSystems.count !== 3
-      || apiAndMigration.executionSystems.clickTradeContextCount !== 2
-      || apiAndMigration.executionContextColumns.join(",") !== "execution_context_id,servicing_location_id,accounting_system_id,execution_system_id,default_position_management_mode,auto_hedging_admission_mode"
-      || apiAndMigration.executionContextIdType !== "INTEGER"
-      || apiAndMigration.executionContextForeignKeys.length !== 3
-      || !apiAndMigration.executionContextForeignKeys.every(foreignKey => foreignKey.onDelete === "RESTRICT")
-      || !["servicing_locations", "accounting_systems", "execution_systems"].every(referencedTable =>
-        apiAndMigration.executionContextForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
+      || apiAndMigration.originatingSystemColumns.join(",") !== "originating_system_id,name,pricing_mode,is_active"
+      || apiAndMigration.originatingSystems.count !== 3
+      || apiAndMigration.originatingSystems.clickTradeContextCount !== 2
+      || apiAndMigration.tradeContextColumns.join(",") !== "trade_context_id,servicing_location_id,accounting_system_id,originating_system_id,auto_management_admission_mode"
+      || apiAndMigration.tradeContextIdType !== "INTEGER"
+      || apiAndMigration.tradeContextForeignKeys.length !== 3
+      || !apiAndMigration.tradeContextForeignKeys.every(foreignKey => foreignKey.onDelete === "RESTRICT")
+      || !["servicing_locations", "accounting_systems", "originating_systems"].every(referencedTable =>
+        apiAndMigration.tradeContextForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
-      || apiAndMigration.executionContexts.count !== 5
-      || !apiAndMigration.executionContexts.migratedIdsAreIntegers
-      || !apiAndMigration.executionContexts.migratedModesUseSafeManualDefault
-      || !Number.isInteger(apiAndMigration.executionContexts.createdId)
-      || apiAndMigration.executionContexts.createdId <= 0
-      || apiAndMigration.executionContexts.createdAccountingSystemId !== "NOT_APPLICABLE"
-      || apiAndMigration.executionContexts.createdDefaultPositionManagementMode !== "MANUAL"
-      || apiAndMigration.executionContexts.updatedId !== apiAndMigration.executionContexts.createdId
-      || apiAndMigration.executionContexts.updatedDefaultPositionManagementMode !== "MANUAL"
-      || apiAndMigration.executionContexts.usageAfterCreate !== 1
-      || apiAndMigration.executionContexts.usageAfterDelete !== 0
-      || apiAndMigration.tradingCounterpartyColumns.join(",") !== "counterparty_id,counterparty_name,is_active"
+      || apiAndMigration.tradeContexts.count !== 5
+      || !apiAndMigration.tradeContexts.migratedIdsAreIntegers
+      || !apiAndMigration.tradeContexts.migratedModesUseSafeManualDefault
+      || !Number.isInteger(apiAndMigration.tradeContexts.createdId)
+      || apiAndMigration.tradeContexts.createdId <= 0
+      || apiAndMigration.tradeContexts.createdAccountingSystemId !== "NOT_APPLICABLE"
+      || apiAndMigration.tradeContexts.createdAdmissionMode !== "REVIEW_REQUIRED"
+      || apiAndMigration.tradeContexts.updatedId !== apiAndMigration.tradeContexts.createdId
+      || apiAndMigration.tradeContexts.updatedAdmissionMode !== "REVIEW_REQUIRED"
+      || apiAndMigration.tradeContexts.usageAfterCreate !== 1
+      || apiAndMigration.tradeContexts.usageAfterDelete !== 0
+      || apiAndMigration.tradingCounterpartyColumns.join(",")
+        !== "counterparty_id,counterparty_scope,counterparty_name,is_active"
       || apiAndMigration.externalCounterpartyColumns.join(",")
         !== "counterparty_id,counterparty_code,counterparty_code_type,external_counterparty_kind"
       || apiAndMigration.internalUnitColumns.join(",") !== "counterparty_id,unit_code,unit_type"
@@ -8190,87 +8100,87 @@ async function main() {
       || apiAndMigration.uiColorTokens.columns.join(",")
         !== "token_code,palette_family,shade,color_value,display_order,updated_at"
       || apiAndMigration.uiColorTokens.blue500?.color_value !== "#0D6EFD"
-      || apiAndMigration.counterpartyExecutionContextTable.status !== 200
-      || apiAndMigration.counterpartyExecutionContextTable.columns.join(",")
-        !== "counterparty_id,execution_context_id"
-      || apiAndMigration.counterpartyExecutionContextTable.foreignKeys.length !== 2
-      || !apiAndMigration.counterpartyExecutionContextTable.foreignKeys.some(foreignKey =>
+      || apiAndMigration.counterpartyTradeContextTable.status !== 200
+      || apiAndMigration.counterpartyTradeContextTable.columns.join(",")
+        !== "counterparty_id,trade_context_id"
+      || apiAndMigration.counterpartyTradeContextTable.foreignKeys.length !== 2
+      || !apiAndMigration.counterpartyTradeContextTable.foreignKeys.some(foreignKey =>
         foreignKey.referencedTable === "trading_counterparties"
         && foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "CASCADE"
       )
-      || !apiAndMigration.counterpartyExecutionContextTable.foreignKeys.some(foreignKey =>
-        foreignKey.referencedTable === "execution_contexts"
+      || !apiAndMigration.counterpartyTradeContextTable.foreignKeys.some(foreignKey =>
+        foreignKey.referencedTable === "trade_contexts"
         && foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "RESTRICT"
       )
-      || !apiAndMigration.counterpartyExecutionContextTable.createSql
-        .includes("PRIMARY KEY (counterparty_id, execution_context_id)")
-      || apiAndMigration.counterpartyExecutionContextTable.rowCount !== 6
-      || apiAndMigration.counterpartyExecutionContextMigration.client1Status !== 200
-      || apiAndMigration.counterpartyExecutionContextMigration.client1Assignments.length !== 3
-      || !apiAndMigration.counterpartyExecutionContextMigration.client1Assignments.every(context =>
+      || !apiAndMigration.counterpartyTradeContextTable.createSql
+        .includes("PRIMARY KEY (counterparty_id, trade_context_id)")
+      || apiAndMigration.counterpartyTradeContextTable.rowCount !== 6
+      || apiAndMigration.counterpartyTradeContextMigration.client1Status !== 200
+      || apiAndMigration.counterpartyTradeContextMigration.client1Assignments.length !== 3
+      || !apiAndMigration.counterpartyTradeContextMigration.client1Assignments.every(context =>
         context.pricingRulesCount === 1
       )
-      || apiAndMigration.counterpartyExecutionContextMigration.client2Status !== 200
-      || apiAndMigration.counterpartyExecutionContextMigration.client2Assignments.length !== 2
-      || !apiAndMigration.counterpartyExecutionContextMigration.client2Assignments.some(context =>
+      || apiAndMigration.counterpartyTradeContextMigration.client2Status !== 200
+      || apiAndMigration.counterpartyTradeContextMigration.client2Assignments.length !== 2
+      || !apiAndMigration.counterpartyTradeContextMigration.client2Assignments.some(context =>
         context.servicingLocationId === "002"
         && context.accountingSystemId === "AFINA"
-        && context.executionSystemId === "CLICK_TRADE_EFX"
+        && context.originatingSystemId === "CLICK_TRADE_EFX"
         && context.pricingRulesCount === 0
       )
-      || !apiAndMigration.counterpartyExecutionContextMigration.client2Assignments.some(context =>
+      || !apiAndMigration.counterpartyTradeContextMigration.client2Assignments.some(context =>
         context.servicingLocationId === "1234"
         && context.accountingSystemId === "AFINA"
-        && context.executionSystemId === "RFQ"
+        && context.originatingSystemId === "RFQ"
         && context.pricingRulesCount === 1
       )
-      || apiAndMigration.counterpartyExecutionContextMigration.missingCounterpartyStatus !== 404
-      || apiAndMigration.counterpartyExecutionContextMigration.missingCounterpartyCode
+      || apiAndMigration.counterpartyTradeContextMigration.missingCounterpartyStatus !== 404
+      || apiAndMigration.counterpartyTradeContextMigration.missingCounterpartyCode
         !== "TRADING_COUNTERPARTY_NOT_FOUND"
-      || apiAndMigration.executionContexts.assignedCounterpartyCounts
+      || apiAndMigration.tradeContexts.assignedCounterpartyCounts
         .reduce((total, context) => total + context.assignedCounterpartyCount, 0) !== 6
-      || !apiAndMigration.executionContexts.assignedCounterpartyCounts.every(context =>
+      || !apiAndMigration.tradeContexts.assignedCounterpartyCounts.every(context =>
         Number.isInteger(context.assignedCounterpartyCount)
         && context.assignedCounterpartyCount >= 0
       )
-      || apiAndMigration.counterpartyExecutionContextLifecycle.attachStatus !== 200
-      || apiAndMigration.counterpartyExecutionContextLifecycle.attached.length !== 2
-      || apiAndMigration.counterpartyExecutionContextLifecycle.idempotentAttachStatus !== 200
-      || apiAndMigration.counterpartyExecutionContextLifecycle.idempotentAttached.length !== 2
-      || apiAndMigration.counterpartyExecutionContextLifecycle.invalidBodyStatus !== 400
-      || apiAndMigration.counterpartyExecutionContextLifecycle.invalidBodyCode
-        !== "INVALID_EXECUTION_CONTEXT_ASSIGNMENTS"
-      || apiAndMigration.counterpartyExecutionContextLifecycle.atomicFailureStatus !== 404
-      || apiAndMigration.counterpartyExecutionContextLifecycle.atomicFailureCode
-        !== "EXECUTION_CONTEXT_NOT_FOUND"
-      || apiAndMigration.counterpartyExecutionContextLifecycle.assignmentsAfterAtomicFailure.length !== 2
-      || apiAndMigration.counterpartyExecutionContextLifecycle.assignmentsAfterAtomicFailure.some(context =>
-        context.executionContextId === apiAndMigration.counterpartyExecutionContextLifecycle
-          .singleAttached?.executionContextId
+      || apiAndMigration.counterpartyTradeContextLifecycle.attachStatus !== 200
+      || apiAndMigration.counterpartyTradeContextLifecycle.attached.length !== 2
+      || apiAndMigration.counterpartyTradeContextLifecycle.idempotentAttachStatus !== 200
+      || apiAndMigration.counterpartyTradeContextLifecycle.idempotentAttached.length !== 2
+      || apiAndMigration.counterpartyTradeContextLifecycle.invalidBodyStatus !== 400
+      || apiAndMigration.counterpartyTradeContextLifecycle.invalidBodyCode
+        !== "INVALID_TRADE_CONTEXT_ASSIGNMENTS"
+      || apiAndMigration.counterpartyTradeContextLifecycle.atomicFailureStatus !== 404
+      || apiAndMigration.counterpartyTradeContextLifecycle.atomicFailureCode
+        !== "TRADE_CONTEXT_NOT_FOUND"
+      || apiAndMigration.counterpartyTradeContextLifecycle.assignmentsAfterAtomicFailure.length !== 2
+      || apiAndMigration.counterpartyTradeContextLifecycle.assignmentsAfterAtomicFailure.some(context =>
+        context.tradeContextId === apiAndMigration.counterpartyTradeContextLifecycle
+          .singleAttached?.tradeContextId
       )
-      || apiAndMigration.counterpartyExecutionContextLifecycle.singleAttachStatus !== 200
-      || apiAndMigration.counterpartyExecutionContextLifecycle.singleAttached?.pricingRulesCount !== 0
-      || apiAndMigration.counterpartyExecutionContextLifecycle.singleDetachStatus !== 204
-      || apiAndMigration.counterpartyExecutionContextLifecycle.idempotentDetachStatus !== 204
-      || apiAndMigration.counterpartyExecutionContextLifecycle.assignmentsAfterDetach.length !== 2
-      || apiAndMigration.counterpartyExecutionContextLifecycle.blockedDetachStatus !== 409
-      || apiAndMigration.counterpartyExecutionContextLifecycle.blockedDetachCode
-        !== "COUNTERPARTY_EXECUTION_CONTEXT_IN_USE"
-      || apiAndMigration.counterpartyExecutionContextLifecycle.detachAfterRuleDeleteStatus !== 204
-      || apiAndMigration.pricingRuleColumns.join(",") !== "pricing_rule_id,counterparty_id,execution_context_id,ccy_pair_code,margin_percent,position_management_mode_override"
-      || apiAndMigration.pricingRuleExecutionContextIdType !== "INTEGER"
+      || apiAndMigration.counterpartyTradeContextLifecycle.singleAttachStatus !== 200
+      || apiAndMigration.counterpartyTradeContextLifecycle.singleAttached?.pricingRulesCount !== 0
+      || apiAndMigration.counterpartyTradeContextLifecycle.singleDetachStatus !== 204
+      || apiAndMigration.counterpartyTradeContextLifecycle.idempotentDetachStatus !== 204
+      || apiAndMigration.counterpartyTradeContextLifecycle.assignmentsAfterDetach.length !== 2
+      || apiAndMigration.counterpartyTradeContextLifecycle.blockedDetachStatus !== 409
+      || apiAndMigration.counterpartyTradeContextLifecycle.blockedDetachCode
+        !== "COUNTERPARTY_TRADE_CONTEXT_IN_USE"
+      || apiAndMigration.counterpartyTradeContextLifecycle.detachAfterRuleDeleteStatus !== 204
+      || apiAndMigration.pricingRuleColumns.join(",") !== "pricing_rule_id,counterparty_id,trade_context_id,ccy_pair_code,margin_percent,auto_management_admission_mode_override"
+      || apiAndMigration.pricingRuleTradeContextIdType !== "INTEGER"
       || apiAndMigration.pricingRuleForeignKeys.length !== 3
       || !apiAndMigration.pricingRuleForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
-      || !["trading_counterparties", "execution_contexts", "ccy_pair_options"].every(referencedTable =>
+      || !["trading_counterparties", "trade_contexts", "ccy_pair_options"].every(referencedTable =>
         apiAndMigration.pricingRuleForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
       || !apiAndMigration.pricingRules.migratedOverridesAreNull
       || !apiAndMigration.pricingRules.migratedEffectiveModesUseSafeManualDefault
-      || apiAndMigration.pricingRules.createdPositionManagementModeOverride !== null
-      || apiAndMigration.pricingRules.createdEffectivePositionManagementMode !== "MANUAL"
-      || apiAndMigration.pricingRules.updatedPositionManagementModeOverride !== null
+      || apiAndMigration.pricingRules.createdAdmissionModeOverride !== null
+      || apiAndMigration.pricingRules.createdEffectiveAdmissionMode !== "REVIEW_REQUIRED"
+      || apiAndMigration.pricingRules.updatedAdmissionModeOverride !== null
       || apiAndMigration.clientDealGenerationProcessSettingsColumns.join(",")
         !== "settings_id,min_interval_seconds,max_interval_seconds,min_deals_per_cycle,max_deals_per_cycle"
       || apiAndMigration.clientDealGenerationProcessSettingsRows.length !== 1
@@ -8340,103 +8250,103 @@ async function main() {
         !== "CLIENT_DEAL_GENERATION_NOT_CONFIGURED"
       || !apiAndMigration.clientDealGeneration.remainsStoppedWithoutEligibleRules
       || !apiAndMigration.clientDealGeneration.settingsRestored
-      || apiAndMigration.fxTradeExposureColumns.join(",") !== "trade_id,execution_timestamp,received_timestamp,trade_type,trade_date,ccy_pair_code,base_ccy_side,dealt_ccy_code,base_ccy_amount_minor,base_ccy_fraction_digits,quote_ccy_amount_minor,quote_ccy_fraction_digits,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
-      || apiAndMigration.fxTradeExposureForeignKeys.length !== 2
-      || !apiAndMigration.fxTradeExposureCreateSql.includes("'BATCH_BALANCE_TRADE'")
-      || !apiAndMigration.fxTradeExposureCreateSql.includes("'BATCH_POSITION_OUT'")
-      || !apiAndMigration.fxTradeExposureCreateSql.includes("base_ccy_side = 'FLAT'")
-      || apiAndMigration.fxTradeExposures.count !== 1
-      || apiAndMigration.fxTradeExposures.migratedRow?.trade_id !== 41
-      || apiAndMigration.fxTradeExposures.migratedRow?.trade_type !== "CLIENT_DEAL"
-      || apiAndMigration.fxTradeExposures.migratedRow?.base_ccy_side !== "SELL"
-      || apiAndMigration.fxTradeExposures.migratedRow?.dealt_ccy_code !== "EUR"
-      || apiAndMigration.fxTradeExposures.migratedRow?.base_ccy_amount_minor !== 150000000
-      || apiAndMigration.fxTradeExposures.migratedRow?.base_ccy_fraction_digits !== 2
-      || apiAndMigration.fxTradeExposures.migratedRow?.quote_ccy_amount_minor !== 168450000
-      || apiAndMigration.fxTradeExposures.migratedRow?.quote_ccy_fraction_digits !== 2
-      || apiAndMigration.fxTradeExposures.migratedRow?.tenor !== "TOM"
-      || apiAndMigration.fxTradePositionManagement.status !== 200
-      || apiAndMigration.fxTradePositionManagementColumns.join(",")
+      || apiAndMigration.tradeExposureColumns.join(",") !== "trade_id,execution_timestamp,received_timestamp,trade_type,trade_date,ccy_pair_code,base_ccy_side,dealt_ccy_code,base_ccy_amount_minor,base_ccy_fraction_digits,quote_ccy_amount_minor,quote_ccy_fraction_digits,trade_rate,tenor,base_ccy_value_date,quote_ccy_value_date"
+      || apiAndMigration.tradeExposureForeignKeys.length !== 2
+      || !apiAndMigration.tradeExposureCreateSql.includes("'BATCH_BALANCE_TRADE'")
+      || !apiAndMigration.tradeExposureCreateSql.includes("'BATCH_POSITION_OUT'")
+      || !apiAndMigration.tradeExposureCreateSql.includes("base_ccy_side = 'FLAT'")
+      || apiAndMigration.tradeExposures.count !== 1
+      || apiAndMigration.tradeExposures.migratedRow?.trade_id !== 41
+      || apiAndMigration.tradeExposures.migratedRow?.trade_type !== "CLIENT_DEAL"
+      || apiAndMigration.tradeExposures.migratedRow?.base_ccy_side !== "SELL"
+      || apiAndMigration.tradeExposures.migratedRow?.dealt_ccy_code !== "EUR"
+      || apiAndMigration.tradeExposures.migratedRow?.base_ccy_amount_minor !== 150000000
+      || apiAndMigration.tradeExposures.migratedRow?.base_ccy_fraction_digits !== 2
+      || apiAndMigration.tradeExposures.migratedRow?.quote_ccy_amount_minor !== 168450000
+      || apiAndMigration.tradeExposures.migratedRow?.quote_ccy_fraction_digits !== 2
+      || apiAndMigration.tradeExposures.migratedRow?.tenor !== "TOM"
+      || apiAndMigration.tradePositionManagement.status !== 200
+      || apiAndMigration.tradePositionManagementColumns.join(",")
         !== "trade_id,trade_type,initial_position_management_mode,current_position_management_mode,created_at,updated_at"
-      || apiAndMigration.fxTradePositionManagementForeignKeys.length !== 2
-      || !apiAndMigration.fxTradePositionManagementForeignKeys.every(foreignKey =>
-        foreignKey.referencedTable === "fx_trade_exposure"
+      || apiAndMigration.tradePositionManagementForeignKeys.length !== 2
+      || !apiAndMigration.tradePositionManagementForeignKeys.every(foreignKey =>
+        foreignKey.referencedTable === "trade_exposures"
         && foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "CASCADE"
       )
-      || apiAndMigration.fxTradePositionManagementForeignKeys
+      || apiAndMigration.tradePositionManagementForeignKeys
         .map(foreignKey => `${foreignKey.from}:${foreignKey.referencedColumn}`).join(",")
         !== "trade_id:trade_id,trade_type:trade_type"
-      || !apiAndMigration.fxTradePositionManagementCreateSql
+      || !apiAndMigration.tradePositionManagementCreateSql
         .includes("initial_position_management_mode IN ('MANUAL', 'AUTO')")
-      || !apiAndMigration.fxTradePositionManagementCreateSql
+      || !apiAndMigration.tradePositionManagementCreateSql
         .includes("current_position_management_mode IN ('MANUAL', 'AUTO')")
-      || apiAndMigration.fxTradePositionManagement.count !== 1
-      || apiAndMigration.fxTradePositionManagement.count
-        !== apiAndMigration.fxTradeExposures.count
-      || apiAndMigration.fxTradePositionManagement.migratedRow?.trade_id !== 41
-      || apiAndMigration.fxTradePositionManagement.migratedRow?.trade_type !== "CLIENT_DEAL"
-      || apiAndMigration.fxTradePositionManagement.migratedRow?.initial_position_management_mode
+      || apiAndMigration.tradePositionManagement.count !== 1
+      || apiAndMigration.tradePositionManagement.count
+        !== apiAndMigration.tradeExposures.count
+      || apiAndMigration.tradePositionManagement.migratedRow?.trade_id !== 41
+      || apiAndMigration.tradePositionManagement.migratedRow?.trade_type !== "CLIENT_DEAL"
+      || apiAndMigration.tradePositionManagement.migratedRow?.initial_position_management_mode
         !== "MANUAL"
-      || apiAndMigration.fxTradePositionManagement.migratedRow?.current_position_management_mode
+      || apiAndMigration.tradePositionManagement.migratedRow?.current_position_management_mode
         !== "MANUAL"
-      || apiAndMigration.fxTradePositionManagement.projectedInitialMode !== "MANUAL"
-      || apiAndMigration.fxTradePositionManagement.projectedCurrentMode !== "MANUAL"
-      || apiAndMigration.fxTradePositionManagement.projectedCompatibilityMode !== "MANUAL"
-      || apiAndMigration.fxTradePositionManagementTransitions.status !== 200
-      || apiAndMigration.fxTradePositionManagementTransitions.initialCount !== 0
-      || apiAndMigration.fxTradePositionManagementTransitionColumns.join(",")
+      || apiAndMigration.tradePositionManagement.projectedInitialMode !== "MANUAL"
+      || apiAndMigration.tradePositionManagement.projectedCurrentMode !== "MANUAL"
+      || apiAndMigration.tradePositionManagement.projectedCompatibilityMode !== "MANUAL"
+      || apiAndMigration.tradePositionManagementTransitions.status !== 200
+      || apiAndMigration.tradePositionManagementTransitions.initialCount !== 0
+      || apiAndMigration.tradePositionManagementTransitionColumns.join(",")
         !== "transition_id,trade_id,trade_type,from_position_management_mode,to_position_management_mode,reason_code,transition_source,transitioned_at"
-      || apiAndMigration.fxTradePositionManagementTransitionForeignKeys.length !== 2
-      || !apiAndMigration.fxTradePositionManagementTransitionForeignKeys.every(foreignKey =>
-        foreignKey.referencedTable === "fx_trade_exposure"
+      || apiAndMigration.tradePositionManagementTransitionForeignKeys.length !== 2
+      || !apiAndMigration.tradePositionManagementTransitionForeignKeys.every(foreignKey =>
+        foreignKey.referencedTable === "trade_exposures"
         && foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "CASCADE"
       )
-      || apiAndMigration.fxTradePositionManagementTransitionForeignKeys
+      || apiAndMigration.tradePositionManagementTransitionForeignKeys
         .map(foreignKey => `${foreignKey.from}:${foreignKey.referencedColumn}`).join(",")
         !== "trade_id:trade_id,trade_type:trade_type"
-      || !apiAndMigration.fxTradePositionManagementTransitionCreateSql
+      || !apiAndMigration.tradePositionManagementTransitionCreateSql
         .includes("from_position_management_mode = 'MANUAL'")
-      || !apiAndMigration.fxTradePositionManagementTransitionCreateSql
+      || !apiAndMigration.tradePositionManagementTransitionCreateSql
         .includes("to_position_management_mode = 'AUTO'")
-      || apiAndMigration.fxTradePositionManagementTransitions.sendStatus !== 200
-      || apiAndMigration.fxTradePositionManagementTransitions.targetMode !== "AUTO"
-      || apiAndMigration.fxTradePositionManagementTransitions.transitionedCount !== 1
-      || apiAndMigration.fxTradePositionManagementTransitions.replayStatus !== 200
-      || !apiAndMigration.fxTradePositionManagementTransitions.replayed
-      || apiAndMigration.fxTradePositionManagementTransitions.replayedCount !== 1
-      || apiAndMigration.fxTradePositionManagementTransitions.projectedInitialMode !== "MANUAL"
-      || apiAndMigration.fxTradePositionManagementTransitions.projectedCurrentMode !== "AUTO"
-      || apiAndMigration.fxTradePositionManagementTransitions.projectedCompatibilityMode !== "AUTO"
-      || apiAndMigration.fxTradePositionManagementTransitions.auditRows.length !== 1
-      || apiAndMigration.fxTradePositionManagementTransitions.auditRows[0]
+      || apiAndMigration.tradePositionManagementTransitions.sendStatus !== 200
+      || apiAndMigration.tradePositionManagementTransitions.targetMode !== "AUTO"
+      || apiAndMigration.tradePositionManagementTransitions.transitionedCount !== 1
+      || apiAndMigration.tradePositionManagementTransitions.replayStatus !== 200
+      || !apiAndMigration.tradePositionManagementTransitions.replayed
+      || apiAndMigration.tradePositionManagementTransitions.replayedCount !== 1
+      || apiAndMigration.tradePositionManagementTransitions.projectedInitialMode !== "MANUAL"
+      || apiAndMigration.tradePositionManagementTransitions.projectedCurrentMode !== "AUTO"
+      || apiAndMigration.tradePositionManagementTransitions.projectedCompatibilityMode !== "AUTO"
+      || apiAndMigration.tradePositionManagementTransitions.auditRows.length !== 1
+      || apiAndMigration.tradePositionManagementTransitions.auditRows[0]
         ?.from_position_management_mode !== "MANUAL"
-      || apiAndMigration.fxTradePositionManagementTransitions.auditRows[0]
+      || apiAndMigration.tradePositionManagementTransitions.auditRows[0]
         ?.to_position_management_mode !== "AUTO"
-      || apiAndMigration.fxTradePositionManagementTransitions.auditRows[0]?.reason_code
+      || apiAndMigration.tradePositionManagementTransitions.auditRows[0]?.reason_code
         !== "MANUAL_REVIEW_COMPLETED"
-      || apiAndMigration.fxTradePositionManagementTransitions.auditRows[0]?.transition_source
+      || apiAndMigration.tradePositionManagementTransitions.auditRows[0]?.transition_source
         !== "OPERATOR"
-      || apiAndMigration.fxTradeMarketSnapshotColumns.join(",") !== "trade_id,trade_type,market_pulse_stream_status,market_pulse_bid,market_pulse_offer,market_pulse_timestamp"
-      || apiAndMigration.fxTradeMarketSnapshotForeignKeys.length !== 2
-      || !apiAndMigration.fxTradeMarketSnapshotForeignKeys.every(foreignKey =>
+      || apiAndMigration.tradeMarketSnapshotColumns.join(",") !== "trade_id,trade_type,market_pulse_stream_status,market_pulse_bid,market_pulse_offer,market_pulse_timestamp"
+      || apiAndMigration.tradeMarketSnapshotForeignKeys.length !== 2
+      || !apiAndMigration.tradeMarketSnapshotForeignKeys.every(foreignKey =>
         foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "RESTRICT"
-        && foreignKey.referencedTable === "fx_trade_exposure"
+        && foreignKey.referencedTable === "trade_exposures"
       )
-      || apiAndMigration.fxTradeMarketSnapshots.count !== 0
-      || apiAndMigration.clientFxDealColumns.join(",") !== "trade_id,trade_type,counterparty_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits,comment"
-      || apiAndMigration.clientFxDealForeignKeys.length !== 7
-      || !apiAndMigration.clientFxDealForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
-      || !["trading_counterparties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
-        apiAndMigration.clientFxDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
+      || apiAndMigration.tradeMarketSnapshots.count !== 0
+      || apiAndMigration.clientDealColumns.join(",") !== "trade_id,trade_type,counterparty_id,trade_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits,comment"
+      || apiAndMigration.clientDealForeignKeys.length !== 7
+      || !apiAndMigration.clientDealForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
+      || !["trading_counterparties", "trade_contexts", "pricing_rules", "trade_exposures"].every(referencedTable =>
+        apiAndMigration.clientDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
-      || apiAndMigration.hedgeFxDealColumns.join(",") !== "trade_id,trade_type,request_timestamp,counterparty_id,execution_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits"
-      || apiAndMigration.hedgeFxDealForeignKeys.length !== 7
-      || !apiAndMigration.hedgeFxDealForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
-      || !["trading_counterparties", "execution_contexts", "pricing_rules", "fx_trade_exposure"].every(referencedTable =>
-        apiAndMigration.hedgeFxDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
+      || apiAndMigration.hedgeDealColumns.join(",") !== "trade_id,trade_type,request_timestamp,counterparty_id,trade_context_id,pricing_rule_id,transfer_rate,analytical_pnl_quote_minor,analytical_pnl_quote_fraction_digits"
+      || apiAndMigration.hedgeDealForeignKeys.length !== 7
+      || !apiAndMigration.hedgeDealForeignKeys.every(foreignKey => foreignKey.onUpdate === "RESTRICT" && foreignKey.onDelete === "RESTRICT")
+      || !["trading_counterparties", "trade_contexts", "pricing_rules", "trade_exposures"].every(referencedTable =>
+        apiAndMigration.hedgeDealForeignKeys.some(foreignKey => foreignKey.referencedTable === referencedTable)
       )
       || apiAndMigration.hedgeQuickModeSettingsColumns.join(",")
         !== "ccy_pair_code,counterparty_id,pricing_rule_id,base_ccy_fraction_digits,small_base_ccy_amount_minor,medium_base_ccy_amount_minor,large_base_ccy_amount_minor,xlarge_base_ccy_amount_minor,is_active,default_tenor"
@@ -8454,20 +8364,20 @@ async function main() {
         .includes("large_base_ccy_amount_minor < xlarge_base_ccy_amount_minor")
       || !apiAndMigration.hedgeQuickModeSettingsCreateSql
         .includes("default_tenor IN ('TOD', 'TOM', 'SPOT')")
-      || apiAndMigration.fxTradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,formation_reason_code,formation_reason_details_json,window_opened_at,window_closed_at,created_at,rolled_back_at"
-      || apiAndMigration.fxTradeBatchForeignKeys.length !== 1
-      || apiAndMigration.fxTradeBatchForeignKeys[0]?.onUpdate !== "RESTRICT"
-      || apiAndMigration.fxTradeBatchForeignKeys[0]?.onDelete !== "RESTRICT"
-      || apiAndMigration.fxTradeBatchForeignKeys[0]?.referencedTable !== "ccy_pair_options"
-      || !apiAndMigration.fxTradeBatchCreateSql.includes("AUTOINCREMENT")
-      || apiAndMigration.fxTradeBatches.status !== 200
-      || apiAndMigration.fxTradeBatches.count !== 0
+      || apiAndMigration.tradeBatchColumns.join(",") !== "batch_id,idempotency_key,ccy_pair_code,batch_status,formation_reason_code,formation_reason_details_json,window_opened_at,window_closed_at,created_at,rolled_back_at"
+      || apiAndMigration.tradeBatchForeignKeys.length !== 1
+      || apiAndMigration.tradeBatchForeignKeys[0]?.onUpdate !== "RESTRICT"
+      || apiAndMigration.tradeBatchForeignKeys[0]?.onDelete !== "RESTRICT"
+      || apiAndMigration.tradeBatchForeignKeys[0]?.referencedTable !== "ccy_pair_options"
+      || !apiAndMigration.tradeBatchCreateSql.includes("AUTOINCREMENT")
+      || apiAndMigration.tradeBatches.status !== 200
+      || apiAndMigration.tradeBatches.count !== 0
       || apiAndMigration.batchBalancingTradeColumns.join(",") !== "batch_id,trade_id,trade_type,member_role"
       || apiAndMigration.batchBalancingTradeForeignKeys.length !== 3
       || !apiAndMigration.batchBalancingTradeForeignKeys.every(foreignKey =>
         foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "RESTRICT"
-        && ["fx_trade_exposure", "fx_batches"].includes(foreignKey.referencedTable)
+        && ["trade_exposures", "batches"].includes(foreignKey.referencedTable)
       )
       || !/\bCHECK\s*\(\s*member_role\s+IN\s*\(\s*'TRADE'\s*,\s*'BALANCE_TRADE'\s*,\s*'POSITION_OUT'\s*\)\s*\)/i
         .test(apiAndMigration.batchMemberCreateSql)
@@ -8484,7 +8394,7 @@ async function main() {
       || !apiAndMigration.batchBalanceTradeForeignKeys.every(foreignKey =>
         foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "RESTRICT"
-        && foreignKey.referencedTable === "fx_trade_exposure"
+        && foreignKey.referencedTable === "trade_exposures"
       )
       || !/\btrade_id\s+INTEGER\s+PRIMARY KEY\b/i
         .test(apiAndMigration.batchBalanceTradeCreateSql)
@@ -8500,7 +8410,7 @@ async function main() {
       || !apiAndMigration.batchPositionOutputForeignKeys.every(foreignKey =>
         foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "RESTRICT"
-        && foreignKey.referencedTable === "fx_trade_exposure"
+        && foreignKey.referencedTable === "trade_exposures"
       )
       || !/\btrade_id\s+INTEGER\s+PRIMARY KEY\b/i
         .test(apiAndMigration.batchPositionOutputCreateSql)
@@ -8515,7 +8425,7 @@ async function main() {
       || !apiAndMigration.batchQuoteCashMemberForeignKeys.every(foreignKey =>
         foreignKey.onUpdate === "RESTRICT"
         && foreignKey.onDelete === "RESTRICT"
-        && ["fx_batches", "ccy_options"].includes(foreignKey.referencedTable)
+        && ["batches", "ccy_options"].includes(foreignKey.referencedTable)
       )
       || apiAndMigration.batchQuoteCashMemberColumns.includes("batch_status")
       || !/\bbatch_id\s+INTEGER\s+PRIMARY KEY\b/i
@@ -8629,7 +8539,7 @@ async function main() {
       || apiAndMigration.batchBalancingFlow.detailMemberBaseBalanceMinor !== 0
       || apiAndMigration.batchBalancingFlow.detailMemberQuoteBalanceMinor !== 0
       || apiAndMigration.batchBalancingFlow.missingDetailStatus !== 404
-      || apiAndMigration.batchBalancingFlow.missingDetailCode !== "FX_BATCH_NOT_FOUND"
+      || apiAndMigration.batchBalancingFlow.missingDetailCode !== "BATCH_NOT_FOUND"
       || apiAndMigration.batchBalancingFlow.duplicateSelectionStatus !== 400
       || apiAndMigration.batchBalancingFlow.missingSourceStatus !== 404
       || apiAndMigration.batchBalancingFlow.replayStatus !== 200
@@ -8719,226 +8629,226 @@ async function main() {
       || !apiAndMigration.balanceTradeSourceFlow.reusedAsOrdinaryTrade
       || !apiAndMigration.balanceTradeSourceFlow.hiddenAfterBatching
       || !apiAndMigration.balanceTradeSourceFlow.listedAsConsumed
-      || apiAndMigration.hedgeFxDeals.status !== 200
-      || apiAndMigration.hedgeFxDeals.count !== 0
-      || apiAndMigration.hedgeFxDeals.eligiblePricingRulesStatus !== 200
-      || apiAndMigration.hedgeFxDeals.eligiblePricingRulesCount !== 1
-      || !apiAndMigration.hedgeFxDeals.allHedgeCounterpartyRules
-      || !apiAndMigration.hedgeFxDeals.excludesDealerApprovedRules
-      || apiAndMigration.hedgeFxDeals.autoPriced.pricingRuleCreateStatus !== 201
+      || apiAndMigration.hedgeDeals.status !== 200
+      || apiAndMigration.hedgeDeals.count !== 0
+      || apiAndMigration.hedgeDeals.eligiblePricingRulesStatus !== 200
+      || apiAndMigration.hedgeDeals.eligiblePricingRulesCount !== 1
+      || !apiAndMigration.hedgeDeals.allHedgeCounterpartyRules
+      || !apiAndMigration.hedgeDeals.excludesDealerApprovedRules
+      || apiAndMigration.hedgeDeals.autoPriced.pricingRuleCreateStatus !== 201
       || !Number.isInteger(
-        apiAndMigration.hedgeFxDeals.autoPriced.pricingRuleId
+        apiAndMigration.hedgeDeals.autoPriced.pricingRuleId
       )
-      || apiAndMigration.hedgeFxDeals.autoPriced.eligiblePricingRulesStatus
+      || apiAndMigration.hedgeDeals.autoPriced.eligiblePricingRulesStatus
         !== 200
-      || apiAndMigration.hedgeFxDeals.autoPriced.eligiblePricingRulesCount
+      || apiAndMigration.hedgeDeals.autoPriced.eligiblePricingRulesCount
         !== 1
-      || !apiAndMigration.hedgeFxDeals.autoPriced
+      || !apiAndMigration.hedgeDeals.autoPriced
         .allEligibleRulesAreAutoPricedHedgeRules
-      || !apiAndMigration.hedgeFxDeals.autoPriced.includesCreatedPricingRule
-      || apiAndMigration.hedgeFxDeals.autoPriced.invalidPricingModeStatus
+      || !apiAndMigration.hedgeDeals.autoPriced.includesCreatedPricingRule
+      || apiAndMigration.hedgeDeals.autoPriced.invalidPricingModeStatus
         !== 400
-      || apiAndMigration.hedgeFxDeals.autoPriced.invalidPricingModeCode
+      || apiAndMigration.hedgeDeals.autoPriced.invalidPricingModeCode
         !== "INVALID_HEDGE_DEAL_PRICING_MODE"
-      || apiAndMigration.hedgeFxDeals.autoPriced.manualEndpointAutoRuleStatus
+      || apiAndMigration.hedgeDeals.autoPriced.manualEndpointAutoRuleStatus
         !== 400
-      || apiAndMigration.hedgeFxDeals.autoPriced.manualEndpointAutoRuleCode
-        !== "INVALID_HEDGE_FX_DEAL_REFERENCE"
-      || !apiAndMigration.hedgeFxDeals.autoPriced
+      || apiAndMigration.hedgeDeals.autoPriced.manualEndpointAutoRuleCode
+        !== "INVALID_HEDGE_DEAL_REFERENCE"
+      || !apiAndMigration.hedgeDeals.autoPriced
         .manualEndpointAutoRuleMessage?.includes("DEALER_PRICED")
-      || apiAndMigration.hedgeFxDeals.autoPriced.autoEndpointDealerRuleStatus
+      || apiAndMigration.hedgeDeals.autoPriced.autoEndpointDealerRuleStatus
         !== 400
-      || apiAndMigration.hedgeFxDeals.autoPriced.autoEndpointDealerRuleCode
-        !== "INVALID_AUTO_PRICED_HEDGE_FX_DEAL_REFERENCE"
-      || !apiAndMigration.hedgeFxDeals.autoPriced
+      || apiAndMigration.hedgeDeals.autoPriced.autoEndpointDealerRuleCode
+        !== "INVALID_AUTO_PRICED_HEDGE_DEAL_REFERENCE"
+      || !apiAndMigration.hedgeDeals.autoPriced
         .autoEndpointDealerRuleMessage?.includes("AUTO_PRICED")
-      || apiAndMigration.hedgeFxDeals.autoPriced.suppliedTradeRateStatus
+      || apiAndMigration.hedgeDeals.autoPriced.suppliedTradeRateStatus
         !== 400
-      || apiAndMigration.hedgeFxDeals.autoPriced.suppliedTradeRateCode
-        !== "INVALID_AUTO_PRICED_HEDGE_FX_DEAL"
-      || !apiAndMigration.hedgeFxDeals.autoPriced
+      || apiAndMigration.hedgeDeals.autoPriced.suppliedTradeRateCode
+        !== "INVALID_AUTO_PRICED_HEDGE_DEAL"
+      || !apiAndMigration.hedgeDeals.autoPriced
         .suppliedTradeRateMessage?.includes("must not be provided")
-      || apiAndMigration.hedgeFxDeals.autoPriced.bankSell.status !== 201
+      || apiAndMigration.hedgeDeals.autoPriced.bankSell.status !== 201
       || !Number.isInteger(
-        apiAndMigration.hedgeFxDeals.autoPriced.bankSell.tradeId
+        apiAndMigration.hedgeDeals.autoPriced.bankSell.tradeId
       )
-      || apiAndMigration.hedgeFxDeals.autoPriced.bankSell.counterpartySide
+      || apiAndMigration.hedgeDeals.autoPriced.bankSell.counterpartySide
         !== "BUY"
-      || !(apiAndMigration.hedgeFxDeals.autoPriced.bankSell.marketBid
-        < apiAndMigration.hedgeFxDeals.autoPriced.bankSell.marketOffer)
-      || !apiAndMigration.hedgeFxDeals.autoPriced.bankSell.usesBid
-      || !apiAndMigration.hedgeFxDeals.autoPriced.bankSell
+      || !(apiAndMigration.hedgeDeals.autoPriced.bankSell.marketBid
+        < apiAndMigration.hedgeDeals.autoPriced.bankSell.marketOffer)
+      || !apiAndMigration.hedgeDeals.autoPriced.bankSell.usesBid
+      || !apiAndMigration.hedgeDeals.autoPriced.bankSell
         .persistedFromSameSnapshot
-      || apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.status !== 201
+      || apiAndMigration.hedgeDeals.autoPriced.bankBuy.status !== 201
       || !Number.isInteger(
-        apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.tradeId
+        apiAndMigration.hedgeDeals.autoPriced.bankBuy.tradeId
       )
-      || apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.counterpartySide
+      || apiAndMigration.hedgeDeals.autoPriced.bankBuy.counterpartySide
         !== "SELL"
-      || !(apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.marketBid
-        < apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.marketOffer)
-      || !apiAndMigration.hedgeFxDeals.autoPriced.bankBuy.usesOffer
-      || !apiAndMigration.hedgeFxDeals.autoPriced.bankBuy
+      || !(apiAndMigration.hedgeDeals.autoPriced.bankBuy.marketBid
+        < apiAndMigration.hedgeDeals.autoPriced.bankBuy.marketOffer)
+      || !apiAndMigration.hedgeDeals.autoPriced.bankBuy.usesOffer
+      || !apiAndMigration.hedgeDeals.autoPriced.bankBuy
         .persistedFromSameSnapshot
-      || apiAndMigration.hedgeFxDeals.quickMode.settingsBeforeCount !== 0
-      || apiAndMigration.hedgeFxDeals.quickMode.createSettingsStatus !== 201
-      || apiAndMigration.hedgeFxDeals.quickMode.getSettingsStatus !== 200
-      || apiAndMigration.hedgeFxDeals.quickMode.configuredPricingRuleId
-        !== apiAndMigration.hedgeFxDeals.autoPriced.pricingRuleId
-      || apiAndMigration.hedgeFxDeals.quickMode.configuredDefaultTenor !== "TOD"
-      || apiAndMigration.hedgeFxDeals.quickMode.configuredPresetCodes.join(",")
+      || apiAndMigration.hedgeDeals.quickMode.settingsBeforeCount !== 0
+      || apiAndMigration.hedgeDeals.quickMode.createSettingsStatus !== 201
+      || apiAndMigration.hedgeDeals.quickMode.getSettingsStatus !== 200
+      || apiAndMigration.hedgeDeals.quickMode.configuredPricingRuleId
+        !== apiAndMigration.hedgeDeals.autoPriced.pricingRuleId
+      || apiAndMigration.hedgeDeals.quickMode.configuredDefaultTenor !== "TOD"
+      || apiAndMigration.hedgeDeals.quickMode.configuredPresetCodes.join(",")
         !== "SMALL,MEDIUM,LARGE,XLARGE"
-      || apiAndMigration.hedgeFxDeals.quickMode
+      || apiAndMigration.hedgeDeals.quickMode
         .configuredPresetAmounts.join(",")
         !== "5000000.00,20000000.00,50000000.00,100000000.00"
-      || apiAndMigration.hedgeFxDeals.quickMode.invalidSettingsStatus !== 400
-      || apiAndMigration.hedgeFxDeals.quickMode.invalidSettingsCode
+      || apiAndMigration.hedgeDeals.quickMode.invalidSettingsStatus !== 400
+      || apiAndMigration.hedgeDeals.quickMode.invalidSettingsCode
         !== "INVALID_HEDGE_QUICK_MODE_SETTINGS"
-      || apiAndMigration.hedgeFxDeals.quickMode.ownedFieldStatus !== 400
-      || apiAndMigration.hedgeFxDeals.quickMode.ownedFieldCode
+      || apiAndMigration.hedgeDeals.quickMode.ownedFieldStatus !== 400
+      || apiAndMigration.hedgeDeals.quickMode.ownedFieldCode
         !== "INVALID_HEDGE_QUICK_MODE_DEAL"
-      || apiAndMigration.hedgeFxDeals.quickMode.extraFieldStatus !== 400
-      || apiAndMigration.hedgeFxDeals.quickMode.extraFieldCode
+      || apiAndMigration.hedgeDeals.quickMode.extraFieldStatus !== 400
+      || apiAndMigration.hedgeDeals.quickMode.extraFieldCode
         !== "INVALID_HEDGE_QUICK_MODE_DEAL"
-      || apiAndMigration.hedgeFxDeals.quickMode.invalidPresetStatus !== 400
-      || apiAndMigration.hedgeFxDeals.quickMode.invalidPresetCode
+      || apiAndMigration.hedgeDeals.quickMode.invalidPresetStatus !== 400
+      || apiAndMigration.hedgeDeals.quickMode.invalidPresetCode
         !== "INVALID_HEDGE_QUICK_MODE_DEAL"
-      || apiAndMigration.hedgeFxDeals.quickMode.bankSell.status !== 201
+      || apiAndMigration.hedgeDeals.quickMode.bankSell.status !== 201
       || !Number.isInteger(
-        apiAndMigration.hedgeFxDeals.quickMode.bankSell.tradeId
+        apiAndMigration.hedgeDeals.quickMode.bankSell.tradeId
       )
-      || apiAndMigration.hedgeFxDeals.quickMode.bankSell.counterpartySide
+      || apiAndMigration.hedgeDeals.quickMode.bankSell.counterpartySide
         !== "BUY"
-      || apiAndMigration.hedgeFxDeals.quickMode.bankSell.baseCcyAmountMinor
+      || apiAndMigration.hedgeDeals.quickMode.bankSell.baseCcyAmountMinor
         !== 2000000000
-      || !apiAndMigration.hedgeFxDeals.quickMode.bankSell.usesBid
-      || !apiAndMigration.hedgeFxDeals.quickMode.bankSell
+      || !apiAndMigration.hedgeDeals.quickMode.bankSell.usesBid
+      || !apiAndMigration.hedgeDeals.quickMode.bankSell
         .persistedFromSameSnapshot
-      || apiAndMigration.hedgeFxDeals.quickMode.bankBuy.status !== 201
+      || apiAndMigration.hedgeDeals.quickMode.bankBuy.status !== 201
       || !Number.isInteger(
-        apiAndMigration.hedgeFxDeals.quickMode.bankBuy.tradeId
+        apiAndMigration.hedgeDeals.quickMode.bankBuy.tradeId
       )
-      || apiAndMigration.hedgeFxDeals.quickMode.bankBuy.counterpartySide
+      || apiAndMigration.hedgeDeals.quickMode.bankBuy.counterpartySide
         !== "SELL"
-      || apiAndMigration.hedgeFxDeals.quickMode.bankBuy.baseCcyAmountMinor
+      || apiAndMigration.hedgeDeals.quickMode.bankBuy.baseCcyAmountMinor
         !== 5000000000
-      || !apiAndMigration.hedgeFxDeals.quickMode.bankBuy.usesOffer
-      || !apiAndMigration.hedgeFxDeals.quickMode.bankBuy
+      || !apiAndMigration.hedgeDeals.quickMode.bankBuy.usesOffer
+      || !apiAndMigration.hedgeDeals.quickMode.bankBuy
         .persistedFromSameSnapshot
-      || apiAndMigration.hedgeFxDeals.quickMode.disableSettingsStatus !== 200
-      || apiAndMigration.hedgeFxDeals.quickMode.disabledDealStatus !== 409
-      || apiAndMigration.hedgeFxDeals.quickMode.disabledDealCode
+      || apiAndMigration.hedgeDeals.quickMode.disableSettingsStatus !== 200
+      || apiAndMigration.hedgeDeals.quickMode.disabledDealStatus !== 409
+      || apiAndMigration.hedgeDeals.quickMode.disabledDealCode
         !== "HEDGE_QUICK_MODE_DISABLED"
-      || apiAndMigration.hedgeFxDeals.quickMode.deleteSettingsStatus !== 200
-      || apiAndMigration.hedgeFxDeals.quickMode.missingSettingsStatus !== 404
-      || apiAndMigration.hedgeFxDeals.quickMode.restoreSettingsStatus !== 201
-      || apiAndMigration.hedgeFxDeals.quickMode.restoredSettingsCount !== 1
-      || apiAndMigration.hedgeFxDeals.quickMode.restoredAvailable !== true
-      || apiAndMigration.hedgeFxDeals.rejectedDealerApprovedRuleStatus !== 400
-      || apiAndMigration.hedgeFxDeals.dealerApprovedRuleDeleteStatus !== 204
-      || apiAndMigration.hedgeFxDeals.executionContextAssignmentStatus !== 200
-      || apiAndMigration.hedgeFxDeals.createdStatus !== 201
-      || !Number.isInteger(apiAndMigration.hedgeFxDeals.createdTradeId)
+      || apiAndMigration.hedgeDeals.quickMode.deleteSettingsStatus !== 200
+      || apiAndMigration.hedgeDeals.quickMode.missingSettingsStatus !== 404
+      || apiAndMigration.hedgeDeals.quickMode.restoreSettingsStatus !== 201
+      || apiAndMigration.hedgeDeals.quickMode.restoredSettingsCount !== 1
+      || apiAndMigration.hedgeDeals.quickMode.restoredAvailable !== true
+      || apiAndMigration.hedgeDeals.rejectedDealerApprovedRuleStatus !== 400
+      || apiAndMigration.hedgeDeals.dealerApprovedRuleDeleteStatus !== 204
+      || apiAndMigration.hedgeDeals.tradeContextAssignmentStatus !== 200
+      || apiAndMigration.hedgeDeals.createdStatus !== 201
+      || !Number.isInteger(apiAndMigration.hedgeDeals.createdTradeId)
       || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-        .test(apiAndMigration.hedgeFxDeals.createdRequestTimestamp || "")
+        .test(apiAndMigration.hedgeDeals.createdRequestTimestamp || "")
       || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-        .test(apiAndMigration.hedgeFxDeals.createdExecutionTimestamp || "")
+        .test(apiAndMigration.hedgeDeals.createdExecutionTimestamp || "")
       || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-        .test(apiAndMigration.hedgeFxDeals.createdReceivedTimestamp || "")
-      || apiAndMigration.hedgeFxDeals.createdRequestTimestamp
-        > apiAndMigration.hedgeFxDeals.createdExecutionTimestamp
-      || apiAndMigration.hedgeFxDeals.createdExecutionTimestamp
-        > apiAndMigration.hedgeFxDeals.createdReceivedTimestamp
-      || apiAndMigration.hedgeFxDeals.createdSide !== "BUY"
-      || apiAndMigration.hedgeFxDeals.createdCounterpartyId
-        !== apiAndMigration.hedgeFxDeals.expectedCounterpartyId
-      || apiAndMigration.hedgeFxDeals.createdPricingRuleId
-        !== apiAndMigration.hedgeFxDeals.expectedPricingRuleId
-      || !Number.isFinite(apiAndMigration.hedgeFxDeals.createdTransferRate)
-      || !Number.isFinite(apiAndMigration.hedgeFxDeals.createdAnalyticalPnl)
-      || !Number.isSafeInteger(apiAndMigration.hedgeFxDeals.createdAnalyticalPnlQuoteMinor)
-      || apiAndMigration.hedgeFxDeals.createdAnalyticalPnlQuoteFractionDigits !== 2
-      || apiAndMigration.hedgeFxDeals.createdDealtCcyCode !== "USD"
-      || apiAndMigration.hedgeFxDeals.createdBaseCcyAmountMinor !== 250000000
-      || apiAndMigration.hedgeFxDeals.createdBaseCcyFractionDigits !== 2
-      || apiAndMigration.hedgeFxDeals.createdQuoteCcyAmountMinor !== 280850000
-      || apiAndMigration.hedgeFxDeals.createdQuoteCcyFractionDigits !== 2
+        .test(apiAndMigration.hedgeDeals.createdReceivedTimestamp || "")
+      || apiAndMigration.hedgeDeals.createdRequestTimestamp
+        > apiAndMigration.hedgeDeals.createdExecutionTimestamp
+      || apiAndMigration.hedgeDeals.createdExecutionTimestamp
+        > apiAndMigration.hedgeDeals.createdReceivedTimestamp
+      || apiAndMigration.hedgeDeals.createdSide !== "BUY"
+      || apiAndMigration.hedgeDeals.createdCounterpartyId
+        !== apiAndMigration.hedgeDeals.expectedCounterpartyId
+      || apiAndMigration.hedgeDeals.createdPricingRuleId
+        !== apiAndMigration.hedgeDeals.expectedPricingRuleId
+      || !Number.isFinite(apiAndMigration.hedgeDeals.createdTransferRate)
+      || !Number.isFinite(apiAndMigration.hedgeDeals.createdAnalyticalPnl)
+      || !Number.isSafeInteger(apiAndMigration.hedgeDeals.createdAnalyticalPnlQuoteMinor)
+      || apiAndMigration.hedgeDeals.createdAnalyticalPnlQuoteFractionDigits !== 2
+      || apiAndMigration.hedgeDeals.createdDealtCcyCode !== "USD"
+      || apiAndMigration.hedgeDeals.createdBaseCcyAmountMinor !== 250000000
+      || apiAndMigration.hedgeDeals.createdBaseCcyFractionDigits !== 2
+      || apiAndMigration.hedgeDeals.createdQuoteCcyAmountMinor !== 280850000
+      || apiAndMigration.hedgeDeals.createdQuoteCcyFractionDigits !== 2
       || !["RUNNING", "STOPPED"].includes(
-        apiAndMigration.hedgeFxDeals.createdMarketPulseStreamStatus
+        apiAndMigration.hedgeDeals.createdMarketPulseStreamStatus
       )
-      || apiAndMigration.hedgeFxDeals.subMinorAmountStatus !== 400
-      || apiAndMigration.hedgeFxDeals.subMinorAmountCode !== "INVALID_HEDGE_FX_DEAL_AMOUNT"
-      || apiAndMigration.hedgeFxDeals.invalidClientRuleStatus !== 400
-      || apiAndMigration.hedgeFxDeals.countAfterCreate !== 1
-      || apiAndMigration.hedgeFxDeals.deleteStatus !== 405
-      || apiAndMigration.hedgeFxDeals.deleteCode !== "HEDGE_FX_DEAL_IMMUTABLE"
-      || apiAndMigration.hedgeFxDeals.countAfterRejectedDelete !== 1
-      || !apiAndMigration.hedgeFxDeals.preservedAfterRejectedDelete
-      || !apiAndMigration.hedgeFxDeals.createdRowsShareId
+      || apiAndMigration.hedgeDeals.subMinorAmountStatus !== 400
+      || apiAndMigration.hedgeDeals.subMinorAmountCode !== "INVALID_HEDGE_DEAL_AMOUNT"
+      || apiAndMigration.hedgeDeals.invalidClientRuleStatus !== 400
+      || apiAndMigration.hedgeDeals.countAfterCreate !== 1
+      || apiAndMigration.hedgeDeals.deleteStatus !== 405
+      || apiAndMigration.hedgeDeals.deleteCode !== "HEDGE_DEAL_IMMUTABLE"
+      || apiAndMigration.hedgeDeals.countAfterRejectedDelete !== 1
+      || !apiAndMigration.hedgeDeals.preservedAfterRejectedDelete
+      || !apiAndMigration.hedgeDeals.createdRowsShareId
       || apiAndMigration.clientDealPricingRules.status !== 200
       || apiAndMigration.clientDealPricingRules.count !== 1
       || !apiAndMigration.clientDealPricingRules.allDealerPriced
-      || apiAndMigration.clientFxDeals.count !== 1
-      || apiAndMigration.clientFxDeals.first?.tradeId !== 41
-      || apiAndMigration.clientFxDeals.first?.clientDealId !== 41
-      || apiAndMigration.clientFxDeals.first?.clientCode !== "7701234567"
-      || apiAndMigration.clientFxDeals.first?.clientName !== "Romashka Company"
-      || apiAndMigration.clientFxDeals.first?.currencyPair !== "EUR/USD"
-      || apiAndMigration.clientFxDeals.first?.executionTimestamp !== "2026-07-15T11:45:00.000Z"
-      || apiAndMigration.clientFxDeals.first?.receivedTimestamp !== "2026-07-15T11:45:00.000Z"
-      || apiAndMigration.clientFxDeals.migratedRow?.trade_id !== 41
-      || apiAndMigration.clientFxDeals.migratedRow?.trade_type !== "CLIENT_DEAL"
-      || apiAndMigration.clientFxDeals.migratedRow?.counterparty_id !== 1
-      || apiAndMigration.clientFxDeals.migratedRow?.execution_context_id !== null
-      || apiAndMigration.clientFxDeals.migratedRow?.pricing_rule_id !== null
-      || apiAndMigration.clientFxDeals.migratedRow?.transfer_rate !== null
-      || apiAndMigration.clientFxDeals.migratedRow?.analytical_pnl_quote_minor !== null
-      || apiAndMigration.clientFxDeals.migratedRow
+      || apiAndMigration.clientDeals.count !== 1
+      || apiAndMigration.clientDeals.first?.tradeId !== 41
+      || apiAndMigration.clientDeals.first?.clientDealId !== 41
+      || apiAndMigration.clientDeals.first?.clientCode !== "7701234567"
+      || apiAndMigration.clientDeals.first?.clientName !== "Romashka Company"
+      || apiAndMigration.clientDeals.first?.currencyPair !== "EUR/USD"
+      || apiAndMigration.clientDeals.first?.executionTimestamp !== "2026-07-15T11:45:00.000Z"
+      || apiAndMigration.clientDeals.first?.receivedTimestamp !== "2026-07-15T11:45:00.000Z"
+      || apiAndMigration.clientDeals.migratedRow?.trade_id !== 41
+      || apiAndMigration.clientDeals.migratedRow?.trade_type !== "CLIENT_DEAL"
+      || apiAndMigration.clientDeals.migratedRow?.counterparty_id !== 1
+      || apiAndMigration.clientDeals.migratedRow?.trade_context_id !== null
+      || apiAndMigration.clientDeals.migratedRow?.pricing_rule_id !== null
+      || apiAndMigration.clientDeals.migratedRow?.transfer_rate !== null
+      || apiAndMigration.clientDeals.migratedRow?.analytical_pnl_quote_minor !== null
+      || apiAndMigration.clientDeals.migratedRow
         ?.analytical_pnl_quote_fraction_digits !== null
-      || apiAndMigration.clientFxDeals.migratedRow?.comment !== null
-      || !Number.isInteger(apiAndMigration.clientFxDeals.createdId)
-      || apiAndMigration.clientFxDeals.createdTradeId !== apiAndMigration.clientFxDeals.createdId
-      || apiAndMigration.clientFxDeals.createdExecutionTimestamp
+      || apiAndMigration.clientDeals.migratedRow?.comment !== null
+      || !Number.isInteger(apiAndMigration.clientDeals.createdId)
+      || apiAndMigration.clientDeals.createdTradeId !== apiAndMigration.clientDeals.createdId
+      || apiAndMigration.clientDeals.createdExecutionTimestamp
         !== "2026-07-16T10:15:30.000Z"
       || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-        .test(apiAndMigration.clientFxDeals.createdReceivedTimestamp || "")
-      || apiAndMigration.clientFxDeals.createdExecutionTimestamp
-        > apiAndMigration.clientFxDeals.createdReceivedTimestamp
-      || apiAndMigration.clientFxDeals.createdSide !== "SELL"
-      || apiAndMigration.clientFxDeals.createdExecutionContextId !== apiAndMigration.clientFxDeals.expectedExecutionContextId
-      || apiAndMigration.clientFxDeals.createdPricingRuleId !== apiAndMigration.clientFxDeals.expectedPricingRuleId
-      || apiAndMigration.clientFxDeals.createdTransferRate !== 1.124
-      || apiAndMigration.clientFxDeals.createdAnalyticalPnl !== 1800
-      || apiAndMigration.clientFxDeals.createdAnalyticalPnlQuoteMinor !== 180000
-      || apiAndMigration.clientFxDeals.createdAnalyticalPnlQuoteFractionDigits !== 2
-      || apiAndMigration.clientFxDeals.createdDealtCcyCode !== "USD"
-      || apiAndMigration.clientFxDeals.createdBaseCcyAmountMinor !== 200000000
-      || apiAndMigration.clientFxDeals.createdBaseCcyFractionDigits !== 2
-      || apiAndMigration.clientFxDeals.createdQuoteCcyAmountMinor !== 224620000
-      || apiAndMigration.clientFxDeals.createdQuoteCcyFractionDigits !== 2
-      || apiAndMigration.clientFxDeals.createdMarketPulseStreamStatus !== "RUNNING"
-      || apiAndMigration.clientFxDeals.createdMarketPulseBid !== 1.1228
-      || apiAndMigration.clientFxDeals.createdMarketPulseOffer !== 1.123
-      || apiAndMigration.clientFxDeals.createdMarketPulseTimestamp !== "2026-07-16T10:15:29.000Z"
-      || apiAndMigration.clientFxDeals.createdComment !== "Initial verification comment"
-      || apiAndMigration.clientFxDeals.immutableUpdateStatus !== 405
-      || apiAndMigration.clientFxDeals.immutableUpdateCode !== "CLIENT_FX_DEAL_IMMUTABLE"
-      || apiAndMigration.clientFxDeals.updatedComment !== "Reviewed verification comment"
-      || apiAndMigration.clientFxDeals.invalidCommentStatus !== 400
-      || apiAndMigration.clientFxDeals.deleteStatus !== 405
-      || apiAndMigration.clientFxDeals.deleteCode !== "CLIENT_FX_DEAL_IMMUTABLE"
-      || apiAndMigration.clientFxDeals.countAfterRejectedDelete !== 2
-      || apiAndMigration.clientFxDeals.rollbackStatus !== 500
-      || !apiAndMigration.clientFxDeals.rollbackPreservedCounts
-      || !apiAndMigration.clientFxDeals.createdRowsShareId
-      || !apiAndMigration.clientFxDeals.commentUpdatePreservesTrade
-      || !apiAndMigration.clientFxDeals.preservedAfterRejectedDelete
-      || apiAndMigration.clientFxDeals.foreignKeyViolations !== 0
-      || apiAndMigration.clientFxDeals.subMinorAmountStatus !== 400
-      || apiAndMigration.clientFxDeals.subMinorAmountCode !== "INVALID_CLIENT_FX_DEAL_AMOUNT"
-      || apiAndMigration.clientFxDeals.nonDealerPricingRuleStatus !== 400
-      || !apiAndMigration.clientFxDeals.nonDealerPricingRuleMessage?.includes("DEALER_PRICED")
-      || apiAndMigration.clientFxDeals.lifecycle.join(",") !== "201,405,200,400,400,400,400,400,400,400,405"
+        .test(apiAndMigration.clientDeals.createdReceivedTimestamp || "")
+      || apiAndMigration.clientDeals.createdExecutionTimestamp
+        > apiAndMigration.clientDeals.createdReceivedTimestamp
+      || apiAndMigration.clientDeals.createdSide !== "SELL"
+      || apiAndMigration.clientDeals.createdTradeContextId !== apiAndMigration.clientDeals.expectedTradeContextId
+      || apiAndMigration.clientDeals.createdPricingRuleId !== apiAndMigration.clientDeals.expectedPricingRuleId
+      || apiAndMigration.clientDeals.createdTransferRate !== 1.124
+      || apiAndMigration.clientDeals.createdAnalyticalPnl !== 1800
+      || apiAndMigration.clientDeals.createdAnalyticalPnlQuoteMinor !== 180000
+      || apiAndMigration.clientDeals.createdAnalyticalPnlQuoteFractionDigits !== 2
+      || apiAndMigration.clientDeals.createdDealtCcyCode !== "USD"
+      || apiAndMigration.clientDeals.createdBaseCcyAmountMinor !== 200000000
+      || apiAndMigration.clientDeals.createdBaseCcyFractionDigits !== 2
+      || apiAndMigration.clientDeals.createdQuoteCcyAmountMinor !== 224620000
+      || apiAndMigration.clientDeals.createdQuoteCcyFractionDigits !== 2
+      || apiAndMigration.clientDeals.createdMarketPulseStreamStatus !== "RUNNING"
+      || apiAndMigration.clientDeals.createdMarketPulseBid !== 1.1228
+      || apiAndMigration.clientDeals.createdMarketPulseOffer !== 1.123
+      || apiAndMigration.clientDeals.createdMarketPulseTimestamp !== "2026-07-16T10:15:29.000Z"
+      || apiAndMigration.clientDeals.createdComment !== "Initial verification comment"
+      || apiAndMigration.clientDeals.immutableUpdateStatus !== 405
+      || apiAndMigration.clientDeals.immutableUpdateCode !== "CLIENT_DEAL_IMMUTABLE"
+      || apiAndMigration.clientDeals.updatedComment !== "Reviewed verification comment"
+      || apiAndMigration.clientDeals.invalidCommentStatus !== 400
+      || apiAndMigration.clientDeals.deleteStatus !== 405
+      || apiAndMigration.clientDeals.deleteCode !== "CLIENT_DEAL_IMMUTABLE"
+      || apiAndMigration.clientDeals.countAfterRejectedDelete !== 2
+      || apiAndMigration.clientDeals.rollbackStatus !== 500
+      || !apiAndMigration.clientDeals.rollbackPreservedCounts
+      || !apiAndMigration.clientDeals.createdRowsShareId
+      || !apiAndMigration.clientDeals.commentUpdatePreservesTrade
+      || !apiAndMigration.clientDeals.preservedAfterRejectedDelete
+      || apiAndMigration.clientDeals.foreignKeyViolations !== 0
+      || apiAndMigration.clientDeals.subMinorAmountStatus !== 400
+      || apiAndMigration.clientDeals.subMinorAmountCode !== "INVALID_CLIENT_DEAL_AMOUNT"
+      || apiAndMigration.clientDeals.nonDealerPricingRuleStatus !== 400
+      || !apiAndMigration.clientDeals.nonDealerPricingRuleMessage?.includes("DEALER_PRICED")
+      || apiAndMigration.clientDeals.lifecycle.join(",") !== "201,405,200,400,400,400,400,400,400,400,405"
       || apiAndMigration.pricingRules.count !== 5
       || apiAndMigration.pricingRules.migratedCounterpartyTypes.join(",") !== "CLIENT"
       || !apiAndMigration.pricingRules.allPricingModesResolved
@@ -9004,7 +8914,7 @@ async function main() {
       || !apiAndMigration.simulationControl.streamHasSnapshot
       || apiAndMigration.simulationControl.stop !== 200
       || apiAndMigration.simulationControl.stopRunning
-      || apiAndMigration.writeLifecycle.join(",") !== "201,201,200,200,200,204,200,409,409,409,201,200,409,201,200,409,204,201,200,409,204,201,200,409,204,204";
+      || apiAndMigration.writeLifecycle.join(",") !== "201,201,200,200,200,204,200,409,204,204,201,200,409,201,200,409,204,201,200,409,204,201,200,409,204,204";
     const result = { freshSchema, frontend, simulator, apiAndMigration };
 
     if (failed) {

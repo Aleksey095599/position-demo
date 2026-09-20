@@ -45,68 +45,82 @@ VALUES
     ('AFINA', 'Afina Core Ledger', 1),
     ('CTF3', 'CTF3 Treasury Settlement', 1);
 
-INSERT INTO execution_systems
-    (execution_system_id, name, pricing_mode, is_active)
+INSERT INTO originating_systems
+    (originating_system_id, name, pricing_mode, is_active)
 VALUES
     ('CLICK_TRADE_EFX', 'Click Trade eFX', 'AUTO_PRICED', 1),
     ('RFQ', 'Request for Quote', 'DEALER_APPROVED', 1),
     ('MANUAL_CLIENT_DEAL_ENTRY', 'Manual Client Deal Entry', 'DEALER_PRICED', 1);
 
-INSERT INTO execution_contexts
+INSERT INTO trade_purposes (trade_purpose_id, name)
+VALUES
+    ('CLIENT_CONVERSION', 'Client Account Conversion'),
+    ('LOAN_REPAYMENT', 'Loan Repayment'),
+    ('FEE_COLLECTION', 'Fee Collection'),
+    ('POSITION_HEDGING', 'Position Hedging');
+
+INSERT INTO trade_contexts
     (
         servicing_location_id,
         accounting_system_id,
-        execution_system_id,
-        default_position_management_mode,
-        auto_hedging_admission_mode
+        originating_system_id,
+
+        auto_management_admission_mode
     )
 VALUES
-    ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE'),
-    ('002', 'AFINA', 'RFQ', 'MANUAL', 'MANUAL_ONLY'),
-    ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL', 'MANUAL_ONLY'),
-    ('1234', 'AFINA', 'RFQ', 'MANUAL', 'MANUAL_ONLY'),
-    ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE');
+    ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE'),
+    ('002', 'AFINA', 'RFQ', 'REVIEW_REQUIRED'),
+    ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'REVIEW_REQUIRED'),
+    ('1234', 'AFINA', 'RFQ', 'REVIEW_REQUIRED'),
+    ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE');
 
-INSERT INTO auto_hedging_admission_policy_revisions
-    (revision)
-VALUES
-    (1);
-
-INSERT INTO auto_hedging_admission_policy_pair_deviations
-    (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
-SELECT 1, ccy_pair_code, '1.00'
-FROM ccy_pair_options;
-
-INSERT INTO auto_hedging_admission_policy_pair_rules
+INSERT INTO auto_mode_eligibility_rules
     (
-        revision,
+        trade_type,
         ccy_pair_code,
+        is_eligible,
         max_base_ccy_amount_minor,
-        base_ccy_fraction_digits
+        max_transfer_rate_deviation_percent
     )
+WITH trade_types (trade_type) AS
+(
+    VALUES
+        ('CLIENT_DEAL'),
+        ('HEDGE_DEAL'),
+        ('BATCH_POSITION_OUT')
+)
 SELECT
-    1,
+    trade_type.trade_type,
     pair.ccy_pair_code,
-    10000000000,
-    base_ccy.fraction_digits
-FROM ccy_pair_options pair
-INNER JOIN ccy_options base_ccy
-    ON base_ccy.ccy_code = pair.base_ccy_code
-WHERE pair.ccy_pair_code IN ('EUR_USD', 'GBP_USD');
-
-INSERT INTO auto_hedging_admission_policy_current
-    (policy_id, revision)
-VALUES
-    (1, 1);
+    CASE
+        WHEN trade_type.trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')
+            AND pair.ccy_pair_code IN ('EUR_USD', 'GBP_USD')
+        THEN 1
+        ELSE 0
+    END,
+    CASE
+        WHEN trade_type.trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')
+            AND pair.ccy_pair_code IN ('EUR_USD', 'GBP_USD')
+        THEN 10000000000
+        ELSE NULL
+    END,
+    CASE
+        WHEN trade_type.trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')
+            AND pair.ccy_pair_code IN ('EUR_USD', 'GBP_USD')
+        THEN '1.00'
+        ELSE NULL
+    END
+FROM trade_types trade_type
+CROSS JOIN ccy_pair_options pair;
 
 INSERT INTO trading_counterparties
-    (counterparty_name, is_active)
+    (counterparty_scope, counterparty_name, is_active)
 VALUES
-    ('Romashka Company', 1),
-    ('Vasilek Company', 1),
-    ('Gladiolus Company', 1),
-    ('Aurora Bank', 1),
-    ('Treasury Trading Desk', 1);
+    ('EXTERNAL', 'Romashka Company', 1),
+    ('EXTERNAL', 'Vasilek Company', 1),
+    ('EXTERNAL', 'Gladiolus Company', 1),
+    ('EXTERNAL', 'Aurora Bank', 1),
+    ('INTERNAL', 'Treasury Trading Desk', 1);
 
 WITH external_counterparty_seed (counterparty_name, counterparty_code, counterparty_code_type, external_counterparty_kind) AS
 (
@@ -220,20 +234,22 @@ VALUES
     ('pricing_rules_grid', 'id', 'ID', 0, 64, 64),
     ('pricing_rules_grid', 'counterparty_code', 'Counterparty Code', 1, 122, 122),
     ('pricing_rules_grid', 'counterparty_name', 'Counterparty Name', 2, 158, 158),
-    ('pricing_rules_grid', 'execution_context', 'Execution Context', 3, 596, 596),
-    ('pricing_rules_grid', 'ccy_pair', 'Ccy Pair', 4, 88, 88),
-    ('pricing_rules_grid', 'auto_hedging_admission', 'Auto Hedging Admission', 5, 232, 232),
-    ('pricing_rules_grid', 'margin', 'Margin', 6, 82, 82),
-    ('pricing_rules_grid', 'actions', 'Actions', 7, 80, 80),
+    ('pricing_rules_grid', 'trade_context_id', 'Trade Context ID', 3, 130, 130),
+    ('pricing_rules_grid', 'trade_context', 'Trade Context', 4, 596, 596),
+    ('pricing_rules_grid', 'ccy_pair', 'Ccy Pair', 5, 88, 88),
+    ('pricing_rules_grid', 'auto_management_admission', 'Initial Mode Assignment', 6, 232, 232),
+    ('pricing_rules_grid', 'margin', 'Margin', 7, 82, 82),
+    ('pricing_rules_grid', 'actions', 'Actions', 8, 80, 80),
     ('internal_pricing_rules_grid', 'id', 'ID', 0, 64, 64),
     ('internal_pricing_rules_grid', 'counterparty_code', 'Unit Code', 1, 122, 122),
     ('internal_pricing_rules_grid', 'counterparty_name', 'Counterparty Name', 2, 158, 158),
-    ('internal_pricing_rules_grid', 'execution_context', 'Execution Context', 3, 596, 596),
-    ('internal_pricing_rules_grid', 'ccy_pair', 'Ccy Pair', 4, 88, 88),
-    ('internal_pricing_rules_grid', 'auto_hedging_admission', 'Auto Hedging Admission', 5, 232, 232),
-    ('internal_pricing_rules_grid', 'margin', 'Margin', 6, 82, 82),
-    ('internal_pricing_rules_grid', 'quick_hedge', 'Quick Hedge', 7, 112, 112),
-    ('internal_pricing_rules_grid', 'actions', 'Actions', 8, 80, 80),
+    ('internal_pricing_rules_grid', 'trade_context_id', 'Trade Context ID', 3, 130, 130),
+    ('internal_pricing_rules_grid', 'trade_context', 'Trade Context', 4, 596, 596),
+    ('internal_pricing_rules_grid', 'ccy_pair', 'Ccy Pair', 5, 88, 88),
+    ('internal_pricing_rules_grid', 'auto_management_admission', 'Initial Mode Assignment', 6, 232, 232),
+    ('internal_pricing_rules_grid', 'margin', 'Margin', 7, 82, 82),
+    ('internal_pricing_rules_grid', 'quick_hedge', 'Quick Hedge', 8, 112, 112),
+    ('internal_pricing_rules_grid', 'actions', 'Actions', 9, 80, 80),
     ('market_stream_grid', 'currency_pair', 'Ccy Pair', 0, 94, 94),
     ('market_stream_grid', 'bid', 'Bid', 1, 83, 83),
     ('market_stream_grid', 'offer', 'Offer', 2, 83, 83),
@@ -250,62 +266,62 @@ VALUES
     ('ccy_pair_options_grid', 'default_quote_decimals', 'Default Quote Decimals', 3, 83, 83),
     ('ccy_pair_options_grid', 'pricing_rules_count', 'Pricing Rules Count', 4, 65, 65),
     ('ccy_pair_options_grid', 'actions', 'Actions', 5, 80, 80),
-    ('fx_position_grid', 'ccy_pair_selector', 'Ccy Pair Selector', 0, 136, 136),
-    ('fx_position_grid', 'trade_id', 'ID', 1, 48, 48),
-    ('fx_position_grid', 'trade', 'Trade', 2, 280, 280),
-    ('fx_position_grid', 'trade_date', 'Trade Date', 3, 100, 100),
-    ('fx_position_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 4, 145, 145),
-    ('fx_position_grid', 'sell_base_ccy_amount', 'SELL Base Ccy Amount', 5, 145, 145),
-    ('fx_position_grid', 'sell_trade_rate', 'SELL Trade Rate', 6, 90, 90),
-    ('fx_position_grid', 'sell_transfer_rate', 'SELL Transfer Rate', 7, 95, 95),
-    ('fx_position_grid', 'market_bid', 'Market Bid', 8, 75, 75),
-    ('fx_position_grid', 'market_offer', 'Market Offer', 9, 75, 75),
-    ('fx_position_grid', 'buy_transfer_rate', 'BUY Transfer Rate', 10, 95, 95),
-    ('fx_position_grid', 'buy_trade_rate', 'BUY Trade Rate', 11, 90, 90),
-    ('fx_position_grid', 'buy_base_ccy_amount', 'BUY Base Ccy Amount', 12, 167, 167),
-    ('client_fx_deals_grid', 'trade_id', 'Trade ID', 0, 96, 96),
-    ('client_fx_deals_grid', 'execution_timestamp', 'Execution Timestamp', 1, 170, 170),
-    ('client_fx_deals_grid', 'received_timestamp', 'Received Timestamp', 2, 170, 170),
-    ('client_fx_deals_grid', 'client_code_type', 'Business ID Type', 3, 150, 150),
-    ('client_fx_deals_grid', 'client_code', 'Business ID', 4, 170, 170),
-    ('client_fx_deals_grid', 'client_name', 'Client Name', 5, 141, 141),
-    ('client_fx_deals_grid', 'trade_date', 'Trade Date', 6, 109, 109),
-    ('client_fx_deals_grid', 'currency_pair', 'Ccy Pair', 7, 94, 94),
-    ('client_fx_deals_grid', 'side', 'Side', 8, 84, 84),
-    ('client_fx_deals_grid', 'base_ccy_amount', 'Base Ccy Amount', 9, 146, 146),
-    ('client_fx_deals_grid', 'quote_ccy_amount', 'Quote Ccy Amount', 10, 155, 155),
-    ('client_fx_deals_grid', 'trade_rate', 'Trade Rate', 11, 108, 108),
-    ('client_fx_deals_grid', 'tenor', 'Tenor', 12, 73, 73),
-    ('client_fx_deals_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 13, 160, 160),
-    ('client_fx_deals_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 14, 168, 168),
-    ('client_fx_deals_grid', 'execution_context_label', 'Execution Context', 15, 435, 435),
-    ('client_fx_deals_grid', 'pricing_rule_margin', 'Margin', 16, 102, 102),
-    ('client_fx_deals_grid', 'initial_fx_position_mode', 'Initial FX Position Mode', 17, 232, 232),
-    ('client_fx_deals_grid', 'current_fx_position_mode', 'Current FX Position Mode', 18, 232, 232),
-    ('client_fx_deals_grid', 'transfer_rate', 'Transfer Rate', 19, 122, 122),
-    ('client_fx_deals_grid', 'analytical_pnl', 'Analytical PnL', 20, 126, 126),
-    ('hedge_fx_deals_grid', 'trade_id', 'Trade ID', 0, 96, 96),
-    ('hedge_fx_deals_grid', 'request_timestamp', 'Request Timestamp', 1, 170, 170),
-    ('hedge_fx_deals_grid', 'execution_timestamp', 'Execution Timestamp', 2, 170, 170),
-    ('hedge_fx_deals_grid', 'received_timestamp', 'Received Timestamp', 3, 170, 170),
-    ('hedge_fx_deals_grid', 'counterparty_code_type', 'Business ID Type', 4, 150, 150),
-    ('hedge_fx_deals_grid', 'counterparty_code', 'Business ID', 5, 170, 170),
-    ('hedge_fx_deals_grid', 'counterparty_name', 'Counterparty Name', 6, 158, 158),
-    ('hedge_fx_deals_grid', 'trade_date', 'Trade Date', 7, 109, 109),
-    ('hedge_fx_deals_grid', 'currency_pair', 'Ccy Pair', 8, 94, 94),
-    ('hedge_fx_deals_grid', 'side', 'Hedge Side', 9, 88, 88),
-    ('hedge_fx_deals_grid', 'base_ccy_amount', 'Base Ccy Amount', 10, 146, 146),
-    ('hedge_fx_deals_grid', 'quote_ccy_amount', 'Quote Ccy Amount', 11, 155, 155),
-    ('hedge_fx_deals_grid', 'trade_rate', 'Trade Rate', 12, 108, 108),
-    ('hedge_fx_deals_grid', 'tenor', 'Tenor', 13, 73, 73),
-    ('hedge_fx_deals_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 14, 160, 160),
-    ('hedge_fx_deals_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 15, 168, 168),
-    ('hedge_fx_deals_grid', 'execution_context_label', 'Execution Context', 16, 435, 435),
-    ('hedge_fx_deals_grid', 'pricing_rule_margin', 'Margin', 17, 102, 102),
-    ('hedge_fx_deals_grid', 'initial_fx_position_mode', 'Initial FX Position Mode', 18, 232, 232),
-    ('hedge_fx_deals_grid', 'current_fx_position_mode', 'Current FX Position Mode', 19, 232, 232),
-    ('hedge_fx_deals_grid', 'transfer_rate', 'Transfer Rate', 20, 122, 122),
-    ('hedge_fx_deals_grid', 'analytical_pnl', 'Analytical PnL', 21, 126, 126),
+    ('position_grid', 'ccy_pair_selector', 'Ccy Pair Selector', 0, 136, 136),
+    ('position_grid', 'trade_id', 'ID', 1, 50, 50),
+    ('position_grid', 'trade', 'Trade', 2, 280, 280),
+    ('position_grid', 'trade_date', 'Trade Date', 3, 100, 100),
+    ('position_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 4, 145, 145),
+    ('position_grid', 'sell_base_ccy_amount', 'SELL Base Ccy Amount', 5, 145, 145),
+    ('position_grid', 'sell_trade_rate', 'SELL Trade Rate', 6, 90, 90),
+    ('position_grid', 'sell_transfer_rate', 'SELL Transfer Rate', 7, 95, 95),
+    ('position_grid', 'market_bid', 'Market Bid', 8, 75, 75),
+    ('position_grid', 'market_offer', 'Market Offer', 9, 75, 75),
+    ('position_grid', 'buy_transfer_rate', 'BUY Transfer Rate', 10, 95, 95),
+    ('position_grid', 'buy_trade_rate', 'BUY Trade Rate', 11, 90, 90),
+    ('position_grid', 'buy_base_ccy_amount', 'BUY Base Ccy Amount', 12, 167, 167),
+    ('client_deals_grid', 'trade_id', 'Trade ID', 0, 96, 96),
+    ('client_deals_grid', 'execution_timestamp', 'Execution Timestamp', 1, 170, 170),
+    ('client_deals_grid', 'received_timestamp', 'Received Timestamp', 2, 170, 170),
+    ('client_deals_grid', 'client_code_type', 'Business ID Type', 3, 150, 150),
+    ('client_deals_grid', 'client_code', 'Business ID', 4, 170, 170),
+    ('client_deals_grid', 'client_name', 'Client Name', 5, 141, 141),
+    ('client_deals_grid', 'trade_date', 'Trade Date', 6, 109, 109),
+    ('client_deals_grid', 'currency_pair', 'Ccy Pair', 7, 94, 94),
+    ('client_deals_grid', 'side', 'Side', 8, 84, 84),
+    ('client_deals_grid', 'base_ccy_amount', 'Base Ccy Amount', 9, 146, 146),
+    ('client_deals_grid', 'quote_ccy_amount', 'Quote Ccy Amount', 10, 155, 155),
+    ('client_deals_grid', 'trade_rate', 'Trade Rate', 11, 108, 108),
+    ('client_deals_grid', 'tenor', 'Tenor', 12, 73, 73),
+    ('client_deals_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 13, 160, 160),
+    ('client_deals_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 14, 168, 168),
+    ('client_deals_grid', 'trade_context_label', 'Trade Context', 15, 435, 435),
+    ('client_deals_grid', 'pricing_rule_margin', 'Margin', 16, 102, 102),
+    ('client_deals_grid', 'initial_position_management_mode', 'Initial Position Management Mode', 17, 232, 232),
+    ('client_deals_grid', 'current_position_management_mode', 'Current Position Management Mode', 18, 232, 232),
+    ('client_deals_grid', 'transfer_rate', 'Transfer Rate', 19, 122, 122),
+    ('client_deals_grid', 'analytical_pnl', 'Analytical PnL', 20, 126, 126),
+    ('hedge_deals_grid', 'trade_id', 'Trade ID', 0, 96, 96),
+    ('hedge_deals_grid', 'request_timestamp', 'Request Timestamp', 1, 170, 170),
+    ('hedge_deals_grid', 'execution_timestamp', 'Execution Timestamp', 2, 170, 170),
+    ('hedge_deals_grid', 'received_timestamp', 'Received Timestamp', 3, 170, 170),
+    ('hedge_deals_grid', 'counterparty_code_type', 'Business ID Type', 4, 150, 150),
+    ('hedge_deals_grid', 'counterparty_code', 'Business ID', 5, 170, 170),
+    ('hedge_deals_grid', 'counterparty_name', 'Counterparty Name', 6, 158, 158),
+    ('hedge_deals_grid', 'trade_date', 'Trade Date', 7, 109, 109),
+    ('hedge_deals_grid', 'currency_pair', 'Ccy Pair', 8, 94, 94),
+    ('hedge_deals_grid', 'side', 'Hedge Side', 9, 88, 88),
+    ('hedge_deals_grid', 'base_ccy_amount', 'Base Ccy Amount', 10, 146, 146),
+    ('hedge_deals_grid', 'quote_ccy_amount', 'Quote Ccy Amount', 11, 155, 155),
+    ('hedge_deals_grid', 'trade_rate', 'Trade Rate', 12, 108, 108),
+    ('hedge_deals_grid', 'tenor', 'Tenor', 13, 73, 73),
+    ('hedge_deals_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 14, 160, 160),
+    ('hedge_deals_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 15, 168, 168),
+    ('hedge_deals_grid', 'trade_context_label', 'Trade Context', 16, 435, 435),
+    ('hedge_deals_grid', 'pricing_rule_margin', 'Margin', 17, 102, 102),
+    ('hedge_deals_grid', 'initial_position_management_mode', 'Initial Position Management Mode', 18, 232, 232),
+    ('hedge_deals_grid', 'current_position_management_mode', 'Current Position Management Mode', 19, 232, 232),
+    ('hedge_deals_grid', 'transfer_rate', 'Transfer Rate', 20, 122, 122),
+    ('hedge_deals_grid', 'analytical_pnl', 'Analytical PnL', 21, 126, 126),
     ('analytical_pnl_report_grid', 'trade_id', 'Trade ID', 0, 96, 96),
     ('analytical_pnl_report_grid', 'trade_type', 'Trade Type', 1, 122, 122),
     ('analytical_pnl_report_grid', 'trade_date', 'Trade Date', 2, 109, 109),
@@ -334,25 +350,17 @@ VALUES
     ('batching_history_grid', 'actions', 'Actions', 10, 80, 80),
     ('batch_members_grid', 'trade_id', 'Trade ID', 0, 96, 96),
     ('batch_members_grid', 'trade_type', 'Trade Type', 1, 281, 281),
-    ('batch_members_grid', 'member_role', 'Member Role', 2, 124, 124),
+    ('batch_members_grid', 'member_role', 'Role', 2, 124, 124),
     ('batch_members_grid', 'base_balance_contribution_minor', 'Base Ccy Leg', 3, 125, 125),
     ('batch_members_grid', 'quote_balance_contribution_minor', 'Quote Ccy Leg', 4, 130, 130),
-    ('batch_members_grid', 'transfer_rate', 'Transfer Rate', 5, 122, 122),
-    ('batch_members_grid', 'analytical_pnl_quote_minor', 'Analytical PnL', 6, 127, 127),
-    ('batch_members_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 7, 135, 135),
-    ('batch_members_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 8, 143, 143),
+    ('batch_members_grid', 'trade_rate', 'Trade Rate', 5, 108, 108),
+    ('batch_members_grid', 'transfer_rate', 'Transfer Rate', 6, 122, 122),
+    ('batch_members_grid', 'analytical_pnl_quote_minor', 'Analytical PnL', 7, 127, 127),
+    ('batch_members_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 8, 135, 135),
+    ('batch_members_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 9, 143, 143),
     ('batch_cash_output_grid', 'currency_code', 'Currency', 0, 85, 85),
     ('batch_cash_output_grid', 'balance_contribution_minor', 'Cash Leg', 1, 119, 119),
     ('batch_cash_output_grid', 'value_date', 'Value Date', 2, 105, 105),
-    ('batch_position_output_grid', 'trade_id', 'Trade ID', 0, 93, 93),
-    ('batch_position_output_grid', 'trade_type', 'Trade Type', 1, 281, 281),
-    ('batch_position_output_grid', 'output_role', 'Output Role', 2, 101, 101),
-    ('batch_position_output_grid', 'base_balance_contribution_minor', 'Base Ccy Leg', 3, 121, 121),
-    ('batch_position_output_grid', 'quote_balance_contribution_minor', 'Quote Ccy Leg', 4, 126, 126),
-    ('batch_position_output_grid', 'transfer_rate', 'Transfer Rate', 5, 97, 97),
-    ('batch_position_output_grid', 'analytical_pnl_quote_minor', 'Analytical PnL', 6, 119, 119),
-    ('batch_position_output_grid', 'base_ccy_value_date', 'Base Ccy Value Date', 7, 135, 135),
-    ('batch_position_output_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 8, 143, 143),
     ('external_counterparties_grid', 'id', 'ID', 0, 70, 70),
     ('external_counterparties_grid', 'counterparty_type', 'Counterparty Type', 1, 176, 176),
     ('external_counterparties_grid', 'business_id_type', 'Business ID Type', 2, 150, 150),
@@ -376,36 +384,45 @@ VALUES
     ('users_grid', 'role', 'Role', 4, 100, 100),
     ('users_grid', 'active', 'Active', 5, 100, 100),
     ('users_grid', 'actions', 'Actions', 6, 80, 80),
-    ('execution_contexts_grid', 'id', 'ID', 0, 64, 64),
-    ('execution_contexts_grid', 'servicing_location', 'Servicing Location', 1, 250, 250),
-    ('execution_contexts_grid', 'accounting_system', 'Accounting System', 2, 300, 300),
-    ('execution_contexts_grid', 'execution_system', 'Execution System', 3, 250, 250),
-    ('execution_contexts_grid', 'default_position_management_mode', 'Default FX Position Mode', 4, 176, 176),
-    ('execution_contexts_grid', 'auto_hedging_admission_mode', 'Auto Hedging Admission', 5, 232, 232),
-    ('execution_contexts_grid', 'counterparties_count', 'Trading Counterparties Count', 6, 64, 64),
-    ('execution_contexts_grid', 'actions', 'Actions', 7, 80, 80),
+    ('trade_contexts_grid', 'id', 'ID', 0, 64, 64),
+    ('trade_contexts_grid', 'servicing_location', 'Servicing Location', 1, 250, 250),
+    ('trade_contexts_grid', 'accounting_system', 'Accounting System', 2, 300, 300),
+    ('trade_contexts_grid', 'originating_system', 'Originating System', 3, 250, 250),
+    ('trade_contexts_grid', 'auto_management_admission_mode', 'Initial Mode Assignment', 4, 232, 232),
+    ('trade_contexts_grid', 'counterparties_count', 'Attached Counterparties', 5, 64, 64),
+    ('trade_contexts_grid', 'actions', 'Actions', 6, 80, 80),
     ('servicing_locations_grid', 'id', 'ID', 0, 64, 64),
     ('servicing_locations_grid', 'name', 'Name', 1, 153, 153),
     ('servicing_locations_grid', 'region', 'Region', 2, 134, 134),
     ('servicing_locations_grid', 'type', 'Type', 3, 100, 100),
     ('servicing_locations_grid', 'active', 'Active', 4, 72, 72),
-    ('servicing_locations_grid', 'execution_context_count', 'Exec. Context Count', 5, 64, 64),
+    ('servicing_locations_grid', 'trade_context_count', 'Exec. Context Count', 5, 64, 64),
     ('servicing_locations_grid', 'actions', 'Actions', 6, 80, 80),
     ('accounting_systems_grid', 'id', 'ID', 0, 64, 64),
     ('accounting_systems_grid', 'name', 'Name', 1, 152, 152),
     ('accounting_systems_grid', 'active', 'Active', 2, 72, 72),
-    ('accounting_systems_grid', 'execution_context_count', 'Execution Context Count', 3, 64, 64),
+    ('accounting_systems_grid', 'trade_context_count', 'Trade Context Count', 3, 64, 64),
     ('accounting_systems_grid', 'actions', 'Actions', 4, 80, 80),
-    ('execution_systems_grid', 'id', 'ID', 0, 183, 183),
-    ('execution_systems_grid', 'name', 'Name', 1, 149, 149),
-    ('execution_systems_grid', 'pricing_mode', 'Pricing Mode', 2, 156, 156),
-    ('execution_systems_grid', 'execution_system_label', 'Execution System Label', 3, 250, 250),
-    ('execution_systems_grid', 'active', 'Active', 4, 72, 72),
-    ('execution_systems_grid', 'execution_context_count', 'Execution Context Count', 5, 64, 64),
-    ('execution_systems_grid', 'actions', 'Actions', 6, 80, 80),
+    ('originating_systems_grid', 'id', 'ID', 0, 183, 183),
+    ('originating_systems_grid', 'name', 'Name', 1, 149, 149),
+    ('originating_systems_grid', 'pricing_mode', 'Pricing Mode', 2, 156, 156),
+    ('originating_systems_grid', 'originating_system_label', 'Originating System Label', 3, 250, 250),
+    ('originating_systems_grid', 'active', 'Active', 4, 72, 72),
+    ('originating_systems_grid', 'trade_context_count', 'Trade Context Count', 5, 64, 64),
+    ('originating_systems_grid', 'actions', 'Actions', 6, 80, 80),
+    ('trade_purposes_grid', 'id', 'ID', 0, 210, 210),
+    ('trade_purposes_grid', 'name', 'Name', 1, 260, 260),
+    ('trade_purposes_grid', 'trade_context_count', 'Attached Trade Contexts', 2, 64, 64),
+    ('trade_purposes_grid', 'actions', 'Actions', 3, 100, 100),
+    ('auto_management_admission_criteria_grid', 'ccy_pair', 'Ccy Pair', 0, 150, 150),
+    ('auto_management_admission_criteria_grid', 'trade_type', 'Trade Type', 1, 210, 210),
+    ('auto_management_admission_criteria_grid', 'eligible_for_auto_mode', 'Eligible', 2, 150, 150),
+    ('auto_management_admission_criteria_grid', 'maximum_trade_amount', 'Amount Limit', 3, 180, 180),
+    ('auto_management_admission_criteria_grid', 'transfer_rate_deviation', 'Max. Transfer Rate Deviation', 4, 230, 230),
+    ('auto_management_admission_criteria_grid', 'actions', 'Actions', 5, 100, 100),
     ('hedge_quick_mode_settings_grid', 'currency_pair', 'Ccy Pair', 0, 89, 89),
     ('hedge_quick_mode_settings_grid', 'counterparty_name', 'Hedge Counterparty', 1, 141, 141),
-    ('hedge_quick_mode_settings_grid', 'context_path', 'Execution Context', 2, 469, 469),
+    ('hedge_quick_mode_settings_grid', 'context_path', 'Trade Context', 2, 469, 469),
     ('hedge_quick_mode_settings_grid', 'presets_summary', 'Quick Amounts', 3, 221, 221),
     ('hedge_quick_mode_settings_grid', 'default_tenor', 'Tenor', 4, 73, 73),
     ('hedge_quick_mode_settings_grid', 'state', 'Status', 5, 73, 73),
@@ -422,8 +439,8 @@ VALUES
     ('deal_generation_settings_grid', 'active', 'Active', 9, 72, 72),
     ('deal_generation_settings_grid', 'actions', 'Actions', 10, 80, 80);
 
-WITH counterparty_execution_context_seed
-    (counterparty_code, servicing_location_id, accounting_system_id, execution_system_id)
+WITH counterparty_trade_context_seed
+    (counterparty_code, servicing_location_id, accounting_system_id, originating_system_id)
 AS
 (
     VALUES
@@ -435,31 +452,31 @@ AS
         ('7707000001', '002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY'),
         ('7707000001', '002', 'AFINA', 'CLICK_TRADE_EFX')
 )
-INSERT INTO trading_counterparty_execution_contexts
-    (counterparty_id, execution_context_id)
+INSERT INTO trading_counterparty_trade_contexts
+    (counterparty_id, trade_context_id)
 SELECT
     counterparty.counterparty_id,
-    context.execution_context_id
-FROM counterparty_execution_context_seed seed
+    context.trade_context_id
+FROM counterparty_trade_context_seed seed
 INNER JOIN external_counterparties external
     ON external.counterparty_code_type = 'INN'
     AND external.counterparty_code = seed.counterparty_code
 INNER JOIN trading_counterparties counterparty
     ON counterparty.counterparty_id = external.counterparty_id
-INNER JOIN execution_contexts context
+INNER JOIN trade_contexts context
     ON context.servicing_location_id = seed.servicing_location_id
     AND context.accounting_system_id = seed.accounting_system_id
-    AND context.execution_system_id = seed.execution_system_id;
+    AND context.originating_system_id = seed.originating_system_id;
 
 WITH pricing_rule_seed
     (
         counterparty_code,
         servicing_location_id,
         accounting_system_id,
-        execution_system_id,
+        originating_system_id,
         ccy_pair_code,
         margin_percent,
-        position_management_mode_override
+        auto_management_admission_mode_override
     )
 AS
 (
@@ -475,26 +492,26 @@ AS
 INSERT INTO pricing_rules
     (
         counterparty_id,
-        execution_context_id,
+        trade_context_id,
         ccy_pair_code,
         margin_percent,
-        position_management_mode_override
+        auto_management_admission_mode_override
     )
 SELECT
     p.counterparty_id,
-    e.execution_context_id,
+    e.trade_context_id,
     seed.ccy_pair_code,
     seed.margin_percent,
-    seed.position_management_mode_override
+    seed.auto_management_admission_mode_override
 FROM pricing_rule_seed seed
 INNER JOIN external_counterparties external
     ON external.counterparty_code_type = 'INN'
     AND external.counterparty_code = seed.counterparty_code
 INNER JOIN trading_counterparties p ON p.counterparty_id = external.counterparty_id
-INNER JOIN execution_contexts e
+INNER JOIN trade_contexts e
     ON e.servicing_location_id = seed.servicing_location_id
     AND e.accounting_system_id = seed.accounting_system_id
-    AND e.execution_system_id = seed.execution_system_id;
+    AND e.originating_system_id = seed.originating_system_id;
 
 WITH eligible_rule AS
 (
@@ -506,10 +523,10 @@ WITH eligible_rule AS
     INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
     INNER JOIN trading_counterparty_roles role
         ON role.counterparty_id = p.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
-    INNER JOIN execution_contexts c
-        ON c.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e
-        ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c
+        ON c.trade_context_id = r.trade_context_id
+    INNER JOIN originating_systems e
+        ON e.originating_system_id = c.originating_system_id
     INNER JOIN ccy_pair_options pair
         ON pair.ccy_pair_code = r.ccy_pair_code
     INNER JOIN ccy_options base_ccy
@@ -521,7 +538,7 @@ WITH eligible_rule AS
     GROUP BY base_ccy.fraction_digits
     HAVING COUNT(*) = 1
 )
-INSERT INTO fx_hedge_quick_mode_settings
+INSERT INTO hedge_quick_mode_settings
     (
         ccy_pair_code,
         counterparty_id,
@@ -558,14 +575,14 @@ INSERT OR IGNORE INTO client_deal_generation_process_settings
     )
 VALUES (1, 1, 3, 3, 7);
 
-INSERT OR IGNORE INTO fx_batching_settings
+INSERT OR IGNORE INTO batching_settings
     (
         settings_id,
         allow_cross_tenor_batching
     )
 VALUES (1, 0);
 
-INSERT OR IGNORE INTO fx_auto_batching_settings
+INSERT OR IGNORE INTO auto_batching_settings
     (
         settings_id,
         max_interval_seconds,
@@ -574,7 +591,7 @@ INSERT OR IGNORE INTO fx_auto_batching_settings
     )
 VALUES (1, 60, '0.05', 'SAME_TENOR_ONLY');
 
-INSERT OR IGNORE INTO fx_auto_batching_ccy_pairs
+INSERT OR IGNORE INTO auto_batching_ccy_pairs
     (settings_id, ccy_pair_code)
 VALUES
     (1, 'EUR_USD'),
@@ -638,13 +655,13 @@ FROM pricing_rules r
 INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
 INNER JOIN trading_counterparty_roles role
     ON role.counterparty_id = p.counterparty_id AND role.role_code = 'CLIENT'
-INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
 INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
 INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
 WHERE e.pricing_mode = 'AUTO_PRICED';
 
-INSERT INTO fx_trade_exposure
+INSERT INTO trade_exposures
     (
         execution_timestamp,
         received_timestamp,
@@ -681,12 +698,12 @@ VALUES
         '2026-07-15'
     );
 
-INSERT INTO client_fx_deals
+INSERT INTO client_deals
     (
         trade_id,
         trade_type,
         counterparty_id,
-        execution_context_id,
+        trade_context_id,
         pricing_rule_id,
         transfer_rate,
         analytical_pnl_quote_minor,
@@ -696,7 +713,7 @@ SELECT
     last_insert_rowid(),
     'CLIENT_DEAL',
     r.counterparty_id,
-    r.execution_context_id,
+    r.trade_context_id,
     r.pricing_rule_id,
     1.1222,
     2700000,
@@ -704,15 +721,15 @@ SELECT
 FROM pricing_rules r
 INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
 INNER JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
-INNER JOIN execution_contexts e ON e.execution_context_id = r.execution_context_id
+INNER JOIN trade_contexts e ON e.trade_context_id = r.trade_context_id
 WHERE external.counterparty_code_type = 'INN'
   AND external.counterparty_code = '7701234567'
   AND r.ccy_pair_code = 'EUR_USD'
   AND e.servicing_location_id = '002'
   AND e.accounting_system_id = 'CTF3'
-  AND e.execution_system_id = 'MANUAL_CLIENT_DEAL_ENTRY';
+  AND e.originating_system_id = 'MANUAL_CLIENT_DEAL_ENTRY';
 
-INSERT INTO fx_trade_market_snapshot
+INSERT INTO trade_market_snapshots
     (
         trade_id,
         trade_type,
@@ -728,10 +745,10 @@ SELECT
     1.1220,
     1.1222,
     '2026-07-15T09:30:00.000Z'
-FROM client_fx_deals d
+FROM client_deals d
 WHERE d.trade_id = last_insert_rowid();
 
-INSERT INTO fx_trade_exposure
+INSERT INTO trade_exposures
     (
         execution_timestamp,
         received_timestamp,
@@ -768,13 +785,13 @@ VALUES
         '2026-07-15'
     );
 
-INSERT INTO fx_hedge_deals
+INSERT INTO hedge_deals
     (
         trade_id,
         trade_type,
         request_timestamp,
         counterparty_id,
-        execution_context_id,
+        trade_context_id,
         pricing_rule_id,
         transfer_rate,
         analytical_pnl_quote_minor,
@@ -785,7 +802,7 @@ SELECT
     'HEDGE_DEAL',
     '2026-07-15T09:31:00.000Z',
     r.counterparty_id,
-    r.execution_context_id,
+    r.trade_context_id,
     r.pricing_rule_id,
     1.1222,
     0,
@@ -793,15 +810,15 @@ SELECT
 FROM pricing_rules r
 INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
 INNER JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
-INNER JOIN execution_contexts e ON e.execution_context_id = r.execution_context_id
+INNER JOIN trade_contexts e ON e.trade_context_id = r.trade_context_id
 WHERE external.counterparty_code_type = 'INN'
   AND external.counterparty_code = '7707000001'
   AND r.ccy_pair_code = 'EUR_USD'
   AND e.servicing_location_id = '002'
   AND e.accounting_system_id = 'CTF3'
-  AND e.execution_system_id = 'MANUAL_CLIENT_DEAL_ENTRY';
+  AND e.originating_system_id = 'MANUAL_CLIENT_DEAL_ENTRY';
 
-INSERT INTO fx_trade_market_snapshot
+INSERT INTO trade_market_snapshots
     (
         trade_id,
         trade_type,
@@ -817,7 +834,7 @@ SELECT
     1.1220,
     1.1222,
     '2026-07-15T09:31:00.000Z'
-FROM fx_hedge_deals d
+FROM hedge_deals d
 WHERE d.trade_id = last_insert_rowid();
 
 COMMIT;

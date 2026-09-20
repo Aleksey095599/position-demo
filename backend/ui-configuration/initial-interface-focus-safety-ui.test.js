@@ -49,9 +49,10 @@ test("every modal dialog opens with neutral heading focus instead of field focus
 test("opening editable interfaces does not focus or select their first value", () => {
   [
     "openMarketSimulationDialog",
-    "showDealDialog",
+    "openAddClientDealDialog",
+    "openAddHedgeDealDialog",
     "openClientPricingRuleDialog",
-    "openClientExecutionContextAttachDialog",
+    "openClientTradeContextAttachDialog",
     "openClientDealGenerationDialog",
     "openBatchRollbackDialog",
     "openHedgeQuickModeSettingsEditor",

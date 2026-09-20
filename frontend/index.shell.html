@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FX Position</title>
+  <title>Position</title>
   <link rel="stylesheet" href="./vendor/bootstrap/bootstrap.min.css">
   <link rel="stylesheet" href="./vendor/tabulator/tabulator_bootstrap5.min.css">
   <link rel="stylesheet" href="./frontend/styles/app.css">
@@ -12,22 +12,28 @@
 <body>
   <header class="workspace-nav bg-body-tertiary border-bottom" id="workspaceNav" hidden>
     <nav class="workspace-nav-links" aria-label="Workspace navigation">
-      <a class="workspace-nav-link" href="#fx-position:manual" data-workspace-route="batching">
+      <a class="workspace-nav-link" href="#position:manual" data-workspace-route="batching">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">table_chart</span>
-        <span>FX Position</span>
+        <span>Position</span>
       </a>
       <a class="workspace-nav-link" id="workspaceBatchesLink" href="#batching:history" data-workspace-route="batching-history" data-workspace-routes="batching-history batch-formation-audit batch-details">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
-        <span>FX Batches</span>
+        <span>Batches</span>
       </a>
-      <a class="workspace-nav-link" href="#market-pulse" data-workspace-route="market">
+      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceMarketPulseToggle" aria-haspopup="menu" aria-controls="workspaceMarketPulseMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceMarketPulseMenu" data-workspace-routes="market-quote-stream market-charts market-data-management">
         <span class="button-icon workspace-nav-icon market-pulse-icon" aria-hidden="true">monitoring</span>
         <span>Market Pulse</span>
-      </a>
-      <a class="workspace-nav-link" id="workspaceTradesLink" href="#client-fx-deals" data-workspace-route="client-fx-deals" data-workspace-routes="client-fx-deals hedge-fx-deals">
+        <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
+      </button>
+      <a class="workspace-nav-link" id="workspaceTradesLink" href="#client-deals" data-workspace-route="client-deals" data-workspace-routes="client-deals hedge-deals">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">currency_exchange</span>
         <span>Trades</span>
       </a>
+      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceTradeIntakeToggle" aria-haspopup="menu" aria-controls="workspaceTradeIntakeMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceTradeIntakeMenu" data-workspace-routes="trade-contract trade-intake-messages">
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">move_to_inbox</span>
+        <span>Trade Intake</span>
+        <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
+      </button>
       <a class="workspace-nav-link" href="#trading-counterparties" data-workspace-route="profile">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">badge</span>
         <span>Trading Counterparties</span>
@@ -46,7 +52,7 @@
         <span>Reports</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
-      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceSettingsToggle" aria-haspopup="menu" aria-controls="workspaceSettingsMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceSettingsMenu" data-workspace-routes="settings-currencies settings-currency-pairs batching-settings hedging-settings">
+      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceSettingsToggle" aria-haspopup="menu" aria-controls="workspaceSettingsMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceSettingsMenu" data-workspace-routes="settings-currencies settings-currency-pairs batching-settings position-management-settings">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">settings</span>
         <span>Settings</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
@@ -63,14 +69,38 @@
       </a>
     </div>
   </header>
+  <div class="workspace-nav-menu" id="workspaceMarketPulseMenu" role="menu" aria-label="Market Pulse" data-workspace-nav-menu hidden>
+    <a class="workspace-nav-menu-link" href="#market-pulse:quote-stream" data-workspace-route="market-quote-stream" role="menuitem">
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">finance_mode</span>
+      <span>Quote Stream</span>
+    </a>
+    <a class="workspace-nav-menu-link" href="#market-pulse:charts" data-workspace-route="market-charts" role="menuitem">
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">candlestick_chart</span>
+      <span>Charts</span>
+    </a>
+    <a class="workspace-nav-menu-link" href="#market-pulse:data-management" data-workspace-route="market-data-management" role="menuitem">
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">cloud_sync</span>
+      <span>Data Management</span>
+    </a>
+  </div>
+  <div class="workspace-nav-menu" id="workspaceTradeIntakeMenu" role="menu" aria-label="Trade Intake" data-workspace-nav-menu hidden>
+    <a class="workspace-nav-menu-link" href="#trade-intake:contract" data-workspace-route="trade-contract" role="menuitem">
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">description</span>
+      <span>Contract</span>
+    </a>
+    <a class="workspace-nav-menu-link" href="#trade-intake:messages" data-workspace-route="trade-intake-messages" role="menuitem">
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">move_to_inbox</span>
+      <span>Messages</span>
+    </a>
+  </div>
   <div class="workspace-nav-menu" id="workspacePricingMenu" role="menu" aria-label="Pricing" data-workspace-nav-menu hidden>
     <a class="workspace-nav-menu-link" href="#reference-data" data-workspace-route="reference" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">dataset</span>
-      <span>Reference Data</span>
+      <span>Trade Context Components</span>
     </a>
-    <a class="workspace-nav-menu-link" href="#execution-context" data-workspace-route="pricing" role="menuitem">
+    <a class="workspace-nav-menu-link" href="#trade-context" data-workspace-route="pricing" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">hub</span>
-      <span>Execution Context</span>
+      <span>Trade Context</span>
     </a>
     <a class="workspace-nav-menu-link" href="#pricing-rules" data-workspace-route="pricing-rules" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">rule</span>
@@ -86,35 +116,35 @@
   <div class="workspace-nav-menu" id="workspaceSettingsMenu" role="menu" aria-label="Settings" data-workspace-nav-menu hidden>
     <a class="workspace-nav-menu-link" href="#settings:currencies" data-workspace-route="settings-currencies" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">payments</span>
-      <span>Currency Settings</span>
+      <span>Currency</span>
     </a>
     <a class="workspace-nav-menu-link" href="#settings:currency-pairs" data-workspace-route="settings-currency-pairs" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">swap_horiz</span>
-      <span>Currency Pair Settings</span>
+      <span>Currency Pair</span>
     </a>
     <a class="workspace-nav-menu-link" href="#batching-settings" data-workspace-route="batching-settings" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
-      <span>Batching Settings</span>
+      <span>Batching</span>
     </a>
-    <a class="workspace-nav-menu-link" href="#hedging-settings:quick-hedge" data-workspace-route="hedging-settings" role="menuitem">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">shield</span>
-      <span>Hedging Settings</span>
+    <a class="workspace-nav-menu-link" href="#position-management-settings" data-workspace-route="position-management-settings" role="menuitem">
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">table_chart</span>
+      <span>Position Management</span>
     </a>
   </div>
 
-<!-- @include:features/market/market.page.html -->
+<!-- @include:features/market-pulse/market.page.html -->
 
-<!-- @include:features/market/components/market-simulation.dialog.html -->
+<!-- @include:features/market-pulse/components/market-simulation.dialog.html -->
 
 <!-- @include:features/database/database.page.html -->
 
-<!-- @include:features/fx-position/fx-position.page.html -->
+<!-- @include:features/position/position.page.html -->
 
-<!-- @include:features/batching/fx-batches.page.html -->
+<!-- @include:features/batching/batches.page.html -->
 
 <!-- @include:features/batching/batch-details.page.html -->
 
-<!-- @include:features/fx-position/components/send-to-auto-position-mode.dialog.html -->
+<!-- @include:features/position/components/move-to-auto-management.dialog.html -->
 
 <!-- @include:features/batching/components/one-batch-tenor.dialog.html -->
 
@@ -124,11 +154,14 @@
 
 <!-- @include:features/trades/trades.page.html -->
 
+<!-- @include:features/trade-intake/trade-contract.page.html -->
+<!-- @include:features/trade-intake/trade-intake-messages.page.html -->
+
 <!-- @include:features/reporting/analytical-pnl-report.page.html -->
 
 <!-- @include:features/counterparties/counterparties.page.html -->
 
-<!-- @include:features/pricing/execution-context.page.html -->
+<!-- @include:features/pricing/trade-context.page.html -->
 
 <!-- @include:features/pricing/reference-data.page.html -->
 
@@ -142,7 +175,6 @@
 
 <!-- @include:features/trades/components/client-deal-duplicate-check.dialog.html -->
 
-<!-- @include:features/trades/components/edit-client-deal.dialog.html -->
 
 <!-- @include:features/trades/components/client-deal-generation.dialog.html -->
 
@@ -152,11 +184,10 @@
 
 <!-- @include:features/processes/processes.page.html -->
 
-<!-- @include:features/hedging/hedging-settings.page.html -->
+<!-- @include:features/position/position-management-settings.page.html -->
 
-<!-- @include:features/hedging/components/auto-hedging-admission-pairs.dialog.html -->
 
-<!-- @include:features/counterparties/components/execution-context-attach.dialog.html -->
+<!-- @include:features/counterparties/components/trade-context-attach.dialog.html -->
 
 <!-- @include:features/counterparties/components/pricing-rule.dialog.html -->
 
@@ -166,6 +197,7 @@
   <script src="./demo-db.js"></script>
   <script src="./vendor/big.js/big.js"></script>
   <script src="./vendor/tabulator/tabulator.min.js"></script>
+  <script src="./frontend/vendor/lightweight-charts/lightweight-charts.standalone.production.js"></script>
   <script src="./frontend/app/app.js"></script>
 </body>
 </html>

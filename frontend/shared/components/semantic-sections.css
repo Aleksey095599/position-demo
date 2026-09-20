@@ -4,7 +4,7 @@
       #batchDetailsPage,
       #analyticalPnlReportPage,
       #batchingSettingsPage.unified-bootstrap-workspace.workbench-page,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page,
       #databasePage.unified-bootstrap-workspace.workbench-page,
       dialog
     ) .semantic-section {
@@ -21,7 +21,7 @@
       #batchDetailsPage,
       #analyticalPnlReportPage,
       #batchingSettingsPage.unified-bootstrap-workspace.workbench-page,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page,
       #databasePage.unified-bootstrap-workspace.workbench-page,
       dialog
     ) .semantic-section > .semantic-section-head {
@@ -55,8 +55,8 @@
       box-shadow: var(--bs-box-shadow-sm);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-body > .semantic-section {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-body > .semantic-section {
       box-shadow: var(--bs-box-shadow-sm);
     }
 
@@ -70,17 +70,11 @@
       box-shadow: var(--bs-box-shadow-sm);
     }
 
-    :is(
-      #clientPricingRuleDialog.client-pricing-rule-dialog,
-      #editDealDialog.client-deal-create-dialog
-    ) .modal-body {
+    #clientPricingRuleDialog.client-pricing-rule-dialog .modal-body {
       gap: 16px;
     }
 
-    :is(
-      #clientPricingRuleDialog.client-pricing-rule-dialog,
-      #editDealDialog.client-deal-create-dialog
-    ) .modal-body > .semantic-section {
+    #clientPricingRuleDialog.client-pricing-rule-dialog .modal-body > .semantic-section {
       box-shadow: var(--bs-box-shadow-sm);
     }
 
@@ -204,7 +198,6 @@
     .client-pricing-context-candidate.is-selected {
       border-color: var(--client-deal-accent-strong);
       background: var(--palette-blue-100);
-      box-shadow: inset 3px 0 0 var(--client-deal-accent);
     }
 
     #addClientDealDialog.client-deal-create-dialog
@@ -296,7 +289,6 @@
     .client-pricing-context-candidate.is-selected {
       border-color: var(--hedge-deal-accent-strong);
       background: var(--palette-yellow-100);
-      box-shadow: inset 3px 0 0 var(--hedge-deal-accent);
     }
 
     #addHedgeDealDialog.client-deal-create-dialog
@@ -314,7 +306,8 @@
       color: var(--hedge-deal-accent-text);
     }
 
-    #addHedgeDealDialog.client-deal-create-dialog #addHedgeDealSubmitButton {
+    #addHedgeDealDialog.client-deal-create-dialog #addHedgeDealSubmitButton,
+    #mainPage #addHedgeDealButton {
       --bs-btn-color: var(--palette-yellow-800);
       --bs-btn-bg: var(--palette-yellow-200);
       --bs-btn-border-color: var(--palette-yellow-600);
@@ -385,7 +378,7 @@
       #batchDetailsPage,
       #analyticalPnlReportPage,
       #batchingSettingsPage.unified-bootstrap-workspace.workbench-page,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page,
       #databasePage.unified-bootstrap-workspace.workbench-page,
       dialog
     ) .semantic-section > .semantic-section-head:first-child {
@@ -421,16 +414,22 @@
     }
 
     #batchDetailsPage.workbench-page
+    .batch-details-section.semantic-table-section
+    > .semantic-table-section-head {
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    #batchDetailsPage.workbench-page
     .batch-details-output-section.semantic-section {
       --semantic-section-accent: var(--palette-teal-700);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     .deal-toolbar .client-deal-toolbar-title {
       color: var(--bs-secondary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     :is(.deal-toolbar, .batch-toolbar) .btn-outline-primary:not(.is-running) {
       --bs-btn-color: var(--app-button-primary-color);
       --bs-btn-bg: var(--app-button-primary-bg);
@@ -447,21 +446,21 @@
       color: var(--app-button-primary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     :is(.deal-toolbar, .batch-toolbar) .btn-outline-primary:not(.is-running):hover:not(:disabled) {
       border-color: var(--app-button-primary-hover-border);
       background: var(--app-button-primary-hover-bg);
       color: var(--app-button-primary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     :is(.deal-toolbar, .batch-toolbar) .btn-outline-primary:not(.is-running):active:not(:disabled) {
       border-color: var(--app-button-primary-active-border);
       background: var(--app-button-primary-active-bg);
       color: var(--app-button-primary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     :is(.deal-toolbar, .batch-toolbar) .btn:disabled {
       --bs-btn-disabled-color: var(--bs-secondary-color);
       --bs-btn-disabled-bg: var(--bs-tertiary-bg);
@@ -537,7 +536,7 @@
     #clientDealGenerationDialog.generation-dialog
     .generation-settings-table-region.semantic-section
     > .generation-settings-table-toolbar.semantic-section-head {
-      border-bottom-color: var(--bs-border-color);
+      border-bottom: 1px solid var(--bs-border-color);
       background:
         color-mix(
           in srgb,
@@ -580,13 +579,13 @@
       box-shadow: var(--bs-box-shadow-sm);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page {
-      --hedging-settings-accent: var(--palette-yellow-500);
-      --hedging-settings-accent-strong: var(--palette-yellow-600);
-      --hedging-settings-border: var(--palette-yellow-300);
-      --hedging-settings-accent-soft:
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page {
+      --position-management-settings-accent: var(--palette-yellow-500);
+      --position-management-settings-accent-strong: var(--palette-yellow-600);
+      --position-management-settings-border: var(--palette-yellow-300);
+      --position-management-settings-accent-soft:
         color-mix(in srgb, var(--palette-yellow-100) 58%, var(--bs-body-bg));
-      --hedging-settings-accent-text: var(--palette-yellow-800);
+      --position-management-settings-accent-text: var(--palette-yellow-800);
       --quick-hedge-settings-accent: var(--app-primary);
       --quick-hedge-settings-accent-strong: var(--app-primary-hover);
       --quick-hedge-settings-border: var(--app-primary);
@@ -594,30 +593,30 @@
       --quick-hedge-settings-accent-text: var(--app-primary-text);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-grid.table-panel__body {
       overflow: auto;
       border: 0;
       border-radius: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-grid .tabulator-row:hover {
       background: var(--workbench-grid-hover-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor > .client-deal-create-section.semantic-section {
       --semantic-section-accent: var(--quick-hedge-settings-border);
       box-shadow: var(--bs-box-shadow-sm);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor {
       --bs-border-color: var(--palette-gray-400);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     > .client-deal-create-section.semantic-section
     > .semantic-section-head {
@@ -630,7 +629,7 @@
         );
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor :is(.form-control, .form-select):focus {
       border-color: var(--quick-hedge-settings-accent-strong);
       box-shadow:
@@ -638,24 +637,24 @@
         color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     .client-deal-client-option:is(:hover, :focus-visible, .is-selected),
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     .client-pricing-context-candidate:is(:hover, :focus-visible) {
       border-color: var(--quick-hedge-settings-accent-strong);
       background: var(--quick-hedge-settings-accent-soft);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor .client-pricing-context-candidate.is-selected {
       border-color: var(--quick-hedge-settings-accent-strong);
       background: var(--palette-blue-100);
       box-shadow: inset 3px 0 0 var(--quick-hedge-settings-accent);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle):focus-visible {
       border-color: var(--quick-hedge-settings-accent-strong);
@@ -664,7 +663,7 @@
         color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle)[aria-expanded="true"] {
       border-color: var(--quick-hedge-settings-accent-strong);
@@ -672,13 +671,13 @@
       color: var(--quick-hedge-settings-accent-text);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-active .form-check-input:checked {
       border-color: var(--quick-hedge-settings-accent-strong);
       background-color: var(--quick-hedge-settings-accent);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-active .form-check-input:focus {
       border-color: var(--quick-hedge-settings-accent-strong);
       box-shadow:
@@ -686,7 +685,7 @@
         color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     #hedgeQuickModeSettingsSaveButton {
       --bs-btn-color: var(--app-button-primary-color);
       --bs-btn-bg: var(--app-button-primary-bg);
@@ -715,7 +714,7 @@
     :is(.workbench-page, .modal, dialog)
     table
     tbody
-    tr:hover:not(.is-selected):not(.is-editing):not(.fx-position-grid-fill)
+    tr:hover:not(.is-selected):not(.is-editing):not(.position-grid-fill)
     > td {
       background: var(--workbench-grid-hover-bg) !important;
     }
@@ -787,7 +786,7 @@
         width: 100%;
       }
 
-      .fx-deals-grid {
+      .deals-grid {
         height: max(320px, calc(100vh - 230px));
       }
     }

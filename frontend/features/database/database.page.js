@@ -401,18 +401,19 @@
       workspaceNavMenuEntries.forEach(entry => {
         entry.toggle.classList.toggle("is-active", entry.routes.includes(activeRoute));
       });
+      renderWorkspacePageHeading();
     }
 
-    function fxPositionRoute(mode = "MANUAL") {
-      return `#fx-position:${normalizedPositionManagementMode(mode).toLowerCase()}`;
+    function positionRoute(mode = "MANUAL") {
+      return `#position:${normalizedPositionManagementMode(mode).toLowerCase()}`;
     }
 
     function batchingBlotterRoute() {
-      return fxPositionRoute("MANUAL");
+      return positionRoute("MANUAL");
     }
 
-    function fxPositionModeFromLocation(hash = location.hash) {
-      const match = /^#fx-position(?::(manual|auto))?$/i.exec(String(hash || "").trim());
+    function positionModeFromLocation(hash = location.hash) {
+      const match = /^#position(?::(manual|auto))?$/i.exec(String(hash || "").trim());
       return match?.[1]?.toUpperCase() === "AUTO" ? "AUTO" : "MANUAL";
     }
 
@@ -424,9 +425,9 @@
       return "#batching:formation-audit";
     }
 
-    function setFxDealsActiveTab(activeRoute) {
-      fxDealsTabs.forEach(tab => {
-        const isActive = tab.dataset.fxDealsRoute === activeRoute;
+    function setDealsActiveTab(activeRoute) {
+      dealsTabs.forEach(tab => {
+        const isActive = tab.dataset.dealsRoute === activeRoute;
         tab.classList.toggle("active", isActive);
         tab.setAttribute("aria-selected", String(isActive));
       });
@@ -449,12 +450,28 @@
       };
     }
 
-    function clientProfileRoute(counterpartyId = "") {
+    function normalizedTradingCounterpartyListRoute(value) {
+      const candidate = String(value || "").trim();
+      const match = /^#trading-counterparties(?:\?trade-context=(\d+))?$/.exec(candidate);
+      const tradeContextId = Number(match?.[1]);
+
+      return match && (!match[1] || Number.isInteger(tradeContextId) && tradeContextId > 0)
+        ? candidate
+        : "#trading-counterparties";
+    }
+
+    function clientProfileRoute(counterpartyId = "", returnHash = "") {
       const routeToken = String(counterpartyId ?? "").trim();
 
-      return routeToken
-        ? `#trading-counterparties/${encodeURIComponent(routeToken)}`
-        : "#trading-counterparties";
+      if (!routeToken) {
+        return "#trading-counterparties";
+      }
+
+      const route = `#trading-counterparties/${encodeURIComponent(routeToken)}`;
+      const normalizedReturnHash = normalizedTradingCounterpartyListRoute(returnHash);
+      return normalizedReturnHash === "#trading-counterparties"
+        ? route
+        : `${route}?return=${encodeURIComponent(normalizedReturnHash)}`;
     }
 
     function normalizedPricingRulesReturnRoute(value) {
@@ -484,22 +501,15 @@
       return `${counterpartyRoute}?${parameters.toString()}`;
     }
 
-    function normalizedPricingContextReturnRoute(value) {
-      const candidate = String(value || "").trim();
+    function tradingCounterpartiesForTradeContextRoute(tradeContextId) {
+      const normalizedTradeContextId = Number(tradeContextId);
 
-      return pricingRouteStateFromLocation(candidate).matches ? candidate : pricingRoute();
-    }
-
-    function tradingCounterpartiesForExecutionContextRoute(executionContextId, returnHash = location.hash) {
-      const normalizedExecutionContextId = Number(executionContextId);
-
-      if (!Number.isInteger(normalizedExecutionContextId) || normalizedExecutionContextId <= 0) {
+      if (!Number.isInteger(normalizedTradeContextId) || normalizedTradeContextId <= 0) {
         return clientProfileRoute();
       }
 
       const parameters = new URLSearchParams();
-      parameters.set("execution-context", String(normalizedExecutionContextId));
-      parameters.set("return", normalizedPricingContextReturnRoute(returnHash));
+      parameters.set("trade-context", String(normalizedTradeContextId));
       return `#trading-counterparties?${parameters.toString()}`;
     }
 
@@ -509,7 +519,7 @@
       );
 
       if (!match) {
-        return { matches: false, mode: "list", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+        return { matches: false, mode: "list", counterpartyId: "", tradeContextId: null, returnHash: pricingRoute() };
       }
 
       let routeToken = "";
@@ -517,29 +527,29 @@
       try {
         routeToken = match[1] ? decodeURIComponent(match[1]) : "";
       } catch (_error) {
-        return { matches: false, mode: "list", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+        return { matches: false, mode: "list", counterpartyId: "", tradeContextId: null, returnHash: pricingRoute() };
       }
 
       const parameters = new URLSearchParams(match[2] || "");
-      const executionContextId = Number(parameters.get("execution-context"));
+      const tradeContextId = Number(parameters.get("trade-context"));
       const pricingRuleId = String(parameters.get("pricing-rule") || "").trim();
 
-      if (!routeToken && Number.isInteger(executionContextId) && executionContextId > 0) {
+      if (!routeToken && Number.isInteger(tradeContextId) && tradeContextId > 0) {
         return {
           matches: true,
-          mode: "related",
+          mode: "list",
           counterpartyId: "",
-          executionContextId,
-          returnHash: normalizedPricingContextReturnRoute(parameters.get("return"))
+          tradeContextId,
+          returnHash: pricingRoute()
         };
       }
 
       if (!routeToken) {
-        return { matches: true, mode: "list", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+        return { matches: true, mode: "list", counterpartyId: "", tradeContextId: null, returnHash: pricingRoute() };
       }
 
       if (routeToken.toLowerCase() === "new") {
-        return { matches: true, mode: "create", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+        return { matches: true, mode: "create", counterpartyId: "", tradeContextId: null, returnHash: pricingRoute() };
       }
 
       if (pricingRuleId) {
@@ -547,13 +557,20 @@
           matches: true,
           mode: "pricing-rule",
           counterpartyId: routeToken,
-          executionContextId: null,
+          tradeContextId: null,
           pricingRuleId,
           returnHash: normalizedPricingRulesReturnRoute(parameters.get("return"))
         };
       }
 
-      return { matches: true, mode: "detail", counterpartyId: routeToken, executionContextId: null, returnHash: pricingRoute() };
+      return {
+        matches: true,
+        mode: "detail",
+        counterpartyId: routeToken,
+        tradeContextId: null,
+        returnHash: pricingRoute(),
+        listReturnHash: normalizedTradingCounterpartyListRoute(parameters.get("return"))
+      };
     }
 
     function usersRoute(userId = "") {
@@ -580,7 +597,7 @@
     }
 
     function marketRoute() {
-      return "#market-pulse";
+      return "#market-pulse:quote-stream";
     }
 
     function settingsRoute(kind = "currencies") {
@@ -589,15 +606,7 @@
         : "#settings:currencies";
     }
 
-    function normalizedCurrencySettingsReturnRoute(value) {
-      const candidate = String(value || "").trim();
-
-      return /^(?:#settings:currencies|#(?:market-pulse|market):ccy-options)$/.test(candidate)
-        ? candidate
-        : settingsRoute("currencies");
-    }
-
-    function currencyPairSettingsForCurrencyRoute(currencyCode, returnHash = location.hash) {
+    function currencyPairSettingsForCurrencyRoute(currencyCode) {
       const normalizedCurrencyCode = String(currencyCode || "").trim().toUpperCase();
 
       if (!/^[A-Z]{3}$/.test(normalizedCurrencyCode)) {
@@ -606,7 +615,6 @@
 
       const parameters = new URLSearchParams();
       parameters.set("currency", normalizedCurrencyCode);
-      parameters.set("return", normalizedCurrencySettingsReturnRoute(returnHash));
       return `${settingsRoute("pairs")}?${parameters.toString()}`;
     }
 
@@ -617,7 +625,7 @@
       const routeToken = settingsMatch?.[1] || legacyMatch?.[1] || "";
 
       if (!routeToken) {
-        return { matches: false, kind: "streams", mode: "list", scope: null };
+        return { matches: false, kind: "streams", mode: "list", filter: null };
       }
 
       const kind = routeToken === "currency-pairs" || routeToken === "ccy-pair-options"
@@ -630,15 +638,12 @@
         return {
           matches: true,
           kind,
-          mode: "related",
-          scope: {
-            currencyCode,
-            returnHash: normalizedCurrencySettingsReturnRoute(parameters.get("return"))
-          }
+          mode: "filtered",
+          filter: { currencyCode }
         };
       }
 
-      return { matches: true, kind, mode: "list", scope: null };
+      return { matches: true, kind, mode: "list", filter: null };
     }
 
     function normalizedCurrencyPairSettingsReturnRoute(value) {
@@ -665,24 +670,27 @@
     }
 
     const PROCESS_CATALOG_GLOSSARY_TERM_KEYS = new Set([
+      "position-management-mode",
+      "auto-position-management-mode",
+      "manual-position-management-mode",
       "auto-hedging",
-      "auto-hedging-admission",
-      "execution-context-admission-mode",
-      "auto-hedging-admission-policy",
+      "auto-management-admission",
+      "trade-context-admission-mode",
+      "auto-mode-eligibility",
       "eligibility-check",
       "admission-state",
       "ccy-pair",
-      "fx-batch",
+      "batch",
       "batching",
       "market-pulse",
-      "fx-trade",
+      "trade",
       "client-deal",
       "hedge-deal",
-      "fx-position",
-      "execution-context",
+      "position",
+      "trade-context",
       "servicing-location",
       "accounting-system",
-      "execution-system",
+      "originating-system",
       "pricing-mode",
       "transfer-rate",
       "base-currency",
@@ -695,6 +703,14 @@
       "batch-internal-swap"
     ]);
 
+    const PROCESS_CATALOG_GLOSSARY_TERM_ALIASES = new Map([
+      ["manual-management", "manual-position-management-mode"],
+      ["auto-management", "auto-position-management-mode"],
+      ["execution-context", "trade-context"],
+      ["execution-system", "originating-system"],
+      ["execution-context-admission-mode", "trade-context-admission-mode"]
+    ]);
+
     function domainGlossaryTermFromRoute() {
       const routePrefix = `${domainGlossaryRoute()}/`;
       if (!location.hash.startsWith(routePrefix)) {
@@ -702,7 +718,8 @@
       }
       try {
         const termKey = decodeURIComponent(location.hash.slice(routePrefix.length));
-        return PROCESS_CATALOG_GLOSSARY_TERM_KEYS.has(termKey) ? termKey : null;
+        const canonicalTermKey = PROCESS_CATALOG_GLOSSARY_TERM_ALIASES.get(termKey) || termKey;
+        return PROCESS_CATALOG_GLOSSARY_TERM_KEYS.has(canonicalTermKey) ? canonicalTermKey : null;
       } catch (_error) {
         return null;
       }
@@ -713,63 +730,66 @@
       en: Object.freeze({
         pageTitle: "Process Catalog",
         manualBatching: "Manual Batching",
-        autoHedgingDefinition: "An automated FX risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.",
-        autoHedgingAdmissionDefinition: "The domain decision boundary that determines whether an FX Trade remains held under manual control or may be released to Auto Hedging.",
-        executionContextAdmissionModeDefinition: "A mandatory Execution Context setting that defines the permitted admission path for its FX Trades.",
-        autoHedgingAdmissionPolicyDefinition: "The complete set of mandatory rules that combines the Execution Context Admission Mode with configured Eligibility Checks to decide the Admission State.",
-        eligibilityCheckDefinition: "A safety condition evaluated from FX Trade, reference, or market data to determine eligibility for Auto Hedging. Every applicable check must pass before release.",
-        ccyPairDefinition: "An ordered pair of currencies defining the Base Currency and Quote Currency used to express an FX Trade amount and exchange rate.",
-        automationAdmissionStateDefinition: "Shows whether a specific FX Trade is currently held for manual control or released to Auto Hedging.",
+        autoPositionManagementModeDefinition: "A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode may be assigned at initial registration or after an operator approves a move from Manual Mode of Position Management; it does not mean that an automated action has already occurred.",
+        manualPositionManagementModeDefinition: "A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator may manage it entirely in this mode or approve a move to Auto Mode of Position Management if the applicable eligibility requirements are met.",
+        positionManagementModeDefinition: "The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.",
+        autoHedgingDefinition: "An automated risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.",
+        autoManagementAdmissionDefinition: "The domain decision boundary that determines whether a Trade remains in Manual Management or may be released to Auto Management.",
+        tradeContextAdmissionModeDefinition: "A Trade Context setting used only for Initial Admission: admit an eligible new trade automatically or require operator review.",
+        autoModeEligibilityDefinition: "Requirements configured by Trade Type and Ccy Pair and checked whenever a Trade is considered for Position Management — Auto Mode. Initial Mode Assignment separately applies Trade Context and Pricing Rule settings.",
+        eligibilityCheckDefinition: "A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before release.",
+        ccyPairDefinition: "An ordered pair of currencies defining the Base Currency and Quote Currency used to express a Trade amount and exchange rate.",
+        automationAdmissionStateDefinition: "Shows whether a specific Trade is currently in Manual Management or released to Auto Management.",
         domainGlossary: "Domain Glossary",
         domainGlossarySubtitle: "Core terms used across documented processes",
         goal: "Process goal:",
         definitions: "Core definitions",
-        fxBatchDefinition: "A fixed package of FX Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical FX Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active FX Position view, which organizes trades and simplifies control of the current currency position.",
+        batchDefinition: "A fixed package of Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active Position view, which organizes trades and simplifies control of the current currency position.",
         batchingTerm: "Batching",
         marketPulseDefinition: "An application module that provides current normalized market quotes (Bid and Offer) for currency pairs to pricing, validation, and risk-management processes. In the current demo, quotes are generated by a simulator; the domain concept is independent of the data source and may later use real market-data feeds.",
-        batchingDefinition: "A manual or automatic process that selects, validates, groups and neutralizes FX Trades compatible by Batching Key to form one or more FX Batches. A user selects FX Trades for Manual Batching; configured rules select them for Automatic Batching.",
-        fxTradeDefinition: "A Client Deal, Hedge Deal, or technical FX transaction included in currency-position calculations and displayed in FX Position.",
-        clientDealDefinition: "An FX Trade executed with a client and forming the client component of the currency position.",
-        hedgeDealDefinition: "An FX Trade executed with a hedge counterparty to manage or neutralize the currency position.",
-        fxPositionDefinition: "Application interface for monitoring the currency position and performing operations with FX Trades, including Batching.",
-        executionContextDefinition: "A configuration context that determines how an FX Trade is processed for pricing, position management, and other applicable processes. In the current demo, it is defined by the combination of Servicing Location, Accounting System (when applicable), and Execution System.",
-        servicingLocationDefinition: "The organizational and geographic point at which an FX Trade is serviced, such as a branch or head office in a particular region.",
-        accountingSystemDefinition: "An internal system of record of a bank or financial institution in which an FX Trade and its related accounting entries are registered.",
-        executionSystemDefinition: "The system or execution channel in which an FX Trade is actually executed. Its Pricing Mode describes how the execution price is produced or approved.",
-        pricingModeDefinition: "An Execution System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.",
-        transferRateDefinition: "An internal accounting rate of an FX Trade used to calculate its currency position and allocate analytical P&L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.",
-        baseCurrencyDefinition: "The first currency in a currency pair; its amount forms the base currency leg of an FX Trade.",
+        batchingDefinition: "A manual or automatic process that selects, validates, groups and neutralizes Trades compatible by Batching Key to form one or more Batches. A user selects Trades for Manual Batching; configured rules select them for Automatic Batching.",
+        tradeDefinition: "A Client Deal, Hedge Deal, or technical transaction included in currency-position calculations and displayed in Position.",
+        clientDealDefinition: "A Trade executed with a client and forming the client component of the currency position.",
+        hedgeDealDefinition: "A Trade executed with a hedge counterparty to manage or neutralize the currency position.",
+        positionDefinition: "Application interface for monitoring the currency position and performing operations with Trades, including Batching.",
+        tradeContextDefinition: "Trade Context describes the business environment in which a Trade originates, is serviced, and is reflected in accounting. It provides common coordinates against which rules for different processes apply. These coordinates are Servicing Location, Accounting System (when applicable), and Originating System.",
+        servicingLocationDefinition: "The organizational and geographic point at which a Trade is serviced, such as a branch or head office in a particular region.",
+        accountingSystemDefinition: "An internal system of record of a bank or financial institution in which a Trade and its related accounting entries are registered.",
+        originatingSystemDefinition: "The business system in which a Trade is first registered as a business fact.",
+        pricingModeDefinition: "An Originating System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.",
+        transferRateDefinition: "An internal accounting rate of a Trade used to calculate its currency position and allocate analytical P&L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.",
+        baseCurrencyDefinition: "The first currency in a currency pair; its amount forms the base currency leg of a Trade.",
         quoteCurrencyDefinition: "The second currency in a currency pair, in which the value of the Base Currency is expressed.",
-        tradeDateDefinition: "The date on which an FX Trade is executed; Tenor and Value Dates are determined relative to it.",
-        tenorDefinition: "The standard settlement term of an FX Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.",
-        valueDateDefinition: "The settlement date for one currency leg of an FX Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.",
-        batchingKeyDefinition: "A composite compatibility key that determines whether FX Trades may be included in one FX Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.",
-        crossTenorBatchingDefinition: "A Batching mode that allows compatible FX Trades with different Tenors and Value Dates to be included in one FX Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.",
-        batchInternalSwapDefinition: "An internal technical entity of an FX Batch that aligns FX Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across FX Batches and offset by a single net swap at the end of the accounting day.",
-        selectedFxTrades: "Selected FX Trades",
-        formedFxBatch: "Formed FX Batch",
+        tradeDateDefinition: "The date on which a Trade is executed; Tenor and Value Dates are determined relative to it.",
+        tenorDefinition: "The standard settlement term of a Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.",
+        valueDateDefinition: "The settlement date for one currency leg of a Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.",
+        batchingKeyDefinition: "A composite compatibility key that determines whether Trades may be included in one Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.",
+        crossTenorBatchingDefinition: "A Batching mode that allows compatible Trades with different Tenors and Value Dates to be included in one Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.",
+        batchInternalSwapDefinition: "An internal technical entity of a Batch that aligns Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across Batches and offset by a single net swap at the end of the accounting day.",
+        selectedTrades: "Selected Trades",
+        formedBatch: "Formed Batch",
         stageInput: "INPUT",
         stageDecision: "DECISION",
         stageControl: "CONTROL",
         stageDomain: "DOMAIN",
         stageCommit: "COMMIT",
-        selectFxTrades: "FX Trade Selection for FX Batch Formation",
+        selectTrades: "Trade Selection for Batch Formation",
         resolveTenors: "Resolve Batching Key",
         tenorResolvedRequest: "Tenor-resolved request",
         validateAndPlan: "Verify Command & Selection",
         deterministicGroupPlan: "Deterministic group plan",
         formAndNeutralize: "Form & Neutralize",
-        neutralBatchModel: "Neutral FX Batch model",
+        neutralBatchModel: "Neutral Batch model",
         oneDbTransaction: "ONE DB TX",
         commitAndRefresh: "Commit & Refresh",
-        formedBatches: "Formed FX Batches",
+        formedBatches: "Formed Batches",
         sameTenor: "Same Tenor",
         continueAction: "Continue",
         mixedTenors: "Mixed Batching Key",
         chooseOrSplit: "Choose one Group",
         serverTransactionFailure: "Server transaction failure",
         fullRollback: "Full rollback",
-        fxPositionUnchanged: "FX Position unchanged",
+        positionUnchanged: "Position unchanged",
         stageObjective: "Stage goal:",
         executionSteps: "Execution steps",
         controlsAndFailure: "Controls & failure",
@@ -782,65 +802,68 @@
         stageResult: "Stage result"
       }),
       ru: Object.freeze({
-        transferRateDefinition: "\u0412\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u0443\u0447\u0451\u0442\u043d\u044b\u0439 \u043a\u0443\u0440\u0441 FX Trade, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u044b\u0439 \u0434\u043b\u044f \u0440\u0430\u0441\u0447\u0451\u0442\u0430 \u0432\u0430\u043b\u044e\u0442\u043d\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0434\u043e\u0445\u043e\u0434\u0430. \u0418\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u044d\u0442\u043e\u043c\u0443 \u043a\u0443\u0440\u0441\u0443 \u043a\u043b\u0438\u0435\u043d\u0442\u0441\u043a\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043b\u0430\u0441\u044c \u0438\u0437 \u043a\u043d\u0438\u0433\u0438 Sales \u0432 \u043a\u043d\u0438\u0433\u0443 \u043f\u043e\u0434\u0440\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u044f, \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0438 \u043f\u0435\u0440\u0435\u043a\u0440\u044b\u0432\u0430\u044e\u0449\u0435\u0433\u043e \u043f\u043e\u0437\u0438\u0446\u0438\u044e. \u0412 \u0442\u0435\u043a\u0443\u0449\u0435\u043c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438 \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0438 \u043c\u0435\u0436\u0434\u0443 \u043a\u043d\u0438\u0433\u0430\u043c\u0438 \u0438\u043b\u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0430\u043c\u0438 \u043d\u0435\u0442; \u043e\u0442\u0440\u0430\u0441\u043b\u0435\u0432\u043e\u0439 \u0442\u0435\u0440\u043c\u0438\u043d \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u043b\u044f \u043e\u0431\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f \u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0433\u043e \u0440\u0430\u0441\u0447\u0451\u0442\u043d\u043e\u0433\u043e \u043a\u0443\u0440\u0441\u0430.",
+        transferRateDefinition: "\u0412\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u0443\u0447\u0451\u0442\u043d\u044b\u0439 \u043a\u0443\u0440\u0441 Trade, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u044b\u0439 \u0434\u043b\u044f \u0440\u0430\u0441\u0447\u0451\u0442\u0430 \u0432\u0430\u043b\u044e\u0442\u043d\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0434\u043e\u0445\u043e\u0434\u0430. \u0418\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u044d\u0442\u043e\u043c\u0443 \u043a\u0443\u0440\u0441\u0443 \u043a\u043b\u0438\u0435\u043d\u0442\u0441\u043a\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043b\u0430\u0441\u044c \u0438\u0437 \u043a\u043d\u0438\u0433\u0438 Sales \u0432 \u043a\u043d\u0438\u0433\u0443 \u043f\u043e\u0434\u0440\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u044f, \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0438 \u043f\u0435\u0440\u0435\u043a\u0440\u044b\u0432\u0430\u044e\u0449\u0435\u0433\u043e \u043f\u043e\u0437\u0438\u0446\u0438\u044e. \u0412 \u0442\u0435\u043a\u0443\u0449\u0435\u043c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438 \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0438 \u043c\u0435\u0436\u0434\u0443 \u043a\u043d\u0438\u0433\u0430\u043c\u0438 \u0438\u043b\u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0430\u043c\u0438 \u043d\u0435\u0442; \u043e\u0442\u0440\u0430\u0441\u043b\u0435\u0432\u043e\u0439 \u0442\u0435\u0440\u043c\u0438\u043d \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u043b\u044f \u043e\u0431\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f \u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0433\u043e \u0440\u0430\u0441\u0447\u0451\u0442\u043d\u043e\u0433\u043e \u043a\u0443\u0440\u0441\u0430.",
         pageTitle: "Каталог процессов",
         manualBatching: "Ручной Batching",
+        autoPositionManagementModeDefinition: "Режим управления позицией, в котором трейд доступен автоматическим процессам, включая хеджирование и формирование batch, с учётом правил каждого процесса. Трейд должен соответствовать применимым требованиям допуска. Режим может назначаться при первоначальной регистрации или после одобренного оператором перевода из Manual Mode of Position Management; сам по себе он не означает, что автоматическое действие уже выполнено.",
+        manualPositionManagementModeDefinition: "Режим управления позицией, в котором управление трейдом контролирует оператор, включая проверку, ручное хеджирование и формирование batch. Трейд не участвует в автоматических процессах управления позицией. Оператор может полностью обработать его в этом режиме либо одобрить перевод в Auto Mode of Position Management при выполнении применимых требований допуска.",
+        positionManagementModeDefinition: "Назначенный трейду режим: Auto Mode of Position Management или Manual Mode of Position Management. Определяет способ управления позицией трейда и не является его экономической экспозицией или состоянием отдельного процесса управления.",
         autoHedgingDefinition: "Автоматизированный процесс управления валютным риском, который контролирует открытую валютную позицию и применяет настроенные алгоритмы и ограничения для удержания валютного риска в утверждённых пределах.",
-        autoHedgingAdmissionDefinition: "Доменная граница принятия решения, определяющая, остаётся ли FX Trade под ручным контролем или может быть допущена к Auto Hedging.",
-        executionContextAdmissionModeDefinition: "Обязательная настройка Execution Context, определяющая допустимый путь допуска связанных с ним FX Trades.",
-        autoHedgingAdmissionPolicyDefinition: "Полный набор обязательных правил, объединяющий Execution Context Admission Mode с настроенными Eligibility Checks для определения Admission State.",
-        eligibilityCheckDefinition: "Условие безопасности, проверяемое по данным FX Trade, справочным или рыночным данным для определения возможности участия в Auto Hedging. Перед допуском должны быть пройдены все применимые проверки.",
-        ccyPairDefinition: "Упорядоченная пара валют, определяющая Base Currency и Quote Currency, в которых выражаются сумма и обменный курс FX Trade.",
-        automationAdmissionStateDefinition: "Показывает, удерживается ли конкретная FX Trade для ручного контроля или уже допущена к Auto Hedging.",
+        autoManagementAdmissionDefinition: "Доменная граница принятия решения, определяющая, остаётся ли Trade в Manual Management или может быть допущена к Auto Management.",
+        tradeContextAdmissionModeDefinition: "Настройка Trade Context только для Initial Admission: автоматически допустить новый трейд при выполнении критериев либо направить на ручную проверку.",
+        autoModeEligibilityDefinition: "Требования, настроенные по Trade Type и Ccy Pair и проверяемые каждый раз, когда рассматривается перевод Trade в Position Management — Auto Mode. Initial Mode Assignment отдельно учитывает настройки Trade Context и Pricing Rule.",
+        eligibilityCheckDefinition: "Условие безопасности, проверяемое по данным Trade, справочным или рыночным данным для определения возможности участия в Auto Management. Перед допуском должны быть пройдены все применимые проверки.",
+        ccyPairDefinition: "Упорядоченная пара валют, определяющая Base Currency и Quote Currency, в которых выражаются сумма и обменный курс Trade.",
+        automationAdmissionStateDefinition: "Показывает, находится ли конкретный Trade в Manual Management или уже допущен к Auto Management.",
         domainGlossary: "Domain Glossary",
         domainGlossarySubtitle: "Основные термины, используемые в описаниях процессов",
         goal: "Цель процесса:",
         definitions: "Основные определения",
-        fxBatchDefinition: "Зафиксированный пакет совместимых по Batching Key FX Trades — Client Deals, Hedge Deals и технических FX Trades, — совокупная ОВП которых равна нулю. После формирования участники пакета исключаются из активного представления FX Position, что систематизирует сделки и упрощает контроль текущей валютной позиции.",
+        batchDefinition: "Зафиксированный пакет совместимых по Batching Key Trades — Client Deals, Hedge Deals и технических Trades, — совокупная ОВП которых равна нулю. После формирования участники пакета исключаются из активного представления Position, что систематизирует сделки и упрощает контроль текущей валютной позиции.",
         marketPulseDefinition: "Модуль приложения, предоставляющий текущие нормализованные рыночные котировки (Bid и Offer) по валютным парам для ценообразования, проверок и процессов управления риском. В текущей демонстрационной реализации котировки формируются симулятором; доменное понятие не зависит от источника данных и в дальнейшем может использовать реальные потоки рыночных данных.",
         batchingTerm: "Batching",
-        batchingDefinition: "Ручной или автоматический процесс выбора, проверки, группировки и нейтрализации совместимых по Batching Key FX Trades, результатом которого становится один или несколько FX Batches. При ручном Batching FX Trades выбирает пользователь, при автоматическом — система по настроенным правилам.",
-        fxTradeDefinition: "Client Deal, Hedge Deal или техническая FX Trade, учитываемая при расчёте валютной позиции и отображаемая в FX Position.",
-        clientDealDefinition: "FX Trade, заключённый с клиентом и формирующий клиентскую часть валютной позиции.",
-        hedgeDealDefinition: "FX Trade, заключённый с хеджирующим контрагентом для управления или нейтрализации валютной позиции.",
-        fxPositionDefinition: "Интерфейс приложения для контроля валютной позиции и выполнения операций с FX Trades, в том числе для выполнения Batching.",
-        executionContextDefinition: "Конфигурационный контекст, определяющий обработку FX Trade в части ценообразования, управления позицией и других применимых процессов. В текущей демо-реализации он задаётся сочетанием Servicing Location, Accounting System (когда применимо) и Execution System.",
-        servicingLocationDefinition: "Организационная и географическая точка обслуживания FX Trade, например филиал или головной офис в определённом регионе.",
-        accountingSystemDefinition: "Внутренняя учётная система банка или финансовой организации, в которой регистрируются FX Trade и связанные с ней бухгалтерские проводки.",
-        executionSystemDefinition: "Система или канал исполнения, в котором непосредственно заключается FX Trade. Её Pricing Mode определяет способ формирования или подтверждения цены исполнения.",
-        pricingModeDefinition: "Атрибут Execution System, определяющий способ формирования или подтверждения цены исполнения: AUTO_PRICED — автоматическое ценообразование, DEALER_PRICED — цену устанавливает дилер, DEALER_APPROVED — предложенная системой цена требует подтверждения дилером.",
-        baseCurrencyDefinition: "Первая валюта в валютной паре; её сумма образует базовую валютную часть FX Trade.",
+        batchingDefinition: "Ручной или автоматический процесс выбора, проверки, группировки и нейтрализации совместимых по Batching Key Trades, результатом которого становится один или несколько Batches. При ручном Batching Trades выбирает пользователь, при автоматическом — система по настроенным правилам.",
+        tradeDefinition: "Client Deal, Hedge Deal или техническая Trade, учитываемая при расчёте валютной позиции и отображаемая в Position.",
+        clientDealDefinition: "Trade, заключённый с клиентом и формирующий клиентскую часть валютной позиции.",
+        hedgeDealDefinition: "Trade, заключённый с хеджирующим контрагентом для управления или нейтрализации валютной позиции.",
+        positionDefinition: "Интерфейс приложения для контроля валютной позиции и выполнения операций с Trades, в том числе для выполнения Batching.",
+        tradeContextDefinition: "Trade Context описывает бизнес-среду возникновения, обслуживания и учётного отражения сделки. Он задаёт общие координаты, относительно которых применяются правила разных процессов. Эти координаты — Servicing Location, Accounting System (когда применимо) и Originating System.",
+        servicingLocationDefinition: "Организационная и географическая точка обслуживания Trade, например филиал или головной офис в определённом регионе.",
+        accountingSystemDefinition: "Внутренняя учётная система банка или финансовой организации, в которой регистрируются Trade и связанные с ней бухгалтерские проводки.",
+        originatingSystemDefinition: "Бизнес-система, в которой сделка впервые зарегистрирована как бизнес-факт.",
+        pricingModeDefinition: "Атрибут Originating System, определяющий способ формирования или подтверждения цены исполнения: AUTO_PRICED — автоматическое ценообразование, DEALER_PRICED — цену устанавливает дилер, DEALER_APPROVED — предложенная системой цена требует подтверждения дилером.",
+        baseCurrencyDefinition: "Первая валюта в валютной паре; её сумма образует базовую валютную часть Trade.",
         quoteCurrencyDefinition: "Вторая валюта в валютной паре; в ней выражается стоимость Base Currency.",
-        tradeDateDefinition: "Дата заключения FX Trade, относительно которой определяется Tenor и рассчитываются Value Dates.",
-        tenorDefinition: "Стандартное обозначение срока расчётов по FX Trade относительно Trade Date. В текущей модели используются TOD, TOM и SPOT.",
-        valueDateDefinition: "Дата расчётов по одной из валют FX Trade. Для каждого FX Trade отдельно определяются Base Currency Value Date и Quote Currency Value Date.",
-        batchingKeyDefinition: "Составной ключ совместимости FX Trades, определяющий возможность их включения в один FX Batch. Он всегда включает валютную пару, Trade Date и точность обеих валют. При отключённом Cross-Tenor Batching ключ также включает Tenor и обе Value Dates. При включённом Cross-Tenor Batching эти параметры могут различаться, поскольку сделки приводятся к общему Tenor с помощью Batch Internal Swap.",
-        crossTenorBatchingDefinition: "Режим Batching, позволяющий включать в один FX Batch совместимые FX Trades с различающимися Tenor и Value Dates. Перед формированием FX Batch их расчётные сроки приводятся к общему Tenor с помощью Batch Internal Swap.",
-        batchInternalSwapDefinition: "Внутренняя техническая сущность FX Batch, приводящая FX Trades с разными расчётными сроками к общему Tenor. Она не является отдельной рыночной сделкой; позиции по всем таким сущностям агрегируются и перекрываются одним нетто-свопом в конце учётного дня.",
-        selectedFxTrades: "Выбранные FX Trades",
-        formedFxBatch: "Сформированный FX Batch",
+        tradeDateDefinition: "Дата заключения Trade, относительно которой определяется Tenor и рассчитываются Value Dates.",
+        tenorDefinition: "Стандартное обозначение срока расчётов по Trade относительно Trade Date. В текущей модели используются TOD, TOM и SPOT.",
+        valueDateDefinition: "Дата расчётов по одной из валют Trade. Для каждого Trade отдельно определяются Base Currency Value Date и Quote Currency Value Date.",
+        batchingKeyDefinition: "Составной ключ совместимости Trades, определяющий возможность их включения в один Batch. Он всегда включает валютную пару, Trade Date и точность обеих валют. При отключённом Cross-Tenor Batching ключ также включает Tenor и обе Value Dates. При включённом Cross-Tenor Batching эти параметры могут различаться, поскольку сделки приводятся к общему Tenor с помощью Batch Internal Swap.",
+        crossTenorBatchingDefinition: "Режим Batching, позволяющий включать в один Batch совместимые Trades с различающимися Tenor и Value Dates. Перед формированием Batch их расчётные сроки приводятся к общему Tenor с помощью Batch Internal Swap.",
+        batchInternalSwapDefinition: "Внутренняя техническая сущность Batch, приводящая Trades с разными расчётными сроками к общему Tenor. Она не является отдельной рыночной сделкой; позиции по всем таким сущностям агрегируются и перекрываются одним нетто-свопом в конце учётного дня.",
+        selectedTrades: "Выбранные Trades",
+        formedBatch: "Сформированный Batch",
         stageInput: "ВХОД",
         stageDecision: "РЕШЕНИЕ",
         stageControl: "КОНТРОЛЬ",
         stageDomain: "ДОМЕН",
         stageCommit: "ФИКСАЦИЯ",
-        selectFxTrades: "Выбор FX Trades для создания FX Batch",
+        selectTrades: "Выбор Trades для создания Batch",
         resolveTenors: "Разрешить Batching Key",
         tenorResolvedRequest: "Запрос с разрешённым Tenor",
         validateAndPlan: "Проверить команду и выборку",
         deterministicGroupPlan: "Детерминированный план групп",
         formAndNeutralize: "Сформировать и нейтрализовать",
-        neutralBatchModel: "Нейтральная модель FX Batch",
+        neutralBatchModel: "Нейтральная модель Batch",
         oneDbTransaction: "ОДНА ТРАНЗАКЦИЯ БД",
         commitAndRefresh: "Зафиксировать и обновить",
-        formedBatches: "Сформированные FX Batches",
+        formedBatches: "Сформированные Batches",
         sameTenor: "Один Tenor",
         continueAction: "Продолжить",
         mixedTenors: "Разные Batching Key",
         chooseOrSplit: "Выбрать одну группу",
         serverTransactionFailure: "Ошибка серверной транзакции",
         fullRollback: "Полный откат",
-        fxPositionUnchanged: "FX Position не изменена",
+        positionUnchanged: "Position не изменена",
         stageObjective: "Цель этапа:",
         executionSteps: "Шаги выполнения",
         controlsAndFailure: "Проверки и ошибки",

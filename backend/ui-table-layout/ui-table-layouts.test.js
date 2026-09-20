@@ -13,32 +13,34 @@ const {
 } = require("./ui-table-layouts");
 
 const EXPECTED_COLUMN_COUNTS = Object.freeze({
-  pricing_rules_grid: 8,
-  internal_pricing_rules_grid: 9,
+  pricing_rules_grid: 9,
+  internal_pricing_rules_grid: 10,
   market_stream_grid: 4,
   ccy_options_grid: 6,
   ccy_pair_options_grid: 6,
-  fx_position_grid: 13,
-  client_fx_deals_grid: 21,
-  hedge_fx_deals_grid: 22,
+  position_grid: 13,
+  client_deals_grid: 21,
+  hedge_deals_grid: 22,
   analytical_pnl_report_grid: 12,
   analytical_pnl_summary_grid: 3,
   batching_history_grid: 11,
-  batch_members_grid: 9,
+  batch_members_grid: 10,
   batch_cash_output_grid: 3,
-  batch_position_output_grid: 9,
   external_counterparties_grid: 8,
   internal_units_grid: 8,
   users_grid: 7,
-  execution_contexts_grid: 8,
+  trade_contexts_grid: 7,
   servicing_locations_grid: 7,
   accounting_systems_grid: 5,
-  execution_systems_grid: 7,
+  originating_systems_grid: 7,
+  trade_purposes_grid: 4,
+  auto_management_admission_criteria_grid: 6,
   hedge_quick_mode_settings_grid: 7,
   deal_generation_settings_grid: 11
 });
 
 test("defines a valid default width for every managed UI table column", () => {
+  assert.equal(UI_TABLE_COLUMN_WIDTH_MIN_PX, 50);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(UI_TABLE_LAYOUTS).map(([tableKey, tableLayout]) => [
@@ -68,11 +70,28 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 204);
+  assert.equal(fullyQualifiedColumnKeys.size, 207);
 });
 
-test("includes the Ccy Pair selector width in the FX Position layout", () => {
-  const selector = UI_TABLE_LAYOUTS.fx_position_grid.columns[0];
+test("defines the Ccy Pair Admission Criteria table layout", () => {
+  assert.deepEqual(
+    UI_TABLE_LAYOUTS.auto_management_admission_criteria_grid.columns.map(column => [
+      column.columnKey,
+      column.columnLabel
+    ]),
+    [
+      ["ccy_pair", "Ccy Pair"],
+      ["trade_type", "Trade Type"],
+      ["eligible_for_auto_mode", "Eligible"],
+      ["maximum_trade_amount", "Amount Limit"],
+      ["transfer_rate_deviation", "Max. Transfer Rate Deviation"],
+      ["actions", "Actions"]
+    ]
+  );
+});
+
+test("includes the Ccy Pair selector width in the Position layout", () => {
+  const selector = UI_TABLE_LAYOUTS.position_grid.columns[0];
 
   assert.deepEqual(selector, {
     columnKey: "ccy_pair_selector",
@@ -81,7 +100,7 @@ test("includes the Ccy Pair selector width in the FX Position layout", () => {
   });
 });
 
-test("keeps Standard and Audit View columns in one FX Batches layout", () => {
+test("keeps Standard and Audit View columns in one Batches layout", () => {
   assert.deepEqual(
     UI_TABLE_LAYOUTS.batching_history_grid.columns.map(column => column.columnKey),
     [
@@ -101,66 +120,101 @@ test("keeps Standard and Audit View columns in one FX Batches layout", () => {
   assert.equal(UI_TABLE_LAYOUTS.batch_formation_audit_grid, undefined);
 });
 
-test("keeps Pricing Mode inside Execution Context for pricing rule layouts", () => {
+test("keeps Batch Members and Position Outputs in one Batch Structure layout", () => {
+  assert.equal(
+    UI_TABLE_LAYOUTS.batch_members_grid.tableLabel,
+    "Batch Members and Position Outputs"
+  );
+  assert.deepEqual(
+    UI_TABLE_LAYOUTS.batch_members_grid.columns.map(column => column.columnKey),
+    [
+      "trade_id",
+      "trade_type",
+      "member_role",
+      "base_balance_contribution_minor",
+      "quote_balance_contribution_minor",
+      "trade_rate",
+      "transfer_rate",
+      "analytical_pnl_quote_minor",
+      "base_ccy_value_date",
+      "quote_ccy_value_date"
+    ]
+  );
+  assert.equal(UI_TABLE_LAYOUTS.batch_position_output_grid, undefined);
+});
+
+test("keeps Pricing Mode inside Trade Context for pricing rule layouts", () => {
   ["pricing_rules_grid", "internal_pricing_rules_grid"].forEach(tableKey => {
     const columnKeys = UI_TABLE_LAYOUTS[tableKey].columns.map(column => column.columnKey);
 
-    assert.ok(columnKeys.includes("execution_context"));
+    assert.equal(
+      columnKeys.indexOf("trade_context_id") + 1,
+      columnKeys.indexOf("trade_context")
+    );
+    assert.ok(columnKeys.includes("trade_context"));
     assert.equal(columnKeys.includes("pricing_mode"), false);
   });
 });
 
-test("keeps Initial and Current FX Position Mode together in FX deal layouts", () => {
-  ["client_fx_deals_grid", "hedge_fx_deals_grid"].forEach(tableKey => {
+test("keeps Initial and Current Position Management Mode together in deal layouts", () => {
+  ["client_deals_grid", "hedge_deals_grid"].forEach(tableKey => {
     const columns = UI_TABLE_LAYOUTS[tableKey].columns;
     const modeColumns = columns.filter(column =>
-      ["initial_fx_position_mode", "current_fx_position_mode"].includes(column.columnKey)
+      ["initial_position_management_mode", "current_position_management_mode"].includes(column.columnKey)
     );
 
     assert.deepEqual(
       modeColumns.map(column => [column.columnKey, column.columnLabel]),
       [
-        ["initial_fx_position_mode", "Initial FX Position Mode"],
-        ["current_fx_position_mode", "Current FX Position Mode"]
+        ["initial_position_management_mode", "Initial Position Management Mode"],
+        ["current_position_management_mode", "Current Position Management Mode"]
       ]
     );
     assert.equal(
-      columns.findIndex(column => column.columnKey === "current_fx_position_mode") + 1,
+      columns.findIndex(column => column.columnKey === "current_position_management_mode") + 1,
       columns.findIndex(column => column.columnKey === "transfer_rate")
     );
   });
 });
 
-test("places the derived Execution System Label after Pricing Mode", () => {
-  const columns = UI_TABLE_LAYOUTS.execution_systems_grid.columns;
+test("places the derived Originating System Label after Pricing Mode", () => {
+  const columns = UI_TABLE_LAYOUTS.originating_systems_grid.columns;
 
   assert.deepEqual(
     columns.slice(1, 4).map(column => [column.columnKey, column.columnLabel]),
     [
       ["name", "Name"],
       ["pricing_mode", "Pricing Mode"],
-      ["execution_system_label", "Execution System Label"]
+      ["originating_system_label", "Originating System Label"]
     ]
   );
   assert.equal(
-    columns.find(column => column.columnKey === "execution_system_label")?.defaultWidthPx,
+    columns.find(column => column.columnKey === "originating_system_label")?.defaultWidthPx,
     250
   );
 });
 
-test("reserves label widths for reference fields in Execution Contexts", () => {
-  const columns = UI_TABLE_LAYOUTS.execution_contexts_grid.columns;
+test("reserves label widths for reference fields in Trade Contexts", () => {
+  const columns = UI_TABLE_LAYOUTS.trade_contexts_grid.columns;
 
   assert.deepEqual(
     Object.fromEntries(
       columns
-        .filter(column => ["servicing_location", "accounting_system", "execution_system"].includes(column.columnKey))
+        .filter(column => ["servicing_location", "accounting_system", "originating_system"].includes(column.columnKey))
         .map(column => [column.columnKey, column.defaultWidthPx])
     ),
     {
       servicing_location: 250,
       accounting_system: 300,
-      execution_system: 250
+      originating_system: 250
+    }
+  );
+  assert.deepEqual(
+    columns.find(column => column.columnKey === "counterparties_count"),
+    {
+      columnKey: "counterparties_count",
+      columnLabel: "Attached Counterparties",
+      defaultWidthPx: 64
     }
   );
 });
@@ -210,7 +264,7 @@ test("labels boolean activity columns consistently without changing lifecycle st
     ["users_grid", "active"],
     ["servicing_locations_grid", "active"],
     ["accounting_systems_grid", "active"],
-    ["execution_systems_grid", "active"]
+    ["originating_systems_grid", "active"]
   ];
 
   activityColumns.forEach(([tableKey, columnKey]) => {

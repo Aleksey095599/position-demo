@@ -1,12 +1,12 @@
   <main class="settings-shell profile-shell pricing-shell unified-bootstrap-workspace workbench-page" id="referenceDataPage" hidden>
-    <section class="settings-topbar workbench-page-header" aria-label="Reference Data header">
+    <section class="settings-topbar workbench-page-header" aria-label="Trade Context Components header">
       <div class="settings-title-block">
-        <h1 class="settings-title">Reference Data</h1>
+        <h1 class="settings-title">Trade Context Components</h1>
       </div>
       <div class="profile-status workbench-page-status" id="referenceDataStatus" role="status" aria-live="polite"></div>
     </section>
 
-    <nav class="nav nav-tabs workbench-section-tabs reference-switcher" aria-label="Reference data sections">
+    <nav class="nav nav-tabs workbench-section-tabs reference-switcher" aria-label="Trade Context Components sections">
       <a class="nav-link reference-switcher-link" href="#reference-data:servicing-locations" data-reference-route="servicingBranch">
         <span class="button-icon" aria-hidden="true">location_on</span>
         <span>Servicing Locations</span>
@@ -15,13 +15,17 @@
         <span class="button-icon" aria-hidden="true">account_balance</span>
         <span>Accounting Systems</span>
       </a>
-      <a class="nav-link reference-switcher-link" href="#reference-data:execution-systems" data-reference-route="tradeCaptureChannel">
-        <span class="button-icon" aria-hidden="true">terminal</span>
-        <span>Execution Systems</span>
+      <a class="nav-link reference-switcher-link" href="#reference-data:originating-systems" data-reference-route="tradeCaptureChannel">
+        <span class="button-icon" aria-hidden="true">web_asset</span>
+        <span>Originating Systems</span>
+      </a>
+      <a class="nav-link reference-switcher-link" href="#reference-data:trade-purposes" data-reference-route="tradePurpose">
+        <span class="button-icon" aria-hidden="true">flag</span>
+        <span>Trade Purpose</span>
       </a>
     </nav>
 
-    <section class="profile-layout reference-layout" aria-label="Reference data editor">
+    <section class="profile-layout reference-layout" aria-label="Trade Context Components editor">
       <section class="profile-panel profile-table-panel table-panel table-panel--standalone" data-reference-panel="servicingBranch" aria-label="Servicing locations">
         <div class="profile-panel-head table-panel__head" data-ui-table-layout-host="servicing_locations_grid">
           <h2 class="table-panel__title">Servicing Locations</h2>
@@ -38,7 +42,7 @@
               <col class="servicing-branch-region-col" data-ui-column-key="region">
               <col class="servicing-branch-type-col" data-ui-column-key="type">
               <col class="servicing-branch-active-col" data-ui-column-key="active">
-              <col class="servicing-branch-count-col" data-ui-column-key="execution_context_count">
+              <col class="servicing-branch-count-col" data-ui-column-key="trade_context_count">
               <col class="servicing-branch-actions-col" data-ui-column-key="actions">
             </colgroup>
             <thead>
@@ -86,8 +90,8 @@
                       class="button-icon"
                       role="img"
                       tabindex="0"
-                      aria-label="Attached Execution Contexts"
-                      data-tooltip="Attached Execution Contexts"
+                      aria-label="Attached Trade Contexts"
+                      data-tooltip="Attached Trade Contexts"
                     >
                       hub
                     </span>
@@ -119,7 +123,7 @@
               <col class="settlement-system-id-col" data-ui-column-key="id">
               <col class="settlement-system-name-col" data-ui-column-key="name">
               <col class="settlement-system-active-col" data-ui-column-key="active">
-              <col class="settlement-system-count-col" data-ui-column-key="execution_context_count">
+              <col class="settlement-system-count-col" data-ui-column-key="trade_context_count">
               <col class="settlement-system-actions-col" data-ui-column-key="actions">
             </colgroup>
             <thead>
@@ -155,8 +159,8 @@
                       class="button-icon"
                       role="img"
                       tabindex="0"
-                      aria-label="Attached Execution Contexts"
-                      data-tooltip="Attached Execution Contexts"
+                      aria-label="Attached Trade Contexts"
+                      data-tooltip="Attached Trade Contexts"
                     >
                       hub
                     </span>
@@ -174,40 +178,40 @@
         </div>
       </section>
 
-      <section class="profile-panel profile-table-panel table-panel table-panel--standalone" data-reference-panel="tradeCaptureChannel" aria-label="Execution systems">
-        <div class="profile-panel-head table-panel__head" data-ui-table-layout-host="execution_systems_grid">
-          <h2 class="table-panel__title">Execution Systems</h2>
+      <section class="profile-panel profile-table-panel table-panel table-panel--standalone" data-reference-panel="tradeCaptureChannel" aria-label="Originating systems">
+        <div class="profile-panel-head table-panel__head" data-ui-table-layout-host="originating_systems_grid">
+          <h2 class="table-panel__title">Originating Systems</h2>
           <button type="button" class="btn btn-sm btn-primary reference-new-button" id="tradeCaptureChannelNewButton">
             <span class="button-icon" aria-hidden="true">add</span>
-            <span>New execution system</span>
+            <span>New originating system</span>
           </button>
         </div>
         <div class="profile-table-wrap table-panel__body table-panel__viewport">
-          <table class="profile-table reference-table trade-capture-channel-table unified-data-table" id="executionSystemsTable" data-ui-table-layout-key="execution_systems_grid">
+          <table class="profile-table reference-table trade-capture-channel-table unified-data-table" id="originatingSystemsTable" data-ui-table-layout-key="originating_systems_grid">
             <colgroup>
               <col class="trade-capture-channel-id-col" data-ui-column-key="id">
               <col class="trade-capture-channel-name-col" data-ui-column-key="name">
               <col class="trade-capture-channel-type-col" data-ui-column-key="pricing_mode">
-              <col class="trade-capture-channel-label-col" data-ui-column-key="execution_system_label" data-ui-fallback-width="250">
+              <col class="trade-capture-channel-label-col" data-ui-column-key="originating_system_label" data-ui-fallback-width="250">
               <col class="trade-capture-channel-active-col" data-ui-column-key="active">
-              <col class="trade-capture-channel-count-col" data-ui-column-key="execution_context_count">
+              <col class="trade-capture-channel-count-col" data-ui-column-key="trade_context_count">
               <col class="trade-capture-channel-actions-col" data-ui-column-key="actions">
             </colgroup>
             <thead>
               <tr>
-                <th id="tradeCaptureChannelIdHeader" data-column-kind="executionSystemId" aria-sort="ascending">
+                <th id="tradeCaptureChannelIdHeader" data-column-kind="originatingSystemId" aria-sort="ascending">
                   <div class="reference-column-head">
-                    <button type="button" class="reference-column-title reference-sort-control" id="tradeCaptureChannelIdSort" aria-label="Sort execution systems by ID ascending" aria-pressed="true">
+                    <button type="button" class="reference-column-title reference-sort-control" id="tradeCaptureChannelIdSort" aria-label="Sort originating systems by ID ascending" aria-pressed="true">
                       <span>ID</span>
                       <span class="reference-sort-indicator" aria-hidden="true"></span>
                     </button>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="tradeCaptureChannelId" aria-label="Filter execution systems by ID">
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="tradeCaptureChannelId" aria-label="Filter originating systems by ID">
                   </div>
                 </th>
                 <th>
                   <div class="reference-column-head">
                     <span class="reference-column-title">Name</span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="tradeCaptureChannelName" aria-label="Filter execution systems by name">
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="tradeCaptureChannelName" aria-label="Filter originating systems by name">
                   </div>
                 </th>
                 <th>
@@ -215,22 +219,22 @@
                     <span class="reference-column-title">
                       <span>Pricing Mode</span>
                     </span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="pricingType" aria-label="Filter execution systems by pricing mode">
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="pricingType" aria-label="Filter originating systems by pricing mode">
                   </div>
                 </th>
                 <th>
                   <div class="reference-column-head">
                     <span class="reference-column-title">
                       <span class="button-icon" aria-hidden="true">label</span>
-                      <span>Execution System Label</span>
+                      <span>Originating System Label</span>
                     </span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="executionSystemLabel" aria-label="Filter execution systems by label">
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="originatingSystemLabel" aria-label="Filter originating systems by label">
                   </div>
                 </th>
                 <th>
                   <div class="reference-column-head">
                     <span class="reference-column-title">Active</span>
-                    <select class="reference-header-filter form-select" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="isActive" aria-label="Filter execution systems by active status">
+                    <select class="reference-header-filter form-select" data-reference-filter-kind="tradeCaptureChannel" data-reference-filter-field="isActive" aria-label="Filter originating systems by active status">
                       <option value="">All</option>
                       <option value="true">Yes</option>
                       <option value="false">No</option>
@@ -243,8 +247,8 @@
                       class="button-icon"
                       role="img"
                       tabindex="0"
-                      aria-label="Attached Execution Contexts"
-                      data-tooltip="Attached Execution Contexts"
+                      aria-label="Attached Trade Contexts"
+                      data-tooltip="Attached Trade Contexts"
                     >
                       hub
                     </span>
@@ -258,6 +262,55 @@
               </tr>
             </thead>
             <tbody id="tradeCaptureChannelRows"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="profile-panel profile-table-panel table-panel table-panel--standalone" data-reference-panel="tradePurpose" aria-label="Trade Purpose">
+        <div class="profile-panel-head table-panel__head" data-ui-table-layout-host="trade_purposes_grid">
+          <h2 class="table-panel__title">Trade Purpose</h2>
+          <button type="button" class="btn btn-sm btn-primary reference-new-button" id="tradePurposeNewButton">
+            <span class="button-icon" aria-hidden="true">add</span>
+            <span>New trade purpose</span>
+          </button>
+        </div>
+        <div class="profile-table-wrap table-panel__body table-panel__viewport">
+          <table class="profile-table reference-table unified-data-table" id="tradePurposesTable" data-ui-table-layout-key="trade_purposes_grid">
+            <colgroup>
+              <col data-ui-column-key="id" data-ui-fallback-width="210">
+              <col data-ui-column-key="name" data-ui-fallback-width="260">
+              <col data-ui-column-key="trade_context_count" data-ui-fallback-width="64">
+              <col data-ui-column-key="actions" data-ui-fallback-width="100">
+            </colgroup>
+            <thead>
+              <tr>
+                <th id="tradePurposeIdHeader" aria-sort="ascending">
+                  <div class="reference-column-head">
+                    <button type="button" class="reference-column-title reference-sort-control" id="tradePurposeIdSort" aria-label="Sort trade purposes by ID ascending" aria-pressed="true">
+                      <span>ID</span>
+                      <span class="reference-sort-indicator" aria-hidden="true"></span>
+                    </button>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradePurpose" data-reference-filter-field="tradePurposeId" aria-label="Filter trade purposes by ID">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Name</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-reference-filter-kind="tradePurpose" data-reference-filter-field="name" aria-label="Filter trade purposes by name">
+                  </div>
+                </th>
+                <th data-column-kind="count">
+                  <div class="reference-column-head reference-column-head-static reference-column-head-centered">
+                    <span class="button-icon" role="img" tabindex="0" aria-label="Attached Trade Contexts" data-tooltip="Attached Trade Contexts">hub</span>
+                  </div>
+                </th>
+                <th class="profile-actions-cell">
+                  <div class="reference-column-head reference-column-head-static reference-column-head-centered">
+                    <span class="reference-column-title">Actions</span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="tradePurposeRows"></tbody>
           </table>
         </div>
       </section>

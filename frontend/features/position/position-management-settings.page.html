@@ -1,0 +1,260 @@
+  <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page position-management-settings-page" id="positionManagementSettingsPage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Position Management Settings header">
+      <div class="workbench-detail-heading">
+        <div class="settings-title-block workbench-detail-title-block">
+          <h1 class="settings-title">Position Management Settings</h1>
+        </div>
+      </div>
+      <div class="hedge-quick-settings-status workbench-page-status" id="hedgeQuickModeSettingsStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="position-management-settings-workspace-layout" aria-label="Position Management Settings">
+      <aside class="profile-panel position-management-settings-sidebar">
+        <nav class="position-management-settings-navigation" aria-label="Position Management Settings sections">
+          <a class="position-management-settings-navigation-link" id="quickHedgeSettingsNavLink" href="#position-management-settings/quick-hedge" data-position-management-settings-section="quick">
+            <span>Quick Hedge</span>
+          </a>
+
+          <a class="position-management-settings-navigation-link is-active" id="autoModeEligibilityNavLink" href="#position-management-settings/auto-mode-eligibility" data-position-management-settings-section="eligibility" aria-current="page">
+            <span>Auto Mode Eligibility</span>
+          </a>
+
+          <a class="position-management-settings-navigation-link" id="initialModeAssignmentNavLink" href="#position-management-settings/initial-mode-assignment" data-position-management-settings-section="initial">
+            <span>Initial Mode Assignment</span>
+          </a>
+        </nav>
+      </aside>
+
+      <div class="position-management-settings-content">
+      <section class="position-management-settings-content-panel" id="quickHedgeSettingsPanel" data-position-management-settings-section-panel="quick" aria-labelledby="quickHedgeSettingsNavLink" hidden>
+        <section class="profile-panel client-deal-create-dialog hedge-quick-settings-dialog position-management-settings-panel" aria-label="Quick Hedge">
+        <form class="modal-content" id="hedgeQuickModeSettingsForm" autocomplete="off">
+      <div class="modal-header" id="hedgeQuickModeSettingsHeader" hidden>
+        <div class="hedge-quick-settings-heading">
+          <h2 class="workbench-editor-title" id="hedgeQuickModeSettingsEditorTitle">Quick Hedge</h2>
+        </div>
+        <div class="form-check form-switch hedge-quick-settings-active" id="hedgeQuickModeSettingsActiveField" hidden>
+          <input class="form-check-input" type="checkbox" role="switch" id="hedgeQuickModeActive" name="active">
+          <label class="form-check-label" for="hedgeQuickModeActive">Active</label>
+        </div>
+      </div>
+      <div class="modal-body">
+        <section class="hedge-quick-settings-overview table-panel table-panel--standalone" id="hedgeQuickModeSettingsOverview" aria-label="Quick Hedge Settings">
+          <div class="hedge-quick-settings-overview-toolbar table-panel__head" data-ui-table-layout-host="hedge_quick_mode_settings_grid">
+            <h3 class="table-panel__title table-panel__heading">
+              <span class="button-icon" aria-hidden="true">bolt</span>
+              <span>Quick Hedge Settings</span>
+            </h3>
+            <span class="badge text-bg-light border hedge-quick-settings-count" id="hedgeQuickModeSettingsCount">0 settings</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="hedgeQuickModeSettingsNewButton">
+              <span class="button-icon" aria-hidden="true">add</span>
+              <span>New Setting</span>
+            </button>
+          </div>
+          <div class="hedge-quick-settings-grid table-panel__body table-panel__viewport" id="hedgeQuickModeSettingsGrid"></div>
+        </section>
+
+        <div class="hedge-quick-settings-editor" id="hedgeQuickModeSettingsEditor" hidden>
+          <section class="client-deal-create-section client-deal-create-context-section semantic-section" aria-labelledby="hedgeQuickModeTradeContextTitle">
+            <div class="client-deal-create-section-title semantic-section-head" id="hedgeQuickModeTradeContextTitle">Trade Context</div>
+            <div class="client-deal-create-section-body">
+              <div class="client-deal-context-fields has-pricing-mode hedge-quick-settings-context-fields">
+                <div class="client-deal-currency-pair-field">
+                  <label class="form-label" for="hedgeQuickModeSettingsCurrencyPair">Ccy Pair</label>
+                  <select class="form-select" id="hedgeQuickModeSettingsCurrencyPair" name="currencyPair" required></select>
+                </div>
+                <div class="client-deal-pricing-mode-field">
+                  <label class="form-label form-label-with-help" for="hedgeQuickModePricingMode">
+                    <span>Pricing Mode</span>
+                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Only Auto Priced Originating Systems are available for Quick Hedging." data-tooltip="Only Auto Priced Originating Systems are available for Quick Hedging.">info</span>
+                  </label>
+                  <div class="input-group client-deal-pricing-mode-filter">
+                    <span class="input-group-text pricing-mode-indicator client-deal-pricing-mode-icon is-auto-priced" aria-hidden="true">
+                      <span class="button-icon" aria-hidden="true">flash_auto</span>
+                    </span>
+                    <select class="form-select" id="hedgeQuickModePricingMode" name="pricingMode" aria-readonly="true" disabled>
+                      <option value="AUTO_PRICED">Auto Priced</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="client-deal-client-field">
+                  <span class="form-label" id="hedgeQuickModeCounterpartyLabel">Hedge Counterparty</span>
+                  <div class="client-deal-client-picker" id="hedgeQuickModeCounterpartyPicker">
+                    <input type="hidden" id="hedgeQuickModeCounterpartyId" name="counterpartyId">
+                    <div class="input-group">
+                      <input class="form-control client-deal-client-picker-value" type="text" id="hedgeQuickModeCounterpartyPickerValue" placeholder="Type Hedge Counterparty name..." role="combobox" aria-labelledby="hedgeQuickModeCounterpartyLabel" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="hedgeQuickModeCounterpartyOptions" aria-expanded="false" autocomplete="off">
+                      <button type="button" class="btn btn-outline-secondary client-deal-client-picker-clear" id="hedgeQuickModeCounterpartyPickerClear" aria-label="Clear Hedge Counterparty" hidden>
+                        <span class="button-icon" aria-hidden="true">close</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary client-deal-client-picker-toggle" id="hedgeQuickModeCounterpartyPickerToggle" aria-label="Open Hedge Counterparty list" aria-haspopup="listbox" aria-controls="hedgeQuickModeCounterpartyOptions" aria-expanded="false">
+                        <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
+                      </button>
+                    </div>
+                    <div class="client-deal-client-options" id="hedgeQuickModeCounterpartyOptions" role="listbox" aria-labelledby="hedgeQuickModeCounterpartyLabel" hidden></div>
+                  </div>
+                </div>
+              </div>
+              <div class="client-deal-context-picker" id="hedgeQuickModePricingRulePicker" aria-live="polite"></div>
+              <input type="hidden" name="pricingRuleId">
+            </div>
+          </section>
+
+          <section class="client-deal-create-section semantic-section" aria-labelledby="hedgeQuickModePresetsTitle">
+            <div class="client-deal-create-section-title semantic-section-head" id="hedgeQuickModePresetsTitle">Quick Amount Presets</div>
+            <div class="client-deal-create-section-body">
+              <div class="hedge-quick-settings-presets">
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeSmallAmount">Small Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeSmallAmount" name="smallBaseCcyAmount" inputmode="decimal" required>
+                </div>
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeMediumAmount">Medium Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeMediumAmount" name="mediumBaseCcyAmount" inputmode="decimal" required>
+                </div>
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeLargeAmount">Large Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeLargeAmount" name="largeBaseCcyAmount" inputmode="decimal" required>
+                </div>
+                <div class="hedge-quick-settings-preset">
+                  <label class="form-label" for="hedgeQuickModeXlargeAmount">Extra Large Base Ccy Amount</label>
+                  <input class="form-control" type="text" id="hedgeQuickModeXlargeAmount" name="xlargeBaseCcyAmount" inputmode="decimal" required>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="client-deal-create-section semantic-section" aria-labelledby="hedgeQuickModeExecutionDefaultsTitle">
+            <div class="client-deal-create-section-title semantic-section-head" id="hedgeQuickModeExecutionDefaultsTitle">Execution Defaults</div>
+            <div class="client-deal-create-section-body">
+              <div class="hedge-quick-settings-defaults">
+                <div>
+                  <label class="form-label" for="hedgeQuickModeDefaultTenor">Default Tenor</label>
+                  <select class="form-select" id="hedgeQuickModeDefaultTenor" name="defaultTenor" required>
+                    <option value="TOD">TOD</option>
+                    <option value="TOM">TOM</option>
+                    <option value="SPOT">SPOT</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-footer" id="hedgeQuickModeSettingsFooter">
+        <button type="button" class="btn btn-outline-danger btn-sm" id="hedgeQuickModeSettingsDeleteButton" hidden>Delete Setting</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="hedgeQuickModeSettingsCancelButton">Close</button>
+        <button type="submit" class="btn btn-primary btn-sm with-icon" id="hedgeQuickModeSettingsSaveButton">
+          <span class="button-icon" aria-hidden="true">save</span>
+          <span>Save Settings</span>
+        </button>
+      </div>
+        </form>
+        </section>
+      </section>
+
+      <section class="position-management-settings-content-panel auto-management-admission-criteria-page" id="autoManagementAdmissionCriteriaPage" data-position-management-settings-section-panel="eligibility" aria-labelledby="autoModeEligibilityNavLink">
+        <form class="profile-panel table-panel table-panel--standalone auto-management-admission-criteria-panel" id="autoManagementAdmissionCriteriaForm" autocomplete="off">
+          <div class="auto-management-admission-criteria-toolbar table-panel__head" data-ui-table-layout-host="auto_management_admission_criteria_grid">
+            <div class="auto-management-admission-criteria-heading">
+              <h2 class="table-panel__title" id="autoManagementAdmissionCriteriaTitleText">Auto Mode Eligibility</h2>
+            </div>
+            <div class="profile-status" id="autoManagementAdmissionCriteriaStatus" role="status" aria-live="polite"></div>
+          </div>
+
+          <div class="auto-management-admission-pair-table-viewport table-panel__body table-panel__viewport">
+            <table class="table table-sm align-middle unified-data-table auto-management-admission-pair-table" id="autoManagementAdmissionCriteriaTable" data-ui-table-layout-key="auto_management_admission_criteria_grid" data-column-sizing="managed">
+              <colgroup>
+                <col data-ui-column-key="ccy_pair" data-ui-fallback-width="150">
+                <col data-ui-column-key="trade_type" data-ui-fallback-width="210">
+                <col data-ui-column-key="eligible_for_auto_mode" data-ui-fallback-width="150">
+                <col data-ui-column-key="maximum_trade_amount" data-ui-fallback-width="180">
+                <col data-ui-column-key="transfer_rate_deviation" data-ui-fallback-width="230">
+                <col data-ui-column-key="actions" data-ui-fallback-width="100">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col">
+                    <div class="reference-column-head">
+                      <span class="reference-column-title">Ccy Pair</span>
+                      <input class="reference-header-filter" type="search" id="autoManagementAdmissionPairSearch" autocomplete="off" aria-label="Filter Auto Mode Eligibility by Ccy Pair">
+                    </div>
+                  </th>
+                  <th scope="col">
+                    <div class="reference-column-head">
+                      <span class="reference-column-title">Trade Type</span>
+                      <select class="reference-header-filter form-select" id="autoManagementAdmissionTradeTypeFilter" aria-label="Filter Auto Mode Eligibility by Trade Type">
+                        <option value="ALL">All</option>
+                        <option value="CLIENT_DEAL">Client Deal</option>
+                        <option value="HEDGE_DEAL">Hedge Deal</option>
+                        <option value="BATCH_POSITION_OUT">Batch Position Out</option>
+                      </select>
+                    </div>
+                  </th>
+                  <th scope="col" class="text-center">
+                    <div class="reference-column-head">
+                      <span class="reference-column-title">Eligible</span>
+                      <select class="reference-header-filter form-select" id="autoManagementAdmissionPairFilter" aria-label="Filter by Auto Mode eligibility">
+                        <option value="ALL">All</option>
+                        <option value="ENABLED">Yes</option>
+                        <option value="DISABLED">No</option>
+                        <option value="NOT_EVALUATED">Not evaluated</option>
+                      </select>
+                    </div>
+                  </th>
+                  <th scope="col" class="text-end">
+                    <div class="reference-column-head reference-column-head-static reference-column-head-right">
+                      <span class="reference-column-title">Amount Limit</span>
+                    </div>
+                  </th>
+                  <th scope="col" class="text-end">
+                    <div class="reference-column-head reference-column-head-static reference-column-head-right">
+                      <span class="reference-column-title">Max. Transfer Rate Deviation</span>
+                    </div>
+                  </th>
+                  <th scope="col" class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="autoManagementAdmissionPairRows"></tbody>
+            </table>
+            <div class="auto-management-admission-pair-empty" id="autoManagementAdmissionPairEmpty" hidden>No rules match the current filters.</div>
+          </div>
+        </form>
+      </section>
+
+      <section class="position-management-settings-content-panel auto-management-entry-route-panel" id="initialModeAssignmentPanel" data-position-management-settings-section-panel="initial" aria-labelledby="initialModeAssignmentNavLink" hidden>
+        <section class="auto-management-settings-section" aria-labelledby="initialModeAssignmentTitle">
+          <header class="auto-management-settings-section-head">
+            <h2 id="initialModeAssignmentTitle">Initial Mode Assignment</h2>
+            <p>Rules used when a Client Deal or Hedge Deal is first registered to assign Auto or Manual Mode. Auto Mode can be assigned only when the Trade meets Auto Mode Eligibility requirements.</p>
+          </header>
+          <div class="auto-management-admission-settings-body auto-management-admission-rule-tree">
+            <section class="auto-management-admission-policy-block">
+              <span class="button-icon auto-management-admission-policy-block-icon" aria-hidden="true">hub</span>
+              <div class="auto-management-admission-policy-block-copy">
+                <h3>Trade Context</h3>
+                <p>Assigns Auto Mode if Eligible or Manual Mode when a Trade is registered.</p>
+              </div>
+              <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#trade-context?focus=auto-management-admission&amp;return=%23position-management-settings%2Finitial-mode-assignment" aria-label="Open Trade Context settings">
+                <span class="button-icon" aria-hidden="true">settings</span>
+              </a>
+            </section>
+            <section class="auto-management-admission-policy-block">
+              <span class="button-icon auto-management-admission-policy-block-icon" aria-hidden="true">rule</span>
+              <div class="auto-management-admission-policy-block-copy">
+                <h3>Pricing Rule</h3>
+                <p>Uses the Trade Context assignment or overrides it with Manual Mode.</p>
+              </div>
+              <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#pricing-rules:external-counterparties?focus=auto-management-admission&amp;return=%23position-management-settings%2Finitial-mode-assignment" aria-label="Open Pricing Rule settings">
+                <span class="button-icon" aria-hidden="true">settings</span>
+              </a>
+            </section>
+          </div>
+          <div class="auto-management-policy-inheritance-note" role="note">
+            <span class="button-icon" aria-hidden="true">info</span>
+            <p>Batch Balance Trades and Batch Position Outs inherit Position Management Mode during batch formation and do not use Initial Mode Assignment.</p>
+          </div>
+        </section>
+      </section>
+      </div>
+    </section>
+  </main>

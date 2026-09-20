@@ -1,10 +1,12 @@
   <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace batch-details-page workbench-page" id="batchDetailsPage" hidden>
+    <div class="mb-2">
+      <a class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2" href="#batching:history">
+        <span class="button-icon" aria-hidden="true">arrow_back</span>
+        <span>Back to Batches</span>
+      </a>
+    </div>
     <section class="action-bar workbench-page-header" aria-label="Batch Structure header">
       <div class="workbench-detail-heading">
-        <a class="btn btn-sm btn-outline-secondary workbench-detail-back-button" href="#batching:history" aria-label="Back to FX Batches">
-          <span class="button-icon" aria-hidden="true">arrow_back</span>
-          <span>FX Batches</span>
-        </a>
         <div class="workbench-detail-title-block">
           <h1 class="page-title">Batch Structure</h1>
         </div>
@@ -16,15 +18,15 @@
       <section class="batch-details-prompt" id="batchDetailsPrompt" aria-live="polite">
         <div>
           <span class="button-icon batch-details-prompt-icon" aria-hidden="true">schema</span>
-          <p class="batch-details-prompt-title" id="batchDetailsPromptTitle">Loading FX Batch</p>
-          <p class="batch-details-prompt-copy" id="batchDetailsPromptCopy">Reading FX Trade Members and batch outputs...</p>
+          <p class="batch-details-prompt-title" id="batchDetailsPromptTitle">Loading Batch</p>
+          <p class="batch-details-prompt-copy" id="batchDetailsPromptCopy">Reading Batch Members and batch outputs...</p>
         </div>
       </section>
 
       <section class="batch-details-summary" id="batchDetailsContent" hidden>
         <div class="batch-details-summary-card semantic-section">
           <div class="batch-details-summary-heading semantic-section-head">
-            <h2 class="batch-details-summary-title" id="batchDetailsSummaryTitle">FX Batch</h2>
+            <h2 class="batch-details-summary-title" id="batchDetailsSummaryTitle">Batch</h2>
             <span class="batch-status-token" id="batchDetailsBatchStatus"></span>
           </div>
           <dl class="batch-details-meta">
@@ -72,7 +74,7 @@
             <article class="batch-neutrality-node">
               <div class="batch-neutrality-node-heading">
                 <span class="button-icon" aria-hidden="true">swap_horiz</span>
-                <span>FX Trade Members</span>
+                <span>Batch Members</span>
               </div>
               <dl class="batch-neutrality-metrics">
                 <div class="batch-neutrality-metric">
@@ -111,7 +113,7 @@
               <div class="batch-neutrality-result-list">
                 <div class="batch-neutrality-result-line">
                   <span class="button-icon" aria-hidden="true">check_circle</span>
-                  <span id="batchNeutralityPositionStatus">FX Position Neutral</span>
+                  <span id="batchNeutralityPositionStatus">Position Neutral</span>
                 </div>
                 <div class="batch-neutrality-result-line">
                   <span class="button-icon" aria-hidden="true">check_circle</span>
@@ -124,42 +126,42 @@
 
         <section class="batch-details-section semantic-section semantic-table-section table-panel table-panel--semantic" aria-labelledby="batchDetailsMembersTitle">
           <div class="batch-details-section-header semantic-section-head semantic-table-section-head table-panel__head" data-ui-table-layout-host="batch_members_grid">
-            <h2 class="batch-details-section-title table-panel__title" id="batchDetailsMembersTitle">FX Trade Members</h2>
+            <h2 class="batch-details-section-title table-panel__title" id="batchDetailsMembersTitle">Batch Members</h2>
             <span class="client-deals-count" id="batchDetailsMembersCount">0 trades</span>
           </div>
           <div class="semantic-table-section-body table-panel__body">
             <div class="client-deals-grid-shell table-panel__viewport">
-              <div class="batch-details-grid" id="batchDetailsMembersGrid" aria-label="FX Trade Members table"></div>
+              <div class="batch-details-grid" id="batchDetailsMembersGrid" aria-label="Batch Members table"></div>
             </div>
           </div>
         </section>
 
         <section class="batch-details-section batch-details-output-section semantic-section semantic-table-section table-panel table-panel--semantic" aria-labelledby="batchDetailsOutputsTitle">
-          <div class="batch-details-section-header semantic-section-head semantic-table-section-head table-panel__head" data-ui-table-layout-host="batch_position_output_grid">
-            <h2 class="batch-details-section-title table-panel__title" id="batchDetailsOutputsTitle">Net Position Output</h2>
+          <div class="batch-details-section-header semantic-section-head semantic-table-section-head table-panel__head" data-ui-table-layout-host="batch_members_grid">
+            <h2 class="batch-details-section-title table-panel__title" id="batchDetailsOutputsTitle">Batch Position Outputs</h2>
             <span class="client-deals-count" id="batchDetailsOutputsCount">0 trades</span>
           </div>
           <div class="semantic-table-section-body table-panel__body">
             <div class="batch-details-output-empty" id="batchDetailsOutputsEmpty" hidden>
-              This batch has no Net Position Output because its source position was already flat.
+              This batch has no position outputs because its source position was already flat.
             </div>
             <div class="client-deals-grid-shell table-panel__viewport" id="batchDetailsOutputsGridShell">
-              <div class="batch-details-grid" id="batchDetailsOutputsGrid" aria-label="FX Batch Net Position Output table"></div>
+              <div class="batch-details-grid" id="batchDetailsOutputsGrid" aria-label="Batch Position Outputs table"></div>
             </div>
           </div>
         </section>
 
         <section class="batch-details-section batch-details-output-section semantic-section semantic-table-section table-panel table-panel--semantic" aria-labelledby="batchDetailsCashOutputTitle">
           <div class="batch-details-section-header semantic-section-head semantic-table-section-head table-panel__head" data-ui-table-layout-host="batch_cash_output_grid">
-            <h2 class="batch-details-section-title table-panel__title" id="batchDetailsCashOutputTitle">Cash Output</h2>
+            <h2 class="batch-details-section-title table-panel__title" id="batchDetailsCashOutputTitle">Batch Quote Cash Outputs</h2>
             <span class="client-deals-count" id="batchDetailsCashOutputCount">0 outputs</span>
           </div>
           <div class="semantic-table-section-body table-panel__body">
             <div class="batch-details-output-empty" id="batchDetailsCashOutputEmpty" hidden>
-              This batch has no Cash Output.
+              This batch has no quote cash outputs.
             </div>
             <div class="client-deals-grid-shell table-panel__viewport" id="batchDetailsCashOutputGridShell">
-              <div class="batch-details-grid" id="batchDetailsCashOutputGrid" aria-label="FX Batch Cash Output table"></div>
+              <div class="batch-details-grid" id="batchDetailsCashOutputGrid" aria-label="Batch Quote Cash Outputs table"></div>
             </div>
           </div>
         </section>

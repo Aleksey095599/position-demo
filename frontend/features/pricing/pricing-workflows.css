@@ -1,12 +1,12 @@
-    /* Bootstrap-style modal treatment for the Execution Context workflow. */
-    .execution-context-dialog {
+    /* Bootstrap-style modal treatment for the Trade Context workflow. */
+    .trade-context-dialog {
       width: min(680px, calc(100vw - 32px));
       border: 1px solid var(--bs-border-color, #dee2e6);
       border-radius: var(--bs-border-radius-lg, 8px);
       box-shadow: 0 0.5rem 1rem rgba(var(--bs-dark-rgb), 0.15);
     }
 
-    .execution-context-dialog .dialog-head {
+    .trade-context-dialog .dialog-head {
       min-height: 0;
       padding: 16px 20px;
       border-bottom: 1px solid var(--bs-border-color, #dee2e6);
@@ -14,13 +14,13 @@
       box-shadow: none;
     }
 
-    .execution-context-dialog .dialog-title {
+    .trade-context-dialog .dialog-title {
       color: var(--bs-body-color, #212529);
       font-size: var(--app-font-size-dialog-title);
       font-weight: var(--app-font-weight-medium);
     }
 
-    .execution-context-dialog .dialog-close {
+    .trade-context-dialog .dialog-close {
       width: 32px;
       height: 32px;
       border-radius: var(--bs-border-radius, 6px);
@@ -29,39 +29,39 @@
       font-weight: 400;
     }
 
-    .execution-context-dialog .dialog-close:hover {
+    .trade-context-dialog .dialog-close:hover {
       background: var(--bs-tertiary-bg, #f8f9fa);
     }
 
-    .execution-context-dialog .deal-form-body {
+    .trade-context-dialog .deal-form-body {
       padding: 20px;
       background: var(--bs-body-bg, var(--bs-white));
     }
 
-    .execution-context-dialog .deal-form-section {
+    .trade-context-dialog .deal-form-section {
       border: 0;
       border-radius: 0;
       padding: 0;
       background: transparent;
     }
 
-    .execution-context-dialog .deal-form-section-title {
+    .trade-context-dialog .deal-form-section-title {
       display: none;
     }
 
-    .execution-context-dialog .form-grid.one-column {
+    .trade-context-dialog .form-grid.one-column {
       gap: 16px;
       padding: 0;
     }
 
-    .execution-context-dialog .form-field {
+    .trade-context-dialog .form-field {
       color: var(--bs-body-color, #212529);
       font-size: var(--app-font-size-label);
       font-weight: var(--app-font-weight-medium);
     }
 
-    .execution-context-dialog .form-field input,
-    .execution-context-dialog .form-field select {
+    .trade-context-dialog .form-field input,
+    .trade-context-dialog .form-field select {
       height: 38px;
       margin-top: 5px;
       border-color: var(--bs-border-color, #dee2e6);
@@ -70,20 +70,20 @@
       font-size: var(--app-font-size-control);
     }
 
-    .execution-context-dialog .form-field input:focus,
-    .execution-context-dialog .form-field select:focus {
+    .trade-context-dialog .form-field input:focus,
+    .trade-context-dialog .form-field select:focus {
       border-color: var(--palette-blue-300);
       box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
     }
 
-    .execution-context-dialog .dialog-actions {
+    .trade-context-dialog .dialog-actions {
       gap: 8px;
       margin-top: 0;
       padding: 12px 20px 16px;
       border-top: 1px solid var(--bs-border-color, #dee2e6);
     }
 
-    .execution-context-dialog .action-button {
+    .trade-context-dialog .action-button {
       height: 38px;
       min-height: 38px;
       border-radius: var(--bs-border-radius, 6px);
@@ -93,18 +93,18 @@
       padding: 0 12px;
     }
 
-    .execution-context-dialog .action-button.primary {
+    .trade-context-dialog .action-button.primary {
       border-color: var(--bs-primary, #0d6efd);
       background: var(--bs-primary, #0d6efd);
       color: var(--bs-white);
     }
 
-    .execution-context-dialog .action-button.primary:hover:not(:disabled) {
+    .trade-context-dialog .action-button.primary:hover:not(:disabled) {
       border-color: var(--bs-primary, #0d6efd);
       background: var(--palette-blue-600);
     }
 
-    .execution-context-dialog .action-button:disabled {
+    .trade-context-dialog .action-button:disabled {
       opacity: 0.65;
     }
 
@@ -970,6 +970,14 @@
       padding: 16px;
     }
 
+    #processesPage .processes-detail-body > :is(
+      .manual-process-map,
+      .manual-process-inspector,
+      .domain-glossary-definitions
+    ) {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
     .manual-process-summary {
       display: flex;
       min-height: 44px;
@@ -1403,7 +1411,6 @@
       border: 1px solid var(--surface-divider);
       border-radius: var(--workbench-radius);
       background: var(--palette-red-100);
-      box-shadow: var(--bs-box-shadow-sm);
       color: var(--palette-red-800);
       font-size: var(--app-font-size-caption);
       text-align: center;
@@ -1488,7 +1495,6 @@
     .manual-process-stage-result {
       border-radius: var(--workbench-radius);
       background: color-mix(in srgb, var(--process-stage-bg) 32%, var(--surface-card));
-      box-shadow: var(--bs-box-shadow-sm);
     }
 
     .manual-process-stage-objective {
@@ -2058,7 +2064,7 @@
       min-width: 0;
     }
 
-    #marketPage.market-bootstrap [data-market-panel="streams"] {
+    #marketPage.market-bootstrap [data-market-panel="quote-stream"] {
       width: min(760px, calc(100vw - 44px));
     }
 
@@ -2614,6 +2620,45 @@
       font: inherit;
     }
 
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-mode-override-control {
+      display: grid;
+      min-height: 34px;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      margin-top: 5px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-body-bg);
+      padding: 5px 9px;
+    }
+
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-mode-override-value {
+      color: var(--bs-body-color);
+      font-size: 13px;
+    }
+
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-mode-override-switch {
+      display: inline-flex;
+      min-height: 0;
+      align-items: center;
+      gap: 7px;
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-mode-override-switch .form-check-input {
+      float: none;
+      flex: 0 0 auto;
+      margin: 0;
+    }
+
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-mode-override-switch .form-check-label {
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
     .pricing-rule-bootstrap-dialog .position-management-mode-effective {
       display: block;
       margin-top: 4px;
@@ -2883,16 +2928,16 @@
       border-bottom-left-radius: 0;
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     :is(.client-deal-currency-pair-field, .client-deal-pricing-mode-field) .form-select {
       height: 44px;
       min-height: 44px;
       line-height: 1.2;
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     .client-deal-currency-pair-field .form-select,
-    #hedgingSettingsPage .client-deal-pricing-mode-field .form-select {
+    #positionManagementSettingsPage .client-deal-pricing-mode-field .form-select {
       font-size: var(--app-font-size-control-emphasis);
       font-weight: var(--app-font-weight-semibold);
     }
@@ -2907,7 +2952,7 @@
       width: min(1180px, calc(100vw - 32px));
     }
 
-    #hedgingSettingsPage .hedging-settings-panel {
+    #positionManagementSettingsPage .position-management-settings-panel {
       width: min(1180px, 100%);
       max-height: none;
       margin: 0;
@@ -2918,39 +2963,26 @@
       background: var(--bs-body-bg);
     }
 
-    #hedgingSettingsPage .hedging-settings-panel .modal-content {
+    #positionManagementSettingsPage .position-management-settings-panel .modal-content {
       border: 0;
       border-radius: var(--bs-border-radius-lg);
     }
 
-    #hedgingSettingsPage .hedging-settings-panel .modal-body {
+    #positionManagementSettingsPage .position-management-settings-panel .modal-body {
       max-height: none;
       overflow: visible;
     }
 
-    #hedgingSettingsPage .hedging-settings-panel .modal-header {
+    #positionManagementSettingsPage .position-management-settings-panel .modal-header {
       min-height: 48px;
     }
 
     .hedge-quick-settings-heading {
       display: flex;
       min-width: 0;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .hedge-quick-settings-back {
-      display: inline-flex;
-      width: 30px;
-      height: 30px;
-      flex: 0 0 30px;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-    }
-
-    .hedge-quick-settings-back .button-icon {
-      font-size: 17px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
     }
 
     .hedge-quick-settings-overview {
@@ -3487,7 +3519,6 @@
     .client-deal-create-dialog .client-pricing-context-candidate.is-selected {
       border-color: var(--bs-primary);
       background: var(--bs-primary-bg-subtle);
-      box-shadow: inset 3px 0 0 var(--bs-primary);
     }
 
     .client-deal-onboarding-option {
@@ -3512,7 +3543,6 @@
       border-color: var(--bs-warning);
       background: var(--bs-warning-bg-subtle);
       outline: 0;
-      box-shadow: inset 3px 0 0 var(--bs-warning);
     }
 
     .client-deal-onboarding-separator {
@@ -3579,7 +3609,7 @@
       gap: 6px;
     }
 
-    .execution-system-label {
+    .originating-system-label {
       display: inline-flex;
       max-width: 100%;
       height: 30px;
@@ -3592,8 +3622,8 @@
       vertical-align: middle;
     }
 
-    .execution-system-label__system,
-    .execution-system-label__pricing {
+    .originating-system-label__system,
+    .originating-system-label__pricing {
       display: inline-flex;
       flex: 0 0 32px;
       width: 32px;
@@ -3602,12 +3632,12 @@
       color: var(--palette-purple-700);
     }
 
-    .execution-system-label__system {
+    .originating-system-label__system {
       border-right: 1px solid var(--palette-purple-700);
       background: rgba(var(--bs-white-rgb), 0.52);
     }
 
-    .execution-system-label__name {
+    .originating-system-label__name {
       display: inline-flex;
       min-width: 0;
       align-items: center;
@@ -3618,16 +3648,16 @@
       white-space: nowrap;
     }
 
-    .execution-system-label__name.is-placeholder {
+    .originating-system-label__name.is-placeholder {
       color: var(--bs-secondary-color);
       font-weight: 400;
     }
 
-    .execution-system-label__pricing {
+    .originating-system-label__pricing {
       border-left: 1px solid var(--palette-purple-200);
     }
 
-    .execution-system-label .button-icon {
+    .originating-system-label .button-icon {
       font-size: 18px;
     }
 
@@ -4128,10 +4158,6 @@
       width: min(1180px, calc(100vw - 32px));
     }
 
-    .client-deal-duplicate-dialog .modal-body {
-      gap: 10px;
-    }
-
     .client-deal-duplicate-summary {
       display: flex;
       margin: 0;
@@ -4151,55 +4177,22 @@
 
     #clientDealDuplicateCheckGrid {
       width: 100%;
-      height: min(310px, calc(100vh - 250px));
-      min-height: 220px;
+      height: auto;
     }
 
-    .client-deal-duplicate-dialog .tabulator {
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--bs-border-radius-sm);
-      background: var(--bs-body-bg);
-      font-family: var(--bs-body-font-family);
-      font-size: 12px;
+    .client-deal-duplicate-dialog .table-panel__body.client-deals-bootstrap {
+      padding-top: 0;
     }
 
-    .client-deal-duplicate-dialog .tabulator .tabulator-header,
-    .client-deal-duplicate-dialog .tabulator .tabulator-header .tabulator-col,
-    .client-deal-duplicate-dialog .tabulator .tabulator-header .tabulator-col-row-handle {
-      background: var(--bs-tertiary-bg);
-    }
-
-    .client-deal-duplicate-dialog .tabulator .tabulator-header .tabulator-col,
-    .client-deal-duplicate-dialog .tabulator .tabulator-cell {
-      border-right-color: var(--bs-border-color);
-    }
-
-    .client-deal-duplicate-dialog .tabulator .tabulator-col-group > .tabulator-col-content .tabulator-col-title {
-      font-size: 11px;
-      font-weight: 600;
-      text-align: center;
-      text-transform: uppercase;
-    }
-
-    .client-deal-duplicate-dialog .tabulator .tabulator-row {
-      min-height: 34px;
-      border-bottom-color: var(--bs-border-color);
-      background: var(--bs-body-bg);
-    }
-
-    .client-deal-duplicate-dialog .tabulator .tabulator-row.tabulator-row-even {
-      background: var(--bs-tertiary-bg);
+    #clientDealDuplicateCheckGrid .tabulator-tableholder {
+      height: auto !important;
+      max-height: 267px !important;
+      overflow-y: auto;
     }
 
     #clientDealDuplicateCheckConfirmButton {
       display: inline-flex;
       gap: 5px;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #dealSubmitButton {
-      display: inline-flex;
       align-items: center;
       justify-content: center;
     }
@@ -4347,7 +4340,7 @@
       white-space: nowrap;
     }
 
-    :is(.fx-deals-view-switch, .fx-batches-view-switch) {
+    :is(.deals-view-switch, .batches-view-switch, .pricing-rules-view-switch) {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -4356,11 +4349,11 @@
       white-space: nowrap;
     }
 
-    :is(.fx-deals-view-switch, .fx-batches-view-switch) .form-check-input {
+    :is(.deals-view-switch, .batches-view-switch, .pricing-rules-view-switch) .form-check-input {
       margin-top: 0;
     }
 
-    :is(.fx-deals-view-switch, .fx-batches-view-switch) .form-check-label {
+    :is(.deals-view-switch, .batches-view-switch, .pricing-rules-view-switch) .form-check-label {
       color: var(--bs-body-color);
       font-weight: var(--app-font-weight-medium);
     }
@@ -4437,13 +4430,13 @@
       background: var(--bs-body-bg);
     }
 
-    .fx-deals-grid {
+    .deals-grid {
       width: 100%;
       height: max(360px, calc(100vh - 178px));
       max-height: 760px;
     }
 
-    .client-deals-bootstrap .fx-deals-execution-context-path {
+    .client-deals-bootstrap .deals-trade-context-path {
       width: max-content;
       min-width: max-content;
       flex-wrap: nowrap;
@@ -4451,13 +4444,13 @@
       overflow: visible;
     }
 
-    .client-deals-bootstrap .fx-deals-execution-context-path .client-pricing-context-candidate-facet {
+    .client-deals-bootstrap .deals-trade-context-path .client-pricing-context-candidate-facet {
       min-width: max-content;
       flex: 0 0 auto;
       overflow: visible;
     }
 
-    .client-deals-bootstrap .fx-deals-execution-context-path .client-pricing-context-candidate-name {
+    .client-deals-bootstrap .deals-trade-context-path .client-pricing-context-candidate-name {
       overflow: visible;
       text-overflow: clip;
     }
@@ -4469,7 +4462,7 @@
       min-width: 0;
     }
 
-    #fxBatchesPage:not([hidden]) {
+    #batchesPage:not([hidden]) {
       display: grid;
       height: calc(100vh - var(--workspace-nav-height));
       grid-template-rows: auto minmax(0, 1fr);
@@ -5010,26 +5003,26 @@
       border-bottom: 0;
     }
 
-    #fxDealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] {
+    #dealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] {
       border-right: var(--data-grid-line-width) solid var(--palette-gray-500);
       background: var(--palette-gray-200);
     }
 
-    #fxDealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] > .tabulator-col-content {
+    #dealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] > .tabulator-col-content {
       background: inherit;
     }
 
-    #fxDealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group.client-deals-group-position-processing {
+    #dealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group.client-deals-group-position-processing {
       border-right: 0;
     }
 
-    #fxDealsPage .tabulator .tabulator-col-group > .tabulator-col-content .tabulator-col-title {
+    #dealsPage .tabulator .tabulator-col-group > .tabulator-col-content .tabulator-col-title {
       padding-inline: 12px;
       text-align: center;
     }
 
-    #fxDealsPage .tabulator .tabulator-header .tabulator-col.client-deals-group-end,
-    #fxDealsPage .tabulator .tabulator-row .tabulator-cell.client-deals-group-end {
+    #dealsPage .tabulator .tabulator-header .tabulator-col.client-deals-group-end,
+    #dealsPage .tabulator .tabulator-row .tabulator-cell.client-deals-group-end {
       border-right: var(--data-grid-line-width) solid var(--palette-gray-500);
     }
 
@@ -5785,7 +5778,7 @@
       height: 100%;
     }
 
-    :is(#pricingPage, #referenceDataPage).unified-bootstrap-workspace .reference-grid-action {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-grid-action {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -5796,18 +5789,10 @@
       border-radius: var(--bs-border-radius-sm);
     }
 
-    :is(#pricingPage, #referenceDataPage).unified-bootstrap-workspace .reference-grid-action .button-icon {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-grid-action .button-icon {
       font-size: 15px;
     }
 
-    #pricingPage.unified-bootstrap-workspace [data-pricing-context-action="save"] {
-      --bs-btn-color: var(--app-primary);
-      --bs-btn-border-color: var(--app-primary);
-      --bs-btn-hover-color: var(--app-primary);
-      --bs-btn-hover-border-color: var(--app-primary);
-      --bs-btn-active-color: var(--app-primary);
-      --bs-btn-active-border-color: var(--app-primary);
-    }
 
     #referenceDataPage.unified-bootstrap-workspace .reference-usage-info {
       width: auto;
@@ -6018,14 +6003,14 @@
 
     #marketPage.market-bootstrap.workbench-page,
     .client-deals-bootstrap.workbench-page,
-    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #hedgingSettingsPage).unified-bootstrap-workspace.workbench-page {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #positionManagementSettingsPage).unified-bootstrap-workspace.workbench-page {
       padding: 12px var(--workbench-page-padding-x) var(--workbench-page-padding-bottom);
       font-size: var(--workbench-body-size);
     }
 
     #marketPage.market-bootstrap.workbench-page .settings-topbar,
     .client-deals-bootstrap.workbench-page .action-bar,
-    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #hedgingSettingsPage).unified-bootstrap-workspace.workbench-page .settings-topbar {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #positionManagementSettingsPage).unified-bootstrap-workspace.workbench-page .settings-topbar {
       min-height: 42px;
       margin: 0;
       padding: 0;
@@ -6035,7 +6020,7 @@
 
     #marketPage.market-bootstrap.workbench-page .settings-title,
     .client-deals-bootstrap.workbench-page .page-title,
-    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #hedgingSettingsPage).unified-bootstrap-workspace.workbench-page .settings-title {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #positionManagementSettingsPage).unified-bootstrap-workspace.workbench-page .settings-title {
       margin: 0;
       color: var(--bs-emphasis-color);
       font-size: var(--workbench-title-size);

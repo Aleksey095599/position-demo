@@ -11,7 +11,7 @@ function analyticalPnlReportQuery(whereSql = "") {
         transfer_rate,
         analytical_pnl_quote_minor,
         analytical_pnl_quote_fraction_digits
-      FROM client_fx_deals
+      FROM client_deals
 
       UNION ALL
 
@@ -22,7 +22,7 @@ function analyticalPnlReportQuery(whereSql = "") {
         transfer_rate,
         analytical_pnl_quote_minor,
         analytical_pnl_quote_fraction_digits
-      FROM fx_hedge_deals
+      FROM hedge_deals
     )
     SELECT
       exposure.trade_id AS tradeId,
@@ -50,7 +50,7 @@ function analyticalPnlReportQuery(whereSql = "") {
       deal.analytical_pnl_quote_minor AS analyticalPnlQuoteMinor,
       deal.analytical_pnl_quote_fraction_digits AS analyticalPnlQuoteFractionDigits
     FROM report_deals deal
-    INNER JOIN fx_trade_exposure exposure
+    INNER JOIN trade_exposures exposure
       ON exposure.trade_id = deal.trade_id
       AND exposure.trade_type = deal.trade_type
     INNER JOIN trading_counterparties counterparty

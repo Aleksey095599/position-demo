@@ -29,8 +29,8 @@ test("route pages and dialog components are owned by feature fragments", () => {
   const pageFragments = manifest.fragments.filter(fragment => fragment.kind === "page");
   const dialogFragments = manifest.fragments.filter(fragment => fragment.kind === "dialog");
 
-  assert.equal(pageFragments.length, 14);
-  assert.equal(dialogFragments.length, 15);
+  assert.equal(pageFragments.length, 16);
+  assert.equal(dialogFragments.length, 13);
   assert.ok(pageFragments.every(fragment => fragment.file.startsWith("features/")));
   assert.ok(dialogFragments.every(fragment =>
     fragment.file.startsWith("features/") || fragment.file.startsWith("shared/")
@@ -53,12 +53,12 @@ test("route pages and dialog components are owned by feature fragments", () => {
 test("every Bootstrap tab list uses the shared workbench tab contract", () => {
   const html = read("index.html");
   const sharedTabsStyle = read("frontend/shared/components/workbench-tabs.css");
-  const fxPositionStyle = read("frontend/features/fx-position/fx-position-workbench.css");
+  const positionStyle = read("frontend/features/position/position-workbench.css");
   const tabLists = [...html.matchAll(
     /<nav\b[^>]*class="([^"]*\bnav-tabs\b[^"]*)"[^>]*>/g
   )];
 
-  assert.equal(tabLists.length, 6);
+  assert.equal(tabLists.length, 5);
   for (const [, classNames] of tabLists) {
     assert.match(classNames, /\bworkbench-section-tabs\b/);
   }
@@ -66,8 +66,8 @@ test("every Bootstrap tab list uses the shared workbench tab contract", () => {
   assert.match(sharedTabsStyle, /\.workbench-page \.workbench-section-tabs \{/);
   assert.doesNotMatch(sharedTabsStyle, /\.unified-bootstrap-workspace/);
   assert.doesNotMatch(
-    fxPositionStyle,
-    /\.fx-position-mode-tabs \.nav-link(?:(?:\.active)|(?::not\([^)]*\))|(?::hover))*\s*\{/
+    positionStyle,
+    /\.position-mode-tabs \.nav-link(?:(?:\.active)|(?::not\([^)]*\))|(?::hover))*\s*\{/
   );
 });
 
@@ -95,7 +95,7 @@ test("JavaScript and CSS bundles are assembled from owned source segments", () =
   assert.ok(styleManifest.sources.length >= 8);
   assert.ok(scriptManifest.sources.some(source => source.startsWith("features/database/")));
   assert.ok(scriptManifest.sources.some(source => source.startsWith("features/hedging/")));
-  assert.ok(styleManifest.sources.some(source => source.startsWith("features/fx-position/")));
+  assert.ok(styleManifest.sources.some(source => source.startsWith("features/position/")));
   assert.ok(styleManifest.sources.some(source => source.startsWith("shared/components/")));
 
   for (const source of [...scriptManifest.sources, ...styleManifest.sources]) {

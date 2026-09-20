@@ -1,31 +1,31 @@
     /* Keep transaction-entry forms on one restrained typography hierarchy. */
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     .client-deal-create-section-title {
       font-size: var(--app-font-size-section-title);
       font-weight: var(--app-font-weight-semibold);
       line-height: 1.3;
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     .form-label {
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-label);
       font-weight: var(--app-font-weight-medium);
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     :is(.form-control, .form-select, .input-group-text) {
       font-size: var(--app-font-size-control);
       font-weight: var(--app-font-weight-regular);
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     :is(.client-deal-currency-pair-field, .client-deal-pricing-mode-field) .form-select {
       font-size: var(--app-font-size-control);
       font-weight: var(--app-font-weight-medium);
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     :is(.client-pricing-context-candidate-name, .client-deal-pricing-rule-margin-value, .client-deal-fixed-currency-toggle) {
       font-weight: var(--app-font-weight-medium);
     }
@@ -35,13 +35,13 @@
       color: var(--bs-secondary-color);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-panel .modal-title {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-panel .modal-title {
       font-size: 16px;
       font-weight: var(--app-font-weight-semibold);
     }
 
-    #hedgingSettingsPage .hedge-quick-settings-active .form-check-label {
+    #positionManagementSettingsPage .hedge-quick-settings-active .form-check-label {
       font-size: var(--app-font-size-control);
       font-weight: var(--app-font-weight-regular);
     }
@@ -83,15 +83,15 @@
       cursor: pointer;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title :is(.common-head, .market-head):has(.sort-button):hover {
+    #mainPage.position-bootstrap.workbench-page .position-grid .column-title :is(.common-head, .market-head):has(.sort-button):hover {
       background: var(--palette-gray-200) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title .sell-head:has(.sort-button):hover {
+    #mainPage.position-bootstrap.workbench-page .position-grid .column-title .sell-head:has(.sort-button):hover {
       background: rgba(var(--bs-danger-rgb), 0.12) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title .buy-head:has(.sort-button):hover {
+    #mainPage.position-bootstrap.workbench-page .position-grid .column-title .buy-head:has(.sort-button):hover {
       background: rgba(var(--bs-success-rgb), 0.12) !important;
     }
 
@@ -140,7 +140,7 @@
       .profile-panel-title,
       .database-section-title,
       .client-pricing-rules-table-head,
-      .client-execution-contexts-table-head
+      .client-trade-contexts-table-head
     ) {
       font-size: var(--app-font-size-label);
       font-weight: var(--app-font-weight-semibold);
@@ -159,8 +159,8 @@
       .client-deals-bootstrap .side-token,
       #databasePage .database-table-section-meta,
       #mainPage .currency-pair-count,
-      #mainPage .fx-position-grid .rate-title-row th,
-      #mainPage .fx-position-grid .batching-summary-row .summary-label,
+      #mainPage .position-grid .rate-title-row th,
+      #mainPage .position-grid .batching-summary-row .summary-label,
       #mainPage .hedge-quick-preset-unit
     ) {
       font-size: var(--app-font-size-caption);

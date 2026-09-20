@@ -99,6 +99,200 @@ CREATE TABLE IF NOT EXISTS market_quote_simulation_settings
         CHECK (
             typeof(fluctuation_spreads) IN ('integer', 'real')
             AND fluctuation_spreads BETWEEN 0 AND 10
+    )
+);
+
+CREATE TABLE IF NOT EXISTS market_source_candles
+(
+    instrument_id TEXT    NOT NULL,
+    timeframe     TEXT    NOT NULL,
+    begin_at      TEXT    NOT NULL,
+    end_at        TEXT    NOT NULL,
+    open_price    NUMERIC NOT NULL,
+    high_price    NUMERIC NOT NULL,
+    low_price     NUMERIC NOT NULL,
+    close_price   NUMERIC NOT NULL,
+    data_source   TEXT    NOT NULL,
+    loaded_at     TEXT    NOT NULL,
+
+    CONSTRAINT pk_market_source_candles
+        PRIMARY KEY (instrument_id, timeframe, begin_at),
+    CONSTRAINT chk_market_source_candles_instrument
+        CHECK (
+            length(instrument_id) BETWEEN 1 AND 64
+            AND instrument_id = trim(instrument_id)
+            AND instrument_id = upper(instrument_id)
+            AND instrument_id NOT GLOB '*[^A-Z0-9_.-]*'
+        ),
+    CONSTRAINT chk_market_source_candles_timeframe
+        CHECK (
+            timeframe IN (
+                'ONE_MINUTE',
+                'FIVE_MINUTES',
+                'FIFTEEN_MINUTES',
+                'ONE_HOUR',
+                'FOUR_HOURS',
+                'ONE_DAY',
+                'ONE_WEEK',
+                'ONE_MONTH'
+            )
+        ),
+    CONSTRAINT chk_market_source_candles_period
+        CHECK (
+            length(begin_at) = 24
+            AND begin_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', begin_at) = begin_at
+            AND length(end_at) = 24
+            AND end_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', end_at) = end_at
+            AND begin_at < end_at
+        ),
+    CONSTRAINT chk_market_source_candles_prices
+        CHECK (
+            typeof(open_price) IN ('integer', 'real')
+            AND typeof(high_price) IN ('integer', 'real')
+            AND typeof(low_price) IN ('integer', 'real')
+            AND typeof(close_price) IN ('integer', 'real')
+            AND low_price > 0
+            AND low_price <= high_price
+            AND open_price BETWEEN low_price AND high_price
+            AND close_price BETWEEN low_price AND high_price
+        ),
+    CONSTRAINT chk_market_source_candles_data_source
+        CHECK (
+            length(data_source) BETWEEN 1 AND 30
+            AND data_source = trim(data_source)
+            AND data_source = upper(data_source)
+            AND data_source NOT GLOB '*[^A-Z0-9_]*'
+        ),
+    CONSTRAINT chk_market_source_candles_loaded_at
+        CHECK (
+            length(loaded_at) = 24
+            AND loaded_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', loaded_at) = loaded_at
+        )
+);
+
+CREATE TABLE IF NOT EXISTS market_aggregated_candles
+(
+    instrument_id   TEXT    NOT NULL,
+    timeframe       TEXT    NOT NULL,
+    begin_at        TEXT    NOT NULL,
+    end_at          TEXT    NOT NULL,
+    open_price      NUMERIC NOT NULL,
+    high_price      NUMERIC NOT NULL,
+    low_price       NUMERIC NOT NULL,
+    close_price     NUMERIC NOT NULL,
+    base_timeframe  TEXT    NOT NULL,
+    component_count INTEGER NOT NULL,
+    calculated_at   TEXT    NOT NULL,
+
+    CONSTRAINT pk_market_aggregated_candles
+        PRIMARY KEY (instrument_id, timeframe, begin_at),
+    CONSTRAINT chk_market_aggregated_candles_instrument
+        CHECK (
+            length(instrument_id) BETWEEN 1 AND 64
+            AND instrument_id = trim(instrument_id)
+            AND instrument_id = upper(instrument_id)
+            AND instrument_id NOT GLOB '*[^A-Z0-9_.-]*'
+        ),
+    CONSTRAINT chk_market_aggregated_candles_timeframe
+        CHECK (
+            timeframe IN (
+                'FIVE_MINUTES',
+                'FIFTEEN_MINUTES',
+                'ONE_HOUR',
+                'FOUR_HOURS',
+                'ONE_WEEK',
+                'ONE_MONTH'
+            )
+        ),
+    CONSTRAINT chk_market_aggregated_candles_base_timeframe
+        CHECK (
+            (timeframe IN ('FIVE_MINUTES', 'FIFTEEN_MINUTES', 'ONE_HOUR', 'FOUR_HOURS')
+                AND base_timeframe = 'ONE_MINUTE')
+            OR (timeframe IN ('ONE_WEEK', 'ONE_MONTH')
+                AND base_timeframe = 'ONE_DAY')
+        ),
+    CONSTRAINT chk_market_aggregated_candles_period
+        CHECK (
+            length(begin_at) = 24
+            AND begin_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', begin_at) = begin_at
+            AND length(end_at) = 24
+            AND end_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', end_at) = end_at
+            AND begin_at < end_at
+        ),
+    CONSTRAINT chk_market_aggregated_candles_prices
+        CHECK (
+            typeof(open_price) IN ('integer', 'real')
+            AND typeof(high_price) IN ('integer', 'real')
+            AND typeof(low_price) IN ('integer', 'real')
+            AND typeof(close_price) IN ('integer', 'real')
+            AND low_price > 0
+            AND low_price <= high_price
+            AND open_price BETWEEN low_price AND high_price
+            AND close_price BETWEEN low_price AND high_price
+        ),
+    CONSTRAINT chk_market_aggregated_candles_component_count
+        CHECK (
+            typeof(component_count) = 'integer'
+            AND component_count > 0
+        ),
+    CONSTRAINT chk_market_aggregated_candles_calculated_at
+        CHECK (
+            length(calculated_at) = 24
+            AND calculated_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', calculated_at) = calculated_at
+        )
+);
+
+CREATE TABLE IF NOT EXISTS market_candle_load_ranges
+(
+    instrument_id TEXT NOT NULL,
+    timeframe     TEXT NOT NULL,
+    from_at       TEXT NOT NULL,
+    till_at       TEXT NOT NULL,
+    loaded_at     TEXT NOT NULL,
+
+    CONSTRAINT pk_market_candle_load_ranges
+        PRIMARY KEY (instrument_id, timeframe, from_at),
+    CONSTRAINT chk_market_candle_load_ranges_instrument
+        CHECK (
+            length(instrument_id) BETWEEN 1 AND 64
+            AND instrument_id = trim(instrument_id)
+            AND instrument_id = upper(instrument_id)
+            AND instrument_id NOT GLOB '*[^A-Z0-9_.-]*'
+        ),
+    CONSTRAINT chk_market_candle_load_ranges_timeframe
+        CHECK (
+            timeframe IN (
+                'ONE_MINUTE',
+                'FIVE_MINUTES',
+                'FIFTEEN_MINUTES',
+                'ONE_HOUR',
+                'FOUR_HOURS',
+                'ONE_DAY',
+                'ONE_WEEK',
+                'ONE_MONTH'
+            )
+        ),
+    CONSTRAINT chk_market_candle_load_ranges_period
+        CHECK (
+            length(from_at) = 24
+            AND from_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', from_at) = from_at
+            AND length(till_at) = 24
+            AND till_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', till_at) = till_at
+            AND from_at < till_at
+        ),
+    CONSTRAINT chk_market_candle_load_ranges_loaded_at
+        CHECK (
+            length(loaded_at) = 24
+            AND loaded_at GLOB '????-??-??T??:??:??.???Z'
+            AND strftime('%Y-%m-%dT%H:%M:%fZ', loaded_at) = loaded_at
         )
 );
 
@@ -143,314 +337,181 @@ CREATE TABLE IF NOT EXISTS accounting_systems
         CHECK (is_active IN (0, 1))
 );
 
-CREATE TABLE IF NOT EXISTS execution_systems
+CREATE TABLE IF NOT EXISTS originating_systems
 (
-    execution_system_id TEXT    PRIMARY KEY,
+    originating_system_id TEXT    PRIMARY KEY,
     name                TEXT    NOT NULL,
     pricing_mode        TEXT    NOT NULL,
     is_active           INTEGER NOT NULL DEFAULT 1,
 
-    CONSTRAINT chk_execution_systems_id
+    CONSTRAINT chk_originating_systems_id
         CHECK (
-            length(execution_system_id) BETWEEN 2 AND 30
-            AND execution_system_id = upper(execution_system_id)
-            AND execution_system_id NOT GLOB '*[^A-Z0-9_-]*'
+            length(originating_system_id) BETWEEN 2 AND 30
+            AND originating_system_id = upper(originating_system_id)
+            AND originating_system_id NOT GLOB '*[^A-Z0-9_-]*'
         ),
-    CONSTRAINT chk_execution_systems_name
+    CONSTRAINT chk_originating_systems_name
         CHECK (length(trim(name)) BETWEEN 1 AND 50),
-    CONSTRAINT chk_execution_systems_pricing_mode
+    CONSTRAINT chk_originating_systems_pricing_mode
         CHECK (
             pricing_mode IN ('AUTO_PRICED', 'DEALER_PRICED', 'DEALER_APPROVED')
             AND length(pricing_mode) <= length('DEALER_APPROVED')
         ),
-    CONSTRAINT chk_execution_systems_active
+    CONSTRAINT chk_originating_systems_active
         CHECK (is_active IN (0, 1))
 );
 
-CREATE TABLE IF NOT EXISTS execution_contexts
+CREATE TABLE IF NOT EXISTS trade_purposes
 (
-    execution_context_id             INTEGER PRIMARY KEY,
+    trade_purpose_id TEXT NOT NULL PRIMARY KEY,
+    name             TEXT NOT NULL,
+
+    CONSTRAINT chk_trade_purposes_id
+        CHECK (
+            length(trade_purpose_id) BETWEEN 2 AND 30
+            AND trade_purpose_id = upper(trade_purpose_id)
+            AND trade_purpose_id NOT GLOB '*[^A-Z0-9_-]*'
+        ),
+    CONSTRAINT chk_trade_purposes_name
+        CHECK (length(name) BETWEEN 1 AND 100 AND name = trim(name))
+);
+
+CREATE TABLE IF NOT EXISTS trade_contexts
+(
+    trade_context_id             INTEGER PRIMARY KEY,
     servicing_location_id            TEXT NOT NULL,
     accounting_system_id             TEXT,
-    execution_system_id              TEXT NOT NULL,
-    default_position_management_mode TEXT NOT NULL DEFAULT 'MANUAL',
-    auto_hedging_admission_mode       TEXT NOT NULL DEFAULT 'MANUAL_ONLY',
+    originating_system_id              TEXT NOT NULL,
+    auto_management_admission_mode       TEXT NOT NULL DEFAULT 'REVIEW_REQUIRED',
 
-    CONSTRAINT fk_execution_contexts_servicing_location
+    CONSTRAINT fk_trade_contexts_servicing_location
         FOREIGN KEY (servicing_location_id)
             REFERENCES servicing_locations (servicing_location_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_execution_contexts_accounting_system
+    CONSTRAINT fk_trade_contexts_accounting_system
         FOREIGN KEY (accounting_system_id)
             REFERENCES accounting_systems (accounting_system_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_execution_contexts_execution_system
-        FOREIGN KEY (execution_system_id)
-            REFERENCES execution_systems (execution_system_id)
+    CONSTRAINT fk_trade_contexts_originating_system
+        FOREIGN KEY (originating_system_id)
+            REFERENCES originating_systems (originating_system_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_execution_contexts_default_position_management_mode
-        CHECK (default_position_management_mode IN ('MANUAL', 'AUTO')),
-    CONSTRAINT chk_execution_contexts_auto_hedging_admission_mode
+    CONSTRAINT chk_trade_contexts_auto_management_admission_mode
         CHECK (
-            auto_hedging_admission_mode IN
-                ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
+            auto_management_admission_mode IN
+                ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED')
         )
 );
 
-CREATE TRIGGER IF NOT EXISTS trg_execution_contexts_auto_hedging_admission_mode_insert
-BEFORE INSERT ON execution_contexts
+CREATE TRIGGER IF NOT EXISTS trg_trade_contexts_auto_management_admission_mode_insert
+BEFORE INSERT ON trade_contexts
 FOR EACH ROW
-WHEN NEW.auto_hedging_admission_mode = 'AUTO_IF_ELIGIBLE'
+WHEN NEW.auto_management_admission_mode = 'AUTO_IF_ELIGIBLE'
     AND NOT EXISTS
     (
         SELECT 1
-        FROM execution_systems system
-        WHERE system.execution_system_id = NEW.execution_system_id
+        FROM originating_systems system
+        WHERE system.originating_system_id = NEW.originating_system_id
             AND system.pricing_mode = 'AUTO_PRICED'
     )
 BEGIN
-    SELECT RAISE(ABORT, 'AUTO_IF_ELIGIBLE_REQUIRES_AUTO_PRICED_EXECUTION_SYSTEM');
+    SELECT RAISE(ABORT, 'AUTO_IF_ELIGIBLE_REQUIRES_AUTO_PRICED_ORIGINATING_SYSTEM');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_execution_contexts_auto_hedging_admission_mode_update
-BEFORE UPDATE OF execution_system_id, auto_hedging_admission_mode ON execution_contexts
+CREATE TRIGGER IF NOT EXISTS trg_trade_contexts_auto_management_admission_mode_update
+BEFORE UPDATE OF originating_system_id, auto_management_admission_mode ON trade_contexts
 FOR EACH ROW
-WHEN NEW.auto_hedging_admission_mode = 'AUTO_IF_ELIGIBLE'
+WHEN NEW.auto_management_admission_mode = 'AUTO_IF_ELIGIBLE'
     AND NOT EXISTS
     (
         SELECT 1
-        FROM execution_systems system
-        WHERE system.execution_system_id = NEW.execution_system_id
+        FROM originating_systems system
+        WHERE system.originating_system_id = NEW.originating_system_id
             AND system.pricing_mode = 'AUTO_PRICED'
     )
 BEGIN
-    SELECT RAISE(ABORT, 'AUTO_IF_ELIGIBLE_REQUIRES_AUTO_PRICED_EXECUTION_SYSTEM');
+    SELECT RAISE(ABORT, 'AUTO_IF_ELIGIBLE_REQUIRES_AUTO_PRICED_ORIGINATING_SYSTEM');
 END;
 
-CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_revisions
+CREATE TABLE IF NOT EXISTS auto_mode_eligibility_rules
 (
-    revision   INTEGER PRIMARY KEY,
-    created_at TEXT    NOT NULL
-        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    trade_type                         TEXT    NOT NULL,
+    ccy_pair_code                      TEXT    NOT NULL,
+    is_eligible                        INTEGER NOT NULL,
+    max_base_ccy_amount_minor          INTEGER,
+    max_transfer_rate_deviation_percent TEXT,
 
-    CONSTRAINT chk_auto_hedging_admission_policy_revision
-        CHECK (typeof(revision) = 'integer' AND revision >= 1),
-    CONSTRAINT chk_auto_hedging_admission_policy_created_at
-        CHECK (
-            length(created_at) = 24
-            AND created_at GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
-        )
-);
-
-CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_pair_deviations
-(
-    revision                            INTEGER NOT NULL,
-    ccy_pair_code                       TEXT    NOT NULL,
-    max_transfer_rate_deviation_percent TEXT    NOT NULL,
-
-    CONSTRAINT pk_auto_hedging_admission_policy_pair_deviations
-        PRIMARY KEY (revision, ccy_pair_code),
-    CONSTRAINT fk_auto_hedging_admission_policy_pair_deviations_revision
-        FOREIGN KEY (revision)
-            REFERENCES auto_hedging_admission_policy_revisions (revision)
-            ON UPDATE RESTRICT
-            ON DELETE RESTRICT,
-    CONSTRAINT fk_auto_hedging_admission_policy_pair_deviations_pair
+    CONSTRAINT pk_auto_mode_eligibility_rules
+        PRIMARY KEY (trade_type, ccy_pair_code),
+    CONSTRAINT fk_auto_mode_eligibility_rules_pair
         FOREIGN KEY (ccy_pair_code)
             REFERENCES ccy_pair_options (ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_auto_hedging_admission_policy_pair_deviations_value
+    CONSTRAINT chk_auto_mode_eligibility_rules_trade_type
         CHECK (
-            typeof(max_transfer_rate_deviation_percent) = 'text'
-            AND length(max_transfer_rate_deviation_percent) BETWEEN 1 AND 32
-            AND max_transfer_rate_deviation_percent GLOB '[0-9]*'
-            AND max_transfer_rate_deviation_percent NOT GLOB '*[^0-9.]*'
-            AND length(max_transfer_rate_deviation_percent)
-                - length(replace(max_transfer_rate_deviation_percent, '.', '')) <= 1
-            AND substr(max_transfer_rate_deviation_percent, -1, 1) <> '.'
-            AND CAST(max_transfer_rate_deviation_percent AS REAL) BETWEEN 0 AND 100
-        )
-) WITHOUT ROWID;
-
-CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_pair_rules
-(
-    revision                    INTEGER NOT NULL,
-    ccy_pair_code               TEXT    NOT NULL,
-    max_base_ccy_amount_minor   INTEGER NOT NULL,
-    base_ccy_fraction_digits    INTEGER NOT NULL,
-
-    CONSTRAINT pk_auto_hedging_admission_policy_pair_rules
-        PRIMARY KEY (revision, ccy_pair_code),
-    CONSTRAINT fk_auto_hedging_admission_policy_pair_rules_revision
-        FOREIGN KEY (revision)
-            REFERENCES auto_hedging_admission_policy_revisions (revision)
-            ON UPDATE RESTRICT
-            ON DELETE RESTRICT,
-    CONSTRAINT fk_auto_hedging_admission_policy_pair_rules_pair
-        FOREIGN KEY (ccy_pair_code)
-            REFERENCES ccy_pair_options (ccy_pair_code)
-            ON UPDATE RESTRICT
-            ON DELETE RESTRICT,
-    CONSTRAINT chk_auto_hedging_admission_policy_pair_rules_amount
-        CHECK (
-            typeof(max_base_ccy_amount_minor) = 'integer'
-            AND max_base_ccy_amount_minor > 0
+            trade_type IN
+                ('CLIENT_DEAL', 'HEDGE_DEAL', 'BATCH_POSITION_OUT')
         ),
-    CONSTRAINT chk_auto_hedging_admission_policy_pair_rules_fraction_digits
+    CONSTRAINT chk_auto_mode_eligibility_rules_eligible
+        CHECK (typeof(is_eligible) = 'integer' AND is_eligible IN (0, 1)),
+    CONSTRAINT chk_auto_mode_eligibility_rules_requirements
         CHECK (
-            typeof(base_ccy_fraction_digits) = 'integer'
-            AND base_ccy_fraction_digits BETWEEN 0 AND 10
+            (
+                is_eligible = 0
+                AND max_base_ccy_amount_minor IS NULL
+                AND max_transfer_rate_deviation_percent IS NULL
+            )
+            OR
+            (
+                is_eligible = 1
+                AND typeof(max_base_ccy_amount_minor) = 'integer'
+                AND max_base_ccy_amount_minor > 0
+                AND typeof(max_transfer_rate_deviation_percent) = 'text'
+                AND length(max_transfer_rate_deviation_percent) BETWEEN 1 AND 32
+                AND max_transfer_rate_deviation_percent GLOB '[0-9]*'
+                AND max_transfer_rate_deviation_percent NOT GLOB '*[^0-9.]*'
+                AND length(max_transfer_rate_deviation_percent)
+                    - length(replace(max_transfer_rate_deviation_percent, '.', '')) <= 1
+                AND substr(max_transfer_rate_deviation_percent, -1, 1) <> '.'
+                AND CAST(max_transfer_rate_deviation_percent AS REAL) BETWEEN 0 AND 100
+            )
         )
 ) WITHOUT ROWID;
-
-CREATE TABLE IF NOT EXISTS auto_hedging_admission_policy_current
-(
-    policy_id  INTEGER PRIMARY KEY,
-    revision   INTEGER NOT NULL UNIQUE,
-    updated_at TEXT    NOT NULL
-        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-
-    CONSTRAINT chk_auto_hedging_admission_policy_current_singleton
-        CHECK (policy_id = 1),
-    CONSTRAINT fk_auto_hedging_admission_policy_current_revision
-        FOREIGN KEY (revision)
-            REFERENCES auto_hedging_admission_policy_revisions (revision)
-            ON UPDATE RESTRICT
-            ON DELETE RESTRICT,
-    CONSTRAINT chk_auto_hedging_admission_policy_current_updated_at
-        CHECK (
-            length(updated_at) = 24
-            AND updated_at GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
-        )
-);
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_revisions_immutable_update
-BEFORE UPDATE ON auto_hedging_admission_policy_revisions
-FOR EACH ROW
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_revisions_immutable_delete
-BEFORE DELETE ON auto_hedging_admission_policy_revisions
-FOR EACH ROW
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_rules_immutable_update
-BEFORE UPDATE ON auto_hedging_admission_policy_pair_rules
-FOR EACH ROW
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_rules_immutable_delete
-BEFORE DELETE ON auto_hedging_admission_policy_pair_rules
-FOR EACH ROW
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_rules_lock_published_insert
-BEFORE INSERT ON auto_hedging_admission_policy_pair_rules
-FOR EACH ROW
-WHEN NEW.revision <= COALESCE(
-    (SELECT current.revision FROM auto_hedging_admission_policy_current current WHERE current.policy_id = 1),
-    0
-)
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_deviations_immutable_update
-BEFORE UPDATE ON auto_hedging_admission_policy_pair_deviations
-FOR EACH ROW
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_deviations_immutable_delete
-BEFORE DELETE ON auto_hedging_admission_policy_pair_deviations
-FOR EACH ROW
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_pair_deviations_lock_published_insert
-BEFORE INSERT ON auto_hedging_admission_policy_pair_deviations
-FOR EACH ROW
-WHEN NEW.revision <= COALESCE(
-    (SELECT current.revision FROM auto_hedging_admission_policy_current current WHERE current.policy_id = 1),
-    0
-)
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_current_forward_only
-BEFORE UPDATE OF revision ON auto_hedging_admission_policy_current
-FOR EACH ROW
-WHEN NEW.revision <= OLD.revision
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_MUST_ADVANCE');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_current_complete_insert
-BEFORE INSERT ON auto_hedging_admission_policy_current
-FOR EACH ROW
-WHEN
-    (SELECT COUNT(*) FROM auto_hedging_admission_policy_pair_deviations deviation
-     WHERE deviation.revision = NEW.revision)
-    <> (SELECT COUNT(*) FROM ccy_pair_options)
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_PAIR_DEVIATIONS_INCOMPLETE');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_auto_hedging_admission_policy_current_complete_update
-BEFORE UPDATE OF revision ON auto_hedging_admission_policy_current
-FOR EACH ROW
-WHEN
-    (SELECT COUNT(*) FROM auto_hedging_admission_policy_pair_deviations deviation
-     WHERE deviation.revision = NEW.revision)
-    <> (SELECT COUNT(*) FROM ccy_pair_options)
-BEGIN
-    SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_PAIR_DEVIATIONS_INCOMPLETE');
-END;
 
 CREATE TABLE IF NOT EXISTS trading_counterparties
 (
-    counterparty_id   INTEGER PRIMARY KEY,
-    counterparty_name TEXT    NOT NULL,
-    is_active  INTEGER NOT NULL DEFAULT 1,
+    counterparty_id    INTEGER PRIMARY KEY,
+    counterparty_scope TEXT    NOT NULL,
+    counterparty_name  TEXT    NOT NULL,
+    is_active          INTEGER NOT NULL DEFAULT 1,
 
+    CONSTRAINT chk_trading_counterparties_scope
+        CHECK (counterparty_scope IN ('EXTERNAL', 'INTERNAL')),
     CONSTRAINT chk_trading_counterparties_name
         CHECK (length(counterparty_name) BETWEEN 1 AND 200 AND length(trim(counterparty_name)) > 0),
     CONSTRAINT chk_trading_counterparties_active
         CHECK (is_active IN (0, 1))
 );
 
-CREATE TABLE IF NOT EXISTS trading_counterparty_execution_contexts
+CREATE TABLE IF NOT EXISTS trading_counterparty_trade_contexts
 (
     counterparty_id      INTEGER NOT NULL,
-    execution_context_id INTEGER NOT NULL,
+    trade_context_id INTEGER NOT NULL,
 
-    CONSTRAINT pk_trading_counterparty_execution_contexts
-        PRIMARY KEY (counterparty_id, execution_context_id),
-    CONSTRAINT fk_trading_counterparty_execution_contexts_counterparty
+    CONSTRAINT pk_trading_counterparty_trade_contexts
+        PRIMARY KEY (counterparty_id, trade_context_id),
+    CONSTRAINT fk_trading_counterparty_trade_contexts_counterparty
         FOREIGN KEY (counterparty_id)
             REFERENCES trading_counterparties (counterparty_id)
             ON UPDATE RESTRICT
             ON DELETE CASCADE,
-    CONSTRAINT fk_trading_counterparty_execution_contexts_execution_context
-        FOREIGN KEY (execution_context_id)
-            REFERENCES execution_contexts (execution_context_id)
+    CONSTRAINT fk_trading_counterparty_trade_contexts_trade_context
+        FOREIGN KEY (trade_context_id)
+            REFERENCES trade_contexts (trade_context_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT
 );
@@ -547,17 +608,91 @@ CREATE INDEX IF NOT EXISTS idx_trading_counterparty_roles_role
 CREATE TRIGGER IF NOT EXISTS trg_external_counterparties_exclusive_profile_insert
 BEFORE INSERT ON external_counterparties
 FOR EACH ROW
-WHEN EXISTS (SELECT 1 FROM internal_units WHERE counterparty_id = NEW.counterparty_id)
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM trading_counterparties
+    WHERE counterparty_id = NEW.counterparty_id
+      AND counterparty_scope = 'EXTERNAL'
+)
 BEGIN
-    SELECT RAISE(ABORT, 'a Trading Counterparty cannot have both external and internal profiles');
+    SELECT RAISE(ABORT, 'an External Counterparty profile requires an EXTERNAL Trading Counterparty');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_internal_units_exclusive_profile_insert
 BEFORE INSERT ON internal_units
 FOR EACH ROW
-WHEN EXISTS (SELECT 1 FROM external_counterparties WHERE counterparty_id = NEW.counterparty_id)
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM trading_counterparties
+    WHERE counterparty_id = NEW.counterparty_id
+      AND counterparty_scope = 'INTERNAL'
+)
 BEGIN
-    SELECT RAISE(ABORT, 'a Trading Counterparty cannot have both external and internal profiles');
+    SELECT RAISE(ABORT, 'an Internal Unit profile requires an INTERNAL Trading Counterparty');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_external_counterparties_exclusive_profile_update
+BEFORE UPDATE OF counterparty_id ON external_counterparties
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM trading_counterparties
+    WHERE counterparty_id = NEW.counterparty_id
+      AND counterparty_scope = 'EXTERNAL'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'an External Counterparty profile requires an EXTERNAL Trading Counterparty');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_internal_units_exclusive_profile_update
+BEFORE UPDATE OF counterparty_id ON internal_units
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM trading_counterparties
+    WHERE counterparty_id = NEW.counterparty_id
+      AND counterparty_scope = 'INTERNAL'
+)
+BEGIN
+    SELECT RAISE(ABORT, 'an Internal Unit profile requires an INTERNAL Trading Counterparty');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_trading_counterparties_immutable_scope
+BEFORE UPDATE OF counterparty_scope ON trading_counterparties
+FOR EACH ROW
+WHEN NEW.counterparty_scope <> OLD.counterparty_scope
+BEGIN
+    SELECT RAISE(ABORT, 'Trading Counterparty Scope cannot be changed');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_external_counterparties_preserve_profile
+BEFORE DELETE ON external_counterparties
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM trading_counterparties
+    WHERE counterparty_id = OLD.counterparty_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'an External Counterparty profile cannot be deleted independently');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_internal_units_preserve_profile
+BEFORE DELETE ON internal_units
+FOR EACH ROW
+WHEN EXISTS
+(
+    SELECT 1
+    FROM trading_counterparties
+    WHERE counterparty_id = OLD.counterparty_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'an Internal Unit profile cannot be deleted independently');
 END;
 
 CREATE TABLE IF NOT EXISTS users
@@ -619,8 +754,8 @@ CREATE TABLE IF NOT EXISTS ui_table_column_settings
         CHECK (display_order BETWEEN 0 AND 999),
     CONSTRAINT chk_ui_table_column_settings_widths
         CHECK (
-            default_width_px BETWEEN 48 AND 1600
-            AND width_px BETWEEN 48 AND 1600
+            default_width_px BETWEEN 50 AND 1600
+            AND width_px BETWEEN 50 AND 1600
         )
 );
 
@@ -673,20 +808,19 @@ CREATE TABLE IF NOT EXISTS pricing_rules
 (
     pricing_rule_id                  INTEGER PRIMARY KEY,
     counterparty_id                  INTEGER NOT NULL,
-    execution_context_id             INTEGER NOT NULL,
+    trade_context_id             INTEGER NOT NULL,
     ccy_pair_code                    TEXT    NOT NULL,
     margin_percent                   REAL    NOT NULL,
-    position_management_mode_override TEXT,
-    auto_hedging_admission_mode_override TEXT,
+    auto_management_admission_mode_override TEXT,
 
     CONSTRAINT fk_pricing_rules_counterparty
         FOREIGN KEY (counterparty_id)
             REFERENCES trading_counterparties (counterparty_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_pricing_rules_execution_context
-        FOREIGN KEY (execution_context_id)
-            REFERENCES execution_contexts (execution_context_id)
+    CONSTRAINT fk_pricing_rules_trade_context
+        FOREIGN KEY (trade_context_id)
+            REFERENCES trade_contexts (trade_context_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT fk_pricing_rules_ccy_pair
@@ -695,18 +829,13 @@ CREATE TABLE IF NOT EXISTS pricing_rules
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
     CONSTRAINT uq_pricing_rules_scope
-        UNIQUE (counterparty_id, execution_context_id, ccy_pair_code),
+        UNIQUE (counterparty_id, trade_context_id, ccy_pair_code),
     CONSTRAINT chk_pricing_rules_margin
         CHECK (margin_percent >= 0 AND margin_percent < 100),
-    CONSTRAINT chk_pricing_rules_position_management_mode_override
+    CONSTRAINT chk_pricing_rules_auto_management_admission_mode_override
         CHECK (
-            position_management_mode_override IS NULL
-            OR position_management_mode_override IN ('MANUAL', 'AUTO')
-        ),
-    CONSTRAINT chk_pricing_rules_auto_hedging_admission_mode_override
-        CHECK (
-            auto_hedging_admission_mode_override IS NULL
-            OR auto_hedging_admission_mode_override = 'MANUAL_ONLY'
+            auto_management_admission_mode_override IS NULL
+            OR auto_management_admission_mode_override = 'REVIEW_REQUIRED'
         )
 );
 
@@ -716,58 +845,58 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_reference
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_hedge_quick_mode_counterparty_reference
     ON pricing_rules (pricing_rule_id, counterparty_id, ccy_pair_code);
 
-CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_execution_context_insert
+CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_trade_context_insert
 BEFORE INSERT ON pricing_rules
 FOR EACH ROW
 WHEN NOT EXISTS
 (
     SELECT 1
-    FROM trading_counterparty_execution_contexts assignment
+    FROM trading_counterparty_trade_contexts assignment
     WHERE assignment.counterparty_id = NEW.counterparty_id
-      AND assignment.execution_context_id = NEW.execution_context_id
+      AND assignment.trade_context_id = NEW.trade_context_id
 )
 BEGIN
-    SELECT RAISE(ABORT, 'Pricing Rule Execution Context must be attached to its Trading Counterparty');
+    SELECT RAISE(ABORT, 'Pricing Rule Trade Context must be attached to its Trading Counterparty');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_execution_context_update
-BEFORE UPDATE OF counterparty_id, execution_context_id ON pricing_rules
+CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_trade_context_update
+BEFORE UPDATE OF counterparty_id, trade_context_id ON pricing_rules
 FOR EACH ROW
 WHEN NOT EXISTS
 (
     SELECT 1
-    FROM trading_counterparty_execution_contexts assignment
+    FROM trading_counterparty_trade_contexts assignment
     WHERE assignment.counterparty_id = NEW.counterparty_id
-      AND assignment.execution_context_id = NEW.execution_context_id
+      AND assignment.trade_context_id = NEW.trade_context_id
 )
 BEGIN
-    SELECT RAISE(ABORT, 'Pricing Rule Execution Context must be attached to its Trading Counterparty');
+    SELECT RAISE(ABORT, 'Pricing Rule Trade Context must be attached to its Trading Counterparty');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_execution_contexts_preserve_pricing_rules_delete
-BEFORE DELETE ON trading_counterparty_execution_contexts
+CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_trade_contexts_preserve_pricing_rules_delete
+BEFORE DELETE ON trading_counterparty_trade_contexts
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
     FROM pricing_rules rule
     WHERE rule.counterparty_id = OLD.counterparty_id
-      AND rule.execution_context_id = OLD.execution_context_id
+      AND rule.trade_context_id = OLD.trade_context_id
 )
 BEGIN
-    SELECT RAISE(ABORT, 'an Execution Context assignment used by Pricing Rules cannot be detached from its Trading Counterparty');
+    SELECT RAISE(ABORT, 'a Trade Context assignment used by Pricing Rules cannot be detached from its Trading Counterparty');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_execution_contexts_immutable_update
-BEFORE UPDATE OF counterparty_id, execution_context_id ON trading_counterparty_execution_contexts
+CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_trade_contexts_immutable_update
+BEFORE UPDATE OF counterparty_id, trade_context_id ON trading_counterparty_trade_contexts
 FOR EACH ROW
 WHEN NEW.counterparty_id <> OLD.counterparty_id
-  OR NEW.execution_context_id <> OLD.execution_context_id
+  OR NEW.trade_context_id <> OLD.trade_context_id
 BEGIN
-    SELECT RAISE(ABORT, 'an Execution Context assignment identity cannot be changed; attach a new Context and detach the old one');
+    SELECT RAISE(ABORT, 'a Trade Context assignment identity cannot be changed; attach a new Context and detach the old one');
 END;
 
-CREATE TABLE IF NOT EXISTS fx_hedge_quick_mode_settings
+CREATE TABLE IF NOT EXISTS hedge_quick_mode_settings
 (
     ccy_pair_code                       TEXT    PRIMARY KEY,
     counterparty_id                            INTEGER NOT NULL,
@@ -780,27 +909,27 @@ CREATE TABLE IF NOT EXISTS fx_hedge_quick_mode_settings
     is_active                           INTEGER NOT NULL DEFAULT 1,
     default_tenor                       TEXT    NOT NULL DEFAULT 'TOD',
 
-    CONSTRAINT fk_fx_hedge_quick_mode_settings_pair
+    CONSTRAINT fk_hedge_quick_mode_settings_pair
         FOREIGN KEY (ccy_pair_code)
             REFERENCES ccy_pair_options (ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_hedge_quick_mode_settings_counterparty
+    CONSTRAINT fk_hedge_quick_mode_settings_counterparty
         FOREIGN KEY (counterparty_id)
             REFERENCES trading_counterparties (counterparty_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_hedge_quick_mode_settings_rule_counterparty_pair
+    CONSTRAINT fk_hedge_quick_mode_settings_rule_counterparty_pair
         FOREIGN KEY (pricing_rule_id, counterparty_id, ccy_pair_code)
             REFERENCES pricing_rules (pricing_rule_id, counterparty_id, ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_hedge_quick_mode_settings_fraction_digits
+    CONSTRAINT chk_hedge_quick_mode_settings_fraction_digits
         CHECK (
             typeof(base_ccy_fraction_digits) = 'integer'
             AND base_ccy_fraction_digits BETWEEN 0 AND 10
         ),
-    CONSTRAINT chk_fx_hedge_quick_mode_settings_amounts
+    CONSTRAINT chk_hedge_quick_mode_settings_amounts
         CHECK (
             typeof(small_base_ccy_amount_minor) = 'integer'
             AND small_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
@@ -814,9 +943,9 @@ CREATE TABLE IF NOT EXISTS fx_hedge_quick_mode_settings
             AND medium_base_ccy_amount_minor < large_base_ccy_amount_minor
             AND large_base_ccy_amount_minor < xlarge_base_ccy_amount_minor
         ),
-    CONSTRAINT chk_fx_hedge_quick_mode_settings_active
+    CONSTRAINT chk_hedge_quick_mode_settings_active
         CHECK (is_active IN (0, 1)),
-    CONSTRAINT chk_fx_hedge_quick_mode_settings_default_tenor
+    CONSTRAINT chk_hedge_quick_mode_settings_default_tenor
         CHECK (default_tenor IN ('TOD', 'TOM', 'SPOT'))
 );
 
@@ -846,21 +975,21 @@ CREATE TABLE IF NOT EXISTS client_deal_generation_process_settings
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_batching_settings
+CREATE TABLE IF NOT EXISTS batching_settings
 (
     settings_id                    INTEGER PRIMARY KEY,
     allow_cross_tenor_batching     INTEGER NOT NULL DEFAULT 0,
     updated_at                     TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-    CONSTRAINT chk_fx_batching_settings_singleton
+    CONSTRAINT chk_batching_settings_singleton
         CHECK (settings_id = 1),
-    CONSTRAINT chk_fx_batching_settings_cross_tenor
+    CONSTRAINT chk_batching_settings_cross_tenor
         CHECK (
             typeof(allow_cross_tenor_batching) = 'integer'
             AND allow_cross_tenor_batching = 0
         ),
-    CONSTRAINT chk_fx_batching_settings_updated_at
+    CONSTRAINT chk_batching_settings_updated_at
         CHECK (
             length(updated_at) = 24
             AND updated_at GLOB '????-??-??T??:??:??.???Z'
@@ -868,7 +997,7 @@ CREATE TABLE IF NOT EXISTS fx_batching_settings
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
+CREATE TABLE IF NOT EXISTS auto_batching_settings
 (
     settings_id                           INTEGER PRIMARY KEY,
     max_interval_seconds                  INTEGER NOT NULL DEFAULT 60,
@@ -877,14 +1006,14 @@ CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
     updated_at                            TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-    CONSTRAINT chk_fx_auto_batching_settings_singleton
+    CONSTRAINT chk_auto_batching_settings_singleton
         CHECK (settings_id = 1),
-    CONSTRAINT chk_fx_auto_batching_settings_max_interval
+    CONSTRAINT chk_auto_batching_settings_max_interval
         CHECK (
             typeof(max_interval_seconds) = 'integer'
             AND max_interval_seconds BETWEEN 1 AND 3600
         ),
-    CONSTRAINT chk_fx_auto_batching_settings_transfer_rate_spread
+    CONSTRAINT chk_auto_batching_settings_transfer_rate_spread
         CHECK (
             typeof(default_transfer_rate_spread_percent) = 'text'
             AND default_transfer_rate_spread_percent GLOB '[0-9]*'
@@ -894,9 +1023,9 @@ CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
             AND CAST(default_transfer_rate_spread_percent AS REAL)
                 BETWEEN 0.0001 AND 100
         ),
-    CONSTRAINT chk_fx_auto_batching_settings_tenor_compatibility
+    CONSTRAINT chk_auto_batching_settings_tenor_compatibility
         CHECK (tenor_compatibility_mode = 'SAME_TENOR_ONLY'),
-    CONSTRAINT chk_fx_auto_batching_settings_updated_at
+    CONSTRAINT chk_auto_batching_settings_updated_at
         CHECK (
             length(updated_at) = 24
             AND updated_at GLOB '????-??-??T??:??:??.???Z'
@@ -904,24 +1033,24 @@ CREATE TABLE IF NOT EXISTS fx_auto_batching_settings
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_auto_batching_ccy_pairs
+CREATE TABLE IF NOT EXISTS auto_batching_ccy_pairs
 (
     settings_id    INTEGER NOT NULL DEFAULT 1,
     ccy_pair_code  TEXT    NOT NULL,
 
     PRIMARY KEY (settings_id, ccy_pair_code),
 
-    CONSTRAINT fk_fx_auto_batching_ccy_pairs_settings
+    CONSTRAINT fk_auto_batching_ccy_pairs_settings
         FOREIGN KEY (settings_id)
-            REFERENCES fx_auto_batching_settings (settings_id)
+            REFERENCES auto_batching_settings (settings_id)
             ON UPDATE RESTRICT
             ON DELETE CASCADE,
-    CONSTRAINT fk_fx_auto_batching_ccy_pairs_ccy_pair
+    CONSTRAINT fk_auto_batching_ccy_pairs_ccy_pair
         FOREIGN KEY (ccy_pair_code)
             REFERENCES ccy_pair_options (ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_auto_batching_ccy_pairs_singleton
+    CONSTRAINT chk_auto_batching_ccy_pairs_singleton
         CHECK (settings_id = 1)
 ) WITHOUT ROWID;
 
@@ -963,7 +1092,7 @@ CREATE TABLE IF NOT EXISTS client_deal_generation_settings
         CHECK (is_active IN (0, 1))
 );
 
-CREATE TABLE IF NOT EXISTS fx_trade_exposure
+CREATE TABLE IF NOT EXISTS trade_exposures
 (
     trade_id                    INTEGER PRIMARY KEY,
     execution_timestamp         TEXT    NOT NULL,
@@ -982,31 +1111,31 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
     base_ccy_value_date         TEXT    NOT NULL,
     quote_ccy_value_date        TEXT    NOT NULL,
 
-    CONSTRAINT fk_fx_trade_exposure_ccy_pair
+    CONSTRAINT fk_trade_exposures_ccy_pair
         FOREIGN KEY (ccy_pair_code)
             REFERENCES ccy_pair_options (ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_trade_exposure_dealt_ccy
+    CONSTRAINT fk_trade_exposures_dealt_ccy
         FOREIGN KEY (dealt_ccy_code)
             REFERENCES ccy_options (ccy_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_trade_exposure_execution_timestamp
+    CONSTRAINT chk_trade_exposures_execution_timestamp
         CHECK (
             length(execution_timestamp) = 24
             AND execution_timestamp GLOB '????-??-??T??:??:??.???Z'
             AND strftime('%Y-%m-%dT%H:%M:%fZ', execution_timestamp)
                 = execution_timestamp
         ),
-    CONSTRAINT chk_fx_trade_exposure_received_timestamp
+    CONSTRAINT chk_trade_exposures_received_timestamp
         CHECK (
             length(received_timestamp) = 24
             AND received_timestamp GLOB '????-??-??T??:??:??.???Z'
             AND strftime('%Y-%m-%dT%H:%M:%fZ', received_timestamp)
                 = received_timestamp
         ),
-    CONSTRAINT chk_fx_trade_exposure_trade_type
+    CONSTRAINT chk_trade_exposures_trade_type
         CHECK (
             trade_type IN
             (
@@ -1016,18 +1145,18 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
                 'BATCH_POSITION_OUT'
             )
         ),
-    CONSTRAINT chk_fx_trade_exposure_trade_date
+    CONSTRAINT chk_trade_exposures_trade_date
         CHECK (
             trade_date GLOB '????-??-??'
             AND strftime('%Y-%m-%d', trade_date) = trade_date
         ),
-    CONSTRAINT chk_fx_trade_exposure_dealt_ccy_code
+    CONSTRAINT chk_trade_exposures_dealt_ccy_code
         CHECK (
             length(dealt_ccy_code) = 3
             AND dealt_ccy_code = upper(dealt_ccy_code)
             AND dealt_ccy_code NOT GLOB '*[^A-Z]*'
         ),
-    CONSTRAINT chk_fx_trade_exposure_amounts
+    CONSTRAINT chk_trade_exposures_amounts
         CHECK (
             (
                 trade_type = 'BATCH_POSITION_OUT'
@@ -1048,16 +1177,16 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
                 AND trade_rate > 0
             )
         ),
-    CONSTRAINT chk_fx_trade_exposure_fraction_digits
+    CONSTRAINT chk_trade_exposures_fraction_digits
         CHECK (
             typeof(base_ccy_fraction_digits) = 'integer'
             AND base_ccy_fraction_digits BETWEEN 0 AND 10
             AND typeof(quote_ccy_fraction_digits) = 'integer'
             AND quote_ccy_fraction_digits BETWEEN 0 AND 10
         ),
-    CONSTRAINT chk_fx_trade_exposure_tenor
+    CONSTRAINT chk_trade_exposures_tenor
         CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
-    CONSTRAINT chk_fx_trade_exposure_value_dates
+    CONSTRAINT chk_trade_exposures_value_dates
         CHECK (
             base_ccy_value_date GLOB '????-??-??'
             AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
@@ -1066,7 +1195,7 @@ CREATE TABLE IF NOT EXISTS fx_trade_exposure
     )
 );
 
-CREATE TABLE IF NOT EXISTS fx_trade_position_management
+CREATE TABLE IF NOT EXISTS trade_position_management
 (
     trade_id                        INTEGER NOT NULL,
     trade_type                      TEXT    NOT NULL,
@@ -1077,24 +1206,24 @@ CREATE TABLE IF NOT EXISTS fx_trade_position_management
     updated_at                      TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-    CONSTRAINT pk_fx_trade_position_management
+    CONSTRAINT pk_trade_position_management
         PRIMARY KEY (trade_id, trade_type),
-    CONSTRAINT fk_fx_trade_position_management_trade
+    CONSTRAINT fk_trade_position_management_trade
         FOREIGN KEY (trade_id, trade_type)
-            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            REFERENCES trade_exposures (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE CASCADE,
-    CONSTRAINT chk_fx_trade_position_management_initial_mode
+    CONSTRAINT chk_trade_position_management_initial_mode
         CHECK (initial_position_management_mode IN ('MANUAL', 'AUTO')),
-    CONSTRAINT chk_fx_trade_position_management_current_mode
+    CONSTRAINT chk_trade_position_management_current_mode
         CHECK (current_position_management_mode IN ('MANUAL', 'AUTO')),
-    CONSTRAINT chk_fx_trade_position_management_created_at
+    CONSTRAINT chk_trade_position_management_created_at
         CHECK (
             length(created_at) = 24
             AND created_at GLOB '????-??-??T??:??:??.???Z'
             AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
         ),
-    CONSTRAINT chk_fx_trade_position_management_updated_at
+    CONSTRAINT chk_trade_position_management_updated_at
         CHECK (
             length(updated_at) = 24
             AND updated_at GLOB '????-??-??T??:??:??.???Z'
@@ -1103,7 +1232,7 @@ CREATE TABLE IF NOT EXISTS fx_trade_position_management
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_trade_position_management_transitions
+CREATE TABLE IF NOT EXISTS trade_position_management_transitions
 (
     transition_id                INTEGER PRIMARY KEY AUTOINCREMENT,
     trade_id                     INTEGER NOT NULL,
@@ -1115,12 +1244,12 @@ CREATE TABLE IF NOT EXISTS fx_trade_position_management_transitions
     transitioned_at              TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-    CONSTRAINT fk_fx_trade_position_management_transition_trade
+    CONSTRAINT fk_trade_position_management_transition_trade
         FOREIGN KEY (trade_id, trade_type)
-            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            REFERENCES trade_exposures (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE CASCADE,
-    CONSTRAINT uq_fx_trade_position_management_transition
+    CONSTRAINT uq_trade_position_management_transition
         UNIQUE
         (
             trade_id,
@@ -1129,16 +1258,16 @@ CREATE TABLE IF NOT EXISTS fx_trade_position_management_transitions
             to_position_management_mode,
             reason_code
         ),
-    CONSTRAINT chk_fx_trade_position_management_transition_modes
+    CONSTRAINT chk_trade_position_management_transition_modes
         CHECK (
             from_position_management_mode = 'MANUAL'
             AND to_position_management_mode = 'AUTO'
         ),
-    CONSTRAINT chk_fx_trade_position_management_transition_reason
+    CONSTRAINT chk_trade_position_management_transition_reason
         CHECK (reason_code = 'MANUAL_REVIEW_COMPLETED'),
-    CONSTRAINT chk_fx_trade_position_management_transition_source
+    CONSTRAINT chk_trade_position_management_transition_source
         CHECK (transition_source = 'OPERATOR'),
-    CONSTRAINT chk_fx_trade_position_management_transitioned_at
+    CONSTRAINT chk_trade_position_management_transitioned_at
         CHECK (
             length(transitioned_at) = 24
             AND transitioned_at GLOB '????-??-??T??:??:??.???Z'
@@ -1146,7 +1275,7 @@ CREATE TABLE IF NOT EXISTS fx_trade_position_management_transitions
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_trade_market_snapshot
+CREATE TABLE IF NOT EXISTS trade_market_snapshots
 (
     trade_id                INTEGER PRIMARY KEY,
     trade_type              TEXT    NOT NULL,
@@ -1155,16 +1284,16 @@ CREATE TABLE IF NOT EXISTS fx_trade_market_snapshot
     market_pulse_offer      NUMERIC,
     market_pulse_timestamp  TEXT,
 
-    CONSTRAINT fk_fx_trade_market_snapshot_trade
+    CONSTRAINT fk_trade_market_snapshots_trade
         FOREIGN KEY (trade_id, trade_type)
-            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            REFERENCES trade_exposures (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_trade_market_snapshot_trade_type
+    CONSTRAINT chk_trade_market_snapshots_trade_type
         CHECK (trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')),
-    CONSTRAINT chk_fx_trade_market_snapshot_stream_status
+    CONSTRAINT chk_trade_market_snapshots_stream_status
         CHECK (market_pulse_stream_status IN ('RUNNING', 'STOPPED')),
-    CONSTRAINT chk_fx_trade_market_snapshot_rates
+    CONSTRAINT chk_trade_market_snapshots_rates
         CHECK (
             (
                 market_pulse_bid IS NULL
@@ -1179,7 +1308,7 @@ CREATE TABLE IF NOT EXISTS fx_trade_market_snapshot
                 AND market_pulse_timestamp IS NOT NULL
             )
         ),
-    CONSTRAINT chk_fx_trade_market_snapshot_timestamp
+    CONSTRAINT chk_trade_market_snapshots_timestamp
         CHECK (
             market_pulse_timestamp IS NULL
             OR (
@@ -1190,14 +1319,13 @@ CREATE TABLE IF NOT EXISTS fx_trade_market_snapshot
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_auto_hedging_admission_decisions
+CREATE TABLE IF NOT EXISTS auto_management_admission_decisions
 (
     decision_id       INTEGER PRIMARY KEY,
     trade_id          INTEGER NOT NULL,
     trade_type        TEXT    NOT NULL DEFAULT 'CLIENT_DEAL',
     decision_sequence INTEGER NOT NULL DEFAULT 1,
     decision_stage    TEXT    NOT NULL DEFAULT 'INITIAL',
-    policy_revision   INTEGER NOT NULL,
     admission_mode    TEXT,
     admission_state   TEXT    NOT NULL,
     releasable        INTEGER NOT NULL,
@@ -1207,49 +1335,44 @@ CREATE TABLE IF NOT EXISTS fx_auto_hedging_admission_decisions
     decided_at        TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-    CONSTRAINT fk_fx_auto_hedging_admission_decisions_trade
+    CONSTRAINT fk_auto_management_admission_decisions_trade
         FOREIGN KEY (trade_id, trade_type)
-            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            REFERENCES trade_exposures (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_auto_hedging_admission_decisions_policy_revision
-        FOREIGN KEY (policy_revision)
-            REFERENCES auto_hedging_admission_policy_revisions (revision)
-            ON UPDATE RESTRICT
-            ON DELETE RESTRICT,
-    CONSTRAINT uq_fx_auto_hedging_admission_decisions_sequence
+    CONSTRAINT uq_auto_management_admission_decisions_sequence
         UNIQUE (trade_id, trade_type, decision_sequence),
-    CONSTRAINT chk_fx_auto_hedging_admission_decisions_trade_type
-        CHECK (trade_type = 'CLIENT_DEAL'),
-    CONSTRAINT chk_fx_auto_hedging_admission_decisions_sequence
+    CONSTRAINT chk_auto_management_admission_decisions_trade_type
+        CHECK (trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')),
+    CONSTRAINT chk_auto_management_admission_decisions_sequence
         CHECK (typeof(decision_sequence) = 'integer' AND decision_sequence >= 1),
-    CONSTRAINT chk_fx_auto_hedging_admission_decisions_stage
+    CONSTRAINT chk_auto_management_admission_decisions_stage
         CHECK (decision_stage IN ('INITIAL', 'RELEASE')),
-    CONSTRAINT chk_fx_auto_hedging_admission_decisions_mode
+    CONSTRAINT chk_auto_management_admission_decisions_mode
         CHECK (
             admission_mode IS NULL
             OR admission_mode IN
                 ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
         ),
-    CONSTRAINT chk_fx_auto_hedging_admission_decisions_state
+    CONSTRAINT chk_auto_management_admission_decisions_state
         CHECK (admission_state IN ('HELD', 'RELEASED')),
-    CONSTRAINT chk_fx_auto_hedging_admission_decisions_releasable
+    CONSTRAINT chk_auto_management_admission_decisions_releasable
         CHECK (typeof(releasable) = 'integer' AND releasable IN (0, 1)),
-    CONSTRAINT chk_fx_auto_hedging_admission_decisions_reason_codes
+    CONSTRAINT chk_auto_management_admission_decisions_reason_codes
         CHECK (
             length(reason_codes_json) BETWEEN 2 AND 4000
             AND json_valid(reason_codes_json) = 1
             AND json_type(reason_codes_json) = 'array'
         ),
-    CONSTRAINT chk_fx_auto_hedging_admission_decisions_checks
+    CONSTRAINT chk_auto_management_admission_decisions_checks
         CHECK (
             length(checks_json) BETWEEN 2 AND 16000
             AND json_valid(checks_json) = 1
             AND json_type(checks_json) = 'array'
         ),
-    CONSTRAINT chk_fx_auto_hedging_admission_decisions_shadow_only
-        CHECK (typeof(is_enforced) = 'integer' AND is_enforced = 0),
-    CONSTRAINT chk_fx_auto_hedging_admission_decisions_decided_at
+    CONSTRAINT chk_auto_management_admission_decisions_enforcement
+        CHECK (typeof(is_enforced) = 'integer' AND is_enforced IN (0, 1)),
+    CONSTRAINT chk_auto_management_admission_decisions_decided_at
         CHECK (
             length(decided_at) = 24
             AND decided_at GLOB '????-??-??T??:??:??.???Z'
@@ -1257,65 +1380,61 @@ CREATE TABLE IF NOT EXISTS fx_auto_hedging_admission_decisions
         )
 );
 
-CREATE INDEX IF NOT EXISTS idx_fx_auto_hedging_admission_decisions_trade
-    ON fx_auto_hedging_admission_decisions
+CREATE INDEX IF NOT EXISTS idx_auto_management_admission_decisions_trade
+    ON auto_management_admission_decisions
         (trade_id, trade_type, decision_sequence);
 
-CREATE INDEX IF NOT EXISTS idx_fx_auto_hedging_admission_decisions_policy_revision
-    ON fx_auto_hedging_admission_decisions
-        (policy_revision, decision_id);
-
-CREATE TRIGGER IF NOT EXISTS trg_fx_auto_hedging_admission_decisions_immutable_update
-BEFORE UPDATE ON fx_auto_hedging_admission_decisions
+CREATE TRIGGER IF NOT EXISTS trg_auto_management_admission_decisions_immutable_update
+BEFORE UPDATE ON auto_management_admission_decisions
 FOR EACH ROW
 BEGIN
-    SELECT RAISE(ABORT, 'FX_AUTO_HEDGING_ADMISSION_DECISION_IMMUTABLE');
+    SELECT RAISE(ABORT, 'AUTO_MANAGEMENT_ADMISSION_DECISION_IMMUTABLE');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_auto_hedging_admission_decisions_immutable_delete
-BEFORE DELETE ON fx_auto_hedging_admission_decisions
+CREATE TRIGGER IF NOT EXISTS trg_auto_management_admission_decisions_immutable_delete
+BEFORE DELETE ON auto_management_admission_decisions
 FOR EACH ROW
 BEGIN
-    SELECT RAISE(ABORT, 'FX_AUTO_HEDGING_ADMISSION_DECISION_IMMUTABLE');
+    SELECT RAISE(ABORT, 'AUTO_MANAGEMENT_ADMISSION_DECISION_IMMUTABLE');
 END;
 
-CREATE TABLE IF NOT EXISTS client_fx_deals
+CREATE TABLE IF NOT EXISTS client_deals
 (
     trade_id                    INTEGER PRIMARY KEY,
     trade_type                  TEXT    NOT NULL DEFAULT 'CLIENT_DEAL',
     counterparty_id                    INTEGER NOT NULL,
-    execution_context_id        INTEGER,
+    trade_context_id        INTEGER,
     pricing_rule_id             INTEGER,
     transfer_rate               NUMERIC,
     analytical_pnl_quote_minor  INTEGER,
     analytical_pnl_quote_fraction_digits INTEGER,
     comment                     TEXT,
 
-    CONSTRAINT fk_client_fx_deals_trade
+    CONSTRAINT fk_client_deals_trade
         FOREIGN KEY (trade_id, trade_type)
-            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            REFERENCES trade_exposures (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_client_fx_deals_counterparty
+    CONSTRAINT fk_client_deals_counterparty
         FOREIGN KEY (counterparty_id)
             REFERENCES trading_counterparties (counterparty_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_client_fx_deals_execution_context
-        FOREIGN KEY (execution_context_id)
-            REFERENCES execution_contexts (execution_context_id)
+    CONSTRAINT fk_client_deals_trade_context
+        FOREIGN KEY (trade_context_id)
+            REFERENCES trade_contexts (trade_context_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_client_fx_deals_pricing_rule_scope
-        FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
-            REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
+    CONSTRAINT fk_client_deals_pricing_rule_scope
+        FOREIGN KEY (pricing_rule_id, counterparty_id, trade_context_id)
+            REFERENCES pricing_rules (pricing_rule_id, counterparty_id, trade_context_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_client_fx_deals_trade_type
+    CONSTRAINT chk_client_deals_trade_type
         CHECK (trade_type = 'CLIENT_DEAL'),
-    CONSTRAINT chk_client_fx_deals_pricing_context
-        CHECK (pricing_rule_id IS NULL OR execution_context_id IS NOT NULL),
-    CONSTRAINT chk_client_fx_deals_transfer_rate
+    CONSTRAINT chk_client_deals_pricing_context
+        CHECK (pricing_rule_id IS NULL OR trade_context_id IS NOT NULL),
+    CONSTRAINT chk_client_deals_transfer_rate
         CHECK (
             transfer_rate IS NULL
             OR (
@@ -1323,7 +1442,7 @@ CREATE TABLE IF NOT EXISTS client_fx_deals
                 AND transfer_rate > 0
             )
         ),
-    CONSTRAINT chk_client_fx_deals_analytical_pnl_quote
+    CONSTRAINT chk_client_deals_analytical_pnl_quote
         CHECK (
             (
                 analytical_pnl_quote_minor IS NULL
@@ -1337,7 +1456,7 @@ CREATE TABLE IF NOT EXISTS client_fx_deals
                 AND analytical_pnl_quote_fraction_digits BETWEEN 0 AND 10
             )
         ),
-    CONSTRAINT chk_client_fx_deals_comment
+    CONSTRAINT chk_client_deals_comment
         CHECK (
             comment IS NULL
             OR (
@@ -1348,50 +1467,50 @@ CREATE TABLE IF NOT EXISTS client_fx_deals
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_hedge_deals
+CREATE TABLE IF NOT EXISTS hedge_deals
 (
     trade_id                    INTEGER PRIMARY KEY,
     trade_type                  TEXT    NOT NULL DEFAULT 'HEDGE_DEAL',
     request_timestamp           TEXT    NOT NULL,
     counterparty_id                    INTEGER NOT NULL,
-    execution_context_id        INTEGER,
+    trade_context_id        INTEGER,
     pricing_rule_id             INTEGER,
     transfer_rate               NUMERIC,
     analytical_pnl_quote_minor  INTEGER,
     analytical_pnl_quote_fraction_digits INTEGER,
 
-    CONSTRAINT fk_fx_hedge_deals_trade
+    CONSTRAINT fk_hedge_deals_trade
         FOREIGN KEY (trade_id, trade_type)
-            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            REFERENCES trade_exposures (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_hedge_deals_counterparty
+    CONSTRAINT fk_hedge_deals_counterparty
         FOREIGN KEY (counterparty_id)
             REFERENCES trading_counterparties (counterparty_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_hedge_deals_execution_context
-        FOREIGN KEY (execution_context_id)
-            REFERENCES execution_contexts (execution_context_id)
+    CONSTRAINT fk_hedge_deals_trade_context
+        FOREIGN KEY (trade_context_id)
+            REFERENCES trade_contexts (trade_context_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_hedge_deals_pricing_rule_scope
-        FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
-            REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
+    CONSTRAINT fk_hedge_deals_pricing_rule_scope
+        FOREIGN KEY (pricing_rule_id, counterparty_id, trade_context_id)
+            REFERENCES pricing_rules (pricing_rule_id, counterparty_id, trade_context_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_hedge_deals_trade_type
+    CONSTRAINT chk_hedge_deals_trade_type
         CHECK (trade_type = 'HEDGE_DEAL'),
-    CONSTRAINT chk_fx_hedge_deals_request_timestamp
+    CONSTRAINT chk_hedge_deals_request_timestamp
         CHECK (
             length(request_timestamp) = 24
             AND request_timestamp GLOB '????-??-??T??:??:??.???Z'
             AND strftime('%Y-%m-%dT%H:%M:%fZ', request_timestamp)
                 = request_timestamp
         ),
-    CONSTRAINT chk_fx_hedge_deals_pricing_context
-        CHECK (pricing_rule_id IS NULL OR execution_context_id IS NOT NULL),
-    CONSTRAINT chk_fx_hedge_deals_transfer_rate
+    CONSTRAINT chk_hedge_deals_pricing_context
+        CHECK (pricing_rule_id IS NULL OR trade_context_id IS NOT NULL),
+    CONSTRAINT chk_hedge_deals_transfer_rate
         CHECK (
             transfer_rate IS NULL
             OR (
@@ -1399,7 +1518,7 @@ CREATE TABLE IF NOT EXISTS fx_hedge_deals
                 AND transfer_rate > 0
             )
         ),
-    CONSTRAINT chk_fx_hedge_deals_analytical_pnl_quote
+    CONSTRAINT chk_hedge_deals_analytical_pnl_quote
         CHECK (
             (
                 analytical_pnl_quote_minor IS NULL
@@ -1415,7 +1534,7 @@ CREATE TABLE IF NOT EXISTS fx_hedge_deals
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_batches
+CREATE TABLE IF NOT EXISTS batches
 (
     batch_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     idempotency_key TEXT    NOT NULL,
@@ -1429,23 +1548,23 @@ CREATE TABLE IF NOT EXISTS fx_batches
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     rolled_back_at  TEXT,
 
-    CONSTRAINT fk_fx_batches_ccy_pair
+    CONSTRAINT fk_batches_ccy_pair
         FOREIGN KEY (ccy_pair_code)
             REFERENCES ccy_pair_options (ccy_pair_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT uq_fx_batches_idempotency_key
+    CONSTRAINT uq_batches_idempotency_key
         UNIQUE (idempotency_key),
-    CONSTRAINT chk_fx_batches_id
+    CONSTRAINT chk_batches_id
         CHECK (batch_id > 0),
-    CONSTRAINT chk_fx_batches_idempotency_key
+    CONSTRAINT chk_batches_idempotency_key
         CHECK (
             length(idempotency_key) BETWEEN 1 AND 100
             AND idempotency_key = trim(idempotency_key)
         ),
-    CONSTRAINT chk_fx_batches_status
+    CONSTRAINT chk_batches_status
         CHECK (batch_status IN ('BUILDING', 'FORMED', 'ROLLED_BACK')),
-    CONSTRAINT chk_fx_batches_formation_reason_code
+    CONSTRAINT chk_batches_formation_reason_code
         CHECK (
             formation_reason_code IN (
                 'MANUAL_SELECTION',
@@ -1453,14 +1572,14 @@ CREATE TABLE IF NOT EXISTS fx_batches
                 'TRANSFER_RATE_CORRIDOR_BREACHED'
             )
         ),
-    CONSTRAINT chk_fx_batches_formation_reason_details
+    CONSTRAINT chk_batches_formation_reason_details
         CHECK (
             length(formation_reason_details_json) BETWEEN 2 AND 4000
             AND json_valid(formation_reason_details_json) = 1
             AND substr(formation_reason_details_json, 1, 1) = '{'
             AND substr(formation_reason_details_json, -1, 1) = '}'
         ),
-    CONSTRAINT chk_fx_batches_formation_timing
+    CONSTRAINT chk_batches_formation_timing
         CHECK (
             (
                 formation_reason_code = 'MANUAL_SELECTION'
@@ -1484,13 +1603,13 @@ CREATE TABLE IF NOT EXISTS fx_batches
                 AND window_closed_at <= created_at
             )
         ),
-    CONSTRAINT chk_fx_batches_created_at
+    CONSTRAINT chk_batches_created_at
         CHECK (
             length(created_at) = 24
             AND created_at GLOB '????-??-??T??:??:??.???Z'
             AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
         ),
-    CONSTRAINT chk_fx_batches_rolled_back_at
+    CONSTRAINT chk_batches_rolled_back_at
         CHECK (
             (
                 batch_status IN ('BUILDING', 'FORMED')
@@ -1505,28 +1624,28 @@ CREATE TABLE IF NOT EXISTS fx_batches
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_batch_members
+CREATE TABLE IF NOT EXISTS batch_members
 (
     batch_id    INTEGER NOT NULL,
     trade_id    INTEGER NOT NULL,
     trade_type  TEXT    NOT NULL,
     member_role TEXT    NOT NULL,
 
-    CONSTRAINT pk_fx_batch_members
+    CONSTRAINT pk_batch_members
         PRIMARY KEY (batch_id, trade_id),
-    CONSTRAINT fk_fx_batch_members_batch
+    CONSTRAINT fk_batch_members_batch
         FOREIGN KEY (batch_id)
-            REFERENCES fx_batches (batch_id)
+            REFERENCES batches (batch_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_batch_members_trade
+    CONSTRAINT fk_batch_members_trade
         FOREIGN KEY (trade_id, trade_type)
-            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            REFERENCES trade_exposures (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_batch_members_role
+    CONSTRAINT chk_batch_members_role
         CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'POSITION_OUT')),
-    CONSTRAINT chk_fx_batch_members_role_trade_type
+    CONSTRAINT chk_batch_members_role_trade_type
         CHECK (
             member_role = 'TRADE'
             OR (
@@ -1540,35 +1659,35 @@ CREATE TABLE IF NOT EXISTS fx_batch_members
         )
 );
 
-CREATE TABLE IF NOT EXISTS fx_batch_balance_trade
+CREATE TABLE IF NOT EXISTS batch_balance_trades
 (
     trade_id    INTEGER PRIMARY KEY,
     trade_type  TEXT    NOT NULL DEFAULT 'BATCH_BALANCE_TRADE',
 
-    CONSTRAINT fk_fx_batch_balance_trade_trade
+    CONSTRAINT fk_batch_balance_trades_trade
         FOREIGN KEY (trade_id, trade_type)
-            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            REFERENCES trade_exposures (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_batch_balance_trade_trade_type
+    CONSTRAINT chk_batch_balance_trades_trade_type
         CHECK (trade_type = 'BATCH_BALANCE_TRADE')
 );
 
-CREATE TABLE IF NOT EXISTS fx_batch_position_output
+CREATE TABLE IF NOT EXISTS batch_position_outputs
 (
     trade_id    INTEGER PRIMARY KEY,
     trade_type  TEXT    NOT NULL DEFAULT 'BATCH_POSITION_OUT',
 
-    CONSTRAINT fk_fx_batch_position_output_trade
+    CONSTRAINT fk_batch_position_outputs_trade
         FOREIGN KEY (trade_id, trade_type)
-            REFERENCES fx_trade_exposure (trade_id, trade_type)
+            REFERENCES trade_exposures (trade_id, trade_type)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_batch_position_output_trade_type
+    CONSTRAINT chk_batch_position_outputs_trade_type
         CHECK (trade_type = 'BATCH_POSITION_OUT')
 );
 
-CREATE TABLE IF NOT EXISTS fx_batch_quote_cash_output
+CREATE TABLE IF NOT EXISTS batch_quote_cash_outputs
 (
     batch_id                        INTEGER PRIMARY KEY,
     quote_ccy_code                  TEXT    NOT NULL,
@@ -1578,33 +1697,33 @@ CREATE TABLE IF NOT EXISTS fx_batch_quote_cash_output
     created_at                      TEXT    NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-    CONSTRAINT fk_fx_batch_quote_cash_output_batch
+    CONSTRAINT fk_batch_quote_cash_outputs_batch
         FOREIGN KEY (batch_id)
-            REFERENCES fx_batches (batch_id)
+            REFERENCES batches (batch_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT fk_fx_batch_quote_cash_output_currency
+    CONSTRAINT fk_batch_quote_cash_outputs_currency
         FOREIGN KEY (quote_ccy_code)
             REFERENCES ccy_options (ccy_code)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_fx_batch_quote_cash_output_amount
+    CONSTRAINT chk_batch_quote_cash_outputs_amount
         CHECK (
             typeof(quote_balance_contribution_minor) = 'integer'
             AND quote_balance_contribution_minor
                 BETWEEN -9007199254740991 AND 9007199254740991
         ),
-    CONSTRAINT chk_fx_batch_quote_cash_output_fraction_digits
+    CONSTRAINT chk_batch_quote_cash_outputs_fraction_digits
         CHECK (
             typeof(quote_ccy_fraction_digits) = 'integer'
             AND quote_ccy_fraction_digits BETWEEN 0 AND 10
         ),
-    CONSTRAINT chk_fx_batch_quote_cash_output_value_date
+    CONSTRAINT chk_batch_quote_cash_outputs_value_date
         CHECK (
             quote_ccy_value_date GLOB '????-??-??'
             AND strftime('%Y-%m-%d', quote_ccy_value_date) = quote_ccy_value_date
         ),
-    CONSTRAINT chk_fx_batch_quote_cash_output_created_at
+    CONSTRAINT chk_batch_quote_cash_outputs_created_at
         CHECK (
             length(created_at) = 24
             AND created_at GLOB '????-??-??T??:??:??.???Z'
@@ -1612,7 +1731,7 @@ CREATE TABLE IF NOT EXISTS fx_batch_quote_cash_output
         )
 );
 
-CREATE VIEW IF NOT EXISTS v_fx_batch_formation_audit AS
+CREATE VIEW IF NOT EXISTS v_batch_formation_audit AS
 WITH source_trade_summary AS
 (
     SELECT
@@ -1624,8 +1743,8 @@ WITH source_trade_summary AS
         MIN(exposure.quote_ccy_value_date) AS quote_ccy_value_date,
         MIN(exposure.base_ccy_fraction_digits) AS base_ccy_fraction_digits,
         MIN(exposure.quote_ccy_fraction_digits) AS quote_ccy_fraction_digits
-    FROM fx_batch_members member
-    INNER JOIN fx_trade_exposure exposure
+    FROM batch_members member
+    INNER JOIN trade_exposures exposure
         ON exposure.trade_id = member.trade_id
         AND exposure.trade_type = member.trade_type
     WHERE member.member_role = 'TRADE'
@@ -1648,65 +1767,65 @@ SELECT
     batch.formation_reason_details_json,
     source.source_trade_count,
     batch.rolled_back_at
-FROM fx_batches batch
+FROM batches batch
 INNER JOIN source_trade_summary source ON source.batch_id = batch.batch_id
 WHERE batch.batch_status IN ('FORMED', 'ROLLED_BACK');
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_execution_contexts_components
-    ON execution_contexts
+CREATE UNIQUE INDEX IF NOT EXISTS uq_trade_contexts_components
+    ON trade_contexts
     (
         servicing_location_id,
         COALESCE(accounting_system_id, 'NOT_APPLICABLE'),
-        execution_system_id
+        originating_system_id
     );
 
-CREATE INDEX IF NOT EXISTS idx_execution_contexts_servicing_location
-    ON execution_contexts (servicing_location_id);
+CREATE INDEX IF NOT EXISTS idx_trade_contexts_servicing_location
+    ON trade_contexts (servicing_location_id);
 
-CREATE INDEX IF NOT EXISTS idx_execution_contexts_accounting_system
-    ON execution_contexts (accounting_system_id);
+CREATE INDEX IF NOT EXISTS idx_trade_contexts_accounting_system
+    ON trade_contexts (accounting_system_id);
 
-CREATE INDEX IF NOT EXISTS idx_execution_contexts_execution_system
-    ON execution_contexts (execution_system_id);
+CREATE INDEX IF NOT EXISTS idx_trade_contexts_originating_system
+    ON trade_contexts (originating_system_id);
 
-CREATE INDEX IF NOT EXISTS idx_trading_counterparty_execution_contexts_context
-    ON trading_counterparty_execution_contexts (execution_context_id, counterparty_id);
+CREATE INDEX IF NOT EXISTS idx_trading_counterparty_trade_contexts_context
+    ON trading_counterparty_trade_contexts (trade_context_id, counterparty_id);
 
 CREATE INDEX IF NOT EXISTS idx_pricing_rules_counterparty
     ON pricing_rules (counterparty_id);
 
-CREATE INDEX IF NOT EXISTS idx_pricing_rules_execution_context
-    ON pricing_rules (execution_context_id);
+CREATE INDEX IF NOT EXISTS idx_pricing_rules_trade_context
+    ON pricing_rules (trade_context_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_client_deal_reference
-    ON pricing_rules (pricing_rule_id, counterparty_id, execution_context_id);
+    ON pricing_rules (pricing_rule_id, counterparty_id, trade_context_id);
 
 CREATE INDEX IF NOT EXISTS idx_pricing_rules_ccy_pair
     ON pricing_rules (ccy_pair_code);
 
-CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_trade_type
-    ON fx_trade_exposure (trade_type);
+CREATE INDEX IF NOT EXISTS idx_trade_exposures_trade_type
+    ON trade_exposures (trade_type);
 
-CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_trade_date
-    ON fx_trade_exposure (trade_date);
+CREATE INDEX IF NOT EXISTS idx_trade_exposures_trade_date
+    ON trade_exposures (trade_date);
 
-CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_ccy_pair
-    ON fx_trade_exposure (ccy_pair_code);
+CREATE INDEX IF NOT EXISTS idx_trade_exposures_ccy_pair
+    ON trade_exposures (ccy_pair_code);
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_trade_exposure_identity
-    ON fx_trade_exposure (trade_id, trade_type);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_trade_exposures_identity
+    ON trade_exposures (trade_id, trade_type);
 
-CREATE INDEX IF NOT EXISTS idx_fx_trade_position_management_current_mode
-    ON fx_trade_position_management (current_position_management_mode, trade_id);
+CREATE INDEX IF NOT EXISTS idx_trade_position_management_current_mode
+    ON trade_position_management (current_position_management_mode, trade_id);
 
-CREATE INDEX IF NOT EXISTS idx_fx_trade_position_management_transition_trade
-    ON fx_trade_position_management_transitions (trade_id, trade_type, transitioned_at);
+CREATE INDEX IF NOT EXISTS idx_trade_position_management_transition_trade
+    ON trade_position_management_transitions (trade_id, trade_type, transitioned_at);
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_trade_position_management_initialize
-AFTER INSERT ON fx_trade_exposure
+CREATE TRIGGER IF NOT EXISTS trg_trade_position_management_initialize
+AFTER INSERT ON trade_exposures
 FOR EACH ROW
 BEGIN
-    INSERT INTO fx_trade_position_management
+    INSERT INTO trade_position_management
         (
             trade_id,
             trade_type,
@@ -1717,22 +1836,63 @@ BEGIN
         (NEW.trade_id, NEW.trade_type, 'MANUAL', 'MANUAL');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_trade_exposure_require_dealt_ccy_insert
-BEFORE INSERT ON fx_trade_exposure
+CREATE TRIGGER IF NOT EXISTS trg_batch_balance_trade_position_management_mode_immutable_update
+BEFORE UPDATE OF initial_position_management_mode, current_position_management_mode
+ON trade_position_management
 FOR EACH ROW
-WHEN NOT EXISTS
-(
-    SELECT 1
-    FROM ccy_pair_options p
-    WHERE p.ccy_pair_code = NEW.ccy_pair_code
-      AND NEW.dealt_ccy_code IN (p.base_ccy_code, p.quote_ccy_code)
-)
+WHEN OLD.trade_type = 'BATCH_BALANCE_TRADE'
+    AND EXISTS
+    (
+        SELECT 1
+        FROM batch_balance_trades balance_trade
+        WHERE balance_trade.trade_id = OLD.trade_id
+          AND balance_trade.trade_type = OLD.trade_type
+    )
+    AND
+    (
+        NEW.initial_position_management_mode
+            <> OLD.initial_position_management_mode
+        OR NEW.current_position_management_mode
+            <> OLD.current_position_management_mode
+    )
 BEGIN
-    SELECT RAISE(ABORT, 'fx_trade_exposure.dealt_ccy_code must belong to its Ccy Pair');
+    SELECT RAISE(
+        ABORT,
+        'Batch Balance Trade Position Management Mode is immutable'
+    );
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_trade_exposure_require_dealt_ccy_update
-BEFORE UPDATE OF ccy_pair_code, dealt_ccy_code ON fx_trade_exposure
+CREATE TRIGGER IF NOT EXISTS trg_batch_balance_trade_position_management_mode_immutable_delete
+BEFORE DELETE ON trade_position_management
+FOR EACH ROW
+WHEN OLD.trade_type = 'BATCH_BALANCE_TRADE'
+    AND EXISTS
+    (
+        SELECT 1
+        FROM batch_balance_trades balance_trade
+        WHERE balance_trade.trade_id = OLD.trade_id
+          AND balance_trade.trade_type = OLD.trade_type
+    )
+BEGIN
+    SELECT RAISE(
+        ABORT,
+        'Batch Balance Trade Position Management Mode is immutable'
+    );
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_batch_balance_trade_position_management_transition_reject
+BEFORE INSERT ON trade_position_management_transitions
+FOR EACH ROW
+WHEN NEW.trade_type = 'BATCH_BALANCE_TRADE'
+BEGIN
+    SELECT RAISE(
+        ABORT,
+        'Batch Balance Trade does not support Position Management Mode transitions'
+    );
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_trade_exposures_require_dealt_ccy_insert
+BEFORE INSERT ON trade_exposures
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -1742,7 +1902,21 @@ WHEN NOT EXISTS
       AND NEW.dealt_ccy_code IN (p.base_ccy_code, p.quote_ccy_code)
 )
 BEGIN
-    SELECT RAISE(ABORT, 'fx_trade_exposure.dealt_ccy_code must belong to its Ccy Pair');
+    SELECT RAISE(ABORT, 'trade_exposures.dealt_ccy_code must belong to its Ccy Pair');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_trade_exposures_require_dealt_ccy_update
+BEFORE UPDATE OF ccy_pair_code, dealt_ccy_code ON trade_exposures
+FOR EACH ROW
+WHEN NOT EXISTS
+(
+    SELECT 1
+    FROM ccy_pair_options p
+    WHERE p.ccy_pair_code = NEW.ccy_pair_code
+      AND NEW.dealt_ccy_code IN (p.base_ccy_code, p.quote_ccy_code)
+)
+BEGIN
+    SELECT RAISE(ABORT, 'trade_exposures.dealt_ccy_code must belong to its Ccy Pair');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_ccy_pair_options_preserve_exposure_dealt_ccy
@@ -1751,43 +1925,43 @@ FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_trade_exposure e
+    FROM trade_exposures e
     WHERE e.ccy_pair_code = OLD.ccy_pair_code
       AND e.dealt_ccy_code NOT IN (NEW.base_ccy_code, NEW.quote_ccy_code)
 )
 BEGIN
-    SELECT RAISE(ABORT, 'a Ccy Pair used by fx_trade_exposure must preserve its dealt currency');
+    SELECT RAISE(ABORT, 'a Ccy Pair used by trade_exposures must preserve its dealt currency');
 END;
 
-CREATE INDEX IF NOT EXISTS idx_client_fx_deals_counterparty
-    ON client_fx_deals (counterparty_id);
+CREATE INDEX IF NOT EXISTS idx_client_deals_counterparty
+    ON client_deals (counterparty_id);
 
-CREATE INDEX IF NOT EXISTS idx_fx_hedge_deals_counterparty
-    ON fx_hedge_deals (counterparty_id);
+CREATE INDEX IF NOT EXISTS idx_hedge_deals_counterparty
+    ON hedge_deals (counterparty_id);
 
-CREATE INDEX IF NOT EXISTS idx_fx_batches_status_pair
-    ON fx_batches (batch_status, ccy_pair_code);
+CREATE INDEX IF NOT EXISTS idx_batches_status_pair
+    ON batches (batch_status, ccy_pair_code);
 
-CREATE INDEX IF NOT EXISTS idx_fx_batch_members_trade
-    ON fx_batch_members (trade_id, batch_id);
+CREATE INDEX IF NOT EXISTS idx_batch_members_trade
+    ON batch_members (trade_id, batch_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_batch_members_single_technical_role
-    ON fx_batch_members (batch_id, member_role)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_batch_members_single_technical_role
+    ON batch_members (batch_id, member_role)
     WHERE member_role IN ('BALANCE_TRADE', 'POSITION_OUT');
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_batch_members_single_technical_origin
-    ON fx_batch_members (trade_id)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_batch_members_single_technical_origin
+    ON batch_members (trade_id)
     WHERE member_role IN ('BALANCE_TRADE', 'POSITION_OUT');
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_validate_insert
-BEFORE INSERT ON fx_batch_members
+CREATE TRIGGER IF NOT EXISTS trg_batch_members_validate_insert
+BEFORE INSERT ON batch_members
 FOR EACH ROW
 WHEN
     NOT EXISTS
     (
         SELECT 1
-        FROM fx_batches b
-        INNER JOIN fx_trade_exposure e ON e.trade_id = NEW.trade_id
+        FROM batches b
+        INNER JOIN trade_exposures e ON e.trade_id = NEW.trade_id
         WHERE b.batch_id = NEW.batch_id
           AND b.batch_status = 'BUILDING'
           AND e.trade_type = NEW.trade_type
@@ -1798,7 +1972,7 @@ WHEN
         AND NOT EXISTS
         (
             SELECT 1
-            FROM fx_batch_balance_trade balance_trade
+            FROM batch_balance_trades balance_trade
             WHERE balance_trade.trade_id = NEW.trade_id
               AND balance_trade.trade_type = NEW.trade_type
         )
@@ -1808,7 +1982,7 @@ WHEN
         AND NOT EXISTS
         (
             SELECT 1
-            FROM fx_batch_position_output output
+            FROM batch_position_outputs output
             WHERE output.trade_id = NEW.trade_id
               AND output.trade_type = NEW.trade_type
         )
@@ -1818,7 +1992,7 @@ WHEN
         AND NOT EXISTS
         (
             SELECT 1
-            FROM client_fx_deals d
+            FROM client_deals d
             WHERE d.trade_id = NEW.trade_id
               AND d.trade_type = NEW.trade_type
               AND d.transfer_rate IS NOT NULL
@@ -1826,7 +2000,7 @@ WHEN
             UNION ALL
 
             SELECT 1
-            FROM fx_hedge_deals d
+            FROM hedge_deals d
             WHERE d.trade_id = NEW.trade_id
               AND d.trade_type = NEW.trade_type
               AND d.transfer_rate IS NOT NULL
@@ -1834,14 +2008,14 @@ WHEN
             UNION ALL
 
             SELECT 1
-            FROM fx_batch_position_output output
-            INNER JOIN fx_batch_members origin
+            FROM batch_position_outputs output
+            INNER JOIN batch_members origin
                 ON origin.trade_id = output.trade_id
                 AND origin.trade_type = output.trade_type
                 AND origin.member_role = 'POSITION_OUT'
-            INNER JOIN fx_batches source_batch
+            INNER JOIN batches source_batch
                 ON source_batch.batch_id = origin.batch_id
-            INNER JOIN fx_trade_exposure e
+            INNER JOIN trade_exposures e
                 ON e.trade_id = output.trade_id
                 AND e.trade_type = output.trade_type
             WHERE output.trade_id = NEW.trade_id
@@ -1853,14 +2027,14 @@ WHEN
             UNION ALL
 
             SELECT 1
-            FROM fx_batch_balance_trade balance_trade
-            INNER JOIN fx_batch_members origin
+            FROM batch_balance_trades balance_trade
+            INNER JOIN batch_members origin
                 ON origin.trade_id = balance_trade.trade_id
                 AND origin.trade_type = balance_trade.trade_type
                 AND origin.member_role = 'BALANCE_TRADE'
-            INNER JOIN fx_batches source_batch
+            INNER JOIN batches source_batch
                 ON source_batch.batch_id = origin.batch_id
-            INNER JOIN fx_trade_exposure e
+            INNER JOIN trade_exposures e
                 ON e.trade_id = balance_trade.trade_id
                 AND e.trade_type = balance_trade.trade_type
             WHERE balance_trade.trade_id = NEW.trade_id
@@ -1873,8 +2047,8 @@ WHEN
     OR EXISTS
     (
         SELECT 1
-        FROM fx_batch_members existing
-        INNER JOIN fx_batches existing_batch
+        FROM batch_members existing
+        INNER JOIN batches existing_batch
             ON existing_batch.batch_id = existing.batch_id
         WHERE existing.trade_id = NEW.trade_id
           AND existing.trade_type = NEW.trade_type
@@ -1893,14 +2067,14 @@ BEGIN
     );
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_output_validate_insert
-BEFORE INSERT ON fx_batch_quote_cash_output
+CREATE TRIGGER IF NOT EXISTS trg_batch_quote_cash_outputs_validate_insert
+BEFORE INSERT ON batch_quote_cash_outputs
 FOR EACH ROW
 WHEN
     NOT EXISTS
     (
         SELECT 1
-        FROM fx_batches b
+        FROM batches b
         INNER JOIN ccy_pair_options p
             ON p.ccy_pair_code = b.ccy_pair_code
         INNER JOIN ccy_options c
@@ -1913,8 +2087,8 @@ WHEN
     OR EXISTS
     (
         SELECT 1
-        FROM fx_batch_members m
-        INNER JOIN fx_trade_exposure e
+        FROM batch_members m
+        INNER JOIN trade_exposures e
             ON e.trade_id = m.trade_id
             AND e.trade_type = m.trade_type
         WHERE m.batch_id = NEW.batch_id
@@ -1931,8 +2105,8 @@ BEGIN
     );
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batches_form
-BEFORE UPDATE OF batch_status ON fx_batches
+CREATE TRIGGER IF NOT EXISTS trg_batches_form
+BEFORE UPDATE OF batch_status ON batches
 FOR EACH ROW
 WHEN OLD.batch_status = 'BUILDING' AND NEW.batch_status = 'FORMED'
 BEGIN
@@ -1940,14 +2114,14 @@ BEGIN
         WHEN EXISTS
         (
             SELECT 1
-            FROM fx_batch_members m
-            INNER JOIN fx_trade_exposure e
+            FROM batch_members m
+            INNER JOIN trade_exposures e
                 ON e.trade_id = m.trade_id
                 AND e.trade_type = m.trade_type
             WHERE m.batch_id = OLD.batch_id
               AND e.ccy_pair_code <> OLD.ccy_pair_code
         )
-        THEN RAISE(ABORT, 'formed FX Batch trades must share the Batching Key currency pair')
+        THEN RAISE(ABORT, 'formed Batch trades must share the Batching Key currency pair')
     END;
     SELECT CASE
         WHEN EXISTS
@@ -1960,8 +2134,8 @@ BEGIN
                     e.tenor,
                     e.base_ccy_value_date,
                     e.quote_ccy_value_date
-                FROM fx_batch_members m
-                INNER JOIN fx_trade_exposure e
+                FROM batch_members m
+                INNER JOIN trade_exposures e
                     ON e.trade_id = m.trade_id
                     AND e.trade_type = m.trade_type
                 WHERE m.batch_id = OLD.batch_id
@@ -1971,7 +2145,7 @@ BEGIN
                 OR COUNT(DISTINCT base_ccy_value_date) <> 1
                 OR COUNT(DISTINCT quote_ccy_value_date) <> 1
         )
-        THEN RAISE(ABORT, 'formed FX Batch trades must share the Batching Key settlement terms')
+        THEN RAISE(ABORT, 'formed Batch trades must share the Batching Key settlement terms')
     END;
     SELECT CASE
         WHEN EXISTS
@@ -1982,8 +2156,8 @@ BEGIN
                 SELECT
                     e.base_ccy_fraction_digits,
                     e.quote_ccy_fraction_digits
-                FROM fx_batch_members m
-                INNER JOIN fx_trade_exposure e
+                FROM batch_members m
+                INNER JOIN trade_exposures e
                     ON e.trade_id = m.trade_id
                     AND e.trade_type = m.trade_type
                 WHERE m.batch_id = OLD.batch_id
@@ -1991,13 +2165,13 @@ BEGIN
             HAVING COUNT(DISTINCT base_ccy_fraction_digits) <> 1
                 OR COUNT(DISTINCT quote_ccy_fraction_digits) <> 1
         )
-        THEN RAISE(ABORT, 'formed FX Batch trades must share the Batching Key currency precision')
+        THEN RAISE(ABORT, 'formed Batch trades must share the Batching Key currency precision')
     END;
     SELECT CASE
         WHEN EXISTS
         (
             SELECT 1
-            FROM fx_batch_members member
+            FROM batch_members member
             WHERE member.batch_id = OLD.batch_id
               AND (
                   (
@@ -2005,7 +2179,7 @@ BEGIN
                       AND NOT EXISTS
                       (
                           SELECT 1
-                          FROM fx_batch_balance_trade balance_trade
+                          FROM batch_balance_trades balance_trade
                           WHERE balance_trade.trade_id = member.trade_id
                             AND balance_trade.trade_type = member.trade_type
                       )
@@ -2015,7 +2189,7 @@ BEGIN
                       AND NOT EXISTS
                       (
                           SELECT 1
-                          FROM fx_batch_position_output output
+                          FROM batch_position_outputs output
                           WHERE output.trade_id = member.trade_id
                             AND output.trade_type = member.trade_type
                       )
@@ -2028,17 +2202,81 @@ BEGIN
         WHEN NOT EXISTS
         (
             SELECT 1
-            FROM fx_batch_members
+            FROM batch_members
             WHERE batch_id = OLD.batch_id
               AND member_role = 'TRADE'
         )
         THEN RAISE(ABORT, 'formed batch must contain at least one ordinary trade')
     END;
     SELECT CASE
+        WHEN
+        (
+            SELECT COUNT(*)
+            FROM batch_members source
+            WHERE source.batch_id = OLD.batch_id
+              AND source.member_role = 'TRADE'
+        ) <>
+        (
+            SELECT COUNT(*)
+            FROM batch_members source
+            INNER JOIN trade_position_management source_management
+                ON source_management.trade_id = source.trade_id
+                AND source_management.trade_type = source.trade_type
+            WHERE source.batch_id = OLD.batch_id
+              AND source.member_role = 'TRADE'
+        )
+        OR
+        (
+            SELECT COUNT(DISTINCT source_management.current_position_management_mode)
+            FROM batch_members source
+            INNER JOIN trade_position_management source_management
+                ON source_management.trade_id = source.trade_id
+                AND source_management.trade_type = source.trade_type
+            WHERE source.batch_id = OLD.batch_id
+              AND source.member_role = 'TRADE'
+        ) <> 1
+        THEN RAISE(
+            ABORT,
+            'formed Batch source Trades must share one Position Management Mode'
+        )
+    END;
+    SELECT CASE
+        WHEN EXISTS
+        (
+            SELECT 1
+            FROM batch_members technical_member
+            LEFT JOIN trade_position_management technical_management
+                ON technical_management.trade_id = technical_member.trade_id
+                AND technical_management.trade_type = technical_member.trade_type
+            WHERE technical_member.batch_id = OLD.batch_id
+              AND technical_member.member_role IN ('BALANCE_TRADE', 'POSITION_OUT')
+              AND
+              (
+                  technical_management.trade_id IS NULL
+                  OR technical_management.initial_position_management_mode
+                      <> technical_management.current_position_management_mode
+                  OR technical_management.current_position_management_mode <>
+                      (
+                          SELECT MIN(source_management.current_position_management_mode)
+                          FROM batch_members source
+                          INNER JOIN trade_position_management source_management
+                              ON source_management.trade_id = source.trade_id
+                              AND source_management.trade_type = source.trade_type
+                          WHERE source.batch_id = OLD.batch_id
+                            AND source.member_role = 'TRADE'
+                      )
+              )
+        )
+        THEN RAISE(
+            ABORT,
+            'Batch technical Trades must inherit the Batch source Position Management Mode'
+        )
+    END;
+    SELECT CASE
         WHEN NOT EXISTS
         (
             SELECT 1
-            FROM fx_batch_quote_cash_output
+            FROM batch_quote_cash_outputs
             WHERE batch_id = OLD.batch_id
         )
         THEN RAISE(ABORT, 'formed batch must contain one quote cash output')
@@ -2052,8 +2290,8 @@ BEGIN
                     ELSE -e.base_ccy_amount_minor
                 END
             ), 0)
-            FROM fx_batch_members m
-            INNER JOIN fx_trade_exposure e
+            FROM batch_members m
+            INNER JOIN trade_exposures e
                 ON e.trade_id = m.trade_id
                 AND e.trade_type = m.trade_type
             WHERE m.batch_id = OLD.batch_id
@@ -2062,7 +2300,7 @@ BEGIN
         AND NOT EXISTS
         (
             SELECT 1
-            FROM fx_batch_members
+            FROM batch_members
             WHERE batch_id = OLD.batch_id
               AND member_role = 'BALANCE_TRADE'
         )
@@ -2077,8 +2315,8 @@ BEGIN
                     ELSE -e.base_ccy_amount_minor
                 END
             ), 0)
-            FROM fx_batch_members m
-            INNER JOIN fx_trade_exposure e
+            FROM batch_members m
+            INNER JOIN trade_exposures e
                 ON e.trade_id = m.trade_id
                 AND e.trade_type = m.trade_type
             WHERE m.batch_id = OLD.batch_id
@@ -2087,7 +2325,7 @@ BEGIN
         AND EXISTS
         (
             SELECT 1
-            FROM fx_batch_members
+            FROM batch_members
             WHERE batch_id = OLD.batch_id
               AND member_role = 'BALANCE_TRADE'
         )
@@ -2102,8 +2340,8 @@ BEGIN
                     ELSE -e.base_ccy_amount_minor
                 END
             ), 0)
-            FROM fx_batch_members m
-            INNER JOIN fx_trade_exposure e
+            FROM batch_members m
+            INNER JOIN trade_exposures e
                 ON e.trade_id = m.trade_id
                 AND e.trade_type = m.trade_type
             WHERE m.batch_id = OLD.batch_id
@@ -2112,7 +2350,7 @@ BEGIN
         AND NOT EXISTS
         (
             SELECT 1
-            FROM fx_batch_members
+            FROM batch_members
             WHERE batch_id = OLD.batch_id
               AND member_role = 'POSITION_OUT'
         )
@@ -2127,8 +2365,8 @@ BEGIN
                     ELSE -e.base_ccy_amount_minor
                 END
             ), 0)
-            FROM fx_batch_members m
-            INNER JOIN fx_trade_exposure e
+            FROM batch_members m
+            INNER JOIN trade_exposures e
                 ON e.trade_id = m.trade_id
                 AND e.trade_type = m.trade_type
             WHERE m.batch_id = OLD.batch_id
@@ -2137,7 +2375,7 @@ BEGIN
         AND EXISTS
         (
             SELECT 1
-            FROM fx_batch_members
+            FROM batch_members
             WHERE batch_id = OLD.batch_id
               AND member_role = 'POSITION_OUT'
         )
@@ -2152,8 +2390,8 @@ BEGIN
                     ELSE -e.base_ccy_amount_minor
                 END
             ), 0)
-            FROM fx_batch_members m
-            INNER JOIN fx_trade_exposure e
+            FROM batch_members m
+            INNER JOIN trade_exposures e
                 ON e.trade_id = m.trade_id
                 AND e.trade_type = m.trade_type
             WHERE m.batch_id = OLD.batch_id
@@ -2170,8 +2408,8 @@ BEGIN
                     ELSE -e.quote_ccy_amount_minor
                 END
             ), 0)
-            FROM fx_batch_members m
-            INNER JOIN fx_trade_exposure e
+            FROM batch_members m
+            INNER JOIN trade_exposures e
                 ON e.trade_id = m.trade_id
                 AND e.trade_type = m.trade_type
             WHERE m.batch_id = OLD.batch_id
@@ -2180,7 +2418,7 @@ BEGIN
         +
         (
             SELECT quote_balance_contribution_minor
-            FROM fx_batch_quote_cash_output
+            FROM batch_quote_cash_outputs
             WHERE batch_id = OLD.batch_id
         ) <> 0
         THEN RAISE(ABORT, 'formed batch must have zero quote currency cash balance')
@@ -2194,8 +2432,8 @@ BEGIN
                     ELSE -e.base_ccy_amount_minor
                 END
             ), 0)
-            FROM fx_batch_members m
-            INNER JOIN fx_trade_exposure e
+            FROM batch_members m
+            INNER JOIN trade_exposures e
                 ON e.trade_id = m.trade_id
                 AND e.trade_type = m.trade_type
             WHERE m.batch_id = OLD.batch_id
@@ -2209,8 +2447,8 @@ BEGIN
                     ELSE 0
                 END
             ), 0)
-            FROM fx_batch_members output
-            INNER JOIN fx_trade_exposure e
+            FROM batch_members output
+            INNER JOIN trade_exposures e
                 ON e.trade_id = output.trade_id
                 AND e.trade_type = output.trade_type
             WHERE output.batch_id = OLD.batch_id
@@ -2220,8 +2458,8 @@ BEGIN
     END;
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batches_reject_invalid_status_update
-BEFORE UPDATE OF batch_status ON fx_batches
+CREATE TRIGGER IF NOT EXISTS trg_batches_reject_invalid_status_update
+BEFORE UPDATE OF batch_status ON batches
 FOR EACH ROW
 WHEN NOT (
     (OLD.batch_status = 'BUILDING' AND NEW.batch_status = 'FORMED')
@@ -2231,8 +2469,8 @@ BEGIN
     SELECT RAISE(ABORT, 'batch status transition is not allowed');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batches_validate_formation_reason_insert
-BEFORE INSERT ON fx_batches
+CREATE TRIGGER IF NOT EXISTS trg_batches_validate_formation_reason_insert
+BEFORE INSERT ON batches
 FOR EACH ROW
 WHEN CASE
     WHEN json_valid(NEW.formation_reason_details_json) = 0 THEN 1
@@ -2243,8 +2481,8 @@ BEGIN
     SELECT RAISE(ABORT, 'batch formation reason details must be a JSON object');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batches_validate_formation_reason_update
-BEFORE UPDATE OF formation_reason_details_json ON fx_batches
+CREATE TRIGGER IF NOT EXISTS trg_batches_validate_formation_reason_update
+BEFORE UPDATE OF formation_reason_details_json ON batches
 FOR EACH ROW
 WHEN CASE
     WHEN json_valid(NEW.formation_reason_details_json) = 0 THEN 1
@@ -2255,8 +2493,8 @@ BEGIN
     SELECT RAISE(ABORT, 'batch formation reason details must be a JSON object');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batches_validate_formation_timing_insert
-BEFORE INSERT ON fx_batches
+CREATE TRIGGER IF NOT EXISTS trg_batches_validate_formation_timing_insert
+BEFORE INSERT ON batches
 FOR EACH ROW
 WHEN
     (
@@ -2276,9 +2514,9 @@ BEGIN
     SELECT RAISE(ABORT, 'batch formation timing is inconsistent');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batches_validate_formation_timing_update
+CREATE TRIGGER IF NOT EXISTS trg_batches_validate_formation_timing_update
 BEFORE UPDATE OF formation_reason_code, window_opened_at, window_closed_at, created_at
-ON fx_batches
+ON batches
 FOR EACH ROW
 WHEN
     (
@@ -2298,8 +2536,8 @@ BEGIN
     SELECT RAISE(ABORT, 'batch formation timing is inconsistent');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batches_immutable_update
-BEFORE UPDATE ON fx_batches
+CREATE TRIGGER IF NOT EXISTS trg_batches_immutable_update
+BEFORE UPDATE ON batches
 FOR EACH ROW
 WHEN
     OLD.batch_status = 'ROLLED_BACK'
@@ -2323,20 +2561,20 @@ BEGIN
     SELECT RAISE(ABORT, 'completed batch is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batches_immutable_delete
-BEFORE DELETE ON fx_batches
+CREATE TRIGGER IF NOT EXISTS trg_batches_immutable_delete
+BEFORE DELETE ON batches
 FOR EACH ROW
 WHEN OLD.batch_status IN ('FORMED', 'ROLLED_BACK')
 BEGIN
     SELECT RAISE(ABORT, 'completed batch is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_immutable_update
-BEFORE UPDATE ON fx_batch_members
+CREATE TRIGGER IF NOT EXISTS trg_batch_members_immutable_update
+BEFORE UPDATE ON batch_members
 FOR EACH ROW
 WHEN EXISTS
 (
-    SELECT 1 FROM fx_batches
+    SELECT 1 FROM batches
     WHERE batch_id = OLD.batch_id
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
@@ -2344,12 +2582,12 @@ BEGIN
     SELECT RAISE(ABORT, 'completed batch members are immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_members_immutable_delete
-BEFORE DELETE ON fx_batch_members
+CREATE TRIGGER IF NOT EXISTS trg_batch_members_immutable_delete
+BEFORE DELETE ON batch_members
 FOR EACH ROW
 WHEN EXISTS
 (
-    SELECT 1 FROM fx_batches
+    SELECT 1 FROM batches
     WHERE batch_id = OLD.batch_id
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
@@ -2357,14 +2595,14 @@ BEGIN
     SELECT RAISE(ABORT, 'completed batch members are immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_balance_trade_immutable_update
-BEFORE UPDATE ON fx_batch_balance_trade
+CREATE TRIGGER IF NOT EXISTS trg_batch_balance_trades_immutable_update
+BEFORE UPDATE ON batch_balance_trades
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_batch_members member
-    INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+    FROM batch_members member
+    INNER JOIN batches batch ON batch.batch_id = member.batch_id
     WHERE member.trade_id = OLD.trade_id
       AND member.trade_type = OLD.trade_type
       AND member.member_role = 'BALANCE_TRADE'
@@ -2374,14 +2612,14 @@ BEGIN
     SELECT RAISE(ABORT, 'completed batch balance trade is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_balance_trade_immutable_delete
-BEFORE DELETE ON fx_batch_balance_trade
+CREATE TRIGGER IF NOT EXISTS trg_batch_balance_trades_immutable_delete
+BEFORE DELETE ON batch_balance_trades
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_batch_members member
-    INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+    FROM batch_members member
+    INNER JOIN batches batch ON batch.batch_id = member.batch_id
     WHERE member.trade_id = OLD.trade_id
       AND member.trade_type = OLD.trade_type
       AND member.member_role = 'BALANCE_TRADE'
@@ -2391,14 +2629,14 @@ BEGIN
     SELECT RAISE(ABORT, 'completed batch balance trade is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_position_output_immutable_update
-BEFORE UPDATE ON fx_batch_position_output
+CREATE TRIGGER IF NOT EXISTS trg_batch_position_outputs_immutable_update
+BEFORE UPDATE ON batch_position_outputs
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_batch_members member
-    INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+    FROM batch_members member
+    INNER JOIN batches batch ON batch.batch_id = member.batch_id
     WHERE member.trade_id = OLD.trade_id
       AND member.trade_type = OLD.trade_type
       AND member.member_role = 'POSITION_OUT'
@@ -2408,14 +2646,14 @@ BEGIN
     SELECT RAISE(ABORT, 'completed batch position output is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_position_output_immutable_delete
-BEFORE DELETE ON fx_batch_position_output
+CREATE TRIGGER IF NOT EXISTS trg_batch_position_outputs_immutable_delete
+BEFORE DELETE ON batch_position_outputs
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_batch_members member
-    INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+    FROM batch_members member
+    INNER JOIN batches batch ON batch.batch_id = member.batch_id
     WHERE member.trade_id = OLD.trade_id
       AND member.trade_type = OLD.trade_type
       AND member.member_role = 'POSITION_OUT'
@@ -2425,12 +2663,12 @@ BEGIN
     SELECT RAISE(ABORT, 'completed batch position output is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_output_immutable_update
-BEFORE UPDATE ON fx_batch_quote_cash_output
+CREATE TRIGGER IF NOT EXISTS trg_batch_quote_cash_outputs_immutable_update
+BEFORE UPDATE ON batch_quote_cash_outputs
 FOR EACH ROW
 WHEN EXISTS
 (
-    SELECT 1 FROM fx_batches
+    SELECT 1 FROM batches
     WHERE batch_id = OLD.batch_id
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
@@ -2438,12 +2676,12 @@ BEGIN
     SELECT RAISE(ABORT, 'completed batch quote cash output is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_batch_quote_cash_output_immutable_delete
-BEFORE DELETE ON fx_batch_quote_cash_output
+CREATE TRIGGER IF NOT EXISTS trg_batch_quote_cash_outputs_immutable_delete
+BEFORE DELETE ON batch_quote_cash_outputs
 FOR EACH ROW
 WHEN EXISTS
 (
-    SELECT 1 FROM fx_batches
+    SELECT 1 FROM batches
     WHERE batch_id = OLD.batch_id
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
 )
@@ -2452,13 +2690,13 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_trade_immutable_update
-BEFORE UPDATE ON fx_trade_exposure
+BEFORE UPDATE ON trade_exposures
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_batch_members member
-    INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+    FROM batch_members member
+    INNER JOIN batches batch ON batch.batch_id = member.batch_id
     WHERE member.trade_id = OLD.trade_id
       AND member.trade_type = OLD.trade_type
       AND batch.batch_status IN ('FORMED', 'ROLLED_BACK')
@@ -2468,13 +2706,13 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_trade_immutable_delete
-BEFORE DELETE ON fx_trade_exposure
+BEFORE DELETE ON trade_exposures
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_batch_members member
-    INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+    FROM batch_members member
+    INNER JOIN batches batch ON batch.batch_id = member.batch_id
     WHERE member.trade_id = OLD.trade_id
       AND member.trade_type = OLD.trade_type
       AND batch.batch_status IN ('FORMED', 'ROLLED_BACK')
@@ -2484,13 +2722,13 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_client_trade_immutable_update
-BEFORE UPDATE ON client_fx_deals
+BEFORE UPDATE ON client_deals
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_batch_members m
-    INNER JOIN fx_batches b ON b.batch_id = m.batch_id
+    FROM batch_members m
+    INNER JOIN batches b ON b.batch_id = m.batch_id
     WHERE m.trade_id = OLD.trade_id
       AND b.batch_status IN ('FORMED', 'ROLLED_BACK')
 )
@@ -2499,13 +2737,13 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_client_trade_immutable_delete
-BEFORE DELETE ON client_fx_deals
+BEFORE DELETE ON client_deals
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_batch_members m
-    INNER JOIN fx_batches b ON b.batch_id = m.batch_id
+    FROM batch_members m
+    INNER JOIN batches b ON b.batch_id = m.batch_id
     WHERE m.trade_id = OLD.trade_id
       AND b.batch_status IN ('FORMED', 'ROLLED_BACK')
 )
@@ -2514,13 +2752,13 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_hedge_trade_immutable_update
-BEFORE UPDATE ON fx_hedge_deals
+BEFORE UPDATE ON hedge_deals
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_batch_members m
-    INNER JOIN fx_batches b ON b.batch_id = m.batch_id
+    FROM batch_members m
+    INNER JOIN batches b ON b.batch_id = m.batch_id
     WHERE m.trade_id = OLD.trade_id
       AND b.batch_status IN ('FORMED', 'ROLLED_BACK')
 )
@@ -2529,13 +2767,13 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_formed_batch_hedge_trade_immutable_delete
-BEFORE DELETE ON fx_hedge_deals
+BEFORE DELETE ON hedge_deals
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_batch_members m
-    INNER JOIN fx_batches b ON b.batch_id = m.batch_id
+    FROM batch_members m
+    INNER JOIN batches b ON b.batch_id = m.batch_id
     WHERE m.trade_id = OLD.trade_id
       AND b.batch_status IN ('FORMED', 'ROLLED_BACK')
 )
@@ -2549,8 +2787,14 @@ CREATE INDEX IF NOT EXISTS idx_ccy_pair_options_base
 CREATE INDEX IF NOT EXISTS idx_ccy_pair_options_quote
     ON ccy_pair_options (quote_ccy_code);
 
-CREATE TRIGGER IF NOT EXISTS trg_client_fx_deals_require_client_insert
-BEFORE INSERT ON client_fx_deals
+CREATE INDEX IF NOT EXISTS idx_market_source_candles_begin_at
+    ON market_source_candles (begin_at);
+
+CREATE INDEX IF NOT EXISTS idx_market_aggregated_candles_begin_at
+    ON market_aggregated_candles (begin_at);
+
+CREATE TRIGGER IF NOT EXISTS trg_client_deals_require_client_insert
+BEFORE INSERT ON client_deals
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -2559,11 +2803,11 @@ WHEN NOT EXISTS
     WHERE counterparty_id = NEW.counterparty_id AND role_code = 'CLIENT'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'client_fx_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
+    SELECT RAISE(ABORT, 'client_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_client_fx_deals_require_client_update
-BEFORE UPDATE OF counterparty_id ON client_fx_deals
+CREATE TRIGGER IF NOT EXISTS trg_client_deals_require_client_update
+BEFORE UPDATE OF counterparty_id ON client_deals
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -2572,20 +2816,20 @@ WHEN NOT EXISTS
     WHERE counterparty_id = NEW.counterparty_id AND role_code = 'CLIENT'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'client_fx_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
+    SELECT RAISE(ABORT, 'client_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_client_deals
 BEFORE DELETE ON trading_counterparty_roles
 FOR EACH ROW
 WHEN OLD.role_code = 'CLIENT'
-    AND EXISTS (SELECT 1 FROM client_fx_deals WHERE counterparty_id = OLD.counterparty_id)
+    AND EXISTS (SELECT 1 FROM client_deals WHERE counterparty_id = OLD.counterparty_id)
 BEGIN
-    SELECT RAISE(ABORT, 'a Trading Counterparty used by client_fx_deals must retain the CLIENT role');
+    SELECT RAISE(ABORT, 'a Trading Counterparty used by client_deals must retain the CLIENT role');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_deals_require_hedge_counterparty_insert
-BEFORE INSERT ON fx_hedge_deals
+CREATE TRIGGER IF NOT EXISTS trg_hedge_deals_require_hedge_counterparty_insert
+BEFORE INSERT ON hedge_deals
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -2594,11 +2838,11 @@ WHEN NOT EXISTS
     WHERE counterparty_id = NEW.counterparty_id AND role_code = 'HEDGE_COUNTERPARTY'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'fx_hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
+    SELECT RAISE(ABORT, 'hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_deals_require_hedge_counterparty_update
-BEFORE UPDATE OF counterparty_id ON fx_hedge_deals
+CREATE TRIGGER IF NOT EXISTS trg_hedge_deals_require_hedge_counterparty_update
+BEFORE UPDATE OF counterparty_id ON hedge_deals
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -2607,16 +2851,16 @@ WHEN NOT EXISTS
     WHERE counterparty_id = NEW.counterparty_id AND role_code = 'HEDGE_COUNTERPARTY'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'fx_hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
+    SELECT RAISE(ABORT, 'hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_hedge_deals
 BEFORE DELETE ON trading_counterparty_roles
 FOR EACH ROW
 WHEN OLD.role_code = 'HEDGE_COUNTERPARTY'
-    AND EXISTS (SELECT 1 FROM fx_hedge_deals WHERE counterparty_id = OLD.counterparty_id)
+    AND EXISTS (SELECT 1 FROM hedge_deals WHERE counterparty_id = OLD.counterparty_id)
 BEGIN
-    SELECT RAISE(ABORT, 'a Trading Counterparty used by fx_hedge_deals must retain the HEDGE_COUNTERPARTY role');
+    SELECT RAISE(ABORT, 'a Trading Counterparty used by hedge_deals must retain the HEDGE_COUNTERPARTY role');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_client_deal_generation_settings_require_auto_priced_client_insert
@@ -2628,8 +2872,8 @@ WHEN NOT EXISTS
     FROM pricing_rules r
     INNER JOIN trading_counterparty_roles role
         ON role.counterparty_id = r.counterparty_id AND role.role_code = 'CLIENT'
-    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     WHERE r.pricing_rule_id = NEW.pricing_rule_id
       AND e.pricing_mode = 'AUTO_PRICED'
 )
@@ -2646,8 +2890,8 @@ WHEN NOT EXISTS
     FROM pricing_rules r
     INNER JOIN trading_counterparty_roles role
         ON role.counterparty_id = r.counterparty_id AND role.role_code = 'CLIENT'
-    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     WHERE r.pricing_rule_id = NEW.pricing_rule_id
       AND e.pricing_mode = 'AUTO_PRICED'
 )
@@ -2656,7 +2900,7 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_preserve_auto_priced_client_generation_settings
-BEFORE UPDATE OF counterparty_id, execution_context_id ON pricing_rules
+BEFORE UPDATE OF counterparty_id, trade_context_id ON pricing_rules
 FOR EACH ROW
 WHEN EXISTS
 (
@@ -2668,8 +2912,8 @@ AND NOT EXISTS
 (
     SELECT 1
     FROM trading_counterparty_roles role
-    INNER JOIN execution_contexts c ON c.execution_context_id = NEW.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = NEW.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     WHERE role.counterparty_id = NEW.counterparty_id
       AND role.role_code = 'CLIENT'
       AND e.pricing_mode = 'AUTO_PRICED'
@@ -2694,8 +2938,8 @@ BEGIN
     SELECT RAISE(ABORT, 'a Trading Counterparty used by client_deal_generation_settings must retain the CLIENT role');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_execution_contexts_preserve_auto_priced_client_generation_settings
-BEFORE UPDATE OF execution_system_id ON execution_contexts
+CREATE TRIGGER IF NOT EXISTS trg_trade_contexts_preserve_auto_priced_client_generation_settings
+BEFORE UPDATE OF originating_system_id ON trade_contexts
 FOR EACH ROW
 WHEN EXISTS
 (
@@ -2703,52 +2947,52 @@ WHEN EXISTS
     FROM pricing_rules r
     INNER JOIN client_deal_generation_settings s
         ON s.pricing_rule_id = r.pricing_rule_id
-    WHERE r.execution_context_id = OLD.execution_context_id
+    WHERE r.trade_context_id = OLD.trade_context_id
 )
 AND NOT EXISTS
 (
     SELECT 1
-    FROM execution_systems e
-    WHERE e.execution_system_id = NEW.execution_system_id
+    FROM originating_systems e
+    WHERE e.originating_system_id = NEW.originating_system_id
       AND e.pricing_mode = 'AUTO_PRICED'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'an Execution Context used by client_deal_generation_settings must remain AUTO_PRICED');
+    SELECT RAISE(ABORT, 'a Trade Context used by client_deal_generation_settings must remain AUTO_PRICED');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_execution_systems_lock_pricing_mode_while_referenced
-BEFORE UPDATE OF pricing_mode ON execution_systems
+CREATE TRIGGER IF NOT EXISTS trg_originating_systems_lock_pricing_mode_while_referenced
+BEFORE UPDATE OF pricing_mode ON originating_systems
 FOR EACH ROW
 WHEN NEW.pricing_mode <> OLD.pricing_mode
     AND EXISTS
     (
         SELECT 1
-        FROM execution_contexts context
-        WHERE context.execution_system_id = OLD.execution_system_id
+        FROM trade_contexts context
+        WHERE context.originating_system_id = OLD.originating_system_id
     )
 BEGIN
-    SELECT RAISE(ABORT, 'an Execution System used by Execution Context cannot change Pricing Mode');
+    SELECT RAISE(ABORT, 'an Originating System used by Trade Context cannot change Pricing Mode');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_execution_systems_preserve_auto_priced_client_generation_settings
-BEFORE UPDATE OF pricing_mode ON execution_systems
+CREATE TRIGGER IF NOT EXISTS trg_originating_systems_preserve_auto_priced_client_generation_settings
+BEFORE UPDATE OF pricing_mode ON originating_systems
 FOR EACH ROW
 WHEN NEW.pricing_mode <> 'AUTO_PRICED'
     AND EXISTS
     (
         SELECT 1
-        FROM execution_contexts c
-        INNER JOIN pricing_rules r ON r.execution_context_id = c.execution_context_id
+        FROM trade_contexts c
+        INNER JOIN pricing_rules r ON r.trade_context_id = c.trade_context_id
         INNER JOIN client_deal_generation_settings s
             ON s.pricing_rule_id = r.pricing_rule_id
-        WHERE c.execution_system_id = OLD.execution_system_id
+        WHERE c.originating_system_id = OLD.originating_system_id
     )
 BEGIN
-    SELECT RAISE(ABORT, 'an Execution System used by client_deal_generation_settings must remain AUTO_PRICED');
+    SELECT RAISE(ABORT, 'an Originating System used by client_deal_generation_settings must remain AUTO_PRICED');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_quick_mode_settings_require_auto_priced_hedge_insert
-BEFORE INSERT ON fx_hedge_quick_mode_settings
+CREATE TRIGGER IF NOT EXISTS trg_hedge_quick_mode_settings_require_auto_priced_hedge_insert
+BEFORE INSERT ON hedge_quick_mode_settings
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -2756,19 +3000,19 @@ WHEN NOT EXISTS
     FROM pricing_rules r
     INNER JOIN trading_counterparty_roles role
         ON role.counterparty_id = r.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
-    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     WHERE r.pricing_rule_id = NEW.pricing_rule_id
       AND r.counterparty_id = NEW.counterparty_id
       AND r.ccy_pair_code = NEW.ccy_pair_code
       AND e.pricing_mode = 'AUTO_PRICED'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'fx_hedge_quick_mode_settings must reference an AUTO_PRICED HEDGE_COUNTERPARTY Pricing Rule for the same Ccy Pair');
+    SELECT RAISE(ABORT, 'hedge_quick_mode_settings must reference an AUTO_PRICED HEDGE_COUNTERPARTY Pricing Rule for the same Ccy Pair');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_quick_mode_settings_require_auto_priced_hedge_update
-BEFORE UPDATE OF pricing_rule_id, counterparty_id, ccy_pair_code ON fx_hedge_quick_mode_settings
+CREATE TRIGGER IF NOT EXISTS trg_hedge_quick_mode_settings_require_auto_priced_hedge_update
+BEFORE UPDATE OF pricing_rule_id, counterparty_id, ccy_pair_code ON hedge_quick_mode_settings
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -2776,19 +3020,19 @@ WHEN NOT EXISTS
     FROM pricing_rules r
     INNER JOIN trading_counterparty_roles role
         ON role.counterparty_id = r.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
-    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     WHERE r.pricing_rule_id = NEW.pricing_rule_id
       AND r.counterparty_id = NEW.counterparty_id
       AND r.ccy_pair_code = NEW.ccy_pair_code
       AND e.pricing_mode = 'AUTO_PRICED'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'fx_hedge_quick_mode_settings must reference an AUTO_PRICED HEDGE_COUNTERPARTY Pricing Rule for the same Ccy Pair');
+    SELECT RAISE(ABORT, 'hedge_quick_mode_settings must reference an AUTO_PRICED HEDGE_COUNTERPARTY Pricing Rule for the same Ccy Pair');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_quick_mode_settings_require_base_precision_insert
-BEFORE INSERT ON fx_hedge_quick_mode_settings
+CREATE TRIGGER IF NOT EXISTS trg_hedge_quick_mode_settings_require_base_precision_insert
+BEFORE INSERT ON hedge_quick_mode_settings
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -2799,11 +3043,11 @@ WHEN NOT EXISTS
       AND base_ccy.fraction_digits = NEW.base_ccy_fraction_digits
 )
 BEGIN
-    SELECT RAISE(ABORT, 'fx_hedge_quick_mode_settings.base_ccy_fraction_digits must match the configured base currency precision');
+    SELECT RAISE(ABORT, 'hedge_quick_mode_settings.base_ccy_fraction_digits must match the configured base currency precision');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_quick_mode_settings_require_base_precision_update
-BEFORE UPDATE OF ccy_pair_code, base_ccy_fraction_digits ON fx_hedge_quick_mode_settings
+CREATE TRIGGER IF NOT EXISTS trg_hedge_quick_mode_settings_require_base_precision_update
+BEFORE UPDATE OF ccy_pair_code, base_ccy_fraction_digits ON hedge_quick_mode_settings
 FOR EACH ROW
 WHEN NOT EXISTS
 (
@@ -2814,107 +3058,107 @@ WHEN NOT EXISTS
       AND base_ccy.fraction_digits = NEW.base_ccy_fraction_digits
 )
 BEGIN
-    SELECT RAISE(ABORT, 'fx_hedge_quick_mode_settings.base_ccy_fraction_digits must match the configured base currency precision');
+    SELECT RAISE(ABORT, 'hedge_quick_mode_settings.base_ccy_fraction_digits must match the configured base currency precision');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_preserve_fx_hedge_quick_mode_settings
-BEFORE UPDATE OF counterparty_id, execution_context_id, ccy_pair_code ON pricing_rules
+CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_preserve_hedge_quick_mode_settings
+BEFORE UPDATE OF counterparty_id, trade_context_id, ccy_pair_code ON pricing_rules
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
-    FROM fx_hedge_quick_mode_settings settings
+    FROM hedge_quick_mode_settings settings
     WHERE settings.pricing_rule_id = OLD.pricing_rule_id
 )
 AND NOT EXISTS
 (
     SELECT 1
     FROM trading_counterparty_roles role
-    INNER JOIN execution_contexts c ON c.execution_context_id = NEW.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = NEW.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     WHERE role.counterparty_id = NEW.counterparty_id
       AND NEW.counterparty_id = (
           SELECT settings.counterparty_id
-          FROM fx_hedge_quick_mode_settings settings
+          FROM hedge_quick_mode_settings settings
           WHERE settings.pricing_rule_id = OLD.pricing_rule_id
       )
       AND role.role_code = 'HEDGE_COUNTERPARTY'
       AND e.pricing_mode = 'AUTO_PRICED'
       AND NEW.ccy_pair_code = (
           SELECT settings.ccy_pair_code
-          FROM fx_hedge_quick_mode_settings settings
+          FROM hedge_quick_mode_settings settings
           WHERE settings.pricing_rule_id = OLD.pricing_rule_id
       )
 )
 BEGIN
-    SELECT RAISE(ABORT, 'a Pricing Rule used by fx_hedge_quick_mode_settings must remain an AUTO_PRICED HEDGE_COUNTERPARTY rule for the configured Ccy Pair');
+    SELECT RAISE(ABORT, 'a Pricing Rule used by hedge_quick_mode_settings must remain an AUTO_PRICED HEDGE_COUNTERPARTY rule for the configured Ccy Pair');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_fx_hedge_quick_mode_settings
+CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_hedge_quick_mode_settings
 BEFORE DELETE ON trading_counterparty_roles
 FOR EACH ROW
 WHEN OLD.role_code = 'HEDGE_COUNTERPARTY'
     AND EXISTS
     (
         SELECT 1
-        FROM fx_hedge_quick_mode_settings settings
+        FROM hedge_quick_mode_settings settings
         WHERE settings.counterparty_id = OLD.counterparty_id
     )
 BEGIN
-    SELECT RAISE(ABORT, 'a Trading Counterparty used by fx_hedge_quick_mode_settings must retain the HEDGE_COUNTERPARTY role');
+    SELECT RAISE(ABORT, 'a Trading Counterparty used by hedge_quick_mode_settings must retain the HEDGE_COUNTERPARTY role');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_execution_contexts_preserve_fx_hedge_quick_mode_settings
-BEFORE UPDATE OF execution_system_id ON execution_contexts
+CREATE TRIGGER IF NOT EXISTS trg_trade_contexts_preserve_hedge_quick_mode_settings
+BEFORE UPDATE OF originating_system_id ON trade_contexts
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
     FROM pricing_rules r
-    INNER JOIN fx_hedge_quick_mode_settings settings
+    INNER JOIN hedge_quick_mode_settings settings
         ON settings.pricing_rule_id = r.pricing_rule_id
-    WHERE r.execution_context_id = OLD.execution_context_id
+    WHERE r.trade_context_id = OLD.trade_context_id
 )
 AND NOT EXISTS
 (
     SELECT 1
-    FROM execution_systems e
-    WHERE e.execution_system_id = NEW.execution_system_id
+    FROM originating_systems e
+    WHERE e.originating_system_id = NEW.originating_system_id
       AND e.pricing_mode = 'AUTO_PRICED'
 )
 BEGIN
-    SELECT RAISE(ABORT, 'an Execution Context used by fx_hedge_quick_mode_settings must remain AUTO_PRICED');
+    SELECT RAISE(ABORT, 'a Trade Context used by hedge_quick_mode_settings must remain AUTO_PRICED');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_execution_systems_preserve_fx_hedge_quick_mode_settings
-BEFORE UPDATE OF pricing_mode ON execution_systems
+CREATE TRIGGER IF NOT EXISTS trg_originating_systems_preserve_hedge_quick_mode_settings
+BEFORE UPDATE OF pricing_mode ON originating_systems
 FOR EACH ROW
 WHEN NEW.pricing_mode <> 'AUTO_PRICED'
     AND EXISTS
     (
         SELECT 1
-        FROM execution_contexts c
-        INNER JOIN pricing_rules r ON r.execution_context_id = c.execution_context_id
-        INNER JOIN fx_hedge_quick_mode_settings settings
+        FROM trade_contexts c
+        INNER JOIN pricing_rules r ON r.trade_context_id = c.trade_context_id
+        INNER JOIN hedge_quick_mode_settings settings
             ON settings.pricing_rule_id = r.pricing_rule_id
-        WHERE c.execution_system_id = OLD.execution_system_id
+        WHERE c.originating_system_id = OLD.originating_system_id
     )
 BEGIN
-    SELECT RAISE(ABORT, 'an Execution System used by fx_hedge_quick_mode_settings must remain AUTO_PRICED');
+    SELECT RAISE(ABORT, 'an Originating System used by hedge_quick_mode_settings must remain AUTO_PRICED');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_ccy_options_preserve_fx_hedge_quick_mode_settings_precision
+CREATE TRIGGER IF NOT EXISTS trg_ccy_options_preserve_hedge_quick_mode_settings_precision
 BEFORE UPDATE OF fraction_digits ON ccy_options
 FOR EACH ROW
 WHEN EXISTS
 (
     SELECT 1
     FROM ccy_pair_options pair
-    INNER JOIN fx_hedge_quick_mode_settings settings
+    INNER JOIN hedge_quick_mode_settings settings
         ON settings.ccy_pair_code = pair.ccy_pair_code
     WHERE pair.base_ccy_code = OLD.ccy_code
       AND settings.base_ccy_fraction_digits <> NEW.fraction_digits
 )
 BEGIN
-    SELECT RAISE(ABORT, 'base currency precision used by fx_hedge_quick_mode_settings cannot be changed');
+    SELECT RAISE(ABORT, 'base currency precision used by hedge_quick_mode_settings cannot be changed');
 END;

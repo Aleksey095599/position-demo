@@ -1,10 +1,14 @@
-    /* Unified data-table chrome. The FX Position matrix intentionally does not use these classes. */
+    /* Unified data-table chrome. The Position matrix intentionally does not use these classes. */
     .table-panel {
       min-width: 0;
       max-width: 100%;
       border: 1px solid var(--bs-border-color);
       border-radius: var(--workbench-radius);
       background: var(--bs-body-bg);
+    }
+
+    .table-panel--standalone:not(.table-panel--compact) {
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     .table-panel > .table-panel__head {
@@ -163,13 +167,14 @@
       #referenceDataPage,
       #pricingRulesPage,
       #marketPage,
-      #fxDealsPage,
-      #fxBatchesPage,
-      #hedgingSettingsPage
-    ).workbench-page .table-panel.table-panel--standalone {
+      #dealsPage,
+      #batchesPage,
+      #positionManagementSettingsPage
+    ).workbench-page .table-panel.table-panel--standalone:not(.table-panel--compact) {
       border: 1px solid var(--bs-border-color);
       border-radius: var(--workbench-radius);
       background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     :is(
@@ -178,9 +183,9 @@
       #referenceDataPage,
       #pricingRulesPage,
       #marketPage,
-      #fxDealsPage,
-      #fxBatchesPage,
-      #hedgingSettingsPage
+      #dealsPage,
+      #batchesPage,
+      #positionManagementSettingsPage
     ).workbench-page
     .table-panel.table-panel--standalone > .table-panel__head {
       display: flex;
@@ -211,9 +216,9 @@
       #referenceDataPage,
       #pricingRulesPage,
       #marketPage,
-      #fxDealsPage,
-      #fxBatchesPage,
-      #hedgingSettingsPage
+      #dealsPage,
+      #batchesPage,
+      #positionManagementSettingsPage
     ).workbench-page
     .table-panel.table-panel--standalone > :is(.table-panel__body, .table-panel__viewport) {
       margin: 0;
@@ -296,9 +301,19 @@
 
     .client-deal-duplicate-dialog .table-panel {
       overflow: hidden;
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     .client-deal-duplicate-dialog .table-panel .tabulator {
       border: 0;
       border-radius: 0;
+    }
+
+    .client-deal-duplicate-dialog .tabulator .tabulator-header .tabulator-col:last-child,
+    .client-deal-duplicate-dialog .tabulator .tabulator-row .tabulator-cell:last-child {
+      border-right: 0;
+    }
+
+    .client-deal-duplicate-dialog .tabulator .tabulator-row:last-child {
+      border-bottom: 0;
     }

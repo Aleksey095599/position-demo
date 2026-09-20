@@ -1,13 +1,8 @@
-  <main class="settings-shell profile-shell pricing-shell unified-bootstrap-workspace workbench-page" id="pricingRulesPage" hidden>
+  <main class="settings-shell profile-shell pricing-shell unified-bootstrap-workspace workbench-page" id="pricingRulesPage" data-disable-tooltips hidden>
     <section class="settings-topbar workbench-page-header" aria-label="Pricing Rules header">
       <div class="settings-title-block">
-        <nav aria-label="Breadcrumb" id="pricingRulesBreadcrumb" hidden>
-          <ol class="breadcrumb workbench-breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="#settings:currency-pairs" id="pricingRulesBreadcrumbBackLink">Currency Pair Settings</a></li>
-            <li class="breadcrumb-item active" id="pricingRulesBreadcrumbCurrent" aria-current="page"></li>
-          </ol>
-        </nav>
         <h1 class="settings-title">Pricing Rules</h1>
+        <p class="workbench-context-label" id="pricingRulesContextLabel" hidden></p>
       </div>
       <div class="profile-status workbench-page-status" id="pricingRuleStatus" role="status" aria-live="polite"></div>
     </section>
@@ -26,10 +21,23 @@
     <section class="profile-layout pricing-layout" aria-label="Trading Counterparty pricing rules editor">
       <section class="profile-panel profile-table-panel table-panel table-panel--standalone" aria-label="Trading Counterparty pricing rules">
         <div class="pricing-rules-table-toolbar table-panel__head">
-          <h2 class="table-panel__title">Pricing Rules</h2>
-          <button type="button" class="btn btn-sm btn-outline-secondary ui-table-layout-button" id="pricingRulesTableLayoutButton" data-ui-table-layout="pricing_rules_grid" aria-label="Pricing Rules table layout">
-            <span class="button-icon" aria-hidden="true">view_column</span>
-          </button>
+          <div class="table-panel__heading">
+            <h2 class="table-panel__title">Pricing Rules</h2>
+            <div class="form-check form-switch pricing-rules-view-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="pricingRulesAdvancedView">
+              <label class="form-check-label" for="pricingRulesAdvancedView">Advanced View</label>
+            </div>
+          </div>
+          <div class="table-panel__tools">
+            <div class="ui-table-layout-actions">
+              <button type="button" class="btn btn-sm btn-outline-secondary ui-table-layout-button" id="pricingRulesClearFiltersButton" aria-label="Clear Pricing Rules filters" disabled>
+                <span class="button-icon" aria-hidden="true">filter_alt_off</span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary ui-table-layout-button" id="pricingRulesTableLayoutButton" data-ui-table-layout="pricing_rules_grid" aria-label="Pricing Rules table layout">
+                <span class="button-icon" aria-hidden="true">view_column</span>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="profile-table-wrap table-panel__body table-panel__viewport">
           <table class="profile-table pricing-rules-table unified-data-table" id="pricingRulesTable" data-ui-table-layout-key="pricing_rules_grid">
@@ -37,9 +45,10 @@
               <col data-ui-column-key="id">
               <col data-ui-column-key="counterparty_code">
               <col data-ui-column-key="counterparty_name">
-              <col data-ui-column-key="execution_context">
+              <col data-ui-column-key="trade_context_id">
+              <col class="pricing-rule-context-column" data-ui-column-key="trade_context" hidden>
               <col data-ui-column-key="ccy_pair">
-              <col data-ui-column-key="auto_hedging_admission">
+              <col data-ui-column-key="auto_management_admission">
               <col data-ui-column-key="margin">
               <col class="pricing-rule-quick-hedge-column" data-ui-column-key="quick_hedge" hidden>
               <col class="pricing-rule-actions-column" data-ui-column-key="actions" data-ui-fallback-width="80">
@@ -67,13 +76,19 @@
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="clientName" aria-label="Filter pricing rules by counterparty name">
                   </div>
                 </th>
-                <th class="pricing-rule-context-column">
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Trade Context ID</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="pricingContextId" aria-label="Filter pricing rules by trade context ID">
+                  </div>
+                </th>
+                <th class="pricing-rule-context-column" id="pricingRuleTradeContextHeader" hidden>
                   <div class="reference-column-head">
                     <span class="reference-column-title">
                       <span class="button-icon" aria-hidden="true">hub</span>
-                      <span>Execution Context</span>
+                      <span>Trade Context</span>
                     </span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="pricingContextId" aria-label="Filter pricing rules by execution context">
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="pricingContextPath" aria-label="Filter pricing rules by trade context">
                   </div>
                 </th>
                 <th>
@@ -82,16 +97,15 @@
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="currencyPair" aria-label="Filter pricing rules by currency pair">
                   </div>
                 </th>
-                <th id="pricingRuleAutoHedgingAdmissionHeader" tabindex="-1" data-pricing-rule-column="autoHedgingAdmissionModeOverride">
+                <th id="pricingRuleAutoManagementAdmissionHeader" tabindex="-1" data-pricing-rule-column="autoManagementAdmissionModeOverride">
                   <div class="reference-column-head">
                     <span class="reference-column-title">
-                      <span class="button-icon" aria-hidden="true">verified_user</span>
-                      <span>Auto Hedging Admission</span>
+                      <span>Initial Mode Assignment</span>
                     </span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="autoHedgingAdmissionModeOverride" aria-label="Filter pricing rules by admission policy">
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="autoManagementAdmissionModeOverride" aria-label="Filter pricing rules by Initial Mode Assignment">
                   </div>
                 </th>
-                <th>
+                <th class="pricing-rule-margin-column">
                   <div class="reference-column-head reference-column-head-static reference-column-head-right">
                     <span class="reference-column-title">
                       <span class="button-icon" aria-hidden="true">savings</span>

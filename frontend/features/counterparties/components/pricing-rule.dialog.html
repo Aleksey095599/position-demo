@@ -5,12 +5,12 @@
         <button type="button" class="dialog-close btn-close" id="clientPricingRuleDialogClose" aria-label="Close"></button>
       </div>
       <div class="deal-form-body modal-body">
-        <section class="deal-form-section pricing-rule-bootstrap-section semantic-section" id="clientPricingRuleContextSearchSection" aria-label="Find Execution Context">
+        <section class="deal-form-section pricing-rule-bootstrap-section semantic-section" id="clientPricingRuleContextSearchSection" aria-label="Find Trade Context">
           <div class="deal-form-section-title pricing-rule-bootstrap-section-title pricing-context-filter-title semantic-section-head">
             <span class="button-icon" aria-hidden="true">filter_alt</span>
-            <span>Find Execution Context</span>
+            <span>Find Trade Context</span>
           </div>
-          <p class="pricing-context-filter-help">Use the filters below to find an existing Execution Context.</p>
+          <p class="pricing-context-filter-help">Use the filters below to find an existing Trade Context.</p>
           <div class="client-pricing-context-facets" id="clientPricingContextBuilder">
             <div class="form-field client-pricing-context-facet">
               <label class="client-pricing-context-facet-label" for="clientPricingLocationSearch">
@@ -47,21 +47,21 @@
               <div class="client-pricing-context-menu" id="clientPricingAccountingMenu" role="listbox" hidden></div>
             </div>
             <div class="form-field client-pricing-context-facet">
-              <label class="client-pricing-context-facet-label" for="clientPricingExecutionSearch">
-                <span>Execution System</span>
+              <label class="client-pricing-context-facet-label" for="clientPricingOriginatingSearch">
+                <span>Originating System</span>
                 <span class="client-pricing-context-facet-count" data-pricing-context-count="tradeCaptureChannelId"></span>
               </label>
               <span class="client-pricing-context-facet-control">
-                <span class="button-icon client-pricing-context-facet-icon" aria-hidden="true">terminal</span>
-                <input class="form-control form-control-sm" type="search" id="clientPricingExecutionSearch" name="contextExecutionSystem" data-pricing-context-facet="tradeCaptureChannelId" placeholder="Filter by code or name" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clientPricingExecutionMenu">
-                <button type="button" class="client-pricing-context-facet-clear" data-pricing-context-clear="tradeCaptureChannelId" aria-label="Clear Execution System" hidden>
+                <span class="button-icon client-pricing-context-facet-icon" aria-hidden="true">web_asset</span>
+                <input class="form-control form-control-sm" type="search" id="clientPricingOriginatingSearch" name="contextOriginatingSystem" data-pricing-context-facet="tradeCaptureChannelId" placeholder="Filter by code or name" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clientPricingOriginatingMenu">
+                <button type="button" class="client-pricing-context-facet-clear" data-pricing-context-clear="tradeCaptureChannelId" aria-label="Clear Originating System" hidden>
                   <span class="button-icon" aria-hidden="true">close</span>
                 </button>
-                <button type="button" class="client-pricing-context-facet-toggle" data-pricing-context-toggle="tradeCaptureChannelId" aria-label="Show Execution System options" aria-expanded="false">
+                <button type="button" class="client-pricing-context-facet-toggle" data-pricing-context-toggle="tradeCaptureChannelId" aria-label="Show Originating System options" aria-expanded="false">
                   <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
                 </button>
               </span>
-              <div class="client-pricing-context-menu" id="clientPricingExecutionMenu" role="listbox" hidden></div>
+              <div class="client-pricing-context-menu" id="clientPricingOriginatingMenu" role="listbox" hidden></div>
             </div>
           </div>
           <input type="hidden" name="pricingContextId">
@@ -75,7 +75,7 @@
               <span class="client-pricing-rule-fixed-value" id="clientPricingRuleFixedPair"></span>
             </span>
             <span class="client-pricing-rule-fixed-term" id="clientPricingRuleFixedContextTerm">
-              <span>Execution Context</span>
+              <span>Trade Context</span>
               <span class="client-pricing-rule-fixed-value client-pricing-rule-fixed-context" id="clientPricingRuleFixedContext"></span>
             </span>
           </div>
@@ -88,11 +88,15 @@
               <select class="form-select form-select-sm" name="currencyPair" required></select>
             </label>
             <fieldset class="form-field client-pricing-rule-admission-field">
-              <legend>Auto Hedging Admission</legend>
-              <select class="form-select form-select-sm" id="clientPricingRuleAutoHedgingAdmissionModeOverride" name="autoHedgingAdmissionModeOverride" aria-label="Auto Hedging Admission">
-                <option value="">Execution Context Admission Policy</option>
-                <option value="MANUAL_ONLY">Manual Control</option>
-              </select>
+              <legend>Initial Mode Assignment</legend>
+              <div class="client-pricing-rule-mode-override-control">
+                <span class="button-icon" role="img" tabindex="0" aria-label="Initial Mode Assignment" data-tooltip="Initial Mode Assignment" data-client-pricing-rule-mode-override-icon>touch_app</span>
+                <span class="client-pricing-rule-mode-override-value" data-client-pricing-rule-mode-override-value>Manual Mode by Trade Context</span>
+                <label class="form-check form-switch client-pricing-rule-mode-override-switch" for="clientPricingRuleAutoManagementAdmissionModeOverride">
+                  <input class="form-check-input" type="checkbox" id="clientPricingRuleAutoManagementAdmissionModeOverride" name="autoManagementAdmissionModeOverride" value="REVIEW_REQUIRED">
+                  <span class="form-check-label">Manual Mode Override</span>
+                </label>
+              </div>
             </fieldset>
             <label class="form-field">
               Margin %

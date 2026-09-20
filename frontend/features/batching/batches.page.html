@@ -1,0 +1,22 @@
+  <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace workbench-page" id="batchesPage" hidden>
+    <section class="action-bar workbench-page-header" aria-label="Batches header">
+      <h1 class="page-title">Batches</h1>
+    </section>
+
+    <section class="batching-history-page" id="batchingHistoryPage" hidden>
+      <div class="batching-history-content table-panel table-panel--standalone" aria-label="Batches">
+        <div class="batching-history-toolbar table-panel__head" data-ui-table-layout-host="batching_history_grid" aria-label="Batches table layout">
+          <h2 class="table-panel__title">Batches</h2>
+          <div class="form-check form-switch batches-view-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="batchesAuditView">
+            <label class="form-check-label" for="batchesAuditView">Audit View</label>
+          </div>
+          <span class="client-deals-count" id="batchingHistoryCount">0 batches</span>
+          <div class="profile-status batching-history-status workbench-page-status" id="batchingHistoryStatus" role="status" aria-live="polite" hidden></div>
+        </div>
+        <div class="client-deals-grid-shell batching-history-grid-shell table-panel__body table-panel__viewport">
+          <div class="batching-history-grid" id="batchingHistoryGrid" aria-label="Batches table"></div>
+        </div>
+      </div>
+    </section>
+  </main>

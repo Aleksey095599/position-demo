@@ -1,33 +1,67 @@
   <main class="settings-shell profile-shell client-profile-shell unified-bootstrap-workspace workbench-page" id="clientProfilePage" hidden>
     <section class="settings-topbar client-profile-topbar workbench-page-header" id="clientProfileTopbar" aria-label="Trading Counterparties header">
       <div class="client-profile-page-heading workbench-detail-heading">
-        <button type="button" class="btn btn-sm btn-outline-secondary client-profile-back-button workbench-detail-back-button" id="clientProfileBackButton" aria-label="Back to Trading Counterparties" hidden>
-          <span class="button-icon" aria-hidden="true">arrow_back</span>
-          <span>Trading Counterparties</span>
-        </button>
         <div class="settings-title-block workbench-detail-title-block">
-          <nav class="workbench-breadcrumb" id="clientProfileBreadcrumb" aria-label="breadcrumb" hidden>
-            <ol class="breadcrumb mb-0">
-              <li class="breadcrumb-item">
-                <a id="clientProfileBreadcrumbBackLink" href="#execution-context">Execution Contexts</a>
-              </li>
-              <li class="breadcrumb-item active" id="clientProfileBreadcrumbCurrent" aria-current="page">Trading Counterparties</li>
-            </ol>
-          </nav>
+          <div class="mb-2" id="clientProfileBackNavigation" hidden>
+            <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2" id="clientProfileBackButton">
+              <span class="button-icon" aria-hidden="true">arrow_back</span>
+              <span>Back to External Counterparties</span>
+            </button>
+          </div>
           <h1 class="settings-title" id="clientProfilePageTitle">Trading Counterparties</h1>
+          <p class="workbench-context-label" id="clientProfileContextLabel" hidden>Trading Counterparties</p>
         </div>
       </div>
       <div class="profile-status workbench-page-status" id="clientProfileStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="trading-counterparty-filter-toolbar" id="tradingCounterpartyFilterToolbar" aria-labelledby="tradingCounterpartyFilterToolbarTitle">
+      <span class="trading-counterparty-filter-toolbar-title" id="tradingCounterpartyFilterToolbarTitle">
+        <span class="button-icon" aria-hidden="true">filter_alt</span>
+        <span>Trade Context Filter</span>
+      </span>
+      <div class="trading-counterparty-trade-context-filter">
+        <div class="trading-counterparty-trade-context-picker">
+          <button
+            type="button"
+            class="trading-counterparty-trade-context-toggle"
+            id="tradingCounterpartyTradeContextToggle"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-controls="tradingCounterpartyTradeContextMenu"
+          >
+            <span class="trading-counterparty-trade-context-value" id="tradingCounterpartyTradeContextValue">
+              <span class="trading-counterparty-trade-context-placeholder">All Trade Contexts</span>
+            </span>
+            <span class="button-icon trading-counterparty-trade-context-chevron" aria-hidden="true">expand_more</span>
+          </button>
+          <div
+            class="trading-counterparty-trade-context-menu"
+            id="tradingCounterpartyTradeContextMenu"
+            role="listbox"
+            aria-label="Trade Context"
+            hidden
+          ></div>
+        </div>
+        <select id="tradingCounterpartyTradeContextFilter" aria-hidden="true" tabindex="-1" hidden>
+          <option value="">All Trade Contexts</option>
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-secondary trading-counterparty-trade-context-clear" id="tradingCounterpartyTradeContextClear" aria-label="Clear Trade Context filter" disabled>
+          <span class="button-icon" aria-hidden="true">filter_alt_off</span>
+        </button>
+      </div>
     </section>
 
     <nav class="nav nav-tabs workbench-section-tabs trading-counterparty-scope-tabs" id="tradingCounterpartyScopeTabs" aria-label="Trading Counterparty scope">
       <button type="button" class="nav-link active" data-trading-counterparty-scope="EXTERNAL" aria-selected="true">
         <span class="button-icon" aria-hidden="true">domain</span>
         <span>External Counterparties</span>
+        <span data-trading-counterparty-scope-count="EXTERNAL" hidden>(0)</span>
       </button>
       <button type="button" class="nav-link" data-trading-counterparty-scope="INTERNAL" aria-selected="false">
         <span class="button-icon" aria-hidden="true">account_tree</span>
         <span>Internal Units</span>
+        <span data-trading-counterparty-scope-count="INTERNAL" hidden>(0)</span>
       </button>
     </nav>
 
@@ -183,19 +217,19 @@
               </div>
             </div>
           </section>
-          <section class="client-execution-contexts-panel client-pricing-configuration-panel counterparty-card-section semantic-section" id="clientExecutionContextsPanel" aria-label="Trading counterparty pricing rules" hidden>
-            <div class="client-execution-contexts-head counterparty-card-section-head semantic-section-head">
-              <span class="client-execution-contexts-heading">
-                <h2 class="client-execution-contexts-title">Pricing Rules</h2>
-                <span class="pricing-filter-chip" id="clientExecutionContextsCount">0 contexts · 0 rules</span>
+          <section class="client-trade-contexts-panel client-pricing-configuration-panel counterparty-card-section semantic-section" id="clientTradeContextsPanel" aria-label="Trading counterparty pricing rules" hidden>
+            <div class="client-trade-contexts-head counterparty-card-section-head semantic-section-head">
+              <span class="client-trade-contexts-heading">
+                <h2 class="client-trade-contexts-title">Pricing Rules</h2>
+                <span class="pricing-filter-chip" id="clientTradeContextsCount">0 contexts · 0 rules</span>
               </span>
-              <button type="button" class="btn btn-sm btn-primary reference-new-button" id="clientExecutionContextsAttachButton">
-                <span class="button-icon" id="clientExecutionContextsAttachButtonIcon" aria-hidden="true">add_link</span>
-                <span id="clientExecutionContextsAttachButtonLabel">Attach Execution Context</span>
+              <button type="button" class="btn btn-sm btn-primary reference-new-button" id="clientTradeContextsAttachButton">
+                <span class="button-icon" id="clientTradeContextsAttachButtonIcon" aria-hidden="true">add_link</span>
+                <span id="clientTradeContextsAttachButtonLabel">Attach Trade Context</span>
               </button>
             </div>
             <div class="client-pricing-configuration-body">
-              <ul class="client-execution-contexts-list client-pricing-configuration-tree" id="clientExecutionContextsList" aria-label="Attached Execution Contexts and Pricing Rules"></ul>
+              <ul class="client-trade-contexts-list client-pricing-configuration-tree" id="clientTradeContextsList" aria-label="Attached Trade Contexts and Pricing Rules"></ul>
               <div class="client-pricing-rule-editor" id="clientPricingRuleEditor" hidden></div>
             </div>
           </section>
@@ -206,8 +240,7 @@
             </button>
             <span class="profile-row-actions">
               <button type="button" class="btn btn-sm btn-outline-secondary with-icon" id="clientProfileResetButton">
-                <span class="button-icon" aria-hidden="true">arrow_back</span>
-                <span>Back</span>
+                <span>Cancel</span>
               </button>
               <button type="submit" class="btn btn-sm btn-primary with-icon" id="clientProfileSubmitButton" formnovalidate>
                 <span class="button-icon" aria-hidden="true">save</span>
@@ -222,10 +255,6 @@
     <section id="usersView" hidden>
       <section class="settings-topbar client-profile-topbar workbench-page-header" aria-label="Users header">
         <div class="client-profile-page-heading workbench-detail-heading">
-          <button type="button" class="btn btn-sm btn-outline-secondary client-profile-back-button workbench-detail-back-button" id="usersBackButton" aria-label="Back to Users" hidden>
-            <span class="button-icon" aria-hidden="true">arrow_back</span>
-            <span>Users</span>
-          </button>
           <div class="settings-title-block workbench-detail-title-block">
             <h1 class="settings-title" id="usersPageTitle">Users</h1>
             <span class="client-profile-page-subtitle" id="usersPageSubtitle" hidden></span>
@@ -362,9 +391,8 @@
               </button>
               <span class="profile-row-actions">
                 <button type="button" class="btn btn-sm btn-outline-secondary with-icon" id="usersResetButton">
-                  <span class="button-icon" aria-hidden="true">arrow_back</span>
-                  <span>Back</span>
-                </button>
+                <span>Cancel</span>
+              </button>
                 <button type="submit" class="btn btn-sm btn-primary with-icon" id="usersSubmitButton" formnovalidate>
                   <span class="button-icon" aria-hidden="true">save</span>
                   <span>Save user</span>

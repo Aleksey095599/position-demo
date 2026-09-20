@@ -38,11 +38,11 @@
           <div class="manual-process-summary-flow">
             <span class="manual-process-summary-label" data-process-copy="goal">Process goal:</span>
             <span class="button-icon" aria-hidden="true">checklist</span>
-            <span data-process-copy="selectedFxTrades" data-process-linked-copy>Selected FX Trades</span>
+            <span data-process-copy="selectedTrades" data-process-linked-copy>Selected Trades</span>
             <span class="button-icon" aria-hidden="true">arrow_forward</span>
             <span class="manual-process-summary-result">
               <span class="button-icon" aria-hidden="true">stacks</span>
-              <span data-process-copy="formedFxBatch" data-process-linked-copy>Formed FX Batch</span>
+              <span data-process-copy="formedBatch" data-process-linked-copy>Formed Batch</span>
             </span>
           </div>
         </div>
@@ -53,7 +53,7 @@
               <span class="manual-process-node-meta"><span>01</span><span data-process-copy="stageInput">INPUT</span></span>
               <span class="manual-process-node-main">
                 <span class="manual-process-node-icon button-icon" aria-hidden="true">checklist</span>
-                <span class="manual-process-node-title" data-process-copy="selectFxTrades">FX Trade Selection for FX Batch Formation</span>
+                <span class="manual-process-node-title" data-process-copy="selectTrades">Trade Selection for Batch Formation</span>
               </span>
             </button>
             <span class="manual-process-connector is-after-select" aria-hidden="true"></span>
@@ -105,7 +105,7 @@
               <span class="manual-process-rollback-arrow button-icon" aria-hidden="true">arrow_forward</span>
               <span data-process-copy="fullRollback">Full rollback</span>
               <span class="manual-process-rollback-arrow button-icon" aria-hidden="true">arrow_forward</span>
-              <span data-process-copy="fxPositionUnchanged" data-process-linked-copy>FX Position unchanged</span>
+              <span data-process-copy="positionUnchanged" data-process-linked-copy>Position unchanged</span>
             </div>
           </div>
         </section>
@@ -115,13 +115,13 @@
             <span class="manual-process-inspector-icon button-icon" id="manualProcessInspectorIcon" aria-hidden="true">checklist</span>
             <div>
               <div class="manual-process-inspector-kicker" id="manualProcessInspectorKicker">01 &middot; Input</div>
-              <h3 class="manual-process-inspector-title" id="manualProcessInspectorTitle">FX Trade Selection for FX Batch Formation</h3>
+              <h3 class="manual-process-inspector-title" id="manualProcessInspectorTitle">Trade Selection for Batch Formation</h3>
             </div>
           </div>
           <div class="manual-process-inspector-body">
             <section class="manual-process-stage-objective" aria-labelledby="manualProcessInspectorObjectiveLabel">
               <span class="manual-process-stage-label" id="manualProcessInspectorObjectiveLabel" data-process-copy="stageObjective">Stage goal:</span>
-              <p id="manualProcessInspectorObjective">Freeze the operator's eligible FX Position selection for deterministic Manual Batching.</p>
+              <p id="manualProcessInspectorObjective">Freeze the operator's eligible Position selection for deterministic Manual Batching.</p>
             </section>
 
             <div class="manual-process-detail-grid">
@@ -159,7 +159,7 @@
 
             <section class="manual-process-stage-result" aria-labelledby="manualProcessInspectorResultLabel">
               <span class="manual-process-stage-label" id="manualProcessInspectorResultLabel" data-process-copy="stageResult">Stage result</span>
-              <p id="manualProcessInspectorResult">Eligible FX Trade snapshot ready for Tenor resolution.</p>
+              <p id="manualProcessInspectorResult">Eligible Trade snapshot ready for Tenor resolution.</p>
             </section>
           </div>
         </section>
@@ -174,8 +174,8 @@
         <p class="auto-batching-flow-intro">&#x0421;&#x0445;&#x0435;&#x043C;&#x0430; &#x0444;&#x0438;&#x043A;&#x0441;&#x0438;&#x0440;&#x0443;&#x0435;&#x0442; &#x0442;&#x0435;&#x043A;&#x0443;&#x0449;&#x0438;&#x0439; &#x043F;&#x0440;&#x043E;&#x0446;&#x0435;&#x0441;&#x0441;, &#x0437;&#x0430;&#x043F;&#x0443;&#x0441;&#x043A;&#x0430;&#x0435;&#x043C;&#x044B;&#x0439; &#x043A;&#x043D;&#x043E;&#x043F;&#x043A;&#x043E;&#x0439; Create Batch, &#x0438; &#x043E;&#x0442;&#x0434;&#x0435;&#x043B;&#x044F;&#x0435;&#x0442; &#x0432;&#x0440;&#x0435;&#x043C;&#x0435;&#x043D;&#x043D;&#x043E;&#x0435; &#x0441;&#x043E;&#x0441;&#x0442;&#x043E;&#x044F;&#x043D;&#x0438;&#x0435; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0430; &#x043E;&#x0442; &#x0434;&#x0430;&#x043D;&#x043D;&#x044B;&#x0445;, &#x0441;&#x043E;&#x0445;&#x0440;&#x0430;&#x043D;&#x044F;&#x0435;&#x043C;&#x044B;&#x0445; &#x0441;&#x0435;&#x0440;&#x0432;&#x0435;&#x0440;&#x043E;&#x043C;.</p>
         <div class="auto-batching-flowchart" role="group" aria-label="Current Manual Batching process flow">
           <div class="auto-batching-flow-step is-start">
-            <div class="auto-batching-flow-step-title">Select FX Trades and click Create Batch</div>
-            <div class="auto-batching-flow-step-detail">&#x0424;&#x043B;&#x0430;&#x0436;&#x043A;&#x0438; &#x043D;&#x0430; &#x0441;&#x0442;&#x0440;&#x0430;&#x043D;&#x0438;&#x0446;&#x0435; FX Position &#x043E;&#x043F;&#x0440;&#x0435;&#x0434;&#x0435;&#x043B;&#x044F;&#x044E;&#x0442; &#x0432;&#x044B;&#x0431;&#x0440;&#x0430;&#x043D;&#x043D;&#x044B;&#x0435; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0435; &#x0441;&#x0434;&#x0435;&#x043B;&#x043A;&#x0438;. &#x0414;&#x043E; &#x043D;&#x0430;&#x0436;&#x0430;&#x0442;&#x0438;&#x044F; Create Batch &#x0441;&#x043E;&#x0441;&#x0442;&#x043E;&#x044F;&#x043D;&#x0438;&#x0435; &#x0432;&#x044B;&#x0431;&#x043E;&#x0440;&#x0430; &#x0441;&#x0443;&#x0449;&#x0435;&#x0441;&#x0442;&#x0432;&#x0443;&#x0435;&#x0442; &#x0442;&#x043E;&#x043B;&#x044C;&#x043A;&#x043E; &#x0432; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0435;.</div>
+            <div class="auto-batching-flow-step-title">Select Trades and click Create Batch</div>
+            <div class="auto-batching-flow-step-detail">&#x0424;&#x043B;&#x0430;&#x0436;&#x043A;&#x0438; &#x043D;&#x0430; &#x0441;&#x0442;&#x0440;&#x0430;&#x043D;&#x0438;&#x0446;&#x0435; Position &#x043E;&#x043F;&#x0440;&#x0435;&#x0434;&#x0435;&#x043B;&#x044F;&#x044E;&#x0442; &#x0432;&#x044B;&#x0431;&#x0440;&#x0430;&#x043D;&#x043D;&#x044B;&#x0435; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0435; &#x0441;&#x0434;&#x0435;&#x043B;&#x043A;&#x0438;. &#x0414;&#x043E; &#x043D;&#x0430;&#x0436;&#x0430;&#x0442;&#x0438;&#x044F; Create Batch &#x0441;&#x043E;&#x0441;&#x0442;&#x043E;&#x044F;&#x043D;&#x0438;&#x0435; &#x0432;&#x044B;&#x0431;&#x043E;&#x0440;&#x0430; &#x0441;&#x0443;&#x0449;&#x0435;&#x0441;&#x0442;&#x0432;&#x0443;&#x0435;&#x0442; &#x0442;&#x043E;&#x043B;&#x044C;&#x043A;&#x043E; &#x0432; &#x0431;&#x0440;&#x0430;&#x0443;&#x0437;&#x0435;&#x0440;&#x0435;.</div>
             <details class="auto-batching-flow-capture">
               <summary>
                 <span class="button-icon" aria-hidden="true">data_object</span>
@@ -190,24 +190,24 @@
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step is-decision">
-            <div class="auto-batching-flow-step-title">Are one or more eligible FX Trades selected?</div>
+            <div class="auto-batching-flow-step-title">Are one or more eligible Trades selected?</div>
           </div>
           <div class="auto-batching-flow-branches">
             <div class="auto-batching-flow-branch">
               <span class="auto-batching-flow-branch-label">&#x041D;&#x0435;&#x0442;</span>
               <div class="auto-batching-flow-step-title">Stop before submission</div>
-              <div class="auto-batching-flow-step-detail">&#x041F;&#x043E;&#x043A;&#x0430;&#x0437;&#x0430;&#x0442;&#x044C; &#x043F;&#x0440;&#x0435;&#x0434;&#x0443;&#x043F;&#x0440;&#x0435;&#x0436;&#x0434;&#x0435;&#x043D;&#x0438;&#x0435; &#x0438; &#x043E;&#x0441;&#x0442;&#x0430;&#x0432;&#x0438;&#x0442;&#x044C; FX Position &#x0431;&#x0435;&#x0437; &#x0438;&#x0437;&#x043C;&#x0435;&#x043D;&#x0435;&#x043D;&#x0438;&#x0439;.</div>
+              <div class="auto-batching-flow-step-detail">&#x041F;&#x043E;&#x043A;&#x0430;&#x0437;&#x0430;&#x0442;&#x044C; &#x043F;&#x0440;&#x0435;&#x0434;&#x0443;&#x043F;&#x0440;&#x0435;&#x0436;&#x0434;&#x0435;&#x043D;&#x0438;&#x0435; &#x0438; &#x043E;&#x0441;&#x0442;&#x0430;&#x0432;&#x0438;&#x0442;&#x044C; Position &#x0431;&#x0435;&#x0437; &#x0438;&#x0437;&#x043C;&#x0435;&#x043D;&#x0435;&#x043D;&#x0438;&#x0439;.</div>
             </div>
             <div class="auto-batching-flow-branch">
               <span class="auto-batching-flow-branch-label">&#x0414;&#x0430;</span>
               <div class="auto-batching-flow-step-title">Resolve a compatible selection</div>
-              <div class="auto-batching-flow-step-detail">One Batching Key continues immediately. If the selection is mixed, the dealer chooses one compatible group for this FX Batch.</div>
+              <div class="auto-batching-flow-step-detail">One Batching Key continues immediately. If the selection is mixed, the dealer chooses one compatible group for this Batch.</div>
             </div>
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step">
             <div class="auto-batching-flow-step-title">Prepare the Manual Batch Request</div>
-            <div class="auto-batching-flow-step-detail">The browser submits one compatible Trade selection. Mixed Batching Keys are never split into independent FX Batches.</div>
+            <div class="auto-batching-flow-step-detail">The browser submits one compatible Trade selection. Mixed Batching Keys are never split into independent Batches.</div>
             <details class="auto-batching-flow-capture">
               <summary>
                 <span class="button-icon" aria-hidden="true">data_object</span>
@@ -228,7 +228,7 @@
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step">
             <div class="auto-batching-flow-step-title">Resolve and validate source Trades</div>
-            <div class="auto-batching-flow-step-detail">The server loads the exact requested Trade set, sorts it by Trade ID, and validates one common Batching Key. It never plans multiple manual FX Batches.</div>
+            <div class="auto-batching-flow-step-detail">The server loads the exact requested Trade set, sorts it by Trade ID, and validates one common Batching Key. It never plans multiple manual Batches.</div>
             <details class="auto-batching-flow-capture">
               <summary>
                 <span class="button-icon" aria-hidden="true">data_object</span>
@@ -243,8 +243,8 @@
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step">
-            <div class="auto-batching-flow-step-title">Create the FX Batch Aggregate</div>
-            <div class="auto-batching-flow-step-detail">Create the single immutable FX Batch aggregate under the public request idempotency key.</div>
+            <div class="auto-batching-flow-step-title">Create the Batch Aggregate</div>
+            <div class="auto-batching-flow-step-detail">Create the single immutable Batch aggregate under the public request idempotency key.</div>
             <details class="auto-batching-flow-capture">
               <summary>
                 <span class="button-icon" aria-hidden="true">database</span>
@@ -252,16 +252,16 @@
                 <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
               </summary>
               <div class="auto-batching-flow-capture-list">
-                <div class="auto-batching-flow-capture-item"><code>batch_id</code><span>Primary identifier of the single record created in fx_batches.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>batch_id</code><span>Primary identifier of the single record created in batches.</span></div>
                 <div class="auto-batching-flow-capture-item"><code>idempotency_key</code><span>&#x041D;&#x0435;&#x0438;&#x0437;&#x043C;&#x0435;&#x043D;&#x044F;&#x0435;&#x043C;&#x044B;&#x0439; &#x0438;&#x0434;&#x0435;&#x043D;&#x0442;&#x0438;&#x0444;&#x0438;&#x043A;&#x0430;&#x0442;&#x043E;&#x0440; &#x0437;&#x0430;&#x043F;&#x0440;&#x043E;&#x0441;&#x0430;.</span></div>
-                <div class="auto-batching-flow-capture-item"><code>fx_batch_members</code><span>The exact immutable source Trade selection used for idempotent replay.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>batch_members</code><span>The exact immutable source Trade selection used for idempotent replay.</span></div>
                 <div class="auto-batching-flow-capture-item"><code>batch_status</code><span>Transitions atomically from BUILDING to FORMED when the aggregate is complete.</span></div>
               </div>
             </details>
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step">
-            <div class="auto-batching-flow-step-title">Form the FX Batch</div>
+            <div class="auto-batching-flow-step-title">Form the Batch</div>
             <div class="auto-batching-flow-step-detail">&#x0417;&#x0430;&#x0433;&#x0440;&#x0443;&#x0437;&#x0438;&#x0442;&#x044C; &#x043F;&#x043E;&#x043B;&#x043D;&#x043E;&#x0441;&#x0442;&#x044C;&#x044E; &#x0434;&#x043E;&#x0441;&#x0442;&#x0443;&#x043F;&#x043D;&#x044B;&#x0435; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0435; &#x0441;&#x0434;&#x0435;&#x043B;&#x043A;&#x0438;, &#x043F;&#x0440;&#x043E;&#x0432;&#x0435;&#x0440;&#x0438;&#x0442;&#x044C; &#x043D;&#x0430;&#x043B;&#x0438;&#x0447;&#x0438;&#x0435; Transfer Rate &#x0438; &#x0441;&#x043E;&#x0432;&#x043C;&#x0435;&#x0441;&#x0442;&#x0438;&#x043C;&#x043E;&#x0441;&#x0442;&#x044C; &#x043A;&#x043B;&#x044E;&#x0447;&#x0435;&#x0432;&#x044B;&#x0445; &#x043F;&#x0430;&#x0440;&#x0430;&#x043C;&#x0435;&#x0442;&#x0440;&#x043E;&#x0432;, &#x0440;&#x0430;&#x0441;&#x0441;&#x0447;&#x0438;&#x0442;&#x0430;&#x0442;&#x044C; &#x0447;&#x0438;&#x0441;&#x0442;&#x044B;&#x0435; &#x043E;&#x0441;&#x0442;&#x0430;&#x0442;&#x043A;&#x0438; &#x0438; &#x043F;&#x0440;&#x0438; &#x043D;&#x0435;&#x043E;&#x0431;&#x0445;&#x043E;&#x0434;&#x0438;&#x043C;&#x043E;&#x0441;&#x0442;&#x0438; &#x0441;&#x043E;&#x0437;&#x0434;&#x0430;&#x0442;&#x044C; Balance Trade, Position Out &#x0438; Quote Cash Out.</div>
             <details class="auto-batching-flow-capture">
               <summary>
@@ -287,16 +287,16 @@
                 <span class="button-icon auto-batching-flow-capture-chevron" aria-hidden="true">expand_more</span>
               </summary>
               <div class="auto-batching-flow-capture-list">
-                <div class="auto-batching-flow-capture-item"><code>fx_batches</code><span>&#x0417;&#x0430;&#x0433;&#x043E;&#x043B;&#x043E;&#x0432;&#x043E;&#x043A; &#x0441;&#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043D;&#x043E;&#x0433;&#x043E; &#x0431;&#x0430;&#x0442;&#x0447;&#x0430; &#x0438; &#x043F;&#x0440;&#x0438;&#x0447;&#x0438;&#x043D;&#x0430; &#x0435;&#x0433;&#x043E; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F;.</span></div>
-                <div class="auto-batching-flow-capture-item"><code>fx_batch_members</code><span>&#x0421;&#x043D;&#x0438;&#x043C;&#x043E;&#x043A; &#x0441;&#x043E;&#x0441;&#x0442;&#x0430;&#x0432;&#x0430; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0445; &#x0441;&#x0434;&#x0435;&#x043B;&#x043E;&#x043A; &#x0431;&#x0430;&#x0442;&#x0447;&#x0430;.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>batches</code><span>&#x0417;&#x0430;&#x0433;&#x043E;&#x043B;&#x043E;&#x0432;&#x043E;&#x043A; &#x0441;&#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x043D;&#x043E;&#x0433;&#x043E; &#x0431;&#x0430;&#x0442;&#x0447;&#x0430; &#x0438; &#x043F;&#x0440;&#x0438;&#x0447;&#x0438;&#x043D;&#x0430; &#x0435;&#x0433;&#x043E; &#x0444;&#x043E;&#x0440;&#x043C;&#x0438;&#x0440;&#x043E;&#x0432;&#x0430;&#x043D;&#x0438;&#x044F;.</span></div>
+                <div class="auto-batching-flow-capture-item"><code>batch_members</code><span>&#x0421;&#x043D;&#x0438;&#x043C;&#x043E;&#x043A; &#x0441;&#x043E;&#x0441;&#x0442;&#x0430;&#x0432;&#x0430; &#x0438;&#x0441;&#x0445;&#x043E;&#x0434;&#x043D;&#x044B;&#x0445; &#x0441;&#x0434;&#x0435;&#x043B;&#x043E;&#x043A; &#x0431;&#x0430;&#x0442;&#x0447;&#x0430;.</span></div>
                 <div class="auto-batching-flow-capture-item"><code>batch outputs</code><span>Position Out &#x0438; Quote Cash Out, &#x043A;&#x043E;&#x0433;&#x0434;&#x0430; &#x043E;&#x043D;&#x0438; &#x0442;&#x0440;&#x0435;&#x0431;&#x0443;&#x044E;&#x0442;&#x0441;&#x044F;.</span></div>
               </div>
             </details>
           </div>
           <div class="auto-batching-flow-arrow" aria-hidden="true"><span class="button-icon">arrow_downward</span></div>
           <div class="auto-batching-flow-step is-result">
-            <div class="auto-batching-flow-step-title">Return the result and refresh FX Position</div>
-            <div class="auto-batching-flow-step-detail">Return the single Batch ID, reload FX Position, clear the submitted selection and request another Auto Batch evaluation.</div>
+            <div class="auto-batching-flow-step-title">Return the result and refresh Position</div>
+            <div class="auto-batching-flow-step-detail">Return the single Batch ID, reload Position, clear the submitted selection and request another Auto Batch evaluation.</div>
           </div>
         </div>
         <p class="auto-batching-flow-note" role="note">
@@ -318,78 +318,90 @@
         <div class="processes-detail-body">
           <section class="manual-process-definitions domain-glossary-definitions" aria-labelledby="domainGlossaryTitle">
             <dl class="manual-process-definition-list">
+              <div class="manual-process-definition" id="process-term-position-management-mode" tabindex="-1">
+                <dt>Position Management Mode</dt>
+                <dd data-process-copy="positionManagementModeDefinition">The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-auto-position-management-mode" tabindex="-1">
+                <dt>Position Management — Auto Mode</dt>
+                <dd data-process-copy="autoPositionManagementModeDefinition">A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode may be assigned at initial registration or after an operator approves a move from Manual Mode of Position Management; it does not mean that an automated action has already occurred.</dd>
+              </div>
+              <div class="manual-process-definition" id="process-term-manual-position-management-mode" tabindex="-1">
+                <dt>Position Management — Manual Mode</dt>
+                <dd data-process-copy="manualPositionManagementModeDefinition">A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator may manage it entirely in this mode or approve a move to Auto Mode of Position Management if the applicable eligibility requirements are met.</dd>
+              </div>
               <div class="manual-process-definition" id="process-term-auto-hedging" tabindex="-1">
                 <dt>Auto Hedging</dt>
-                <dd data-process-copy="autoHedgingDefinition">An automated FX risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.</dd>
+                <dd data-process-copy="autoHedgingDefinition">An automated risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.</dd>
               </div>
-              <div class="manual-process-definition" id="process-term-auto-hedging-admission" tabindex="-1">
-                <dt>Auto Hedging Admission</dt>
-                <dd data-process-copy="autoHedgingAdmissionDefinition">The domain decision boundary that determines whether an FX Trade remains held under manual control or may be released to Auto Hedging.</dd>
+              <div class="manual-process-definition" id="process-term-auto-management-admission" tabindex="-1">
+                <dt>Auto Management Admission</dt>
+                <dd data-process-copy="autoManagementAdmissionDefinition">The domain decision boundary that determines whether a Trade remains in Manual Management or may be released to Auto Management.</dd>
               </div>
-              <div class="manual-process-definition" id="process-term-execution-context-admission-mode" tabindex="-1">
-                <dt>Execution Context Admission Mode</dt>
-                <dd data-process-copy="executionContextAdmissionModeDefinition">A mandatory Execution Context setting that defines the permitted admission path for its FX Trades.</dd>
+              <div class="manual-process-definition" id="process-term-trade-context-admission-mode" tabindex="-1">
+                <dt>Trade Context Admission Mode</dt>
+                <dd data-process-copy="tradeContextAdmissionModeDefinition">A Trade Context setting used only for Initial Admission: admit an eligible new trade automatically or require operator review.</dd>
               </div>
-              <div class="manual-process-definition" id="process-term-auto-hedging-admission-policy" tabindex="-1">
-                <dt>Auto Hedging Admission Policy</dt>
-                <dd data-process-copy="autoHedgingAdmissionPolicyDefinition">The complete set of mandatory rules that combines the Execution Context Admission Mode with configured Eligibility Checks to decide the Admission State.</dd>
+              <div class="manual-process-definition" id="process-term-auto-mode-eligibility" tabindex="-1">
+                <dt>Auto Mode Eligibility</dt>
+                <dd data-process-copy="autoModeEligibilityDefinition">Requirements configured by Trade Type and Ccy Pair and checked whenever a Trade is considered for Position Management — Auto Mode. Initial Mode Assignment separately applies Trade Context and Pricing Rule settings.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-eligibility-check" tabindex="-1">
                 <dt>Eligibility Check</dt>
-                <dd data-process-copy="eligibilityCheckDefinition">A safety condition evaluated from FX Trade, reference, or market data to determine eligibility for Auto Hedging. Every applicable check must pass before release.</dd>
+                <dd data-process-copy="eligibilityCheckDefinition">A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before release.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-admission-state" tabindex="-1">
                 <dt>Admission State</dt>
-                <dd data-process-copy="automationAdmissionStateDefinition">Shows whether a specific FX Trade is currently held for manual control or released to Auto Hedging.</dd>
+                <dd data-process-copy="automationAdmissionStateDefinition">Shows whether a specific Trade is currently in Manual Management or released to Auto Management.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-ccy-pair" tabindex="-1">
                 <dt>Ccy Pair</dt>
-                <dd data-process-copy="ccyPairDefinition">An ordered pair of currencies defining the Base Currency and Quote Currency used to express an FX Trade amount and exchange rate.</dd>
+                <dd data-process-copy="ccyPairDefinition">An ordered pair of currencies defining the Base Currency and Quote Currency used to express a Trade amount and exchange rate.</dd>
               </div>
 
-              <div class="manual-process-definition" id="process-term-fx-batch" tabindex="-1">
-                <dt>FX Batch</dt>
-                <dd data-process-copy="fxBatchDefinition">A fixed package of FX Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical FX Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active FX Position view, which organizes trades and simplifies control of the current currency position.</dd>
+              <div class="manual-process-definition" id="process-term-batch" tabindex="-1">
+                <dt>Batch</dt>
+                <dd data-process-copy="batchDefinition">A fixed package of Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active Position view, which organizes trades and simplifies control of the current currency position.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-batching" tabindex="-1">
                 <dt data-process-copy="batchingTerm">Batching</dt>
-                <dd data-process-copy="batchingDefinition">A manual or automatic process that selects, validates, groups and neutralizes FX Trades compatible by Batching Key to form one or more FX Batches. A user selects FX Trades for Manual Batching; configured rules select them for Automatic Batching.</dd>
+                <dd data-process-copy="batchingDefinition">A manual or automatic process that selects, validates, groups and neutralizes Trades compatible by Batching Key to form one or more Batches. A user selects Trades for Manual Batching; configured rules select them for Automatic Batching.</dd>
               </div>
-              <div class="manual-process-definition" id="process-term-fx-trade" tabindex="-1">
-                <dt>FX Trade</dt>
-                <dd data-process-copy="fxTradeDefinition">A Client Deal, Hedge Deal, or technical FX transaction included in currency-position calculations and displayed in FX Position.</dd>
+              <div class="manual-process-definition" id="process-term-trade" tabindex="-1">
+                <dt>Trade</dt>
+                <dd data-process-copy="tradeDefinition">A Client Deal, Hedge Deal, or technical transaction included in currency-position calculations and displayed in Position.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-client-deal" tabindex="-1">
                 <dt>Client Deal</dt>
-                <dd data-process-copy="clientDealDefinition">An FX Trade executed with a client and forming the client component of the currency position.</dd>
+                <dd data-process-copy="clientDealDefinition">A Trade executed with a client and forming the client component of the currency position.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-hedge-deal" tabindex="-1">
                 <dt>Hedge Deal</dt>
-                <dd data-process-copy="hedgeDealDefinition">An FX Trade executed with a hedge counterparty to manage or neutralize the currency position.</dd>
+                <dd data-process-copy="hedgeDealDefinition">A Trade executed with a hedge counterparty to manage or neutralize the currency position.</dd>
               </div>
-              <div class="manual-process-definition" id="process-term-fx-position" tabindex="-1">
-                <dt>FX Position</dt>
-                <dd data-process-copy="fxPositionDefinition">Application interface for monitoring the currency position and performing operations with FX Trades, including Batching.</dd>
+              <div class="manual-process-definition" id="process-term-position" tabindex="-1">
+                <dt>Position</dt>
+                <dd data-process-copy="positionDefinition">Application interface for monitoring the currency position and performing operations with Trades, including Batching.</dd>
               </div>
-              <div class="manual-process-definition" id="process-term-execution-context" tabindex="-1">
-                <dt>Execution Context</dt>
-                <dd data-process-copy="executionContextDefinition">A configuration context that determines how an FX Trade is processed for pricing, position management, and other applicable processes. In the current demo, it is defined by the combination of Servicing Location, Accounting System (when applicable), and Execution System.</dd>
+              <div class="manual-process-definition" id="process-term-trade-context" tabindex="-1">
+                <dt>Trade Context</dt>
+                <dd data-process-copy="tradeContextDefinition">Trade Context describes the business environment in which a Trade originates, is serviced, and is reflected in accounting. It provides common coordinates against which rules for different processes apply. These coordinates are Servicing Location, Accounting System (when applicable), and Originating System.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-servicing-location" tabindex="-1">
                 <dt>Servicing Location</dt>
-                <dd data-process-copy="servicingLocationDefinition">The organizational and geographic point at which an FX Trade is serviced, such as a branch or head office in a particular region.</dd>
+                <dd data-process-copy="servicingLocationDefinition">The organizational and geographic point at which a Trade is serviced, such as a branch or head office in a particular region.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-accounting-system" tabindex="-1">
                 <dt>Accounting System</dt>
-                <dd data-process-copy="accountingSystemDefinition">An internal system of record of a bank or financial institution in which an FX Trade and its related accounting entries are registered.</dd>
+                <dd data-process-copy="accountingSystemDefinition">An internal system of record of a bank or financial institution in which a Trade and its related accounting entries are registered.</dd>
               </div>
-              <div class="manual-process-definition" id="process-term-execution-system" tabindex="-1">
-                <dt>Execution System</dt>
-                <dd data-process-copy="executionSystemDefinition">The system or execution channel in which an FX Trade is actually executed. Its Pricing Mode describes how the execution price is produced or approved.</dd>
+              <div class="manual-process-definition" id="process-term-originating-system" tabindex="-1">
+                <dt>Originating System</dt>
+                <dd data-process-copy="originatingSystemDefinition">The business system in which a Trade is first registered as a business fact.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-pricing-mode" tabindex="-1">
                 <dt>Pricing Mode</dt>
-                <dd data-process-copy="pricingModeDefinition">An Execution System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.</dd>
+                <dd data-process-copy="pricingModeDefinition">An Originating System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-market-pulse" tabindex="-1">
                 <dt>Market Pulse</dt>
@@ -397,11 +409,11 @@
               </div>
               <div class="manual-process-definition" id="process-term-transfer-rate" tabindex="-1">
                 <dt>Transfer Rate</dt>
-                <dd data-process-copy="transferRateDefinition">An internal accounting rate of an FX Trade used to calculate its currency position and allocate analytical P&amp;L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.</dd>
+                <dd data-process-copy="transferRateDefinition">An internal accounting rate of a Trade used to calculate its currency position and allocate analytical P&amp;L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-base-currency" tabindex="-1">
                 <dt>Base Currency</dt>
-                <dd data-process-copy="baseCurrencyDefinition">The first currency in a currency pair; its amount forms the base currency leg of an FX Trade.</dd>
+                <dd data-process-copy="baseCurrencyDefinition">The first currency in a currency pair; its amount forms the base currency leg of a Trade.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-quote-currency" tabindex="-1">
                 <dt>Quote Currency</dt>
@@ -409,27 +421,27 @@
               </div>
               <div class="manual-process-definition" id="process-term-trade-date" tabindex="-1">
                 <dt>Trade Date</dt>
-                <dd data-process-copy="tradeDateDefinition">The date on which an FX Trade is executed; Tenor and Value Dates are determined relative to it.</dd>
+                <dd data-process-copy="tradeDateDefinition">The date on which a Trade is executed; Tenor and Value Dates are determined relative to it.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-tenor" tabindex="-1">
                 <dt>Tenor</dt>
-                <dd data-process-copy="tenorDefinition">The settlement term of an FX Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.</dd>
+                <dd data-process-copy="tenorDefinition">The settlement term of a Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-value-date" tabindex="-1">
                 <dt>Value Date</dt>
-                <dd data-process-copy="valueDateDefinition">The settlement date for one currency leg of an FX Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.</dd>
+                <dd data-process-copy="valueDateDefinition">The settlement date for one currency leg of a Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-batching-key" tabindex="-1">
                 <dt>Batching Key</dt>
-                <dd data-process-copy="batchingKeyDefinition">A composite compatibility key that determines whether FX Trades may be included in one FX Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.</dd>
+                <dd data-process-copy="batchingKeyDefinition">A composite compatibility key that determines whether Trades may be included in one Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-cross-tenor-batching" tabindex="-1">
                 <dt>Cross-Tenor Batching</dt>
-                <dd data-process-copy="crossTenorBatchingDefinition">A Batching mode that allows compatible FX Trades with different Tenors and Value Dates to be included in one FX Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.</dd>
+                <dd data-process-copy="crossTenorBatchingDefinition">A Batching mode that allows compatible Trades with different Tenors and Value Dates to be included in one Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-batch-internal-swap" tabindex="-1">
                 <dt>Batch Internal Swap</dt>
-                <dd data-process-copy="batchInternalSwapDefinition">An internal technical entity of an FX Batch that aligns FX Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across FX Batches and offset by a single net swap at the end of the accounting day.</dd>
+                <dd data-process-copy="batchInternalSwapDefinition">An internal technical entity of a Batch that aligns Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across Batches and offset by a single net swap at the end of the accounting day.</dd>
               </div>
             </dl>
           </section>

@@ -1248,7 +1248,7 @@
       white-space: nowrap;
     }
 
-    .pricing-context-table td:nth-child(7) {
+    .pricing-context-table td:nth-child(6) {
       text-align: right;
     }
 
@@ -1256,7 +1256,7 @@
       background: var(--palette-gray-100);
     }
 
-    .pricing-rules-table td:nth-child(7) {
+    .pricing-rules-table .pricing-rule-margin-column {
       text-align: right;
     }
 
@@ -1780,14 +1780,14 @@
       justify-content: flex-end;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .profile-panel-head {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .profile-panel-head {
       position: relative;
       overflow: visible;
       border-bottom-color: var(--large-table-line);
       box-shadow: none;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] #marketStreamToggleButton {
       position: relative;
       z-index: 1;
       align-self: center;
@@ -1805,7 +1805,7 @@
       transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleIcon {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] #marketStreamToggleIcon {
       align-self: auto;
       display: inline-flex;
       width: 16px;
@@ -1814,45 +1814,45 @@
       color: var(--palette-blue-600);
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton:hover:not(:disabled) {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] #marketStreamToggleButton:hover:not(:disabled) {
       border-color: var(--palette-blue-200);
       background: var(--palette-cyan-100);
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton:active:not(:disabled) {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] #marketStreamToggleButton:active:not(:disabled) {
       background: var(--palette-blue-100);
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton:focus-visible {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] #marketStreamToggleButton:focus-visible {
       outline: 2px solid rgba(var(--bs-primary-rgb), 0.28);
       outline-offset: 2px;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table thead th {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table thead th {
       border-top: 0;
       border-bottom: 1px solid var(--large-table-line);
       font-weight: 500;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table tbody td:first-child,
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table .market-rate-cell {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table tbody td:first-child,
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table .market-rate-cell {
       font-weight: 500;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table.is-stopped .market-rate-cell,
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table .is-not-configured .market-rate-cell {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table.is-stopped .market-rate-cell,
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table .is-not-configured .market-rate-cell {
       font-weight: 400;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table tr > :first-child {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table tr > :first-child {
       border-left: 0;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table tr > :last-child {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table tr > :last-child {
       border-right: 0;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table tbody tr:last-child td {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table tbody tr:last-child td {
       border-bottom: 0;
     }
 
@@ -2468,16 +2468,10 @@
       color: var(--bs-success-text-emphasis);
     }
 
-    .auto-hedging-admission-mode-badge.is-review-required {
+    .auto-management-admission-mode-badge.is-review-required {
       border-color: var(--bs-warning-border-subtle);
       background: var(--bs-warning-bg-subtle);
       color: var(--bs-warning-text-emphasis);
-    }
-
-    .auto-hedging-admission-mode-badge.is-manual-only {
-      border-color: var(--bs-secondary-border-subtle);
-      background: var(--bs-secondary-bg-subtle);
-      color: var(--bs-secondary-text-emphasis);
     }
 
     .pricing-context-id-preview {

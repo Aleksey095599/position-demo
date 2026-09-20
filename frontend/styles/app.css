@@ -1248,7 +1248,7 @@
       white-space: nowrap;
     }
 
-    .pricing-context-table td:nth-child(7) {
+    .pricing-context-table td:nth-child(6) {
       text-align: right;
     }
 
@@ -1256,7 +1256,7 @@
       background: var(--palette-gray-100);
     }
 
-    .pricing-rules-table td:nth-child(7) {
+    .pricing-rules-table .pricing-rule-margin-column {
       text-align: right;
     }
 
@@ -1780,14 +1780,14 @@
       justify-content: flex-end;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .profile-panel-head {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .profile-panel-head {
       position: relative;
       overflow: visible;
       border-bottom-color: var(--large-table-line);
       box-shadow: none;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] #marketStreamToggleButton {
       position: relative;
       z-index: 1;
       align-self: center;
@@ -1805,7 +1805,7 @@
       transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleIcon {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] #marketStreamToggleIcon {
       align-self: auto;
       display: inline-flex;
       width: 16px;
@@ -1814,45 +1814,45 @@
       color: var(--palette-blue-600);
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton:hover:not(:disabled) {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] #marketStreamToggleButton:hover:not(:disabled) {
       border-color: var(--palette-blue-200);
       background: var(--palette-cyan-100);
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton:active:not(:disabled) {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] #marketStreamToggleButton:active:not(:disabled) {
       background: var(--palette-blue-100);
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] #marketStreamToggleButton:focus-visible {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] #marketStreamToggleButton:focus-visible {
       outline: 2px solid rgba(var(--bs-primary-rgb), 0.28);
       outline-offset: 2px;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table thead th {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table thead th {
       border-top: 0;
       border-bottom: 1px solid var(--large-table-line);
       font-weight: 500;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table tbody td:first-child,
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table .market-rate-cell {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table tbody td:first-child,
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table .market-rate-cell {
       font-weight: 500;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table.is-stopped .market-rate-cell,
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table .is-not-configured .market-rate-cell {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table.is-stopped .market-rate-cell,
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table .is-not-configured .market-rate-cell {
       font-weight: 400;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table tr > :first-child {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table tr > :first-child {
       border-left: 0;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table tr > :last-child {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table tr > :last-child {
       border-right: 0;
     }
 
-    #marketPage .profile-panel[data-market-panel="streams"] .market-stream-table tbody tr:last-child td {
+    #marketPage .profile-panel[data-market-panel="quote-stream"] .market-stream-table tbody tr:last-child td {
       border-bottom: 0;
     }
 
@@ -2468,16 +2468,10 @@
       color: var(--bs-success-text-emphasis);
     }
 
-    .auto-hedging-admission-mode-badge.is-review-required {
+    .auto-management-admission-mode-badge.is-review-required {
       border-color: var(--bs-warning-border-subtle);
       background: var(--bs-warning-bg-subtle);
       color: var(--bs-warning-text-emphasis);
-    }
-
-    .auto-hedging-admission-mode-badge.is-manual-only {
-      border-color: var(--bs-secondary-border-subtle);
-      background: var(--bs-secondary-bg-subtle);
-      color: var(--bs-secondary-text-emphasis);
     }
 
     .pricing-context-id-preview {
@@ -4001,11 +3995,11 @@
       width: min(720px, calc(100vw - 32px));
     }
 
-    .execution-context-dialog {
+    .trade-context-dialog {
       width: min(640px, calc(100vw - 32px));
     }
 
-    .execution-context-dialog .form-grid.one-column {
+    .trade-context-dialog .form-grid.one-column {
       gap: 12px;
     }
 
@@ -4930,15 +4924,15 @@
       background: var(--palette-blue-100);
       color: var(--control-primary-text);
     }
-    /* Bootstrap-style modal treatment for the Execution Context workflow. */
-    .execution-context-dialog {
+    /* Bootstrap-style modal treatment for the Trade Context workflow. */
+    .trade-context-dialog {
       width: min(680px, calc(100vw - 32px));
       border: 1px solid var(--bs-border-color, #dee2e6);
       border-radius: var(--bs-border-radius-lg, 8px);
       box-shadow: 0 0.5rem 1rem rgba(var(--bs-dark-rgb), 0.15);
     }
 
-    .execution-context-dialog .dialog-head {
+    .trade-context-dialog .dialog-head {
       min-height: 0;
       padding: 16px 20px;
       border-bottom: 1px solid var(--bs-border-color, #dee2e6);
@@ -4946,13 +4940,13 @@
       box-shadow: none;
     }
 
-    .execution-context-dialog .dialog-title {
+    .trade-context-dialog .dialog-title {
       color: var(--bs-body-color, #212529);
       font-size: var(--app-font-size-dialog-title);
       font-weight: var(--app-font-weight-medium);
     }
 
-    .execution-context-dialog .dialog-close {
+    .trade-context-dialog .dialog-close {
       width: 32px;
       height: 32px;
       border-radius: var(--bs-border-radius, 6px);
@@ -4961,39 +4955,39 @@
       font-weight: 400;
     }
 
-    .execution-context-dialog .dialog-close:hover {
+    .trade-context-dialog .dialog-close:hover {
       background: var(--bs-tertiary-bg, #f8f9fa);
     }
 
-    .execution-context-dialog .deal-form-body {
+    .trade-context-dialog .deal-form-body {
       padding: 20px;
       background: var(--bs-body-bg, var(--bs-white));
     }
 
-    .execution-context-dialog .deal-form-section {
+    .trade-context-dialog .deal-form-section {
       border: 0;
       border-radius: 0;
       padding: 0;
       background: transparent;
     }
 
-    .execution-context-dialog .deal-form-section-title {
+    .trade-context-dialog .deal-form-section-title {
       display: none;
     }
 
-    .execution-context-dialog .form-grid.one-column {
+    .trade-context-dialog .form-grid.one-column {
       gap: 16px;
       padding: 0;
     }
 
-    .execution-context-dialog .form-field {
+    .trade-context-dialog .form-field {
       color: var(--bs-body-color, #212529);
       font-size: var(--app-font-size-label);
       font-weight: var(--app-font-weight-medium);
     }
 
-    .execution-context-dialog .form-field input,
-    .execution-context-dialog .form-field select {
+    .trade-context-dialog .form-field input,
+    .trade-context-dialog .form-field select {
       height: 38px;
       margin-top: 5px;
       border-color: var(--bs-border-color, #dee2e6);
@@ -5002,20 +4996,20 @@
       font-size: var(--app-font-size-control);
     }
 
-    .execution-context-dialog .form-field input:focus,
-    .execution-context-dialog .form-field select:focus {
+    .trade-context-dialog .form-field input:focus,
+    .trade-context-dialog .form-field select:focus {
       border-color: var(--palette-blue-300);
       box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
     }
 
-    .execution-context-dialog .dialog-actions {
+    .trade-context-dialog .dialog-actions {
       gap: 8px;
       margin-top: 0;
       padding: 12px 20px 16px;
       border-top: 1px solid var(--bs-border-color, #dee2e6);
     }
 
-    .execution-context-dialog .action-button {
+    .trade-context-dialog .action-button {
       height: 38px;
       min-height: 38px;
       border-radius: var(--bs-border-radius, 6px);
@@ -5025,18 +5019,18 @@
       padding: 0 12px;
     }
 
-    .execution-context-dialog .action-button.primary {
+    .trade-context-dialog .action-button.primary {
       border-color: var(--bs-primary, #0d6efd);
       background: var(--bs-primary, #0d6efd);
       color: var(--bs-white);
     }
 
-    .execution-context-dialog .action-button.primary:hover:not(:disabled) {
+    .trade-context-dialog .action-button.primary:hover:not(:disabled) {
       border-color: var(--bs-primary, #0d6efd);
       background: var(--palette-blue-600);
     }
 
-    .execution-context-dialog .action-button:disabled {
+    .trade-context-dialog .action-button:disabled {
       opacity: 0.65;
     }
 
@@ -5902,6 +5896,14 @@
       padding: 16px;
     }
 
+    #processesPage .processes-detail-body > :is(
+      .manual-process-map,
+      .manual-process-inspector,
+      .domain-glossary-definitions
+    ) {
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
     .manual-process-summary {
       display: flex;
       min-height: 44px;
@@ -6335,7 +6337,6 @@
       border: 1px solid var(--surface-divider);
       border-radius: var(--workbench-radius);
       background: var(--palette-red-100);
-      box-shadow: var(--bs-box-shadow-sm);
       color: var(--palette-red-800);
       font-size: var(--app-font-size-caption);
       text-align: center;
@@ -6420,7 +6421,6 @@
     .manual-process-stage-result {
       border-radius: var(--workbench-radius);
       background: color-mix(in srgb, var(--process-stage-bg) 32%, var(--surface-card));
-      box-shadow: var(--bs-box-shadow-sm);
     }
 
     .manual-process-stage-objective {
@@ -6990,7 +6990,7 @@
       min-width: 0;
     }
 
-    #marketPage.market-bootstrap [data-market-panel="streams"] {
+    #marketPage.market-bootstrap [data-market-panel="quote-stream"] {
       width: min(760px, calc(100vw - 44px));
     }
 
@@ -7546,6 +7546,45 @@
       font: inherit;
     }
 
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-mode-override-control {
+      display: grid;
+      min-height: 34px;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      margin-top: 5px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-sm);
+      background: var(--bs-body-bg);
+      padding: 5px 9px;
+    }
+
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-mode-override-value {
+      color: var(--bs-body-color);
+      font-size: 13px;
+    }
+
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-mode-override-switch {
+      display: inline-flex;
+      min-height: 0;
+      align-items: center;
+      gap: 7px;
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-mode-override-switch .form-check-input {
+      float: none;
+      flex: 0 0 auto;
+      margin: 0;
+    }
+
+    .pricing-rule-bootstrap-dialog .client-pricing-rule-mode-override-switch .form-check-label {
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
     .pricing-rule-bootstrap-dialog .position-management-mode-effective {
       display: block;
       margin-top: 4px;
@@ -7815,16 +7854,16 @@
       border-bottom-left-radius: 0;
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     :is(.client-deal-currency-pair-field, .client-deal-pricing-mode-field) .form-select {
       height: 44px;
       min-height: 44px;
       line-height: 1.2;
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     .client-deal-currency-pair-field .form-select,
-    #hedgingSettingsPage .client-deal-pricing-mode-field .form-select {
+    #positionManagementSettingsPage .client-deal-pricing-mode-field .form-select {
       font-size: var(--app-font-size-control-emphasis);
       font-weight: var(--app-font-weight-semibold);
     }
@@ -7839,7 +7878,7 @@
       width: min(1180px, calc(100vw - 32px));
     }
 
-    #hedgingSettingsPage .hedging-settings-panel {
+    #positionManagementSettingsPage .position-management-settings-panel {
       width: min(1180px, 100%);
       max-height: none;
       margin: 0;
@@ -7850,39 +7889,26 @@
       background: var(--bs-body-bg);
     }
 
-    #hedgingSettingsPage .hedging-settings-panel .modal-content {
+    #positionManagementSettingsPage .position-management-settings-panel .modal-content {
       border: 0;
       border-radius: var(--bs-border-radius-lg);
     }
 
-    #hedgingSettingsPage .hedging-settings-panel .modal-body {
+    #positionManagementSettingsPage .position-management-settings-panel .modal-body {
       max-height: none;
       overflow: visible;
     }
 
-    #hedgingSettingsPage .hedging-settings-panel .modal-header {
+    #positionManagementSettingsPage .position-management-settings-panel .modal-header {
       min-height: 48px;
     }
 
     .hedge-quick-settings-heading {
       display: flex;
       min-width: 0;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .hedge-quick-settings-back {
-      display: inline-flex;
-      width: 30px;
-      height: 30px;
-      flex: 0 0 30px;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-    }
-
-    .hedge-quick-settings-back .button-icon {
-      font-size: 17px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
     }
 
     .hedge-quick-settings-overview {
@@ -8419,7 +8445,6 @@
     .client-deal-create-dialog .client-pricing-context-candidate.is-selected {
       border-color: var(--bs-primary);
       background: var(--bs-primary-bg-subtle);
-      box-shadow: inset 3px 0 0 var(--bs-primary);
     }
 
     .client-deal-onboarding-option {
@@ -8444,7 +8469,6 @@
       border-color: var(--bs-warning);
       background: var(--bs-warning-bg-subtle);
       outline: 0;
-      box-shadow: inset 3px 0 0 var(--bs-warning);
     }
 
     .client-deal-onboarding-separator {
@@ -8511,7 +8535,7 @@
       gap: 6px;
     }
 
-    .execution-system-label {
+    .originating-system-label {
       display: inline-flex;
       max-width: 100%;
       height: 30px;
@@ -8524,8 +8548,8 @@
       vertical-align: middle;
     }
 
-    .execution-system-label__system,
-    .execution-system-label__pricing {
+    .originating-system-label__system,
+    .originating-system-label__pricing {
       display: inline-flex;
       flex: 0 0 32px;
       width: 32px;
@@ -8534,12 +8558,12 @@
       color: var(--palette-purple-700);
     }
 
-    .execution-system-label__system {
+    .originating-system-label__system {
       border-right: 1px solid var(--palette-purple-700);
       background: rgba(var(--bs-white-rgb), 0.52);
     }
 
-    .execution-system-label__name {
+    .originating-system-label__name {
       display: inline-flex;
       min-width: 0;
       align-items: center;
@@ -8550,16 +8574,16 @@
       white-space: nowrap;
     }
 
-    .execution-system-label__name.is-placeholder {
+    .originating-system-label__name.is-placeholder {
       color: var(--bs-secondary-color);
       font-weight: 400;
     }
 
-    .execution-system-label__pricing {
+    .originating-system-label__pricing {
       border-left: 1px solid var(--palette-purple-200);
     }
 
-    .execution-system-label .button-icon {
+    .originating-system-label .button-icon {
       font-size: 18px;
     }
 
@@ -9060,10 +9084,6 @@
       width: min(1180px, calc(100vw - 32px));
     }
 
-    .client-deal-duplicate-dialog .modal-body {
-      gap: 10px;
-    }
-
     .client-deal-duplicate-summary {
       display: flex;
       margin: 0;
@@ -9083,55 +9103,22 @@
 
     #clientDealDuplicateCheckGrid {
       width: 100%;
-      height: min(310px, calc(100vh - 250px));
-      min-height: 220px;
+      height: auto;
     }
 
-    .client-deal-duplicate-dialog .tabulator {
-      border: 1px solid var(--bs-border-color);
-      border-radius: var(--bs-border-radius-sm);
-      background: var(--bs-body-bg);
-      font-family: var(--bs-body-font-family);
-      font-size: 12px;
+    .client-deal-duplicate-dialog .table-panel__body.client-deals-bootstrap {
+      padding-top: 0;
     }
 
-    .client-deal-duplicate-dialog .tabulator .tabulator-header,
-    .client-deal-duplicate-dialog .tabulator .tabulator-header .tabulator-col,
-    .client-deal-duplicate-dialog .tabulator .tabulator-header .tabulator-col-row-handle {
-      background: var(--bs-tertiary-bg);
-    }
-
-    .client-deal-duplicate-dialog .tabulator .tabulator-header .tabulator-col,
-    .client-deal-duplicate-dialog .tabulator .tabulator-cell {
-      border-right-color: var(--bs-border-color);
-    }
-
-    .client-deal-duplicate-dialog .tabulator .tabulator-col-group > .tabulator-col-content .tabulator-col-title {
-      font-size: 11px;
-      font-weight: 600;
-      text-align: center;
-      text-transform: uppercase;
-    }
-
-    .client-deal-duplicate-dialog .tabulator .tabulator-row {
-      min-height: 34px;
-      border-bottom-color: var(--bs-border-color);
-      background: var(--bs-body-bg);
-    }
-
-    .client-deal-duplicate-dialog .tabulator .tabulator-row.tabulator-row-even {
-      background: var(--bs-tertiary-bg);
+    #clientDealDuplicateCheckGrid .tabulator-tableholder {
+      height: auto !important;
+      max-height: 267px !important;
+      overflow-y: auto;
     }
 
     #clientDealDuplicateCheckConfirmButton {
       display: inline-flex;
       gap: 5px;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #dealSubmitButton {
-      display: inline-flex;
       align-items: center;
       justify-content: center;
     }
@@ -9279,7 +9266,7 @@
       white-space: nowrap;
     }
 
-    :is(.fx-deals-view-switch, .fx-batches-view-switch) {
+    :is(.deals-view-switch, .batches-view-switch, .pricing-rules-view-switch) {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -9288,11 +9275,11 @@
       white-space: nowrap;
     }
 
-    :is(.fx-deals-view-switch, .fx-batches-view-switch) .form-check-input {
+    :is(.deals-view-switch, .batches-view-switch, .pricing-rules-view-switch) .form-check-input {
       margin-top: 0;
     }
 
-    :is(.fx-deals-view-switch, .fx-batches-view-switch) .form-check-label {
+    :is(.deals-view-switch, .batches-view-switch, .pricing-rules-view-switch) .form-check-label {
       color: var(--bs-body-color);
       font-weight: var(--app-font-weight-medium);
     }
@@ -9369,13 +9356,13 @@
       background: var(--bs-body-bg);
     }
 
-    .fx-deals-grid {
+    .deals-grid {
       width: 100%;
       height: max(360px, calc(100vh - 178px));
       max-height: 760px;
     }
 
-    .client-deals-bootstrap .fx-deals-execution-context-path {
+    .client-deals-bootstrap .deals-trade-context-path {
       width: max-content;
       min-width: max-content;
       flex-wrap: nowrap;
@@ -9383,13 +9370,13 @@
       overflow: visible;
     }
 
-    .client-deals-bootstrap .fx-deals-execution-context-path .client-pricing-context-candidate-facet {
+    .client-deals-bootstrap .deals-trade-context-path .client-pricing-context-candidate-facet {
       min-width: max-content;
       flex: 0 0 auto;
       overflow: visible;
     }
 
-    .client-deals-bootstrap .fx-deals-execution-context-path .client-pricing-context-candidate-name {
+    .client-deals-bootstrap .deals-trade-context-path .client-pricing-context-candidate-name {
       overflow: visible;
       text-overflow: clip;
     }
@@ -9401,7 +9388,7 @@
       min-width: 0;
     }
 
-    #fxBatchesPage:not([hidden]) {
+    #batchesPage:not([hidden]) {
       display: grid;
       height: calc(100vh - var(--workspace-nav-height));
       grid-template-rows: auto minmax(0, 1fr);
@@ -9942,26 +9929,26 @@
       border-bottom: 0;
     }
 
-    #fxDealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] {
+    #dealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] {
       border-right: var(--data-grid-line-width) solid var(--palette-gray-500);
       background: var(--palette-gray-200);
     }
 
-    #fxDealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] > .tabulator-col-content {
+    #dealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group[class*="client-deals-group-"] > .tabulator-col-content {
       background: inherit;
     }
 
-    #fxDealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group.client-deals-group-position-processing {
+    #dealsPage .tabulator .tabulator-header .tabulator-col.tabulator-col-group.client-deals-group-position-processing {
       border-right: 0;
     }
 
-    #fxDealsPage .tabulator .tabulator-col-group > .tabulator-col-content .tabulator-col-title {
+    #dealsPage .tabulator .tabulator-col-group > .tabulator-col-content .tabulator-col-title {
       padding-inline: 12px;
       text-align: center;
     }
 
-    #fxDealsPage .tabulator .tabulator-header .tabulator-col.client-deals-group-end,
-    #fxDealsPage .tabulator .tabulator-row .tabulator-cell.client-deals-group-end {
+    #dealsPage .tabulator .tabulator-header .tabulator-col.client-deals-group-end,
+    #dealsPage .tabulator .tabulator-row .tabulator-cell.client-deals-group-end {
       border-right: var(--data-grid-line-width) solid var(--palette-gray-500);
     }
 
@@ -10717,7 +10704,7 @@
       height: 100%;
     }
 
-    :is(#pricingPage, #referenceDataPage).unified-bootstrap-workspace .reference-grid-action {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-grid-action {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -10728,18 +10715,10 @@
       border-radius: var(--bs-border-radius-sm);
     }
 
-    :is(#pricingPage, #referenceDataPage).unified-bootstrap-workspace .reference-grid-action .button-icon {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage).unified-bootstrap-workspace .reference-grid-action .button-icon {
       font-size: 15px;
     }
 
-    #pricingPage.unified-bootstrap-workspace [data-pricing-context-action="save"] {
-      --bs-btn-color: var(--app-primary);
-      --bs-btn-border-color: var(--app-primary);
-      --bs-btn-hover-color: var(--app-primary);
-      --bs-btn-hover-border-color: var(--app-primary);
-      --bs-btn-active-color: var(--app-primary);
-      --bs-btn-active-border-color: var(--app-primary);
-    }
 
     #referenceDataPage.unified-bootstrap-workspace .reference-usage-info {
       width: auto;
@@ -10950,14 +10929,14 @@
 
     #marketPage.market-bootstrap.workbench-page,
     .client-deals-bootstrap.workbench-page,
-    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #hedgingSettingsPage).unified-bootstrap-workspace.workbench-page {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #positionManagementSettingsPage).unified-bootstrap-workspace.workbench-page {
       padding: 12px var(--workbench-page-padding-x) var(--workbench-page-padding-bottom);
       font-size: var(--workbench-body-size);
     }
 
     #marketPage.market-bootstrap.workbench-page .settings-topbar,
     .client-deals-bootstrap.workbench-page .action-bar,
-    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #hedgingSettingsPage).unified-bootstrap-workspace.workbench-page .settings-topbar {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #positionManagementSettingsPage).unified-bootstrap-workspace.workbench-page .settings-topbar {
       min-height: 42px;
       margin: 0;
       padding: 0;
@@ -10967,7 +10946,7 @@
 
     #marketPage.market-bootstrap.workbench-page .settings-title,
     .client-deals-bootstrap.workbench-page .page-title,
-    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #hedgingSettingsPage).unified-bootstrap-workspace.workbench-page .settings-title {
+    :is(#pricingPage, #referenceDataPage, #pricingRulesPage, #databasePage, #positionManagementSettingsPage).unified-bootstrap-workspace.workbench-page .settings-title {
       margin: 0;
       color: var(--bs-emphasis-color);
       font-size: var(--workbench-title-size);
@@ -11139,7 +11118,456 @@
     #referenceDataPage.unified-bootstrap-workspace.workbench-page .reference-layout .profile-table-panel {
       width: min(1120px, calc(100vw - var(--workbench-page-inline-total)));
     }
-    /* Execution Context, Pricing Rules, and Reference Data tables use their natural column width on wide screens and scroll only when needed. */
+    #tradeContractPage .trade-contract-content {
+      width: min(960px, 100%);
+    }
+
+    #tradeContractPage .trade-contract-intro {
+      margin: 0 0 18px;
+      color: var(--bs-secondary-color);
+    }
+
+    #tradeContractPage .table-panel__viewport {
+      overflow-x: auto;
+    }
+
+    #tradeContractPage .trade-contract-table {
+      width: 100%;
+      min-width: 680px;
+      margin: 0;
+      table-layout: fixed;
+      --bs-table-striped-bg: var(--bs-tertiary-bg);
+    }
+
+    #tradeContractPage .trade-contract-table :is(thead, tbody, tr, th, td) {
+      border-color: var(--bs-border-color);
+    }
+
+    #tradeContractPage .trade-contract-table :is(th, td) {
+      padding: 10px;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      vertical-align: middle;
+    }
+
+    #tradeContractPage .trade-contract-table thead th {
+      border-top: 0;
+      background: var(--bs-tertiary-bg);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #tradeContractPage .trade-contract-table :is(th, td):first-child {
+      width: 25%;
+      border-left: 0;
+    }
+
+    #tradeContractPage .trade-contract-table :is(th, td):last-child {
+      width: 25%;
+      border-right: 0;
+    }
+
+    #tradeContractPage .trade-contract-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+    #tradeContractPage .workbench-page-header {
+      justify-content: flex-start;
+      border-bottom: 0;
+    }
+    #marketPage .market-quote-panel {
+      margin-top: 16px;
+    }
+
+    #marketPage .market-history-panel {
+      width: min(1120px, calc(100vw - var(--workbench-page-inline-total)));
+      max-width: 100%;
+    }
+
+    #marketPage .market-history-sync-card {
+      margin-bottom: 24px;
+      padding: 16px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-lg);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #marketPage .market-history-sync-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    #marketPage .market-history-sync-header-icon {
+      display: grid;
+      flex: 0 0 34px;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--bs-primary);
+      background: var(--bs-primary-bg-subtle);
+    }
+
+    #marketPage .market-history-section-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    #marketPage .market-history-section-description {
+      margin: 3px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+    }
+
+    #marketPage .market-history-sync-form {
+      display: grid;
+      grid-template-columns: minmax(160px, 1fr) minmax(170px, 1fr) minmax(190px, 1fr) auto;
+      align-items: end;
+      gap: 12px;
+    }
+
+    #marketPage .market-history-field small {
+      min-height: 15px;
+      color: var(--bs-secondary-color);
+      font-size: 10px;
+      font-weight: 400;
+    }
+
+    #marketPage .market-history-sync-boundary {
+      display: flex;
+      align-items: center;
+      min-height: 31px;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-sm);
+      color: var(--bs-body-color);
+      background: var(--bs-secondary-bg);
+      font-size: 0.875rem;
+    }
+
+    #marketPage .market-history-sync-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 31px;
+      margin-bottom: 20px;
+      white-space: nowrap;
+    }
+
+    #marketPage .market-history-sync-progress {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--bs-border-color);
+    }
+
+    #marketPage .market-history-sync-progress-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 7px;
+    }
+
+    #marketPage .market-history-sync-summary {
+      min-width: 0;
+      margin: 0;
+      color: var(--bs-body-color);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    #marketPage .market-history-sync-count {
+      flex: 0 0 auto;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #marketPage .market-history-sync-progress-bar {
+      height: 4px;
+      margin-bottom: 12px;
+      background: var(--bs-secondary-bg);
+    }
+
+    #marketPage .market-history-sync-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin-bottom: 12px;
+      color: var(--bs-secondary-color);
+      font-size: 10px;
+    }
+
+    #marketPage .market-history-sync-legend > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    #marketPage .market-history-day-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--bs-secondary-color);
+    }
+
+    #marketPage .market-history-day-dot.is-pending {
+      background: var(--bs-secondary-color);
+    }
+
+    #marketPage .market-history-day-dot.is-loading {
+      background: var(--bs-primary);
+    }
+
+    #marketPage .market-history-day-dot.is-completed {
+      background: var(--bs-success);
+    }
+
+    #marketPage .market-history-day-dot.is-already-loaded {
+      background: var(--bs-info);
+    }
+
+    #marketPage .market-history-day-dot.is-error {
+      background: var(--bs-danger);
+    }
+
+    #marketPage .market-history-calendar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 12px;
+      max-height: 520px;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    #marketPage .market-history-calendar-month {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #marketPage .market-history-calendar-title {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    #marketPage .market-history-calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    #marketPage .market-history-calendar-weekday {
+      padding-bottom: 2px;
+      color: var(--bs-secondary-color);
+      font-size: 9px;
+      font-weight: 600;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    #marketPage .market-history-calendar-spacer {
+      min-height: 44px;
+    }
+
+    #marketPage .market-history-calendar-day {
+      display: grid;
+      min-height: 44px;
+      padding: 5px 3px;
+      place-items: center;
+      border: 1px solid var(--bs-border-color-translucent);
+      border-radius: var(--bs-border-radius-sm);
+      color: var(--bs-secondary-color);
+      background: var(--bs-tertiary-bg);
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    #marketPage .market-history-calendar-day .button-icon {
+      font-size: 15px;
+    }
+
+    #marketPage .market-history-calendar-day.is-pending {
+      color: var(--bs-secondary-color);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #marketPage .market-history-calendar-day.is-loading {
+      border-color: var(--bs-primary);
+      color: var(--bs-primary);
+      background: var(--bs-primary-bg-subtle);
+    }
+
+    #marketPage .market-history-calendar-day.is-loading .button-icon {
+      animation: market-history-sync-pulse 1s ease-in-out infinite;
+    }
+
+    #marketPage .market-history-calendar-day.is-completed {
+      border-color: var(--bs-success-border-subtle);
+      color: var(--bs-success-text-emphasis);
+      background: var(--bs-success-bg-subtle);
+    }
+
+    #marketPage .market-history-calendar-day.is-already-loaded {
+      border-color: var(--bs-info-border-subtle);
+      color: var(--bs-info-text-emphasis);
+      background: var(--bs-info-bg-subtle);
+    }
+
+    #marketPage .market-history-calendar-day.is-error {
+      border-color: var(--bs-danger);
+      color: var(--bs-danger-text-emphasis);
+      background: var(--bs-danger-bg-subtle);
+    }
+
+    #marketPage .market-history-calendar-day-number {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+    #marketPage .market-history-preview-heading {
+      margin-bottom: 10px;
+    }
+
+    @keyframes market-history-sync-pulse {
+      50% {
+        opacity: 0.35;
+        transform: scale(0.82);
+      }
+    }
+
+    #marketPage .market-history-form {
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) minmax(130px, 0.75fr) minmax(190px, 1fr) minmax(190px, 1fr) auto;
+      align-items: end;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 14px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #marketPage .market-history-field {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    #marketPage .market-history-load {
+      min-height: 31px;
+      white-space: nowrap;
+    }
+
+    #marketPage .market-history-summary {
+      min-height: 22px;
+      margin: 0 0 8px;
+      color: var(--bs-secondary-color);
+      font-size: 12px;
+    }
+
+    #marketPage .market-history-chart-frame {
+      position: relative;
+      overflow: hidden;
+      min-height: 420px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #marketPage .market-history-chart {
+      width: 100%;
+      min-height: 420px;
+    }
+
+    #marketPage .market-history-empty {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      margin: 0;
+      color: var(--bs-secondary-color);
+      pointer-events: none;
+    }
+
+    #marketPage .market-history-empty[hidden] {
+      display: none;
+    }
+
+    #marketPage .market-history-attribution {
+      margin: 8px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: 11px;
+    }
+
+    @media (max-width: 980px) {
+      #marketPage .market-history-sync-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #marketPage .market-history-sync-button {
+        justify-self: start;
+        margin-bottom: 0;
+      }
+
+      #marketPage .market-history-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #marketPage .market-history-load {
+        justify-self: start;
+      }
+    }
+
+    @media (max-width: 620px) {
+      #marketPage .market-history-sync-form {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      #marketPage .market-history-sync-button {
+        width: 100%;
+      }
+
+      #marketPage .market-history-sync-progress-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      #marketPage .market-history-calendar {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      #marketPage .market-history-form {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      #marketPage .market-history-load {
+        width: 100%;
+      }
+
+      #marketPage .market-history-chart-frame,
+      #marketPage .market-history-chart {
+        min-height: 340px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #marketPage .market-history-calendar-day.is-loading .button-icon {
+        animation: none;
+      }
+    }
+    /* Trade Context, Pricing Rules, and Reference Data tables use their natural column width on wide screens and scroll only when needed. */
     #pricingPage.unified-bootstrap-workspace.workbench-page .pricing-layout .profile-table-panel,
     #pricingRulesPage.unified-bootstrap-workspace.workbench-page .pricing-layout .profile-table-panel,
     #referenceDataPage.unified-bootstrap-workspace.workbench-page .reference-layout .profile-table-panel {
@@ -11264,6 +11692,10 @@
       background: var(--workbench-grid-stripe-bg, #f8f9fa);
     }
 
+    .ui-table-layout-row:not(.is-header):hover {
+      background: var(--workbench-grid-hover-bg) !important;
+    }
+
     .ui-table-layout-cell {
       min-width: 0;
       padding: 6px 10px;
@@ -11310,6 +11742,18 @@
     .ui-table-layout-width-control .form-control {
       text-align: right;
       font-variant-numeric: tabular-nums;
+    }
+
+    .ui-table-layout-width-control input[type="number"] {
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    .ui-table-layout-width-control input[type="number"]::-webkit-inner-spin-button,
+    .ui-table-layout-width-control input[type="number"]::-webkit-outer-spin-button {
+      margin: 0;
+      -webkit-appearance: none;
+      appearance: none;
     }
 
     .ui-table-layout-width-control .form-control:focus {
@@ -11792,7 +12236,7 @@
       }
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .position-management-settings-panel {
       width: fit-content;
       max-width: 100%;
       border: 0;
@@ -11801,7 +12245,7 @@
       box-shadow: none;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel .modal-content {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .position-management-settings-panel .modal-content {
       overflow: visible;
       border: 0;
       border-radius: 0;
@@ -11809,63 +12253,63 @@
       box-shadow: none;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-panel:has(.hedge-quick-settings-editor:not([hidden])) {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-panel:has(.hedge-quick-settings-editor:not([hidden])) {
       width: min(1180px, 100%);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel .modal-header {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .position-management-settings-panel .modal-header {
       min-height: 42px;
       padding: 0 0 10px;
       border-bottom: 0;
       background: transparent;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel .modal-header .hedge-quick-settings-active {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .position-management-settings-panel .modal-header .hedge-quick-settings-active {
       min-height: 30px;
       margin-left: auto;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel .modal-title {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .position-management-settings-panel .modal-title {
       font-size: var(--app-font-size-dialog-title);
       font-weight: var(--app-font-weight-medium);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel .modal-body {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .position-management-settings-panel .modal-body {
       gap: 8px;
       padding: 0;
       background: transparent;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-editor {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-editor {
       display: grid;
       gap: 16px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-editor .client-deal-create-section {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-editor .client-deal-create-section {
       margin: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-editor .client-deal-create-context-section > .client-deal-create-section-title {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-editor .client-deal-create-context-section > .client-deal-create-section-title {
       border-radius: calc(var(--bs-border-radius-sm) - var(--data-grid-line-width)) calc(var(--bs-border-radius-sm) - var(--data-grid-line-width)) 0 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedging-settings-panel .modal-footer {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .position-management-settings-panel .modal-footer {
       margin-top: 12px;
       padding: 0;
       border-top: 0;
       background: transparent;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-overview-toolbar {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-overview-toolbar {
       min-height: 30px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-count {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-count {
       font-size: 11px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page #hedgeQuickModeSettingsNewButton {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page #hedgeQuickModeSettingsNewButton {
       min-height: 30px;
       display: inline-flex;
       align-items: center;
@@ -11876,14 +12320,14 @@
       line-height: 1.5;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page #hedgeQuickModeSettingsNewButton:disabled {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page #hedgeQuickModeSettingsNewButton:disabled {
       border-color: var(--bs-border-color);
       background: var(--bs-tertiary-bg);
       color: var(--bs-secondary-color);
       opacity: 1;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid {
       width: fit-content;
       max-width: 100%;
       overflow: hidden;
@@ -11892,7 +12336,7 @@
       background: var(--bs-body-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator {
       min-width: 0;
       border: 0;
       border-radius: 0;
@@ -11902,7 +12346,7 @@
       font-size: var(--workbench-grid-size);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-header {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-header {
       border: 0;
       border-bottom: var(--data-grid-line-width) solid var(--data-grid-line-color);
       background: var(--workbench-grid-header-bg);
@@ -11910,55 +12354,55 @@
       font-weight: 500;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-header .tabulator-col {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-header .tabulator-col {
       min-height: var(--workbench-grid-row-height);
       border: 0;
       border-right: var(--data-grid-line-width) solid var(--data-grid-line-color);
       background: var(--workbench-grid-header-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-header .tabulator-col:last-child {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-header .tabulator-col:last-child {
       border-right: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-tableholder {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-tableholder {
       height: auto !important;
       max-height: 420px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-col-content {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-col-content {
       padding: 8px 10px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-col-title {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-col-title {
       font-size: var(--app-font-size-table);
       font-weight: var(--app-font-weight-semibold);
       letter-spacing: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-column-title {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-column-title {
       display: inline-flex;
       align-items: center;
       gap: 3px;
       white-space: nowrap;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-row {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-row {
       min-height: var(--workbench-grid-row-height);
       border: 0;
       border-bottom: var(--data-grid-line-width) solid var(--data-grid-line-color);
       background: var(--bs-body-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-row:last-child {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-row:last-child {
       border-bottom: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-row.tabulator-row-even {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-row.tabulator-row-even {
       background: var(--workbench-grid-stripe-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-cell {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-cell {
       height: var(--workbench-grid-row-height);
       padding: 4px 10px;
       border-right: var(--data-grid-line-width) solid var(--data-grid-line-color);
@@ -11966,11 +12410,11 @@
       line-height: 28px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-cell:last-child {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .tabulator-cell:last-child {
       border-right: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .client-pricing-context-candidate-path {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .client-pricing-context-candidate-path {
       width: max-content;
       min-width: max-content;
       flex-wrap: nowrap;
@@ -11978,13 +12422,13 @@
       overflow: visible;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .client-pricing-context-candidate-facet {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .client-pricing-context-candidate-facet {
       flex: 0 0 auto;
       min-width: max-content;
       overflow: visible;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .client-pricing-context-candidate-name {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page .hedge-quick-settings-grid .client-pricing-context-candidate-name {
       overflow: visible;
       text-overflow: clip;
     }
@@ -11993,6 +12437,13 @@
       justify-self: start;
       width: fit-content;
       max-width: calc(100vw - var(--workbench-page-inline-total));
+    }
+
+    #marketPage.market-bootstrap.workbench-page .market-bootstrap-panel:is(
+      [data-market-panel="currencies"],
+      [data-market-panel="pairs"]
+    ) {
+      margin-top: 16px;
     }
 
     #marketPage.market-bootstrap.workbench-page .market-grid-frame,
@@ -12234,21 +12685,6 @@
       pointer-events: none;
     }
 
-    :is(#marketPage, #pricingPage, #clientProfilePage, #pricingRulesPage).workbench-page .workbench-breadcrumb {
-      margin-bottom: 2px;
-      font-size: 13px;
-      line-height: 1.35;
-    }
-
-    :is(#marketPage, #pricingPage, #clientProfilePage, #pricingRulesPage).workbench-page .workbench-breadcrumb .breadcrumb-item,
-    :is(#marketPage, #pricingPage, #clientProfilePage, #pricingRulesPage).workbench-page .workbench-breadcrumb .breadcrumb-item a {
-      color: var(--bs-secondary-color);
-    }
-
-    :is(#marketPage, #pricingPage, #clientProfilePage, #pricingRulesPage).workbench-page .workbench-breadcrumb .breadcrumb-item.active {
-      color: var(--bs-body-color);
-    }
-
     :is(#pricingPage, #pricingRulesPage).unified-bootstrap-workspace.workbench-page .reference-header-filter[readonly] {
       border-color: var(--bs-border-color);
       background-color: var(--bs-secondary-bg);
@@ -12262,10 +12698,6 @@
       box-shadow: none;
     }
 
-    #pricingPage.unified-bootstrap-workspace.workbench-page.is-related-view [data-pricing-context-actions-column] {
-      display: none;
-    }
-
     @keyframes pricing-context-admission-column-focus {
       0%, 100% {
         box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0);
@@ -12276,48 +12708,44 @@
       }
     }
 
-    #executionContextsTable.is-auto-hedging-admission-focused [data-pricing-context-column="autoHedgingAdmissionMode"] {
+    #tradeContextsTable.is-auto-management-admission-focused [data-pricing-context-column="autoManagementAdmissionMode"] {
       animation: pricing-context-admission-column-focus 2.6s ease-out both;
     }
 
-    #pricingRulesTable.is-auto-hedging-admission-focused [data-pricing-rule-column="autoHedgingAdmissionModeOverride"] {
+    #pricingRulesTable.is-auto-management-admission-focused [data-pricing-rule-column="autoManagementAdmissionModeOverride"] {
       animation: pricing-context-admission-column-focus 2.6s ease-out both;
     }
 
-    #executionContextsTable.is-auto-hedging-admission-focused th[data-pricing-context-column="autoHedgingAdmissionMode"] {
+    #tradeContextsTable.is-auto-management-admission-focused th[data-pricing-context-column="autoManagementAdmissionMode"] {
       outline: 2px solid rgba(var(--bs-primary-rgb), 0.38);
       outline-offset: -2px;
     }
 
-    #pricingRulesTable.is-auto-hedging-admission-focused th[data-pricing-rule-column="autoHedgingAdmissionModeOverride"] {
+    #pricingRulesTable.is-auto-management-admission-focused th[data-pricing-rule-column="autoManagementAdmissionModeOverride"] {
       outline: 2px solid rgba(var(--bs-primary-rgb), 0.38);
       outline-offset: -2px;
     }
 
-    #pricingContextAutoHedgingAdmissionHeader:focus {
+    #pricingContextAutoManagementAdmissionHeader:focus {
       outline: 2px solid rgba(var(--bs-primary-rgb), 0.5);
       outline-offset: -2px;
     }
 
-    #pricingRuleAutoHedgingAdmissionHeader:focus {
+    #pricingRuleAutoManagementAdmissionHeader:focus {
       outline: 2px solid rgba(var(--bs-primary-rgb), 0.5);
       outline-offset: -2px;
     }
 
     @media (prefers-reduced-motion: reduce) {
-      #executionContextsTable.is-auto-hedging-admission-focused [data-pricing-context-column="autoHedgingAdmissionMode"] {
+      #tradeContextsTable.is-auto-management-admission-focused [data-pricing-context-column="autoManagementAdmissionMode"] {
         animation: none;
         box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.13);
       }
 
-      #pricingRulesTable.is-auto-hedging-admission-focused [data-pricing-rule-column="autoHedgingAdmissionModeOverride"] {
+      #pricingRulesTable.is-auto-management-admission-focused [data-pricing-rule-column="autoManagementAdmissionModeOverride"] {
         animation: none;
         box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.13);
       }
-    }
-
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page.is-related-view [data-client-profile-actions-column] {
-      display: none;
     }
 
     :is(#marketPage, #pricingPage, #referenceDataPage).workbench-page .reference-related-view-cell {
@@ -12328,9 +12756,18 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 8px;
     }
 
-    /* Execution Context and Reference Data use the same compact rounding in editable rows. */
+    :is(#marketPage, #pricingPage, #referenceDataPage).workbench-page .reference-related-count {
+      min-width: 2ch;
+      color: var(--bs-body-color);
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    /* Trade Context and Reference Data use the same compact rounding in editable rows. */
     :is(#pricingPage, #referenceDataPage).unified-bootstrap-workspace.workbench-page .inline-edit-control {
       border-radius: var(--workbench-radius);
     }
@@ -12790,27 +13227,25 @@
     .workbench-detail-heading {
       display: flex;
       min-width: 0;
-      align-items: center;
-      gap: 10px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
     }
 
     .workbench-detail-title-block {
       min-width: 0;
     }
 
-    .workbench-detail-back-button {
-      display: inline-flex;
-      min-height: 30px;
-      flex: 0 0 auto;
-      align-items: center;
-      gap: 5px;
-      border-radius: var(--workbench-radius);
-      font-size: 12px;
-      font-weight: 500;
+    .workbench-context-label {
+      margin: 4px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: 13px;
     }
 
-    .workbench-detail-back-button .button-icon {
-      font-size: 17px;
+    .workbench-editor-title {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-page-subtitle {
@@ -12834,12 +13269,12 @@
       text-transform: none;
     }
 
-    #fxDealsPage.workbench-page .trades-tab-panel {
+    #dealsPage.workbench-page .trades-tab-panel {
       min-width: 0;
       margin-top: 12px;
     }
 
-    #fxDealsPage.workbench-page .fx-deals-grid {
+    #dealsPage.workbench-page .deals-grid {
       height: auto;
       max-height: calc(100vh - 225px);
     }
@@ -13268,9 +13703,177 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table tbody tr.is-editing,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page.is-related-view .client-profile-table tbody tr,
     #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table tbody tr {
       cursor: default;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-filter-toolbar {
+      display: flex;
+      width: 100%;
+      min-height: 56px;
+      box-sizing: border-box;
+      align-items: center;
+      gap: 16px;
+      margin-top: 12px;
+      padding: 8px 10px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-filter-toolbar[hidden] {
+      display: none;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-filter-toolbar-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--bs-emphasis-color);
+      font-size: var(--app-font-size-body);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-filter-toolbar-title .button-icon {
+      color: var(--app-primary-text);
+      font-size: 17px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-filter {
+      display: flex;
+      min-width: 0;
+      flex: 1 1 auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-picker {
+      position: relative;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-toggle {
+      display: flex;
+      width: 100%;
+      min-height: 38px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      padding: 4px 8px;
+      color: var(--bs-body-color);
+      text-align: left;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-toggle:hover {
+      border-color: var(--app-primary-border);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-toggle:focus-visible {
+      border-color: var(--bs-primary);
+      box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);
+      outline: 0;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-value {
+      display: flex;
+      min-width: 0;
+      flex: 1 1 auto;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-placeholder {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-body);
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-chevron {
+      flex: 0 0 auto;
+      color: var(--bs-secondary-color);
+      font-size: 20px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-menu {
+      position: absolute;
+      z-index: 30;
+      top: calc(100% + 4px);
+      left: 0;
+      display: grid;
+      width: 100%;
+      max-height: 300px;
+      gap: 5px;
+      overflow: auto;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow);
+      padding: 6px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-menu[hidden] {
+      display: none;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-option {
+      min-height: 40px;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-option:is(:hover, :focus-visible, .is-selected) {
+      border-color: var(--bs-primary);
+      background: var(--palette-blue-100);
+      outline: none;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-all-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .trading-counterparty-trade-context-clear {
+      display: inline-flex;
+      min-height: 38px;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 6px;
+    }
+
+    @media (max-width: 760px) {
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page
+      .trading-counterparty-filter-toolbar {
+        flex-wrap: wrap;
+      }
+
+      #clientProfilePage.unified-bootstrap-workspace.workbench-page
+      .trading-counterparty-trade-context-filter {
+        flex-basis: 100%;
+      }
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-profile-table tbody tr:nth-child(even) td {
@@ -13657,7 +14260,7 @@
       background: var(--workbench-grid-hover-bg);
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-panel {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-panel {
       display: grid;
       gap: 0;
       padding: 0;
@@ -13666,19 +14269,19 @@
       background: var(--bs-body-bg);
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-head,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-heading {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-head,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-heading {
       display: flex;
       min-width: 0;
       align-items: center;
       gap: 8px;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-head {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-head {
       justify-content: space-between;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-title {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-title {
       margin: 0;
       color: var(--bs-emphasis-color);
       font-size: var(--app-font-size-section-title);
@@ -13694,19 +14297,19 @@
       background: var(--bs-body-bg);
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page #clientExecutionContextsAttachButton {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page #clientTradeContextsAttachButton {
       flex: 0 0 auto;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-table-head,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list li {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-table-head,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-list li {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(128px, 154px) minmax(74px, 92px) minmax(58px, 68px);
       gap: 8px;
       align-items: center;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-table-head {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-table-head {
       min-height: 30px;
       margin-bottom: -8px;
       padding: 5px 7px;
@@ -13718,11 +14321,11 @@
       font-weight: 500;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-table-head span:nth-child(n + 3) {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-table-head span:nth-child(n + 3) {
       text-align: center;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-list {
       display: grid;
       margin: 0;
       padding: 0;
@@ -13734,7 +14337,7 @@
       list-style: none;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list li {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-list li {
       min-height: var(--workbench-grid-row-height);
       padding: 6px 7px;
       border-bottom: 1px solid var(--bs-border-color);
@@ -13743,31 +14346,31 @@
       font-weight: 400;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list li:last-child {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-list li:last-child {
       border-bottom: 0;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list li:hover {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-list li:hover {
       background: var(--workbench-grid-hover-bg);
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-context-path {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-context-path {
       min-width: 0;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-context-path .client-pricing-context-candidate-path {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-context-path .client-pricing-context-candidate-path {
       flex-wrap: wrap;
       gap: 4px;
       overflow: visible;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-context-rule-count,
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-context-actions {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-context-rule-count,
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-context-actions {
       justify-self: center;
       font-variant-numeric: tabular-nums;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-empty {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-empty {
       display: block;
       grid-column: 1 / -1;
       color: var(--bs-secondary-color);
@@ -14014,13 +14617,13 @@
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
     .client-pricing-configuration-rule-actions
-    .reference-grid-action {
+    .reference-grid-action:not(.btn-primary) {
       background: var(--app-table-action-bg) !important;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
     .client-pricing-configuration-rule-actions
-    .reference-grid-action:hover:not(:disabled) {
+    .reference-grid-action:not(.btn-primary):hover:not(:disabled) {
       background: var(--app-table-action-hover-bg) !important;
       color: var(--bs-btn-color) !important;
     }
@@ -14035,7 +14638,7 @@
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
     .client-pricing-configuration-rule-actions
-    .reference-grid-action:active:not(:disabled) {
+    .reference-grid-action:not(.btn-primary):active:not(:disabled) {
       background: var(--app-table-action-active-bg) !important;
       color: var(--bs-btn-color) !important;
     }
@@ -14059,7 +14662,7 @@
       color: var(--bs-secondary-color);
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-list .client-pricing-configuration-add-row {
       position: relative;
       display: flex;
       justify-content: flex-start;
@@ -14067,7 +14670,7 @@
       align-items: center;
     }
 
-    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-execution-contexts-list .client-pricing-configuration-add-row::after {
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-trade-contexts-list .client-pricing-configuration-add-row::after {
       content: "";
       position: absolute;
       top: calc(50% + 1px);
@@ -14092,13 +14695,14 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-admission-control {
       display: grid;
       width: 100%;
-      grid-template-columns: minmax(220px, 1fr);
+      min-height: 34px;
+      grid-template-columns: minmax(120px, 1fr) auto;
       align-items: center;
-      gap: 0;
-      overflow: hidden;
+      gap: 12px;
       border: 1px solid var(--bs-border-color);
       border-radius: var(--bs-border-radius-sm);
       background: var(--bs-body-bg);
+      padding: 5px 9px;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-admission-control:focus-within {
@@ -14107,20 +14711,29 @@
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
-    .client-pricing-configuration-inline-admission-control
-    .form-select {
-      min-height: 30px;
-      border: 0;
-      border-radius: 0;
-      box-shadow: none;
+    .client-pricing-configuration-inline-mode-override-switch {
+      display: inline-flex;
+      min-height: 0;
+      align-items: center;
+      gap: 7px;
+      margin: 0;
+      white-space: nowrap;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
-    .client-pricing-configuration-inline-admission-control
-    .form-select:disabled {
-      background-color: var(--bs-secondary-bg);
+    .client-pricing-configuration-inline-mode-override-switch
+    .form-check-input {
+      float: none;
+      flex: 0 0 auto;
+      margin: 0;
+    }
+
+    #clientProfilePage.unified-bootstrap-workspace.workbench-page
+    .client-pricing-configuration-inline-mode-override-switch
+    .form-check-label {
       color: var(--bs-secondary-color);
-      opacity: 1;
+      font-size: 11px;
+      font-weight: 600;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-inline-mode-help {
@@ -14149,7 +14762,7 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
     .client-pricing-configuration-inline-editor
     .client-pricing-configuration-inline-field.is-admission {
-      flex: 0 1 300px;
+      flex: 0 1 390px;
       max-width: 100%;
     }
 
@@ -14479,7 +15092,7 @@
       width: 244px;
     }
 
-    .client-context-attach-execution-col {
+    .client-context-attach-originating-col {
       width: 230px;
     }
 
@@ -14546,6 +15159,7 @@
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .profile-detail-panel {
       width: min(var(--users-frame-width), 100%);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page #usersView .users-table {
@@ -14618,8 +15232,105 @@
     .workbench-page .workbench-section-tabs .button-icon {
       font-size: 17px;
     }
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-workspace-layout {
+    #positionManagementSettingsPage .auto-management-settings-section {
+      overflow: hidden;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius-lg);
+      background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-head {
+      display: grid;
+      gap: 5px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-head :is(h2, h4) {
+      margin: 0;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-title-row .reference-grid-action {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      min-height: 30px;
+      padding: 0;
+      line-height: 1;
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-title-row .reference-grid-action .button-icon {
+      margin: 0;
+      line-height: 1;
+    }
+
+    #positionManagementSettingsPage .auto-management-settings-section-head p,
+    #positionManagementSettingsPage .auto-management-policy-guidance,
+    #positionManagementSettingsPage .auto-management-policy-inheritance-note p {
+      margin: 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      line-height: 1.5;
+    }
+
+    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link {
+      color: inherit;
+      text-decoration-line: underline;
+      text-decoration-style: dotted;
+      text-decoration-color: color-mix(in srgb, currentColor 58%, transparent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link:hover,
+    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link:focus-visible {
+      color: var(--bs-body-color);
+      text-decoration-style: solid;
+      text-decoration-color: currentColor;
+    }
+
+    #positionManagementSettingsPage .auto-management-policy-guidance {
+      padding: 12px 20px;
+      border-top: 1px solid var(--bs-border-color);
+    }
+
+    #positionManagementSettingsPage .auto-management-policy-inheritance-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 12px 20px;
+      border-top: 1px solid var(--bs-border-color);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #positionManagementSettingsPage .auto-management-policy-inheritance-note > .button-icon {
+      color: var(--palette-blue-600);
+      font-size: 18px;
+    }
+
+    #positionManagementSettingsPage .auto-management-admission-settings-status {
+      padding: 0 20px;
+    }
+
+    #positionManagementSettingsPage .auto-management-admission-settings-status:not(:empty) {
+      padding-bottom: 12px;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-workspace-layout {
       display: grid;
       grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
       align-items: start;
@@ -14627,8 +15338,8 @@
       margin-top: 12px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-sidebar {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-sidebar {
       position: sticky;
       top: 12px;
       overflow: hidden;
@@ -14636,17 +15347,15 @@
       background: var(--bs-body-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation {
       display: grid;
       gap: 4px;
       padding: 8px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-link,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-group-toggle {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation-link {
       width: 100%;
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
@@ -14665,230 +15374,92 @@
       text-decoration: none;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-link:hover,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-group-toggle:hover {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation-link:hover {
       background: var(--bs-tertiary-bg);
       color: var(--bs-body-color);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-link:focus-visible,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-group-toggle:focus-visible {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation-link:focus-visible {
       outline: 3px solid color-mix(in srgb, var(--bs-primary) 22%, transparent);
       outline-offset: 1px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-link.is-active {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation-link.is-active {
       border-color: var(--selection-accent);
       background: var(--control-soft-bg);
       color: var(--bs-body-color);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-link > .button-icon,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-group-toggle > .button-icon:first-child {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-navigation-link > .button-icon {
       color: var(--palette-blue-600);
       font-size: 20px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-group {
-      display: grid;
-      gap: 2px;
+    #positionManagementSettingsPage .position-management-settings-navigation-link > span:only-child {
+      grid-column: 1 / -1;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-group-toggle {
-      border: 0;
+    #positionManagementSettingsPage .position-management-trade-tabs {
+      margin: 0 0 16px;
+      flex-wrap: wrap;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-group:has(
-      .hedging-settings-navigation-sublink.is-active
-    ) > .hedging-settings-navigation-group-toggle {
-      background: color-mix(
-        in srgb,
-        var(--control-soft-bg) 58%,
-        var(--bs-body-bg)
-      );
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-chevron {
-      color: var(--bs-secondary-color);
-      transition: transform 120ms ease;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-group-toggle[aria-expanded="true"]
-    .hedging-settings-navigation-chevron {
-      transform: rotate(180deg);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-subnav {
-      display: grid;
-      gap: 2px;
-      margin: 2px 0 2px 22px;
-      padding-left: 12px;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-subnav[hidden] {
+    #positionManagementSettingsPage .position-management-trade-tabs[hidden] {
       display: none;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-navigation-sublink {
-      min-height: 38px;
-      font-size: var(--app-font-size-caption);
-      font-weight: 600;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-content {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-content {
       min-width: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-content-panel[hidden],
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-body[hidden] {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-content-panel[hidden] {
       display: none;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-entry-route-head h3 {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-entry-route-head h3 {
       margin: 0;
       color: var(--bs-body-color);
       font-size: var(--app-font-size-section-title);
       font-weight: var(--app-font-weight-semibold);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-entry-route-head p,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-copy p {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-entry-route-head p,
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-copy p {
       margin: 4px 0 0;
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-caption);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-entry-route-panel {
-      display: grid;
-      gap: 12px;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment {
-      overflow: hidden;
-      border: 1px solid var(--bs-border-color);
-      border-radius: calc(var(--bs-border-radius) + 2px);
-      background: var(--bs-body-bg);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment.is-expanded {
-      border-color: color-mix(in srgb, var(--bs-primary) 32%, var(--bs-border-color));
-      box-shadow: var(--bs-box-shadow-sm);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-heading {
-      margin: 0;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-toggle {
-      width: 100%;
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto auto;
-      align-items: center;
-      gap: 12px;
-      padding: 13px 16px;
-      border: 0;
-      background: var(--bs-body-bg);
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-entry-route-destination {
       color: var(--bs-body-color);
-      text-align: left;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-toggle:hover,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-toggle:focus-visible {
-      background: var(--bs-tertiary-bg);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-toggle:focus-visible {
-      outline: 3px solid color-mix(in srgb, var(--bs-primary) 22%, transparent);
-      outline-offset: -3px;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-icon {
-      color: var(--palette-blue-600);
-      font-size: 22px;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-copy {
-      display: grid;
-      gap: 1px;
-      min-width: 0;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-copy strong {
-      font-size: var(--app-font-size-control);
       font-weight: var(--app-font-weight-semibold);
+      white-space: nowrap;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-toggle .badge {
-      font-size: var(--app-font-size-caption);
-      font-weight: 600;
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-entry-route-panel {
+      display: grid;
+      gap: 16px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-chevron {
-      grid-column: 4;
-      color: var(--bs-secondary-color);
-      transition: transform 120ms ease;
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-toggle[aria-expanded="true"]
-    .auto-hedging-trade-segment-chevron {
-      transform: rotate(180deg);
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-trade-segment-body {
-      border-top: 1px solid var(--bs-border-color);
-      background: color-mix(in srgb, var(--bs-tertiary-bg) 42%, var(--bs-body-bg));
-    }
-
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-panel {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-panel {
       display: block;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-body {
-      --auto-hedging-admission-tree-bg: color-mix(
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-body {
+      --auto-management-admission-tree-bg: color-mix(
         in srgb,
         var(--bs-tertiary-bg) 42%,
         var(--bs-body-bg)
@@ -14897,11 +15468,11 @@
       display: grid;
       gap: 4px;
       padding: 12px 20px 16px 54px;
-      background: var(--auto-hedging-admission-tree-bg);
+      background: var(--auto-management-admission-tree-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-rule-tree::before {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-rule-tree::before {
       position: absolute;
       top: 0;
       bottom: 16px;
@@ -14911,16 +15482,16 @@
       content: "";
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-copy h5 {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-copy :is(h3, h5) {
       margin: 0;
       color: var(--bs-body-color);
       font-size: var(--app-font-size-section-title);
       font-weight: var(--app-font-weight-semibold);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block {
       position: relative;
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
@@ -14931,8 +15502,8 @@
       background: transparent;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block::before {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block::before {
       position: absolute;
       top: 50%;
       left: -27px;
@@ -14941,40 +15512,40 @@
       content: "";
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block:last-of-type::after {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block:last-of-type::after {
       position: absolute;
       top: calc(50% + 1px);
       bottom: -20px;
       left: -28px;
       width: 3px;
-      background: var(--auto-hedging-admission-tree-bg);
+      background: var(--auto-management-admission-tree-bg);
       content: "";
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-icon {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-icon {
       flex: 0 0 auto;
       color: var(--palette-blue-600);
       font-size: 22px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-copy {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-copy {
       display: grid;
       gap: 2px;
       min-width: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-core-rule-actions {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-core-rule-actions {
       display: flex;
       align-items: center;
       justify-content: flex-end;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block .reference-grid-action {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block .reference-grid-action {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -14985,8 +15556,8 @@
       line-height: 1;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block .reference-grid-action .button-icon {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block .reference-grid-action .button-icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -14994,28 +15565,29 @@
       line-height: 1;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-actions {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-actions {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-actions {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-actions {
       justify-content: flex-end;
       gap: 8px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-policy-block-actions .reference-grid-action {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-policy-block-actions .reference-grid-action {
       background: var(--app-table-action-bg);
     }
 
-    .auto-hedging-admission-pair-table-viewport {
+    .auto-management-admission-pair-table-viewport {
       position: relative;
-      width: 100%;
+      width: fit-content;
+      max-width: 100%;
       max-height: min(56vh, 520px);
       overflow: auto;
       border: var(--data-grid-line-width) solid var(--data-grid-line-color);
@@ -15023,8 +15595,8 @@
       background: var(--bs-body-bg);
     }
 
-    .auto-hedging-admission-pair-table {
-      width: 100%;
+    .auto-management-admission-pair-table {
+      width: auto;
       margin: 0;
       border: 0;
       border-collapse: separate;
@@ -15036,18 +15608,14 @@
       font-size: var(--workbench-grid-size);
     }
 
-    .auto-hedging-admission-pair-table {
-      min-width: 1040px;
-    }
-
-    .auto-hedging-admission-pair-table thead {
+    .auto-management-admission-pair-table thead {
       position: sticky;
       top: 0;
       z-index: 2;
       background: var(--workbench-grid-header-bg);
     }
 
-    .auto-hedging-admission-pair-table :is(th, td) {
+    .auto-management-admission-pair-table :is(th, td) {
       height: var(--workbench-grid-row-height);
       padding: 7px 8px;
       border: 0;
@@ -15059,15 +15627,15 @@
       vertical-align: middle;
     }
 
-    .auto-hedging-admission-pair-table tr > :last-child {
+    .auto-management-admission-pair-table tr > :last-child {
       border-right: 0;
     }
 
-    .auto-hedging-admission-pair-table tbody tr:last-child td {
+    .auto-management-admission-pair-table tbody tr:last-child td {
       border-bottom: 0;
     }
 
-    .auto-hedging-admission-pair-table thead th {
+    .auto-management-admission-pair-table thead th {
       height: 65px;
       padding: 5px 7px;
       background: var(--workbench-grid-header-bg);
@@ -15078,15 +15646,63 @@
       vertical-align: top;
     }
 
-    .auto-hedging-admission-pair-table tbody tr:nth-child(even) td {
+    .auto-management-admission-pair-table tbody tr:nth-child(even) td {
       background: var(--workbench-grid-stripe-bg);
     }
 
-    .auto-hedging-admission-pair-table tbody tr:hover td {
-      background: var(--workbench-grid-hover-bg);
+    #positionManagementSettingsPage
+    .auto-management-admission-pair-table tbody tr:hover > td {
+      background: var(--bs-body-bg) !important;
     }
 
-    .auto-hedging-admission-pair-table .reference-column-head {
+    #positionManagementSettingsPage
+    .auto-management-admission-pair-table
+    tbody tr:nth-child(even):hover > td {
+      background: var(--workbench-grid-stripe-bg) !important;
+    }
+
+    #positionManagementSettingsPage
+    .auto-management-admission-pair-table
+    tbody tr:hover > .auto-mode-eligibility-pair-cell {
+      background: var(--bs-body-bg) !important;
+    }
+
+    #positionManagementSettingsPage
+    .auto-management-admission-pair-table
+    tbody tr:has(> td:not(.auto-mode-eligibility-pair-cell):hover)
+    > td:not(.auto-mode-eligibility-pair-cell) {
+      background: var(--workbench-grid-hover-bg) !important;
+    }
+
+    .auto-management-admission-pair-table .auto-mode-eligibility-pair-cell {
+      vertical-align: middle;
+      background: var(--bs-body-bg);
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-row-actions .reference-grid-action {
+      display: inline-flex;
+      width: 32px;
+      height: 30px;
+      min-height: 30px;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-row-actions .reference-grid-action .button-icon {
+      display: inline-flex;
+      width: 1em;
+      height: 1em;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      line-height: 1;
+    }
+
+    .auto-management-admission-pair-table .reference-column-head {
       display: flex;
       min-width: 0;
       min-height: 53px;
@@ -15095,11 +15711,16 @@
       gap: 5px;
     }
 
-    .auto-hedging-admission-pair-table .reference-column-head-static {
+    .auto-management-admission-pair-table .reference-column-head-static {
       justify-content: center;
     }
 
-    .auto-hedging-admission-pair-table .reference-column-title {
+    .auto-management-admission-pair-table .reference-column-head-right {
+      align-items: flex-end;
+      text-align: right;
+    }
+
+    .auto-management-admission-pair-table .reference-column-title {
       display: inline-flex;
       min-width: 0;
       align-items: center;
@@ -15108,7 +15729,7 @@
       white-space: nowrap;
     }
 
-    .auto-hedging-admission-pair-table .reference-header-filter {
+    .auto-management-admission-pair-table .reference-header-filter {
       display: block;
       width: 100%;
       min-width: 0;
@@ -15126,172 +15747,183 @@
       line-height: 20px;
     }
 
-    .auto-hedging-admission-pair-table select.reference-header-filter {
+    .auto-management-admission-pair-table select.reference-header-filter {
       padding-right: 28px;
       background-size: 12px 9px;
     }
 
-    .auto-hedging-admission-pair-table .reference-header-filter:focus {
+    .auto-management-admission-pair-table .reference-header-filter:focus {
       border-color: var(--bs-primary);
       outline: 0;
       box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.16);
     }
 
-    .auto-hedging-admission-deviation-limit {
+    .auto-management-admission-deviation-limit {
       width: 100%;
     }
 
-    .auto-hedging-admission-deviation-limit .input-group-text {
+    .auto-management-admission-deviation-limit .input-group-text {
       min-width: 42px;
       justify-content: center;
       font-weight: 600;
     }
 
-    .auto-hedging-admission-pair-code-col {
-      width: 18%;
-    }
-
-    .auto-hedging-admission-pair-enabled-col {
-      width: 22%;
-    }
-
-    .auto-hedging-admission-pair-limit-col {
-      width: 31%;
-    }
-
-    .auto-hedging-admission-pair-deviation-col {
-      width: 29%;
-    }
-
-    .auto-hedging-admission-pair-table th:nth-child(2) {
+    .auto-management-admission-pair-table th:nth-child(3) {
       text-align: center;
     }
 
-    .auto-hedging-admission-pair-table th:nth-child(2) .reference-column-head {
+    .auto-management-admission-pair-table th:nth-child(3) .reference-column-head {
       align-items: center;
     }
 
-    .auto-hedging-admission-pair-dialog
-    .auto-hedging-admission-pair-enabled {
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-enabled {
       display: flex;
       justify-content: center;
       margin: 0;
       min-height: 24px;
     }
 
-    .auto-hedging-admission-pair-dialog
-    .auto-hedging-admission-pair-enabled .form-check-input {
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-enabled .form-check-input {
       margin-top: 0;
     }
 
-    .auto-hedging-admission-pair-dialog
-    .auto-hedging-admission-pair-limit {
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-limit {
       width: 100%;
     }
 
-    .auto-hedging-admission-pair-dialog
-    .auto-hedging-admission-pair-limit .input-group-text {
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-limit .input-group-text {
       min-width: 54px;
       justify-content: center;
       font-weight: 600;
     }
 
-    .auto-hedging-admission-pair-dialog
-    .auto-hedging-admission-pair-empty {
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-empty {
       padding: 24px 16px;
       color: var(--bs-secondary-color);
       text-align: center;
     }
 
-    .auto-hedging-admission-pair-dialog {
-      width: min(1180px, calc(100vw - 32px));
-      max-width: none;
+    .auto-management-admission-criteria-page {
+      min-width: 0;
     }
 
-    .auto-hedging-admission-pair-dialog .modal-content {
-      max-height: min(86vh, 760px);
+    .auto-management-admission-criteria-page .workbench-page-header {
+      border-bottom: 0;
     }
 
-    .auto-hedging-admission-pair-dialog .modal-header {
-      align-items: flex-start;
-    }
-
-    .auto-hedging-admission-pair-dialog .modal-header h2 {
-      margin: 0;
-      font-size: var(--app-font-size-section-title);
-    }
-
-    .auto-hedging-admission-pair-dialog .modal-header h2:focus {
-      outline: 0;
-    }
-
-    .auto-hedging-admission-pair-dialog .modal-header p {
-      margin: 4px 0 0;
-      color: var(--bs-secondary-color);
-      font-size: var(--app-font-size-caption);
-    }
-
-    .auto-hedging-admission-pair-dialog .modal-body {
+    .auto-management-admission-criteria-page
+    .auto-management-admission-criteria-panel {
+      display: flex;
+      width: fit-content;
+      max-width: 100%;
       min-height: 0;
-      padding: 14px;
+      align-self: flex-start;
+      flex-direction: column;
       overflow: hidden;
+      border: var(--data-grid-line-width) solid var(--data-grid-line-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
-    .auto-hedging-admission-pair-dialog .auto-hedging-admission-pair-table-viewport {
-      max-height: min(58vh, 560px);
+    .auto-management-admission-criteria-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    @keyframes auto-hedging-admission-column-focus {
-      0%, 70% {
-        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.14);
-      }
-
-      100% {
-        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0);
-      }
+    .auto-management-admission-criteria-heading {
+      display: grid;
+      flex: 1 1 auto;
+      gap: 3px;
+      min-width: 0;
     }
 
-    .auto-hedging-admission-pair-dialog
-    .is-auto-hedging-admission-column-focused {
-      animation: auto-hedging-admission-column-focus 2.6s ease-out both;
+    .auto-management-admission-criteria-tools,
+    .auto-management-admission-criteria-edit-actions {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 6px;
     }
 
-    .auto-hedging-admission-pair-dialog
-    thead .is-auto-hedging-admission-column-focused {
-      outline: 2px solid rgba(var(--bs-primary-rgb), 0.38);
-      outline-offset: -2px;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .auto-hedging-admission-pair-dialog
-      .is-auto-hedging-admission-column-focused {
-        animation: none;
-        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.14);
-      }
-    }
-
-    .auto-hedging-admission-dialog-status {
-      margin-right: auto;
-      color: var(--bs-secondary-color);
-      font-size: var(--app-font-size-caption);
-    }
-
-    .auto-hedging-admission-dialog-status:empty {
+    .auto-management-admission-criteria-edit-actions[hidden] {
       display: none;
     }
 
-    .auto-hedging-admission-dialog-status.is-error {
-      color: var(--bs-danger-text-emphasis);
+    .auto-management-admission-criteria-page
+    .auto-management-admission-criteria-tools .reference-grid-action {
+      display: inline-flex;
+      width: 32px;
+      height: 30px;
+      min-height: 30px;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border-radius: var(--workbench-radius);
+      background: var(--app-table-action-bg);
     }
 
-    .auto-hedging-admission-dialog-status.is-success {
-      color: var(--bs-success-text-emphasis);
+    .auto-management-admission-criteria-page
+    .auto-management-admission-criteria-tools .reference-grid-action .button-icon {
+      font-size: 16px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-policy-empty-state,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-shared-policy-note {
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-table-viewport {
+      min-height: 0;
+      max-height: calc(100vh - 250px);
+      border: 0;
+      border-radius: 0;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-table :is(th, td) {
+      border: 0;
+      border-right: var(--data-grid-line-width) solid var(--data-grid-line-color);
+      border-bottom: var(--data-grid-line-width) solid var(--data-grid-line-color);
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-table tr > :last-child {
+      border-right: 0;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .auto-management-admission-criteria-page
+    .auto-management-admission-pair-table
+    .auto-mode-eligibility-pair-cell.is-table-end {
+      border-bottom: 0;
+    }
+
+    .auto-management-admission-read-value {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .auto-mode-eligibility-trade-type {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-policy-empty-state,
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-note {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr);
       gap: 12px;
@@ -15303,39 +15935,39 @@
       background: var(--bs-body-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-policy-empty-state > .button-icon,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-shared-policy-note > .button-icon {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-policy-empty-state > .button-icon,
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-note > .button-icon {
       color: var(--palette-blue-600);
       font-size: 22px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-policy-empty-state p,
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-shared-policy-note p {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-policy-empty-state p,
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-note p {
       margin: 3px 0 0;
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-caption);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-shared-policy-note {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-note {
       border-left: 1px solid var(--bs-border-color);
       box-shadow: var(--bs-box-shadow-sm);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-shared-policy-summary {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       margin: 0;
       padding: 0 16px 16px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-shared-policy-summary > div {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary > div {
       display: grid;
       gap: 4px;
       min-width: 0;
@@ -15345,41 +15977,41 @@
       background: var(--bs-body-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-shared-policy-summary > div:first-child {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary > div:first-child {
       border-radius: var(--bs-border-radius) 0 0 var(--bs-border-radius);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-shared-policy-summary > div:last-child {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary > div:last-child {
       border-right: 1px solid var(--bs-border-color);
       border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-shared-policy-summary dt {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary dt {
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-caption);
       font-weight: 500;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-shared-policy-summary dd {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-shared-policy-summary dd {
       margin: 0;
       color: var(--bs-body-color);
       font-size: var(--app-font-size-control);
       font-weight: 700;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-technical-trade-types {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-technical-trade-types {
       display: grid;
       gap: 10px;
       padding: 16px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-technical-trade-types > div {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-technical-trade-types > div {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
       align-items: center;
@@ -15390,131 +16022,131 @@
       background: var(--bs-body-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-technical-trade-types > div > .button-icon {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-technical-trade-types > div > .button-icon {
       color: var(--palette-blue-600);
       font-size: 21px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-technical-trade-types > div > span:nth-child(2) {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-technical-trade-types > div > span:nth-child(2) {
       display: grid;
       gap: 2px;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-technical-trade-types small {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-technical-trade-types small {
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-caption);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-status {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-status {
       min-height: 20px;
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-caption);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-status:empty {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-status:empty {
       display: none;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-status.is-error {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-status.is-error {
       color: var(--bs-danger-text-emphasis);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-status.is-success {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-status.is-success {
       color: var(--bs-success-text-emphasis);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-panel[aria-busy="true"]
-    .auto-hedging-admission-settings-body {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-panel[aria-busy="true"]
+    .auto-management-admission-settings-body {
       opacity: 0.68;
       pointer-events: none;
     }
 
     @media (max-width: 900px) {
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .hedging-settings-workspace-layout {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .position-management-settings-workspace-layout {
         grid-template-columns: 1fr;
         gap: 14px;
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .hedging-settings-sidebar {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .position-management-settings-sidebar {
         position: static;
       }
     }
 
     @media (max-width: 720px) {
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-trade-segment-toggle {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-trade-segment-toggle {
         grid-template-columns: auto minmax(0, 1fr) auto;
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-trade-segment-toggle .badge {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-trade-segment-toggle .badge {
         grid-column: 2;
         justify-self: start;
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-trade-segment-chevron {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-trade-segment-chevron {
         grid-column: 3;
         grid-row: 1 / span 2;
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-shared-policy-summary {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-shared-policy-summary {
         grid-template-columns: 1fr;
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-shared-policy-summary > div {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-shared-policy-summary > div {
         border-right: 1px solid var(--bs-border-color);
         border-bottom: 0;
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-shared-policy-summary > div:first-child {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-shared-policy-summary > div:first-child {
         border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-shared-policy-summary > div:last-child {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-shared-policy-summary > div:last-child {
         border-bottom: 1px solid var(--bs-border-color);
         border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius);
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-admission-policy-block {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-admission-policy-block {
         grid-template-columns: auto minmax(0, 1fr);
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-admission-core-rule-actions,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-admission-policy-block-actions {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-admission-core-rule-actions,
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-admission-policy-block-actions {
         grid-column: 1 / -1;
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-admission-core-rule-actions {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-admission-core-rule-actions {
         justify-content: flex-start;
       }
 
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-      .auto-hedging-admission-policy-block-actions {
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+      .auto-management-admission-policy-block-actions {
         justify-content: space-between;
       }
 
     }
-    /* FX Position keeps its mirrored domain layout while following the Bootstrap 5 + Tabulator workbench contract. */
-    #mainPage.fx-position-bootstrap.workbench-page {
+    /* Position keeps its mirrored domain layout while following the Bootstrap 5 + Tabulator workbench contract. */
+    #mainPage.position-bootstrap.workbench-page {
       --app-primary: var(--palette-blue-500);
       --app-primary-rgb: 13, 110, 253;
       --app-primary-hover: var(--palette-blue-600);
@@ -15560,8 +16192,8 @@
       --market-trade-border-active: var(--palette-yellow-600);
       --market-trade-text: var(--palette-yellow-900);
       --market-trade-focus-ring: rgba(204, 154, 6, 0.24);
-      --fx-position-section-rule-width: 2px;
-      --fx-position-toolbar-gap: 8px;
+      --position-section-rule-width: 2px;
+      --position-toolbar-gap: 8px;
       display: flex;
       height: calc(100vh - var(--workspace-nav-height));
       min-height: 0;
@@ -15571,11 +16203,11 @@
       font-size: var(--workbench-body-size);
     }
 
-    body:has(#mainPage.fx-position-bootstrap.workbench-page:not([hidden])) {
+    body:has(#mainPage.position-bootstrap.workbench-page:not([hidden])) {
       overflow: hidden;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .action-bar {
+    #mainPage.position-bootstrap.workbench-page .action-bar {
       flex: 0 0 auto;
       min-height: 42px;
       margin: 0;
@@ -15584,7 +16216,7 @@
       background: var(--bs-body-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-header-tools {
+    #mainPage.position-bootstrap.workbench-page .position-header-tools {
       display: flex;
       min-width: 0;
       align-items: center;
@@ -15592,17 +16224,17 @@
       margin-left: auto;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-header-tools .workbench-page-status {
+    #mainPage.position-bootstrap.workbench-page .position-header-tools .workbench-page-status {
       margin: 0;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid-layout-host {
+    #mainPage.position-bootstrap.workbench-page .position-grid-layout-host {
       display: flex;
       flex: 0 0 auto;
       align-items: center;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .page-title {
+    #mainPage.position-bootstrap.workbench-page .page-title {
       margin: 0;
       color: var(--bs-emphasis-color);
       font-size: var(--workbench-title-size);
@@ -15612,18 +16244,18 @@
       text-transform: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batching-workspace {
+    #mainPage.position-bootstrap.workbench-page .batching-workspace {
       display: grid;
       min-height: 0;
       flex: 1 1 auto;
-      grid-template-columns: var(--fx-position-ccy-pair-selector-width, 136px) minmax(0, 1fr);
+      grid-template-columns: var(--position-ccy-pair-selector-width, 136px) minmax(0, 1fr);
       grid-template-rows: minmax(0, 1fr) auto;
       align-items: stretch;
       gap: 10px;
       margin-top: 10px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-panel {
+    #mainPage.position-bootstrap.workbench-page .currency-pair-panel {
       display: flex;
       min-height: 0;
       align-self: stretch;
@@ -15634,39 +16266,17 @@
       border: 1px solid var(--bs-border-color);
       border-radius: var(--workbench-radius);
       background: var(--bs-body-bg);
-      box-shadow: none;
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-footer {
-      display: grid;
+    #mainPage.position-bootstrap.workbench-page .position-footer {
+      display: block;
       min-width: 0;
       grid-column: 1 / -1;
-      grid-template-columns: var(--fx-position-ccy-pair-selector-width, 136px) minmax(0, 1fr);
-      align-items: center;
-      gap: 10px;
       padding-top: 0;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page #resetDemoTradesButton {
-      width: 100%;
-      min-height: 32px;
-      padding: 5px 7px;
-      border-radius: var(--workbench-radius);
-      font-size: 11px;
-      font-weight: 500;
-      line-height: 1.25;
-      white-space: normal;
-    }
-
-    #mainPage.fx-position-bootstrap.workbench-page #resetDemoTradesButton:disabled {
-      border-color: var(--bs-border-color);
-      background: var(--bs-tertiary-bg);
-      color: var(--bs-secondary-color);
-      cursor: default;
-      opacity: 0.58;
-    }
-
-    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-title {
+    #mainPage.position-bootstrap.workbench-page .currency-pair-title {
       margin: 0;
       padding: 9px 10px;
       border: 0;
@@ -15680,7 +16290,7 @@
       text-transform: uppercase;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-list {
+    #mainPage.position-bootstrap.workbench-page .currency-pair-list {
       display: grid;
       min-width: 0;
       min-height: 0;
@@ -15693,7 +16303,7 @@
       padding: 6px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-button {
+    #mainPage.position-bootstrap.workbench-page .currency-pair-button {
       display: flex;
       width: 100%;
       min-width: 0;
@@ -15711,19 +16321,19 @@
       text-align: left;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-button:hover {
+    #mainPage.position-bootstrap.workbench-page .currency-pair-button:hover {
       border-color: var(--bs-secondary-color);
       background: var(--bs-tertiary-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-button.is-active {
+    #mainPage.position-bootstrap.workbench-page .currency-pair-button.is-active {
       border-color: var(--bs-primary-border-subtle);
       background: var(--bs-primary-bg-subtle);
       color: var(--bs-primary-text-emphasis);
       font-weight: 500;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-count {
+    #mainPage.position-bootstrap.workbench-page .currency-pair-count {
       display: inline-flex;
       min-width: 20px;
       height: 20px;
@@ -15739,7 +16349,7 @@
       line-height: 20px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     .currency-pair-button:hover:not(.is-active)
     .currency-pair-count {
       border-color: var(--palette-gray-400);
@@ -15747,19 +16357,19 @@
       color: var(--palette-gray-800);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-button.is-active .currency-pair-count {
+    #mainPage.position-bootstrap.workbench-page .currency-pair-button.is-active .currency-pair-count {
       border-color: rgba(var(--bs-primary-rgb), 0.22);
       background: rgba(var(--bs-primary-rgb), 0.12);
       color: var(--bs-primary-text-emphasis);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .currency-pair-empty {
+    #mainPage.position-bootstrap.workbench-page .currency-pair-empty {
       padding: 5px 4px;
       color: var(--bs-secondary-color);
       font-size: 12px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batching-workspace-main {
+    #mainPage.position-bootstrap.workbench-page .batching-workspace-main {
       display: flex;
       height: 100%;
       min-width: 0;
@@ -15767,17 +16377,83 @@
       flex-direction: column;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-mode-tabs {
-      width: 100%;
+    #mainPage.position-bootstrap.workbench-page .position-mode-control {
+      display: flex;
       flex: 0 0 auto;
-      margin-top: 0;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-mode-tabs .fx-position-mode-icon {
+    #mainPage.position-bootstrap.workbench-page .position-mode-label {
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-control);
+      font-weight: 500;
+    }
+
+    #mainPage.position-bootstrap.workbench-page .position-mode-tabs {
+      display: inline-flex;
+      flex: 0 0 auto;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-tertiary-bg);
+    }
+
+    #mainPage.position-bootstrap.workbench-page .position-mode-option {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 32px;
+      padding: 5px 12px;
+      border: 1px solid transparent;
+      border-radius: calc(var(--bs-border-radius) - 2px);
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-control);
+      font-weight: 500;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    #mainPage.position-bootstrap.workbench-page .position-mode-option:hover:not(.active) {
+      background: var(--bs-body-bg);
+      color: var(--bs-primary);
+    }
+
+    #mainPage.position-bootstrap.workbench-page .position-mode-option.active {
+      border-color: var(--selection-accent);
+      background: var(--control-soft-bg);
+      color: var(--bs-primary-text-emphasis);
+    }
+
+    #mainPage.position-bootstrap.workbench-page .position-mode-option:focus-visible {
+      outline: 2px solid var(--bs-primary);
+      outline-offset: 2px;
+    }
+
+    #mainPage.position-bootstrap.workbench-page .position-mode-tabs .position-mode-icon {
+      font-size: 17px;
       flex: 0 0 auto;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-mode-count {
+    #mainPage.position-bootstrap.workbench-page
+    .position-mode-tabs
+    .auto-management-symbol {
+      display: inline-flex;
+      align-items: center;
+      gap: 1px;
+      line-height: 1;
+    }
+
+    #mainPage.position-bootstrap.workbench-page
+    .position-mode-tabs
+    .auto-management-symbol > .button-icon {
+      font-size: 15px;
+    }
+
+    #mainPage.position-bootstrap.workbench-page .position-mode-count {
       display: inline-flex;
       min-width: 20px;
       height: 20px;
@@ -15793,13 +16469,13 @@
       line-height: 20px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-mode-tabs .nav-link.active .fx-position-mode-count {
+    #mainPage.position-bootstrap.workbench-page .position-mode-tabs .position-mode-option.active .position-mode-count {
       border-color: rgba(var(--bs-primary-rgb), 0.22);
       background: rgba(var(--bs-primary-rgb), 0.12);
       color: var(--bs-primary-text-emphasis);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid-frame {
+    #mainPage.position-bootstrap.workbench-page .position-grid-frame {
       width: 100%;
       max-width: 100%;
       min-height: 0;
@@ -15810,10 +16486,10 @@
       border: var(--data-grid-line-width) solid var(--data-grid-line-color);
       border-radius: var(--workbench-radius);
       background: var(--bs-body-bg);
-      box-shadow: none;
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid {
+    #mainPage.position-bootstrap.workbench-page .position-grid {
       width: 1485px;
       min-width: 1485px;
       margin: 0;
@@ -15827,18 +16503,18 @@
       table-layout: fixed;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid thead {
+    #mainPage.position-bootstrap.workbench-page .position-grid thead {
       position: static;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tfoot {
+    #mainPage.position-bootstrap.workbench-page .position-grid tfoot {
       position: sticky;
       z-index: 3;
       bottom: 0;
       overflow: visible;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(th, td) {
+    #mainPage.position-bootstrap.workbench-page .position-grid :is(th, td) {
       height: var(--workbench-grid-row-height);
       padding: 5px 8px;
       border: 0;
@@ -15849,7 +16525,7 @@
       vertical-align: middle;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .group-title th {
+    #mainPage.position-bootstrap.workbench-page .position-grid .group-title th {
       position: relative;
       height: 39px;
       padding: 7px 8px 6px;
@@ -15862,37 +16538,37 @@
       text-transform: uppercase;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .section-name::before {
+    #mainPage.position-bootstrap.workbench-page .position-grid .section-name::before {
       position: absolute;
       top: 7px;
       right: 12px;
       left: 12px;
-      height: var(--fx-position-section-rule-width);
+      height: var(--position-section-rule-width);
       margin: 0;
       border-radius: 999px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .group-title .common-title {
+    #mainPage.position-bootstrap.workbench-page .position-grid .group-title .common-title {
       color: var(--bs-secondary-color);
       background: var(--workbench-grid-header-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .group-title .sell-title {
+    #mainPage.position-bootstrap.workbench-page .position-grid .group-title .sell-title {
       color: var(--bs-emphasis-color);
       background: rgba(var(--bs-danger-rgb), 0.055);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .group-title .market-title {
+    #mainPage.position-bootstrap.workbench-page .position-grid .group-title .market-title {
       color: var(--bs-secondary-color);
       background: var(--workbench-grid-header-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .group-title .buy-title {
+    #mainPage.position-bootstrap.workbench-page .position-grid .group-title .buy-title {
       color: var(--bs-emphasis-color);
       background: rgba(var(--bs-success-rgb), 0.055);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .rate-title-row th {
+    #mainPage.position-bootstrap.workbench-page .position-grid .rate-title-row th {
       height: 24px;
       padding: 3px 8px;
       border-color: var(--data-grid-line-color);
@@ -15903,7 +16579,7 @@
       text-transform: uppercase;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title th {
+    #mainPage.position-bootstrap.workbench-page .position-grid .column-title th {
       height: 36px;
       padding: 5px 8px;
       border-color: var(--data-grid-line-color);
@@ -15913,127 +16589,127 @@
       font-weight: 500;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(.common-head, .market-head) {
+    #mainPage.position-bootstrap.workbench-page .position-grid :is(.common-head, .market-head) {
       background: var(--workbench-grid-header-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sell-head,
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title .sell-head {
+    #mainPage.position-bootstrap.workbench-page .position-grid .sell-head,
+    #mainPage.position-bootstrap.workbench-page .position-grid .column-title .sell-head {
       background: rgba(var(--bs-danger-rgb), 0.055);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .buy-head,
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title .buy-head {
+    #mainPage.position-bootstrap.workbench-page .position-grid .buy-head,
+    #mainPage.position-bootstrap.workbench-page .position-grid .column-title .buy-head {
       background: rgba(var(--bs-success-rgb), 0.055);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .market-reference-icon {
+    #mainPage.position-bootstrap.workbench-page .position-grid .market-reference-icon {
       color: var(--bs-secondary-color);
       font-size: 19px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .client {
+    #mainPage.position-bootstrap.workbench-page .position-grid .client {
       width: 280px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .trade-id-column {
+    #mainPage.position-bootstrap.workbench-page .position-grid .trade-id-column {
       width: 40px;
       min-width: 40px;
       max-width: 40px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(th, td).trade-id-column {
+    #mainPage.position-bootstrap.workbench-page .position-grid :is(th, td).trade-id-column {
       padding-inline: 0;
       text-align: center;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .date {
+    #mainPage.position-bootstrap.workbench-page .position-grid .date {
       width: 94px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .base-value-date {
+    #mainPage.position-bootstrap.workbench-page .position-grid .base-value-date {
       width: 132px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .amount {
+    #mainPage.position-bootstrap.workbench-page .position-grid .amount {
       width: 208px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .rate {
+    #mainPage.position-bootstrap.workbench-page .position-grid .rate {
       width: 90px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .market-left,
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .market-right {
+    #mainPage.position-bootstrap.workbench-page .position-grid .market-left,
+    #mainPage.position-bootstrap.workbench-page .position-grid .market-right {
       width: 78px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .wide-gap {
+    #mainPage.position-bootstrap.workbench-page .position-grid .wide-gap {
       width: 16px;
       min-width: 16px;
       max-width: 16px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .selection-gap {
+    #mainPage.position-bootstrap.workbench-page .position-grid .selection-gap {
       width: 32px;
       min-width: 32px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(th, td).selection-gap {
+    #mainPage.position-bootstrap.workbench-page .position-grid :is(th, td).selection-gap {
       padding-inline: 0;
       text-align: center;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .selection-gap .form-check-input {
+    #mainPage.position-bootstrap.workbench-page .position-grid .selection-gap .form-check-input {
       display: block;
       margin-inline: auto;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .select-all-checkbox {
+    #mainPage.position-bootstrap.workbench-page .position-grid .select-all-checkbox {
       width: 18px;
       height: 18px;
       border-width: 2px;
       border-radius: 3px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sell-check-zone .select-all-checkbox {
+    #mainPage.position-bootstrap.workbench-page .position-grid .sell-check-zone .select-all-checkbox {
       border-color: rgba(var(--bs-danger-rgb), 0.62);
       background-color: rgba(var(--bs-danger-rgb), 0.07);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sell-check-zone .select-all-checkbox:hover:not(:disabled) {
+    #mainPage.position-bootstrap.workbench-page .position-grid .sell-check-zone .select-all-checkbox:hover:not(:disabled) {
       background-color: rgba(var(--bs-danger-rgb), 0.14);
       box-shadow: 0 0 0 3px rgba(var(--bs-danger-rgb), 0.1);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sell-check-zone .select-all-checkbox:is(:checked, :indeterminate) {
+    #mainPage.position-bootstrap.workbench-page .position-grid .sell-check-zone .select-all-checkbox:is(:checked, :indeterminate) {
       border-color: var(--bs-danger);
       background-color: var(--bs-danger);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .buy-check-zone .select-all-checkbox {
+    #mainPage.position-bootstrap.workbench-page .position-grid .buy-check-zone .select-all-checkbox {
       border-color: rgba(var(--bs-success-rgb), 0.68);
       background-color: rgba(var(--bs-success-rgb), 0.07);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .buy-check-zone .select-all-checkbox:hover:not(:disabled) {
+    #mainPage.position-bootstrap.workbench-page .position-grid .buy-check-zone .select-all-checkbox:hover:not(:disabled) {
       background-color: rgba(var(--bs-success-rgb), 0.14);
       box-shadow: 0 0 0 3px rgba(var(--bs-success-rgb), 0.1);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .buy-check-zone .select-all-checkbox:is(:checked, :indeterminate) {
+    #mainPage.position-bootstrap.workbench-page .position-grid .buy-check-zone .select-all-checkbox:is(:checked, :indeterminate) {
       border-color: var(--bs-success);
       background-color: var(--bs-success);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .gap {
+    #mainPage.position-bootstrap.workbench-page .position-grid .gap {
       padding: 0;
       border-right-color: transparent;
       border-bottom-color: var(--data-grid-line-color);
       background: var(--bs-body-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid :is(th, td):is(
+    #mainPage.position-bootstrap.workbench-page .position-grid :is(th, td):is(
       .wide-gap,
       .sell-check-zone,
       .buy-check-zone
@@ -16043,89 +16719,89 @@
       box-shadow: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .trade-divider::before {
+    #mainPage.position-bootstrap.workbench-page .position-grid .trade-divider::before {
       content: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .identity {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr .identity {
       background: var(--bs-body-bg);
       color: var(--bs-body-color);
       font-weight: 400;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr:nth-child(even) .identity {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr:nth-child(even) .identity {
       background: var(--workbench-grid-stripe-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .sell-zone {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr .sell-zone {
       background: rgba(var(--bs-danger-rgb), 0.055);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr:nth-child(even) .sell-zone {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr:nth-child(even) .sell-zone {
       background: rgba(var(--bs-danger-rgb), 0.085);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .buy-zone {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr .buy-zone {
       background: rgba(var(--bs-success-rgb), 0.055);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr:nth-child(even) .buy-zone {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr:nth-child(even) .buy-zone {
       background: rgba(var(--bs-success-rgb), 0.085);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .market-left,
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .market-right {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr .market-left,
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr .market-right {
       background: var(--bs-tertiary-bg);
       box-shadow: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .market-sell {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr .market-sell {
       color: var(--bs-success);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr .market-buy {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr .market-buy {
       color: var(--bs-danger);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr:hover td:not(.gap) {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr:hover td:not(.gap) {
       background: var(--workbench-grid-hover-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr.is-selected td:not(.gap) {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr.is-selected td:not(.gap) {
       background: var(--workbench-grid-selected-bg);
       background-image: none;
       box-shadow: inset 0 2px 0 rgba(var(--bs-primary-rgb), 0.35),
         inset 0 -2px 0 rgba(var(--bs-primary-rgb), 0.35);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tbody tr:last-child td {
+    #mainPage.position-bootstrap.workbench-page .position-grid tbody tr:last-child td {
       border-bottom: 0;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .fx-position-grid-fill td {
+    #mainPage.position-bootstrap.workbench-page .position-grid .position-grid-fill td {
       height: 0;
       min-height: 0;
       padding: 0;
       pointer-events: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .fx-position-grid-fill .identity {
+    #mainPage.position-bootstrap.workbench-page .position-grid .position-grid-fill .identity {
       background: var(--bs-body-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .fx-position-grid-fill .sell-zone {
+    #mainPage.position-bootstrap.workbench-page .position-grid .position-grid-fill .sell-zone {
       background: rgba(var(--bs-danger-rgb), 0.055);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .fx-position-grid-fill .buy-zone {
+    #mainPage.position-bootstrap.workbench-page .position-grid .position-grid-fill .buy-zone {
       background: rgba(var(--bs-success-rgb), 0.055);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .fx-position-grid-fill:hover td:not(.gap) {
+    #mainPage.position-bootstrap.workbench-page .position-grid .position-grid-fill:hover td:not(.gap) {
       background: inherit;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sort-button {
+    #mainPage.position-bootstrap.workbench-page .position-grid .sort-button {
       gap: 4px;
       color: inherit;
       font: inherit;
@@ -16133,15 +16809,15 @@
       text-decoration: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sort-button:hover {
+    #mainPage.position-bootstrap.workbench-page .position-grid .sort-button:hover {
       text-decoration: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .sort-button::after {
+    #mainPage.position-bootstrap.workbench-page .position-grid .sort-button::after {
       color: var(--bs-secondary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .form-check-input {
+    #mainPage.position-bootstrap.workbench-page .position-grid .form-check-input {
       width: 15px;
       height: 15px;
       margin: 0;
@@ -16149,7 +16825,7 @@
       cursor: pointer;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .trade-id-copy {
+    #mainPage.position-bootstrap.workbench-page .position-grid .trade-id-copy {
       width: 24px;
       min-width: 24px;
       height: 24px;
@@ -16161,26 +16837,26 @@
       color: var(--bs-secondary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .trade-id-copy:hover {
+    #mainPage.position-bootstrap.workbench-page .position-grid .trade-id-copy:hover {
       border-color: var(--bs-secondary-color);
       background: var(--bs-tertiary-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tfoot td {
+    #mainPage.position-bootstrap.workbench-page .position-grid tfoot td {
       background: var(--bs-body-bg);
       color: var(--bs-body-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid tfoot tr:last-child td {
+    #mainPage.position-bootstrap.workbench-page .position-grid tfoot tr:last-child td {
       border-bottom: 0;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-row td {
+    #mainPage.position-bootstrap.workbench-page .position-grid .batching-summary-row td {
       height: 34px;
       font-weight: 500;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-total td {
+    #mainPage.position-bootstrap.workbench-page .position-grid .batching-summary-total td {
       border-top: 3px solid var(--palette-gray-500);
       border-bottom: 0;
       background: var(--bs-body-bg);
@@ -16189,11 +16865,11 @@
       box-shadow: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-total .summary-label {
+    #mainPage.position-bootstrap.workbench-page .position-grid .batching-summary-total .summary-label {
       background: var(--workbench-grid-header-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-row .summary-label {
+    #mainPage.position-bootstrap.workbench-page .position-grid .batching-summary-row .summary-label {
       background: var(--workbench-grid-header-bg);
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-caption);
@@ -16202,115 +16878,139 @@
       text-transform: uppercase;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-total .summary-label {
+    #mainPage.position-bootstrap.workbench-page .position-grid .batching-summary-total .summary-label {
       font-weight: 400;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-net td {
+    #mainPage.position-bootstrap.workbench-page .position-grid .batching-summary-net td {
       font-size: calc(var(--workbench-grid-size) + 1px);
       font-weight: 600;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-net .summary-label {
+    #mainPage.position-bootstrap.workbench-page .position-grid .batching-summary-net .summary-label {
       color: var(--bs-body-color);
       font-size: var(--app-font-size-table);
       font-weight: 600;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-row :is(.summary-sell.rate, .summary-buy.rate) {
+    #mainPage.position-bootstrap.workbench-page .position-grid .batching-summary-row :is(.summary-sell.rate, .summary-buy.rate) {
       border-right: var(--data-grid-line-width) solid var(--data-grid-line-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .summary-sell {
+    #mainPage.position-bootstrap.workbench-page .position-grid .summary-sell {
       background: var(--bs-body-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .summary-buy {
+    #mainPage.position-bootstrap.workbench-page .position-grid .summary-buy {
       background: var(--bs-body-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-net .summary-net-active.sell-side {
+    #mainPage.position-bootstrap.workbench-page .position-grid .batching-summary-net .summary-net-active.sell-side {
       background: var(--bs-danger-bg-subtle);
       color: var(--bs-danger-text-emphasis);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .batching-summary-net .summary-net-active.buy-side {
+    #mainPage.position-bootstrap.workbench-page .position-grid .batching-summary-net .summary-net-active.buy-side {
       background: var(--bs-success-bg-subtle);
       color: var(--bs-success-text-emphasis);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .summary-bridge {
+    #mainPage.position-bootstrap.workbench-page .position-grid .summary-bridge {
       background: var(--bs-body-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .hedge-toolbar) {
+    #mainPage.position-bootstrap.workbench-page :is(
+      .deal-toolbar,
+      .batch-toolbar,
+      .hedge-toolbar,
+      .demo-toolbar
+    ) {
       display: flex;
       width: 100%;
       min-height: 48px;
       flex-wrap: wrap;
       align-items: center;
       gap: 8px;
-      margin: var(--fx-position-toolbar-gap) 0 0;
+      margin: var(--position-toolbar-gap) 0 0;
       padding: 7px 8px;
       border: 1px solid var(--bs-border-color);
       border-radius: var(--workbench-radius);
       background: var(--bs-body-bg);
-      box-shadow: none;
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .position-toolbar-row {
+    #mainPage.position-bootstrap.workbench-page .position-toolbar-row {
       display: grid;
       flex: 0 0 auto;
       grid-template-columns: minmax(0, 1fr);
       gap: 8px;
-      margin-top: var(--fx-position-toolbar-gap);
+      margin-top: var(--position-toolbar-gap);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar {
       margin-top: 0;
       background: var(--bs-tertiary-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar {
+    #mainPage.position-bootstrap.workbench-page .batch-toolbar {
       margin-top: 0;
       background: var(--bs-body-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .hedge-toolbar) {
+    #mainPage.position-bootstrap.workbench-page .demo-toolbar {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto;
+      flex-wrap: nowrap;
+      margin-top: 0;
+      background: var(--bs-tertiary-bg);
+    }
+
+    #mainPage.position-bootstrap.workbench-page :is(.deal-toolbar, .hedge-toolbar) {
       flex: 0 0 auto;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar {
       display: grid !important;
       flex: 0 0 auto;
       grid-template-columns: auto minmax(0, 1fr) auto;
       flex-wrap: nowrap;
       gap: 14px;
-      margin-top: var(--fx-position-toolbar-gap);
+      margin-top: var(--position-toolbar-gap);
       background: var(--bs-tertiary-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar-primary {
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar-primary {
       display: flex;
       min-width: max-content;
       align-items: center;
       gap: 8px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar {
+    #mainPage.position-bootstrap.workbench-page .batch-toolbar {
       display: grid !important;
       grid-template-columns: minmax(0, 1fr) auto;
       flex-wrap: nowrap;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-toolbar-primary {
+    #mainPage.position-bootstrap.workbench-page .batch-toolbar-primary {
       display: flex;
       min-width: max-content;
       align-items: center;
       gap: 8px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-control.batch-toolbar-settings {
+    #mainPage.position-bootstrap.workbench-page .selected-trades-toolbar-primary {
+      min-width: 0;
+    }
+
+    #mainPage.position-bootstrap.workbench-page .demo-toolbar-primary {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #mainPage.position-bootstrap.workbench-page .batch-control.batch-toolbar-settings {
       display: flex;
       align-items: center;
       justify-self: end;
@@ -16318,13 +17018,21 @@
       border-left: 1px solid var(--bs-border-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar-settings {
+    #mainPage.position-bootstrap.workbench-page .batch-control.demo-toolbar-reset {
+      display: flex;
+      align-items: center;
+      justify-self: end;
+      padding-left: 12px;
+      border-left: 1px solid var(--bs-border-color);
+    }
+
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar-settings {
       display: flex;
       align-items: center;
       justify-self: end;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar {
       display: grid;
       min-width: 0;
       grid-template-columns: minmax(280px, 1fr) auto;
@@ -16333,7 +17041,7 @@
       gap: 10px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-execution {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-execution {
       display: grid;
       min-width: 0;
       grid-template-columns: 118px 156px 118px 24px;
@@ -16341,20 +17049,20 @@
       gap: 10px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned {
       position: relative;
       display: block;
       min-height: 30px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-presets {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-presets {
       position: absolute;
       top: 0;
       left: 0;
       width: var(--hedge-quick-preset-width);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-execution {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-execution {
       position: absolute;
       top: 0;
       left: var(--hedge-quick-execution-left);
@@ -16366,17 +17074,17 @@
       gap: 8px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-action {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-action {
       width: var(--hedge-quick-action-width);
       min-width: 0;
       padding-inline: 4px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-quote {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar.is-market-aligned .hedge-quick-quote {
       width: var(--hedge-quick-quote-width);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar-state {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar-state {
       display: inline-flex;
       min-height: 30px;
       grid-column: 1 / -1;
@@ -16386,7 +17094,7 @@
       font-size: 11px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-presets {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-presets {
       display: flex;
       min-width: 0;
       align-items: center;
@@ -16394,7 +17102,7 @@
       gap: 7px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-boundary {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-boundary {
       display: inline-flex;
       width: 24px;
       min-width: 24px;
@@ -16405,45 +17113,45 @@
       transition: color 150ms ease-in-out;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-boundary-start {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-boundary-start {
       justify-content: flex-end;
       padding-left: 7px;
       border-left: 1px solid var(--bs-border-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-boundary-end {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-boundary-end {
       justify-content: flex-start;
       padding-right: 7px;
       border-right: 1px solid var(--bs-border-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-boundary .button-icon {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-boundary .button-icon {
       font-size: 16px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-unlocked .hedge-quick-boundary-start {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar.is-unlocked .hedge-quick-boundary-start {
       color: var(--bs-danger);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar.is-unlocked .hedge-quick-boundary-end {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar.is-unlocked .hedge-quick-boundary-end {
       color: var(--bs-success);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar:not(.is-unlocked) :is(
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar:not(.is-unlocked) :is(
       .hedge-quick-preset-unit,
       .hedge-quick-quote
     ) {
       opacity: 0.72;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-presets .btn-group {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-presets .btn-group {
       display: flex;
       min-width: 0;
       flex: 0 0 auto;
       justify-content: flex-end;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-preset {
       --bs-btn-color: var(--bs-secondary-color);
       --bs-btn-bg: var(--bs-body-bg);
       --bs-btn-hover-bg: rgba(var(--bs-primary-rgb), 0.08);
@@ -16463,15 +17171,15 @@
       font-weight: 500;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset:first-child {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-preset:first-child {
       border-radius: var(--workbench-radius) 0 0 var(--workbench-radius);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset:last-child {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-preset:last-child {
       border-radius: 0 var(--workbench-radius) var(--workbench-radius) 0;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset:is(
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-preset:is(
       :hover,
       :focus,
       :focus-visible,
@@ -16481,7 +17189,7 @@
       box-shadow: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset.active {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-preset.active {
       z-index: 4;
       border-color: var(--bs-primary);
       background: var(--bs-primary-bg-subtle);
@@ -16489,7 +17197,7 @@
       box-shadow: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-preset-unit {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-preset-unit {
       min-width: 52px;
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-caption);
@@ -16497,7 +17205,7 @@
       white-space: nowrap;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-action {
       --bs-btn-bg: var(--bs-body-bg);
       display: inline-flex;
       min-width: 118px;
@@ -16511,23 +17219,23 @@
       white-space: nowrap;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action-sell {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-action-sell {
       --bs-btn-bg: rgba(var(--bs-danger-rgb), 0.055);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action-buy {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-action-buy {
       --bs-btn-bg: rgba(var(--bs-success-rgb), 0.055);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action .button-icon {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-action .button-icon {
       font-size: 17px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action:focus-visible {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-action:focus-visible {
       box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.16);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-quote {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-quote {
       display: grid;
       width: 156px;
       min-height: 30px;
@@ -16540,25 +17248,29 @@
       font-variant-numeric: tabular-nums;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-quote-value {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-quote-value {
       display: inline-flex;
       min-width: 0;
       align-items: center;
       justify-content: center;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-quote-value {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-quote-value {
       padding: 0 7px;
       font-size: 12px;
       font-weight: 600;
       white-space: nowrap;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-quote-value + .hedge-quick-quote-value {
+    #mainPage.position-bootstrap.workbench-page .hedge-quick-quote-value + .hedge-quick-quote-value {
       border-left: 1px solid var(--bs-border-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar-title, .batch-toolbar-title) {
+    #mainPage.position-bootstrap.workbench-page :is(
+      .deal-toolbar-title,
+      .batch-toolbar-title,
+      .demo-toolbar-title
+    ) {
       display: inline-flex;
       min-width: 106px;
       height: 30px;
@@ -16572,10 +17284,11 @@
       text-transform: uppercase;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(
+    #mainPage.position-bootstrap.workbench-page :is(
       .hedge-toolbar-title,
       .client-deal-toolbar-title,
-      .batch-toolbar-icon-title
+      .batch-toolbar-icon-title,
+      .demo-toolbar-title
     ) {
       width: 32px;
       min-width: 32px;
@@ -16583,15 +17296,16 @@
       padding: 0;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(
+    #mainPage.position-bootstrap.workbench-page :is(
       .hedge-toolbar-title,
       .client-deal-toolbar-title,
-      .batch-toolbar-icon-title
+      .batch-toolbar-icon-title,
+      .demo-toolbar-title
     ) .button-icon {
       font-size: 20px;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-control {
+    #mainPage.position-bootstrap.workbench-page .batch-control {
       display: inline-flex;
       width: auto;
       min-height: 30px;
@@ -16605,7 +17319,7 @@
       background: transparent;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-label {
+    #mainPage.position-bootstrap.workbench-page .batch-label {
       display: inline-flex;
       height: 30px;
       align-items: center;
@@ -16620,13 +17334,35 @@
       text-transform: none;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .deal-generation-control {
-      margin-left: auto;
-      padding-left: 12px;
-      border-left: 1px solid var(--bs-border-color);
+    #mainPage.position-bootstrap.workbench-page :is(
+      .trade-actions-control,
+      .selected-trades-actions
+    ) {
+      min-width: 0;
+      flex: 1 1 auto;
+      flex-wrap: wrap;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .hedge-toolbar) .action-button {
+    #mainPage.position-bootstrap.workbench-page .selected-trades-count {
+      min-width: 68px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    #mainPage.position-bootstrap.workbench-page .toolbar-action-divider {
+      width: 1px;
+      min-width: 1px;
+      height: 24px;
+      margin: 0 3px;
+      background: var(--bs-border-color);
+    }
+
+    #mainPage.position-bootstrap.workbench-page :is(
+      .deal-toolbar,
+      .batch-toolbar,
+      .hedge-toolbar,
+      .demo-toolbar
+    ) .action-button {
       display: inline-flex;
       min-height: 30px;
       height: 30px;
@@ -16641,7 +17377,7 @@
       font-weight: 500;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-control .action-button {
+    #mainPage.position-bootstrap.workbench-page .batch-control .action-button {
       width: auto;
       min-width: auto;
       margin: 0;
@@ -16650,7 +17386,7 @@
       border-radius: var(--workbench-radius);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-control :is(
+    #mainPage.position-bootstrap.workbench-page .batch-control :is(
       .generation-settings-toggle,
       .batch-settings-toggle
     ) {
@@ -16659,7 +17395,7 @@
       padding: 0;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .toolbar-secondary-action:is(
+    #mainPage.position-bootstrap.workbench-page .toolbar-secondary-action:is(
       :hover,
       :focus-visible
     ):not(:disabled):not(.is-running) {
@@ -16667,12 +17403,12 @@
       background: var(--app-button-secondary-hover-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .toolbar-secondary-action:active:not(:disabled):not(.is-running) {
+    #mainPage.position-bootstrap.workbench-page .toolbar-secondary-action:active:not(:disabled):not(.is-running) {
       border-color: var(--bs-secondary);
       background: var(--app-button-secondary-active-bg);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar)
+    #mainPage.position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .demo-toolbar)
     .process-toggle-button:not(.is-running) {
       --bs-btn-color: var(--app-button-primary-color);
       --bs-btn-bg: var(--app-button-primary-bg);
@@ -16688,32 +17424,45 @@
       color: var(--app-button-primary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar)
+    #mainPage.position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .demo-toolbar)
     .process-toggle-button:not(.is-running):hover:not(:disabled) {
       border-color: var(--app-button-primary-hover-border);
       background: var(--app-button-primary-hover-bg);
       color: var(--app-button-primary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar)
+    #mainPage.position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .demo-toolbar)
     .process-toggle-button:not(.is-running):active:not(:disabled) {
       border-color: var(--app-button-primary-active-border);
       background: var(--app-button-primary-active-bg);
       color: var(--app-button-primary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running {
+    #mainPage.position-bootstrap.workbench-page :is(
+      .deal-toolbar,
+      .batch-toolbar,
+      .demo-toolbar
+    ) .batch-process.is-running {
       border-color: var(--app-process-running-border);
       background: var(--app-process-running);
       color: var(--bs-white);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar) .batch-process.is-running:hover:not(:disabled) {
+    #mainPage.position-bootstrap.workbench-page :is(
+      .deal-toolbar,
+      .batch-toolbar,
+      .demo-toolbar
+    ) .batch-process.is-running:hover:not(:disabled) {
       border-color: var(--app-process-running-hover);
       background: var(--app-process-running-hover);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page :is(.deal-toolbar, .batch-toolbar, .hedge-toolbar) .action-button:disabled {
+    #mainPage.position-bootstrap.workbench-page :is(
+      .deal-toolbar,
+      .batch-toolbar,
+      .hedge-toolbar,
+      .demo-toolbar
+    ) .action-button:disabled {
       border-color: var(--bs-border-color);
       background: var(--bs-tertiary-bg);
       color: var(--bs-secondary-color);
@@ -16722,69 +17471,90 @@
     }
 
     @media (max-width: 1220px) {
-      #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+      #mainPage.position-bootstrap.workbench-page .hedge-toolbar {
         grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 7px;
       }
 
-      #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar {
+      #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar {
         grid-template-columns: minmax(280px, 1fr) auto;
       }
     }
 
     @media (max-width: 1040px) {
-      #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+      #mainPage.position-bootstrap.workbench-page .hedge-toolbar {
         grid-template-columns: minmax(0, 1fr) auto;
       }
 
-      #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-toolbar {
+      #mainPage.position-bootstrap.workbench-page .hedge-quick-toolbar {
         grid-column: 1 / -1;
         grid-row: 2;
         grid-template-columns: minmax(0, 1fr);
       }
 
-      #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar-settings {
+      #mainPage.position-bootstrap.workbench-page .hedge-toolbar-settings {
         grid-column: 2;
         grid-row: 1;
       }
 
-      #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-presets {
+      #mainPage.position-bootstrap.workbench-page .hedge-quick-presets {
         grid-column: 1 / -1;
       }
 
-      #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-execution {
+      #mainPage.position-bootstrap.workbench-page .hedge-quick-execution {
         width: 100%;
         grid-template-columns: minmax(92px, 1fr) minmax(142px, 156px) minmax(92px, 1fr) 24px;
       }
 
-      #mainPage.fx-position-bootstrap.workbench-page .hedge-quick-action {
+      #mainPage.position-bootstrap.workbench-page .hedge-quick-action {
         min-width: 0;
       }
     }
 
     @media (max-width: 860px) {
-      #mainPage.fx-position-bootstrap.workbench-page .deal-generation-control {
+      #mainPage.position-bootstrap.workbench-page .selected-trades-toolbar {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      #mainPage.position-bootstrap.workbench-page .batch-control.automation-control {
         width: 100%;
-        margin-left: 118px;
+        justify-self: stretch;
         padding-top: 7px;
         padding-left: 0;
         border-top: 1px solid var(--bs-border-color);
         border-left: 0;
       }
 
-      #mainPage.fx-position-bootstrap.workbench-page .position-toolbar-row {
+      #mainPage.position-bootstrap.workbench-page .demo-toolbar {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      #mainPage.position-bootstrap.workbench-page .demo-toolbar-primary {
+        min-width: max-content;
+      }
+
+      #mainPage.position-bootstrap.workbench-page .batch-control.demo-toolbar-reset {
+        width: 100%;
+        justify-self: stretch;
+        padding-top: 7px;
+        padding-left: 0;
+        border-top: 1px solid var(--bs-border-color);
+        border-left: 0;
+      }
+
+      #mainPage.position-bootstrap.workbench-page .position-toolbar-row {
         grid-template-columns: minmax(0, 1fr);
       }
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .batch-status {
+    #mainPage.position-bootstrap.workbench-page .batch-status {
       min-width: 0;
       flex: 0 1 auto;
       justify-content: flex-end;
       margin-left: auto;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-footer .batch-status {
+    #mainPage.position-bootstrap.workbench-page .position-footer .batch-status {
       display: flex;
       min-height: 32px;
       align-items: center;
@@ -16814,7 +17584,7 @@
       .batch-neutrality-title,
       .batch-details-prompt-title,
       .counterparty-card-section-title,
-      .client-execution-contexts-title,
+      .client-trade-contexts-title,
       .client-deal-create-section-title,
       .profile-detail-panel .profile-panel-title
     ) {
@@ -16840,7 +17610,7 @@
     }
 
     .client-deal-currency-pair-field .form-select,
-    #hedgingSettingsPage .client-deal-pricing-mode-field .form-select {
+    #positionManagementSettingsPage .client-deal-pricing-mode-field .form-select {
       font-size: var(--app-font-size-control-emphasis);
       font-weight: var(--app-font-weight-semibold);
     }
@@ -16851,33 +17621,33 @@
       font-weight: var(--app-font-weight-medium);
     }
     /* Keep transaction-entry forms on one restrained typography hierarchy. */
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     .client-deal-create-section-title {
       font-size: var(--app-font-size-section-title);
       font-weight: var(--app-font-weight-semibold);
       line-height: 1.3;
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     .form-label {
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-label);
       font-weight: var(--app-font-weight-medium);
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     :is(.form-control, .form-select, .input-group-text) {
       font-size: var(--app-font-size-control);
       font-weight: var(--app-font-weight-regular);
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     :is(.client-deal-currency-pair-field, .client-deal-pricing-mode-field) .form-select {
       font-size: var(--app-font-size-control);
       font-weight: var(--app-font-weight-medium);
     }
 
-    :is(#addClientDealDialog, #addHedgeDealDialog, #hedgingSettingsPage)
+    :is(#addClientDealDialog, #addHedgeDealDialog, #positionManagementSettingsPage)
     :is(.client-pricing-context-candidate-name, .client-deal-pricing-rule-margin-value, .client-deal-fixed-currency-toggle) {
       font-weight: var(--app-font-weight-medium);
     }
@@ -16887,13 +17657,13 @@
       color: var(--bs-secondary-color);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .hedging-settings-panel .modal-title {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .position-management-settings-panel .modal-title {
       font-size: 16px;
       font-weight: var(--app-font-weight-semibold);
     }
 
-    #hedgingSettingsPage .hedge-quick-settings-active .form-check-label {
+    #positionManagementSettingsPage .hedge-quick-settings-active .form-check-label {
       font-size: var(--app-font-size-control);
       font-weight: var(--app-font-weight-regular);
     }
@@ -16935,15 +17705,15 @@
       cursor: pointer;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title :is(.common-head, .market-head):has(.sort-button):hover {
+    #mainPage.position-bootstrap.workbench-page .position-grid .column-title :is(.common-head, .market-head):has(.sort-button):hover {
       background: var(--palette-gray-200) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title .sell-head:has(.sort-button):hover {
+    #mainPage.position-bootstrap.workbench-page .position-grid .column-title .sell-head:has(.sort-button):hover {
       background: rgba(var(--bs-danger-rgb), 0.12) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .fx-position-grid .column-title .buy-head:has(.sort-button):hover {
+    #mainPage.position-bootstrap.workbench-page .position-grid .column-title .buy-head:has(.sort-button):hover {
       background: rgba(var(--bs-success-rgb), 0.12) !important;
     }
 
@@ -16992,7 +17762,7 @@
       .profile-panel-title,
       .database-section-title,
       .client-pricing-rules-table-head,
-      .client-execution-contexts-table-head
+      .client-trade-contexts-table-head
     ) {
       font-size: var(--app-font-size-label);
       font-weight: var(--app-font-weight-semibold);
@@ -17011,8 +17781,8 @@
       .client-deals-bootstrap .side-token,
       #databasePage .database-table-section-meta,
       #mainPage .currency-pair-count,
-      #mainPage .fx-position-grid .rate-title-row th,
-      #mainPage .fx-position-grid .batching-summary-row .summary-label,
+      #mainPage .position-grid .rate-title-row th,
+      #mainPage .position-grid .batching-summary-row .summary-label,
       #mainPage .hedge-quick-preset-unit
     ) {
       font-size: var(--app-font-size-caption);
@@ -17284,26 +18054,26 @@
       color: var(--bs-white);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar {
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar {
       border-color: var(--palette-yellow-300);
       background: var(--palette-yellow-100);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     :is(.hedge-toolbar-title, .hedge-quick-boundary-start, .hedge-quick-boundary-end) {
       border-color: var(--palette-yellow-500);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar .hedge-quick-quote {
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar .hedge-quick-quote {
       border-color: var(--palette-yellow-500);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     .hedge-quick-quote-value + .hedge-quick-quote-value {
       border-left-color: var(--palette-yellow-400);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action) {
       --bs-btn-color: var(--palette-yellow-800);
       --bs-btn-bg: var(--palette-yellow-200);
@@ -17322,30 +18092,30 @@
       color: var(--bs-btn-color) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):hover:not(:disabled) {
       border-color: var(--bs-btn-hover-border-color);
       background: var(--bs-btn-hover-bg);
       color: var(--bs-btn-hover-color) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):is(:active, .active):not(:disabled) {
       border-color: var(--bs-btn-active-border-color);
       background: var(--bs-btn-active-bg);
       color: var(--bs-btn-active-color) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     :is(.action-button, .hedge-quick-preset):not(.hedge-quick-action):disabled {
       border-color: var(--bs-btn-disabled-border-color);
       background: var(--bs-btn-disabled-bg);
       color: var(--bs-btn-disabled-color) !important;
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     .hedge-quick-preset.active,
-    #mainPage.fx-position-bootstrap.workbench-page .hedge-toolbar
+    #mainPage.position-bootstrap.workbench-page .hedge-toolbar
     .hedge-quick-preset.active:disabled {
       border-color: var(--palette-yellow-700);
       background: var(--palette-yellow-400);
@@ -17582,13 +18352,17 @@
       border-top-color: var(--app-dialog-chrome-border);
       background: var(--app-dialog-footer-bg);
     }
-    /* Unified data-table chrome. The FX Position matrix intentionally does not use these classes. */
+    /* Unified data-table chrome. The Position matrix intentionally does not use these classes. */
     .table-panel {
       min-width: 0;
       max-width: 100%;
       border: 1px solid var(--bs-border-color);
       border-radius: var(--workbench-radius);
       background: var(--bs-body-bg);
+    }
+
+    .table-panel--standalone:not(.table-panel--compact) {
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     .table-panel > .table-panel__head {
@@ -17747,13 +18521,14 @@
       #referenceDataPage,
       #pricingRulesPage,
       #marketPage,
-      #fxDealsPage,
-      #fxBatchesPage,
-      #hedgingSettingsPage
-    ).workbench-page .table-panel.table-panel--standalone {
+      #dealsPage,
+      #batchesPage,
+      #positionManagementSettingsPage
+    ).workbench-page .table-panel.table-panel--standalone:not(.table-panel--compact) {
       border: 1px solid var(--bs-border-color);
       border-radius: var(--workbench-radius);
       background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     :is(
@@ -17762,9 +18537,9 @@
       #referenceDataPage,
       #pricingRulesPage,
       #marketPage,
-      #fxDealsPage,
-      #fxBatchesPage,
-      #hedgingSettingsPage
+      #dealsPage,
+      #batchesPage,
+      #positionManagementSettingsPage
     ).workbench-page
     .table-panel.table-panel--standalone > .table-panel__head {
       display: flex;
@@ -17795,9 +18570,9 @@
       #referenceDataPage,
       #pricingRulesPage,
       #marketPage,
-      #fxDealsPage,
-      #fxBatchesPage,
-      #hedgingSettingsPage
+      #dealsPage,
+      #batchesPage,
+      #positionManagementSettingsPage
     ).workbench-page
     .table-panel.table-panel--standalone > :is(.table-panel__body, .table-panel__viewport) {
       margin: 0;
@@ -17880,11 +18655,21 @@
 
     .client-deal-duplicate-dialog .table-panel {
       overflow: hidden;
+      box-shadow: var(--bs-box-shadow-sm);
     }
 
     .client-deal-duplicate-dialog .table-panel .tabulator {
       border: 0;
       border-radius: 0;
+    }
+
+    .client-deal-duplicate-dialog .tabulator .tabulator-header .tabulator-col:last-child,
+    .client-deal-duplicate-dialog .tabulator .tabulator-row .tabulator-cell:last-child {
+      border-right: 0;
+    }
+
+    .client-deal-duplicate-dialog .tabulator .tabulator-row:last-child {
+      border-bottom: 0;
     }
     /* One semantic card contract across pages and dialogs. */
     :is(
@@ -17892,7 +18677,7 @@
       #batchDetailsPage,
       #analyticalPnlReportPage,
       #batchingSettingsPage.unified-bootstrap-workspace.workbench-page,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page,
       #databasePage.unified-bootstrap-workspace.workbench-page,
       dialog
     ) .semantic-section {
@@ -17909,7 +18694,7 @@
       #batchDetailsPage,
       #analyticalPnlReportPage,
       #batchingSettingsPage.unified-bootstrap-workspace.workbench-page,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page,
       #databasePage.unified-bootstrap-workspace.workbench-page,
       dialog
     ) .semantic-section > .semantic-section-head {
@@ -17943,8 +18728,8 @@
       box-shadow: var(--bs-box-shadow-sm);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
-    .auto-hedging-admission-settings-body > .semantic-section {
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
+    .auto-management-admission-settings-body > .semantic-section {
       box-shadow: var(--bs-box-shadow-sm);
     }
 
@@ -17958,17 +18743,11 @@
       box-shadow: var(--bs-box-shadow-sm);
     }
 
-    :is(
-      #clientPricingRuleDialog.client-pricing-rule-dialog,
-      #editDealDialog.client-deal-create-dialog
-    ) .modal-body {
+    #clientPricingRuleDialog.client-pricing-rule-dialog .modal-body {
       gap: 16px;
     }
 
-    :is(
-      #clientPricingRuleDialog.client-pricing-rule-dialog,
-      #editDealDialog.client-deal-create-dialog
-    ) .modal-body > .semantic-section {
+    #clientPricingRuleDialog.client-pricing-rule-dialog .modal-body > .semantic-section {
       box-shadow: var(--bs-box-shadow-sm);
     }
 
@@ -18092,7 +18871,6 @@
     .client-pricing-context-candidate.is-selected {
       border-color: var(--client-deal-accent-strong);
       background: var(--palette-blue-100);
-      box-shadow: inset 3px 0 0 var(--client-deal-accent);
     }
 
     #addClientDealDialog.client-deal-create-dialog
@@ -18184,7 +18962,6 @@
     .client-pricing-context-candidate.is-selected {
       border-color: var(--hedge-deal-accent-strong);
       background: var(--palette-yellow-100);
-      box-shadow: inset 3px 0 0 var(--hedge-deal-accent);
     }
 
     #addHedgeDealDialog.client-deal-create-dialog
@@ -18202,7 +18979,8 @@
       color: var(--hedge-deal-accent-text);
     }
 
-    #addHedgeDealDialog.client-deal-create-dialog #addHedgeDealSubmitButton {
+    #addHedgeDealDialog.client-deal-create-dialog #addHedgeDealSubmitButton,
+    #mainPage #addHedgeDealButton {
       --bs-btn-color: var(--palette-yellow-800);
       --bs-btn-bg: var(--palette-yellow-200);
       --bs-btn-border-color: var(--palette-yellow-600);
@@ -18273,7 +19051,7 @@
       #batchDetailsPage,
       #analyticalPnlReportPage,
       #batchingSettingsPage.unified-bootstrap-workspace.workbench-page,
-      #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page,
+      #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page,
       #databasePage.unified-bootstrap-workspace.workbench-page,
       dialog
     ) .semantic-section > .semantic-section-head:first-child {
@@ -18309,16 +19087,22 @@
     }
 
     #batchDetailsPage.workbench-page
+    .batch-details-section.semantic-table-section
+    > .semantic-table-section-head {
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    #batchDetailsPage.workbench-page
     .batch-details-output-section.semantic-section {
       --semantic-section-accent: var(--palette-teal-700);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     .deal-toolbar .client-deal-toolbar-title {
       color: var(--bs-secondary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     :is(.deal-toolbar, .batch-toolbar) .btn-outline-primary:not(.is-running) {
       --bs-btn-color: var(--app-button-primary-color);
       --bs-btn-bg: var(--app-button-primary-bg);
@@ -18335,21 +19119,21 @@
       color: var(--app-button-primary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     :is(.deal-toolbar, .batch-toolbar) .btn-outline-primary:not(.is-running):hover:not(:disabled) {
       border-color: var(--app-button-primary-hover-border);
       background: var(--app-button-primary-hover-bg);
       color: var(--app-button-primary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     :is(.deal-toolbar, .batch-toolbar) .btn-outline-primary:not(.is-running):active:not(:disabled) {
       border-color: var(--app-button-primary-active-border);
       background: var(--app-button-primary-active-bg);
       color: var(--app-button-primary-color);
     }
 
-    #mainPage.fx-position-bootstrap.workbench-page
+    #mainPage.position-bootstrap.workbench-page
     :is(.deal-toolbar, .batch-toolbar) .btn:disabled {
       --bs-btn-disabled-color: var(--bs-secondary-color);
       --bs-btn-disabled-bg: var(--bs-tertiary-bg);
@@ -18425,7 +19209,7 @@
     #clientDealGenerationDialog.generation-dialog
     .generation-settings-table-region.semantic-section
     > .generation-settings-table-toolbar.semantic-section-head {
-      border-bottom-color: var(--bs-border-color);
+      border-bottom: 1px solid var(--bs-border-color);
       background:
         color-mix(
           in srgb,
@@ -18468,13 +19252,13 @@
       box-shadow: var(--bs-box-shadow-sm);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page {
-      --hedging-settings-accent: var(--palette-yellow-500);
-      --hedging-settings-accent-strong: var(--palette-yellow-600);
-      --hedging-settings-border: var(--palette-yellow-300);
-      --hedging-settings-accent-soft:
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page {
+      --position-management-settings-accent: var(--palette-yellow-500);
+      --position-management-settings-accent-strong: var(--palette-yellow-600);
+      --position-management-settings-border: var(--palette-yellow-300);
+      --position-management-settings-accent-soft:
         color-mix(in srgb, var(--palette-yellow-100) 58%, var(--bs-body-bg));
-      --hedging-settings-accent-text: var(--palette-yellow-800);
+      --position-management-settings-accent-text: var(--palette-yellow-800);
       --quick-hedge-settings-accent: var(--app-primary);
       --quick-hedge-settings-accent-strong: var(--app-primary-hover);
       --quick-hedge-settings-border: var(--app-primary);
@@ -18482,30 +19266,30 @@
       --quick-hedge-settings-accent-text: var(--app-primary-text);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-grid.table-panel__body {
       overflow: auto;
       border: 0;
       border-radius: 0;
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-grid .tabulator-row:hover {
       background: var(--workbench-grid-hover-bg);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor > .client-deal-create-section.semantic-section {
       --semantic-section-accent: var(--quick-hedge-settings-border);
       box-shadow: var(--bs-box-shadow-sm);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor {
       --bs-border-color: var(--palette-gray-400);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     > .client-deal-create-section.semantic-section
     > .semantic-section-head {
@@ -18518,7 +19302,7 @@
         );
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor :is(.form-control, .form-select):focus {
       border-color: var(--quick-hedge-settings-accent-strong);
       box-shadow:
@@ -18526,24 +19310,24 @@
         color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     .client-deal-client-option:is(:hover, :focus-visible, .is-selected),
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     .client-pricing-context-candidate:is(:hover, :focus-visible) {
       border-color: var(--quick-hedge-settings-accent-strong);
       background: var(--quick-hedge-settings-accent-soft);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor .client-pricing-context-candidate.is-selected {
       border-color: var(--quick-hedge-settings-accent-strong);
       background: var(--palette-blue-100);
       box-shadow: inset 3px 0 0 var(--quick-hedge-settings-accent);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle):focus-visible {
       border-color: var(--quick-hedge-settings-accent-strong);
@@ -18552,7 +19336,7 @@
         color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-editor
     :is(.client-deal-client-picker-toggle, .client-deal-pricing-rule-select-toggle)[aria-expanded="true"] {
       border-color: var(--quick-hedge-settings-accent-strong);
@@ -18560,13 +19344,13 @@
       color: var(--quick-hedge-settings-accent-text);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-active .form-check-input:checked {
       border-color: var(--quick-hedge-settings-accent-strong);
       background-color: var(--quick-hedge-settings-accent);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .hedge-quick-settings-active .form-check-input:focus {
       border-color: var(--quick-hedge-settings-accent-strong);
       box-shadow:
@@ -18574,7 +19358,7 @@
         color-mix(in srgb, var(--quick-hedge-settings-accent) 20%, transparent);
     }
 
-    #hedgingSettingsPage.unified-bootstrap-workspace.workbench-page
+    #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     #hedgeQuickModeSettingsSaveButton {
       --bs-btn-color: var(--app-button-primary-color);
       --bs-btn-bg: var(--app-button-primary-bg);
@@ -18603,7 +19387,7 @@
     :is(.workbench-page, .modal, dialog)
     table
     tbody
-    tr:hover:not(.is-selected):not(.is-editing):not(.fx-position-grid-fill)
+    tr:hover:not(.is-selected):not(.is-editing):not(.position-grid-fill)
     > td {
       background: var(--workbench-grid-hover-bg) !important;
     }
@@ -18675,7 +19459,7 @@
         width: 100%;
       }
 
-      .fx-deals-grid {
+      .deals-grid {
         height: max(320px, calc(100vh - 230px));
       }
     }

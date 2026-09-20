@@ -7,14 +7,14 @@
 
     async function currentClientDealsForDuplicateCheck() {
       if (!DEMO_API_ENABLED) {
-        return clientFxDealRecords(fxPositions);
+        return clientDealRecords(positions);
       }
 
-      return reloadClientFxDealsFromApi();
+      return reloadClientDealsFromApi();
     }
 
     async function clientDealDuplicateCandidates(targetDeal) {
-      const draftDeal = normalizedClientFxDeal(targetDeal);
+      const draftDeal = normalizedClientDeal(targetDeal);
       const currentDeals = await currentClientDealsForDuplicateCheck();
 
       return currentDeals.filter(deal =>
@@ -24,30 +24,43 @@
     }
 
     function clientDealDuplicateCheckColumns() {
-      return [
-        {
-          title: "Trade Details",
-          columns: [
-            tabulatorSizedColumn("referenceId", {
-              title: "Trade ID",
-              field: "tradeId",
-              sorter: "number"
-            })
-          ]
-        },
-        {
-          title: "Trade Economics",
-          columns: [
-            tabulatorSizedColumn("date", { title: "Trade Date", field: "tradeDate", formatter: clientFxDealsDateFormatter }),
-            tabulatorSizedColumn("pair", { title: "Ccy Pair", field: "currencyPair" }),
-            tabulatorSizedColumn("shortText", { title: "Client Side", field: "side", formatter: clientFxDealsSideFormatter, hozAlign: "center", headerHozAlign: "center" }),
-            tabulatorSizedColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right" }),
-            tabulatorSizedColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right" }),
-            tabulatorSizedColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right" }),
-            tabulatorSizedColumn("tenor", { title: "Tenor", field: "tenor", hozAlign: "center", headerHozAlign: "center" })
-          ]
-        }
-      ];
+      const visibleFields = new Set([
+        "tradeId",
+        "tradeDate",
+        "currencyPair",
+        "side",
+        "baseCcyAmount",
+        "quoteCcyAmount",
+        "tradeRate",
+        "tenor"
+      ]);
+      const columns = clientDealColumnDefinitions()
+        .flatMap(group => group.columns || [group])
+        .filter(column => visibleFields.has(column.field))
+        .map(column => {
+          const {
+            headerFilter,
+            headerFilterFunc,
+            width,
+            minWidth,
+            maxWidth,
+            cssClass,
+            ...plainColumn
+          } = column;
+
+          return plainColumn;
+        });
+
+      return uiTableColumns("client_deals_grid", columns).map(column => {
+        const {
+          width,
+          minWidth,
+          maxWidth,
+          ...fluidColumn
+        } = column;
+
+        return fluidColumn;
+      });
     }
 
     function clientDealDuplicateCheckData(candidates) {
@@ -67,7 +80,7 @@
       clientDealDuplicateCheckGrid = new Tabulator(clientDealDuplicateCheckGridEl, {
         data,
         index: "rowKey",
-        layout: "fitData",
+        layout: "fitColumns",
         placeholder: "No matching client deals.",
         movableColumns: false,
         resizableColumns: false,
@@ -88,7 +101,7 @@
       const dealLabel = data.length === 1 ? "deal" : "deals";
 
       pendingClientDealCreation = targetDeal;
-      clientDealDuplicateCheckSummary.textContent = `${data.length} existing ${dealLabel} found for ${targetDeal.clientName} and ${currencyPair(targetDeal)}. Review them before creating another deal.`;
+      clientDealDuplicateCheckSummary.textContent = `${data.length} existing ${dealLabel} found for ${targetDeal.clientName} and ${currencyPair(targetDeal)}. Make sure the new deal is not a duplicate.`;
       setClientDealDuplicateCheckStatus();
       addClientDealSubmitButton.disabled = true;
 
@@ -130,12 +143,12 @@
       setClientDealDuplicateCheckStatus();
 
       try {
-        const createdDeal = await createClientFxDealRecord(targetDeal);
+        const createdDeal = await createClientDealRecord(targetDeal);
         await refreshClientDealViewsFromApi();
         selectedCurrencyPair = createdDeal.currencyPair;
         saveSelectedCurrencyPair();
         setBatchStatus(
-          `Client FX Deal ${createdDeal.clientDealId} was created successfully.`,
+          `Client Deal ${createdDeal.clientDealId} was created successfully.`,
           "success"
         );
 
@@ -144,10 +157,10 @@
         }
 
         closeAddClientDealDialog();
-        render(fxPositions);
+        render(positions);
         return true;
       } catch (error) {
-        const message = error.message || "Unable to create the Client FX Deal.";
+        const message = error.message || "Unable to create the Client Deal.";
         setBatchStatus(message, "error");
 
         if (clientDealDuplicateCheckDialog.open) {
@@ -175,7 +188,7 @@
 
       const profile = selectedAddClientDealProfile();
       const pricingRule = selectedAddClientDealPricingRule();
-      const pricingContext = selectedAddClientDealExecutionContext();
+      const pricingContext = selectedAddClientDealTradeContext();
       const onboardingPricing = isAddClientDealOnboardingPricing();
       const formValid = addClientDealForm.reportValidity();
 
@@ -295,7 +308,7 @@
         entryMarketStreamStatus: marketStreamRunning ? "RUNNING" : "STOPPED",
         comment: String(addClientDealForm.elements.comment.value || "").trim()
       };
-      targetDeal.settlementMethod = fxPositionSettlementMethod(targetDeal);
+      targetDeal.settlementMethod = positionSettlementMethod(targetDeal);
 
       addClientDealSubmitButton.disabled = true;
       let duplicateCandidates;
@@ -303,7 +316,7 @@
       try {
         duplicateCandidates = await clientDealDuplicateCandidates(targetDeal);
       } catch (error) {
-        setBatchStatus(error.message || "Unable to check existing Client FX Deals.", "error");
+        setBatchStatus(error.message || "Unable to check existing Client Deals.", "error");
         addClientDealSubmitButton.disabled = false;
         return;
       }
@@ -316,594 +329,15 @@
       await persistCreatedClientDeal(targetDeal);
     }
 
-    function dealPricingRuleEmptyMessage() {
-      const profile = selectedDealClientProfile();
-
-      if (!profile) {
-        return "Select a client";
-      }
-
-      return "No Pricing Rule";
-    }
-
-    function dealPricingRulesForSelectedClient() {
-      const profile = selectedDealClientProfile();
-
-      if (!profile) {
-        return [];
-      }
-
-      return clientPricingRulesForInn(profile.inn)
-        .sort((left, right) =>
-          left.currencyPair.localeCompare(right.currencyPair) ||
-          left.pricingContextId.localeCompare(right.pricingContextId)
-        );
-    }
-
-    function selectedDealPricingRule() {
-      const selectedRuleId = dealPricingRuleControl().value;
-
-      return dealPricingRulesForSelectedClient().find(rule => rule.pricingRuleId === selectedRuleId) || null;
-    }
-
-    function dealPricingRuleLabel(rule) {
-      const context = pricingContextById(rule?.pricingContextId);
-      const margin = `${editNumber(rule?.marginPercent ?? 0, 4)}%`;
-
-      if (!context) {
-        return `${rule.currencyPair} | Missing Execution Context | ${margin}`;
-      }
-
-      return [
-        rule.currencyPair,
-        servicingBranchDisplayName(context.servicingBranchCode),
-        settlementSystemDisplayName(context.settlementSystemId),
-        tradeCaptureChannelDisplayName(context.tradeCaptureChannelId),
-        margin
-      ].join(" | ");
-    }
-
-    function renderDealPricingRuleOptions() {
-      const control = dealPricingRuleControl();
-      const selectedValue = control.value;
-      const rules = dealPricingRulesForSelectedClient();
-      const selectedRuleId = rules.some(rule => rule.pricingRuleId === selectedValue) ? selectedValue : "";
-      const placeholder = rules.length === 0
-        ? dealPricingRuleEmptyMessage()
-        : "No Pricing Rule";
-
-      control.innerHTML = `
-        <option value="">${escapeHtml(placeholder)}</option>
-        ${rules
-          .map(rule => `<option value="${escapeHtml(rule.pricingRuleId)}">${escapeHtml(dealPricingRuleLabel(rule))}</option>`)
-          .join("")}
-      `;
-      control.disabled = false;
-      control.value = selectedRuleId;
-      control.classList.remove("is-error");
-    }
-
-    function renderDealPricingRuleResult() {
-      const rule = selectedDealPricingRule();
-      const context = pricingContextById(rule?.pricingContextId);
-      const hasMissingContext = Boolean(rule && !context);
-
-      dealPricingRuleResults.classList.toggle("is-selected", false);
-      dealPricingRuleResults.classList.toggle("is-error", hasMissingContext);
-      dealPricingRuleResults.classList.toggle("is-warning", false);
-      dealPricingRuleResults.hidden = !hasMissingContext;
-
-      if (!hasMissingContext) {
-        dealPricingRuleResults.innerHTML = "";
-        return;
-      }
-
-      dealPricingRuleResults.innerHTML = `
-        <span class="client-pricing-context-result-title">Pricing Rule</span>
-        Missing Execution Context for selected rule.
-      `;
-    }
-
-    function syncDealPricingRuleSelection() {
-      renderDealPricingRuleOptions();
-
-      const rule = selectedDealPricingRule();
-      const context = pricingContextById(rule?.pricingContextId);
-
-      dealPricingRuleControl().setCustomValidity("");
-
-      if (rule) {
-        renderDealCurrencyPairOptions(rule.currencyPair);
-      } else {
-        renderDealCurrencyPairOptions();
-      }
-
-      editForm.elements.currencyPair.disabled = Boolean(rule);
-
-      editForm.elements.branchCode.value = context?.servicingBranchCode || "";
-      renderDealPricingRuleResult();
-    }
-
-    function handleDealPricingRuleInput() {
-      syncDealPricingRuleSelection();
-      syncDealFormDerivedFields();
-    }
-
-    function setDealPricingRuleSelection(rule) {
-      const control = dealPricingRuleControl();
-
-      renderDealPricingRuleOptions();
-      control.value = rule?.pricingRuleId || "";
-      syncDealPricingRuleSelection();
-    }
-
-    function pricingContextForDealFormSource(deal) {
-      return pricingContextById(fxPositionExecutionContextId(deal));
-    }
-
-    function pricingRuleForDealFormSource(deal) {
-      if (deal?.pricingRuleControlStatus === "PRICING_RULE_REQUIRED") {
-        return null;
-      }
-
-      const storedRuleId = String(deal?.pricingRuleId || deal?.pricing_rule_id || "").trim();
-      const storedRule = clientPricingRules.find(rule => rule.pricingRuleId === storedRuleId);
-
-      if (storedRule) {
-        return storedRule;
-      }
-
-      const context = pricingContextForDealFormSource(deal);
-      const pair = currencyPair(deal);
-
-      return clientPricingRulesForInn(deal?.inn || "").find(rule =>
-        rule.currencyPair === pair && rule.pricingContextId === context?.pricingContextId
-      ) || null;
-    }
-
-    function renderLockedEditClientDealContext(deal) {
-      const clientPickerValue = document.getElementById("editClientDealClientPickerValue");
-      const pricingRulePicker = document.getElementById("editClientDealPricingRulePicker");
-      const profile = clientProfiles.find(item => item.counterpartyId === Number(deal.counterpartyId))
-        || clientProfileByInn(deal.inn)
-        || {
-          clientCodeType: normalizedClientCodeType(deal.clientCodeType),
-          inn: deal.inn || "—",
-          name: deal.clientName || "—"
-        };
-      const rule = pricingRuleForDealFormSource(deal);
-      const context = pricingContextById(rule?.pricingContextId)
-        || pricingContextForDealFormSource(deal);
-
-      clientPickerValue.innerHTML = addClientDealProfileIdentityMarkup(profile);
-      pricingRulePicker.innerHTML = `
-        <span class="form-label client-deal-context-picker-label" id="editClientDealPricingRuleLabel">Pricing Rule</span>
-        <div class="input-group client-deal-pricing-rule-select is-disabled">
-          <div class="form-control client-deal-pricing-rule-select-value" aria-labelledby="editClientDealPricingRuleLabel">
-            ${rule && context
-              ? addClientDealPricingRuleContentMarkup(rule, context)
-              : '<span class="client-deal-pricing-rule-placeholder">Pricing Rule is unavailable.</span><span></span>'}
-          </div>
-          <button type="button" class="btn btn-outline-secondary client-deal-pricing-rule-select-toggle" aria-label="Pricing Rule selection is locked" disabled>
-            <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
-          </button>
-        </div>
-      `;
-    }
-
-    function validateDealPricingRuleSelection() {
-      const control = dealPricingRuleControl();
-      const selectedRuleId = control.value;
-      const rule = selectedDealPricingRule();
-      const context = pricingContextById(rule?.pricingContextId);
-
-      if (!selectedRuleId) {
-        control.setCustomValidity("");
-        return { rule: null, context: null };
-      }
-
-      control.setCustomValidity(rule ? "" : "Selected Pricing Rule is not available.");
-
-      if (!rule) {
-        control.reportValidity();
-        return null;
-      }
-
-      control.setCustomValidity(context ? "" : "Selected Pricing Rule has no valid Execution Context.");
-
-      if (!context) {
-        renderDealPricingRuleResult();
-        control.reportValidity();
-        return null;
-      }
-
-      return { rule, context };
-    }
-
-    function renderDealCurrencyPairOptions(selectedValue = "") {
-      const control = editForm.elements.currencyPair;
-      const selectedPair = normalizedPricingRuleCurrencyPair(selectedValue || control.value);
-      const pairValues = marketCurrencyPairValues();
-      const optionPairValues = selectedPair && !pairValues.includes(selectedPair)
-        ? [selectedPair, ...pairValues]
-        : pairValues;
-      const activePair = activeCurrencyPairOrDefault();
-      const nextValue = selectedPair && optionPairValues.includes(selectedPair)
-        ? selectedPair
-        : pairValues.includes(activePair)
-          ? activePair
-          : pairValues[0] || "";
-
-      control.innerHTML = `
-        <option value="">${pairValues.length === 0 ? "No Ccy Pairs configured" : ""}</option>
-        ${optionPairValues
-          .map(pair => `<option value="${escapeHtml(pair)}">${escapeHtml(pair)}</option>`)
-          .join("")}
-      `;
-      control.value = nextValue;
-    }
-
-    function dealFormCurrencies() {
-      const pair = normalizedPricingRuleCurrencyPair(editForm.elements.currencyPair.value) || activeCurrencyPairOrDefault();
-
-      return currenciesFromPair(pair);
-    }
-
-    function syncDealCurrencyLabels() {
-      const currencies = dealFormCurrencies();
-      const baseLabels = editForm.querySelectorAll("[data-base-currency-label]");
-      const quoteLabels = editForm.querySelectorAll("[data-quote-currency-label]");
-      const fixingSelect = editForm.elements.amountFixingCurrency;
-      const selectedFixing = fixingSelect.value === "quote" ? "quote" : "base";
-
-      baseLabels.forEach(label => {
-        label.textContent = currencies.base;
-      });
-      quoteLabels.forEach(label => {
-        label.textContent = currencies.quote;
-      });
-
-      fixingSelect.innerHTML = `
-        <option value="base">${escapeHtml(currencies.base)} (base)</option>
-        <option value="quote">${escapeHtml(currencies.quote)} (quote)</option>
-      `;
-      fixingSelect.value = selectedFixing;
-    }
-
-    function syncDealAmountInputs() {
-      const fixing = editForm.elements.amountFixingCurrency.value === "quote" ? "quote" : "base";
-      const baseInput = editForm.elements.amount;
-      const quoteInput = editForm.elements.quoteAmount;
-      const currencies = dealFormCurrencies();
-      const baseFractionDigits = currencyFractionDigits(currencies.base);
-      const quoteFractionDigits = currencyFractionDigits(currencies.quote);
-      const amounts = exactFxAmountsFromDealt({
-        dealtAmount: fixing === "quote" ? quoteInput.value : baseInput.value,
-        dealtCcyCode: fixing === "quote" ? currencies.quote : currencies.base,
-        baseCcyCode: currencies.base,
-        quoteCcyCode: currencies.quote,
-        baseFractionDigits,
-        quoteFractionDigits,
-        tradeRate: editForm.elements.clientRate.value
-      });
-
-      baseInput.readOnly = fixing === "quote";
-      quoteInput.readOnly = fixing === "base";
-      baseInput.setCustomValidity("");
-      quoteInput.setCustomValidity("");
-
-      if (!amounts) {
-        if (fixing === "quote") {
-          baseInput.value = "";
-        } else {
-          quoteInput.value = "";
-        }
-
-        return;
-      }
-
-      if (fixing === "quote") {
-        baseInput.value = groupedDecimalText(
-          minorToMajorDecimal(amounts.baseAmountMinor, baseFractionDigits)
-        );
-        return;
-      }
-
-      quoteInput.value = groupedDecimalText(
-        minorToMajorDecimal(amounts.quoteAmountMinor, quoteFractionDigits)
-      );
-    }
-
-    function formatDealAmountInput(input) {
-      const value = normalizeNumber(input.value);
-
-      if (Number.isFinite(value)) {
-        input.value = amountInputValue(value);
-      }
-    }
-
-    function formatDealAmountInputs() {
-      formatDealAmountInput(editForm.elements.amount);
-      formatDealAmountInput(editForm.elements.quoteAmount);
-      syncDealFormDerivedFields();
-    }
-
-    function syncDealTransferRateFromPricingRule() {
-      const pricingRule = selectedDealPricingRule();
-      const transferRateInput = editForm.elements.autoBatchRate;
-
-      if (!pricingRule) {
-        transferRateInput.readOnly = false;
-
-        if (transferRateInput.dataset.pricingRuleCalculated === "true") {
-          transferRateInput.value = "";
-          delete transferRateInput.dataset.pricingRuleCalculated;
-        }
-
-        return;
-      }
-
-      const side = editForm.elements.side.value;
-      const clientRate = normalizeNumber(editForm.elements.clientRate.value);
-      const marginPercent = Number(pricingRule?.marginPercent);
-      const pair = marketPairs.find(item => item.currencyPair === selectedDealCurrencyPair());
-      const transferRate = transferRateFromPricingRule(
-        side,
-        clientRate,
-        marginPercent,
-        pair?.defaultQuoteDecimals
-      );
-
-      transferRateInput.readOnly = true;
-      transferRateInput.dataset.pricingRuleCalculated = "true";
-      transferRateInput.value = Number.isFinite(transferRate)
-        ? formatMarketQuote(transferRate, pair)
-        : "";
-    }
-
-    function syncDealTransferCalculations() {
-      const currencies = dealFormCurrencies();
-      const pnl = exactAnalyticalPnlText({
-        side: String(editForm.elements.side.value || "").toUpperCase(),
-        baseCcyAmount: editForm.elements.amount.value,
-        tradeRate: editForm.elements.clientRate.value,
-        transferRate: editForm.elements.autoBatchRate.value,
-        quoteFractionDigits: currencyFractionDigits(currencies.quote)
-      });
-
-      editForm.elements.pnlCash.value = pnl === null ? "" : groupedDecimalText(pnl);
-    }
-
-    function prepareEditDealForm() {
-      editForm.querySelectorAll("input, select").forEach(control => {
-        const isComment = control.name === "comment";
-
-        control.disabled = control.tagName === "SELECT" && !isComment;
-        if (control instanceof HTMLInputElement) {
-          control.readOnly = !isComment;
-        }
-      });
-      dealIdentitySection.open = false;
-    }
-
-    function syncDealFormDerivedFields(event = null) {
-      syncDealClientContext(event?.target || null);
-      syncDealPricingRuleSelection();
-
-      const pricingRule = selectedDealPricingRule();
-      const pricingContext = pricingContextById(pricingRule?.pricingContextId);
-      const tradeDate = parseDisplayDate(editForm.elements.tradeDate.value);
-
-      if (pricingContext) {
-        editForm.elements.branchCode.value = pricingContext.servicingBranchCode;
-      } else {
-        editForm.elements.branchCode.value = "";
-      }
-
-      editForm.elements.branchCode.setCustomValidity("");
-      syncDealCurrencyLabels();
-
-      if (isValidDate(tradeDate)) {
-        editForm.elements.valueDate.value = formatDisplayDate(valueDateFromTradeDate(tradeDate, editForm.elements.tenor.value));
-        editForm.elements.tradeDate.setCustomValidity("");
-      } else if (editForm.elements.tradeDate.value.trim()) {
-        editForm.elements.valueDate.value = "";
-        editForm.elements.tradeDate.setCustomValidity("Trade Date must look like 29.06.2026.");
-      }
-
-      syncDealMarketQuotes();
-      syncDealTransferRateFromPricingRule();
-      syncDealAmountInputs();
-      syncDealTransferCalculations();
-    }
-
-    function syncSyntheticAutoBatchRate() {
-      const deal = editingDealId ? findFxPositionById(editingDealId) : null;
-
-      if (deal?.synthetic) {
-        editForm.elements.autoBatchRate.value = editForm.elements.clientRate.value;
-      }
-    }
-
-    function showDealDialog() {
-      openDialogWithoutFieldFocus(editDialog);
-    }
-
-    function openEditDialog(dealId) {
-      const deal = findFxPositionById(dealId);
-
-      if (
-        !deal
-        || deal.synthetic
-        || fxPositionType(deal) !== "CLIENT_DEAL"
-        || deal.databaseBackedClientFxDeal !== true
-      ) {
-        return;
-      }
-
-      const side = sideOf(deal);
-      const amount = side === "buy" ? deal.amountBuy : deal.amountSell;
-      const autoBatchInput = editForm.elements.autoBatchRate;
-      const pair = currencyPair(deal);
-      const currencies = currenciesFromPair(pair);
-      const storedMarketStatus = String(deal.entryMarketStreamStatus || "").trim().toUpperCase();
-      const marketStatusIndicator = editForm.querySelector("[data-edit-client-deal-market-status]");
-
-      editingDealId = deal.id;
-      editForm.reset();
-      delete editForm.elements.autoBatchRate.dataset.pricingRuleCalculated;
-      clearFormValidity();
-      populateDealClientOptions(deal.clientName || clientDealProfiles()[0]?.name || "", deal.inn || "");
-
-      editForm.elements.dealId.value = deal.id || "";
-      editForm.elements.entryDate.value = deal.executionTimestamp || positionEntryDate(deal);
-      editForm.elements.branchCode.value = deal.branchCode || "";
-      editForm.elements.clientCode.value = deal.inn || innForClientName(deal.clientName);
-      editForm.elements.clientName.value = deal.clientName || "";
-      renderDealCurrencyPairOptions(pair);
-      editForm.elements.tradeDate.value = positionTradeDate(deal);
-      editForm.elements.valueDate.value = baseCurrencyValueDate(deal);
-      editForm.elements.quoteValueDate.value = quoteCurrencyValueDate(deal);
-      editForm.elements.tenor.value = positionTenor(deal) || "TOD";
-      editForm.elements.side.innerHTML = `
-        <option value="buy">BUY ${escapeHtml(currencies.base)}</option>
-        <option value="sell">SELL ${escapeHtml(currencies.base)}</option>
-      `;
-      editForm.elements.side.value = side === "buy" ? "buy" : "sell";
-      editForm.elements.amountFixingCurrency.value = "base";
-      editForm.elements.amount.value = amountInputValue(amount);
-      editForm.elements.quoteAmount.value = Number.isFinite(Number(deal.quoteCcyAmount))
-        ? amountInputValue(Number(deal.quoteCcyAmount))
-        : "";
-      editForm.elements.clientRate.value = editNumber(deal.clientRate, 4);
-      autoBatchInput.value = editNumber(deal.autoBatchRate, 4);
-      editForm.elements.pnlCash.value = amountInputValue(pnlCash(deal));
-      editForm.elements.currentMarketBid.value = Number.isFinite(Number(deal.entryMarketBid))
-        ? formatMarketQuote(Number(deal.entryMarketBid), marketPairs.find(item => item.currencyPair === pair))
-        : "";
-      editForm.elements.currentMarketOffer.value = Number.isFinite(Number(deal.entryMarketOffer))
-        ? formatMarketQuote(Number(deal.entryMarketOffer), marketPairs.find(item => item.currencyPair === pair))
-        : "";
-      editForm.elements.currentMarketStatus.value = storedMarketStatus;
-      editForm.elements.comment.value = String(deal.comment || "");
-      setDealPricingRuleSelection(pricingRuleForDealFormSource(deal));
-
-      syncDealCurrencyLabels();
-      renderLockedEditClientDealContext(deal);
-      editForm.querySelector("[data-edit-client-deal-trade-date-summary]").textContent =
-        editForm.elements.tradeDate.value || "—";
-      editForm.querySelector("[data-edit-client-deal-base-value-date-summary]").textContent =
-        editForm.elements.valueDate.value || "—";
-      editForm.querySelector("[data-edit-client-deal-quote-value-date-summary]").textContent =
-        editForm.elements.quoteValueDate.value || "—";
-      marketStatusIndicator.classList.toggle("is-active", storedMarketStatus === "RUNNING");
-      marketStatusIndicator.classList.toggle("is-stopped", storedMarketStatus === "STOPPED");
-      document.getElementById("editClientDealMarketPulse").classList.toggle(
-        "is-live",
-        storedMarketStatus === "RUNNING"
-          && Number.isFinite(Number(deal.entryMarketBid))
-          && Number.isFinite(Number(deal.entryMarketOffer))
-      );
-      editForm.querySelectorAll("[data-edit-client-deal-loss-field]").forEach(field => {
-        field.classList.toggle("is-negative-pnl", Number(deal.pnlCash) < 0);
-      });
-      marketStatusIndicator.querySelector("[data-edit-client-deal-market-status-text]").textContent =
-        storedMarketStatus === "RUNNING"
-          ? "Active"
-          : storedMarketStatus === "STOPPED"
-            ? "Stopped"
-            : "Unavailable";
-      prepareEditDealForm();
-      dealIdentitySection.open = true;
-
-      showDealDialog();
-    }
-
-    function openSelectedEditDialog() {
-      const deal = selectedEditableDeal();
-
-      if (!deal) {
-        return;
-      }
-
-      openEditDialog(deal.id);
-    }
-
-    function closeEditDialog() {
-      if (typeof editDialog.close === "function") {
-        editDialog.close();
-      } else {
-        editDialog.removeAttribute("open");
-        editingDealId = null;
-      }
-    }
-
-    async function saveEditedDeal(event) {
-      event.preventDefault();
-
-      const deal = editingDealId ? findFxPositionById(editingDealId) : null;
-
-      if (
-        !deal
-        || fxPositionType(deal) !== "CLIENT_DEAL"
-        || deal.databaseBackedClientFxDeal !== true
-        || !Number.isInteger(deal.clientFxDealId)
-        || deal.clientFxDealId <= 0
-      ) {
-        closeEditDialog();
-        return;
-      }
-
-      if (!DEMO_API_ENABLED) {
-        setBatchStatus("SQLite API is unavailable. Comment was not saved.", "error");
-        return;
-      }
-
-      const comment = String(editForm.elements.comment.value || "").trim();
-      editForm.elements.comment.setCustomValidity(
-        comment.length <= 500 && !/[\r\n]/.test(comment)
-          ? ""
-          : "Comment must be a single line of no more than 500 characters."
-      );
-
-      if (!editForm.elements.comment.reportValidity()) {
-        return;
-      }
-
-      const submitButton = document.getElementById("dealSubmitButton");
-      submitButton.disabled = true;
-
-      try {
-        await demoApiRequest(
-          `/api/v1/client-fx-deals/${encodeURIComponent(deal.clientFxDealId)}`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({ comment })
-          }
-        );
-        await refreshClientDealViewsFromApi();
-        setBatchStatus(
-          `Comment for Client FX Deal ${deal.clientFxDealId} was saved successfully.`,
-          "success"
-        );
-        closeEditDialog();
-        render(fxPositions);
-      } catch (error) {
-        setBatchStatus(error.message || "Unable to save the Client FX Deal Comment.", "error");
-      } finally {
-        submitButton.disabled = false;
-      }
-    }
-
     function renderDealRow(deal) {
       const side = sideOf(deal);
       const sourceClass = deal.synthetic ? "open-row" : `source-${deal.tone || "blue"}`;
       const selected = selectedTradeIds.has(deal.id);
-      const positionType = fxPositionType(deal);
-      const hedgeDealClass = positionType === "HEDGE_DEAL"
+      const tradeType = positionType(deal);
+      const hedgeDealClass = tradeType === "HEDGE_DEAL"
         ? " is-hedge-deal"
         : "";
-      const batchTechnicalClass = ["BATCH_POSITION_OUT", "BATCH_BALANCE_TRADE"].includes(positionType)
+      const batchTechnicalClass = ["BATCH_POSITION_OUT", "BATCH_BALANCE_TRADE"].includes(tradeType)
         ? " is-batch-technical"
         : "";
       const rowClass =
@@ -912,17 +346,17 @@
       const buyActive = side === "buy";
       const flatActive = side === "flat";
       const safeId = escapeHtml(deal.id);
-      const safeTradeLabel = escapeHtml(fxPositionTradeLabel(deal));
-      const safeTradeId = escapeHtml(fxPositionTradeId(deal));
-      const tradeTypePresentation = fxPositionTradeTypePresentation(deal);
-      const tradeContext = fxPositionTradeContext(deal, tradeTypePresentation.type);
-      const tradeTypeTooltip = fxPositionTradeTypeTooltip(deal, tradeTypePresentation);
+      const safeTradeLabel = escapeHtml(positionTradeLabel(deal));
+      const safeTradeId = escapeHtml(positionTradeId(deal));
+      const tradeTypePresentation = positionTradeTypePresentation(deal);
+      const tradeContext = positionTradeContext(deal, tradeTypePresentation.type);
+      const tradeTypeTooltip = positionTradeTypeTooltip(deal, tradeTypePresentation);
       const baseCcyAmount = flatActive
-        ? formattedMinorAmount("0", fxPositionBaseCcyFractionDigits(deal) ?? 0)
-        : fxPositionBaseAmountCell(deal);
-      const tradeRate = fxPositionTradeRate(deal);
-      const transferRate = fxPositionTransferRate(deal);
-      const selectionBox = isBatchableFxPositionTrade(deal)
+        ? formattedMinorAmount("0", positionBaseCcyFractionDigits(deal) ?? 0)
+        : positionBaseAmountCell(deal);
+      const tradeRate = positionTradeRate(deal);
+      const transferRate = positionTransferRate(deal);
+      const selectionBox = isBatchablePositionTrade(deal)
         ? `<input type="checkbox" class="form-check-input deal-checkbox" data-deal-id="${safeId}" aria-label="Select ${safeTradeLabel}" ${selected ? "checked" : ""}>`
         : "";
       const tradeIdCopyButton = safeTradeId

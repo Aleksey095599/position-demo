@@ -157,7 +157,7 @@ function calculateBaseMinor({
   return BigInt(baseMinor.toFixed(0));
 }
 
-function calculateFxAmountsFromDealt({
+function calculateAmountsFromDealt({
   dealtAmount,
   dealtCcyCode,
   baseCcyCode,
@@ -221,7 +221,7 @@ function minorToSafeInteger(minorAmount, name = "Minor units") {
 
 module.exports = {
   calculateBaseMinor,
-  calculateFxAmountsFromDealt,
+  calculateAmountsFromDealt,
   calculateQuoteMinor,
   majorToMinor,
   majorToMinorExact,

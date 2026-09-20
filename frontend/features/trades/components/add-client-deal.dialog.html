@@ -16,7 +16,7 @@
               <div class="client-deal-pricing-mode-field">
                 <label class="form-label form-label-with-help" for="addClientDealPricingMode">
                   <span>Pricing Mode</span>
-                  <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Only DEALER_PRICED Execution Systems are available for manual Client Deal adding." data-tooltip="Only DEALER_PRICED Execution Systems are available for manual Client Deal adding.">info</span>
+                  <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Only DEALER_PRICED Originating Systems are available for manual Client Deal adding." data-tooltip="Only DEALER_PRICED Originating Systems are available for manual Client Deal adding.">info</span>
                 </label>
                 <div class="input-group client-deal-pricing-mode-filter">
                   <span class="input-group-text pricing-mode-indicator client-deal-pricing-mode-icon is-dealer-priced" role="img" aria-label="Dealer Priced">
@@ -44,7 +44,7 @@
                 </div>
               </div>
             </div>
-            <input type="hidden" name="executionContextId">
+            <input type="hidden" name="tradeContextId">
             <input type="hidden" name="pricingRuleId">
             <input type="hidden" name="manualPricingReason">
             <div class="client-deal-context-picker" id="addClientDealPricingRulePicker" aria-live="polite"></div>
@@ -125,7 +125,7 @@
                 </label>
                 <div class="input-group client-deal-rate-input-group client-deal-transfer-rate-input-group">
                   <span class="input-group-text client-deal-rate-icon" aria-hidden="true">
-                    <span class="button-icon">swap_horiz</span>
+                    <span class="button-icon">keyboard_tab</span>
                   </span>
                   <input class="form-control" type="text" id="addClientDealTransferRate" name="transferRate" readonly required>
                 </div>

@@ -823,11 +823,11 @@
       width: min(720px, calc(100vw - 32px));
     }
 
-    .execution-context-dialog {
+    .trade-context-dialog {
       width: min(640px, calc(100vw - 32px));
     }
 
-    .execution-context-dialog .form-grid.one-column {
+    .trade-context-dialog .form-grid.one-column {
       gap: 12px;
     }
 

@@ -1,0 +1,56 @@
+    #tradeContractPage .trade-contract-content {
+      width: min(960px, 100%);
+    }
+
+    #tradeContractPage .trade-contract-intro {
+      margin: 0 0 18px;
+      color: var(--bs-secondary-color);
+    }
+
+    #tradeContractPage .table-panel__viewport {
+      overflow-x: auto;
+    }
+
+    #tradeContractPage .trade-contract-table {
+      width: 100%;
+      min-width: 680px;
+      margin: 0;
+      table-layout: fixed;
+      --bs-table-striped-bg: var(--bs-tertiary-bg);
+    }
+
+    #tradeContractPage .trade-contract-table :is(thead, tbody, tr, th, td) {
+      border-color: var(--bs-border-color);
+    }
+
+    #tradeContractPage .trade-contract-table :is(th, td) {
+      padding: 10px;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      vertical-align: middle;
+    }
+
+    #tradeContractPage .trade-contract-table thead th {
+      border-top: 0;
+      background: var(--bs-tertiary-bg);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #tradeContractPage .trade-contract-table :is(th, td):first-child {
+      width: 25%;
+      border-left: 0;
+    }
+
+    #tradeContractPage .trade-contract-table :is(th, td):last-child {
+      width: 25%;
+      border-right: 0;
+    }
+
+    #tradeContractPage .trade-contract-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+    #tradeContractPage .workbench-page-header {
+      justify-content: flex-start;
+      border-bottom: 0;
+    }

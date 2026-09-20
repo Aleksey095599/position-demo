@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
   calculateBaseMinor,
-  calculateFxAmountsFromDealt,
+  calculateAmountsFromDealt,
   calculateQuoteMinor,
   majorToMinor,
   majorToMinorExact,
@@ -66,7 +66,7 @@ test("calculates and rounds Base Amount from Quote minor units and a decimal rat
 });
 
 test("derives both minor-unit amounts from the dealt currency", () => {
-  assert.deepEqual(calculateFxAmountsFromDealt({
+  assert.deepEqual(calculateAmountsFromDealt({
     dealtAmount: "1000.63",
     dealtCcyCode: "EUR",
     baseCcyCode: "EUR",
@@ -79,7 +79,7 @@ test("derives both minor-unit amounts from the dealt currency", () => {
     quoteAmountMinor: 112306n
   });
 
-  assert.deepEqual(calculateFxAmountsFromDealt({
+  assert.deepEqual(calculateAmountsFromDealt({
     dealtAmount: "1123.06",
     dealtCcyCode: "USD",
     baseCcyCode: "EUR",
@@ -94,7 +94,7 @@ test("derives both minor-unit amounts from the dealt currency", () => {
 });
 
 test("preserves the dealt amount exactly and rounds only the calculated currency", () => {
-  assert.deepEqual(calculateFxAmountsFromDealt({
+  assert.deepEqual(calculateAmountsFromDealt({
     dealtAmount: "123",
     dealtCcyCode: "JPY",
     baseCcyCode: "JPY",
@@ -107,7 +107,7 @@ test("preserves the dealt amount exactly and rounds only the calculated currency
     quoteAmountMinor: 828n
   });
 
-  assert.deepEqual(calculateFxAmountsFromDealt({
+  assert.deepEqual(calculateAmountsFromDealt({
     dealtAmount: "0.828",
     dealtCcyCode: "BHD",
     baseCcyCode: "JPY",
@@ -120,7 +120,7 @@ test("preserves the dealt amount exactly and rounds only the calculated currency
     quoteAmountMinor: 828n
   });
 
-  assert.deepEqual(calculateFxAmountsFromDealt({
+  assert.deepEqual(calculateAmountsFromDealt({
     dealtAmount: "700000.125",
     dealtCcyCode: "BHD",
     baseCcyCode: "BHD",
@@ -133,7 +133,7 @@ test("preserves the dealt amount exactly and rounds only the calculated currency
     quoteAmountMinor: 105003519n
   });
 
-  assert.deepEqual(calculateFxAmountsFromDealt({
+  assert.deepEqual(calculateAmountsFromDealt({
     dealtAmount: "105003519",
     dealtCcyCode: "JPY",
     baseCcyCode: "BHD",
@@ -149,7 +149,7 @@ test("preserves the dealt amount exactly and rounds only the calculated currency
 
 test("rejects sub-minor dealt amounts instead of silently changing the trade amount", () => {
   assert.throws(
-    () => calculateFxAmountsFromDealt({
+    () => calculateAmountsFromDealt({
       dealtAmount: "1000.001",
       dealtCcyCode: "EUR",
       baseCcyCode: "EUR",
@@ -162,7 +162,7 @@ test("rejects sub-minor dealt amounts instead of silently changing the trade amo
   );
 
   assert.throws(
-    () => calculateFxAmountsFromDealt({
+    () => calculateAmountsFromDealt({
       dealtAmount: "1123.061",
       dealtCcyCode: "USD",
       baseCcyCode: "EUR",

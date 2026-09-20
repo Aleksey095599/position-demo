@@ -2,28 +2,36 @@
       ? window.__DEMO_API_BOOTSTRAP__
       : null;
     const DEMO_API_ENABLED = DEMO_API_BOOTSTRAP?.available === true;
-    const UI_TABLE_COLUMN_WIDTH_MIN_PX = 48;
+    const UI_TABLE_COLUMN_WIDTH_MIN_PX = 50;
     const UI_TABLE_COLUMN_WIDTH_MAX_PX = 1600;
     const UI_TABLE_LAYOUT_COLUMN_ALIASES = Object.freeze({
       external_counterparties_grid: Object.freeze({ status: "active" }),
       internal_units_grid: Object.freeze({ status: "active" }),
       users_grid: Object.freeze({ status: "active" }),
+      trade_contexts_grid: Object.freeze({
+        auto_hedging_admission_mode: "auto_management_admission_mode",
+        auto_hedging_admission_policy: "auto_management_admission_mode",
+        auto_management_admission_policy: "auto_management_admission_mode"
+      }),
+      auto_management_admission_criteria_grid: Object.freeze({
+        eligible_for_auto_management: "eligible_for_auto_mode"
+      }),
       batching_history_grid: Object.freeze({
         formation_reason: "formation_reason_code",
         created_at: "formed_at"
       }),
       pricing_rules_grid: Object.freeze({
-        position_management_mode: "auto_hedging_admission"
+        position_management_mode: "auto_management_admission"
       }),
       internal_pricing_rules_grid: Object.freeze({
-        position_management_mode: "auto_hedging_admission"
+        position_management_mode: "auto_management_admission"
       })
     });
     const UI_TABLE_LAYOUT_BOOTSTRAP = Array.isArray(DEMO_API_BOOTSTRAP?.uiTableLayouts)
       ? DEMO_API_BOOTSTRAP.uiTableLayouts
       : [];
     const CLIENT_DEAL_GENERATION_REFRESH_INTERVAL_MS = 1000;
-    const FX_AUTO_BATCHING_REFRESH_INTERVAL_MS = 1000;
+    const AUTO_BATCHING_REFRESH_INTERVAL_MS = 1000;
     const DEFAULT_MARKET_PAIRS = DemoDb.defaults.marketPairs;
     const DEFAULT_CCY_OPTIONS = DemoDb.defaults.ccyOptions;
     const DEFAULT_QUOTE_DECIMALS = 4;
@@ -94,6 +102,7 @@
     const DEFAULT_SERVICING_BRANCHES = DemoDb.defaults.servicingBranches;
     const DEFAULT_SETTLEMENT_SYSTEMS = DemoDb.defaults.settlementSystems;
     const DEFAULT_TRADE_CAPTURE_CHANNELS = DemoDb.defaults.tradeCaptureChannels;
+    const DEFAULT_TRADE_PURPOSES = DemoDb.defaults.tradePurposes;
     const LEGACY_DEALER_ASSISTED_CHANNEL_ID = "DEALER_ASSISTED";
     const LEGACY_CREATE_CLIENT_DEAL_CHANNEL_ID = "CREATE_CLIENT_DEAL";
     const MANUAL_CLIENT_DEAL_ENTRY_CHANNEL_ID = "MANUAL_CLIENT_DEAL_ENTRY";
@@ -101,15 +110,19 @@
     const PRICING_TYPES = ["AUTO_PRICED", "DEALER_PRICED", "DEALER_APPROVED"];
     const POSITION_MANAGEMENT_MODES = Object.freeze(["MANUAL", "AUTO"]);
     const POSITION_MANAGEMENT_MODE_LABELS = Object.freeze({
-      MANUAL: "Manual Control",
-      AUTO: "Auto Hedging"
+      MANUAL: "Manual Management",
+      AUTO: "Auto Management"
     });
-    const AUTO_HEDGING_ADMISSION_MODES = Object.freeze(["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED", "MANUAL_ONLY"]);
-    const AUTO_HEDGING_ADMISSION_MODE_LABELS = Object.freeze({
-      AUTO_IF_ELIGIBLE: "Auto if eligible",
-      REVIEW_REQUIRED: "Review required",
-      MANUAL_ONLY: "Manual only"
+    const AUTO_MANAGEMENT_ADMISSION_MODES = Object.freeze(["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED"]);
+    const AUTO_MANAGEMENT_ADMISSION_MODE_LABELS = Object.freeze({
+      AUTO_IF_ELIGIBLE: "Auto Mode if Eligible",
+      REVIEW_REQUIRED: "Manual Mode"
     });
+    const AUTO_MODE_ELIGIBILITY_TRADE_TYPES = Object.freeze([
+      "CLIENT_DEAL",
+      "HEDGE_DEAL",
+      "BATCH_POSITION_OUT"
+    ]);
     const HEDGE_DEAL_PRICING_MODES = ["AUTO_PRICED", "DEALER_PRICED"];
     const PRICING_TYPE_PRESENTATION = Object.freeze({
       AUTO_PRICED: Object.freeze({
@@ -154,10 +167,10 @@
       },
       {
         field: "tradeCaptureChannelId",
-        inputName: "contextExecutionSystem",
-        menuId: "clientPricingExecutionMenu",
-        label: "Execution System",
-        icon: "terminal"
+        inputName: "contextOriginatingSystem",
+        menuId: "clientPricingOriginatingMenu",
+        label: "Originating System",
+        icon: "web_asset"
       }
     ];
     let ccyOptions = loadCcyOptions();
@@ -167,17 +180,18 @@
     let servicingBranches = loadServicingBranches();
     let settlementSystems = loadSettlementSystems();
     let tradeCaptureChannels = loadTradeCaptureChannels();
+    let tradePurposes = loadTradePurposes();
     let pricingContexts = loadPricingContexts();
     let clientPricingRules = loadClientPricingRules();
     let hedgeQuickModeSettings = loadHedgeQuickModeSettings();
-    let autoHedgingAdmissionPolicy = loadAutoHedgingAdmissionPolicy();
-    let batchingSettings = loadFxBatchingSettings();
-    let autoBatchingSettings = loadFxAutoBatchingSettings();
-    let clientFxDeals = loadClientFxDeals();
-    let hedgeFxDeals = loadHedgeFxDeals();
-    let fxBatchHistory = loadFxBatches();
-    let fxPositionRecords = Array.isArray(DEMO_API_BOOTSTRAP.fxPositions)
-      ? DEMO_API_BOOTSTRAP.fxPositions
+    let autoManagementAdmissionPolicy = loadAutoManagementAdmissionPolicy();
+    let batchingSettings = loadBatchingSettings();
+    let autoBatchingSettings = loadAutoBatchingSettings();
+    let clientDeals = loadClientDeals();
+    let hedgeDeals = loadHedgeDeals();
+    let batchHistory = loadBatches();
+    let positionRecords = Array.isArray(DEMO_API_BOOTSTRAP.positions)
+      ? DEMO_API_BOOTSTRAP.positions
       : [];
     let clientDealGenerationSettings = [];
     let clientDealGenerationProcessSettings = {
@@ -204,51 +218,51 @@
     };
     let clientDealGenerationRefreshTimer = null;
     let clientDealGenerationRefreshInFlight = false;
-    let fxAutoBatchingProcessState = {
-      running: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.running === true,
-      status: String(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.status || "STOPPED"),
-      phase: String(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.phase || "STOPPED"),
-      startedAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.startedAt || null,
-      intervalMs: Number(DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.intervalMs) || 60000,
+    let autoBatchingProcessState = {
+      running: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.running === true,
+      status: String(DEMO_API_BOOTSTRAP?.autoBatchingProcess?.status || "STOPPED"),
+      phase: String(DEMO_API_BOOTSTRAP?.autoBatchingProcess?.phase || "STOPPED"),
+      startedAt: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.startedAt || null,
+      intervalMs: Number(DEMO_API_BOOTSTRAP?.autoBatchingProcess?.intervalMs) || 60000,
       batchingInProgress: false,
       formedBatchCount: Number(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.formedBatchCount
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.formedBatchCount
       ) || 0,
       lastCandidateTradeCount: 0,
       lastCandidatePairCount: Number(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCandidatePairCount
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastCandidatePairCount
       ) || 0,
       lastOpenWindowCount: Number(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastOpenWindowCount
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastOpenWindowCount
       ) || 0,
       lastCycleBatchCount: Number(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCycleBatchCount
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastCycleBatchCount
       ) || 0,
       lastFormedBatchId: Number(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedBatchId
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastFormedBatchId
       ) || null,
       lastFormedBatchIds: Array.isArray(
-        DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedBatchIds
+        DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastFormedBatchIds
       )
-        ? [...DEMO_API_BOOTSTRAP.fxAutoBatchingProcess.lastFormedBatchIds]
+        ? [...DEMO_API_BOOTSTRAP.autoBatchingProcess.lastFormedBatchIds]
         : [],
-      lastFormedAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastFormedAt || null,
-      lastCycleAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastCycleAt || null,
-      nextCycleAt: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.nextCycleAt || null,
-      lastError: DEMO_API_BOOTSTRAP?.fxAutoBatchingProcess?.lastError || null
+      lastFormedAt: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastFormedAt || null,
+      lastCycleAt: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastCycleAt || null,
+      nextCycleAt: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.nextCycleAt || null,
+      lastError: DEMO_API_BOOTSTRAP?.autoBatchingProcess?.lastError || null
     };
-    let fxAutoBatchingRefreshTimer = null;
-    let fxAutoBatchingRefreshInFlight = false;
-    let fxAutoBatchingToggleInFlight = false;
-    let fxPositionsRequestSequence = 0;
+    let autoBatchingRefreshTimer = null;
+    let autoBatchingRefreshInFlight = false;
+    let autoBatchingToggleInFlight = false;
+    let positionsRequestSequence = 0;
     let oneBatchInFlight = false;
-    let sendToAutoPositionModeInFlight = false;
+    let moveToAutoManagementInFlight = false;
     let pendingSendToAutoTrades = [];
     let pendingOneBatchRequest = null;
     let pendingOneBatchTenorSelection = null;
-    const fxPositions = [];
+    const positions = [];
 
-    loadFxPositionsFromDatabase();
+    loadPositionsFromDatabase();
 
     const amountFormatter = new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 2,
@@ -306,7 +320,7 @@
       count: { min: 64, max: 80, pad: 12, ellipsize: false },
       date: { min: 104, max: 172, pad: 18, ellipsize: false },
       default: { min: 92, max: 280, pad: 18, ellipsize: true },
-      executionSystemId: { min: 120, max: 360, pad: 18, ellipsize: false },
+      originatingSystemId: { min: 120, max: 360, pad: 18, ellipsize: false },
       marketRate: { min: 70, max: 76, pad: 12, ellipsize: false },
       name: { min: 140, max: 360, pad: 18, ellipsize: true },
       number: { min: 82, max: 160, pad: 18, ellipsize: false },
@@ -847,6 +861,11 @@
         return;
       }
 
+      if (table.closest("[data-disable-tooltips]")) {
+        table.querySelectorAll("th, td").forEach(clearTableOverflowTooltip);
+        return;
+      }
+
       table.querySelectorAll("th, td").forEach(syncSmartCellTooltip);
     }
 
@@ -965,9 +984,6 @@
     const marketPage = document.getElementById("marketPage");
     const marketPageHeader = document.getElementById("marketPageHeader");
     const marketPageTitle = document.getElementById("marketPageTitle");
-    const marketSettingsBreadcrumb = document.getElementById("marketSettingsBreadcrumb");
-    const marketSettingsBreadcrumbBackLink = document.getElementById("marketSettingsBreadcrumbBackLink");
-    const marketSettingsBreadcrumbCurrent = document.getElementById("marketSettingsBreadcrumbCurrent");
     const databasePage = document.getElementById("databasePage");
     const processesPage = document.getElementById("processesPage");
     const processCatalogViewLinks = Array.from(
@@ -998,20 +1014,21 @@
     const manualProcessInspectorTraceability = document.getElementById("manualProcessInspectorTraceability");
     const manualProcessInspectorResult = document.getElementById("manualProcessInspectorResult");
     const mainPage = document.getElementById("mainPage");
-    const fxPositionModeTabs = Array.from(
-      document.querySelectorAll("[data-fx-position-mode]")
+    const positionModeTabs = Array.from(
+      document.querySelectorAll("[data-position-management-mode]")
     );
-    const fxPositionManualCount = document.getElementById("fxPositionManualCount");
-    const fxPositionAutoCount = document.getElementById("fxPositionAutoCount");
-    const fxPositionGridPanel = document.getElementById("fxPositionGridPanel");
+    const positionManualCount = document.getElementById("positionManualCount");
+    const positionAutoCount = document.getElementById("positionAutoCount");
+    const positionGridPanel = document.getElementById("positionGridPanel");
     const batchingSettingsPage = document.getElementById("batchingSettingsPage");
-    const hedgingSettingsPage = document.getElementById("hedgingSettingsPage");
-    const fxBatchesPage = document.getElementById("fxBatchesPage");
+    const positionManagementSettingsPage = document.getElementById("positionManagementSettingsPage");
+    const autoManagementAdmissionCriteriaPage = document.getElementById("autoManagementAdmissionCriteriaPage");
+    const batchesPage = document.getElementById("batchesPage");
     const batchingHistoryPage = document.getElementById("batchingHistoryPage");
     const batchingHistoryGridEl = document.getElementById("batchingHistoryGrid");
     const batchingHistoryCountEl = document.getElementById("batchingHistoryCount");
     const batchingHistoryStatusEl = document.getElementById("batchingHistoryStatus");
-    const fxBatchesAuditViewToggle = document.getElementById("fxBatchesAuditView");
+    const batchesAuditViewToggle = document.getElementById("batchesAuditView");
     const batchDetailsPage = document.getElementById("batchDetailsPage");
     const batchDetailsStatusEl = document.getElementById("batchDetailsStatus");
     const batchDetailsPrompt = document.getElementById("batchDetailsPrompt");
@@ -1062,17 +1079,17 @@
     const batchRollbackStatus = document.getElementById("batchRollbackStatus");
     const batchRollbackCancelButton = document.getElementById("batchRollbackCancelButton");
     const batchRollbackConfirmButton = document.getElementById("batchRollbackConfirmButton");
-    const fxDealsPage = document.getElementById("fxDealsPage");
-    const fxDealsTabs = Array.from(document.querySelectorAll("[data-fx-deals-route]"));
-    const fxDealsAuditToggles = Array.from(
-      document.querySelectorAll("[data-fx-deals-audit-toggle]")
+    const dealsPage = document.getElementById("dealsPage");
+    const dealsTabs = Array.from(document.querySelectorAll("[data-deals-route]"));
+    const dealsAuditToggles = Array.from(
+      document.querySelectorAll("[data-deals-audit-toggle]")
     );
-    const clientFxDealsPage = document.getElementById("clientFxDealsPage");
-    const clientFxDealsGridEl = document.getElementById("clientFxDealsGrid");
-    const clientFxDealsCountEl = document.getElementById("clientFxDealsCount");
-    const hedgeFxDealsPage = document.getElementById("hedgeFxDealsPage");
-    const hedgeFxDealsGridEl = document.getElementById("hedgeFxDealsGrid");
-    const hedgeFxDealsCountEl = document.getElementById("hedgeFxDealsCount");
+    const clientDealsPage = document.getElementById("clientDealsPage");
+    const clientDealsGridEl = document.getElementById("clientDealsGrid");
+    const clientDealsCountEl = document.getElementById("clientDealsCount");
+    const hedgeDealsPage = document.getElementById("hedgeDealsPage");
+    const hedgeDealsGridEl = document.getElementById("hedgeDealsGrid");
+    const hedgeDealsCountEl = document.getElementById("hedgeDealsCount");
     const analyticalPnlReportPage = document.getElementById("analyticalPnlReportPage");
     const analyticalPnlReportStatusEl = document.getElementById("analyticalPnlReportStatus");
     const analyticalPnlReportFiltersForm = document.getElementById("analyticalPnlReportFilters");
@@ -1084,26 +1101,27 @@
     const clientProfileLayout = document.getElementById("clientProfileLayout");
     const clientProfileListView = document.getElementById("clientProfileListView");
     const clientProfileDetailView = document.getElementById("clientProfileDetailView");
-    const clientProfileBackButton = document.getElementById("clientProfileBackButton");
     const clientProfilePageTitle = document.getElementById("clientProfilePageTitle");
-    const clientProfileBreadcrumb = document.getElementById("clientProfileBreadcrumb");
-    const clientProfileBreadcrumbBackLink = document.getElementById("clientProfileBreadcrumbBackLink");
-    const clientProfileBreadcrumbCurrent = document.getElementById("clientProfileBreadcrumbCurrent");
+    const clientProfileContextLabel = document.getElementById("clientProfileContextLabel");
     const tradingCounterpartyScopeTabs = document.getElementById("tradingCounterpartyScopeTabs");
+    const tradingCounterpartyFilterToolbar = document.getElementById("tradingCounterpartyFilterToolbar");
     const tradingCounterpartyScopeButtons = Array.from(document.querySelectorAll("[data-trading-counterparty-scope]"));
     const tradingCounterpartiesTable = document.getElementById("tradingCounterpartiesTable");
     const usersView = document.getElementById("usersView");
     const usersLayout = document.getElementById("usersLayout");
     const usersListView = document.getElementById("usersListView");
     const usersDetailView = document.getElementById("usersDetailView");
-    const usersBackButton = document.getElementById("usersBackButton");
     const usersPageTitle = document.getElementById("usersPageTitle");
     const usersPageSubtitle = document.getElementById("usersPageSubtitle");
     const pricingPage = document.getElementById("pricingPage");
     const referenceDataPage = document.getElementById("referenceDataPage");
+    const tradeContractPage = document.getElementById("tradeContractPage");
+    const tradeIntakeMessagesPage = document.getElementById("tradeIntakeMessagesPage");
     const pricingRulesPage = document.getElementById("pricingRulesPage");
     const pricingRulesTable = document.getElementById("pricingRulesTable");
+    const pricingRulesClearFiltersButton = document.getElementById("pricingRulesClearFiltersButton");
     const pricingRulesTableLayoutButton = document.getElementById("pricingRulesTableLayoutButton");
+    const pricingRulesAdvancedViewToggle = document.getElementById("pricingRulesAdvancedView");
     const pricingRulesTableLayoutDialog = document.getElementById("pricingRulesTableLayoutDialog");
     const pricingRulesTableLayoutForm = document.getElementById("pricingRulesTableLayoutForm");
     const pricingRulesTableLayoutDialogTitle = document.getElementById("pricingRulesTableLayoutDialogTitle");
@@ -1131,6 +1149,11 @@
     const tradingCounterpartyCodeTypeFilter = document.getElementById("tradingCounterpartyCodeTypeFilter");
     const tradingCounterpartyExternalKindFilter = document.getElementById("tradingCounterpartyExternalKindFilter");
     const tradingCounterpartyActiveFilter = document.getElementById("tradingCounterpartyActiveFilter");
+    const tradingCounterpartyTradeContextFilter = document.getElementById("tradingCounterpartyTradeContextFilter");
+    const tradingCounterpartyTradeContextToggle = document.getElementById("tradingCounterpartyTradeContextToggle");
+    const tradingCounterpartyTradeContextValue = document.getElementById("tradingCounterpartyTradeContextValue");
+    const tradingCounterpartyTradeContextMenu = document.getElementById("tradingCounterpartyTradeContextMenu");
+    const tradingCounterpartyTradeContextClear = document.getElementById("tradingCounterpartyTradeContextClear");
     const usersRowsEl = document.getElementById("usersRows");
     const usersNewButton = document.getElementById("usersNewButton");
     const usersIdSortButton = document.getElementById("usersIdSort");
@@ -1141,11 +1164,10 @@
     const pricingContextIdHeader = document.getElementById("pricingContextIdHeader");
     const pricingContextHeaderFilterControls = Array.from(document.querySelectorAll("[data-pricing-context-header-filter]"));
     const pricingContextNewButton = document.getElementById("pricingContextNewButton");
-    const executionContextsTable = document.getElementById("executionContextsTable");
-    const pricingContextAutoHedgingAdmissionHeader = document.getElementById("pricingContextAutoHedgingAdmissionHeader");
-    const pricingContextBreadcrumb = document.getElementById("pricingContextBreadcrumb");
-    const pricingContextBreadcrumbBackLink = document.getElementById("pricingContextBreadcrumbBackLink");
-    const pricingContextBreadcrumbCurrent = document.getElementById("pricingContextBreadcrumbCurrent");
+    const pricingContextClearFiltersButton = document.getElementById("pricingContextClearFiltersButton");
+    const tradeContextsTable = document.getElementById("tradeContextsTable");
+    const pricingContextAutoManagementAdmissionHeader = document.getElementById("pricingContextAutoManagementAdmissionHeader");
+    const pricingContextPageContextLabel = document.getElementById("pricingContextPageContextLabel");
     const referenceDataStatusEl = document.getElementById("referenceDataStatus");
     const referenceDataPanels = Array.from(document.querySelectorAll("[data-reference-panel]"));
     const referenceDataRouteLinks = Array.from(document.querySelectorAll("[data-reference-route]"));
@@ -1161,13 +1183,16 @@
     const tradeCaptureChannelRowsEl = document.getElementById("tradeCaptureChannelRows");
     const tradeCaptureChannelNewButton = document.getElementById("tradeCaptureChannelNewButton");
     const tradeCaptureChannelIdSortButton = document.getElementById("tradeCaptureChannelIdSort");
+    const tradePurposeRowsEl = document.getElementById("tradePurposeRows");
+    const tradePurposeNewButton = document.getElementById("tradePurposeNewButton");
+    const tradePurposeIdSortButton = document.getElementById("tradePurposeIdSort");
+    const tradePurposeIdHeader = document.getElementById("tradePurposeIdHeader");
     const tradeCaptureChannelIdHeader = document.getElementById("tradeCaptureChannelIdHeader");
     const pricingRuleRowsEl = document.getElementById("pricingRuleRows");
     const pricingRulesScopeButtons = Array.from(document.querySelectorAll("[data-pricing-rules-scope]"));
-    const pricingRulesBreadcrumb = document.getElementById("pricingRulesBreadcrumb");
-    const pricingRulesBreadcrumbBackLink = document.getElementById("pricingRulesBreadcrumbBackLink");
-    const pricingRulesBreadcrumbCurrent = document.getElementById("pricingRulesBreadcrumbCurrent");
-    const pricingRuleAutoHedgingAdmissionHeader = document.getElementById("pricingRuleAutoHedgingAdmissionHeader");
+    const pricingRulesContextLabel = document.getElementById("pricingRulesContextLabel");
+    const pricingRuleTradeContextHeader = document.getElementById("pricingRuleTradeContextHeader");
+    const pricingRuleAutoManagementAdmissionHeader = document.getElementById("pricingRuleAutoManagementAdmissionHeader");
     const pricingRuleCounterpartyCodeTitle = document.getElementById("pricingRuleCounterpartyCodeTitle");
     const pricingRuleCounterpartyCodeFilter = document.getElementById("pricingRuleCounterpartyCodeFilter");
     const pricingRuleQuickHedgeHeader = document.getElementById("pricingRuleQuickHedgeHeader");
@@ -1175,7 +1200,6 @@
     const pricingRuleIdHeader = document.getElementById("pricingRuleIdHeader");
     const pricingRuleHeaderFilterControls = Array.from(document.querySelectorAll("[data-pricing-rule-header-filter]"));
     const pricingRuleStatusEl = document.getElementById("pricingRuleStatus");
-    const editDealButton = document.getElementById("editDealButton");
     const createDealButton = document.getElementById("createDealButton");
     const resetDemoTradesButton = document.getElementById("resetDemoTradesButton");
     const resetDemoTradesDialog = document.getElementById("resetDemoTradesDialog");
@@ -1188,13 +1212,14 @@
     const runClientDealGenerationIcon = document.getElementById("runClientDealGenerationIcon");
     const runClientDealGenerationLabel = document.getElementById("runClientDealGenerationLabel");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
-    const sendToAutoPositionModeButton = document.getElementById("sendToAutoPositionModeButton");
-    const sendToAutoPositionModeDialog = document.getElementById("sendToAutoPositionModeDialog");
-    const sendToAutoPositionModeDialogClose = document.getElementById("sendToAutoPositionModeDialogClose");
-    const sendToAutoPositionModeSummary = document.getElementById("sendToAutoPositionModeSummary");
-    const sendToAutoPositionModeStatus = document.getElementById("sendToAutoPositionModeStatus");
-    const sendToAutoPositionModeCancelButton = document.getElementById("sendToAutoPositionModeCancelButton");
-    const sendToAutoPositionModeConfirmButton = document.getElementById("sendToAutoPositionModeConfirmButton");
+    const moveToAutoManagementButton = document.getElementById("moveToAutoManagementButton");
+    const moveToAutoManagementDialog = document.getElementById("moveToAutoManagementDialog");
+    const moveToAutoManagementDialogClose = document.getElementById("moveToAutoManagementDialogClose");
+    const moveToAutoManagementSummary = document.getElementById("moveToAutoManagementSummary");
+    const moveToAutoManagementStatus = document.getElementById("moveToAutoManagementStatus");
+    const moveToAutoManagementCancelButton = document.getElementById("moveToAutoManagementCancelButton");
+    const moveToAutoManagementConfirmButton = document.getElementById("moveToAutoManagementConfirmButton");
+    const selectedTradesCount = document.getElementById("selectedTradesCount");
     const oneBatchButton = document.getElementById("oneBatchButton");
     const oneBatchTenorDialog = document.getElementById("oneBatchTenorDialog");
     const oneBatchTenorDialogClose = document.getElementById("oneBatchTenorDialogClose");
@@ -1210,9 +1235,9 @@
     const addHedgeDealButton = document.getElementById("addHedgeDealButton");
     const hedgeQuickModeSettingsButton = document.getElementById("hedgeQuickModeSettingsButton");
     const hedgeQuickModeToolbar = document.getElementById("hedgeQuickModeToolbar");
-    const fxPositionGridFrame = document.querySelector(".fx-position-grid-frame");
-    const fxPositionGrid = fxPositionGridFrame?.querySelector(".fx-position-grid");
-    let fxPositionGridFillFrame = null;
+    const positionGridFrame = document.querySelector(".position-grid-frame");
+    const positionGrid = positionGridFrame?.querySelector(".position-grid");
+    let positionGridFillFrame = null;
     const clientProfileForm = document.getElementById("clientProfileForm");
     const clientProfileFormTitle = document.getElementById("clientProfileFormTitle");
     const clientProfileCodeTypeField = document.getElementById("clientProfileCodeTypeField");
@@ -1223,6 +1248,8 @@
     const clientProfileSubmitButton = document.getElementById("clientProfileSubmitButton");
     const clientProfileDeleteButton = document.getElementById("clientProfileDeleteButton");
     const clientProfileResetButton = document.getElementById("clientProfileResetButton");
+    const clientProfileBackNavigation = document.getElementById("clientProfileBackNavigation");
+    const clientProfileBackButton = document.getElementById("clientProfileBackButton");
     const clientProfileDetailHint = document.getElementById("clientProfileDetailHint");
     const clientProfileStatusEl = document.getElementById("clientProfileStatus");
     const usersForm = document.getElementById("usersForm");
@@ -1232,25 +1259,25 @@
     const usersDeleteButton = document.getElementById("usersDeleteButton");
     const usersDetailHint = document.getElementById("usersDetailHint");
     const usersStatusEl = document.getElementById("usersStatus");
-    const clientExecutionContextsPanel = document.getElementById("clientExecutionContextsPanel");
-    const clientExecutionContextsList = document.getElementById("clientExecutionContextsList");
-    const clientExecutionContextsCount = document.getElementById("clientExecutionContextsCount");
-    const clientExecutionContextsAttachButton = document.getElementById("clientExecutionContextsAttachButton");
-    const clientExecutionContextsAttachButtonIcon = document.getElementById("clientExecutionContextsAttachButtonIcon");
-    const clientExecutionContextsAttachButtonLabel = document.getElementById("clientExecutionContextsAttachButtonLabel");
-    const clientExecutionContextAttachDialog = document.getElementById("clientExecutionContextAttachDialog");
-    const clientExecutionContextAttachForm = document.getElementById("clientExecutionContextAttachForm");
-    const clientExecutionContextAttachDialogClose = document.getElementById("clientExecutionContextAttachDialogClose");
-    const clientExecutionContextAttachDialogSubtitle = document.getElementById("clientExecutionContextAttachDialogSubtitle");
-    const clientExecutionContextAttachCancelButton = document.getElementById("clientExecutionContextAttachCancelButton");
-    const clientExecutionContextAttachSubmitButton = document.getElementById("clientExecutionContextAttachSubmitButton");
-    const clientExecutionContextAttachSubmitLabel = document.getElementById("clientExecutionContextAttachSubmitLabel");
-    const clientExecutionContextAttachSelectAll = document.getElementById("clientExecutionContextAttachSelectAll");
-    const clientExecutionContextAttachSelection = document.getElementById("clientExecutionContextAttachSelection");
-    const clientExecutionContextAttachStatus = document.getElementById("clientExecutionContextAttachStatus");
-    const clientExecutionContextAttachRows = document.getElementById("clientExecutionContextAttachRows");
-    const clientExecutionContextAttachIdSort = document.getElementById("clientExecutionContextAttachIdSort");
-    const clientExecutionContextAttachFilterControls = Array.from(document.querySelectorAll("[data-client-context-attach-filter]"));
+    const clientTradeContextsPanel = document.getElementById("clientTradeContextsPanel");
+    const clientTradeContextsList = document.getElementById("clientTradeContextsList");
+    const clientTradeContextsCount = document.getElementById("clientTradeContextsCount");
+    const clientTradeContextsAttachButton = document.getElementById("clientTradeContextsAttachButton");
+    const clientTradeContextsAttachButtonIcon = document.getElementById("clientTradeContextsAttachButtonIcon");
+    const clientTradeContextsAttachButtonLabel = document.getElementById("clientTradeContextsAttachButtonLabel");
+    const clientTradeContextAttachDialog = document.getElementById("clientTradeContextAttachDialog");
+    const clientTradeContextAttachForm = document.getElementById("clientTradeContextAttachForm");
+    const clientTradeContextAttachDialogClose = document.getElementById("clientTradeContextAttachDialogClose");
+    const clientTradeContextAttachDialogSubtitle = document.getElementById("clientTradeContextAttachDialogSubtitle");
+    const clientTradeContextAttachCancelButton = document.getElementById("clientTradeContextAttachCancelButton");
+    const clientTradeContextAttachSubmitButton = document.getElementById("clientTradeContextAttachSubmitButton");
+    const clientTradeContextAttachSubmitLabel = document.getElementById("clientTradeContextAttachSubmitLabel");
+    const clientTradeContextAttachSelectAll = document.getElementById("clientTradeContextAttachSelectAll");
+    const clientTradeContextAttachSelection = document.getElementById("clientTradeContextAttachSelection");
+    const clientTradeContextAttachStatus = document.getElementById("clientTradeContextAttachStatus");
+    const clientTradeContextAttachRows = document.getElementById("clientTradeContextAttachRows");
+    const clientTradeContextAttachIdSort = document.getElementById("clientTradeContextAttachIdSort");
+    const clientTradeContextAttachFilterControls = Array.from(document.querySelectorAll("[data-client-context-attach-filter]"));
     const clientPricingRuleEditor = document.getElementById("clientPricingRuleEditor");
     const clientPricingRuleDialog = document.getElementById("clientPricingRuleDialog");
     const clientPricingRuleForm = document.getElementById("clientPricingRuleForm");
@@ -1301,7 +1328,6 @@
     const addHedgeDealPricingRulePicker = document.getElementById("addHedgeDealPricingRulePicker");
     const hedgeQuickModeSettingsForm = document.getElementById("hedgeQuickModeSettingsForm");
     const hedgeQuickModeSettingsHeader = document.getElementById("hedgeQuickModeSettingsHeader");
-    const hedgeQuickModeSettingsBackButton = document.getElementById("hedgeQuickModeSettingsBackButton");
     const hedgeQuickModeSettingsActiveField = document.getElementById("hedgeQuickModeSettingsActiveField");
     const hedgeQuickModeSettingsOverview = document.getElementById("hedgeQuickModeSettingsOverview");
     const hedgeQuickModeSettingsEditor = document.getElementById("hedgeQuickModeSettingsEditor");
@@ -1319,36 +1345,20 @@
     const hedgeQuickModeCounterpartyPickerToggle = document.getElementById("hedgeQuickModeCounterpartyPickerToggle");
     const hedgeQuickModeCounterpartyOptions = document.getElementById("hedgeQuickModeCounterpartyOptions");
     const hedgeQuickModePricingRulePicker = document.getElementById("hedgeQuickModePricingRulePicker");
-    const hedgingSettingsSectionLinks = Array.from(
-      document.querySelectorAll("[data-hedging-settings-section]")
+    const positionManagementSettingsSectionLinks = Array.from(
+      document.querySelectorAll("[data-position-management-settings-section]")
     );
-    const hedgingSettingsSectionPanels = Array.from(
-      document.querySelectorAll("[data-hedging-settings-section-panel]")
+    const positionManagementSettingsSectionPanels = Array.from(
+      document.querySelectorAll("[data-position-management-settings-section-panel]")
     );
-    const hedgingSettingsAutoGroupToggle = document.getElementById("autoHedgingSettingsGroupToggle");
-    const hedgingSettingsAutoSubnav = document.getElementById("autoHedgingSettingsSubnav");
-    const autoHedgingSettingsSegmentToggles = Array.from(
-      document.querySelectorAll("[data-auto-hedging-segment-toggle]")
-    );
-    const autoHedgingAdmissionPolicyPanel = document.getElementById("autoHedgingAdmissionPolicyPanel");
-    const autoHedgingAdmissionPolicyRevision = document.getElementById("autoHedgingAdmissionPolicyRevision");
-    const autoHedgingAdmissionCcyPairEditButton = document.getElementById("autoHedgingAdmissionCcyPairEditButton");
-    const autoHedgingAdmissionAmountLimitEditButton = document.getElementById("autoHedgingAdmissionAmountLimitEditButton");
-    const autoHedgingAdmissionDeviationEditButton = document.getElementById("autoHedgingAdmissionDeviationEditButton");
-    const autoHedgingAdmissionPairDialog = document.getElementById("autoHedgingAdmissionPairDialog");
-    const autoHedgingAdmissionPairDialogForm = document.getElementById("autoHedgingAdmissionPairDialogForm");
-    const autoHedgingAdmissionPairDialogClose = document.getElementById("autoHedgingAdmissionPairDialogClose");
-    const autoHedgingAdmissionPairDialogCancel = document.getElementById("autoHedgingAdmissionPairDialogCancel");
-    const autoHedgingAdmissionPairDialogSave = document.getElementById("autoHedgingAdmissionPairDialogSave");
-    const autoHedgingAdmissionPairDialogStatus = document.getElementById("autoHedgingAdmissionPairDialogStatus");
-    const autoHedgingAdmissionPairSearch = document.getElementById("autoHedgingAdmissionPairSearch");
-    const autoHedgingAdmissionPairFilter = document.getElementById("autoHedgingAdmissionPairFilter");
-    const autoHedgingAdmissionPairRows = document.getElementById("autoHedgingAdmissionPairRows");
-    const autoHedgingAdmissionPairEmpty = document.getElementById("autoHedgingAdmissionPairEmpty");
-    const autoHedgingAdmissionPolicyStatus = document.getElementById("autoHedgingAdmissionPolicyStatus");
-    const autoHedgingManualReleaseSharedRevision = document.getElementById("autoHedgingManualReleaseSharedRevision");
-    const autoHedgingManualReleaseSharedPairSummary = document.getElementById("autoHedgingManualReleaseSharedPairSummary");
-    const autoHedgingManualReleaseSharedDeviation = document.getElementById("autoHedgingManualReleaseSharedDeviation");
+    const autoManagementAdmissionCriteriaForm = document.getElementById("autoManagementAdmissionCriteriaForm");
+    let autoManagementAdmissionCriteriaSave = null;
+    const autoManagementAdmissionCriteriaStatus = document.getElementById("autoManagementAdmissionCriteriaStatus");
+    const autoManagementAdmissionTradeTypeFilter = document.getElementById("autoManagementAdmissionTradeTypeFilter");
+    const autoManagementAdmissionPairSearch = document.getElementById("autoManagementAdmissionPairSearch");
+    const autoManagementAdmissionPairFilter = document.getElementById("autoManagementAdmissionPairFilter");
+    const autoManagementAdmissionPairRows = document.getElementById("autoManagementAdmissionPairRows");
+    const autoManagementAdmissionPairEmpty = document.getElementById("autoManagementAdmissionPairEmpty");
     const batchingSettingsTabs = Array.from(
       document.querySelectorAll("[data-batching-settings-tab]")
     );
@@ -1375,12 +1385,6 @@
     const clientDealDuplicateCheckStatus = document.getElementById("clientDealDuplicateCheckStatus");
     const clientDealDuplicateCheckCancelButton = document.getElementById("clientDealDuplicateCheckCancelButton");
     const clientDealDuplicateCheckConfirmButton = document.getElementById("clientDealDuplicateCheckConfirmButton");
-    const editDialog = document.getElementById("editDealDialog");
-    const editForm = document.getElementById("editDealForm");
-    const dealIdentitySection = document.getElementById("dealIdentitySection");
-    const dealPricingRuleResults = document.getElementById("dealPricingRuleResults");
-    const editDialogClose = document.getElementById("editDialogClose");
-    const editCancelButton = document.getElementById("editCancelButton");
     const clientDealGenerationDialog = document.getElementById("clientDealGenerationDialog");
     const clientDealGenerationProcessSettingsForm =
       document.getElementById("clientDealGenerationProcessSettingsForm");
@@ -1391,11 +1395,21 @@
     const generationDialogClose = document.getElementById("generationDialogClose");
     const generationCancelButton = document.getElementById("generationCancelButton");
     const marketPanels = Array.from(document.querySelectorAll("[data-market-panel]"));
+    const marketHistoryForm = document.getElementById("marketHistoryForm");
+    const marketHistoryInstrument = document.getElementById("marketHistoryInstrument");
+    const marketHistoryTimeframe = document.getElementById("marketHistoryTimeframe");
+    const marketHistoryFrom = document.getElementById("marketHistoryFrom");
+    const marketHistoryTill = document.getElementById("marketHistoryTill");
+    const marketHistoryLoadButton = document.getElementById("marketHistoryLoadButton");
+    const marketHistorySummary = document.getElementById("marketHistorySummary");
+    const marketHistoryChartEl = document.getElementById("marketHistoryChart");
+    const marketHistoryEmpty = document.getElementById("marketHistoryEmpty");
     const marketCcyOptionRowsEl = document.getElementById("marketCcyOptionRows");
     const marketCcyOptionNewButton = document.getElementById("marketCcyOptionNewButton");
     const marketPairOptionRowsEl = document.getElementById("marketPairOptionRows");
     const marketStreamTable = document.getElementById("marketStreamTable");
     const marketPairOptionNewButton = document.getElementById("marketPairOptionNewButton");
+    const marketPairClearFiltersButton = document.getElementById("marketPairClearFiltersButton");
     const marketStatusEl = document.getElementById("marketStatus");
     const marketStreamToggleButton = document.getElementById("marketStreamToggleButton");
     const marketStreamToggleIcon = document.getElementById("marketStreamToggleIcon");
@@ -1419,33 +1433,43 @@
     const databaseCreateSqlEl = document.getElementById("databaseCreateSql");
     const DATABASE_TABLE_SECTIONS = Object.freeze([
       {
-        id: "fx-trading",
-        label: "FX Trades",
+        id: "trading",
+        label: "Trades",
         icon: "currency_exchange",
         tables: [
-          "client_fx_deals",
-          "fx_hedge_deals",
-          "fx_trade_exposure",
-          "fx_batch_balance_trade",
-          "fx_batch_position_output"
+          "client_deals",
+          "hedge_deals",
+          "trade_exposures",
+          "batch_balance_trades",
+          "batch_position_outputs"
         ]
       },
       {
-        id: "fx-position",
-        label: "FX Position",
+        id: "position",
+        label: "Position",
         icon: "table_chart",
         tables: [
-          "fx_trade_position_management"
+          "trade_position_management"
         ]
       },
       {
-        id: "fx-batching",
-        label: "FX Batching",
+        id: "market-pulse",
+        label: "Market Pulse",
+        icon: "monitoring",
+        tables: [
+          "market_source_candles",
+          "market_aggregated_candles",
+          "market_candle_load_ranges"
+        ]
+      },
+      {
+        id: "batches",
+        label: "Batches",
         icon: "stacks",
         tables: [
-          "fx_batches",
-          "fx_batch_members",
-          "fx_batch_quote_cash_output"
+          "batches",
+          "batch_members",
+          "batch_quote_cash_outputs"
         ]
       },
       {
@@ -1455,8 +1479,9 @@
         tables: [
           "pricing_rules",
           "accounting_systems",
-          "execution_contexts",
-          "execution_systems",
+          "trade_contexts",
+          "originating_systems",
+          "trade_purposes",
           "servicing_locations"
         ]
       },
@@ -1467,14 +1492,11 @@
         tables: [
           "ccy_options",
           "ccy_pair_options",
-          "fx_hedge_quick_mode_settings",
-          "fx_batching_settings",
-          "fx_auto_batching_settings",
-          "fx_auto_batching_ccy_pairs",
-          "auto_hedging_admission_policy_current",
-          "auto_hedging_admission_policy_revisions",
-          "auto_hedging_admission_policy_pair_deviations",
-          "auto_hedging_admission_policy_pair_rules"
+          "hedge_quick_mode_settings",
+          "batching_settings",
+          "auto_batching_settings",
+          "auto_batching_ccy_pairs",
+          "auto_mode_eligibility_rules"
         ]
       },
       {
@@ -1492,7 +1514,7 @@
         icon: "group",
         tables: [
           "trading_counterparties",
-          "trading_counterparty_execution_contexts",
+          "trading_counterparty_trade_contexts",
           "external_counterparties",
           "internal_units",
           "trading_counterparty_roles",
@@ -1514,10 +1536,10 @@
         label: "Audit",
         icon: "policy",
         tables: [
-          "fx_trade_position_management_transitions",
-          "fx_trade_market_snapshot",
-          "fx_auto_hedging_admission_decisions",
-          "v_fx_batch_formation_audit"
+          "trade_position_management_transitions",
+          "trade_market_snapshots",
+          "auto_management_admission_decisions",
+          "v_batch_formation_audit"
         ]
       },
       {
@@ -1536,38 +1558,37 @@
       )
     );
     const selectedTradeIds = new Set();
-    let activeFxPositionMode = "MANUAL";
-    const FX_DEALS_VIEW_MODE_STANDARD = "STANDARD";
-    const FX_DEALS_VIEW_MODE_AUDIT = "AUDIT";
-    const FX_BATCHES_VIEW_MODE_STANDARD = "STANDARD";
-    const FX_BATCHES_VIEW_MODE_AUDIT = "AUDIT";
-    let clientFxDealsGrid = null;
-    let clientFxDealsGridReady = false;
-    let clientFxDealsPendingData = [];
-    let clientFxDealsTotalCount = 0;
-    let clientFxDealsViewMode = FX_DEALS_VIEW_MODE_STANDARD;
+    let activePositionMode = "MANUAL";
+    const DEALS_VIEW_MODE_STANDARD = "STANDARD";
+    const DEALS_VIEW_MODE_AUDIT = "AUDIT";
+    const BATCHES_VIEW_MODE_STANDARD = "STANDARD";
+    const BATCHES_VIEW_MODE_AUDIT = "AUDIT";
+    let clientDealsGrid = null;
+    let clientDealsGridReady = false;
+    let clientDealsPendingData = [];
+    let clientDealsTotalCount = 0;
+    let clientDealsViewMode = DEALS_VIEW_MODE_STANDARD;
     let batchingHistoryGrid = null;
     let batchingHistoryGridReady = false;
-    let fxBatchesViewMode = FX_BATCHES_VIEW_MODE_STANDARD;
+    let batchesViewMode = BATCHES_VIEW_MODE_STANDARD;
     let batchDetailsMembersGrid = null;
     let batchDetailsCashOutputGrid = null;
     let batchDetailsOutputsGrid = null;
     let batchDetailsRequestSequence = 0;
     let rollbackBatchId = null;
-    let hedgeFxDealsGrid = null;
-    let hedgeFxDealsGridReady = false;
-    let hedgeFxDealsPendingData = [];
-    let hedgeFxDealsTotalCount = 0;
-    let hedgeFxDealsViewMode = FX_DEALS_VIEW_MODE_STANDARD;
+    let hedgeDealsGrid = null;
+    let hedgeDealsGridReady = false;
+    let hedgeDealsPendingData = [];
+    let hedgeDealsTotalCount = 0;
+    let hedgeDealsViewMode = DEALS_VIEW_MODE_STANDARD;
     let analyticalPnlReportRequestSequence = 0;
     let analyticalPnlReportSummaryGrid = null;
     let analyticalPnlReportSummaryGridReady = false;
     let analyticalPnlReportSummaryPendingData = null;
     let selectedCurrencyPair = loadSelectedCurrencyPair();
-    let editingDealId = null;
     let marketCcyOptionsEditState = null;
     let marketPairOptionsEditState = null;
-    let marketSettingsRouteScope = null;
+    let marketPairRouteCurrencyFilter = "";
     let editingMarketSimulationCurrencyPair = null;
     let marketCcyOptionGrid = null;
     let marketPairOptionGrid = null;
@@ -1580,6 +1601,10 @@
     let marketStreamRunning = false;
     let marketStreamConnected = false;
     let marketStreamEventSource = null;
+    let marketHistoryChart = null;
+    let marketHistorySeries = null;
+    let marketHistoryResizeObserver = null;
+    let marketHistoryLoading = false;
     let selectedDatabaseTable = "";
     let databaseTables = [];
     let databaseTableSearchQuery = "";
@@ -1602,31 +1627,29 @@
     let hedgeQuickModeSettingsGridReady = false;
     let hedgeQuickModeSettingsView = "overview";
     let hedgeQuickModeSettingsSaving = false;
-    let autoHedgingAdmissionPolicySaving = false;
-    let autoHedgingAdmissionPolicyLoaded = false;
-    let autoHedgingAdmissionPolicyEventsBound = false;
-    let autoHedgingAdmissionPairDialogSnapshot = null;
-    let autoHedgingAdmissionPairDialogReturnFocus = null;
-    let autoHedgingAdmissionPairDialogFocus = "ccy-pair";
-    let autoHedgingAdmissionPairDialogFocusTimer = null;
+    let autoManagementAdmissionPolicySaving = false;
+    let autoManagementAdmissionPolicyLoaded = false;
+    let autoManagementAdmissionPolicyEventsBound = false;
+    let autoManagementAdmissionEditingTradeType = null;
+    let autoManagementAdmissionEditingPairCode = null;
     let hedgeQuickModeDealCreating = false;
     let addClientDealSubmitWithControl = false;
     let clientDealDuplicateCheckGrid = null;
     let pendingClientDealCreation = null;
     let editingClientProfileIndex = null;
-    const tradingCounterpartyExecutionContexts = new Map();
-    const tradingCounterpartyExecutionContextLoadStates = new Map();
-    let clientExecutionContextRequestSequence = 0;
-    let clientExecutionContextAttachCounterpartyId = "";
-    let clientExecutionContextAttachSortDirection = "asc";
-    let clientExecutionContextAttachSaving = false;
-    const selectedClientExecutionContextIds = new Set();
-    const pendingClientExecutionContextDetaches = new Set();
+    const tradingCounterpartyTradeContexts = new Map();
+    const tradingCounterpartyTradeContextLoadStates = new Map();
+    let clientTradeContextRequestSequence = 0;
+    let clientTradeContextAttachCounterpartyId = "";
+    let clientTradeContextAttachSortDirection = "asc";
+    let clientTradeContextAttachSaving = false;
+    const selectedClientTradeContextIds = new Set();
+    const pendingClientTradeContextDetaches = new Set();
     let activeTradingCounterpartyScope = "EXTERNAL";
     let editingUserIndex = null;
     let tradingCounterpartyRowEditState = null;
-    let clientProfileRouteScope = null;
-    let clientProfileRouteScopeRequestSequence = 0;
+    let clientProfileTradeContextFilter = null;
+    let clientProfileTradeContextFilterRequestSequence = 0;
     let userRowEditState = null;
     let referenceDataEditState = null;
     let tradingCounterpartyIdSortDirection = "asc";
@@ -1640,6 +1663,7 @@
     let servicingBranchIdSortDirection = "asc";
     let settlementSystemIdSortDirection = "asc";
     let tradeCaptureChannelIdSortDirection = "asc";
+    let tradePurposeIdSortDirection = "asc";
     const tradingCounterpartyFilterFields = ["partyType", "clientCodeType", "counterpartyType", "active"];
     const tradingCounterpartyFilterState = {
       partyType: new Set(),
@@ -1657,6 +1681,7 @@
     let pricingContextEditState = null;
     let pricingRuleEditState = null;
     let activePricingRulesScope = "EXTERNAL";
+    let pricingRulesAdvancedViewEnabled = false;
     let clientPricingRuleEditState = null;
     let clientPricingRuleInlineEditorState = null;
     const clientPricingConfigurationCollapsedContexts = new Map();
@@ -1685,8 +1710,8 @@
     };
     const sortAccessors = {
       positionId: deal => positionIdSortValue(deal),
-      tradeRate: deal => fxPositionTradeRate(deal),
-      transferRate: deal => fxPositionTransferRate(deal),
+      tradeRate: deal => positionTradeRate(deal),
+      transferRate: deal => positionTransferRate(deal),
       marketBid: deal => marketBid(deal),
       marketOffer: deal => marketOffer(deal)
     };
@@ -1725,6 +1750,10 @@
         return null;
       }
 
+      if (element.closest("[data-disable-tooltips]")) {
+        return null;
+      }
+
       if (!element.dataset.tooltip?.trim()) {
         return null;
       }
@@ -1743,6 +1772,12 @@
 
     function migrateNativeTooltipElement(element) {
       if (!(element instanceof Element) || !element.hasAttribute("title")) {
+        return;
+      }
+
+      if (element.closest("[data-disable-tooltips]")) {
+        element.removeAttribute("title");
+        element.removeAttribute("data-tooltip");
         return;
       }
 
@@ -1782,7 +1817,7 @@
     function showAppTooltip(target) {
       const tooltipText = target?.dataset.tooltip?.trim();
 
-      if (!tooltipText) {
+      if (!tooltipText || target.closest("[data-disable-tooltips]")) {
         hideAppTooltip();
         return;
       }
@@ -2046,7 +2081,7 @@
       return minor === 0n ? "" : formattedMinorAmount(minor.toString(), fractionDigits);
     }
 
-    function exactFxAmountsFromDealt({
+    function exactAmountsFromDealt({
       dealtAmount,
       dealtCcyCode,
       baseCcyCode,
@@ -2192,7 +2227,7 @@
       }
 
       button.disabled = !canSave;
-      button.title = canSave ? "Save" : disabledTitle;
+      button.title = canSave || button.closest("[data-disable-tooltips]") ? "" : disabledTitle;
     }
 
     function parseFormNumber(input, label, options = {}) {
@@ -2769,22 +2804,30 @@
       settlementSystems = normalizedSettlementSystems(freshAccountingSystems, []);
     }
 
-    async function refreshExecutionSystemsFromApi() {
+    async function refreshOriginatingSystemsFromApi() {
       if (!DEMO_API_ENABLED) {
         return;
       }
 
-      const freshExecutionSystems = await demoApiRequest("/api/v1/execution-systems");
-      tradeCaptureChannels = normalizedTradeCaptureChannels(freshExecutionSystems, []);
+      const freshOriginatingSystems = await demoApiRequest("/api/v1/originating-systems");
+      tradeCaptureChannels = normalizedTradeCaptureChannels(freshOriginatingSystems, []);
     }
 
-    async function refreshExecutionContextsFromApi() {
+    async function refreshTradePurposesFromApi() {
       if (!DEMO_API_ENABLED) {
         return;
       }
 
-      const freshExecutionContexts = await demoApiRequest("/api/v1/execution-contexts");
-      pricingContexts = normalizedPricingContexts(freshExecutionContexts, []);
+      tradePurposes = normalizedTradePurposes(await demoApiRequest("/api/v1/trade-purposes"), []);
+    }
+
+    async function refreshTradeContextsFromApi() {
+      if (!DEMO_API_ENABLED) {
+        return;
+      }
+
+      const freshTradeContexts = await demoApiRequest("/api/v1/trade-contexts");
+      pricingContexts = normalizedPricingContexts(freshTradeContexts, []);
     }
 
     async function refreshTradingCounterpartiesFromApi() {
@@ -2927,57 +2970,67 @@
       return POSITION_MANAGEMENT_MODES.includes(fallbackMode) ? fallbackMode : "MANUAL";
     }
 
-    function normalizedPositionManagementModeOverride(value) {
-      const mode = normalizedReferenceCode(value);
-
-      return POSITION_MANAGEMENT_MODES.includes(mode) ? mode : null;
-    }
-
     function positionManagementModeLabel(value) {
       return POSITION_MANAGEMENT_MODE_LABELS[normalizedPositionManagementMode(value)];
     }
 
-    function normalizedAutoHedgingAdmissionMode(value, defaultPositionManagementMode = "MANUAL") {
+    function normalizedAutoManagementAdmissionMode(value) {
       const mode = normalizedReferenceCode(value);
 
-      if (AUTO_HEDGING_ADMISSION_MODES.includes(mode)) {
+      if (AUTO_MANAGEMENT_ADMISSION_MODES.includes(mode)) {
         return mode;
       }
 
-      return normalizedPositionManagementMode(defaultPositionManagementMode) === "AUTO"
-        ? "AUTO_IF_ELIGIBLE"
-        : "MANUAL_ONLY";
+      return "REVIEW_REQUIRED";
     }
 
-    function autoHedgingAdmissionModeLabel(value) {
-      return AUTO_HEDGING_ADMISSION_MODE_LABELS[normalizedAutoHedgingAdmissionMode(value)];
+    function autoManagementAdmissionModeLabel(value) {
+      return AUTO_MANAGEMENT_ADMISSION_MODE_LABELS[normalizedAutoManagementAdmissionMode(value)];
     }
 
-    function autoHedgingAdmissionModeBadgeMarkup(value) {
-      const mode = normalizedAutoHedgingAdmissionMode(value);
+    function initialModeAssignmentLabel(value) {
+      return normalizedAutoManagementAdmissionMode(value) === "AUTO_IF_ELIGIBLE"
+        ? "Auto Mode if Eligible"
+        : "Manual Mode";
+    }
+
+    function initialModeAssignmentIcon(value) {
+      return normalizedAutoManagementAdmissionMode(value) === "AUTO_IF_ELIGIBLE"
+        ? "smart_toy"
+        : "touch_app";
+    }
+
+    function initialModeAssignmentMarkup(value) {
+      return `<span class="d-inline-flex align-items-center gap-2"><span class="button-icon" aria-hidden="true">${initialModeAssignmentIcon(value)}</span><span>${escapeHtml(initialModeAssignmentLabel(value))}</span></span>`;
+    }
+
+    function autoManagementAdmissionModeBadgeMarkup(value, label = autoManagementAdmissionModeLabel(value)) {
+      const mode = normalizedAutoManagementAdmissionMode(value);
       const toneClass = mode === "AUTO_IF_ELIGIBLE"
         ? " is-auto"
-        : mode === "REVIEW_REQUIRED" ? " is-review-required" : " is-manual-only";
+        : " is-review-required";
 
-      return `<span class="position-management-mode-badge auto-hedging-admission-mode-badge${toneClass}">${escapeHtml(autoHedgingAdmissionModeLabel(mode))}</span>`;
+      return `<span class="position-management-mode-badge auto-management-admission-mode-badge${toneClass}">${escapeHtml(label)}</span>`;
     }
 
-    function normalizedPricingRuleAutoHedgingAdmissionModeOverride(value) {
-      return normalizedReferenceCode(value) === "MANUAL_ONLY"
-        ? "MANUAL_ONLY"
+    function normalizedPricingRuleAutoManagementAdmissionModeOverride(value) {
+      return ["REVIEW_REQUIRED", "MANUAL_ONLY"].includes(normalizedReferenceCode(value))
+        ? "REVIEW_REQUIRED"
         : null;
     }
 
-    function pricingRuleAutoHedgingAdmissionModeOverrideFromControl(control) {
+    function pricingRuleAutoManagementAdmissionModeOverrideFromControl(control) {
       if (!control) {
         return undefined;
       }
 
-      const value = normalizedReferenceCode(control.value);
-      const valid = value === "" || value === "MANUAL_ONLY";
+      const value = control.type === "checkbox"
+        ? control.checked ? "REVIEW_REQUIRED" : ""
+        : normalizedReferenceCode(control.value);
+      const valid = value === "" || value === "REVIEW_REQUIRED";
 
       control.setCustomValidity?.(
-        valid ? "" : "Select an Auto Hedging Admission policy."
+        valid ? "" : "Select an Initial Mode Assignment value."
       );
 
       if (!valid) {
@@ -2987,24 +3040,38 @@
       return value || null;
     }
 
-    function pricingRuleAutoHedgingAdmissionSourceLabel(value) {
-      return normalizedPricingRuleAutoHedgingAdmissionModeOverride(value) === "MANUAL_ONLY"
-        ? "Manual Control"
-        : "Execution Context Admission Policy";
+    function pricingRuleInitialModeAssignmentLabel(overrideValue, effectiveMode) {
+      if (
+        normalizedPricingRuleAutoManagementAdmissionModeOverride(overrideValue)
+          === "REVIEW_REQUIRED"
+      ) {
+        return "Manual Mode by Pricing Rule Override";
+      }
+
+      return normalizedReferenceCode(effectiveMode) === "AUTO_IF_ELIGIBLE"
+        ? "Auto Mode by Trade Context"
+        : "Manual Mode by Trade Context";
     }
 
-    function pricingRuleAutoHedgingAdmissionOptions(selectedValue = null) {
-      const selected = normalizedPricingRuleAutoHedgingAdmissionModeOverride(selectedValue);
+    function pricingRuleAutoManagementAdmissionOptions(
+      selectedValue = null,
+      tradeContextMode = null
+    ) {
+      const selected = normalizedPricingRuleAutoManagementAdmissionModeOverride(selectedValue);
+      const tradeContextLabel = pricingRuleInitialModeAssignmentLabel(
+        null,
+        tradeContextMode
+      );
 
       return `
-        <option value=""${selected === null ? " selected" : ""}>Execution Context Admission Policy</option>
-        <option value="MANUAL_ONLY"${selected === "MANUAL_ONLY" ? " selected" : ""}>Manual Control</option>
+        <option value=""${selected === null ? " selected" : ""}>${tradeContextLabel}</option>
+        <option value="REVIEW_REQUIRED"${selected === "REVIEW_REQUIRED" ? " selected" : ""}>Manual Mode by Pricing Rule Override</option>
       `;
     }
 
-    function effectiveAutoHedgingAdmissionModeForRule(rule, context = null) {
-      const override = normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-        rule?.autoHedgingAdmissionModeOverride
+    function effectiveAutoManagementAdmissionModeForRule(rule, context = null) {
+      const override = normalizedPricingRuleAutoManagementAdmissionModeOverride(
+        rule?.autoManagementAdmissionModeOverride
       );
 
       if (override) {
@@ -3012,41 +3079,45 @@
       }
 
       const effectiveMode = normalizedReferenceCode(
-        rule?.effectiveAutoHedgingAdmissionMode
+        rule?.effectiveAutoManagementAdmissionMode
       );
 
-      if (AUTO_HEDGING_ADMISSION_MODES.includes(effectiveMode)) {
+      if (AUTO_MANAGEMENT_ADMISSION_MODES.includes(effectiveMode)) {
         return effectiveMode;
       }
 
       const resolvedContext = pricingContextById(rule?.pricingContextId) || context;
-      const executionContextMode = normalizedReferenceCode(
-        rule?.executionContextAdmissionMode ?? resolvedContext?.autoHedgingAdmissionMode
+      const tradeContextMode = normalizedReferenceCode(
+        rule?.tradeContextAdmissionMode ?? resolvedContext?.autoManagementAdmissionMode
       );
 
-      return AUTO_HEDGING_ADMISSION_MODES.includes(executionContextMode)
-        ? executionContextMode
-        : normalizedAutoHedgingAdmissionMode(
-            resolvedContext?.autoHedgingAdmissionMode,
-            resolvedContext?.defaultPositionManagementMode
+      return AUTO_MANAGEMENT_ADMISSION_MODES.includes(tradeContextMode)
+        ? tradeContextMode
+        : normalizedAutoManagementAdmissionMode(
+            resolvedContext?.autoManagementAdmissionMode
           );
     }
 
-    function pricingRuleAutoHedgingAdmissionMarkup(rule) {
-      const label = pricingRuleAutoHedgingAdmissionSourceLabel(
-        rule?.autoHedgingAdmissionModeOverride
+    function pricingRuleAutoManagementAdmissionMarkup(rule) {
+      const effectiveMode = effectiveAutoManagementAdmissionModeForRule(rule);
+      const label = pricingRuleInitialModeAssignmentLabel(
+        rule?.autoManagementAdmissionModeOverride,
+        effectiveMode
       );
+      const icon = initialModeAssignmentIcon(effectiveMode);
 
       return `
-        <span class="position-management-mode-value pricing-rule-admission-policy-source" data-smart-width-content>
-          ${escapeHtml(label)}
+        <span class="position-management-mode-value pricing-rule-admission-policy-source d-inline-flex align-items-center gap-2" data-smart-width-content>
+          <span class="button-icon" aria-hidden="true">${icon}</span>
+          <span>${escapeHtml(label)}</span>
         </span>
       `;
     }
 
-    function clientPricingRuleAutoHedgingAdmissionMarkup(rule) {
-      const label = pricingRuleAutoHedgingAdmissionSourceLabel(
-        rule?.autoHedgingAdmissionModeOverride
+    function clientPricingRuleAutoManagementAdmissionMarkup(rule) {
+      const label = pricingRuleInitialModeAssignmentLabel(
+        rule?.autoManagementAdmissionModeOverride,
+        effectiveAutoManagementAdmissionModeForRule(rule)
       );
 
       return `
@@ -3095,7 +3166,7 @@
       `;
     }
 
-    function executionSystemLabelMarkup(name, pricingType) {
+    function originatingSystemLabelMarkup(name, pricingType) {
       const normalizedName = String(name || "").trim();
       const presentation = pricingTypePresentation(pricingType);
       const pricingIcon = presentation.icon;
@@ -3104,16 +3175,16 @@
 
       return `
         <span
-          class="execution-system-label"
+          class="originating-system-label"
           data-smart-width-content
           data-disable-overflow-tooltip
-          aria-label="Execution System ${escapeHtml(displayName)}; Pricing Mode ${escapeHtml(presentation.label)}"
+          aria-label="Originating System ${escapeHtml(displayName)}; Pricing Mode ${escapeHtml(presentation.label)}"
         >
-          <span class="execution-system-label__system" aria-hidden="true">
-            <span class="button-icon">terminal</span>
+          <span class="originating-system-label__system" aria-hidden="true">
+            <span class="button-icon">web_asset</span>
           </span>
-          <span class="execution-system-label__name${nameClass}">${escapeHtml(displayName)}</span>
-          <span class="execution-system-label__pricing" aria-hidden="true">
+          <span class="originating-system-label__name${nameClass}">${escapeHtml(displayName)}</span>
+          <span class="originating-system-label__pricing" aria-hidden="true">
             <span class="button-icon">${escapeHtml(pricingIcon)}</span>
           </span>
         </span>
@@ -3122,9 +3193,9 @@
 
     function pricingModeForRule(rule, context = null) {
       const resolvedContext = context || pricingContextById(rule?.pricingContextId);
-      const executionSystem = tradeCaptureChannelById(resolvedContext?.tradeCaptureChannelId);
+      const originatingSystem = tradeCaptureChannelById(resolvedContext?.tradeCaptureChannelId);
 
-      return normalizedPricingType(rule?.pricingMode ?? executionSystem?.pricingType);
+      return normalizedPricingType(rule?.pricingMode ?? originatingSystem?.pricingType);
     }
 
     function marginIndicatorMarkup(marginPercent, extraClass = "", showTooltip = true) {
@@ -3223,12 +3294,12 @@
             servicingBranchCode
           );
           const isActive = normalizedReferenceActive(item?.active ?? item?.isActive ?? item?.is_active, true);
-          const executionContextCount = Math.max(
+          const tradeContextCount = Math.max(
             0,
-            Number(item?.executionContextCount ?? item?.execution_context_count) || 0
+            Number(item?.tradeContextCount ?? item?.trade_context_count) || 0
           );
 
-          return { servicingBranchCode, servicingBranchName, region, locationType, isActive, executionContextCount };
+          return { servicingBranchCode, servicingBranchName, region, locationType, isActive, tradeContextCount };
         })
         .filter(item => {
           const valid = isValidServicingLocationId(item.servicingBranchCode) && item.servicingBranchName;
@@ -3261,11 +3332,11 @@
             item?.settlement_system_name
           );
           const isActive = normalizedReferenceActive(item?.active ?? item?.isActive ?? item?.is_active, true);
-          const executionContextCount = Math.max(
+          const tradeContextCount = Math.max(
             0,
-            Number(item?.executionContextCount ?? item?.execution_context_count) || 0
+            Number(item?.tradeContextCount ?? item?.trade_context_count) || 0
           );
-          return { settlementSystemId, settlementSystemName, isActive, executionContextCount };
+          return { settlementSystemId, settlementSystemName, isActive, tradeContextCount };
         })
         .filter(item => {
           const valid = /^[A-Z0-9_-]{2,20}$/.test(item.settlementSystemId) && item.settlementSystemName;
@@ -3287,8 +3358,8 @@
       const normalized = source
         .map(item => {
           const rawTradeCaptureChannelId = normalizedReferenceCode(
-            item?.executionSystemId ??
-            item?.execution_system_id ??
+            item?.originatingSystemId ??
+            item?.originating_system_id ??
             item?.tradeCaptureChannelId ??
             item?.trade_capture_channel_id
           );
@@ -3312,12 +3383,12 @@
             item?.channel_type
           );
           const isActive = normalizedReferenceActive(item?.active ?? item?.isActive ?? item?.is_active, true);
-          const executionContextCount = Math.max(
+          const tradeContextCount = Math.max(
             0,
-            Number(item?.executionContextCount ?? item?.execution_context_count) || 0
+            Number(item?.tradeContextCount ?? item?.trade_context_count) || 0
           );
 
-          return { tradeCaptureChannelId, tradeCaptureChannelName, pricingType, isActive, executionContextCount };
+          return { tradeCaptureChannelId, tradeCaptureChannelName, pricingType, isActive, tradeContextCount };
         })
           .filter(item => {
             const valid = /^[A-Z0-9_-]{2,30}$/.test(item.tradeCaptureChannelId) && item.tradeCaptureChannelName;
@@ -3331,6 +3402,36 @@
         });
 
       return normalized.length > 0 ? normalized : fallback.map(item => ({ ...item }));
+    }
+
+    function normalizedTradePurposes(value, fallback = DEFAULT_TRADE_PURPOSES) {
+      const source = Array.isArray(value) ? value : fallback;
+      const seen = new Set();
+      return source.map(item => ({
+        tradePurposeId: normalizedReferenceCode(item?.tradePurposeId),
+        name: normalizedReferenceText(item?.name),
+        tradeContextCount: 0
+      })).filter(item => {
+        if (!/^[A-Z0-9_-]{2,30}$/.test(item.tradePurposeId)
+          || !item.name || item.name.length > 100 || seen.has(item.tradePurposeId)) {
+          return false;
+        }
+        seen.add(item.tradePurposeId);
+        return true;
+      });
+    }
+
+    function loadTradePurposes() {
+      return normalizedTradePurposes(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.tradePurposes : DemoDb.get("tradePurposes"),
+        DEMO_API_ENABLED ? [] : DEFAULT_TRADE_PURPOSES
+      );
+    }
+
+    function saveTradePurposes() {
+      if (!DEMO_API_ENABLED) {
+        saveReferenceCollection("tradePurposes", tradePurposes);
+      }
     }
 
     function loadReferenceCollection(tableName, defaults, normalizer) {
@@ -3374,7 +3475,7 @@
     function loadTradeCaptureChannels() {
       return normalizedTradeCaptureChannels(
         DEMO_API_ENABLED
-          ? DEMO_API_BOOTSTRAP.executionSystems
+          ? DEMO_API_BOOTSTRAP.originatingSystems
           : DemoDb.get("tradeCaptureChannels"),
         DEFAULT_TRADE_CAPTURE_CHANNELS
       );
@@ -3412,7 +3513,7 @@
         ? value
         : Array.isArray(fallback) ? fallback : [];
       const reservedIds = new Set(source
-        .map(item => normalizedIntegerId(item?.executionContextId ?? item?.execution_context_id ?? item?.pricingContextId))
+        .map(item => normalizedIntegerId(item?.tradeContextId ?? item?.trade_context_id ?? item?.pricingContextId))
         .filter(Boolean));
       const seenIds = new Set();
       const seenNaturalKeys = new Set();
@@ -3440,22 +3541,18 @@
             NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID
           );
           const tradeCaptureChannelId = normalizedTradeCaptureChannelId(
-            item?.executionSystemId ??
-            item?.execution_system_id ??
+            item?.originatingSystemId ??
+            item?.originating_system_id ??
             item?.tradeCaptureChannelId ??
             item?.trade_capture_channel_id ??
             MANUAL_CLIENT_DEAL_ENTRY_CHANNEL_ID
           );
-          const defaultPositionManagementMode = normalizedPositionManagementMode(
-            item?.defaultPositionManagementMode ?? item?.default_position_management_mode
-          );
-          const autoHedgingAdmissionMode = normalizedAutoHedgingAdmissionMode(
-            item?.autoHedgingAdmissionMode ??
-            item?.auto_hedging_admission_mode,
-            defaultPositionManagementMode
+          const autoManagementAdmissionMode = normalizedAutoManagementAdmissionMode(
+            item?.autoManagementAdmissionMode ??
+            item?.auto_management_admission_mode
           );
           let pricingContextIdValue = normalizedIntegerId(
-            item?.executionContextId ?? item?.execution_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
+            item?.tradeContextId ?? item?.trade_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
           );
           const rawAssignedCounterpartyCount =
             item?.assignedCounterpartyCount ??
@@ -3487,8 +3584,7 @@
             servicingBranchCode,
             settlementSystemId,
             tradeCaptureChannelId,
-            defaultPositionManagementMode,
-            autoHedgingAdmissionMode,
+            autoManagementAdmissionMode,
             assignedCounterpartyCount,
             pricingRulesCount
           };
@@ -3519,7 +3615,7 @@
 
     function loadPricingContexts() {
       return DEMO_API_ENABLED
-        ? normalizedPricingContexts(DEMO_API_BOOTSTRAP.executionContexts, [])
+        ? normalizedPricingContexts(DEMO_API_BOOTSTRAP.tradeContexts, [])
         : normalizedPricingContexts(DemoDb.get("pricingContexts"), DEFAULT_PRICING_CONTEXTS);
     }
 
@@ -3582,36 +3678,26 @@
             item?.ccyPairCode ?? item?.ccy_pair_code ?? currencyPair.replace("/", "_")
           ).trim().toUpperCase();
           const pricingContextIdValue = normalizedPricingContextIdValue(
-            item?.executionContextId ?? item?.execution_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
+            item?.tradeContextId ?? item?.trade_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
           );
           const marginPercent = Number(item?.marginPercent ?? item?.margin_percent);
           const sourcePricingMode = item?.pricingMode ?? item?.pricing_mode;
-          const positionManagementModeOverride = normalizedPositionManagementModeOverride(
-            item?.positionManagementModeOverride ?? item?.position_management_mode_override
-          );
-          const effectivePositionManagementMode = positionManagementModeOverride || normalizedPositionManagementMode(
-            item?.effectivePositionManagementMode ??
-            item?.effective_position_management_mode ??
-            pricingContextById(pricingContextIdValue)?.defaultPositionManagementMode
-          );
           const resolvedPricingContext = pricingContextById(pricingContextIdValue);
-          const autoHedgingAdmissionModeOverride =
-            normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-              item?.autoHedgingAdmissionModeOverride ??
-              item?.auto_hedging_admission_mode_override
+          const autoManagementAdmissionModeOverride =
+            normalizedPricingRuleAutoManagementAdmissionModeOverride(
+              item?.autoManagementAdmissionModeOverride ??
+              item?.auto_management_admission_mode_override
             );
-          const executionContextAdmissionMode = normalizedAutoHedgingAdmissionMode(
-            item?.executionContextAdmissionMode ??
-            item?.execution_context_admission_mode ??
-            resolvedPricingContext?.autoHedgingAdmissionMode,
-            resolvedPricingContext?.defaultPositionManagementMode
+          const tradeContextAdmissionMode = normalizedAutoManagementAdmissionMode(
+            item?.tradeContextAdmissionMode ??
+            item?.trade_context_admission_mode ??
+            resolvedPricingContext?.autoManagementAdmissionMode
           );
-          const effectiveAutoHedgingAdmissionMode = autoHedgingAdmissionModeOverride ||
-            normalizedAutoHedgingAdmissionMode(
-              item?.effectiveAutoHedgingAdmissionMode ??
-              item?.effective_auto_hedging_admission_mode ??
-              executionContextAdmissionMode,
-              resolvedPricingContext?.defaultPositionManagementMode
+          const effectiveAutoManagementAdmissionMode = autoManagementAdmissionModeOverride ||
+            normalizedAutoManagementAdmissionMode(
+              item?.effectiveAutoManagementAdmissionMode ??
+              item?.effective_auto_management_admission_mode ??
+              tradeContextAdmissionMode
             );
           const sourcePricingRuleId = item?.pricingRuleId ?? item?.pricing_rule_id;
           let pricingRuleIdValue = normalizedIntegerId(sourcePricingRuleId);
@@ -3648,11 +3734,9 @@
             pricingMode: sourcePricingMode
               ? normalizedPricingType(sourcePricingMode)
               : null,
-            positionManagementModeOverride,
-            effectivePositionManagementMode,
-            autoHedgingAdmissionModeOverride,
-            executionContextAdmissionMode,
-            effectiveAutoHedgingAdmissionMode,
+            autoManagementAdmissionModeOverride,
+            tradeContextAdmissionMode,
+            effectiveAutoManagementAdmissionMode,
             quickHedgeSettingsCount: Math.max(
               0,
               Number(item?.quickHedgeSettingsCount ?? item?.quick_hedge_settings_count) || 0
@@ -3753,7 +3837,7 @@
         pricingRuleId,
         counterpartyId,
         counterpartyName: String(source.counterpartyName || "").trim(),
-        executionContextId: String(source.executionContextId || "").trim(),
+        tradeContextId: String(source.tradeContextId || "").trim(),
         defaultTenor,
         active: source.active === true || Number(source.active) === 1,
         available: source.available === true || Number(source.available) === 1,
@@ -3774,7 +3858,7 @@
       );
     }
 
-    function normalizedAutoHedgingAdmissionPolicyPair(source) {
+    function normalizedAutoManagementAdmissionPolicyPair(source) {
       const ccyPairCode = String(source?.ccyPairCode || "").trim().toUpperCase();
       const currencyPair = normalizedPricingRuleCurrencyPair(
         source?.currencyPair || ccyPairCode.replace("_", "/")
@@ -3822,13 +3906,12 @@
       };
     }
 
-    function normalizedAutoHedgingAdmissionPolicy(source) {
-      const revision = Number(source?.revision);
+    function normalizedAutoManagementAdmissionPolicy(source) {
       const seenCodes = new Set();
       const currencyPairs = (Array.isArray(source?.currencyPairs)
         ? source.currencyPairs
         : [])
-        .map(normalizedAutoHedgingAdmissionPolicyPair)
+        .map(normalizedAutoManagementAdmissionPolicyPair)
         .filter(pair => {
           if (!pair || seenCodes.has(pair.ccyPairCode)) {
             return false;
@@ -3838,32 +3921,36 @@
         })
         .sort((left, right) => left.currencyPair.localeCompare(right.currencyPair));
 
+      const requestedTradeType = String(source?.tradeType || "").trim().toUpperCase();
+
       return {
-        revision: Number.isInteger(revision) && revision >= 0 ? revision : 0,
+        tradeType: AUTO_MODE_ELIGIBILITY_TRADE_TYPES.includes(requestedTradeType)
+          ? requestedTradeType
+          : "CLIENT_DEAL",
         currencyPairs
       };
     }
 
-    function loadAutoHedgingAdmissionPolicy() {
-      return normalizedAutoHedgingAdmissionPolicy(
-        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.autoHedgingAdmissionPolicy : null
+    function loadAutoManagementAdmissionPolicy() {
+      return normalizedAutoManagementAdmissionPolicy(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.autoModeEligibilityRules : null
       );
     }
 
-    function normalizedFxBatchingSettings(source) {
+    function normalizedBatchingSettings(source) {
       return {
         allowCrossTenorBatching: source?.allowCrossTenorBatching === true,
         updatedAt: String(source?.updatedAt || "")
       };
     }
 
-    function loadFxBatchingSettings() {
-      return normalizedFxBatchingSettings(
-        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.fxBatchingSettings : null
+    function loadBatchingSettings() {
+      return normalizedBatchingSettings(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.batchingSettings : null
       );
     }
 
-    function normalizedFxAutoBatchingSettings(source) {
+    function normalizedAutoBatchingSettings(source) {
       const maxIntervalSeconds = Number(source?.maxIntervalSeconds);
       const maxTransferRateSpreadPercent = positiveDecimalInputText(
         source?.maxTransferRateSpreadPercent
@@ -3913,9 +4000,9 @@
       };
     }
 
-    function loadFxAutoBatchingSettings() {
-      return normalizedFxAutoBatchingSettings(
-        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.fxAutoBatchingSettings : null
+    function loadAutoBatchingSettings() {
+      return normalizedAutoBatchingSettings(
+        DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.autoBatchingSettings : null
       );
     }
 
@@ -3953,7 +4040,7 @@
       }
     }
 
-    function isoDateFromClientFxDealValue(value) {
+    function isoDateFromClientDealValue(value) {
       const text = String(value || "").trim();
       const displayDateMatch = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(text);
 
@@ -3962,7 +4049,7 @@
         : text;
     }
 
-    function normalizedClientFxDeal(value) {
+    function normalizedClientDeal(value) {
       const source = value && typeof value === "object" ? value : {};
       const legacyPair = normalizedPricingRuleCurrencyPair(source.currencyPair);
       const ccyPairCode = String(source.ccyPairCode || legacyPair.replace("/", "_")).trim().toUpperCase();
@@ -4009,23 +4096,23 @@
           quoteCcyFractionDigits
         ));
       }
-      const entryDate = isoDateFromClientFxDealValue(source.entryDate);
+      const entryDate = isoDateFromClientDealValue(source.entryDate);
       const executionTimestamp = String(source.executionTimestamp || "").trim()
         || (entryDate ? `${entryDate}T00:00:00.000Z` : "");
       const receivedTimestamp = String(source.receivedTimestamp || "").trim()
         || executionTimestamp;
-      const tradeDate = isoDateFromClientFxDealValue(source.tradeDate);
-      const baseCcyValueDate = isoDateFromClientFxDealValue(
+      const tradeDate = isoDateFromClientDealValue(source.tradeDate);
+      const baseCcyValueDate = isoDateFromClientDealValue(
         source.baseCcyValueDate ?? source.baseCurrencySettlementDay ?? source.valueDate
       );
-      const quoteCcyValueDate = isoDateFromClientFxDealValue(
+      const quoteCcyValueDate = isoDateFromClientDealValue(
         source.quoteCcyValueDate ?? source.quoteCurrencySettlementDay ?? source.valueDate
       );
       const side = String(source.side || (Number(source.amountBuy) > 0 ? "BUY" : Number(source.amountSell) > 0 ? "SELL" : ""))
         .trim()
         .toUpperCase();
-      const executionContextId = Number(
-        source.executionContextId ?? source.execution_context_id ?? source.pricingContextId ?? source.pricing_context_id
+      const tradeContextId = Number(
+        source.tradeContextId ?? source.trade_context_id ?? source.pricingContextId ?? source.pricing_context_id
       );
       const pricingRuleId = Number(source.pricingRuleId ?? source.pricing_rule_id);
       const pricingRuleMarginSource = source.pricingRuleMargin ?? source.pricing_rule_margin;
@@ -4090,29 +4177,29 @@
         source.marketPulseTimestamp ?? source.market_pulse_timestamp ?? ""
       ).trim();
 
-      const tradeId = Number(source.tradeId ?? source.clientDealId ?? source.clientFxDealId ?? source.id);
-      const currentFxPositionMode = normalizedPositionManagementMode(
-        source.currentFxPositionMode
-        ?? source.current_fx_position_mode
-        ?? source.fxPositionMode
-        ?? source.fx_position_mode
+      const tradeId = Number(source.tradeId ?? source.clientDealId ?? source.id);
+      const currentPositionManagementMode = normalizedPositionManagementMode(
+        source.currentPositionManagementMode
+        ?? source.current_position_management_mode
+        ?? source.positionManagementMode
+        ?? source.position_mode
       );
-      const initialFxPositionMode = normalizedPositionManagementMode(
-        source.initialFxPositionMode
-        ?? source.initial_fx_position_mode,
-        currentFxPositionMode
+      const initialPositionManagementMode = normalizedPositionManagementMode(
+        source.initialPositionManagementMode
+        ?? source.initial_position_management_mode,
+        currentPositionManagementMode
       );
 
       return {
         tradeId,
         clientDealId: tradeId,
-        initialFxPositionMode,
-        currentFxPositionMode,
+        initialPositionManagementMode,
+        currentPositionManagementMode,
         executionTimestamp,
         receivedTimestamp,
         counterpartyId: Number(source.counterpartyId) || null,
-        executionContextId: Number.isInteger(executionContextId) && executionContextId > 0
-          ? executionContextId
+        tradeContextId: Number.isInteger(tradeContextId) && tradeContextId > 0
+          ? tradeContextId
           : null,
         pricingRuleId: Number.isInteger(pricingRuleId) && pricingRuleId > 0 ? pricingRuleId : null,
         pricingRuleMargin: Number.isFinite(pricingRuleMargin) ? pricingRuleMargin : null,
@@ -4156,33 +4243,33 @@
       };
     }
 
-    function loadClientFxDeals() {
-      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.clientFxDeals : [];
+    function loadClientDeals() {
+      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.clientDeals : [];
 
       return (Array.isArray(source) ? source : [])
-        .map(normalizedClientFxDeal)
+        .map(normalizedClientDeal)
         .filter(deal => Number.isInteger(deal.clientDealId) && deal.clientDealId > 0)
         .sort((left, right) => left.clientDealId - right.clientDealId);
     }
 
-    async function reloadClientFxDealsFromApi() {
-      const records = await demoApiRequest("/api/v1/client-fx-deals");
-      clientFxDeals = (Array.isArray(records) ? records : [])
-        .map(normalizedClientFxDeal)
+    async function reloadClientDealsFromApi() {
+      const records = await demoApiRequest("/api/v1/client-deals");
+      clientDeals = (Array.isArray(records) ? records : [])
+        .map(normalizedClientDeal)
         .filter(deal => Number.isInteger(deal.clientDealId) && deal.clientDealId > 0)
         .sort((left, right) => left.clientDealId - right.clientDealId);
-      return clientFxDeals;
+      return clientDeals;
     }
 
-    function normalizedHedgeFxDeal(value) {
+    function normalizedHedgeDeal(value) {
       const source = value && typeof value === "object" ? value : {};
-      const sharedTrade = normalizedClientFxDeal({
+      const sharedTrade = normalizedClientDeal({
         ...source,
         clientCode: source.counterpartyCode ?? source.clientCode,
         clientCodeType: source.counterpartyCodeType ?? source.clientCodeType,
         clientName: source.counterpartyName ?? source.clientName
       });
-      const tradeId = Number(source.tradeId ?? source.hedgeDealId ?? source.hedgeFxDealId ?? source.id);
+      const tradeId = Number(source.tradeId ?? source.hedgeDealId ?? source.id);
 
       return {
         ...sharedTrade,
@@ -4197,25 +4284,25 @@
       };
     }
 
-    function loadHedgeFxDeals() {
-      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.hedgeFxDeals : [];
+    function loadHedgeDeals() {
+      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.hedgeDeals : [];
 
       return (Array.isArray(source) ? source : [])
-        .map(normalizedHedgeFxDeal)
+        .map(normalizedHedgeDeal)
         .filter(deal => Number.isInteger(deal.hedgeDealId) && deal.hedgeDealId > 0)
         .sort((left, right) => left.hedgeDealId - right.hedgeDealId);
     }
 
-    async function reloadHedgeFxDealsFromApi() {
-      const records = await demoApiRequest("/api/v1/hedge-fx-deals");
-      hedgeFxDeals = (Array.isArray(records) ? records : [])
-        .map(normalizedHedgeFxDeal)
+    async function reloadHedgeDealsFromApi() {
+      const records = await demoApiRequest("/api/v1/hedge-deals");
+      hedgeDeals = (Array.isArray(records) ? records : [])
+        .map(normalizedHedgeDeal)
         .filter(deal => Number.isInteger(deal.hedgeDealId) && deal.hedgeDealId > 0)
         .sort((left, right) => left.hedgeDealId - right.hedgeDealId);
-      return hedgeFxDeals;
+      return hedgeDeals;
     }
 
-    function normalizedFxBatch(value) {
+    function normalizedBatch(value) {
       const source = value && typeof value === "object" ? value : {};
       const sourceBatchingKey = source.batchingKey
         && typeof source.batchingKey === "object"
@@ -4274,23 +4361,23 @@
       };
     }
 
-    function loadFxBatches() {
-      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.fxBatches : [];
+    function loadBatches() {
+      const source = DEMO_API_ENABLED ? DEMO_API_BOOTSTRAP.batches : [];
 
       return (Array.isArray(source) ? source : [])
-        .map(normalizedFxBatch)
+        .map(normalizedBatch)
         .filter(batch => Number.isInteger(batch.batchId) && batch.batchId > 0)
         .sort((left, right) => right.batchId - left.batchId);
     }
 
-    async function reloadFxBatchesFromApi() {
-      const records = await demoApiRequest("/api/v1/fx-batches");
-      fxBatchHistory = (Array.isArray(records) ? records : [])
-        .map(normalizedFxBatch)
+    async function reloadBatchesFromApi() {
+      const records = await demoApiRequest("/api/v1/batches");
+      batchHistory = (Array.isArray(records) ? records : [])
+        .map(normalizedBatch)
         .filter(batch => Number.isInteger(batch.batchId) && batch.batchId > 0)
         .sort((left, right) => right.batchId - left.batchId);
-      renderBatchingHistory(fxBatchHistory);
-      return fxBatchHistory;
+      renderBatchingHistory(batchHistory);
+      return batchHistory;
     }
 
     function normalizedBatchBalanceMinor(
@@ -4462,9 +4549,9 @@
       };
     }
 
-    function normalizedFxBatchDetails(value) {
+    function normalizedBatchDetails(value) {
       const source = value && typeof value === "object" ? value : {};
-      const batch = normalizedFxBatch(source);
+      const batch = normalizedBatch(source);
       const batchingKeySource = source.batchingKey
         && typeof source.batchingKey === "object"
         ? source.batchingKey
@@ -4507,12 +4594,12 @@
       };
     }
 
-    async function loadFxBatchDetailsFromApi(batchId) {
+    async function loadBatchDetailsFromApi(batchId) {
       const record = await demoApiRequest(
-        `/api/v1/fx-batches/${encodeURIComponent(batchId)}`
+        `/api/v1/batches/${encodeURIComponent(batchId)}`
       );
 
-      return normalizedFxBatchDetails(record);
+      return normalizedBatchDetails(record);
     }
 
     function normalizedBatchBalancingTrade(value) {
@@ -4560,43 +4647,43 @@
       };
     }
 
-    async function reloadFxPositionsFromApi() {
-      const requestSequence = ++fxPositionsRequestSequence;
-      const records = await demoApiRequest("/api/v1/fx-positions");
+    async function reloadPositionsFromApi() {
+      const requestSequence = ++positionsRequestSequence;
+      const records = await demoApiRequest("/api/v1/positions");
 
-      if (requestSequence !== fxPositionsRequestSequence) {
-        return fxPositionRecords;
+      if (requestSequence !== positionsRequestSequence) {
+        return positionRecords;
       }
 
-      fxPositionRecords = Array.isArray(records) ? records : [];
-      loadFxPositionsFromDatabase();
-      return fxPositionRecords;
+      positionRecords = Array.isArray(records) ? records : [];
+      loadPositionsFromDatabase();
+      return positionRecords;
     }
 
     async function refreshClientDealViewsFromApi() {
       await Promise.all([
-        reloadClientFxDealsFromApi(),
-        reloadFxPositionsFromApi()
+        reloadClientDealsFromApi(),
+        reloadPositionsFromApi()
       ]);
     }
 
     async function refreshHedgeDealViewsFromApi() {
       await Promise.all([
-        reloadHedgeFxDealsFromApi(),
-        reloadFxPositionsFromApi()
+        reloadHedgeDealsFromApi(),
+        reloadPositionsFromApi()
       ]);
     }
 
-    function fxPositionFromClientFxDeal(record) {
+    function positionFromClientDeal(record) {
       const [baseCcy = "EUR", quoteCcy = "USD"] = record.currencyPair.split("/");
       const side = record.side.toUpperCase();
 
       return {
         id: String(record.clientDealId),
-        clientFxDealId: record.clientDealId,
-        databaseBackedClientFxDeal: true,
+        clientDealId: record.clientDealId,
+        databaseBackedClientDeal: true,
         counterpartyId: record.counterpartyId,
-        positionId: `FXP-CLIENT_DEAL-${record.clientDealId}`,
+        positionId: `POS-CLIENT_DEAL-${record.clientDealId}`,
         branchCode: "",
         inn: record.clientCode,
         clientCodeType: record.clientCodeType,
@@ -4609,11 +4696,11 @@
         clientName: record.clientName,
         executionTimestamp: record.executionTimestamp,
         receivedTimestamp: record.receivedTimestamp,
-        entryDate: clientFxDealsDateLabel(record.executionTimestamp.slice(0, 10)),
-        tradeDate: clientFxDealsDateLabel(record.tradeDate),
-        valueDate: clientFxDealsDateLabel(record.baseCcyValueDate),
-        baseCurrencySettlementDay: clientFxDealsDateLabel(record.baseCcyValueDate),
-        quoteCurrencySettlementDay: clientFxDealsDateLabel(record.quoteCcyValueDate),
+        entryDate: clientDealsDateLabel(record.executionTimestamp.slice(0, 10)),
+        tradeDate: clientDealsDateLabel(record.tradeDate),
+        valueDate: clientDealsDateLabel(record.baseCcyValueDate),
+        baseCurrencySettlementDay: clientDealsDateLabel(record.baseCcyValueDate),
+        quoteCurrencySettlementDay: clientDealsDateLabel(record.quoteCcyValueDate),
         settlementMethod: "PVP",
         tenor: record.tenor,
         baseCurrency: baseCcy,
@@ -4636,7 +4723,7 @@
         pricingRuleControlStatus: record.pricingRuleId === null
           ? "CLIENT_ONBOARDING_MANUAL_PRICING"
           : "PRICING_RULE_APPLIED",
-        pricingContextId: record.executionContextId === null ? "" : String(record.executionContextId),
+        pricingContextId: record.tradeContextId === null ? "" : String(record.tradeContextId),
         manualPricingReason: record.pricingRuleId === null
           ? CLIENT_ONBOARDING_MANUAL_PRICING
           : null,
@@ -4653,16 +4740,16 @@
       };
     }
 
-    function fxPositionFromHedgeFxDeal(record) {
+    function positionFromHedgeDeal(record) {
       const [baseCcy = "EUR", quoteCcy = "USD"] = record.currencyPair.split("/");
       const side = record.side.toUpperCase();
 
       return {
         id: String(record.hedgeDealId),
-        hedgeFxDealId: record.hedgeDealId,
-        databaseBackedHedgeFxDeal: true,
+        hedgeDealId: record.hedgeDealId,
+        databaseBackedHedgeDeal: true,
         counterpartyId: record.counterpartyId,
-        positionId: `FXP-HEDGE_DEAL-${record.hedgeDealId}`,
+        positionId: `POS-HEDGE_DEAL-${record.hedgeDealId}`,
         branchCode: "",
         inn: record.counterpartyCode,
         clientCodeType: record.counterpartyCodeType,
@@ -4675,11 +4762,11 @@
         clientName: "",
         executionTimestamp: record.executionTimestamp,
         receivedTimestamp: record.receivedTimestamp,
-        entryDate: clientFxDealsDateLabel(record.executionTimestamp.slice(0, 10)),
-        tradeDate: clientFxDealsDateLabel(record.tradeDate),
-        valueDate: clientFxDealsDateLabel(record.baseCcyValueDate),
-        baseCurrencySettlementDay: clientFxDealsDateLabel(record.baseCcyValueDate),
-        quoteCurrencySettlementDay: clientFxDealsDateLabel(record.quoteCcyValueDate),
+        entryDate: clientDealsDateLabel(record.executionTimestamp.slice(0, 10)),
+        tradeDate: clientDealsDateLabel(record.tradeDate),
+        valueDate: clientDealsDateLabel(record.baseCcyValueDate),
+        baseCurrencySettlementDay: clientDealsDateLabel(record.baseCcyValueDate),
+        quoteCurrencySettlementDay: clientDealsDateLabel(record.quoteCcyValueDate),
         settlementMethod: "PVP",
         tenor: record.tenor,
         baseCurrency: baseCcy,
@@ -4700,7 +4787,7 @@
         pricingRuleId: record.pricingRuleId === null ? "" : String(record.pricingRuleId),
         pricingRuleMargin: record.pricingRuleMargin,
         pricingRuleControlStatus: "",
-        pricingContextId: record.executionContextId === null ? "" : String(record.executionContextId),
+        pricingContextId: record.tradeContextId === null ? "" : String(record.tradeContextId),
         entryMarketBid: record.marketPulseBid,
         entryMarketOffer: record.marketPulseOffer,
         entryMarketTimestamp: record.marketPulseTimestamp,
@@ -4712,7 +4799,7 @@
       };
     }
 
-    function fxPositionFromBatchBalancingTrade(record) {
+    function positionFromBatchBalancingTrade(record) {
       const [baseCcy = "EUR", quoteCcy = "USD"] = record.currencyPair.split("/");
       const side = record.side.toUpperCase();
 
@@ -4722,7 +4809,7 @@
         batchTradeId: record.batchTradeId,
         batchPairId: record.batchPairId,
         databaseBackedBatchBalancingTrade: true,
-        positionId: `FXP-${record.tradeType}-${record.tradeId}`,
+        positionId: `POS-${record.tradeType}-${record.tradeId}`,
         branchCode: "",
         inn: "",
         clientCodeType: "",
@@ -4735,11 +4822,11 @@
         clientName: "",
         executionTimestamp: record.executionTimestamp,
         receivedTimestamp: record.receivedTimestamp,
-        entryDate: clientFxDealsDateLabel(record.executionTimestamp.slice(0, 10)),
-        tradeDate: clientFxDealsDateLabel(record.tradeDate),
-        valueDate: clientFxDealsDateLabel(record.baseCcyValueDate),
-        baseCurrencySettlementDay: clientFxDealsDateLabel(record.baseCcyValueDate),
-        quoteCurrencySettlementDay: clientFxDealsDateLabel(record.quoteCcyValueDate),
+        entryDate: clientDealsDateLabel(record.executionTimestamp.slice(0, 10)),
+        tradeDate: clientDealsDateLabel(record.tradeDate),
+        valueDate: clientDealsDateLabel(record.baseCcyValueDate),
+        baseCurrencySettlementDay: clientDealsDateLabel(record.baseCcyValueDate),
+        quoteCurrencySettlementDay: clientDealsDateLabel(record.quoteCcyValueDate),
         settlementMethod: "PVP",
         tenor: record.tenor,
         baseCurrency: baseCcy,
@@ -4771,11 +4858,11 @@
       };
     }
 
-    function clientFxDealApiPayloadFromFxPosition(deal) {
+    function clientDealApiPayloadFromPosition(deal) {
       const profile = clientProfiles.find(item => item.counterpartyId === Number(deal.counterpartyId))
-        || clientProfileByInn(clientFxDealClientCode(deal));
+        || clientProfileByInn(clientDealClientCode(deal));
       const executionTimestamp = String(deal.executionTimestamp || "").trim();
-      const executionContextId = Number(deal.pricingContextId);
+      const tradeContextId = Number(deal.pricingContextId);
       const pricingRuleId = Number(deal.pricingRuleId);
       const manualPricing = deal.manualPricingReason === CLIENT_ONBOARDING_MANUAL_PRICING
         || deal.pricingRuleControlStatus === "CLIENT_ONBOARDING_MANUAL_PRICING";
@@ -4794,8 +4881,8 @@
       return {
         executionTimestamp: persistedExecutionTimestamp,
         counterpartyId: profile?.counterpartyId ?? null,
-        executionContextId: Number.isInteger(executionContextId) && executionContextId > 0
-          ? executionContextId
+        tradeContextId: Number.isInteger(tradeContextId) && tradeContextId > 0
+          ? tradeContextId
           : null,
         pricingRuleId: Number.isInteger(pricingRuleId) && pricingRuleId > 0 ? pricingRuleId : null,
         manualPricingReason: manualPricing
@@ -4804,15 +4891,15 @@
         transferRate: manualPricing
           ? String(deal.manualTransferRateText || deal.autoBatchRate || "")
           : null,
-        tradeDate: isoDateFromClientFxDealValue(positionTradeDate(deal)),
+        tradeDate: isoDateFromClientDealValue(positionTradeDate(deal)),
         ccyPairCode: currencyPair(deal).replace("/", "_"),
-        side: fxPositionSide(deal).toUpperCase(),
+        side: positionSide(deal).toUpperCase(),
         dealtCcyCode: String(deal.dealtCcyCode || deal.baseCurrency || "").trim().toUpperCase(),
         dealtCcyAmount: String(deal.dealtCcyAmount || ""),
         tradeRate: String(deal.tradeRateText || deal.clientRate || ""),
         tenor: positionTenor(deal).toUpperCase(),
-        baseCcyValueDate: isoDateFromClientFxDealValue(baseCurrencyValueDate(deal)),
-        quoteCcyValueDate: isoDateFromClientFxDealValue(quoteCurrencyValueDate(deal)),
+        baseCcyValueDate: isoDateFromClientDealValue(baseCurrencyValueDate(deal)),
+        quoteCcyValueDate: isoDateFromClientDealValue(quoteCurrencyValueDate(deal)),
         marketPulseStreamStatus,
         marketPulseBid: hasMarketPulseSnapshot ? marketPulseBid : null,
         marketPulseOffer: hasMarketPulseSnapshot ? marketPulseOffer : null,
@@ -4825,28 +4912,28 @@
       };
     }
 
-    async function createClientFxDealRecord(deal) {
+    async function createClientDealRecord(deal) {
       if (!DEMO_API_ENABLED) {
-        throw new Error("SQLite API is required to save a Client FX Deal.");
+        throw new Error("SQLite API is required to save a Client Deal.");
       }
 
       const saved = await demoApiRequest(
-        "/api/v1/client-fx-deals",
+        "/api/v1/client-deals",
         {
           method: "POST",
-          body: JSON.stringify(clientFxDealApiPayloadFromFxPosition(deal))
+          body: JSON.stringify(clientDealApiPayloadFromPosition(deal))
         }
       );
-      return normalizedClientFxDeal(saved);
+      return normalizedClientDeal(saved);
     }
 
     function pricingRuleApiPayload(rule, currentRule = null) {
       if (currentRule) {
         return {
           marginPercent: Number(rule?.marginPercent),
-          autoHedgingAdmissionModeOverride:
-            normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-              rule?.autoHedgingAdmissionModeOverride
+          autoManagementAdmissionModeOverride:
+            normalizedPricingRuleAutoManagementAdmissionModeOverride(
+              rule?.autoManagementAdmissionModeOverride
             )
         };
       }
@@ -4855,12 +4942,12 @@
 
       return {
         counterpartyId: profile?.counterpartyId ?? null,
-        executionContextId: normalizedPricingContextIdValue(rule?.pricingContextId),
+        tradeContextId: normalizedPricingContextIdValue(rule?.pricingContextId),
         ccyPairCode: String(rule?.ccyPairCode || rule?.currencyPair?.replace("/", "_") || "").toUpperCase(),
         marginPercent: Number(rule?.marginPercent),
-        autoHedgingAdmissionModeOverride:
-          normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-            rule?.autoHedgingAdmissionModeOverride
+        autoManagementAdmissionModeOverride:
+          normalizedPricingRuleAutoManagementAdmissionModeOverride(
+            rule?.autoManagementAdmissionModeOverride
           )
       };
     }
@@ -4869,21 +4956,20 @@
       if (!DEMO_API_ENABLED) {
         const mergedRule = currentRule ? { ...currentRule, ...rule } : { ...rule };
         const context = pricingContextById(mergedRule.pricingContextId);
-        const executionContextAdmissionMode = normalizedAutoHedgingAdmissionMode(
-          context?.autoHedgingAdmissionMode,
-          context?.defaultPositionManagementMode
+        const tradeContextAdmissionMode = normalizedAutoManagementAdmissionMode(
+          context?.autoManagementAdmissionMode
         );
-        const autoHedgingAdmissionModeOverride =
-          normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-            mergedRule.autoHedgingAdmissionModeOverride
+        const autoManagementAdmissionModeOverride =
+          normalizedPricingRuleAutoManagementAdmissionModeOverride(
+            mergedRule.autoManagementAdmissionModeOverride
           );
 
         return {
           ...mergedRule,
-          autoHedgingAdmissionModeOverride,
-          executionContextAdmissionMode,
-          effectiveAutoHedgingAdmissionMode:
-            autoHedgingAdmissionModeOverride || executionContextAdmissionMode
+          autoManagementAdmissionModeOverride,
+          tradeContextAdmissionMode,
+          effectiveAutoManagementAdmissionMode:
+            autoManagementAdmissionModeOverride || tradeContextAdmissionMode
         };
       }
 
@@ -4969,7 +5055,7 @@
       ).size;
     }
 
-    function executionContextDependencyDescription(pricingContextIdValue) {
+    function tradeContextDependencyDescription(pricingContextIdValue) {
       const counterpartyCount = pricingContextUsageCount(pricingContextIdValue);
       return counterpartyCount > 0
         ? `${counterpartyCount} trading ${counterpartyCount === 1 ? "counterparty" : "counterparties"}`
@@ -5006,7 +5092,7 @@
       return rules.find(rule => rule.currencyPair === pair) || rules[0] || null;
     }
 
-    function pricingRuleForFxPosition(deal) {
+    function pricingRuleForPosition(deal) {
       if (deal?.pricingRuleControlStatus === "PRICING_RULE_REQUIRED") {
         return null;
       }
@@ -5014,7 +5100,7 @@
       const rules = clientPricingRulesForInn(deal?.inn || deal?.clientCode || "");
       const storedRuleId = String(deal?.pricingRuleId || deal?.pricing_rule_id || "").trim();
       const pair = currencyPair(deal);
-      const storedContextId = fxPositionExecutionContextId(deal);
+      const storedContextId = positionTradeContextId(deal);
 
       return rules.find(rule => rule.pricingRuleId === storedRuleId)
         || rules.find(rule => rule.currencyPair === pair && rule.pricingContextId === storedContextId)
@@ -5022,16 +5108,16 @@
         || null;
     }
 
-    function fxDealPricingRuleId(deal) {
+    function dealPricingRuleId(deal) {
       if (deal?.pricingRuleControlStatus === "PRICING_RULE_REQUIRED") {
         return "";
       }
 
       const storedRuleId = String(deal?.pricingRuleId || deal?.pricing_rule_id || "").trim();
-      return storedRuleId || pricingRuleForFxPosition(deal)?.pricingRuleId || "";
+      return storedRuleId || pricingRuleForPosition(deal)?.pricingRuleId || "";
     }
 
-    function fxDealPricingRuleMargin(deal) {
+    function dealPricingRuleMargin(deal) {
       if (deal?.pricingRuleControlStatus === "PRICING_RULE_REQUIRED") {
         return null;
       }
@@ -5046,15 +5132,15 @@
         }
       }
 
-      return pricingRuleForFxPosition(deal)?.marginPercent ?? null;
+      return pricingRuleForPosition(deal)?.marginPercent ?? null;
     }
 
-    function fxDealPricingRuleMarginCell(deal) {
-      const margin = fxDealPricingRuleMargin(deal);
+    function dealPricingRuleMarginCell(deal) {
+      const margin = dealPricingRuleMargin(deal);
       return Number.isFinite(margin) ? `${editNumber(margin, 4)}%` : "";
     }
 
-    function fxPositionExecutionContextId(deal) {
+    function positionTradeContextId(deal) {
       const storedId = normalizedPricingContextIdValue(deal?.pricingContextId ?? deal?.pricing_context_id);
 
       if (storedId) {
@@ -5070,18 +5156,18 @@
         : "";
     }
 
-    function pricingContextForFxPosition(deal) {
+    function pricingContextForPosition(deal) {
       if (deal?.pricingRuleControlStatus === "PRICING_RULE_REQUIRED") {
         return null;
       }
 
-      const storedContext = pricingContextById(fxPositionExecutionContextId(deal));
-      const rule = pricingRuleForFxPosition(deal);
+      const storedContext = pricingContextById(positionTradeContextId(deal));
+      const rule = pricingRuleForPosition(deal);
 
       return storedContext || pricingContextById(rule?.pricingContextId) || null;
     }
 
-    function applyPricingContextToFxPosition(deal, options = {}) {
+    function applyPricingContextToPosition(deal, options = {}) {
       const type = String(deal?.type || "client_deal").toLowerCase();
       const force = options.force === true;
 
@@ -5095,7 +5181,7 @@
         return;
       }
 
-      const context = pricingContextForFxPosition(deal);
+      const context = pricingContextForPosition(deal);
 
       if (force || !deal.pricingContextId) {
         deal.pricingContextId = context?.pricingContextId || "";
@@ -5122,23 +5208,23 @@
         .join("");
     }
 
-    function pricingRuleCounterpartyExecutionContextState(inn = "") {
+    function pricingRuleCounterpartyTradeContextState(inn = "") {
       const profile = clientProfileByInn(inn);
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
 
       if (!profile || !counterpartyId) {
         return { status: "missing-counterparty", profile: null, contexts: [] };
       }
 
-      if (!DEMO_API_ENABLED || tradingCounterpartyExecutionContexts.has(counterpartyId)) {
+      if (!DEMO_API_ENABLED || tradingCounterpartyTradeContexts.has(counterpartyId)) {
         return {
           status: "loaded",
           profile,
-          contexts: assignedExecutionContextsForProfile(profile)
+          contexts: assignedTradeContextsForProfile(profile)
         };
       }
 
-      const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+      const loadState = tradingCounterpartyTradeContextLoadStates.get(counterpartyId);
 
       return {
         status: loadState?.status || "unloaded",
@@ -5148,15 +5234,15 @@
       };
     }
 
-    function availablePricingRuleExecutionContextIds(inn = "") {
-      return pricingRuleCounterpartyExecutionContextState(inn).contexts
+    function availablePricingRuleTradeContextIds(inn = "") {
+      return pricingRuleCounterpartyTradeContextState(inn).contexts
         .map(context => context.pricingContextId)
         .filter(Boolean)
         .sort((left, right) => left.localeCompare(right, "en", { numeric: true, sensitivity: "base" }));
     }
 
-    function resolvedPricingRuleExecutionContextId(selectedPricingContextId = "", inn = "") {
-      const availableContextIds = availablePricingRuleExecutionContextIds(inn);
+    function resolvedPricingRuleTradeContextId(selectedPricingContextId = "", inn = "") {
+      const availableContextIds = availablePricingRuleTradeContextIds(inn);
 
       if (availableContextIds.includes(selectedPricingContextId)) {
         return selectedPricingContextId;
@@ -5166,24 +5252,24 @@
     }
 
     function pricingRuleContextOptions(selectedPricingContextId = "", inn = "") {
-      const state = pricingRuleCounterpartyExecutionContextState(inn);
-      const availableContextIds = availablePricingRuleExecutionContextIds(inn);
-      const resolvedContextId = resolvedPricingRuleExecutionContextId(selectedPricingContextId, inn);
+      const state = pricingRuleCounterpartyTradeContextState(inn);
+      const availableContextIds = availablePricingRuleTradeContextIds(inn);
+      const resolvedContextId = resolvedPricingRuleTradeContextId(selectedPricingContextId, inn);
 
       if (state.status === "missing-counterparty") {
         return '<option value="">Select a Trading Counterparty first</option>';
       }
 
       if (state.status === "loading" || state.status === "unloaded") {
-        return '<option value="">Loading attached Execution Contexts...</option>';
+        return '<option value="">Loading attached Trade Contexts...</option>';
       }
 
       if (state.status === "error") {
-        return '<option value="">Attached Execution Contexts unavailable</option>';
+        return '<option value="">Attached Trade Contexts unavailable</option>';
       }
 
       if (availableContextIds.length === 0) {
-        return '<option value="">No attached Execution Contexts</option>';
+        return '<option value="">No attached Trade Contexts</option>';
       }
 
       return `${availableContextIds.length > 1 ? `<option value=""></option>` : ""}${availableContextIds
@@ -5197,18 +5283,18 @@
       }
 
       if (state.status === "error") {
-        return state.message || "Attached Execution Contexts could not be loaded.";
+        return state.message || "Attached Trade Contexts could not be loaded.";
       }
 
       if (state.status === "loaded" && state.contexts.length === 0) {
-        return "Attach an Execution Context to this Trading Counterparty before adding a Pricing Rule.";
+        return "Attach a Trade Context to this Trading Counterparty before adding a Pricing Rule.";
       }
 
       return "";
     }
 
-    function ensurePricingRuleCounterpartyExecutionContexts(row, inn) {
-      const state = pricingRuleCounterpartyExecutionContextState(inn);
+    function ensurePricingRuleCounterpartyTradeContexts(row, inn) {
+      const state = pricingRuleCounterpartyTradeContextState(inn);
 
       if (state.status !== "unloaded" || !state.profile) {
         return;
@@ -5216,7 +5302,7 @@
 
       const expectedCounterpartyId = state.profile.counterpartyId;
 
-      refreshTradingCounterpartyExecutionContexts(state.profile, { render: false }).then(() => {
+      refreshTradingCounterpartyTradeContexts(state.profile, { render: false }).then(() => {
         if (!row.isConnected) {
           return;
         }
@@ -5250,18 +5336,18 @@
       const selectedContextId = (
         contextSelect.value || contextSelect.dataset.pricingRuleContextPreferred || ""
       ).trim().toUpperCase();
-      const initialState = pricingRuleCounterpartyExecutionContextState(inn);
+      const initialState = pricingRuleCounterpartyTradeContextState(inn);
 
-      ensurePricingRuleCounterpartyExecutionContexts(row, inn);
+      ensurePricingRuleCounterpartyTradeContexts(row, inn);
 
       const state = initialState.status === "unloaded"
-        ? pricingRuleCounterpartyExecutionContextState(inn)
+        ? pricingRuleCounterpartyTradeContextState(inn)
         : initialState;
-      const availableContextIds = availablePricingRuleExecutionContextIds(inn);
+      const availableContextIds = availablePricingRuleTradeContextIds(inn);
       const help = row.querySelector("[data-pricing-rule-context-help]");
 
       contextSelect.innerHTML = pricingRuleContextOptions(selectedContextId, inn);
-      contextSelect.value = resolvedPricingRuleExecutionContextId(selectedContextId, inn);
+      contextSelect.value = resolvedPricingRuleTradeContextId(selectedContextId, inn);
       contextSelect.disabled = state.status !== "loaded" || availableContextIds.length === 0;
       if (state.status === "loaded") {
         contextSelect.dataset.pricingRuleContextPreferred = contextSelect.value;
@@ -5275,24 +5361,47 @@
       }
     }
 
-    function pricingRuleRowAutoHedgingAdmissionModeOverride(row) {
+    function pricingRuleRowAutoManagementAdmissionModeOverride(row) {
       const overrideControl = row?.querySelector(
-        "[data-pricing-rule-field='autoHedgingAdmissionModeOverride']"
+        "[data-pricing-rule-field='autoManagementAdmissionModeOverride']"
       );
 
-      return pricingRuleAutoHedgingAdmissionModeOverrideFromControl(overrideControl);
+      return pricingRuleAutoManagementAdmissionModeOverrideFromControl(overrideControl);
     }
 
-    function syncPricingRuleRowAutoHedgingAdmissionControls(row) {
+    function syncPricingRuleRowAutoManagementAdmissionControls(row) {
       const overrideControl = row?.querySelector(
-        "[data-pricing-rule-field='autoHedgingAdmissionModeOverride']"
+        "[data-pricing-rule-field='autoManagementAdmissionModeOverride']"
       );
 
       if (!overrideControl) {
         return null;
       }
 
-      return pricingRuleRowAutoHedgingAdmissionModeOverride(row);
+      const override = pricingRuleRowAutoManagementAdmissionModeOverride(row);
+      const contextId = row.querySelector(
+        "[data-pricing-rule-field='pricingContextId']"
+      )?.value;
+      const context = pricingContextById(contextId);
+      const icon = row.querySelector(
+        "[data-pricing-rule-initial-mode-assignment-icon]"
+      );
+      const tradeContextOption = overrideControl.querySelector?.('option[value=""]');
+
+      if (icon) {
+        icon.textContent = initialModeAssignmentIcon(
+          override || context?.autoManagementAdmissionMode
+        );
+      }
+
+      if (tradeContextOption) {
+        tradeContextOption.textContent = pricingRuleInitialModeAssignmentLabel(
+          null,
+          context?.autoManagementAdmissionMode
+        );
+      }
+
+      return override;
     }
 
     function syncPricingRuleRowPreview(row) {
@@ -5300,9 +5409,10 @@
       const inn = row.querySelector("[data-pricing-rule-field='inn']")?.value.trim() || "";
       const currencyPairValue = normalizedPricingRuleCurrencyPair(row.querySelector("[data-pricing-rule-field='currencyPair']")?.value);
       const pricingContextIdValue = row.querySelector("[data-pricing-rule-field='pricingContextId']")?.value.trim().toUpperCase() || "";
-      syncPricingRuleRowAutoHedgingAdmissionControls(row);
+      syncPricingRuleRowAutoManagementAdmissionControls(row);
       const preview = row.querySelector("[data-pricing-rule-preview]");
       const clientNameCell = row.querySelector("[data-pricing-rule-client-name]");
+      const tradeContextDisplay = row.querySelector("[data-pricing-rule-context-display]");
 
       if (preview) {
         preview.textContent = pricingRulePreview(
@@ -5317,6 +5427,14 @@
         clientNameCell.textContent = clientNameForInn(inn);
       }
 
+      if (tradeContextDisplay) {
+        tradeContextDisplay.innerHTML = `
+          <span class="client-pricing-context-candidate-path pricing-rules-context-path">
+            ${pricingContextFacetsMarkup(pricingContextIdValue, { originatingSystemLabel: true })}
+          </span>
+        `;
+      }
+
       updatePricingRuleRowSaveAvailability(row);
     }
 
@@ -5324,18 +5442,18 @@
       const inn = row.querySelector("[data-pricing-rule-field='inn']")?.value.trim() || "";
       const currencyPair = normalizedPricingRuleCurrencyPair(row.querySelector("[data-pricing-rule-field='currencyPair']")?.value);
       const pricingContextIdValue = row.querySelector("[data-pricing-rule-field='pricingContextId']")?.value.trim().toUpperCase() || "";
-      const autoHedgingAdmissionModeOverride = syncPricingRuleRowAutoHedgingAdmissionControls(row);
+      const autoManagementAdmissionModeOverride = syncPricingRuleRowAutoManagementAdmissionControls(row);
       const marginPercent = normalizeNumber(row.querySelector("[data-pricing-rule-field='marginPercent']")?.value);
       const profile = clientProfileByInn(inn);
-      const contextState = pricingRuleCounterpartyExecutionContextState(inn);
-      const contextAttached = availablePricingRuleExecutionContextIds(inn).includes(pricingContextIdValue);
+      const contextState = pricingRuleCounterpartyTradeContextState(inn);
+      const contextAttached = availablePricingRuleTradeContextIds(inn).includes(pricingContextIdValue);
 
       if (
         !isValidClientCodeForProfile(inn) ||
         !currencyPair ||
         contextState.status !== "loaded" ||
         !contextAttached ||
-        autoHedgingAdmissionModeOverride === undefined ||
+        autoManagementAdmissionModeOverride === undefined ||
         marginPercent === null ||
         !Number.isFinite(marginPercent) ||
         marginPercent < 0 ||
@@ -5352,7 +5470,7 @@
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoHedgingAdmissionModeOverride,
+        autoManagementAdmissionModeOverride,
         marginPercent
       };
     }
@@ -5372,8 +5490,8 @@
     function samePricingRule(left, right) {
       return Boolean(left && right) &&
         samePricingRuleIdentity(left, right) &&
-        normalizedPricingRuleAutoHedgingAdmissionModeOverride(left.autoHedgingAdmissionModeOverride) ===
-          normalizedPricingRuleAutoHedgingAdmissionModeOverride(right.autoHedgingAdmissionModeOverride) &&
+        normalizedPricingRuleAutoManagementAdmissionModeOverride(left.autoManagementAdmissionModeOverride) ===
+          normalizedPricingRuleAutoManagementAdmissionModeOverride(right.autoManagementAdmissionModeOverride) &&
         sameNumber(left.marginPercent, right.marginPercent);
     }
 
@@ -5382,12 +5500,12 @@
       const contextStatus = row.dataset.pricingRuleContextStatus;
 
       if (contextStatus === "loading" || contextStatus === "unloaded") {
-        setSaveButtonAvailability(button, false, "Wait until attached Execution Contexts are loaded");
+        setSaveButtonAvailability(button, false, "Wait until attached Trade Contexts are loaded");
         return;
       }
 
       if (contextStatus === "error") {
-        setSaveButtonAvailability(button, false, "Attached Execution Contexts could not be loaded");
+        setSaveButtonAvailability(button, false, "Attached Trade Contexts could not be loaded");
         return;
       }
 
@@ -5434,7 +5552,7 @@
 
     function pricingRuleDefaultDraft(inn = pricingRulesClientInnFilter) {
       const profile = clientProfileByInn(inn) || clientProfiles[0] || null;
-      const pricingContextIdValue = resolvedPricingRuleExecutionContextId("", profile?.inn || "");
+      const pricingContextIdValue = resolvedPricingRuleTradeContextId("", profile?.inn || "");
 
       return {
         pricingRuleId: "",
@@ -5444,7 +5562,7 @@
         currencyPair: activeCurrencyPairOrDefault(),
         ccyPairCode: activeCurrencyPairOrDefault().replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoHedgingAdmissionModeOverride: null,
+        autoManagementAdmissionModeOverride: null,
         marginPercent: profile?.marginPercent ?? 0
       };
     }
@@ -5453,28 +5571,28 @@
       const innSelect = row.querySelector("[data-pricing-rule-field='inn']");
       const currencyPairInput = row.querySelector("[data-pricing-rule-field='currencyPair']");
       const contextSelect = row.querySelector("[data-pricing-rule-field='pricingContextId']");
-      const autoHedgingAdmissionModeOverrideSelect = row.querySelector(
-        "[data-pricing-rule-field='autoHedgingAdmissionModeOverride']"
+      const autoManagementAdmissionModeOverrideSelect = row.querySelector(
+        "[data-pricing-rule-field='autoManagementAdmissionModeOverride']"
       );
       const marginInput = row.querySelector("[data-pricing-rule-field='marginPercent']");
       const inn = innSelect?.value.trim() || "";
       const currencyPair = parsePricingRuleCurrencyPairInput(currencyPairInput);
       const pricingContextIdValue = contextSelect?.value.trim().toUpperCase() || "";
-      const autoHedgingAdmissionModeOverride = syncPricingRuleRowAutoHedgingAdmissionControls(row);
+      const autoManagementAdmissionModeOverride = syncPricingRuleRowAutoManagementAdmissionControls(row);
       const marginPercent = parsePercentInput(marginInput, "Margin", 100);
       const profile = clientProfileByInn(inn);
 
       innSelect.setCustomValidity(isValidClientCodeForProfile(inn) ? "" : "Counterparty Code is required.");
-      const contextState = pricingRuleCounterpartyExecutionContextState(inn);
+      const contextState = pricingRuleCounterpartyTradeContextState(inn);
       const contextAttached = contextState.status === "loaded"
-        && availablePricingRuleExecutionContextIds(inn).includes(pricingContextIdValue);
+        && availablePricingRuleTradeContextIds(inn).includes(pricingContextIdValue);
       const contextMessage = contextState.status === "loading" || contextState.status === "unloaded"
-        ? "Wait until attached Execution Contexts are loaded."
+        ? "Wait until attached Trade Contexts are loaded."
         : contextState.status === "error"
-          ? "Attached Execution Contexts could not be loaded."
+          ? "Attached Trade Contexts could not be loaded."
           : contextState.status === "loaded" && contextState.contexts.length === 0
-            ? "Attach an Execution Context to this Trading Counterparty first."
-            : "Select an Execution Context attached to this Trading Counterparty.";
+            ? "Attach a Trade Context to this Trading Counterparty first."
+            : "Select a Trade Context attached to this Trading Counterparty.";
       contextSelect.setCustomValidity(contextAttached ? "" : contextMessage);
 
       if (innSelect.validationMessage) {
@@ -5487,8 +5605,8 @@
         return null;
       }
 
-      if (autoHedgingAdmissionModeOverride === undefined) {
-        autoHedgingAdmissionModeOverrideSelect?.reportValidity();
+      if (autoManagementAdmissionModeOverride === undefined) {
+        autoManagementAdmissionModeOverrideSelect?.reportValidity();
         return null;
       }
 
@@ -5505,7 +5623,7 @@
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoHedgingAdmissionModeOverride,
+        autoManagementAdmissionModeOverride,
         marginPercent
       };
       const currentIndex = pricingRuleEditStateIndex();
@@ -5523,10 +5641,10 @@
       return rule;
     }
 
-    function pricingRuleExecutionContextSearchText(rule) {
+    function pricingRuleTradeContextSearchText(rule) {
       const pricingMode = pricingModeForRule(rule);
 
-      return `${rule.pricingContextId} ${pricingContextDisplayPath(rule.pricingContextId)} ${pricingMode} ${pricingTypePresentation(pricingMode).label}`;
+      return `${pricingContextDisplayPath(rule.pricingContextId)} ${pricingMode} ${pricingTypePresentation(pricingMode).label}`;
     }
 
     function pricingRuleHeaderFilterControl(field) {
@@ -5534,36 +5652,81 @@
         .find(control => control.dataset.pricingRuleHeaderFilter === field) || null;
     }
 
-    function pricingRuleMatchesRouteScope(rule) {
-      return !pricingRulesRouteScope
-        || rule.ccyPairCode === pricingRulesRouteScope.pairCode;
+    function pricingRuleFiltersAreActive() {
+      return pricingRuleHeaderFilterControls.some(control =>
+        control.value.trim() !== ""
+      );
     }
 
-    function highlightPricingRuleAutoHedgingAdmissionColumn(enabled) {
+    function syncPricingRulesClearFiltersButton() {
+      pricingRulesClearFiltersButton.disabled = !pricingRuleFiltersAreActive();
+    }
+
+    function clearPricingRuleFilterRoute() {
+      if (!pricingRulesRouteScope) {
+        return;
+      }
+
+      pricingRulesRouteScope = null;
+      history.replaceState(
+        null,
+        "",
+        `${location.pathname}${location.search}${pricingRulesRoute(activePricingRulesScope)}`
+      );
+      renderWorkspacePageHeading();
+      document.title = "Pricing Rules";
+    }
+
+    function handlePricingRuleHeaderFilterInput(event) {
+      const control = event.currentTarget;
+
+      if (
+        pricingRulesRouteScope
+        && control.dataset.pricingRuleHeaderFilter === "currencyPair"
+        && control.value.trim().toUpperCase() !== pricingRulesRouteScope.currencyPair
+      ) {
+        clearPricingRuleFilterRoute();
+      }
+
+      renderPricingRules();
+    }
+
+    function clearPricingRuleFilters() {
+      pricingRuleHeaderFilterControls.forEach(control => {
+        control.value = "";
+        control.readOnly = false;
+        control.removeAttribute("aria-readonly");
+      });
+
+      clearPricingRuleFilterRoute();
+      renderPricingRules();
+    }
+
+    function highlightPricingRuleAutoManagementAdmissionColumn(enabled) {
       if (pricingRulesFocusTimer) {
         window.clearTimeout(pricingRulesFocusTimer);
         pricingRulesFocusTimer = null;
       }
 
-      pricingRulesTable?.classList.remove("is-auto-hedging-admission-focused");
+      pricingRulesTable?.classList.remove("is-auto-management-admission-focused");
 
-      if (!enabled || !pricingRulesTable || !pricingRuleAutoHedgingAdmissionHeader) {
+      if (!enabled || !pricingRulesTable || !pricingRuleAutoManagementAdmissionHeader) {
         return;
       }
 
       // Restart the brief emphasis when this route is entered again.
       void pricingRulesTable.offsetWidth;
-      pricingRulesTable.classList.add("is-auto-hedging-admission-focused");
-      pricingRuleAutoHedgingAdmissionHeader.scrollIntoView({
+      pricingRulesTable.classList.add("is-auto-management-admission-focused");
+      pricingRuleAutoManagementAdmissionHeader.scrollIntoView({
         behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
           ? "auto"
           : "smooth",
         block: "nearest",
         inline: "center"
       });
-      pricingRuleAutoHedgingAdmissionHeader.focus({ preventScroll: true });
+      pricingRuleAutoManagementAdmissionHeader.focus({ preventScroll: true });
       pricingRulesFocusTimer = window.setTimeout(() => {
-        pricingRulesTable.classList.remove("is-auto-hedging-admission-focused");
+        pricingRulesTable.classList.remove("is-auto-management-admission-focused");
         pricingRulesFocusTimer = null;
       }, 2600);
     }
@@ -5573,7 +5736,7 @@
       const previousScope = pricingRulesRouteScope;
       const relatedView = routeState.mode === "related" && routeState.pairCode;
       const focusedAdmissionView = routeState.mode === "focused"
-        && routeState.focus === "auto-hedging-admission";
+        && routeState.focus === "auto-management-admission";
       const pairChanged = previousScope?.pairCode !== routeState.pairCode;
 
       pricingRuleEditState = null;
@@ -5600,30 +5763,22 @@
             returnHash: routeState.returnHash
           }
         : null;
-      pricingRulesPage.classList.toggle("is-related-view", Boolean(pricingRulesRouteScope));
-      pricingRulesBreadcrumb.hidden = !pricingRulesRouteScope && !focusedAdmissionView;
+      pricingRulesPage.classList.remove("is-related-view");
+      pricingRulesContextLabel.hidden = !focusedAdmissionView;
 
       if (pricingRulesRouteScope) {
         const currencyPairFilter = pricingRuleHeaderFilterControl("currencyPair");
 
         if (currencyPairFilter) {
           currencyPairFilter.value = pricingRulesRouteScope.currencyPair;
-          currencyPairFilter.readOnly = true;
-          currencyPairFilter.setAttribute("aria-readonly", "true");
         }
-
-        pricingRulesBreadcrumbBackLink.href = pricingRulesRouteScope.returnHash;
-        pricingRulesBreadcrumbBackLink.textContent = "Currency Pair Settings";
-        pricingRulesBreadcrumbCurrent.textContent = `Pricing Rules for ${pricingRulesRouteScope.currencyPair}`;
       } else if (focusedAdmissionView) {
-        pricingRulesBreadcrumbBackLink.href = routeState.returnHash;
-        pricingRulesBreadcrumbBackLink.textContent = "Initial Auto Hedging Admission Policy";
-        pricingRulesBreadcrumbCurrent.textContent = "Pricing Rules — Auto Hedging Admission";
+        pricingRulesContextLabel.textContent = "Pricing Rules — Initial Mode Assignment";
       }
 
       setPricingRuleStatus("");
       window.requestAnimationFrame(() => {
-        highlightPricingRuleAutoHedgingAdmissionColumn(focusedAdmissionView);
+        highlightPricingRuleAutoManagementAdmissionColumn(focusedAdmissionView);
       });
     }
 
@@ -5636,16 +5791,15 @@
         }
 
         const field = control.dataset.pricingRuleHeaderFilter;
-          const value = field === "clientName"
+        const value = field === "clientName"
           ? clientNameForInn(rule.inn)
-          : field === "pricingContextId"
-            ? pricingRuleExecutionContextSearchText(rule)
-            : field === "autoHedgingAdmissionModeOverride"
-              ? `${pricingRuleAutoHedgingAdmissionSourceLabel(
-                  rule.autoHedgingAdmissionModeOverride
-                )} ${autoHedgingAdmissionModeLabel(
-                  effectiveAutoHedgingAdmissionModeForRule(rule)
-                )}`
+          : field === "pricingContextPath"
+            ? pricingRuleTradeContextSearchText(rule)
+            : field === "autoManagementAdmissionModeOverride"
+              ? pricingRuleInitialModeAssignmentLabel(
+                  rule.autoManagementAdmissionModeOverride,
+                  effectiveAutoManagementAdmissionModeForRule(rule)
+                )
             : rule[field] || "";
 
         return String(value).toLowerCase().includes(query);
@@ -5656,7 +5810,6 @@
       return clientPricingRules
         .map((rule, index) => ({ rule, index }))
         .filter(({ rule }) => rule.counterpartyScope === activePricingRulesScope)
-        .filter(({ rule }) => pricingRuleMatchesRouteScope(rule))
         .filter(({ rule }) => !pricingRulesClientInnFilter || rule.inn === pricingRulesClientInnFilter)
         .filter(({ rule }) => pricingRuleMatchesColumnFilters(rule))
         .sort((left, right) => {
@@ -5676,17 +5829,18 @@
       const pricingRuleIdAttribute = rule.pricingRuleId
         ? ` data-pricing-rule-id="${escapeHtml(rule.pricingRuleId)}"`
         : "";
-      const contextState = pricingRuleCounterpartyExecutionContextState(rule.inn);
-      const availableContextIds = availablePricingRuleExecutionContextIds(rule.inn);
+      const contextState = pricingRuleCounterpartyTradeContextState(rule.inn);
+      const availableContextIds = availablePricingRuleTradeContextIds(rule.inn);
       const contextDisabled = contextState.status !== "loaded" || availableContextIds.length === 0
         ? " disabled"
         : "";
       const contextHelpId = `pricing-rule-context-help-${rule.pricingRuleId || "new"}`;
       const contextHelp = pricingRuleContextHelp(contextState);
-      const autoHedgingAdmissionModeOverride =
-        normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-          rule.autoHedgingAdmissionModeOverride
+      const autoManagementAdmissionModeOverride =
+        normalizedPricingRuleAutoManagementAdmissionModeOverride(
+          rule.autoManagementAdmissionModeOverride
         );
+      const tradeContextHidden = pricingRulesAdvancedViewEnabled ? "" : " hidden";
 
       return `
         <tr class="is-selected is-editing"${indexAttribute}${pricingRuleIdAttribute} data-pricing-rule-edit-row data-pricing-rule-context-status="${escapeHtml(contextState.status)}">
@@ -5705,24 +5859,36 @@
               <span class="pricing-rule-context-help" id="${escapeHtml(contextHelpId)}" data-pricing-rule-context-help role="status"${contextHelp ? "" : " hidden"}>${escapeHtml(contextHelp)}</span>
             </span>
           </td>
+          <td class="pricing-rule-context-column" data-pricing-rule-context-display${tradeContextHidden}>
+            <span class="client-pricing-context-candidate-path pricing-rules-context-path">
+              ${pricingContextFacetsMarkup(rule.pricingContextId, { originatingSystemLabel: true })}
+            </span>
+          </td>
           <td>
             <input class="inline-edit-control" type="text" data-pricing-rule-field="currencyPair" value="${escapeHtml(rule.currencyPair)}" maxlength="7" required>
           </td>
-          <td data-pricing-rule-column="autoHedgingAdmissionModeOverride">
-            <select class="inline-edit-control" data-pricing-rule-field="autoHedgingAdmissionModeOverride" aria-label="Auto Hedging Admission">
-              ${pricingRuleAutoHedgingAdmissionOptions(autoHedgingAdmissionModeOverride)}
-            </select>
+          <td data-pricing-rule-column="autoManagementAdmissionModeOverride">
+            <span class="d-flex align-items-center gap-2">
+              <span class="button-icon" aria-hidden="true" data-pricing-rule-initial-mode-assignment-icon>${initialModeAssignmentIcon(effectiveAutoManagementAdmissionModeForRule(rule))}</span>
+              <select class="inline-edit-control flex-grow-1" data-pricing-rule-field="autoManagementAdmissionModeOverride" aria-label="Initial Mode Assignment">
+                ${pricingRuleAutoManagementAdmissionOptions(
+                  autoManagementAdmissionModeOverride,
+                  rule.tradeContextAdmissionMode
+                    ?? pricingContextById(rule.pricingContextId)?.autoManagementAdmissionMode
+                )}
+              </select>
+            </span>
           </td>
-          <td>
+          <td class="pricing-rule-margin-column">
             <input class="inline-edit-control" type="text" data-pricing-rule-field="marginPercent" value="${escapeHtml(editNumber(rule.marginPercent, 4))}" inputmode="decimal" required>
           </td>
           <td class="pricing-rule-quick-hedge-column"${activePricingRulesScope === "INTERNAL" ? "" : " hidden"}>—</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
-              <button type="button" class="icon-action" data-pricing-rule-action="save" aria-label="Save pricing rule" title="Save">
+              <button type="button" class="icon-action" data-pricing-rule-action="save" aria-label="Save pricing rule">
                 <span class="button-icon" aria-hidden="true">save</span>
               </button>
-              <button type="button" class="icon-action" data-pricing-rule-action="cancel" aria-label="Cancel editing" title="Cancel">
+              <button type="button" class="icon-action" data-pricing-rule-action="cancel" aria-label="Cancel editing">
                 <span class="button-icon" aria-hidden="true">close</span>
               </button>
             </span>
@@ -5744,41 +5910,43 @@
       const profile = clientProfiles.find(item =>
         String(item.counterpartyId ?? "") === String(rule.counterpartyId ?? "")
       ) || clientProfileByInn(rule.inn);
-      const editRoute = profile
+      const viewRoute = profile
         ? pricingRuleClientProfileRoute(
             profile.counterpartyId,
             rule.pricingRuleId,
             location.hash
           )
         : "";
-      const editActionMarkup = editRoute
+      const viewActionMarkup = viewRoute
         ? `
-            <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="${escapeHtml(editRoute)}" data-pricing-rule-action="edit-counterparty" aria-label="Edit Pricing Rule ${escapeHtml(rule.pricingRuleId)} in Trading Counterparty card" data-tooltip="Edit Pricing Rule">
-              <span class="button-icon" aria-hidden="true">edit</span>
+            <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="${escapeHtml(viewRoute)}" data-pricing-rule-action="view-counterparty" aria-label="View Pricing Rule ${escapeHtml(rule.pricingRuleId)} in Trading Counterparty settings">
+              <span class="button-icon" aria-hidden="true">visibility</span>
             </a>
           `
         : `
-            <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" aria-label="Trading Counterparty unavailable for Pricing Rule ${escapeHtml(rule.pricingRuleId)}" data-tooltip="Trading Counterparty unavailable" disabled>
-              <span class="button-icon" aria-hidden="true">edit</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" aria-label="Trading Counterparty unavailable for Pricing Rule ${escapeHtml(rule.pricingRuleId)}" disabled>
+              <span class="button-icon" aria-hidden="true">visibility</span>
             </button>
           `;
+      const tradeContextHidden = pricingRulesAdvancedViewEnabled ? "" : " hidden";
 
       return `
         <tr data-pricing-rule-index="${index}">
           <td>${escapeHtml(rule.pricingRuleId)}</td>
           <td>${escapeHtml(rule.inn)}</td>
           <td>${escapeHtml(clientNameForInn(rule.inn))}</td>
-          <td>
+          <td>${escapeHtml(rule.pricingContextId)}</td>
+          <td class="pricing-rule-context-column"${tradeContextHidden}>
             <span class="client-pricing-context-candidate-path pricing-rules-context-path">
-              ${pricingContextFacetsMarkup(rule.pricingContextId, { executionSystemLabel: true })}
+              ${pricingContextFacetsMarkup(rule.pricingContextId, { originatingSystemLabel: true })}
             </span>
           </td>
           <td>${escapeHtml(rule.currencyPair)}</td>
-          <td data-pricing-rule-column="autoHedgingAdmissionModeOverride">${pricingRuleAutoHedgingAdmissionMarkup(rule)}</td>
-          <td>${escapeHtml(editNumber(rule.marginPercent, 2))}%</td>
+          <td data-pricing-rule-column="autoManagementAdmissionModeOverride">${pricingRuleAutoManagementAdmissionMarkup(rule)}</td>
+          <td class="pricing-rule-margin-column">${escapeHtml(editNumber(rule.marginPercent, 2))}%</td>
           <td class="pricing-rule-quick-hedge-column"${activePricingRulesScope === "INTERNAL" ? "" : " hidden"}>${quickHedgeMarkup}</td>
           <td class="profile-actions-cell">
-            <span class="profile-row-actions">${editActionMarkup}</span>
+            <span class="profile-row-actions">${viewActionMarkup}</span>
           </td>
         </tr>
       `;
@@ -5809,19 +5977,26 @@
             || sourceColumnKey;
           const columnLabel = sourceColumnKey === "status" && columnKey === "active"
             ? "Active"
+            : tableKey === "trade_contexts_grid" && columnKey === "auto_management_admission_mode"
+            ? "Initial Mode Assignment"
+            : tableKey === "trade_contexts_grid" && columnKey === "counterparties_count"
+            ? "Attached Counterparties"
             : String(row?.columnLabel || columnKey).trim();
-          const defaultWidthPx = validWidth(row?.defaultWidthPx);
+          const minimumWidthPx = UI_TABLE_COLUMN_WIDTH_MIN_PX;
+          const defaultWidthPx = Math.max(validWidth(row?.defaultWidthPx), minimumWidthPx);
 
           return columnKey && columnLabel
             ? {
                 tableKey,
                 columnKey,
+                apiColumnKey: sourceColumnKey,
                 columnLabel,
                 displayOrder: Number.isInteger(Number(row?.displayOrder))
                   ? Number(row.displayOrder)
                   : sourceIndex,
+                minimumWidthPx,
                 defaultWidthPx,
-                widthPx: validWidth(row?.widthPx, defaultWidthPx),
+                widthPx: Math.max(validWidth(row?.widthPx, defaultWidthPx), minimumWidthPx),
                 updatedAt: String(row?.updatedAt || "")
               }
             : null;
@@ -5864,7 +6039,7 @@
           ? {
               ...alignedColumn,
               width: setting.widthPx,
-              minWidth: UI_TABLE_COLUMN_WIDTH_MIN_PX,
+              minWidth: setting.minimumWidthPx,
               maxWidth: UI_TABLE_COLUMN_WIDTH_MAX_PX
             }
           : alignedColumn;
@@ -5936,7 +6111,7 @@
       window.requestAnimationFrame(() => syncNativeTableOverflowTooltips(table));
     }
 
-    function applyFxPositionGridLayout(tableLayout) {
+    function applyPositionGridLayout(tableLayout) {
       if (!tableLayout) {
         return;
       }
@@ -5952,12 +6127,12 @@
         && ccyPairSelectorWidth >= UI_TABLE_COLUMN_WIDTH_MIN_PX
         && ccyPairSelectorWidth <= UI_TABLE_COLUMN_WIDTH_MAX_PX) {
         mainPage.style.setProperty(
-          "--fx-position-ccy-pair-selector-width",
+          "--position-ccy-pair-selector-width",
           `${ccyPairSelectorWidth}px`
         );
       }
 
-      const table = nativeUiTable("fx_position_grid");
+      const table = nativeUiTable("position_grid");
 
       if (!table) {
         return;
@@ -5967,7 +6142,7 @@
 
       table.querySelectorAll("col").forEach(column => {
         const setting = settingsByKey.get(column.dataset.uiColumnKey);
-        const fixedWidth = Number(column.dataset.fxPositionFixedWidth);
+        const fixedWidth = Number(column.dataset.positionFixedWidth);
         const width = setting?.widthPx || fixedWidth;
 
         if (!Number.isFinite(width) || width <= 0) {
@@ -5987,34 +6162,36 @@
       table.style.setProperty("min-width", `${totalWidth}px`, "important");
       table.style.setProperty("max-width", `${totalWidth}px`, "important");
       table.style.setProperty("table-layout", "fixed", "important");
-      scheduleFxPositionGridFillHeight();
+      schedulePositionGridFillHeight();
       scheduleHedgeQuickModeQuoteAlignment();
       window.requestAnimationFrame(() => syncNativeTableOverflowTooltips(table));
     }
 
     function applyTabulatorUiTableLayout(tableKey, tableLayout) {
-      const table = uiTableTabulatorInstances.get(tableKey);
+      const tables = uiTableTabulatorInstances.get(tableKey);
 
-      if (!table) {
+      if (!tables) {
         return;
       }
 
-      tableLayout.columns.forEach(setting => {
-        const column = table.getColumn(uiTableFieldName(setting.columnKey));
+      tables.forEach(table => {
+        tableLayout.columns.forEach(setting => {
+          const column = table.getColumn(uiTableFieldName(setting.columnKey));
 
-        if (!column) {
-          return;
-        }
+          if (!column) {
+            return;
+          }
 
-        const definition = column.getDefinition();
-        definition.width = setting.widthPx;
-        definition.minWidth = UI_TABLE_COLUMN_WIDTH_MIN_PX;
-        definition.maxWidth = UI_TABLE_COLUMN_WIDTH_MAX_PX;
-        column.setWidth(setting.widthPx);
+          const definition = column.getDefinition();
+          definition.width = setting.widthPx;
+          definition.minWidth = UI_TABLE_COLUMN_WIDTH_MIN_PX;
+          definition.maxWidth = UI_TABLE_COLUMN_WIDTH_MAX_PX;
+          column.setWidth(setting.widthPx);
+        });
       });
     }
 
-    function applyClientExecutionContextAttachColumnLayout(tableLayout = uiTableLayout("execution_contexts_grid")) {
+    function applyClientTradeContextAttachColumnLayout(tableLayout = uiTableLayout("trade_contexts_grid")) {
       const table = document.querySelector(".client-context-attach-table");
 
       if (!table || !tableLayout) {
@@ -6054,7 +6231,7 @@
       table.style.setProperty("min-width", `${totalWidth}px`, "important");
       table.style.setProperty("max-width", `${totalWidth}px`, "important");
       table.style.setProperty("table-layout", "fixed", "important");
-      clientExecutionContextAttachDialog.style.setProperty(
+      clientTradeContextAttachDialog.style.setProperty(
         "--client-context-attach-table-width",
         `${totalWidth}px`
       );
@@ -6068,16 +6245,16 @@
         return;
       }
 
-      if (tableKey === "fx_position_grid") {
-        applyFxPositionGridLayout(tableLayout);
+      if (tableKey === "position_grid") {
+        applyPositionGridLayout(tableLayout);
         return;
       }
 
       applyNativeUiTableLayout(tableKey, tableLayout);
       applyTabulatorUiTableLayout(tableKey, tableLayout);
 
-      if (tableKey === "execution_contexts_grid") {
-        applyClientExecutionContextAttachColumnLayout(tableLayout);
+      if (tableKey === "trade_contexts_grid") {
+        applyClientTradeContextAttachColumnLayout(tableLayout);
       }
     }
 
@@ -6092,7 +6269,10 @@
         return;
       }
 
-      uiTableTabulatorInstances.set(tableKey, table);
+      const tables = uiTableTabulatorInstances.get(tableKey) || new Set();
+
+      tables.add(table);
+      uiTableTabulatorInstances.set(tableKey, tables);
       applyUiTableLayout(tableKey);
       table.on?.("tableBuilt", () => applyUiTableLayout(tableKey));
     }
@@ -6187,7 +6367,7 @@
                 <input
                   class="form-control"
                   type="number"
-                  min="${UI_TABLE_COLUMN_WIDTH_MIN_PX}"
+                  min="${setting.minimumWidthPx}"
                   max="${UI_TABLE_COLUMN_WIDTH_MAX_PX}"
                   step="1"
                   value="${setting.widthPx}"
@@ -6213,12 +6393,16 @@
 
       for (const control of controls) {
         const widthPx = Number(control.value);
+        const setting = tableLayout?.columns.find(
+          item => item.columnKey === control.dataset.uiTableColumnWidth
+        );
+        const minimumWidthPx = setting?.minimumWidthPx ?? UI_TABLE_COLUMN_WIDTH_MIN_PX;
         const valid = Number.isInteger(widthPx)
-          && widthPx >= UI_TABLE_COLUMN_WIDTH_MIN_PX
+          && widthPx >= minimumWidthPx
           && widthPx <= UI_TABLE_COLUMN_WIDTH_MAX_PX;
         control.setCustomValidity(valid
           ? ""
-          : `Width must be an integer from ${UI_TABLE_COLUMN_WIDTH_MIN_PX} to ${UI_TABLE_COLUMN_WIDTH_MAX_PX} pixels.`);
+          : `Width must be an integer from ${minimumWidthPx} to ${UI_TABLE_COLUMN_WIDTH_MAX_PX} pixels.`);
 
         if (!valid) {
           control.reportValidity();
@@ -6230,7 +6414,7 @@
 
       return {
         columns: (tableLayout?.columns || []).map(setting => ({
-          columnKey: setting.columnKey,
+          columnKey: setting.apiColumnKey ?? setting.columnKey,
           widthPx: editedWidthsByKey.get(setting.columnKey) ?? setting.widthPx
         }))
       };
@@ -6321,7 +6505,7 @@
                 method: "PUT",
                 body: JSON.stringify({
                   columns: tableLayout.columns.map(setting => ({
-                    columnKey: setting.columnKey,
+                    columnKey: setting.apiColumnKey ?? setting.columnKey,
                     widthPx: activeUiTableLayoutColumnKeys.has(setting.columnKey)
                       ? setting.defaultWidthPx
                       : setting.widthPx
@@ -6409,12 +6593,43 @@
         : "pricing_rules_grid";
     }
 
+    function syncPricingRulesAdvancedViewPresentation() {
+      pricingRulesAdvancedViewToggle.checked = pricingRulesAdvancedViewEnabled;
+      pricingRuleTradeContextHeader.hidden = !pricingRulesAdvancedViewEnabled;
+      pricingRulesTable
+        .querySelector('col[data-ui-column-key="trade_context"]')
+        .hidden = !pricingRulesAdvancedViewEnabled;
+      pricingRulesTable
+        .querySelectorAll("tbody .pricing-rule-context-column")
+        .forEach(cell => {
+          cell.hidden = !pricingRulesAdvancedViewEnabled;
+        });
+      pricingRulesTable.classList.toggle(
+        "is-advanced-view",
+        pricingRulesAdvancedViewEnabled
+      );
+    }
+
+    function setPricingRulesAdvancedView(enabled) {
+      pricingRulesAdvancedViewEnabled = Boolean(enabled);
+
+      if (!pricingRulesAdvancedViewEnabled) {
+        const tradeContextFilter = pricingRuleHeaderFilterControl("pricingContextPath");
+
+        if (tradeContextFilter) {
+          tradeContextFilter.value = "";
+        }
+      }
+
+      renderPricingRules();
+    }
+
     function syncPricingRulesScopePresentation() {
       const internalScope = activePricingRulesScope === "INTERNAL";
       const layoutKey = activePricingRulesLayoutKey();
       const routeState = pricingRulesRouteStateFromLocation();
       const focusedAdmissionView = routeState.mode === "focused"
-        && routeState.focus === "auto-hedging-admission";
+        && routeState.focus === "auto-management-admission";
 
       pricingRulesScopeButtons.forEach(button => {
         const selected = button.dataset.pricingRulesScope === activePricingRulesScope;
@@ -6427,7 +6642,7 @@
               button.dataset.pricingRulesScope
             )
           : focusedAdmissionView
-            ? autoHedgingAdmissionPricingRulesRoute(
+            ? autoManagementAdmissionPricingRulesRoute(
                 routeState.returnHash,
                 button.dataset.pricingRulesScope
               )
@@ -6456,6 +6671,7 @@
           : "External Counterparty Pricing Rules table layout"
       );
       pricingRulesTableLayoutButton.disabled = !DEMO_API_ENABLED || !uiTableLayout(layoutKey);
+      syncPricingRulesAdvancedViewPresentation();
     }
 
     function renderPricingRules() {
@@ -6465,22 +6681,19 @@
 
       syncPricingRulesScopePresentation();
       updatePricingRuleIdSortControl();
+      syncPricingRulesClearFiltersButton();
 
       const rows = filteredPricingRules();
       const scopeRules = clientPricingRules.filter(rule =>
         rule.counterpartyScope === activePricingRulesScope
-        && pricingRuleMatchesRouteScope(rule)
       );
-      const columnCount = activePricingRulesScope === "INTERNAL" ? 9 : 8;
+      const columnCount = activePricingRulesScope === "INTERNAL" ? 10 : 9;
       const layoutKey = activePricingRulesLayoutKey();
 
       if (scopeRules.length === 0) {
-        const emptyMessage = pricingRulesRouteScope
-          ? `No Pricing Rules for ${pricingRulesRouteScope.currencyPair} in this counterparty scope.`
-          : "No pricing rules for this counterparty scope yet.";
         pricingRuleRowsEl.innerHTML = `
           <tr>
-            <td class="profile-empty" colspan="${columnCount}">${emptyMessage}</td>
+            <td class="profile-empty" colspan="${columnCount}">No pricing rules for this counterparty scope yet.</td>
           </tr>
         `;
         applyUiTableLayout(layoutKey);
@@ -6761,7 +6974,7 @@
         const inactiveClient = settings.counterpartyActive === false
           ? '<span class="badge text-bg-secondary ms-1">Inactive</span>'
           : "";
-        const inactiveExecutionSystem = settings.executionSystemActive === false
+        const inactiveOriginatingSystem = settings.originatingSystemActive === false
           ? '<span class="badge text-bg-secondary ms-1">Inactive System</span>'
           : "";
         const editing = Number(settings.pricingRuleId)
@@ -6795,10 +7008,10 @@
           `;
         const actions = editing
           ? `
-            <button type="button" class="btn btn-sm btn-outline-primary generation-settings-save" data-generation-settings-save aria-label="Save Pricing Rule #${settings.pricingRuleId} settings" title="No changes to save" disabled>
+            <button type="button" class="btn btn-sm btn-primary generation-settings-save" data-generation-settings-save aria-label="Save Pricing Rule #${settings.pricingRuleId} settings" title="No changes to save" disabled>
               <span class="button-icon" aria-hidden="true">save</span>
             </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary generation-settings-cancel" data-generation-settings-cancel aria-label="Cancel Pricing Rule #${settings.pricingRuleId} editing" title="Cancel">
+            <button type="button" class="btn btn-sm btn-outline-secondary generation-settings-cancel" data-generation-settings-cancel aria-label="Cancel Pricing Rule #${settings.pricingRuleId} editing">
               <span class="button-icon" aria-hidden="true">close</span>
             </button>
           `
@@ -6820,7 +7033,7 @@
                 settings.pricingMode,
                 escapeHtml(pricingTypePresentation(settings.pricingMode).label),
                 false
-              )}${inactiveExecutionSystem}
+              )}${inactiveOriginatingSystem}
             </td>
             ${valueCells}
             <td class="text-center">
@@ -7233,7 +7446,7 @@
         inn: profile?.inn || "",
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
-        pricingContextId: resolvedPricingRuleExecutionContextId("", profile?.inn || ""),
+        pricingContextId: resolvedPricingRuleTradeContextId("", profile?.inn || ""),
         marginPercent: 0
       };
     }
@@ -7274,7 +7487,7 @@
         : pricingContextById(String(contextOrId || ""));
 
       if (!context) {
-        return "Missing Execution Context";
+        return "Missing Trade Context";
       }
 
       return [
@@ -7441,12 +7654,12 @@
 
       return PRICING_CONTEXT_FACETS
         .map(({ field }) => {
-          if (options.executionSystemLabel === true && field === "tradeCaptureChannelId") {
-            const executionSystem = tradeCaptureChannelById(context[field]);
+          if (options.originatingSystemLabel === true && field === "tradeCaptureChannelId") {
+            const originatingSystem = tradeCaptureChannelById(context[field]);
 
-            return executionSystemLabelMarkup(
+            return originatingSystemLabelMarkup(
               pricingContextFacetDisplayName(field, context[field]),
-              executionSystem?.pricingType
+              originatingSystem?.pricingType
             );
           }
 
@@ -7576,7 +7789,7 @@
       const contextIdControl = clientPricingRuleForm.elements.pricingContextId;
 
       contextIdControl.value = resolvedContext?.pricingContextId || "";
-      syncClientPricingRuleAutoHedgingAdmissionControl();
+      syncClientPricingRuleAutoManagementAdmissionControl();
       clientPricingContextResults.classList.toggle("is-selected", Boolean(resolvedContext));
       clientPricingContextResults.classList.toggle("is-error", hasSearch && matches.length === 0);
       clientPricingContextResults.classList.toggle(
@@ -7588,8 +7801,8 @@
         clientPricingContextCandidatesExpanded = false;
         clientPricingContextResults.classList.add("is-error");
         clientPricingContextResults.innerHTML = `
-          <span class="client-pricing-context-result-title">Execution Context unavailable</span>
-          No Execution Contexts have been configured.
+          <span class="client-pricing-context-result-title">Trade Context unavailable</span>
+          No Trade Contexts have been configured.
         `;
         return;
       }
@@ -7599,7 +7812,7 @@
         clientPricingContextResults.innerHTML = `
           <span class="client-pricing-context-resolved">
             <span class="button-icon" aria-hidden="true">check_circle</span>
-            <span>Execution Context selected</span>
+            <span>Trade Context selected</span>
           </span>
         `;
         return;
@@ -7617,14 +7830,14 @@
           `
           : "";
         clientPricingContextResults.innerHTML = `
-          <span class="client-pricing-context-result-title">No matching Execution Context</span>
+          <span class="client-pricing-context-result-title">No matching Trade Context</span>
           The selected components do not form an existing context.
           ${clearAction}
         `;
         return;
       }
 
-      const resultTitle = hasSearch ? "Matching Execution Contexts" : "Available Execution Contexts";
+      const resultTitle = hasSearch ? "Matching Trade Contexts" : "Available Trade Contexts";
       clientPricingContextResults.innerHTML = `
         <button type="button" class="client-pricing-context-results-toggle" data-pricing-context-results-toggle aria-expanded="${clientPricingContextCandidatesExpanded}">
           <span class="client-pricing-context-result-title">${resultTitle}</span>
@@ -7715,14 +7928,51 @@
       resetClientPricingContextBuilder(selectedPricingContextId);
     }
 
-    function clientPricingRuleDialogAutoHedgingAdmissionModeOverride() {
-      return pricingRuleAutoHedgingAdmissionModeOverrideFromControl(
-        clientPricingRuleForm.elements.autoHedgingAdmissionModeOverride
+    function clientPricingRuleDialogAutoManagementAdmissionModeOverride() {
+      return pricingRuleAutoManagementAdmissionModeOverrideFromControl(
+        clientPricingRuleForm.elements.autoManagementAdmissionModeOverride
       );
     }
 
-    function syncClientPricingRuleAutoHedgingAdmissionControl() {
-      return clientPricingRuleDialogAutoHedgingAdmissionModeOverride();
+    function pricingRuleInitialModeAssignmentIcon(value, tradeContextMode) {
+      const effectiveMode = normalizedPricingRuleAutoManagementAdmissionModeOverride(value)
+        || normalizedReferenceCode(tradeContextMode);
+
+      return effectiveMode === "AUTO_IF_ELIGIBLE"
+        ? "smart_toy"
+        : "touch_app";
+    }
+
+    function syncClientPricingRuleAutoManagementAdmissionControl() {
+      const value = clientPricingRuleDialogAutoManagementAdmissionModeOverride();
+      const valueNode = clientPricingRuleForm.querySelector(
+        "[data-client-pricing-rule-mode-override-value]"
+      );
+      const iconNode = clientPricingRuleForm.querySelector(
+        "[data-client-pricing-rule-mode-override-icon]"
+      );
+      const editingRule = clientPricingRuleEditState?.mode === "edit"
+        ? clientPricingRules[clientPricingRuleEditState.index]
+        : null;
+      const contextId = editingRule?.pricingContextId
+        || clientPricingRuleForm.elements.pricingContextId.value;
+      const context = pricingContextById(contextId);
+
+      if (valueNode) {
+        valueNode.textContent = pricingRuleInitialModeAssignmentLabel(
+          value,
+          context?.autoManagementAdmissionMode
+        );
+      }
+
+      if (iconNode) {
+        iconNode.textContent = pricingRuleInitialModeAssignmentIcon(
+          value,
+          context?.autoManagementAdmissionMode
+        );
+      }
+
+      return value;
     }
 
     function clientPricingRuleDraftFromDialog() {
@@ -7736,14 +7986,14 @@
         ? savedRule?.currencyPair || ""
         : clientPricingRuleForm.elements.currencyPair.value;
       const marginValue = normalizeNumber(clientPricingRuleForm.elements.marginPercent.value);
-      const autoHedgingAdmissionModeOverride =
-        clientPricingRuleDialogAutoHedgingAdmissionModeOverride();
+      const autoManagementAdmissionModeOverride =
+        clientPricingRuleDialogAutoManagementAdmissionModeOverride();
 
       if (
         !profile ||
         !pricingContextById(pricingContextIdValue) ||
         !currencyPairValue ||
-        autoHedgingAdmissionModeOverride === undefined ||
+        autoManagementAdmissionModeOverride === undefined ||
         marginValue === null ||
         marginValue < 0 ||
         marginValue >= 100
@@ -7758,7 +8008,7 @@
         currencyPair: currencyPairValue,
         ccyPairCode: currencyPairValue.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoHedgingAdmissionModeOverride,
+        autoManagementAdmissionModeOverride,
         marginPercent: marginValue
       };
     }
@@ -7772,10 +8022,10 @@
 
       return !savedRule ||
         Math.abs(Number(rule.marginPercent) - Number(savedRule.marginPercent)) > 0.0000001 ||
-        normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-          rule.autoHedgingAdmissionModeOverride
-        ) !== normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-          savedRule.autoHedgingAdmissionModeOverride
+        normalizedPricingRuleAutoManagementAdmissionModeOverride(
+          rule.autoManagementAdmissionModeOverride
+        ) !== normalizedPricingRuleAutoManagementAdmissionModeOverride(
+          savedRule.autoManagementAdmissionModeOverride
         );
     }
 
@@ -7819,17 +8069,17 @@
       clientPricingRuleDeleteButton.hidden = !editing;
       clientPricingRuleDeleteButton.disabled = false;
       clientPricingRuleForm.elements.marginPercent.value = editNumber(rule.marginPercent ?? 0, 4);
-      clientPricingRuleForm.elements.autoHedgingAdmissionModeOverride.value =
-        normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-          rule.autoHedgingAdmissionModeOverride
-        ) || "";
+      clientPricingRuleForm.elements.autoManagementAdmissionModeOverride.checked =
+        normalizedPricingRuleAutoManagementAdmissionModeOverride(
+          rule.autoManagementAdmissionModeOverride
+        ) === "REVIEW_REQUIRED";
       renderClientPricingRuleOptions(
         rule.currencyPair || defaultPricingRuleCurrencyPair(),
         fixedPricingContextId
       );
       clientPricingRuleFixedPair.textContent = rule.currencyPair || "";
       clientPricingRuleFixedContext.innerHTML = pricingContextFacetsMarkup(fixedPricingContextId);
-      syncClientPricingRuleAutoHedgingAdmissionControl();
+      syncClientPricingRuleAutoManagementAdmissionControl();
       updateClientPricingRuleSubmitAvailability();
     }
 
@@ -7879,19 +8129,19 @@
       return mode !== "edit" || Number(state.index) === Number(index);
     }
 
-    function clientPricingRuleInlineAutoHedgingAdmissionModeOverride(row) {
+    function clientPricingRuleInlineAutoManagementAdmissionModeOverride(row) {
       const overrideControl = row?.querySelector(
-        '[data-client-pricing-rule-inline-field="autoHedgingAdmissionModeOverride"]'
+        '[data-client-pricing-rule-inline-field="autoManagementAdmissionModeOverride"]'
       );
 
-      return pricingRuleAutoHedgingAdmissionModeOverrideFromControl(overrideControl);
+      return pricingRuleAutoManagementAdmissionModeOverrideFromControl(overrideControl);
     }
 
     function updateClientPricingRuleInlineEditorAvailability(row) {
       const saveButton = row?.querySelector('[data-client-pricing-rule-inline-action="save"]');
       const currencyPairControl = row?.querySelector('[data-client-pricing-rule-inline-field="currencyPair"]');
-      const autoHedgingAdmissionModeOverrideControl = row?.querySelector(
-        '[data-client-pricing-rule-inline-field="autoHedgingAdmissionModeOverride"]'
+      const autoManagementAdmissionModeOverrideControl = row?.querySelector(
+        '[data-client-pricing-rule-inline-field="autoManagementAdmissionModeOverride"]'
       );
       const marginControl = row?.querySelector('[data-client-pricing-rule-inline-field="marginPercent"]');
       const state = clientPricingRuleInlineEditorState;
@@ -7899,7 +8149,7 @@
       if (
         !saveButton ||
         !currencyPairControl ||
-        !autoHedgingAdmissionModeOverrideControl ||
+        !autoManagementAdmissionModeOverrideControl ||
         !marginControl ||
         !state
       ) {
@@ -7907,18 +8157,38 @@
       }
 
       state.currencyPair = currencyPairControl.value;
-      state.autoHedgingAdmissionModeOverride =
-        clientPricingRuleInlineAutoHedgingAdmissionModeOverride(row);
-      autoHedgingAdmissionModeOverrideControl.disabled = state.saving;
+      state.autoManagementAdmissionModeOverride =
+        clientPricingRuleInlineAutoManagementAdmissionModeOverride(row);
+      autoManagementAdmissionModeOverrideControl.disabled = state.saving;
+      const assignmentValue = row.querySelector(
+        "[data-client-pricing-rule-inline-mode-override-value]"
+      );
+      const assignmentIcon = row.querySelector(
+        "[data-client-pricing-rule-inline-mode-override-icon]"
+      );
+
+      if (assignmentValue) {
+        assignmentValue.textContent = pricingRuleInitialModeAssignmentLabel(
+          state.autoManagementAdmissionModeOverride,
+          row.dataset.clientPricingRuleTradeContextMode
+        );
+      }
+
+      if (assignmentIcon) {
+        assignmentIcon.textContent = pricingRuleInitialModeAssignmentIcon(
+          state.autoManagementAdmissionModeOverride,
+          row.dataset.clientPricingRuleTradeContextMode
+        );
+      }
       state.marginPercent = marginControl.value;
       const margin = normalizeNumber(marginControl.value);
       const savedRule = state.mode === "edit" ? clientPricingRules[state.index] : null;
       const changed = state.mode !== "edit" || !savedRule ||
         Math.abs(Number(savedRule.marginPercent) - Number(margin)) > 0.0000001 ||
-        normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-          savedRule.autoHedgingAdmissionModeOverride
-        ) !== state.autoHedgingAdmissionModeOverride;
-      const canSave = state.autoHedgingAdmissionModeOverride !== undefined &&
+        normalizedPricingRuleAutoManagementAdmissionModeOverride(
+          savedRule.autoManagementAdmissionModeOverride
+        ) !== state.autoManagementAdmissionModeOverride;
+      const canSave = state.autoManagementAdmissionModeOverride !== undefined &&
         Boolean(currencyPairControl.value) && margin !== null &&
         margin >= 0 && margin < 100 && changed;
 
@@ -7935,11 +8205,11 @@
       const state = clientPricingRuleInlineEditorState;
       const pricingContextIdValue = normalizedIntegerId(row?.dataset.clientPricingRuleInlineEditor);
       const currencyPairControl = row?.querySelector('[data-client-pricing-rule-inline-field="currencyPair"]');
-      const autoHedgingAdmissionModeOverrideControl = row?.querySelector(
-        '[data-client-pricing-rule-inline-field="autoHedgingAdmissionModeOverride"]'
+      const autoManagementAdmissionModeOverrideControl = row?.querySelector(
+        '[data-client-pricing-rule-inline-field="autoManagementAdmissionModeOverride"]'
       );
       const marginControl = row?.querySelector('[data-client-pricing-rule-inline-field="marginPercent"]');
-      const context = assignedExecutionContextsForProfile(profile).find(item =>
+      const context = assignedTradeContextsForProfile(profile).find(item =>
         String(item.pricingContextId) === String(pricingContextIdValue)
       );
       const editing = state?.mode === "edit";
@@ -7950,7 +8220,7 @@
         !state ||
         !context ||
         !currencyPairControl ||
-        !autoHedgingAdmissionModeOverrideControl ||
+        !autoManagementAdmissionModeOverrideControl ||
         !marginControl ||
         !clientPricingRuleInlineEditorMatches(profile, pricingContextIdValue) ||
         (editing && (
@@ -7980,11 +8250,11 @@
       }
 
       const marginPercent = parsePercentInput(marginControl, "Margin", 100);
-      const autoHedgingAdmissionModeOverride =
-        clientPricingRuleInlineAutoHedgingAdmissionModeOverride(row);
+      const autoManagementAdmissionModeOverride =
+        clientPricingRuleInlineAutoManagementAdmissionModeOverride(row);
 
-      if (autoHedgingAdmissionModeOverride === undefined) {
-        autoHedgingAdmissionModeOverrideControl.reportValidity();
+      if (autoManagementAdmissionModeOverride === undefined) {
+        autoManagementAdmissionModeOverrideControl.reportValidity();
         return null;
       }
 
@@ -7999,7 +8269,7 @@
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoHedgingAdmissionModeOverride,
+        autoManagementAdmissionModeOverride,
         marginPercent
       };
       const duplicateExists = !editing && clientPricingRules.some(item =>
@@ -8019,7 +8289,7 @@
     async function saveClientPricingRuleInlineEditor() {
       const profile = selectedClientProfile();
       const state = clientPricingRuleInlineEditorState;
-      const row = clientExecutionContextsPanel.querySelector(
+      const row = clientTradeContextsPanel.querySelector(
         "[data-client-pricing-rule-inline-editor]"
       );
 
@@ -8070,7 +8340,7 @@
       } catch (error) {
         state.saving = false;
         setClientProfileStatus(error.message || "Pricing Rule could not be saved.", "error");
-        renderClientExecutionContextsPanel(profile);
+        renderClientTradeContextsPanel(profile);
       }
     }
 
@@ -8087,12 +8357,12 @@
       }
 
       clientPricingRuleInlineEditorState = null;
-      renderClientExecutionContextsPanel(profile);
+      renderClientTradeContextsPanel(profile);
       requestAnimationFrame(() => {
         const focusSelector = state.mode === "edit"
           ? `[data-client-pricing-rule-action="edit"][data-client-pricing-rule-index="${state.index}"]`
-          : `[data-client-execution-context-action="add-rule"][data-client-execution-context-id="${state.pricingContextId}"]`;
-        clientExecutionContextsPanel.querySelector(focusSelector)?.focus();
+          : `[data-client-trade-context-action="add-rule"][data-client-trade-context-id="${state.pricingContextId}"]`;
+        clientTradeContextsPanel.querySelector(focusSelector)?.focus();
       });
     }
 
@@ -8104,13 +8374,13 @@
         return;
       }
 
-      const context = assignedExecutionContextsForProfile(profile).find(item =>
+      const context = assignedTradeContextsForProfile(profile).find(item =>
         String(item.pricingContextId) === String(pricingContextIdValue)
       );
 
       if (!context) {
         setClientProfileStatus(
-          "Attach an Execution Context before adding a Pricing Rule.",
+          "Attach a Trade Context before adding a Pricing Rule.",
           "error"
         );
         return;
@@ -8123,7 +8393,7 @@
 
       if (availableCurrencyPairs.length === 0) {
         setClientProfileStatus(
-          "All available Ccy Pairs already have Pricing Rules for this Execution Context.",
+          "All available Ccy Pairs already have Pricing Rules for this Trade Context.",
           "error"
         );
         return;
@@ -8135,13 +8405,13 @@
         counterpartyId: profile.counterpartyId,
         pricingContextId: context.pricingContextId,
         currencyPair: availableCurrencyPairs[0],
-        autoHedgingAdmissionModeOverride: null,
+        autoManagementAdmissionModeOverride: null,
         marginPercent: editNumber(0, 4),
         saving: false
       };
       clientPricingConfigurationCollapsedSet(profile).delete(String(context.pricingContextId));
       setClientProfileStatus("");
-      renderClientExecutionContextsPanel(profile);
+      renderClientTradeContextsPanel(profile);
     }
 
     function startClientPricingRuleEdit(index) {
@@ -8159,16 +8429,16 @@
         counterpartyId: profile.counterpartyId,
         pricingContextId: rule.pricingContextId,
         currencyPair: rule.currencyPair,
-        autoHedgingAdmissionModeOverride:
-          normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-            rule.autoHedgingAdmissionModeOverride
+        autoManagementAdmissionModeOverride:
+          normalizedPricingRuleAutoManagementAdmissionModeOverride(
+            rule.autoManagementAdmissionModeOverride
           ),
         marginPercent: editNumber(rule.marginPercent, 4),
         saving: false
       };
       clientPricingConfigurationCollapsedSet(profile).delete(String(rule.pricingContextId));
       setClientProfileStatus("");
-      renderClientExecutionContextsPanel(profile);
+      renderClientTradeContextsPanel(profile);
     }
 
     function startClientPricingRuleDelete(index) {
@@ -8213,7 +8483,7 @@
         );
 
       PRICING_CONTEXT_FACETS.forEach(({ field }) => pricingContextFacetInput(field).setCustomValidity(""));
-      contextValidationInput.setCustomValidity(!editing && !contextExists ? "Select an existing Execution Context." : "");
+      contextValidationInput.setCustomValidity(!editing && !contextExists ? "Select an existing Trade Context." : "");
 
       if (!editing && !contextExists) {
         contextValidationInput.reportValidity();
@@ -8222,15 +8492,15 @@
 
       const currencyPairInput = clientPricingRuleForm.elements.currencyPair;
       const marginInput = clientPricingRuleForm.elements.marginPercent;
-      const autoHedgingAdmissionModeOverride =
-        clientPricingRuleDialogAutoHedgingAdmissionModeOverride();
+      const autoManagementAdmissionModeOverride =
+        clientPricingRuleDialogAutoManagementAdmissionModeOverride();
       const currencyPair = editing
         ? savedRule.currencyPair
         : parsePricingRuleCurrencyPairInput(currencyPairInput);
       const marginPercent = parsePercentInput(marginInput, "Margin", 100);
 
-      if (autoHedgingAdmissionModeOverride === undefined) {
-        clientPricingRuleForm.elements.autoHedgingAdmissionModeOverride.reportValidity();
+      if (autoManagementAdmissionModeOverride === undefined) {
+        clientPricingRuleForm.elements.autoManagementAdmissionModeOverride.reportValidity();
         return null;
       }
 
@@ -8245,7 +8515,7 @@
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoHedgingAdmissionModeOverride,
+        autoManagementAdmissionModeOverride,
         marginPercent
       };
       const currentIndex = clientPricingRuleEditState.mode === "edit" ? clientPricingRuleEditState.index : null;
@@ -8346,7 +8616,7 @@
       renderPricingRules();
     }
 
-    function tradingCounterpartyExecutionContextKey(profileOrId) {
+    function tradingCounterpartyTradeContextKey(profileOrId) {
       const value = typeof profileOrId === "object" && profileOrId
         ? profileOrId.counterpartyId
         : profileOrId;
@@ -8354,35 +8624,35 @@
       return normalizedIntegerId(value);
     }
 
-    function clientExecutionContextDetachKey(counterpartyId, contextId) {
+    function clientTradeContextDetachKey(counterpartyId, contextId) {
       return `${counterpartyId}:${contextId}`;
     }
 
     function isSelectedTradingCounterparty(counterpartyId) {
-      return tradingCounterpartyExecutionContextKey(selectedClientProfile()) === counterpartyId;
+      return tradingCounterpartyTradeContextKey(selectedClientProfile()) === counterpartyId;
     }
 
-    function inferredExecutionContextsForProfile(profile) {
+    function inferredTradeContextsForProfile(profile) {
       const contextIds = new Set(clientPricingRulesForInn(profile?.inn).map(rule => rule.pricingContextId));
 
       return pricingContexts.filter(context => contextIds.has(context.pricingContextId));
     }
 
-    function assignedExecutionContextsForProfile(profile) {
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+    function assignedTradeContextsForProfile(profile) {
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
 
       if (!counterpartyId) {
         return [];
       }
 
-      if (tradingCounterpartyExecutionContexts.has(counterpartyId)) {
-        return tradingCounterpartyExecutionContexts.get(counterpartyId);
+      if (tradingCounterpartyTradeContexts.has(counterpartyId)) {
+        return tradingCounterpartyTradeContexts.get(counterpartyId);
       }
 
-      return DEMO_API_ENABLED ? [] : inferredExecutionContextsForProfile(profile);
+      return DEMO_API_ENABLED ? [] : inferredTradeContextsForProfile(profile);
     }
 
-    function mergeExecutionContextAssignmentCounts(contexts) {
+    function mergeTradeContextAssignmentCounts(contexts) {
       const countsById = new Map(
         contexts
           .filter(context => Number.isFinite(context.assignedCounterpartyCount))
@@ -8399,7 +8669,7 @@
       );
     }
 
-    function decrementExecutionContextAssignmentCount(contextId) {
+    function decrementTradeContextAssignmentCount(contextId) {
       pricingContexts = pricingContexts.map(context => {
         if (context.pricingContextId !== contextId || !Number.isFinite(context.assignedCounterpartyCount)) {
           return context;
@@ -8412,69 +8682,71 @@
       });
     }
 
-    function normalizedAssignedExecutionContexts(payload) {
+    function normalizedAssignedTradeContexts(payload) {
       const source = Array.isArray(payload)
         ? payload
-        : Array.isArray(payload?.executionContexts)
-          ? payload.executionContexts
+        : Array.isArray(payload?.tradeContexts)
+          ? payload.tradeContexts
           : [];
 
       return normalizedPricingContexts(source, []);
     }
 
-    async function refreshTradingCounterpartyExecutionContexts(profile, options = {}) {
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+    async function refreshTradingCounterpartyTradeContexts(profile, options = {}) {
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
 
       if (!counterpartyId) {
         return [];
       }
 
       if (!DEMO_API_ENABLED) {
-        const inferred = inferredExecutionContextsForProfile(profile);
-        tradingCounterpartyExecutionContexts.set(counterpartyId, inferred);
-        tradingCounterpartyExecutionContextLoadStates.set(counterpartyId, { status: "loaded" });
-        renderClientExecutionContextsPanel(selectedClientProfile());
+        const inferred = inferredTradeContextsForProfile(profile);
+        tradingCounterpartyTradeContexts.set(counterpartyId, inferred);
+        tradingCounterpartyTradeContextLoadStates.set(counterpartyId, { status: "loaded" });
+        if (options.render !== false) {
+          renderClientTradeContextsPanel(selectedClientProfile());
+        }
         return inferred;
       }
 
-      const requestId = ++clientExecutionContextRequestSequence;
-      tradingCounterpartyExecutionContextLoadStates.set(counterpartyId, { status: "loading", requestId });
+      const requestId = ++clientTradeContextRequestSequence;
+      tradingCounterpartyTradeContextLoadStates.set(counterpartyId, { status: "loading", requestId });
 
       if (options.render !== false && selectedClientProfile()?.counterpartyId === profile.counterpartyId) {
-        renderClientExecutionContextsPanel(profile);
+        renderClientTradeContextsPanel(profile);
       }
 
       try {
         const payload = await demoApiRequest(
-          `/api/v1/trading-counterparties/${encodeURIComponent(counterpartyId)}/execution-contexts`
+          `/api/v1/trading-counterparties/${encodeURIComponent(counterpartyId)}/trade-contexts`
         );
-        const currentState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+        const currentState = tradingCounterpartyTradeContextLoadStates.get(counterpartyId);
 
         if (currentState?.requestId !== requestId) {
-          return tradingCounterpartyExecutionContexts.get(counterpartyId) || [];
+          return tradingCounterpartyTradeContexts.get(counterpartyId) || [];
         }
 
-        const contexts = normalizedAssignedExecutionContexts(payload);
-        tradingCounterpartyExecutionContexts.set(counterpartyId, contexts);
-        tradingCounterpartyExecutionContextLoadStates.set(counterpartyId, { status: "loaded" });
-        mergeExecutionContextAssignmentCounts(contexts);
+        const contexts = normalizedAssignedTradeContexts(payload);
+        tradingCounterpartyTradeContexts.set(counterpartyId, contexts);
+        tradingCounterpartyTradeContextLoadStates.set(counterpartyId, { status: "loaded" });
+        mergeTradeContextAssignmentCounts(contexts);
 
         if (selectedClientProfile()?.counterpartyId === profile.counterpartyId) {
-          renderClientExecutionContextsPanel(profile);
+          renderClientTradeContextsPanel(profile);
         }
 
         return contexts;
       } catch (error) {
-        const currentState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+        const currentState = tradingCounterpartyTradeContextLoadStates.get(counterpartyId);
 
         if (currentState?.requestId === requestId) {
-          tradingCounterpartyExecutionContextLoadStates.set(counterpartyId, {
+          tradingCounterpartyTradeContextLoadStates.set(counterpartyId, {
             status: "error",
-            message: error.message || "Execution Context assignments could not be loaded."
+            message: error.message || "Trade Context assignments could not be loaded."
           });
 
           if (selectedClientProfile()?.counterpartyId === profile.counterpartyId) {
-            renderClientExecutionContextsPanel(profile);
+            renderClientTradeContextsPanel(profile);
           }
         }
 
@@ -8482,7 +8754,7 @@
       }
     }
 
-    function clientExecutionContextPricingRuleCount(profile, context) {
+    function clientTradeContextPricingRuleCount(profile, context) {
       const localRuleCount = clientPricingRulesForInn(profile?.inn)
         .filter(rule => rule.pricingContextId === context.pricingContextId)
         .length;
@@ -8490,26 +8762,37 @@
       return Math.max(localRuleCount, Number(context?.pricingRulesCount) || 0);
     }
 
-    function executionContextPricingMode(context) {
+    function tradeContextPricingMode(context) {
       return normalizedPricingType(tradeCaptureChannelById(context?.tradeCaptureChannelId)?.pricingType);
     }
 
-    function availableExecutionContextsForProfile(profile) {
+    function availableTradeContextsForProfile(profile) {
       const assignedIds = new Set(
-        assignedExecutionContextsForProfile(profile).map(context => context.pricingContextId)
+        assignedTradeContextsForProfile(profile).map(context => context.pricingContextId)
       );
 
       return pricingContexts.filter(context => !assignedIds.has(context.pricingContextId));
     }
 
     function clientPricingConfigurationCollapsedSet(profile) {
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
 
       if (!clientPricingConfigurationCollapsedContexts.has(counterpartyId)) {
         clientPricingConfigurationCollapsedContexts.set(counterpartyId, new Set());
       }
 
       return clientPricingConfigurationCollapsedContexts.get(counterpartyId);
+    }
+
+    function collapseAllClientPricingConfigurationContexts(
+      profile,
+      contexts = assignedTradeContextsForProfile(profile)
+    ) {
+      const collapsedContexts = clientPricingConfigurationCollapsedSet(profile);
+      collapsedContexts.clear();
+      contexts.forEach(context => {
+        collapsedContexts.add(String(context.pricingContextId));
+      });
     }
 
     function clientPricingRuleEntriesForContext(profile, contextId) {
@@ -8522,7 +8805,8 @@
       contextId,
       currencyPairs,
       selectedCurrencyPair,
-      autoHedgingAdmissionModeOverride = null,
+      tradeContextAdmissionMode,
+      autoManagementAdmissionModeOverride = null,
       marginValue,
       editing,
       index = null,
@@ -8533,10 +8817,10 @@
         ? "Cancel editing Pricing Rule"
         : "Cancel adding Pricing Rule";
       const normalizedOverride =
-        normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-          autoHedgingAdmissionModeOverride
+        normalizedPricingRuleAutoManagementAdmissionModeOverride(
+          autoManagementAdmissionModeOverride
         );
-      const admissionSelectId = `client-pricing-rule-inline-admission-${contextId}`;
+      const manualModeOverrideId = `client-pricing-rule-inline-manual-mode-override-${contextId}`;
       const currencyPairMarkup = editing
         ? `
           <span class="client-pricing-configuration-inline-field is-pair">
@@ -8560,17 +8844,20 @@
         <div
           class="client-pricing-configuration-node client-pricing-configuration-inline-editor is-editing"
           data-client-pricing-rule-inline-editor="${escapeHtml(contextId)}"
+          data-client-pricing-rule-trade-context-mode="${escapeHtml(normalizedReferenceCode(tradeContextAdmissionMode))}"
           data-client-pricing-rule-inline-mode="${editing ? "edit" : "create"}"
           ${editing ? `data-client-pricing-rule-index="${index}"` : ""}
         >
           ${currencyPairMarkup}
           <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
           <div class="client-pricing-configuration-inline-field is-admission">
-            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Auto Hedging Admission" data-tooltip="Auto Hedging Admission">verified_user</span>
+            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Initial Mode Assignment" data-tooltip="Initial Mode Assignment" data-client-pricing-rule-inline-mode-override-icon>${pricingRuleInitialModeAssignmentIcon(normalizedOverride, tradeContextAdmissionMode)}</span>
             <span class="client-pricing-configuration-node-copy client-pricing-configuration-inline-admission-control">
-              <select class="form-select form-select-sm" id="${escapeHtml(admissionSelectId)}" data-client-pricing-rule-inline-field="autoHedgingAdmissionModeOverride" aria-label="Auto Hedging Admission"${saving ? " disabled" : ""}>
-                ${pricingRuleAutoHedgingAdmissionOptions(normalizedOverride)}
-              </select>
+              <span class="client-pricing-configuration-node-value client-pricing-configuration-inline-mode-override-value" data-client-pricing-rule-inline-mode-override-value>${escapeHtml(pricingRuleInitialModeAssignmentLabel(normalizedOverride, tradeContextAdmissionMode))}</span>
+              <label class="form-check form-switch client-pricing-configuration-inline-mode-override-switch" for="${escapeHtml(manualModeOverrideId)}">
+                <input class="form-check-input" type="checkbox" id="${escapeHtml(manualModeOverrideId)}" value="REVIEW_REQUIRED" data-client-pricing-rule-inline-field="autoManagementAdmissionModeOverride"${normalizedOverride === "REVIEW_REQUIRED" ? " checked" : ""}${saving ? " disabled" : ""}>
+                <span class="form-check-label">Manual Mode Override</span>
+              </label>
             </span>
           </div>
           <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
@@ -8582,10 +8869,10 @@
             </span>
           </label>
           <span class="client-pricing-configuration-inline-actions">
-            <button type="button" class="btn btn-sm btn-outline-primary reference-grid-action" data-client-pricing-rule-inline-action="save" aria-label="Save Pricing Rule" data-tooltip="Save Pricing Rule"${saving || !canSave ? " disabled" : ""}>
+            <button type="button" class="btn btn-sm btn-primary reference-grid-action" data-client-pricing-rule-inline-action="save" aria-label="Save Pricing Rule"${saving || !canSave ? " disabled" : ""}>
               <span class="button-icon" aria-hidden="true">${saving ? "hourglass_top" : "save"}</span>
             </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-pricing-rule-inline-action="cancel" aria-label="${cancelLabel}" data-tooltip="Cancel"${saving ? " disabled" : ""}>
+            <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-pricing-rule-inline-action="cancel" aria-label="${cancelLabel}"${saving ? " disabled" : ""}>
               <span class="button-icon" aria-hidden="true">close</span>
             </button>
           </span>
@@ -8593,30 +8880,30 @@
       `;
     }
 
-    function renderClientExecutionContextsPanel(profile) {
-      if (!clientExecutionContextsPanel) {
+    function renderClientTradeContextsPanel(profile) {
+      if (!clientTradeContextsPanel) {
         return;
       }
 
-      clientExecutionContextsAttachButton.removeAttribute("title");
+      clientTradeContextsAttachButton.removeAttribute("title");
 
       if (!profile) {
         clientPricingRuleInlineEditorState = null;
-        clientExecutionContextsPanel.hidden = true;
-        clientExecutionContextsList.innerHTML = "";
-        clientExecutionContextsCount.textContent = "0 contexts · 0 rules";
-        clientExecutionContextsAttachButton.disabled = true;
-        clientExecutionContextsAttachButtonIcon.textContent = "add_link";
-        clientExecutionContextsAttachButtonLabel.textContent = "Attach Execution Context";
+        clientTradeContextsPanel.hidden = true;
+        clientTradeContextsList.innerHTML = "";
+        clientTradeContextsCount.textContent = "0 contexts · 0 rules";
+        clientTradeContextsAttachButton.disabled = true;
+        clientTradeContextsAttachButtonIcon.textContent = "add_link";
+        clientTradeContextsAttachButtonLabel.textContent = "Attach Trade Context";
         return;
       }
 
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
-      const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
-      const contexts = assignedExecutionContextsForProfile(profile);
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
+      const loadState = tradingCounterpartyTradeContextLoadStates.get(counterpartyId);
+      const contexts = assignedTradeContextsForProfile(profile);
       const loading = DEMO_API_ENABLED && (!loadState || loadState.status === "loading");
       const loadFailed = loadState?.status === "error";
-      const availableCount = availableExecutionContextsForProfile(profile).length;
+      const availableCount = availableTradeContextsForProfile(profile).length;
       const pricingRuleEntries = clientPricingRuleEntriesForInn(profile.inn);
       const collapsedContexts = clientPricingConfigurationCollapsedSet(profile);
       const contextIds = new Set(contexts.map(context => String(context.pricingContextId)));
@@ -8637,32 +8924,32 @@
         }
       });
 
-      clientExecutionContextsPanel.hidden = false;
-      clientExecutionContextsCount.textContent = `${contexts.length} ${contexts.length === 1 ? "context" : "contexts"} · ${pricingRuleEntries.length} ${pricingRuleEntries.length === 1 ? "rule" : "rules"}`;
-      clientExecutionContextsAttachButton.disabled = loading || (!loadFailed && availableCount === 0);
-      clientExecutionContextsAttachButtonIcon.textContent = loadFailed ? "refresh" : "add_link";
-      clientExecutionContextsAttachButtonLabel.textContent = loadFailed ? "Retry" : "Attach Execution Context";
+      clientTradeContextsPanel.hidden = false;
+      clientTradeContextsCount.textContent = `${contexts.length} ${contexts.length === 1 ? "context" : "contexts"} · ${pricingRuleEntries.length} ${pricingRuleEntries.length === 1 ? "rule" : "rules"}`;
+      clientTradeContextsAttachButton.disabled = loading || (!loadFailed && availableCount === 0);
+      clientTradeContextsAttachButtonIcon.textContent = loadFailed ? "refresh" : "add_link";
+      clientTradeContextsAttachButtonLabel.textContent = loadFailed ? "Retry" : "Attach Trade Context";
 
       if (loading) {
-        clientExecutionContextsList.innerHTML = '<li class="client-execution-contexts-empty">Loading Execution Context assignments...</li>';
+        clientTradeContextsList.innerHTML = '<li class="client-trade-contexts-empty">Loading Trade Context assignments...</li>';
         return;
       }
 
       if (loadFailed) {
-        clientExecutionContextsList.innerHTML = `
-          <li class="client-execution-contexts-empty">${escapeHtml(loadState.message)}</li>
+        clientTradeContextsList.innerHTML = `
+          <li class="client-trade-contexts-empty">${escapeHtml(loadState.message)}</li>
         `;
         return;
       }
 
       if (contexts.length === 0) {
-        clientExecutionContextsList.innerHTML = `
-          <li class="client-execution-contexts-empty">No Execution Contexts are attached to this Trading Counterparty yet.</li>
+        clientTradeContextsList.innerHTML = `
+          <li class="client-trade-contexts-empty">No Trade Contexts are attached to this Trading Counterparty yet.</li>
         `;
         return;
       }
 
-      clientExecutionContextsList.innerHTML = contexts
+      clientTradeContextsList.innerHTML = contexts
         .slice()
         .sort((left, right) => String(left.pricingContextId).localeCompare(
           String(right.pricingContextId),
@@ -8677,17 +8964,17 @@
           );
           const pricingRuleCount = Math.max(
             ruleEntries.length,
-            clientExecutionContextPricingRuleCount(profile, context)
+            clientTradeContextPricingRuleCount(profile, context)
           );
           const detachLocked = pricingRuleCount > 0;
-          const detachPending = pendingClientExecutionContextDetaches.has(
-            clientExecutionContextDetachKey(counterpartyId, context.pricingContextId)
+          const detachPending = pendingClientTradeContextDetaches.has(
+            clientTradeContextDetachKey(counterpartyId, context.pricingContextId)
           );
           const detachTitle = detachPending
-            ? "Detaching Execution Context"
+            ? "Detaching Trade Context"
             : detachLocked
               ? `Detach unavailable while used by ${pricingRuleCount} ${pricingRuleCount === 1 ? "Pricing Rule" : "Pricing Rules"}`
-              : "Detach Execution Context";
+              : "Detach Trade Context";
           const contextKey = String(context.pricingContextId);
           const expanded = !collapsedContexts.has(contextKey);
           const branchId = `client-pricing-context-${counterpartyId}-${contextKey}`;
@@ -8709,23 +8996,24 @@
                 if (editing) {
                   const marginValue = clientPricingRuleInlineEditorState.marginPercent;
                   const margin = normalizeNumber(marginValue);
-                  const autoHedgingAdmissionModeOverride =
-                    normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-                      clientPricingRuleInlineEditorState.autoHedgingAdmissionModeOverride
+                  const autoManagementAdmissionModeOverride =
+                    normalizedPricingRuleAutoManagementAdmissionModeOverride(
+                      clientPricingRuleInlineEditorState.autoManagementAdmissionModeOverride
                     );
                   const canSave = margin !== null && margin >= 0 && margin < 100 &&
                     (
                       Math.abs(Number(rule.marginPercent) - Number(margin)) > 0.0000001 ||
-                      normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-                        rule.autoHedgingAdmissionModeOverride
-                      ) !== autoHedgingAdmissionModeOverride
+                      normalizedPricingRuleAutoManagementAdmissionModeOverride(
+                        rule.autoManagementAdmissionModeOverride
+                      ) !== autoManagementAdmissionModeOverride
                     );
 
                   return clientPricingRuleInlineEditorMarkup({
                     contextId: context.pricingContextId,
                     currencyPairs: [rule.currencyPair],
                     selectedCurrencyPair: rule.currencyPair,
-                    autoHedgingAdmissionModeOverride,
+                    tradeContextAdmissionMode: context.autoManagementAdmissionMode,
+                    autoManagementAdmissionModeOverride,
                     marginValue,
                     editing: true,
                     index,
@@ -8742,8 +9030,8 @@
                     </span>
                     <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
                     <span class="client-pricing-configuration-node-field client-pricing-configuration-rule-piece is-admission">
-                      <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Auto Hedging Admission" data-tooltip="Auto Hedging Admission">verified_user</span>
-                      ${clientPricingRuleAutoHedgingAdmissionMarkup(rule)}
+                      <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Initial Mode Assignment" data-tooltip="Initial Mode Assignment">${pricingRuleInitialModeAssignmentIcon(rule.autoManagementAdmissionModeOverride, context.autoManagementAdmissionMode)}</span>
+                      ${clientPricingRuleAutoManagementAdmissionMarkup(rule)}
                     </span>
                     <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
                     <span class="client-pricing-configuration-node-field client-pricing-configuration-rule-piece is-margin">
@@ -8789,9 +9077,10 @@
                 contextId: context.pricingContextId,
                 currencyPairs: availableCurrencyPairs,
                 selectedCurrencyPair: inlineCurrencyPair,
-                autoHedgingAdmissionModeOverride:
-                  normalizedPricingRuleAutoHedgingAdmissionModeOverride(
-                    clientPricingRuleInlineEditorState.autoHedgingAdmissionModeOverride
+                tradeContextAdmissionMode: context.autoManagementAdmissionMode,
+                autoManagementAdmissionModeOverride:
+                  normalizedPricingRuleAutoManagementAdmissionModeOverride(
+                    clientPricingRuleInlineEditorState.autoManagementAdmissionModeOverride
                   ),
                 marginValue: inlineMarginValue,
                 editing: false,
@@ -8802,7 +9091,7 @@
           const addRuleRowMarkup = !inlineCreateActive && !inlineEditActive && availableCurrencyPairs.length > 0
               ? `
                   <div class="client-pricing-configuration-add-row">
-                    <button type="button" class="btn btn-sm btn-primary reference-new-button client-pricing-configuration-add-rule" data-client-execution-context-action="add-rule" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}">
+                    <button type="button" class="btn btn-sm btn-primary reference-new-button client-pricing-configuration-add-rule" data-client-trade-context-action="add-rule" data-client-trade-context-id="${escapeHtml(context.pricingContextId)}">
                       <span class="button-icon" aria-hidden="true">add</span>
                       <span>Pricing Rule</span>
                     </button>
@@ -8814,18 +9103,18 @@
             : rulesMarkup;
 
           return `
-            <li class="client-pricing-configuration-context${expanded ? "" : " is-collapsed"}" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}">
+            <li class="client-pricing-configuration-context${expanded ? "" : " is-collapsed"}" data-client-trade-context-id="${escapeHtml(context.pricingContextId)}">
               <div class="client-pricing-configuration-context-head">
-                <button type="button" class="client-pricing-configuration-context-toggle" data-client-execution-context-action="toggle" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}" aria-expanded="${String(expanded)}" aria-controls="${escapeHtml(branchId)}" aria-label="${expanded ? "Collapse" : "Expand"} ${escapeHtml(pricingContextDisplayPath(context))}">
+                <button type="button" class="client-pricing-configuration-context-toggle" data-client-trade-context-action="toggle" data-client-trade-context-id="${escapeHtml(context.pricingContextId)}" aria-expanded="${String(expanded)}" aria-controls="${escapeHtml(branchId)}" aria-label="${expanded ? "Collapse" : "Expand"} ${escapeHtml(pricingContextDisplayPath(context))}">
                   <span class="button-icon" aria-hidden="true">${expanded ? "expand_more" : "chevron_right"}</span>
                   <span class="client-pricing-configuration-context-title">
-                    <span class="button-icon" role="img" tabindex="0" aria-label="Execution Context" data-tooltip="Execution Context">hub</span>
-                    <span class="client-pricing-configuration-context-label">Execution Context</span>
+                    <span class="button-icon" role="img" tabindex="0" aria-label="Trade Context" data-tooltip="Trade Context">hub</span>
+                    <span class="client-pricing-configuration-context-label">Trade Context</span>
                   </span>
-                  <span class="client-pricing-context-candidate-path">${pricingContextFacetsMarkup(context, { executionSystemLabel: true })}</span>
+                  <span class="client-pricing-context-candidate-path">${pricingContextFacetsMarkup(context, { originatingSystemLabel: true })}</span>
                 </button>
                 <span class="client-pricing-configuration-context-actions profile-row-actions">
-                  <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-execution-context-action="detach" data-client-execution-context-id="${escapeHtml(context.pricingContextId)}" aria-label="${escapeHtml(detachTitle)}" aria-disabled="${String(detachLocked || detachPending)}" data-tooltip="${escapeHtml(detachTitle)}"${detachPending ? " disabled" : ""}>
+                  <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-client-trade-context-action="detach" data-client-trade-context-id="${escapeHtml(context.pricingContextId)}" aria-label="${escapeHtml(detachTitle)}" aria-disabled="${String(detachLocked || detachPending)}" data-tooltip="${escapeHtml(detachTitle)}"${detachPending ? " disabled" : ""}>
                     <span class="button-icon" aria-hidden="true">${detachPending ? "hourglass_top" : "link_off"}</span>
                   </button>
                 </span>
@@ -8843,8 +9132,8 @@
         .join("");
     }
 
-    function executionContextMatchesAttachFilters(context) {
-      return clientExecutionContextAttachFilterControls.every(control => {
+    function tradeContextMatchesAttachFilters(context) {
+      return clientTradeContextAttachFilterControls.every(control => {
         const field = control.dataset.clientContextAttachFilter;
         const query = control.value.trim().toLowerCase();
 
@@ -8853,7 +9142,7 @@
         }
 
         if (field === "pricingMode") {
-          return executionContextPricingMode(context).toLowerCase() === query;
+          return tradeContextPricingMode(context).toLowerCase() === query;
         }
 
         return pricingContextSearchValues(context, field)
@@ -8861,15 +9150,15 @@
       });
     }
 
-    function filteredAvailableExecutionContextsForAttach() {
+    function filteredAvailableTradeContextsForAttach() {
       const profile = selectedClientProfile();
 
-      if (!profile || tradingCounterpartyExecutionContextKey(profile) !== clientExecutionContextAttachCounterpartyId) {
+      if (!profile || tradingCounterpartyTradeContextKey(profile) !== clientTradeContextAttachCounterpartyId) {
         return [];
       }
 
-      return availableExecutionContextsForProfile(profile)
-        .filter(executionContextMatchesAttachFilters)
+      return availableTradeContextsForProfile(profile)
+        .filter(tradeContextMatchesAttachFilters)
         .sort((left, right) => {
           const order = String(left.pricingContextId).localeCompare(
             String(right.pricingContextId),
@@ -8877,68 +9166,68 @@
             { numeric: true, sensitivity: "base" }
           );
 
-          return clientExecutionContextAttachSortDirection === "desc" ? -order : order;
+          return clientTradeContextAttachSortDirection === "desc" ? -order : order;
         });
     }
 
-    function updateClientExecutionContextAttachSelectionControls(visibleContexts) {
+    function updateClientTradeContextAttachSelectionControls(visibleContexts) {
       const visibleIds = visibleContexts.map(context => context.pricingContextId);
-      const selectedVisibleCount = visibleIds.filter(id => selectedClientExecutionContextIds.has(id)).length;
-      const selectedCount = selectedClientExecutionContextIds.size;
+      const selectedVisibleCount = visibleIds.filter(id => selectedClientTradeContextIds.has(id)).length;
+      const selectedCount = selectedClientTradeContextIds.size;
       const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
 
-      clientExecutionContextAttachSelectAll.checked = allVisibleSelected;
-      clientExecutionContextAttachSelectAll.indeterminate = selectedVisibleCount > 0 && !allVisibleSelected;
-      clientExecutionContextAttachSelectAll.disabled = clientExecutionContextAttachSaving || visibleIds.length === 0;
-      clientExecutionContextAttachSubmitButton.disabled = clientExecutionContextAttachSaving || selectedCount === 0;
-      clientExecutionContextAttachSubmitLabel.textContent = clientExecutionContextAttachSaving
+      clientTradeContextAttachSelectAll.checked = allVisibleSelected;
+      clientTradeContextAttachSelectAll.indeterminate = selectedVisibleCount > 0 && !allVisibleSelected;
+      clientTradeContextAttachSelectAll.disabled = clientTradeContextAttachSaving || visibleIds.length === 0;
+      clientTradeContextAttachSubmitButton.disabled = clientTradeContextAttachSaving || selectedCount === 0;
+      clientTradeContextAttachSubmitLabel.textContent = clientTradeContextAttachSaving
         ? "Attaching..."
         : selectedCount > 0
           ? `Attach (${selectedCount})`
           : "Attach";
-      clientExecutionContextAttachSelection.textContent = `${selectedCount} selected`;
-      clientExecutionContextAttachDialogClose.disabled = clientExecutionContextAttachSaving;
-      clientExecutionContextAttachCancelButton.disabled = clientExecutionContextAttachSaving;
-      clientExecutionContextAttachIdSort.disabled = clientExecutionContextAttachSaving;
-      clientExecutionContextAttachFilterControls.forEach(control => {
-        control.disabled = clientExecutionContextAttachSaving;
+      clientTradeContextAttachSelection.textContent = `${selectedCount} selected`;
+      clientTradeContextAttachDialogClose.disabled = clientTradeContextAttachSaving;
+      clientTradeContextAttachCancelButton.disabled = clientTradeContextAttachSaving;
+      clientTradeContextAttachIdSort.disabled = clientTradeContextAttachSaving;
+      clientTradeContextAttachFilterControls.forEach(control => {
+        control.disabled = clientTradeContextAttachSaving;
       });
-      clientExecutionContextAttachDialog.setAttribute("aria-busy", String(clientExecutionContextAttachSaving));
-      clientExecutionContextAttachIdSort.setAttribute(
+      clientTradeContextAttachDialog.setAttribute("aria-busy", String(clientTradeContextAttachSaving));
+      clientTradeContextAttachIdSort.setAttribute(
         "aria-label",
-        `Sort available execution contexts by ID ${clientExecutionContextAttachSortDirection === "asc" ? "ascending" : "descending"}`
+        `Sort available trade contexts by ID ${clientTradeContextAttachSortDirection === "asc" ? "ascending" : "descending"}`
       );
-      clientExecutionContextAttachIdSort.setAttribute(
+      clientTradeContextAttachIdSort.setAttribute(
         "aria-pressed",
-        String(clientExecutionContextAttachSortDirection === "asc")
+        String(clientTradeContextAttachSortDirection === "asc")
       );
-      clientExecutionContextAttachIdSort.closest("th")?.setAttribute(
+      clientTradeContextAttachIdSort.closest("th")?.setAttribute(
         "aria-sort",
-        clientExecutionContextAttachSortDirection === "asc" ? "ascending" : "descending"
+        clientTradeContextAttachSortDirection === "asc" ? "ascending" : "descending"
       );
     }
 
-    function renderClientExecutionContextAttachTable() {
-      const contexts = filteredAvailableExecutionContextsForAttach();
+    function renderClientTradeContextAttachTable() {
+      const contexts = filteredAvailableTradeContextsForAttach();
 
       if (contexts.length === 0) {
-        const hasAvailableContexts = availableExecutionContextsForProfile(selectedClientProfile()).length > 0;
-        clientExecutionContextAttachRows.innerHTML = `
+        const hasAvailableContexts = availableTradeContextsForProfile(selectedClientProfile()).length > 0;
+        clientTradeContextAttachRows.innerHTML = `
           <tr>
             <td class="profile-empty" colspan="6">${hasAvailableContexts
-              ? "No available Execution Contexts match the current filters."
-              : "All available Execution Contexts are already attached."}</td>
+              ? "No available Trade Contexts match the current filters."
+              : "All available Trade Contexts are already attached."}</td>
           </tr>
         `;
       } else {
-        clientExecutionContextAttachRows.innerHTML = contexts.map(context => {
-          const selected = selectedClientExecutionContextIds.has(context.pricingContextId);
-          const pricingMode = executionContextPricingMode(context);
+        clientTradeContextAttachRows.innerHTML = contexts.map(context => {
+          const selected = selectedClientTradeContextIds.has(context.pricingContextId);
+          const pricingMode = tradeContextPricingMode(context);
 
           return `
             <tr${selected ? ' class="is-selected"' : ""} data-client-context-attach-id="${escapeHtml(context.pricingContextId)}">
               <td class="client-context-attach-select-cell">
-                <input type="checkbox" class="form-check-input" data-client-context-attach-select="${escapeHtml(context.pricingContextId)}" aria-label="Select Execution Context ${escapeHtml(context.pricingContextId)}"${selected ? " checked" : ""}${clientExecutionContextAttachSaving ? " disabled" : ""}>
+                <input type="checkbox" class="form-check-input" data-client-context-attach-select="${escapeHtml(context.pricingContextId)}" aria-label="Select Trade Context ${escapeHtml(context.pricingContextId)}"${selected ? " checked" : ""}${clientTradeContextAttachSaving ? " disabled" : ""}>
               </td>
               <td>${escapeHtml(context.pricingContextId)}</td>
               <td>${escapeHtml(servicingBranchDisplayName(context.servicingBranchCode))}</td>
@@ -8955,209 +9244,209 @@
         }).join("");
       }
 
-      updateClientExecutionContextAttachSelectionControls(contexts);
+      updateClientTradeContextAttachSelectionControls(contexts);
     }
 
-    function focusClientExecutionContextAttachCheckbox(contextId) {
-      clientExecutionContextAttachRows
+    function focusClientTradeContextAttachCheckbox(contextId) {
+      clientTradeContextAttachRows
         .querySelector(`[data-client-context-attach-select="${contextId}"]`)
         ?.focus();
     }
 
-    function setClientExecutionContextAttachStatus(message = "", tone = "") {
-      setWorkbenchPageStatus(clientExecutionContextAttachStatus, message, tone);
+    function setClientTradeContextAttachStatus(message = "", tone = "") {
+      setWorkbenchPageStatus(clientTradeContextAttachStatus, message, tone);
     }
 
-    function openClientExecutionContextAttachDialog() {
+    function openClientTradeContextAttachDialog() {
       const profile = selectedClientProfile();
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
 
       if (!profile || !counterpartyId) {
-        setClientProfileStatus("Save the Trading Counterparty before attaching an Execution Context.", "error");
+        setClientProfileStatus("Save the Trading Counterparty before attaching a Trade Context.", "error");
         return;
       }
 
-      clientExecutionContextAttachCounterpartyId = counterpartyId;
-      clientExecutionContextAttachSortDirection = "asc";
-      clientExecutionContextAttachSaving = false;
-      selectedClientExecutionContextIds.clear();
-      clientExecutionContextAttachFilterControls.forEach(control => {
+      clientTradeContextAttachCounterpartyId = counterpartyId;
+      clientTradeContextAttachSortDirection = "asc";
+      clientTradeContextAttachSaving = false;
+      selectedClientTradeContextIds.clear();
+      clientTradeContextAttachFilterControls.forEach(control => {
         control.value = "";
       });
-      clientExecutionContextAttachDialogSubtitle.textContent = `Select one or more contexts to attach to ${profile.name}.`;
-      setClientExecutionContextAttachStatus("");
-      applyClientExecutionContextAttachColumnLayout();
-      renderClientExecutionContextAttachTable();
+      clientTradeContextAttachDialogSubtitle.textContent = `Select one or more contexts to attach to ${profile.name}.`;
+      setClientTradeContextAttachStatus("");
+      applyClientTradeContextAttachColumnLayout();
+      renderClientTradeContextAttachTable();
 
-      openDialogWithoutFieldFocus(clientExecutionContextAttachDialog);
+      openDialogWithoutFieldFocus(clientTradeContextAttachDialog);
     }
 
-    function closeClientExecutionContextAttachDialog() {
-      if (clientExecutionContextAttachSaving) {
+    function closeClientTradeContextAttachDialog() {
+      if (clientTradeContextAttachSaving) {
         return;
       }
 
-      if (typeof clientExecutionContextAttachDialog.close === "function") {
-        clientExecutionContextAttachDialog.close();
+      if (typeof clientTradeContextAttachDialog.close === "function") {
+        clientTradeContextAttachDialog.close();
       } else {
-        clientExecutionContextAttachDialog.removeAttribute("open");
+        clientTradeContextAttachDialog.removeAttribute("open");
       }
     }
 
-    async function attachSelectedExecutionContexts(event) {
+    async function attachSelectedTradeContexts(event) {
       event.preventDefault();
       const profile = selectedClientProfile();
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
-      const executionContextIds = Array.from(selectedClientExecutionContextIds);
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
+      const tradeContextIds = Array.from(selectedClientTradeContextIds);
 
-      if (!profile || counterpartyId !== clientExecutionContextAttachCounterpartyId || executionContextIds.length === 0) {
+      if (!profile || counterpartyId !== clientTradeContextAttachCounterpartyId || tradeContextIds.length === 0) {
         return;
       }
 
-      clientExecutionContextAttachSaving = true;
-      setClientExecutionContextAttachStatus("Attaching Execution Contexts...");
-      renderClientExecutionContextAttachTable();
+      clientTradeContextAttachSaving = true;
+      setClientTradeContextAttachStatus("Attaching Trade Contexts...");
+      renderClientTradeContextAttachTable();
 
       let contexts;
 
       try {
         if (DEMO_API_ENABLED) {
           const payload = await demoApiRequest(
-            `/api/v1/trading-counterparties/${encodeURIComponent(counterpartyId)}/execution-contexts`,
+            `/api/v1/trading-counterparties/${encodeURIComponent(counterpartyId)}/trade-contexts`,
             {
               method: "PUT",
-              body: JSON.stringify({ executionContextIds: executionContextIds.map(Number) })
+              body: JSON.stringify({ tradeContextIds: tradeContextIds.map(Number) })
             }
           );
-          contexts = normalizedAssignedExecutionContexts(payload);
+          contexts = normalizedAssignedTradeContexts(payload);
         } else {
-          const existing = assignedExecutionContextsForProfile(profile);
-          const requestedIds = new Set(executionContextIds);
+          const existing = assignedTradeContextsForProfile(profile);
+          const requestedIds = new Set(tradeContextIds);
           contexts = normalizedPricingContexts([
             ...existing,
             ...pricingContexts.filter(context => requestedIds.has(context.pricingContextId))
           ], []);
         }
       } catch (error) {
-        clientExecutionContextAttachSaving = false;
-        setClientExecutionContextAttachStatus(error.message || "Execution Contexts could not be attached.", "error");
-        renderClientExecutionContextAttachTable();
+        clientTradeContextAttachSaving = false;
+        setClientTradeContextAttachStatus(error.message || "Trade Contexts could not be attached.", "error");
+        renderClientTradeContextAttachTable();
         return;
       }
 
-      tradingCounterpartyExecutionContexts.set(counterpartyId, contexts);
-      tradingCounterpartyExecutionContextLoadStates.set(counterpartyId, { status: "loaded" });
-      mergeExecutionContextAssignmentCounts(contexts);
-      const attachedCount = executionContextIds.length;
-      clientExecutionContextAttachSaving = false;
-      selectedClientExecutionContextIds.clear();
+      tradingCounterpartyTradeContexts.set(counterpartyId, contexts);
+      tradingCounterpartyTradeContextLoadStates.set(counterpartyId, { status: "loaded" });
+      mergeTradeContextAssignmentCounts(contexts);
+      const attachedCount = tradeContextIds.length;
+      clientTradeContextAttachSaving = false;
+      selectedClientTradeContextIds.clear();
       const profileStillSelected = isSelectedTradingCounterparty(counterpartyId);
 
       if (profileStillSelected) {
-        renderClientExecutionContextsPanel(profile);
+        renderClientTradeContextsPanel(profile);
       }
 
-      closeClientExecutionContextAttachDialog();
+      closeClientTradeContextAttachDialog();
 
       if (profileStillSelected) {
         setClientProfileStatus(
-          `${attachedCount} Execution ${attachedCount === 1 ? "Context was" : "Contexts were"} attached successfully.`,
+          `${attachedCount} Trade ${attachedCount === 1 ? "Context was" : "Contexts were"} attached successfully.`,
           "success"
         );
       }
 
       if (DEMO_API_ENABLED) {
         try {
-          await refreshExecutionContextsFromApi();
+          await refreshTradeContextsFromApi();
           renderPricingContexts();
         } catch (refreshError) {
-          console.warn("Execution Context usage counts could not be refreshed.", refreshError);
+          console.warn("Trade Context usage counts could not be refreshed.", refreshError);
         }
       }
     }
 
-    async function detachClientExecutionContext(profile, contextId) {
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
-      const context = assignedExecutionContextsForProfile(profile)
+    async function detachClientTradeContext(profile, contextId) {
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
+      const context = assignedTradeContextsForProfile(profile)
         .find(item => item.pricingContextId === contextId);
-      const detachKey = clientExecutionContextDetachKey(counterpartyId, contextId);
+      const detachKey = clientTradeContextDetachKey(counterpartyId, contextId);
 
-      if (!counterpartyId || !context || pendingClientExecutionContextDetaches.has(detachKey)) {
+      if (!counterpartyId || !context || pendingClientTradeContextDetaches.has(detachKey)) {
         return;
       }
 
-      const pricingRuleCount = clientExecutionContextPricingRuleCount(profile, context);
+      const pricingRuleCount = clientTradeContextPricingRuleCount(profile, context);
 
       if (pricingRuleCount > 0) {
         if (isSelectedTradingCounterparty(counterpartyId)) {
           setClientProfileStatus(
-            `Execution Context ${contextId} cannot be detached while it is used by ${pricingRuleCount} ${pricingRuleCount === 1 ? "Pricing Rule" : "Pricing Rules"}.`,
+            `Trade Context ${contextId} cannot be detached while it is used by ${pricingRuleCount} ${pricingRuleCount === 1 ? "Pricing Rule" : "Pricing Rules"}.`,
             "error"
           );
         }
         return;
       }
 
-      pendingClientExecutionContextDetaches.add(detachKey);
+      pendingClientTradeContextDetaches.add(detachKey);
 
       if (isSelectedTradingCounterparty(counterpartyId)) {
-        renderClientExecutionContextsPanel(profile);
+        renderClientTradeContextsPanel(profile);
       }
 
       try {
         if (DEMO_API_ENABLED) {
           await demoApiRequest(
-            `/api/v1/trading-counterparties/${encodeURIComponent(counterpartyId)}/execution-contexts/${encodeURIComponent(contextId)}`,
+            `/api/v1/trading-counterparties/${encodeURIComponent(counterpartyId)}/trade-contexts/${encodeURIComponent(contextId)}`,
             { method: "DELETE" }
           );
         }
       } catch (error) {
-        pendingClientExecutionContextDetaches.delete(detachKey);
+        pendingClientTradeContextDetaches.delete(detachKey);
 
         if (isSelectedTradingCounterparty(counterpartyId)) {
-          renderClientExecutionContextsPanel(profile);
-          setClientProfileStatus(error.message || `Execution Context ${contextId} could not be detached.`, "error");
+          renderClientTradeContextsPanel(profile);
+          setClientProfileStatus(error.message || `Trade Context ${contextId} could not be detached.`, "error");
         }
         return;
       }
 
-      tradingCounterpartyExecutionContexts.set(
+      tradingCounterpartyTradeContexts.set(
         counterpartyId,
-        assignedExecutionContextsForProfile(profile).filter(item => item.pricingContextId !== contextId)
+        assignedTradeContextsForProfile(profile).filter(item => item.pricingContextId !== contextId)
       );
-      decrementExecutionContextAssignmentCount(contextId);
-      pendingClientExecutionContextDetaches.delete(detachKey);
+      decrementTradeContextAssignmentCount(contextId);
+      pendingClientTradeContextDetaches.delete(detachKey);
 
       if (isSelectedTradingCounterparty(counterpartyId)) {
-        renderClientExecutionContextsPanel(profile);
-        setClientProfileStatus(`Execution Context ${contextId} was detached successfully.`, "success");
+        renderClientTradeContextsPanel(profile);
+        setClientProfileStatus(`Trade Context ${contextId} was detached successfully.`, "success");
       }
 
       if (DEMO_API_ENABLED) {
         try {
-          await refreshExecutionContextsFromApi();
+          await refreshTradeContextsFromApi();
           renderPricingContexts();
         } catch (refreshError) {
-          console.warn("Execution Context usage counts could not be refreshed.", refreshError);
+          console.warn("Trade Context usage counts could not be refreshed.", refreshError);
         }
       }
     }
 
     function updateClientPricingRulesAddAvailability(profile) {
-      return Boolean(profile) && assignedExecutionContextsForProfile(profile).length > 0;
+      return Boolean(profile) && assignedTradeContextsForProfile(profile).length > 0;
     }
 
-    function syncClientExecutionContextPricingRuleCounts(profile) {
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
+    function syncClientTradeContextPricingRuleCounts(profile) {
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
 
-      if (!counterpartyId || !tradingCounterpartyExecutionContexts.has(counterpartyId)) {
+      if (!counterpartyId || !tradingCounterpartyTradeContexts.has(counterpartyId)) {
         return;
       }
 
       const ruleEntries = clientPricingRuleEntriesForInn(profile.inn);
-      tradingCounterpartyExecutionContexts.set(
+      tradingCounterpartyTradeContexts.set(
         counterpartyId,
-        assignedExecutionContextsForProfile(profile).map(context => ({
+        assignedTradeContextsForProfile(profile).map(context => ({
           ...context,
           pricingRulesCount: ruleEntries.filter(({ rule }) =>
             String(rule.pricingContextId) === String(context.pricingContextId)
@@ -9168,31 +9457,32 @@
 
     function renderClientPricingRulesPanel(profile) {
       updateClientPricingRulesAddAvailability(profile);
-      syncClientExecutionContextPricingRuleCounts(profile);
+      syncClientTradeContextPricingRuleCounts(profile);
       renderClientPricingRuleEditor(profile);
-      renderClientExecutionContextsPanel(profile);
+      renderClientTradeContextsPanel(profile);
       updateClientProfileDeleteAvailability();
     }
 
     function setClientProfilePageHeading(title) {
       clientProfilePageTitle.textContent = title;
       document.title = title === "Trading Counterparties" ? title : `${title} - Trading Counterparties`;
+      renderWorkspacePageHeading();
     }
 
     function setClientProfileRouteVisibility(detailVisible) {
       clientProfileListView.hidden = detailVisible;
       clientProfileDetailView.hidden = !detailVisible;
-      clientProfileBackButton.hidden = !detailVisible;
       tradingCounterpartyScopeTabs.hidden = detailVisible;
+      tradingCounterpartyFilterToolbar.hidden = detailVisible;
       clientProfileLayout.classList.toggle("is-detail-view", detailVisible);
     }
 
-    function locallyAttachedTradingCounterpartyIds(executionContextId) {
-      const contextId = String(executionContextId ?? "");
+    function locallyAttachedTradingCounterpartyIds(tradeContextId) {
+      const contextId = String(tradeContextId ?? "");
 
       return new Set(
         clientProfiles
-          .filter(profile => assignedExecutionContextsForProfile(profile)
+          .filter(profile => assignedTradeContextsForProfile(profile)
             .some(context => context.pricingContextId === contextId))
           .map(profile => String(profile.counterpartyId ?? ""))
           .filter(Boolean)
@@ -9220,11 +9510,11 @@
       }
     }
 
-    async function loadExecutionContextTradingCounterparties(routeScope) {
-      const requestSequence = ++clientProfileRouteScopeRequestSequence;
-      const localIds = locallyAttachedTradingCounterpartyIds(routeScope.executionContextId);
-      routeScope.counterpartyIds = localIds;
-      routeScope.status = DEMO_API_ENABLED ? "loading" : "loaded";
+    async function loadTradeContextTradingCounterparties(tradeContextFilter) {
+      const requestSequence = ++clientProfileTradeContextFilterRequestSequence;
+      const localIds = locallyAttachedTradingCounterpartyIds(tradeContextFilter.tradeContextId);
+      tradeContextFilter.counterpartyIds = localIds;
+      tradeContextFilter.status = DEMO_API_ENABLED ? "loading" : "loaded";
       tradingCounterpartiesTable.toggleAttribute("aria-busy", DEMO_API_ENABLED);
 
       if (!DEMO_API_ENABLED) {
@@ -9238,11 +9528,12 @@
 
       try {
         const payload = await demoApiRequest(
-          `/api/v1/execution-contexts/${encodeURIComponent(routeScope.executionContextId)}/trading-counterparties`
+          `/api/v1/trade-contexts/${encodeURIComponent(tradeContextFilter.tradeContextId)}/trading-counterparties`
         );
         const attachedProfiles = normalizedClientProfiles(payload, []);
 
-        if (requestSequence !== clientProfileRouteScopeRequestSequence || clientProfileRouteScope !== routeScope) {
+        if (requestSequence !== clientProfileTradeContextFilterRequestSequence
+          || clientProfileTradeContextFilter !== tradeContextFilter) {
           return;
         }
 
@@ -9257,29 +9548,125 @@
             clientProfiles.push(profile);
           }
         });
-        routeScope.counterpartyIds = new Set(
+        tradeContextFilter.counterpartyIds = new Set(
           attachedProfiles
             .map(profile => String(profile.counterpartyId ?? ""))
             .filter(Boolean)
         );
-        routeScope.status = "loaded";
-        selectFirstPopulatedTradingCounterpartyScope(routeScope.counterpartyIds);
+        tradeContextFilter.status = "loaded";
+        selectFirstPopulatedTradingCounterpartyScope(tradeContextFilter.counterpartyIds);
         setClientProfileStatus("");
       } catch (error) {
-        if (requestSequence !== clientProfileRouteScopeRequestSequence || clientProfileRouteScope !== routeScope) {
+        if (requestSequence !== clientProfileTradeContextFilterRequestSequence
+          || clientProfileTradeContextFilter !== tradeContextFilter) {
           return;
         }
 
-        routeScope.counterpartyIds = new Set();
-        routeScope.status = "error";
-        routeScope.message = error.message || "Attached Trading Counterparties could not be loaded.";
-        setClientProfileStatus(routeScope.message, "error");
+        tradeContextFilter.counterpartyIds = new Set();
+        tradeContextFilter.status = "error";
+        tradeContextFilter.message = error.message || "Attached Trading Counterparties could not be loaded.";
+        setClientProfileStatus(tradeContextFilter.message, "error");
       } finally {
-        if (requestSequence === clientProfileRouteScopeRequestSequence && clientProfileRouteScope === routeScope) {
+        if (requestSequence === clientProfileTradeContextFilterRequestSequence
+          && clientProfileTradeContextFilter === tradeContextFilter) {
           tradingCounterpartiesTable.removeAttribute("aria-busy");
           renderClientProfiles();
         }
       }
+    }
+
+    function setTradingCounterpartyTradeContextMenuOpen(open) {
+      const expanded = Boolean(open);
+
+      tradingCounterpartyTradeContextMenu.hidden = !expanded;
+      tradingCounterpartyTradeContextToggle.setAttribute("aria-expanded", String(expanded));
+      const chevron = tradingCounterpartyTradeContextToggle.querySelector(
+        ".trading-counterparty-trade-context-chevron"
+      );
+      if (chevron) {
+        chevron.textContent = expanded ? "expand_less" : "expand_more";
+      }
+    }
+
+    function syncTradingCounterpartyFilterToolbarWidth() {
+      const tablePanelWidth = clientProfileListView.getBoundingClientRect().width;
+
+      if (tablePanelWidth > 0) {
+        tradingCounterpartyFilterToolbar.style.width = `${Math.ceil(tablePanelWidth)}px`;
+      }
+    }
+
+    function tradingCounterpartyTradeContextOptionMarkup(context, selected = false) {
+      return `
+        <button
+          type="button"
+          class="client-pricing-context-candidate trading-counterparty-trade-context-option${selected ? " is-selected" : ""}"
+          data-trading-counterparty-trade-context-value="${escapeHtml(context.pricingContextId)}"
+          role="option"
+          aria-selected="${String(selected)}"
+          aria-label="Trade Context ${escapeHtml(context.pricingContextId)}: ${escapeHtml(pricingContextDisplayPath(context))}"
+        >
+          <span class="client-pricing-context-candidate-path">
+            ${pricingContextFacetsMarkup(context, { originatingSystemLabel: true })}
+          </span>
+        </button>
+      `;
+    }
+
+    function syncTradingCounterpartyTradeContextFilterOptions(selectedTradeContextId = null) {
+      const selectedValue = Number.isInteger(Number(selectedTradeContextId))
+        && Number(selectedTradeContextId) > 0
+        ? String(Number(selectedTradeContextId))
+        : "";
+      const sortedContexts = pricingContexts
+        .slice()
+        .sort((left, right) => Number(left.pricingContextId) - Number(right.pricingContextId));
+      const selectedContext = sortedContexts.find(
+        context => String(context.pricingContextId) === selectedValue
+      ) || null;
+      const options = sortedContexts.map(context => `
+          <option value="${escapeHtml(context.pricingContextId)}">
+            ${escapeHtml(`${context.pricingContextId} — ${pricingContextDisplayPath(context)}`)}
+          </option>
+        `)
+        .join("");
+
+      tradingCounterpartyTradeContextFilter.innerHTML = `
+        <option value="">All Trade Contexts</option>
+        ${options}
+      `;
+      tradingCounterpartyTradeContextFilter.value = selectedContext ? selectedValue : "";
+      tradingCounterpartyTradeContextValue.innerHTML = selectedContext
+        ? `<span class="client-pricing-context-candidate-path">${pricingContextFacetsMarkup(selectedContext, { originatingSystemLabel: true })}</span>`
+        : '<span class="trading-counterparty-trade-context-placeholder">All Trade Contexts</span>';
+      tradingCounterpartyTradeContextToggle.setAttribute(
+        "aria-label",
+        selectedContext
+          ? `Trade Context filter: ${pricingContextDisplayPath(selectedContext)}`
+          : "Trade Context filter: All Trade Contexts"
+      );
+      tradingCounterpartyTradeContextMenu.innerHTML = `
+        <button
+          type="button"
+          class="client-pricing-context-candidate trading-counterparty-trade-context-option${selectedContext ? "" : " is-selected"}"
+          data-trading-counterparty-trade-context-value=""
+          role="option"
+          aria-selected="${String(!selectedContext)}"
+        >
+          <span class="trading-counterparty-trade-context-all-option">
+            <span class="button-icon" aria-hidden="true">select_all</span>
+            <span>All Trade Contexts</span>
+          </span>
+        </button>
+        ${sortedContexts
+          .map(context => tradingCounterpartyTradeContextOptionMarkup(
+            context,
+            String(context.pricingContextId) === selectedValue
+          ))
+          .join("")}
+      `;
+      tradingCounterpartyTradeContextClear.disabled = !selectedContext;
+      setTradingCounterpartyTradeContextMenuOpen(false);
     }
 
     function replaceClientProfileRoute(counterpartyId = "") {
@@ -9289,7 +9676,11 @@
     }
 
     function navigateToClientProfileRoute(counterpartyId = "") {
-      const route = clientProfileRoute(counterpartyId);
+      const routeState = clientProfileRouteStateFromLocation();
+      const returnHash = counterpartyId && routeState.mode === "list" && routeState.tradeContextId
+        ? location.hash
+        : "";
+      const route = clientProfileRoute(counterpartyId, returnHash);
 
       if (location.hash === route) {
         syncClientProfileRouteView();
@@ -9310,22 +9701,18 @@
 
     function setClientProfileDetailNavigation(routeState = null) {
       const pricingRuleEntry = routeState?.mode === "pricing-rule";
-      const backLabel = pricingRuleEntry ? "Pricing Rules" : "Trading Counterparties";
-
-      clientProfileBreadcrumb.hidden = !pricingRuleEntry;
-      clientProfileBackButton.setAttribute("aria-label", `Back to ${backLabel}`);
-      clientProfileBackButton.querySelector("span:last-child").textContent = backLabel;
-      clientProfileResetButton.querySelector("span:last-child").textContent = pricingRuleEntry
-        ? backLabel
-        : "Back";
+      clientProfileBackNavigation.hidden = routeState?.mode !== "detail";
+      clientProfileBackButton.querySelector("span:last-child").textContent = activeTradingCounterpartyScope === "INTERNAL"
+        ? "Back to Internal Units"
+        : "Back to External Counterparties";
+      clientProfileContextLabel.hidden = !pricingRuleEntry;
+      clientProfileResetButton.querySelector("span:last-child").textContent = "Cancel";
 
       if (!pricingRuleEntry) {
         return;
       }
 
-      clientProfileBreadcrumbBackLink.href = routeState.returnHash;
-      clientProfileBreadcrumbBackLink.textContent = backLabel;
-      clientProfileBreadcrumbCurrent.textContent = `Pricing Rule ${routeState.pricingRuleId}`;
+      clientProfileContextLabel.textContent = `Pricing Rule ${routeState.pricingRuleId}`;
     }
 
     function navigateBackFromClientProfileRoute() {
@@ -9336,31 +9723,15 @@
         return;
       }
 
+      if (routeState.mode === "detail" && routeState.listReturnHash) {
+        location.hash = routeState.listReturnHash;
+        return;
+      }
+
       navigateToClientProfileRoute();
     }
 
-    function focusClientPricingRuleRouteEditor() {
-      window.requestAnimationFrame(() => {
-        const editor = clientExecutionContextsPanel.querySelector(
-          "[data-client-pricing-rule-inline-editor]"
-        );
-
-        if (!editor) {
-          return;
-        }
-
-        editor.scrollIntoView({
-          behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-            ? "auto"
-            : "smooth",
-          block: "center"
-        });
-        editor.querySelector("input:not([type='hidden']), select, button")
-          ?.focus({ preventScroll: true });
-      });
-    }
-
-    function openClientPricingRuleRouteEditor() {
+    function revealClientPricingRuleRoute() {
       const routeState = clientProfileRouteStateFromLocation();
       const profile = selectedClientProfile();
 
@@ -9386,32 +9757,32 @@
       }
 
       const rule = clientPricingRules[pricingRuleIndex];
-      const contextIsAttached = assignedExecutionContextsForProfile(profile).some(context =>
+      const contextIsAttached = assignedTradeContextsForProfile(profile).some(context =>
         String(context.pricingContextId) === String(rule.pricingContextId)
       );
 
       if (!contextIsAttached) {
         setClientProfileStatus(
-          `Pricing Rule ${routeState.pricingRuleId} could not be opened because its Execution Context is unavailable.`,
+          `Pricing Rule ${routeState.pricingRuleId} could not be opened because its Trade Context is unavailable.`,
           "error"
         );
         return;
       }
 
-      startClientPricingRuleEdit(pricingRuleIndex);
-      focusClientPricingRuleRouteEditor();
+      clientPricingRuleInlineEditorState = null;
+      collapseAllClientPricingConfigurationContexts(profile);
+      clientPricingConfigurationCollapsedSet(profile).delete(String(rule.pricingContextId));
+      renderClientTradeContextsPanel(profile);
     }
 
     function syncClientProfileRouteView() {
       const routeState = clientProfileRouteStateFromLocation();
-      const previousScope = clientProfileRouteScope;
 
       setClientProfileDetailNavigation();
 
-      if (routeState.mode === "related") {
-        clientProfileRouteScope = {
-          executionContextId: routeState.executionContextId,
-          returnHash: routeState.returnHash,
+      if (routeState.mode === "list" && routeState.tradeContextId) {
+        clientProfileTradeContextFilter = {
+          tradeContextId: routeState.tradeContextId,
           counterpartyIds: new Set(),
           status: "loading",
           message: ""
@@ -9421,30 +9792,18 @@
         setClientProfileRouteVisibility(false);
         resetClientProfileForm();
         setClientProfilePageHeading("Trading Counterparties");
-        clientProfilePage.classList.add("is-related-view");
-        clientProfileNewButton.hidden = true;
-        clientProfileBreadcrumb.hidden = false;
-        clientProfileBreadcrumbBackLink.href = clientProfileRouteScope.returnHash;
-        clientProfileBreadcrumbBackLink.textContent = "Execution Contexts";
-        clientProfileBreadcrumbCurrent.textContent = `Trading Counterparties for Execution Context ${routeState.executionContextId}`;
-
-        if (!previousScope || previousScope.executionContextId !== routeState.executionContextId) {
-          tradingCounterpartyHeaderFilterControls.forEach(control => {
-            control.value = "";
-          });
-        }
-
+        clientProfileNewButton.hidden = false;
+        syncTradingCounterpartyTradeContextFilterOptions(routeState.tradeContextId);
         setClientProfileStatus("");
-        loadExecutionContextTradingCounterparties(clientProfileRouteScope);
+        loadTradeContextTradingCounterparties(clientProfileTradeContextFilter);
         return;
       }
 
-      clientProfileRouteScopeRequestSequence += 1;
-      clientProfileRouteScope = null;
+      clientProfileTradeContextFilterRequestSequence += 1;
+      clientProfileTradeContextFilter = null;
       tradingCounterpartiesTable.removeAttribute("aria-busy");
-      clientProfilePage.classList.remove("is-related-view");
       clientProfileNewButton.hidden = false;
-      clientProfileBreadcrumb.hidden = true;
+      syncTradingCounterpartyTradeContextFilterOptions();
 
       if (routeState.mode === "list") {
         tradingCounterpartyRowEditState = null;
@@ -9470,11 +9829,13 @@
       );
 
       if (index >= 0) {
-        const executionContextsRequest = startClientProfileEdit(index);
+        const tradeContextsRequest = startClientProfileEdit(index, {
+          collapseTradeContexts: true
+        });
+        setClientProfileDetailNavigation(routeState);
 
         if (routeState.mode === "pricing-rule") {
-          setClientProfileDetailNavigation(routeState);
-          Promise.resolve(executionContextsRequest).then(() => {
+          Promise.resolve(tradeContextsRequest).then(() => {
             const currentRouteState = clientProfileRouteStateFromLocation();
 
             if (
@@ -9482,7 +9843,7 @@
               && currentRouteState.counterpartyId === routeState.counterpartyId
               && currentRouteState.pricingRuleId === routeState.pricingRuleId
             ) {
-              openClientPricingRuleRouteEditor();
+              revealClientPricingRuleRoute();
             }
           });
         }
@@ -9524,10 +9885,9 @@
       clientProfileSubmitButton.disabled = false;
       clientProfileSubmitButton.title = "";
       updateClientProfileDeleteAvailability();
-      clientProfileResetButton.querySelector("span:last-child").textContent = "Back";
-      clientProfileResetButton.querySelector(".button-icon").textContent = "arrow_back";
+      clientProfileResetButton.querySelector("span:last-child").textContent = "Cancel";
       showClientProfileCard(false);
-      renderClientExecutionContextsPanel(null);
+      renderClientTradeContextsPanel(null);
       renderClientPricingRulesPanel(null);
     }
 
@@ -9603,17 +9963,57 @@
       return profile.isActive ? "YES" : "NO";
     }
 
-    function tradingCounterpartyMatchesRouteScope(profile) {
-      return !clientProfileRouteScope || clientProfileRouteScope.counterpartyIds.has(
+    function tradingCounterpartyMatchesTradeContextFilter(profile) {
+      return !clientProfileTradeContextFilter || clientProfileTradeContextFilter.counterpartyIds.has(
         String(profile.counterpartyId ?? "")
       );
+    }
+
+    function tradingCounterpartyTradeContextScopeCounts() {
+      if (!clientProfileTradeContextFilter || clientProfileTradeContextFilter.status !== "loaded") {
+        return null;
+      }
+
+      const counts = { EXTERNAL: 0, INTERNAL: 0 };
+
+      clientProfiles.forEach(profile => {
+        if (!tradingCounterpartyMatchesTradeContextFilter(profile)) {
+          return;
+        }
+
+        const scope = normalizedCounterpartyScope(profile.counterpartyScope);
+
+        if (Object.hasOwn(counts, scope)) {
+          counts[scope] += 1;
+        }
+      });
+
+      return counts;
+    }
+
+    function syncTradingCounterpartyTradeContextScopeCounts() {
+      const counts = tradingCounterpartyTradeContextScopeCounts();
+
+      tradingCounterpartyScopeButtons.forEach(button => {
+        const scope = normalizedCounterpartyScope(button.dataset.tradingCounterpartyScope);
+        const count = button.querySelector("[data-trading-counterparty-scope-count]");
+
+        if (!count) {
+          return;
+        }
+
+        count.hidden = !counts;
+        if (counts) {
+          count.textContent = `(${counts[scope] ?? 0})`;
+        }
+      });
     }
 
     function tradingCounterpartyFilterValues(field) {
       return uniqueReferenceValues(
         clientProfiles.filter(profile =>
           normalizedCounterpartyScope(profile.counterpartyScope) === activeTradingCounterpartyScope
-          && tradingCounterpartyMatchesRouteScope(profile)
+          && tradingCounterpartyMatchesTradeContextFilter(profile)
         ),
         profile => tradingCounterpartyFilterValue(profile, field)
       );
@@ -9667,7 +10067,7 @@
             return false;
           }
 
-          if (!tradingCounterpartyMatchesRouteScope(profile)) {
+          if (!tradingCounterpartyMatchesTradeContextFilter(profile)) {
             return false;
           }
 
@@ -9787,10 +10187,10 @@
           <td><select class="inline-edit-control" data-trading-counterparty-field="isActive">${activeBooleanOptions(profile.isActive)}</select></td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
-              <button type="button" class="btn btn-sm btn-outline-primary reference-grid-action" data-profile-action="save" aria-label="Save Trading Counterparty" title="Save">
+              <button type="button" class="btn btn-sm btn-primary reference-grid-action" data-profile-action="save" aria-label="Save Trading Counterparty">
                 <span class="button-icon" aria-hidden="true">save</span>
               </button>
-              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-profile-action="cancel" aria-label="Cancel editing" title="Cancel">
+              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-profile-action="cancel" aria-label="Cancel editing">
                 <span class="button-icon" aria-hidden="true">close</span>
               </button>
             </span>
@@ -9800,10 +10200,8 @@
     }
 
     function renderTradingCounterpartyViewRow(profile, index) {
-      const relatedView = Boolean(clientProfileRouteScope);
-
       return `
-        <tr${index === editingClientProfileIndex ? " class=\"is-selected\"" : ""} data-profile-index="${index}"${relatedView ? "" : ' tabindex="0"'}>
+        <tr${index === editingClientProfileIndex ? " class=\"is-selected\"" : ""} data-profile-index="${index}" tabindex="0">
           <td>${escapeHtml(profile.counterpartyId ?? "")}</td>
           <td>${escapeHtml(tradingCounterpartyPartyTypeLabel(profile))}</td>
           <td>${escapeHtml(tradingCounterpartyBusinessIdType(profile))}</td>
@@ -9812,13 +10210,11 @@
           <td>${escapeHtml(tradingCounterpartyRolesLabel(profile))}</td>
           <td>${activeBooleanTokenMarkup(profile.isActive)}</td>
           <td class="profile-actions-cell" data-client-profile-actions-column>
-            ${relatedView ? "" : `
-              <span class="profile-row-actions">
-                <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-profile-action="edit" data-profile-index="${index}" aria-label="Edit ${escapeHtml(profile.counterpartyId ?? profile.inn)}">
-                  <span class="button-icon" aria-hidden="true">edit</span>
-                </button>
-              </span>
-            `}
+            <span class="profile-row-actions">
+              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-profile-action="edit" data-profile-index="${index}" aria-label="Edit ${escapeHtml(profile.counterpartyId ?? profile.inn)}">
+                <span class="button-icon" aria-hidden="true">edit</span>
+              </button>
+            </span>
           </td>
         </tr>
       `;
@@ -10004,17 +10400,18 @@
       }
 
       updateTradingCounterpartyIdSortControl();
+      syncTradingCounterpartyTradeContextScopeCounts();
       const rows = filteredClientProfiles();
       const scopedProfiles = clientProfiles.filter(profile =>
         normalizedCounterpartyScope(profile.counterpartyScope) === activeTradingCounterpartyScope
-        && tradingCounterpartyMatchesRouteScope(profile)
+        && tradingCounterpartyMatchesTradeContextFilter(profile)
       );
-      const createRow = !clientProfileRouteScope && tradingCounterpartyRowEditState?.mode === "create"
+      const createRow = tradingCounterpartyRowEditState?.mode === "create"
         ? renderTradingCounterpartyCreateRow(tradingCounterpartyDefaultDraft())
         : "";
-      const columnCount = clientProfileRouteScope ? 7 : 8;
+      const columnCount = 8;
 
-      if (clientProfileRouteScope?.status === "loading") {
+      if (clientProfileTradeContextFilter?.status === "loading") {
         clientProfileRowsEl.innerHTML = `
           <tr>
             <td class="profile-empty" colspan="${columnCount}">Loading attached Trading Counterparties...</td>
@@ -10024,7 +10421,7 @@
         return;
       }
 
-      if (clientProfileRouteScope?.status === "error") {
+      if (clientProfileTradeContextFilter?.status === "error") {
         clientProfileRowsEl.innerHTML = `
           <tr>
             <td class="profile-empty" colspan="${columnCount}">Attached Trading Counterparties could not be loaded.</td>
@@ -10035,8 +10432,8 @@
       }
 
       if (scopedProfiles.length === 0 && !createRow) {
-        const emptyLabel = clientProfileRouteScope
-          ? `No attached ${activeTradingCounterpartyScope === "INTERNAL" ? "internal units" : "external counterparties"} for this Execution Context.`
+        const emptyLabel = clientProfileTradeContextFilter
+          ? `No attached ${activeTradingCounterpartyScope === "INTERNAL" ? "internal units" : "external counterparties"} for this Trade Context.`
           : `No ${activeTradingCounterpartyScope === "INTERNAL" ? "internal units" : "external counterparties"} yet.`;
         clientProfileRowsEl.innerHTML = `
           <tr>
@@ -10084,14 +10481,14 @@
       clientProfileSubmitButton.querySelector(".button-icon").textContent = "add";
       updateClientProfileDeleteAvailability();
       showClientProfileCard(true);
-      renderClientExecutionContextsPanel(null);
+      renderClientTradeContextsPanel(null);
       renderClientPricingRulesPanel(null);
       setClientProfileStatus("");
       renderClientProfiles();
       updateClientProfileSubmitAvailability();
     }
 
-    function startClientProfileEdit(index) {
+    function startClientProfileEdit(index, options = {}) {
       const profile = clientProfiles[index];
 
       if (!profile) {
@@ -10122,12 +10519,28 @@
       updateClientProfileSubmitAvailability();
       updateClientProfileDeleteAvailability();
       showClientProfileCard(true);
-      renderClientExecutionContextsPanel(profile);
+      if (options.collapseTradeContexts) {
+        collapseAllClientPricingConfigurationContexts(profile);
+      }
+      renderClientTradeContextsPanel(profile);
       renderClientPricingRulesPanel(profile);
-      const executionContextsRequest = refreshTradingCounterpartyExecutionContexts(profile);
+      const tradeContextsRequest = refreshTradingCounterpartyTradeContexts(profile, {
+        render: !options.collapseTradeContexts
+      });
       setClientProfileStatus("");
       renderClientProfiles();
-      return executionContextsRequest;
+      if (!options.collapseTradeContexts) {
+        return tradeContextsRequest;
+      }
+
+      return Promise.resolve(tradeContextsRequest).then(contexts => {
+        if (selectedClientProfile()?.counterpartyId === profile.counterpartyId) {
+          collapseAllClientPricingConfigurationContexts(profile, contexts);
+          renderClientTradeContextsPanel(profile);
+        }
+
+        return contexts;
+      });
     }
 
     async function removeClientProfile(index) {
@@ -10296,6 +10709,7 @@
 
       clientProfileTopbar.hidden = usersVisible;
       tradingCounterpartyScopeTabs.hidden = usersVisible;
+      tradingCounterpartyFilterToolbar.hidden = usersVisible;
       clientProfileLayout.hidden = usersVisible;
       usersView.hidden = !usersVisible;
     }
@@ -10313,12 +10727,12 @@
       usersPageSubtitle.textContent = subtitle;
       usersPageSubtitle.hidden = !subtitle;
       document.title = title === "Users" ? title : `${title} - Users`;
+      renderWorkspacePageHeading();
     }
 
     function setUsersRouteVisibility(detailVisible) {
       usersListView.hidden = detailVisible;
       usersDetailView.hidden = !detailVisible;
-      usersBackButton.hidden = !detailVisible;
       usersLayout.classList.toggle("is-detail-view", detailVisible);
     }
 
@@ -10521,10 +10935,10 @@
           <td><select class="inline-edit-control" data-user-field="active">${activeBooleanOptions(item.active)}</select></td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
-              <button type="button" class="btn btn-sm btn-outline-primary reference-grid-action" data-user-action="save" aria-label="Save User" title="Save">
+              <button type="button" class="btn btn-sm btn-primary reference-grid-action" data-user-action="save" aria-label="Save User">
                 <span class="button-icon" aria-hidden="true">save</span>
               </button>
-              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-user-action="cancel" aria-label="Cancel editing" title="Cancel">
+              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-user-action="cancel" aria-label="Cancel editing">
                 <span class="button-icon" aria-hidden="true">close</span>
               </button>
             </span>
@@ -10833,6 +11247,7 @@
       const route = usersRoute(userId);
 
       history.replaceState(null, "", `${location.pathname}${location.search}${route}`);
+      renderWorkspacePageHeading();
     }
 
     function navigateToUsersRoute(userId = "") {
@@ -11071,8 +11486,7 @@
         servicingBranchCode: "",
         settlementSystemId: "",
         tradeCaptureChannelId: "",
-        defaultPositionManagementMode: "MANUAL",
-        autoHedgingAdmissionMode: "MANUAL_ONLY"
+        autoManagementAdmissionMode: "REVIEW_REQUIRED"
       };
     }
 
@@ -11085,10 +11499,8 @@
 
     function samePricingContext(left, right) {
       return samePricingContextIdentity(left, right) &&
-        normalizedPositionManagementMode(left.defaultPositionManagementMode) ===
-          normalizedPositionManagementMode(right.defaultPositionManagementMode) &&
-        normalizedAutoHedgingAdmissionMode(left.autoHedgingAdmissionMode) ===
-          normalizedAutoHedgingAdmissionMode(right.autoHedgingAdmissionMode);
+        normalizedAutoManagementAdmissionMode(left.autoManagementAdmissionMode) ===
+          normalizedAutoManagementAdmissionMode(right.autoManagementAdmissionMode);
     }
 
     function pricingContextRowControl(row, name) {
@@ -11099,11 +11511,8 @@
       const servicingBranchCode = pricingContextRowControl(row, "servicingBranchCode")?.value.trim() || "";
       const settlementSystemId = normalizedContextCode(pricingContextRowControl(row, "settlementSystemId")?.value);
       const tradeCaptureChannelId = normalizedContextCode(pricingContextRowControl(row, "tradeCaptureChannelId")?.value);
-      const defaultPositionManagementMode = normalizedPositionManagementMode(
-        pricingContextRowControl(row, "defaultPositionManagementMode")?.value
-      );
-      const autoHedgingAdmissionMode = normalizedAutoHedgingAdmissionMode(
-        pricingContextRowControl(row, "autoHedgingAdmissionMode")?.value
+      const autoManagementAdmissionMode = normalizedAutoManagementAdmissionMode(
+        pricingContextRowControl(row, "autoManagementAdmissionMode")?.value
       );
 
       if (!servicingBranchCode || !settlementSystemId || !tradeCaptureChannelId) {
@@ -11124,8 +11533,7 @@
         servicingBranchCode,
         settlementSystemId,
         tradeCaptureChannelId,
-        defaultPositionManagementMode,
-        autoHedgingAdmissionMode
+        autoManagementAdmissionMode
       };
     }
 
@@ -11144,7 +11552,7 @@
       );
 
       if (duplicateIndex !== -1) {
-        setSaveButtonAvailability(button, false, "Execution Context already exists");
+        setSaveButtonAvailability(button, false, "Trade Context already exists");
         return;
       }
 
@@ -11156,18 +11564,14 @@
     function pricingContextFromRow(row) {
       const servicingLocationSelect = pricingContextRowControl(row, "servicingBranchCode");
       const accountingSystemSelect = pricingContextRowControl(row, "settlementSystemId");
-      const executionSystemSelect = pricingContextRowControl(row, "tradeCaptureChannelId");
-      const defaultPositionManagementModeSelect = pricingContextRowControl(row, "defaultPositionManagementMode");
+      const originatingSystemSelect = pricingContextRowControl(row, "tradeCaptureChannelId");
       const servicingBranchCode = parseBranchCode(servicingLocationSelect);
-      const autoHedgingAdmissionModeSelect = pricingContextRowControl(row, "autoHedgingAdmissionMode");
+      const autoManagementAdmissionModeSelect = pricingContextRowControl(row, "autoManagementAdmissionMode");
       const settlementSystemId = parseContextCode(accountingSystemSelect, "Accounting System");
-      const tradeCaptureChannelId = parseContextCode(executionSystemSelect, "Execution System");
-      const defaultPositionManagementMode = normalizedPositionManagementMode(
-        defaultPositionManagementModeSelect?.value
-      );
+      const tradeCaptureChannelId = parseContextCode(originatingSystemSelect, "Originating System");
 
-      const autoHedgingAdmissionMode = normalizedAutoHedgingAdmissionMode(
-        autoHedgingAdmissionModeSelect?.value
+      const autoManagementAdmissionMode = normalizedAutoManagementAdmissionMode(
+        autoManagementAdmissionModeSelect?.value
       );
       if (servicingBranchCode === null || settlementSystemId === null || tradeCaptureChannelId === null) {
         updatePricingContextRowSaveAvailability(row);
@@ -11180,7 +11584,7 @@
 
       servicingLocationSelect.setCustomValidity(branchExists ? "" : "Select an existing Servicing Location.");
       accountingSystemSelect.setCustomValidity(settlementExists ? "" : "Select an existing Accounting System.");
-      executionSystemSelect.setCustomValidity(channelExists ? "" : "Select an existing Execution System.");
+      originatingSystemSelect.setCustomValidity(channelExists ? "" : "Select an existing Originating System.");
 
       if (!branchExists) {
         servicingLocationSelect.reportValidity();
@@ -11193,7 +11597,7 @@
       }
 
       if (!channelExists) {
-        executionSystemSelect.reportValidity();
+        originatingSystemSelect.reportValidity();
         return null;
       }
 
@@ -11204,18 +11608,17 @@
         servicingBranchCode,
         settlementSystemId,
         tradeCaptureChannelId,
-        defaultPositionManagementMode,
-        autoHedgingAdmissionMode
+        autoManagementAdmissionMode
       };
       const currentIndex = pricingContextEditStateIndex();
       const duplicateIndex = pricingContexts.findIndex((item, index) =>
         index !== currentIndex && samePricingContextIdentity(item, context)
       );
 
-      executionSystemSelect.setCustomValidity(duplicateIndex === -1 ? "" : "Execution Context already exists.");
+      originatingSystemSelect.setCustomValidity(duplicateIndex === -1 ? "" : "Trade Context already exists.");
 
       if (duplicateIndex !== -1) {
-        executionSystemSelect.reportValidity();
+        originatingSystemSelect.reportValidity();
         return null;
       }
 
@@ -11421,39 +11824,31 @@
         .find(control => control.dataset.pricingContextHeaderFilter === field) || null;
     }
 
-    function pricingContextRouteScopeLabel(scope) {
-      const item = referenceDataCollection(scope.kind)
-        .find(candidate => referenceDataKey(scope.kind, candidate) === scope.value);
-      const name = referenceDataItemName(scope.kind, item);
-
-      return `Execution Contexts for ${scope.value}${name ? ` — ${name}` : ""}`;
-    }
-
-    function highlightPricingContextAutoHedgingAdmissionColumn(enabled) {
+    function highlightPricingContextAutoManagementAdmissionColumn(enabled) {
       if (pricingContextFocusTimer) {
         window.clearTimeout(pricingContextFocusTimer);
         pricingContextFocusTimer = null;
       }
 
-      executionContextsTable?.classList.remove("is-auto-hedging-admission-focused");
+      tradeContextsTable?.classList.remove("is-auto-management-admission-focused");
 
-      if (!enabled || !executionContextsTable || !pricingContextAutoHedgingAdmissionHeader) {
+      if (!enabled || !tradeContextsTable || !pricingContextAutoManagementAdmissionHeader) {
         return;
       }
 
       // Restart the brief emphasis when this route is entered again.
-      void executionContextsTable.offsetWidth;
-      executionContextsTable.classList.add("is-auto-hedging-admission-focused");
-      pricingContextAutoHedgingAdmissionHeader.scrollIntoView({
+      void tradeContextsTable.offsetWidth;
+      tradeContextsTable.classList.add("is-auto-management-admission-focused");
+      pricingContextAutoManagementAdmissionHeader.scrollIntoView({
         behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
           ? "auto"
           : "smooth",
         block: "nearest",
         inline: "center"
       });
-      pricingContextAutoHedgingAdmissionHeader.focus({ preventScroll: true });
+      pricingContextAutoManagementAdmissionHeader.focus({ preventScroll: true });
       pricingContextFocusTimer = window.setTimeout(() => {
-        executionContextsTable.classList.remove("is-auto-hedging-admission-focused");
+        tradeContextsTable.classList.remove("is-auto-management-admission-focused");
         pricingContextFocusTimer = null;
       }, 2600);
     }
@@ -11461,9 +11856,9 @@
     function syncPricingContextRouteView() {
       const routeState = pricingRouteStateFromLocation();
       const previousScope = pricingContextRouteScope;
-      const relatedView = routeState.mode === "related" && routeState.scope;
+      const filteredView = routeState.mode === "filtered" && routeState.scope;
       const focusedAdmissionView = routeState.mode === "focused"
-        && routeState.focus === "auto-hedging-admission";
+        && routeState.focus === "auto-management-admission";
 
       pricingContextEditState = null;
       setPricingContextStatus("");
@@ -11471,7 +11866,7 @@
         control.readOnly = false;
         control.removeAttribute("aria-readonly");
 
-        if (relatedView) {
+        if (filteredView) {
           control.value = "";
         } else if (
           previousScope &&
@@ -11482,31 +11877,23 @@
         }
       });
 
-      pricingContextRouteScope = relatedView ? routeState.scope : null;
-      pricingPage.classList.toggle("is-related-view", Boolean(pricingContextRouteScope));
-      pricingContextNewButton.hidden = Boolean(pricingContextRouteScope);
-      pricingContextBreadcrumb.hidden = !pricingContextRouteScope && !focusedAdmissionView;
+      pricingContextRouteScope = filteredView ? routeState.scope : null;
+      pricingPage.classList.remove("is-related-view");
+      pricingContextNewButton.hidden = false;
+      pricingContextPageContextLabel.hidden = !focusedAdmissionView;
 
       if (pricingContextRouteScope) {
         const scopeControl = pricingContextHeaderFilterControl(pricingContextRouteScope.field);
 
         if (scopeControl) {
           scopeControl.value = pricingContextRouteScope.value;
-          scopeControl.readOnly = true;
-          scopeControl.setAttribute("aria-readonly", "true");
         }
-
-        pricingContextBreadcrumbBackLink.href = referenceDataRoute(pricingContextRouteScope.kind);
-        pricingContextBreadcrumbBackLink.textContent = referenceDataPluralLabel(pricingContextRouteScope.kind);
-        pricingContextBreadcrumbCurrent.textContent = pricingContextRouteScopeLabel(pricingContextRouteScope);
       } else if (focusedAdmissionView) {
-        pricingContextBreadcrumbBackLink.href = routeState.returnHash;
-        pricingContextBreadcrumbBackLink.textContent = "Initial Auto Hedging Admission Policy";
-        pricingContextBreadcrumbCurrent.textContent = "Execution Contexts — Auto Hedging Admission";
+        pricingContextPageContextLabel.textContent = "Trade Contexts — Initial Mode Assignment";
       }
 
       renderPricingContexts();
-      highlightPricingContextAutoHedgingAdmissionColumn(focusedAdmissionView);
+      highlightPricingContextAutoManagementAdmissionColumn(focusedAdmissionView);
     }
 
     function pricingContextSearchValues(context, field) {
@@ -11525,22 +11912,15 @@
         return [context.settlementSystemId, name];
       }
 
-      if (field === "defaultPositionManagementMode") {
+      if (field === "autoManagementAdmissionMode") {
         return [
-          context.defaultPositionManagementMode,
-          positionManagementModeLabel(context.defaultPositionManagementMode)
+          context.autoManagementAdmissionMode,
+          initialModeAssignmentLabel(context.autoManagementAdmissionMode)
         ];
       }
 
-      if (field === "autoHedgingAdmissionMode") {
-        return [
-          context.autoHedgingAdmissionMode,
-          autoHedgingAdmissionModeLabel(context.autoHedgingAdmissionMode)
-        ];
-      }
-
-      const executionSystem = tradeCaptureChannelById(context.tradeCaptureChannelId);
-      const pricingMode = normalizedPricingType(executionSystem?.pricingType);
+      const originatingSystem = tradeCaptureChannelById(context.tradeCaptureChannelId);
+      const pricingMode = normalizedPricingType(originatingSystem?.pricingType);
 
       return [
         context.tradeCaptureChannelId,
@@ -11551,13 +11931,6 @@
     }
 
     function pricingContextMatchesHeaderFilters(context) {
-      if (
-        pricingContextRouteScope &&
-        String(context?.[pricingContextRouteScope.field] ?? "") !== pricingContextRouteScope.value
-      ) {
-        return false;
-      }
-
       return pricingContextHeaderFilterControls.every(control => {
         const query = control.value.trim().toLowerCase();
 
@@ -11581,29 +11954,52 @@
         });
     }
 
+    function syncPricingContextClearFiltersButton() {
+      pricingContextClearFiltersButton.disabled = !pricingContextHeaderFilterControls
+        .some(control => control.value.trim());
+    }
+
+    function clearPricingContextReferenceFilterRoute() {
+      if (!pricingContextRouteScope) {
+        return;
+      }
+
+      pricingContextRouteScope = null;
+      history.replaceState(null, "", `${location.pathname}${location.search}${pricingRoute()}`);
+    }
+
+    function handlePricingContextHeaderFilterChange() {
+      clearPricingContextReferenceFilterRoute();
+      renderPricingContexts();
+    }
+
+    function clearPricingContextFilters() {
+      pricingContextHeaderFilterControls.forEach(control => {
+        control.value = "";
+      });
+      clearPricingContextReferenceFilterRoute();
+      pricingContextEditState = null;
+      setPricingContextStatus("");
+      renderPricingContexts();
+    }
+
     function attachedTradingCounterpartiesButtonMarkup(context, index, editing = false) {
       const count = pricingContextUsageCount(context?.pricingContextId);
       const hasAttachedCounterparties = count > 0;
-      const counterpartyLabel = count === 1 ? "Trading Counterparty" : "Trading Counterparties";
-      const tooltip = editing && hasAttachedCounterparties
-        ? "Finish editing to view attached Trading Counterparties"
-        : hasAttachedCounterparties
-          ? `View ${count} attached ${counterpartyLabel}`
-          : "No attached Trading Counterparties";
       const disabled = editing || !hasAttachedCounterparties;
-      const wrapperTooltip = disabled
-        ? ` tabindex="0" data-tooltip="${escapeHtml(tooltip)}"`
-        : "";
-      const buttonTooltip = disabled ? "" : ` data-tooltip="${escapeHtml(tooltip)}"`;
+      const viewLabel = hasAttachedCounterparties
+        ? `View ${count} attached ${count === 1 ? "Counterparty" : "Counterparties"}`
+        : "No attached Counterparties";
       const indexAttribute = Number.isInteger(index) ? ` data-pricing-context-index="${index}"` : "";
 
       return `
-        <span class="reference-related-view-control"${wrapperTooltip}>
+        <span class="reference-related-view-control">
+          <span class="reference-related-count" aria-label="${count} attached ${count === 1 ? "Counterparty" : "Counterparties"}">${count}</span>
           <button
             type="button"
             class="btn btn-sm btn-outline-secondary reference-grid-action"
             data-pricing-context-action="view-trading-counterparties"${indexAttribute}
-            aria-label="${escapeHtml(tooltip)}"${buttonTooltip}${disabled ? " disabled" : ""}
+            aria-label="${escapeHtml(viewLabel)}"${disabled ? " disabled" : ""}
           >
             <span class="button-icon" aria-hidden="true">visibility</span>
           </button>
@@ -11612,9 +12008,9 @@
     }
 
     function renderPricingContextViewRow(context, index) {
-      const executionSystem = tradeCaptureChannelById(context.tradeCaptureChannelId);
-      const executionSystemName = executionSystem?.tradeCaptureChannelName || context.tradeCaptureChannelId;
-      const dependencyDescription = executionContextDependencyDescription(context.pricingContextId);
+      const originatingSystem = tradeCaptureChannelById(context.tradeCaptureChannelId);
+      const originatingSystemName = originatingSystem?.tradeCaptureChannelName || context.tradeCaptureChannelId;
+      const dependencyDescription = tradeContextDependencyDescription(context.pricingContextId);
       const removeDisabled = dependencyDescription ? " disabled" : "";
 
       return `
@@ -11622,9 +12018,8 @@
           <td>${escapeHtml(context.pricingContextId)}</td>
           <td>${pricingContextFacetMarkup(context, "servicingBranchCode")}</td>
           <td>${pricingContextFacetMarkup(context, "settlementSystemId")}</td>
-          <td>${executionSystemLabelMarkup(executionSystemName, executionSystem?.pricingType)}</td>
-          <td>${positionManagementModeBadgeMarkup(context.defaultPositionManagementMode)}</td>
-          <td data-pricing-context-column="autoHedgingAdmissionMode">${autoHedgingAdmissionModeBadgeMarkup(context.autoHedgingAdmissionMode)}</td>
+          <td>${originatingSystemLabelMarkup(originatingSystemName, originatingSystem?.pricingType)}</td>
+          <td data-pricing-context-column="autoManagementAdmissionMode">${initialModeAssignmentMarkup(context.autoManagementAdmissionMode)}</td>
           <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index)}</td>
           <td class="profile-actions-cell" data-pricing-context-actions-column>
             <span class="profile-row-actions">
@@ -11658,30 +12053,23 @@
             </select>
           </td>
           <td>
-            <select class="inline-edit-control" data-pricing-context-field="tradeCaptureChannelId" aria-label="Execution System" required>
+            <select class="inline-edit-control" data-pricing-context-field="tradeCaptureChannelId" aria-label="Originating System" required>
               ${referenceSelectOptions(tradeCaptureChannels, context.tradeCaptureChannelId, "tradeCaptureChannelId", item => item.tradeCaptureChannelName)}
             </select>
           </td>
-          <td>
-            <select class="inline-edit-control" data-pricing-context-field="defaultPositionManagementMode" aria-label="Default FX Position Mode" required>
-              <option value="MANUAL"${normalizedPositionManagementMode(context.defaultPositionManagementMode) === "MANUAL" ? " selected" : ""}>${escapeHtml(positionManagementModeLabel("MANUAL"))}</option>
-              <option value="AUTO"${normalizedPositionManagementMode(context.defaultPositionManagementMode) === "AUTO" ? " selected" : ""}>${escapeHtml(positionManagementModeLabel("AUTO"))}</option>
-            </select>
-          </td>
-          <td data-pricing-context-column="autoHedgingAdmissionMode">
-            <select class="inline-edit-control" data-pricing-context-field="autoHedgingAdmissionMode" aria-label="Auto Hedging Admission" required>
-              <option value="AUTO_IF_ELIGIBLE"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "AUTO_IF_ELIGIBLE" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("AUTO_IF_ELIGIBLE"))}</option>
-              <option value="REVIEW_REQUIRED"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "REVIEW_REQUIRED" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("REVIEW_REQUIRED"))}</option>
-              <option value="MANUAL_ONLY"${normalizedAutoHedgingAdmissionMode(context.autoHedgingAdmissionMode) === "MANUAL_ONLY" ? " selected" : ""}>${escapeHtml(autoHedgingAdmissionModeLabel("MANUAL_ONLY"))}</option>
+          <td data-pricing-context-column="autoManagementAdmissionMode">
+            <select class="inline-edit-control" data-pricing-context-field="autoManagementAdmissionMode" aria-label="Initial Mode Assignment" required>
+              <option value="AUTO_IF_ELIGIBLE"${normalizedAutoManagementAdmissionMode(context.autoManagementAdmissionMode) === "AUTO_IF_ELIGIBLE" ? " selected" : ""}>${escapeHtml(initialModeAssignmentLabel("AUTO_IF_ELIGIBLE"))}</option>
+              <option value="REVIEW_REQUIRED"${normalizedAutoManagementAdmissionMode(context.autoManagementAdmissionMode) === "REVIEW_REQUIRED" ? " selected" : ""}>${escapeHtml(initialModeAssignmentLabel("REVIEW_REQUIRED"))}</option>
             </select>
           </td>
           <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index, true)}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
-              <button type="button" class="btn btn-sm btn-outline-primary reference-grid-action" data-pricing-context-action="save" aria-label="Save Execution Context" title="Save" disabled>
+              <button type="button" class="btn btn-sm btn-primary reference-grid-action" data-pricing-context-action="save" aria-label="Save Trade Context" disabled>
                 <span class="button-icon" aria-hidden="true">save</span>
               </button>
-              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-pricing-context-action="cancel" aria-label="Cancel editing" title="Cancel">
+              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-pricing-context-action="cancel" aria-label="Cancel editing">
                 <span class="button-icon" aria-hidden="true">close</span>
               </button>
             </span>
@@ -11696,6 +12084,7 @@
       }
 
       updatePricingContextIdSortControl();
+      syncPricingContextClearFiltersButton();
 
       const rows = filteredPricingContexts();
       const createRow = pricingContextEditState?.mode === "create"
@@ -11703,13 +12092,9 @@
         : "";
 
       if (rows.length === 0 && !createRow) {
-        const emptyLabel = pricingContextRouteScope
-          ? "No attached execution contexts."
-          : "No execution contexts yet.";
-        const columnCount = pricingContextRouteScope ? 7 : 8;
         pricingContextRowsEl.innerHTML = `
           <tr>
-            <td class="profile-empty" colspan="${columnCount}">${emptyLabel}</td>
+            <td class="profile-empty" colspan="7">No trade contexts match the filters.</td>
           </tr>
         `;
         scheduleSmartColumnSizing();
@@ -11735,7 +12120,7 @@
         pricingContextIdHeader,
         pricingContextIdSortButton,
         pricingContextIdSortDirection,
-        "execution contexts"
+        "trade contexts"
       );
     }
 
@@ -11772,10 +12157,7 @@
 
       pricingContextEditState = null;
       setPricingContextStatus("");
-      location.hash = tradingCounterpartiesForExecutionContextRoute(
-        context.pricingContextId,
-        location.hash
-      );
+      location.hash = tradingCounterpartiesForTradeContextRoute(context.pricingContextId);
     }
 
     async function removePricingContext(index) {
@@ -11785,11 +12167,11 @@
         return;
       }
 
-      const dependencyDescription = executionContextDependencyDescription(context.pricingContextId);
+      const dependencyDescription = tradeContextDependencyDescription(context.pricingContextId);
 
       if (dependencyDescription) {
         setPricingContextStatus(
-          `Execution Context cannot be deleted while it is used by ${dependencyDescription}.`,
+          `Trade Context cannot be deleted while it is used by ${dependencyDescription}.`,
           "error"
         );
         return;
@@ -11798,10 +12180,10 @@
       try {
         if (DEMO_API_ENABLED) {
           await demoApiRequest(
-            `/api/v1/execution-contexts/${encodeURIComponent(context.pricingContextId)}`,
+            `/api/v1/trade-contexts/${encodeURIComponent(context.pricingContextId)}`,
             { method: "DELETE" }
           );
-          await refreshExecutionContextsFromApi();
+          await refreshTradeContextsFromApi();
           pricingContextEditState = null;
         } else {
           pricingContexts.splice(index, 1);
@@ -11817,7 +12199,7 @@
         }
 
         setPricingContextStatus(
-          completedActionMessage(`Execution Context ${context.pricingContextId}`, "removed"),
+          completedActionMessage(`Trade Context ${context.pricingContextId}`, "removed"),
           "success"
         );
         renderPricingContexts();
@@ -11846,21 +12228,20 @@
         if (DEMO_API_ENABLED) {
           const response = await demoApiRequest(
             isCreating
-              ? "/api/v1/execution-contexts"
-              : `/api/v1/execution-contexts/${encodeURIComponent(currentContext.pricingContextId)}`,
+              ? "/api/v1/trade-contexts"
+              : `/api/v1/trade-contexts/${encodeURIComponent(currentContext.pricingContextId)}`,
             {
               method: isCreating ? "POST" : "PUT",
               body: JSON.stringify({
                 servicingLocationId: context.servicingBranchCode,
                 accountingSystemId: context.settlementSystemId,
-                executionSystemId: context.tradeCaptureChannelId,
-                defaultPositionManagementMode: context.defaultPositionManagementMode,
-                autoHedgingAdmissionMode: context.autoHedgingAdmissionMode
+                originatingSystemId: context.tradeCaptureChannelId,
+                autoManagementAdmissionMode: context.autoManagementAdmissionMode
               })
             }
           );
           savedContext = normalizedPricingContexts([response], [])[0] || context;
-          await refreshExecutionContextsFromApi();
+          await refreshTradeContextsFromApi();
         } else if (isCreating) {
           savedContext = {
             ...context,
@@ -11876,7 +12257,7 @@
         pricingContextEditState = null;
         setPricingContextStatus(
           completedActionMessage(
-            `Execution Context ${savedContext.pricingContextId}`,
+            `Trade Context ${savedContext.pricingContextId}`,
             isCreating ? "added" : "saved"
           ),
           "success"
@@ -11894,6 +12275,10 @@
     }
 
     function referenceDataCollection(kind) {
+      if (kind === "tradePurpose") {
+        return tradePurposes;
+      }
+
       if (kind === "servicingBranch") {
         return servicingBranches;
       }
@@ -11906,6 +12291,11 @@
     }
 
     function saveReferenceDataCollection(kind) {
+      if (kind === "tradePurpose") {
+        saveTradePurposes();
+        return;
+      }
+
       if (kind === "servicingBranch") {
         saveServicingBranches();
         return;
@@ -11920,6 +12310,10 @@
     }
 
     function referenceDataRowsElement(kind) {
+      if (kind === "tradePurpose") {
+        return tradePurposeRowsEl;
+      }
+
       if (kind === "servicingBranch") {
         return servicingBranchRowsEl;
       }
@@ -11932,6 +12326,10 @@
     }
 
     function referenceDataKindLabel(kind) {
+      if (kind === "tradePurpose") {
+        return "Trade Purpose";
+      }
+
       if (kind === "servicingBranch") {
         return "Servicing Location";
       }
@@ -11940,10 +12338,14 @@
         return "Accounting System";
       }
 
-      return "Execution System";
+      return "Originating System";
     }
 
     function referenceDataItemName(kind, item) {
+      if (kind === "tradePurpose") {
+        return item?.name || "";
+      }
+
       if (kind === "servicingBranch") {
         return item?.servicingBranchName || "";
       }
@@ -11956,6 +12358,10 @@
     }
 
     function referenceDataPluralLabel(kind) {
+      if (kind === "tradePurpose") {
+        return "Trade Purposes";
+      }
+
       if (kind === "servicingBranch") {
         return "Servicing Locations";
       }
@@ -11964,10 +12370,14 @@
         return "Accounting Systems";
       }
 
-      return "Execution Systems";
+      return "Originating Systems";
     }
 
     function referenceDataColumnCount(kind) {
+      if (kind === "tradePurpose") {
+        return 4;
+      }
+
       if (kind === "servicingBranch") {
         return 7;
       }
@@ -12000,7 +12410,7 @@
             ? String(item.isActive !== false)
             : field === "pricingType"
               ? `${item.pricingType || ""} ${pricingTypePresentation(item.pricingType).label}`
-            : field === "executionSystemLabel"
+            : field === "originatingSystemLabel"
               ? `${item.tradeCaptureChannelName || ""} ${item.pricingType || ""} ${pricingTypePresentation(item.pricingType).label}`
               : String(item[field] ?? "");
 
@@ -12019,7 +12429,9 @@
             ? servicingBranchIdSortDirection === "desc"
             : kind === "settlementSystem"
               ? settlementSystemIdSortDirection === "desc"
-              : kind === "tradeCaptureChannel" && tradeCaptureChannelIdSortDirection === "desc";
+              : kind === "tradePurpose"
+                ? tradePurposeIdSortDirection === "desc"
+                : kind === "tradeCaptureChannel" && tradeCaptureChannelIdSortDirection === "desc";
 
           return descending
             ? -keyOrder
@@ -12028,6 +12440,10 @@
     }
 
     function referenceDataKey(kind, item) {
+      if (kind === "tradePurpose") {
+        return item?.tradePurposeId || "";
+      }
+
       if (kind === "servicingBranch") {
         return item?.servicingBranchCode || "";
       }
@@ -12051,6 +12467,10 @@
     }
 
     function referenceDataUsageCount(kind, item) {
+      if (kind === "tradePurpose") {
+        return 0;
+      }
+
       if (kind === "servicingBranch") {
         return servicingBranchContextUsageCount(item?.servicingBranchCode || "");
       }
@@ -12062,30 +12482,31 @@
       return tradeCaptureChannelContextUsageCount(item?.tradeCaptureChannelId || "");
     }
 
-    function attachedExecutionContextsButtonMarkup(kind, item, index, editing = false) {
+    function attachedTradeContextsButtonMarkup(kind, item, index, editing = false) {
+      if (kind === "tradePurpose") {
+        return '<span aria-label="No attached Trade Contexts">—</span>';
+      }
+
       const count = referenceDataUsageCount(kind, item);
       const hasAttachedContexts = count > 0;
-      const contextLabel = count === 1 ? "Execution Context" : "Execution Contexts";
-      const tooltip = editing && hasAttachedContexts
-        ? "Finish editing to view attached Execution Contexts"
+      const contextLabel = count === 1 ? "Trade Context" : "Trade Contexts";
+      const viewLabel = editing && hasAttachedContexts
+        ? "Finish editing to view attached Trade Contexts"
         : hasAttachedContexts
           ? `View ${count} attached ${contextLabel}`
-          : "No attached Execution Contexts";
+          : "No attached Trade Contexts";
       const disabled = editing || !hasAttachedContexts;
-      const wrapperTooltip = disabled
-        ? ` tabindex="0" data-tooltip="${escapeHtml(tooltip)}"`
-        : "";
-      const buttonTooltip = disabled ? "" : ` data-tooltip="${escapeHtml(tooltip)}"`;
       const indexAttribute = Number.isInteger(index) ? ` data-reference-index="${index}"` : "";
 
       return `
-        <span class="reference-related-view-control"${wrapperTooltip}>
+        <span class="reference-related-view-control">
+          <span class="reference-related-count" aria-label="${count} attached ${contextLabel}">${count}</span>
           <button
             type="button"
             class="btn btn-sm btn-outline-secondary reference-grid-action"
-            data-reference-action="view-execution-contexts"
+            data-reference-action="view-trade-contexts"
             data-reference-kind="${escapeHtml(kind)}"${indexAttribute}
-            aria-label="${escapeHtml(tooltip)}"${buttonTooltip}${disabled ? " disabled" : ""}
+            aria-label="${escapeHtml(viewLabel)}"${disabled ? " disabled" : ""}
           >
             <span class="button-icon" aria-hidden="true">visibility</span>
           </button>
@@ -12094,6 +12515,10 @@
     }
 
     function referenceDataDefaultDraft(kind) {
+      if (kind === "tradePurpose") {
+        return { tradePurposeId: "", name: "", tradeContextCount: 0 };
+      }
+
       if (kind === "servicingBranch") {
         return { servicingBranchCode: "", servicingBranchName: "", region: "", locationType: "BRANCH", isActive: true };
       }
@@ -12135,7 +12560,12 @@
       const indexAttribute = index === null ? "" : ` data-reference-index="${index}"`;
       let cells = "";
 
-      if (kind === "servicingBranch") {
+      if (kind === "tradePurpose") {
+        cells = `
+          <td><input class="inline-edit-control" type="text" data-reference-field="tradePurposeId" aria-label="Trade Purpose ID" value="${escapeHtml(item.tradePurposeId)}" maxlength="30" pattern="[A-Za-z0-9_-]{2,30}" required></td>
+          <td><input class="inline-edit-control" type="text" data-reference-field="name" aria-label="Trade Purpose Name" value="${escapeHtml(item.name)}" maxlength="100" required></td>
+        `;
+      } else if (kind === "servicingBranch") {
         cells = `
           <td><input class="inline-edit-control" type="text" data-reference-field="servicingBranchCode" value="${escapeHtml(item.servicingBranchCode)}" maxlength="10" required${keyReadonly}></td>
           <td><input class="inline-edit-control" type="text" data-reference-field="servicingBranchName" value="${escapeHtml(item.servicingBranchName)}" maxlength="50" required></td>
@@ -12150,7 +12580,7 @@
           <td><select class="inline-edit-control" data-reference-field="isActive">${activeBooleanOptions(item.isActive)}</select></td>
         `;
       } else {
-        const pricingModeLockMessage = "Pricing Mode is locked while Execution Contexts are attached. Create another Execution System for a different mode.";
+        const pricingModeLockMessage = "Pricing Mode is locked while Trade Contexts are attached. Create another Originating System for a different mode.";
         const pricingModeLockAriaLabel = `Pricing Mode: ${pricingTypePresentation(item.pricingType).label}. ${pricingModeLockMessage}`;
         const pricingModeControl = pricingModeLocked
           ? `
@@ -12173,7 +12603,7 @@
           <td><input class="inline-edit-control" type="text" data-reference-field="tradeCaptureChannelId" value="${escapeHtml(item.tradeCaptureChannelId)}" maxlength="30" pattern="[A-Z0-9_-]{2,30}" required${keyReadonly}></td>
           <td><input class="inline-edit-control" type="text" data-reference-field="tradeCaptureChannelName" value="${escapeHtml(item.tradeCaptureChannelName)}" maxlength="50" required></td>
           <td>${pricingModeControl}</td>
-          <td data-execution-system-label-preview>${executionSystemLabelMarkup(item.tradeCaptureChannelName, item.pricingType)}</td>
+          <td data-originating-system-label-preview>${originatingSystemLabelMarkup(item.tradeCaptureChannelName, item.pricingType)}</td>
           <td><select class="inline-edit-control" data-reference-field="isActive">${activeBooleanOptions(item.isActive)}</select></td>
         `;
       }
@@ -12181,13 +12611,13 @@
       return `
         <tr class="is-selected is-editing"${indexAttribute} data-reference-kind="${kind}" data-reference-edit-row>
           ${cells}
-          <td class="reference-related-view-cell">${attachedExecutionContextsButtonMarkup(kind, item, index, true)}</td>
+          <td class="reference-related-view-cell">${attachedTradeContextsButtonMarkup(kind, item, index, true)}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
-              <button type="button" class="btn btn-sm btn-outline-primary reference-grid-action" data-reference-action="save" data-reference-kind="${kind}" aria-label="Save ${escapeHtml(label)}" title="Save">
+              <button type="button" class="btn btn-sm btn-primary reference-grid-action" data-reference-action="save" data-reference-kind="${kind}" aria-label="Save ${escapeHtml(label)}">
                 <span class="button-icon" aria-hidden="true">save</span>
               </button>
-              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-reference-action="cancel" data-reference-kind="${kind}" aria-label="Cancel editing" title="Cancel">
+              <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-reference-action="cancel" data-reference-kind="${kind}" aria-label="Cancel editing">
                 <span class="button-icon" aria-hidden="true">close</span>
               </button>
             </span>
@@ -12203,7 +12633,12 @@
       const removeDisabled = usageCount > 0 ? " disabled" : "";
       let cells = "";
 
-      if (kind === "servicingBranch") {
+      if (kind === "tradePurpose") {
+        cells = `
+          <td>${highlightedReferenceDataText(kind, item.tradePurposeId)}</td>
+          <td>${highlightedReferenceDataText(kind, item.name)}</td>
+        `;
+      } else if (kind === "servicingBranch") {
         cells = `
           <td>${highlightedReferenceDataText(kind, item.servicingBranchCode)}</td>
           <td>${highlightedReferenceDataText(kind, item.servicingBranchName)}</td>
@@ -12228,7 +12663,7 @@
             highlightedReferenceDataText(kind, pricingTypeLabel),
             false
           )}</td>
-          <td>${executionSystemLabelMarkup(item.tradeCaptureChannelName, item.pricingType)}</td>
+          <td>${originatingSystemLabelMarkup(item.tradeCaptureChannelName, item.pricingType)}</td>
           <td>${activeLabel(item.isActive)}</td>
         `;
       }
@@ -12236,7 +12671,7 @@
       return `
         <tr data-reference-kind="${kind}" data-reference-index="${index}">
           ${cells}
-          <td class="reference-related-view-cell">${attachedExecutionContextsButtonMarkup(kind, item, index)}</td>
+          <td class="reference-related-view-cell">${attachedTradeContextsButtonMarkup(kind, item, index)}</td>
           <td class="profile-actions-cell">
             <span class="profile-row-actions">
               <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-reference-action="edit" data-reference-kind="${kind}" data-reference-index="${index}" aria-label="Edit ${escapeHtml(key)}">
@@ -12310,9 +12745,11 @@
       updateServicingBranchIdSortControl();
       updateSettlementSystemIdSortControl();
       updateTradeCaptureChannelIdSortControl();
+      updateTradePurposeIdSortControl();
       renderReferenceDataTable("servicingBranch");
       renderReferenceDataTable("settlementSystem");
       renderReferenceDataTable("tradeCaptureChannel");
+      renderReferenceDataTable("tradePurpose");
       scheduleSmartColumnSizing();
     }
 
@@ -12330,7 +12767,16 @@
         tradeCaptureChannelIdHeader,
         tradeCaptureChannelIdSortButton,
         tradeCaptureChannelIdSortDirection,
-        "execution systems"
+        "originating systems"
+      );
+    }
+
+    function updateTradePurposeIdSortControl() {
+      updateReferenceDataIdSortControl(
+        tradePurposeIdHeader,
+        tradePurposeIdSortButton,
+        tradePurposeIdSortDirection,
+        "trade purposes"
       );
     }
 
@@ -12379,6 +12825,26 @@
     function referenceDataItemFromRow(kind, row) {
       const field = name => row.querySelector(`[data-reference-field='${name}']`);
 
+      if (kind === "tradePurpose") {
+        const idInput = field("tradePurposeId");
+        const nameInput = field("name");
+        const tradePurposeId = idInput.value.trim().toUpperCase();
+        const name = nameInput.value.trim();
+        const validId = /^[A-Z0-9_-]{2,30}$/.test(tradePurposeId);
+        const validName = name.length > 0 && name.length <= 100;
+
+        idInput.value = tradePurposeId;
+        idInput.setCustomValidity(validId ? "" : "Trade Purpose ID must contain 2 to 30 letters, digits, '_' or '-'.");
+        nameInput.setCustomValidity(validName ? "" : "Trade Purpose Name must contain 1 to 100 characters.");
+
+        if (!validId || !validName) {
+          (validId ? nameInput : idInput).reportValidity();
+          return null;
+        }
+
+        return { tradePurposeId, name, tradeContextCount: 0 };
+      }
+
       if (kind === "servicingBranch") {
         const codeInput = field("servicingBranchCode");
         const nameInput = field("servicingBranchName");
@@ -12419,8 +12885,8 @@
       const idInput = field("tradeCaptureChannelId");
       const nameInput = field("tradeCaptureChannelName");
       const typeSelect = field("pricingType");
-      const tradeCaptureChannelId = parseContextCode(idInput, "Execution System ID");
-      const tradeCaptureChannelName = parseRequiredText(nameInput, "Execution System Name");
+      const tradeCaptureChannelId = parseContextCode(idInput, "Originating System ID");
+      const tradeCaptureChannelName = parseRequiredText(nameInput, "Originating System Name");
       const pricingType = parseContextCode(typeSelect, "Pricing Mode");
 
       if (tradeCaptureChannelId === null || tradeCaptureChannelName === null || pricingType === null) {
@@ -12444,6 +12910,17 @@
 
     function referenceDataDraftFromRow(kind, row) {
       const field = name => row.querySelector(`[data-reference-field='${name}']`);
+
+      if (kind === "tradePurpose") {
+        const tradePurposeId = String(field("tradePurposeId")?.value || "").trim().toUpperCase();
+        const name = field("name")?.value.trim() || "";
+
+        if (!/^[A-Z0-9_-]{2,30}$/.test(tradePurposeId) || !name || name.length > 100) {
+          return null;
+        }
+
+        return { tradePurposeId, name, tradeContextCount: 0 };
+      }
 
       if (kind === "servicingBranch") {
         const servicingBranchCode = field("servicingBranchCode")?.value.trim() || "";
@@ -12502,6 +12979,10 @@
         return false;
       }
 
+      if (kind === "tradePurpose") {
+        return left.name === right.name;
+      }
+
       if (kind === "servicingBranch") {
         return left.servicingBranchName === right.servicingBranchName &&
           left.region === right.region &&
@@ -12519,8 +13000,8 @@
         referenceActiveValue(left) === referenceActiveValue(right);
     }
 
-    function syncExecutionSystemLabelPreview(row) {
-      const preview = row.querySelector("[data-execution-system-label-preview]");
+    function syncOriginatingSystemLabelPreview(row) {
+      const preview = row.querySelector("[data-originating-system-label-preview]");
 
       if (!preview) {
         return;
@@ -12528,7 +13009,7 @@
 
       const name = row.querySelector("[data-reference-field='tradeCaptureChannelName']")?.value || "";
       const pricingType = row.querySelector("[data-reference-field='pricingType']")?.value || "";
-      preview.innerHTML = executionSystemLabelMarkup(name, pricingType);
+      preview.innerHTML = originatingSystemLabelMarkup(name, pricingType);
     }
 
     function updateReferenceDataRowSaveAvailability(row) {
@@ -12536,7 +13017,7 @@
       const button = row.querySelector("[data-reference-action='save']");
 
       if (kind === "tradeCaptureChannel") {
-        syncExecutionSystemLabelPreview(row);
+        syncOriginatingSystemLabelPreview(row);
       }
 
       const item = referenceDataDraftFromRow(kind, row);
@@ -12571,7 +13052,7 @@
         && item.pricingType !== oldItem.pricingType
         && referenceDataUsageCount(kind, oldItem) > 0
       ) {
-        setSaveButtonAvailability(button, false, "Pricing Mode cannot be changed while this Execution System is used");
+        setSaveButtonAvailability(button, false, "Pricing Mode cannot be changed while this Originating System is used");
         return;
       }
 
@@ -12609,7 +13090,7 @@
       }
 
       if (oldItem && oldKey !== key && referenceDataUsageCount(kind, oldItem) > 0) {
-        setReferenceDataStatus(`${referenceDataKindLabel(kind)} ID cannot be changed while it is used by Execution Context.`, "error");
+        setReferenceDataStatus(`${referenceDataKindLabel(kind)} ID cannot be changed while it is used by Trade Context.`, "error");
         return;
       }
 
@@ -12619,7 +13100,7 @@
         && item.pricingType !== oldItem.pricingType
         && referenceDataUsageCount(kind, oldItem) > 0
       ) {
-        setReferenceDataStatus("Execution System Pricing Mode cannot be changed while it is used by Execution Context.", "error");
+        setReferenceDataStatus("Originating System Pricing Mode cannot be changed while it is used by Trade Context.", "error");
         return;
       }
 
@@ -12660,19 +13141,30 @@
         } else if (kind === "tradeCaptureChannel" && DEMO_API_ENABLED) {
           await demoApiRequest(
             isCreating
-              ? "/api/v1/execution-systems"
-              : `/api/v1/execution-systems/${encodeURIComponent(oldKey)}`,
+              ? "/api/v1/originating-systems"
+              : `/api/v1/originating-systems/${encodeURIComponent(oldKey)}`,
             {
               method: isCreating ? "POST" : "PUT",
               body: JSON.stringify({
-                executionSystemId: item.tradeCaptureChannelId,
+                originatingSystemId: item.tradeCaptureChannelId,
                 name: item.tradeCaptureChannelName,
                 pricingMode: item.pricingType,
                 active: item.isActive
               })
             }
           );
-          await refreshExecutionSystemsFromApi();
+          await refreshOriginatingSystemsFromApi();
+        } else if (kind === "tradePurpose" && DEMO_API_ENABLED) {
+          await demoApiRequest(
+            isCreating
+              ? "/api/v1/trade-purposes"
+              : `/api/v1/trade-purposes/${encodeURIComponent(oldKey)}`,
+            {
+              method: isCreating ? "POST" : "PUT",
+              body: JSON.stringify({ tradePurposeId: item.tradePurposeId, name: item.name })
+            }
+          );
+          await refreshTradePurposesFromApi();
         } else if (isCreating) {
           collection.push(item);
           saveReferenceDataCollection(kind);
@@ -12708,7 +13200,7 @@
 
       if (usageCount > 0) {
         setReferenceDataStatus(
-          `${referenceDataKindLabel(kind)} cannot be deleted while ${usageCount} Execution ${usageCount === 1 ? "Context uses" : "Contexts use"} it.`,
+          `${referenceDataKindLabel(kind)} cannot be deleted while ${usageCount} Trade ${usageCount === 1 ? "Context uses" : "Contexts use"} it.`,
           "error"
         );
         return;
@@ -12724,8 +13216,11 @@
           await demoApiRequest(`/api/v1/accounting-systems/${encodeURIComponent(key)}`, { method: "DELETE" });
           await refreshAccountingSystemsFromApi();
         } else if (kind === "tradeCaptureChannel" && DEMO_API_ENABLED) {
-          await demoApiRequest(`/api/v1/execution-systems/${encodeURIComponent(key)}`, { method: "DELETE" });
-          await refreshExecutionSystemsFromApi();
+          await demoApiRequest(`/api/v1/originating-systems/${encodeURIComponent(key)}`, { method: "DELETE" });
+          await refreshOriginatingSystemsFromApi();
+        } else if (kind === "tradePurpose" && DEMO_API_ENABLED) {
+          await demoApiRequest(`/api/v1/trade-purposes/${encodeURIComponent(key)}`, { method: "DELETE" });
+          await refreshTradePurposesFromApi();
         } else {
           collection.splice(index, 1);
           saveReferenceDataCollection(kind);
@@ -12735,7 +13230,8 @@
           const collectionReloadedFromApi = DEMO_API_ENABLED && [
             "servicingBranch",
             "settlementSystem",
-            "tradeCaptureChannel"
+            "tradeCaptureChannel",
+            "tradePurpose"
           ].includes(kind);
 
           if (referenceDataEditState.index === index || collectionReloadedFromApi) {
@@ -12759,7 +13255,7 @@
       }
     }
 
-    function viewReferenceDataExecutionContexts(kind, index) {
+    function viewReferenceDataTradeContexts(kind, index) {
       const item = referenceDataCollection(kind)[index];
 
       if (!item || referenceDataUsageCount(kind, item) <= 0) {
@@ -12788,8 +13284,8 @@
         startReferenceDataEdit(kind, index);
       } else if (action === "remove") {
         removeReferenceDataItem(kind, index);
-      } else if (action === "view-execution-contexts") {
-        viewReferenceDataExecutionContexts(kind, index);
+      } else if (action === "view-trade-contexts") {
+        viewReferenceDataTradeContexts(kind, index);
       } else if (action === "cancel") {
         cancelReferenceDataForm();
       } else if (action === "save" && row) {
@@ -12943,54 +13439,88 @@
         return "currencies";
       }
 
-      return "streams";
+      if (routeKind === "streams" || routeKind === "quote-stream") {
+        return "quote-stream";
+      }
+
+      if (routeKind === "history" || routeKind === "data-management") {
+        return "data-management";
+      }
+
+      if (routeKind === "charts") {
+        return "charts";
+      }
+
+      return "quote-stream";
     }
 
-    function marketSettingsScopeLabel(scope) {
-      const currency = ccyOptions.find(item => item.code === scope.currencyCode);
-
-      return `Currency Pairs for ${scope.currencyCode}${currency?.name ? ` — ${currency.name}` : ""}`;
+    function marketPairFiltersAreActive() {
+      return (marketPairOptionGrid?.getHeaderFilters?.() || []).some(filter =>
+        String(filter?.value ?? "").trim() !== ""
+      );
     }
 
-    function syncMarketPairActionsColumn() {
-      const actionsColumn = marketPairOptionGrid?.getColumn("actions");
+    function syncMarketPairClearFiltersButton() {
+      marketPairClearFiltersButton.disabled = !marketPairOptionGridReady
+        || !marketPairFiltersAreActive();
+    }
 
-      if (!actionsColumn) {
+    function applyMarketPairRouteCurrencyFilter() {
+      if (!marketPairOptionGridReady || !marketPairRouteCurrencyFilter) {
+        syncMarketPairClearFiltersButton();
         return;
       }
 
-      if (marketSettingsRouteScope) {
-        actionsColumn.hide();
-      } else {
-        actionsColumn.show();
+      marketPairOptionGrid.clearHeaderFilter();
+      marketPairOptionGrid.setHeaderFilterValue(
+        "currencyPair",
+        marketPairRouteCurrencyFilter
+      );
+      syncMarketPairClearFiltersButton();
+    }
+
+    function clearMarketPairFilterRoute() {
+      if (!marketPairRouteCurrencyFilter) {
+        return;
       }
+
+      marketPairRouteCurrencyFilter = "";
+      history.replaceState(null, "", `${location.pathname}${location.search}${settingsRoute("pairs")}`);
+      renderWorkspacePageHeading();
+      document.title = "Currency Pair Settings";
+    }
+
+    function clearMarketPairFilters() {
+      marketPairOptionGrid?.clearHeaderFilter();
+      clearMarketPairFilterRoute();
+      syncMarketPairClearFiltersButton();
     }
 
     function syncMarketSettingsRouteView() {
       const routeState = currencySettingsRouteStateFromLocation();
-      const nextScope = routeState.mode === "related" && routeState.scope
-        ? routeState.scope
-        : null;
-      const scopeChanged = marketSettingsRouteScope?.currencyCode !== nextScope?.currencyCode;
+      const nextCurrencyFilter = routeState.mode === "filtered" && routeState.filter
+        ? routeState.filter.currencyCode
+        : "";
+      const filterChanged = marketPairRouteCurrencyFilter !== nextCurrencyFilter;
 
-      marketSettingsRouteScope = nextScope;
-      marketPage.classList.toggle("is-related-view", Boolean(marketSettingsRouteScope));
-      marketPairOptionNewButton.hidden = Boolean(marketSettingsRouteScope);
-      marketSettingsBreadcrumb.hidden = !marketSettingsRouteScope;
+      marketPairRouteCurrencyFilter = nextCurrencyFilter;
+      marketPage.classList.remove("is-related-view");
+      marketPairOptionNewButton.hidden = false;
 
-      if (marketSettingsRouteScope) {
+      if (marketPairRouteCurrencyFilter) {
         marketCcyOptionsEditState = null;
         marketPairOptionsEditState = null;
-        marketSettingsBreadcrumbBackLink.href = marketSettingsRouteScope.returnHash;
-        marketSettingsBreadcrumbBackLink.textContent = "Currency Settings";
-        marketSettingsBreadcrumbCurrent.textContent = marketSettingsScopeLabel(marketSettingsRouteScope);
+      }
 
-        if (scopeChanged) {
-          marketPairOptionGrid?.clearHeaderFilter();
+      if (filterChanged && marketPairOptionGridReady) {
+        if (marketPairRouteCurrencyFilter) {
+          applyMarketPairRouteCurrencyFilter();
+        } else {
+          marketPairOptionGrid.clearHeaderFilter();
         }
       }
 
-      syncMarketPairActionsColumn();
+      syncMarketPairClearFiltersButton();
     }
 
     function updateMarketVisibility() {
@@ -12999,10 +13529,15 @@
         ? "Currency Settings"
         : activeKind === "pairs"
           ? "Currency Pair Settings"
-          : "Market Pulse";
+          : activeKind === "charts"
+            ? "Charts"
+            : activeKind === "data-management"
+              ? "Data Management"
+              : "Quote Stream";
 
       marketPageTitle.textContent = pageTitle;
       marketPageHeader.setAttribute("aria-label", `${pageTitle} header`);
+      if (isCurrencySettingsRoute() || isMarketRoute()) renderWorkspacePageHeading();
 
       marketPanels.forEach(panel => {
         panel.hidden = panel.dataset.marketPanel !== activeKind;
@@ -13013,12 +13548,14 @@
           ? marketCcyOptionGrid
           : activeKind === "pairs"
             ? marketPairOptionGrid
-            : marketStreamGrid;
+            : activeKind === "quote-stream"
+              ? marketStreamGrid
+              : null;
         const activeGridReady = activeKind === "currencies"
           ? marketCcyOptionGridReady
           : activeKind === "pairs"
             ? marketPairOptionGridReady
-            : marketStreamGridReady;
+            : activeKind === "quote-stream" && marketStreamGridReady;
 
         if (activeGridReady) {
           activeGrid?.redraw(true);
@@ -13249,7 +13786,7 @@
       rollbackBatchId = batch.batchId;
       batchRollbackSummary.textContent =
         `Batch #${batch.batchId} (${batch.ccyPairCode}) will be ROLLED_BACK. `
-        + "Its source trades and Batch Balance Trade, if present, will return to FX Position.";
+        + "Its source trades and Batch Balance Trade, if present, will return to Position.";
       batchRollbackStatus.textContent = "";
       batchRollbackStatus.hidden = true;
 
@@ -13270,23 +13807,23 @@
 
       try {
         await demoApiRequest(
-          `/api/v1/fx-batches/${encodeURIComponent(batchId)}/rollback`,
+          `/api/v1/batches/${encodeURIComponent(batchId)}/rollback`,
           { method: "POST" }
         );
         await Promise.all([
-          reloadFxBatchesFromApi(),
-          reloadFxPositionsFromApi()
+          reloadBatchesFromApi(),
+          reloadPositionsFromApi()
         ]);
         selectedTradeIds.clear();
-        render(fxPositions);
+        render(positions);
         closeBatchRollbackDialog();
         setBatchingHistoryStatus(
-          `FX Batch ${batchId} was rolled back successfully. Its source trades were returned to FX Position.`,
+          `Batch ${batchId} was rolled back successfully. Its source trades were returned to Position.`,
           "success"
         );
       } catch (error) {
         batchRollbackStatus.textContent =
-          error.message || `Unable to roll back FX Batch ${batchId}.`;
+          error.message || `Unable to roll back Batch ${batchId}.`;
         batchRollbackStatus.className = "alert alert-danger batch-rollback-status";
         batchRollbackStatus.hidden = false;
         batchRollbackConfirmButton.disabled = false;
@@ -13294,23 +13831,23 @@
       }
     }
 
-    function updateBatchingHistoryCount(filteredCount = fxBatchHistory.length) {
-      const total = fxBatchHistory.length;
+    function updateBatchingHistoryCount(filteredCount = batchHistory.length) {
+      const total = batchHistory.length;
       const label = total === 1 ? "batch" : "batches";
       batchingHistoryCountEl.textContent = filteredCount === total
         ? `${total} ${label}`
         : `${filteredCount} of ${total} batches`;
     }
 
-    function fxBatchesAuditViewEnabled() {
-      return fxBatchesViewMode === FX_BATCHES_VIEW_MODE_AUDIT;
+    function batchesAuditViewEnabled() {
+      return batchesViewMode === BATCHES_VIEW_MODE_AUDIT;
     }
 
-    function syncFxBatchesAuditToggle() {
-      fxBatchesAuditViewToggle.checked = fxBatchesAuditViewEnabled();
+    function syncBatchesAuditToggle() {
+      batchesAuditViewToggle.checked = batchesAuditViewEnabled();
     }
 
-    function applyFxBatchesViewMode() {
+    function applyBatchesViewMode() {
       const auditFields = [
         "batchingKey",
         "windowOpenedAt",
@@ -13322,7 +13859,7 @@
       auditFields.forEach(field => {
         const column = batchingHistoryGrid?.getColumn(field);
 
-        if (fxBatchesAuditViewEnabled()) {
+        if (batchesAuditViewEnabled()) {
           column?.show();
         } else {
           column?.hide();
@@ -13330,14 +13867,14 @@
       });
 
       batchingHistoryGrid?.redraw(true);
-      syncFxBatchesAuditToggle();
+      syncBatchesAuditToggle();
     }
 
-    function setFxBatchesViewMode(mode) {
-      fxBatchesViewMode = mode === FX_BATCHES_VIEW_MODE_AUDIT
-        ? FX_BATCHES_VIEW_MODE_AUDIT
-        : FX_BATCHES_VIEW_MODE_STANDARD;
-      applyFxBatchesViewMode();
+    function setBatchesViewMode(mode) {
+      batchesViewMode = mode === BATCHES_VIEW_MODE_AUDIT
+        ? BATCHES_VIEW_MODE_AUDIT
+        : BATCHES_VIEW_MODE_STANDARD;
+      applyBatchesViewMode();
     }
 
     function initializeBatchingHistoryGrid(data) {
@@ -13348,7 +13885,7 @@
         renderVertical: "virtual",
         renderVerticalBuffer: 240,
         maxHeight: "calc(100vh - var(--workspace-nav-height) - 170px)",
-        placeholder: "No FX Batches have been formed.",
+        placeholder: "No Batches have been formed.",
         movableColumns: false,
         resizableColumns: false,
         headerFilterLiveFilterDelay: 250,
@@ -13374,10 +13911,10 @@
             headerFilter: "input",
             formatter: cell => escapeHtml(String(cell.getValue() || "").replace("_", "/"))
           }),
-          tabulatorSizedColumn("executionContext", {
+          tabulatorSizedColumn("tradeContext", {
             title: "Batching Key",
             field: "batchingKey",
-            visible: fxBatchesAuditViewEnabled(),
+            visible: batchesAuditViewEnabled(),
             headerFilter: "input",
             headerFilterFunc: batchFormationAuditBatchingKeyFilter,
             formatter: batchFormationAuditBatchingKeyFormatter
@@ -13385,21 +13922,21 @@
           tabulatorSizedColumn("timestamp", {
             title: "Window Opened At",
             field: "windowOpenedAt",
-            visible: fxBatchesAuditViewEnabled(),
+            visible: batchesAuditViewEnabled(),
             headerFilter: "input",
             formatter: batchFormationAuditTimestampFormatter
           }),
           tabulatorSizedColumn("timestamp", {
             title: "Window Closed At",
             field: "windowClosedAt",
-            visible: fxBatchesAuditViewEnabled(),
+            visible: batchesAuditViewEnabled(),
             headerFilter: "input",
             formatter: batchFormationAuditTimestampFormatter
           }),
           tabulatorSizedColumn("amount", {
             title: "Duration",
             field: "windowDurationMs",
-            visible: fxBatchesAuditViewEnabled(),
+            visible: batchesAuditViewEnabled(),
             sorter: "number",
             headerFilter: "input",
             formatter: batchFormationAuditDurationFormatter,
@@ -13429,7 +13966,7 @@
           tabulatorSizedColumn("count", {
             title: "Source Trades",
             field: "sourceTradeCount",
-            visible: fxBatchesAuditViewEnabled(),
+            visible: batchesAuditViewEnabled(),
             sorter: "number",
             headerFilter: "input",
             hozAlign: "right",
@@ -13469,14 +14006,14 @@
       batchingHistoryGrid.on("tableBuilt", () => {
         batchingHistoryGridReady = true;
         updateBatchingHistoryCount(data.length);
-        applyFxBatchesViewMode();
+        applyBatchesViewMode();
       });
       batchingHistoryGrid.on("dataFiltered", (_filters, rows) => {
         updateBatchingHistoryCount(rows.length);
       });
     }
 
-    function renderBatchingHistory(source = fxBatchHistory) {
+    function renderBatchingHistory(source = batchHistory) {
       const data = Array.isArray(source) ? source : [];
       updateBatchingHistoryCount(data.length);
 
@@ -13499,21 +14036,21 @@
     async function loadBatchingHistoryPage() {
       if (!DEMO_API_ENABLED) {
         setBatchingHistoryStatus(
-          "Start the demo server to view FX Batches.",
+          "Start the demo server to view Batches.",
           "warning"
         );
         renderBatchingHistory([]);
         return;
       }
 
-      setBatchingHistoryStatus("Loading FX Batches...");
+      setBatchingHistoryStatus("Loading Batches...");
 
       try {
-        await reloadFxBatchesFromApi();
+        await reloadBatchesFromApi();
         setBatchingHistoryStatus();
       } catch (error) {
         setBatchingHistoryStatus(
-          error.message || "Unable to load FX Batches.",
+          error.message || "Unable to load Batches.",
           "error"
         );
       }
@@ -13540,9 +14077,9 @@
         : {};
       const pair = String(key.ccyPairCode || "").replace("_", "/") || "—";
       const tenor = String(key.tenor || "").trim() || "—";
-      const tradeDate = clientFxDealsDateLabel(key.tradeDate) || "—";
-      const baseValueDate = clientFxDealsDateLabel(key.baseCcyValueDate) || "—";
-      const quoteValueDate = clientFxDealsDateLabel(key.quoteCcyValueDate) || "—";
+      const tradeDate = clientDealsDateLabel(key.tradeDate) || "—";
+      const baseValueDate = clientDealsDateLabel(key.baseCcyValueDate) || "—";
+      const quoteValueDate = clientDealsDateLabel(key.quoteCcyValueDate) || "—";
       const basePrecision = Number.isInteger(key.baseCcyFractionDigits)
         ? key.baseCcyFractionDigits
         : "—";
@@ -13624,7 +14161,7 @@
 
     function batchStructureTradeTypeFormatter(cell) {
       const trade = cell.getRow().getData();
-      const presentation = fxPositionTradeTypePresentation(trade);
+      const presentation = positionTradeTypePresentation(trade);
       const originBatchId = Number(trade.createdByBatchId);
       const reusedTechnicalTrade = trade.memberRole === "TRADE"
         && ["BATCH_BALANCE_TRADE", "BATCH_POSITION_OUT"].includes(
@@ -13821,7 +14358,7 @@
         tabulatorSizedColumn("valueDate", {
           title: "Value Date",
           field: "valueDate",
-          formatter: clientFxDealsDateFormatter,
+          formatter: clientDealsDateFormatter,
           hozAlign: "center",
           headerHozAlign: "center"
         })
@@ -13860,7 +14397,7 @@
         }),
         tabulatorSizedColumn("type", {
           title: roleField === "memberRole" ? "Member Role" : "Output Role",
-          field: roleField,
+          field: "memberRole",
           headerSort: isMemberTable,
           ...memberTextFilter,
           formatter: batchDetailsRoleFormatter
@@ -13882,12 +14419,21 @@
           currencyField: "quoteCcyCode",
           isMemberTable
         }),
+        tabulatorSizedColumn("rate", {
+          title: "Trade Rate",
+          field: "tradeRate",
+          sorter: "number",
+          headerSort: isMemberTable,
+          formatter: clientDealsRateFormatter,
+          hozAlign: "right",
+          headerHozAlign: "right"
+        }),
         tabulatorSizedColumn("transferRate", {
           title: "Transfer Rate",
           field: "transferRate",
           sorter: "number",
           headerSort: isMemberTable,
-          formatter: clientFxDealsRateFormatter,
+          formatter: clientDealsRateFormatter,
           hozAlign: "right",
           headerHozAlign: "right"
         }),
@@ -13911,7 +14457,7 @@
           field: "baseCcyValueDate",
           headerSort: false,
           ...memberTextFilter,
-          formatter: clientFxDealsDateFormatter,
+          formatter: clientDealsDateFormatter,
           hozAlign: "center",
           headerHozAlign: "center"
         }),
@@ -13920,13 +14466,20 @@
           field: "quoteCcyValueDate",
           headerSort: false,
           ...memberTextFilter,
-          formatter: clientFxDealsDateFormatter,
+          formatter: clientDealsDateFormatter,
           hozAlign: "center",
           headerHozAlign: "center"
         })
       );
 
       return columns;
+    }
+
+    function batchStructureTradeRows(trades, roleField) {
+      return (Array.isArray(trades) ? trades : []).map(trade => ({
+        ...trade,
+        memberRole: trade?.[roleField] || ""
+      }));
     }
 
     function initializeBatchDetailsGrid(tableKey, element, data, columns, placeholder) {
@@ -14038,8 +14591,8 @@
           )
         : "Missing";
       batchNeutralityPositionStatus.textContent = positionNeutral
-        ? "FX Position Neutral"
-        : "FX Position Imbalance";
+        ? "Position Neutral"
+        : "Position Imbalance";
       batchNeutralityCashStatus.textContent = cashNeutral
         ? "Cash Balance Neutral"
         : "Cash Balance Imbalance";
@@ -14051,16 +14604,18 @@
     }
 
     function renderBatchDetailsGrids(details) {
+      const memberRows = batchStructureTradeRows(details.members, "memberRole");
+
       if (!batchDetailsMembersGrid) {
         batchDetailsMembersGrid = initializeBatchDetailsGrid(
           "batch_members_grid",
           batchDetailsMembersGridEl,
-          details.members,
+          memberRows,
           batchStructureTradeColumns("memberRole"),
-          "This FX Batch has no members."
+          "This Batch has no members."
         );
       } else {
-        batchDetailsMembersGrid.replaceData(details.members).then(() => {
+        batchDetailsMembersGrid.replaceData(memberRows).then(() => {
           batchDetailsMembersGrid.redraw(true);
         });
       }
@@ -14076,7 +14631,7 @@
           batchDetailsCashOutputGridEl,
           cashOutputs,
           batchStructureCashOutputColumns(),
-          "This FX Batch has no Cash Output."
+          "This batch has no quote cash outputs."
         );
       } else if (batchDetailsCashOutputGrid) {
         batchDetailsCashOutputGrid.replaceData(cashOutputs).then(() => {
@@ -14087,19 +14642,20 @@
       }
 
       const hasOutputs = details.outputs.length > 0;
+      const outputRows = batchStructureTradeRows(details.outputs, "outputRole");
       batchDetailsOutputsEmpty.hidden = hasOutputs;
       batchDetailsOutputsGridShell.hidden = !hasOutputs;
 
       if (hasOutputs && !batchDetailsOutputsGrid) {
         batchDetailsOutputsGrid = initializeBatchDetailsGrid(
-          "batch_position_output_grid",
+          "batch_members_grid",
           batchDetailsOutputsGridEl,
-          details.outputs,
+          outputRows,
           batchStructureTradeColumns("outputRole"),
-          "This FX Batch has no Net Position Output."
+          "This batch has no position outputs."
         );
       } else if (batchDetailsOutputsGrid) {
-        batchDetailsOutputsGrid.replaceData(details.outputs).then(() => {
+        batchDetailsOutputsGrid.replaceData(outputRows).then(() => {
           if (hasOutputs) {
             batchDetailsOutputsGrid.redraw(true);
           }
@@ -14127,14 +14683,14 @@
         ? batchDetailsTimestampLabel(details.rolledBackAt)
         : "—";
       batchDetailsTradeDate.textContent = batchingKey.tradeDate
-        ? clientFxDealsDateLabel(batchingKey.tradeDate)
+        ? clientDealsDateLabel(batchingKey.tradeDate)
         : "—";
       batchDetailsTenor.textContent = batchingKey.tenor || "—";
       batchDetailsBaseValueDate.textContent = batchingKey.baseCcyValueDate
-        ? clientFxDealsDateLabel(batchingKey.baseCcyValueDate)
+        ? clientDealsDateLabel(batchingKey.baseCcyValueDate)
         : "—";
       batchDetailsQuoteValueDate.textContent = batchingKey.quoteCcyValueDate
-        ? clientFxDealsDateLabel(batchingKey.quoteCcyValueDate)
+        ? clientDealsDateLabel(batchingKey.quoteCcyValueDate)
         : "—";
       batchDetailsMembersCount.textContent =
         `${details.members.length} ${details.members.length === 1 ? "trade" : "trades"}`;
@@ -14153,13 +14709,13 @@
     async function loadSelectedBatchDetails(batchId) {
       const requestSequence = ++batchDetailsRequestSequence;
       showBatchDetailsPrompt(
-        `Loading FX Batch #${batchId}`,
-        "Reading FX Trade Members and batch outputs..."
+        `Loading Batch #${batchId}`,
+        "Reading Batch Members and batch outputs..."
       );
-      setBatchDetailsStatus(`Loading FX Batch #${batchId}...`);
+      setBatchDetailsStatus(`Loading Batch #${batchId}...`);
 
       try {
-        const details = await loadFxBatchDetailsFromApi(batchId);
+        const details = await loadBatchDetailsFromApi(batchId);
 
         if (
           requestSequence !== batchDetailsRequestSequence
@@ -14174,8 +14730,8 @@
           return;
         }
 
-        const message = error.message || `Unable to load FX Batch ${batchId}.`;
-        showBatchDetailsPrompt(`FX Batch #${batchId} is unavailable`, message);
+        const message = error.message || `Unable to load Batch ${batchId}.`;
+        showBatchDetailsPrompt(`Batch #${batchId} is unavailable`, message);
         setBatchDetailsStatus(message, "error");
       }
     }
@@ -14199,9 +14755,101 @@
 
       await loadSelectedBatchDetails(batchId);
     }
+    const marketQuoteTabs = Array.from(document.querySelectorAll("[data-market-quote-tab]"));
+    const marketQuotePanels = Array.from(document.querySelectorAll("[data-market-quote-panel]"));
+
+    function selectMarketQuoteTab(source) {
+      if (!marketQuoteTabs.some(tab => tab.dataset.marketQuoteTab === source)) {
+        return;
+      }
+
+      marketQuoteTabs.forEach(tab => {
+        const selected = tab.dataset.marketQuoteTab === source;
+        tab.classList.toggle("active", selected);
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      marketQuotePanels.forEach(panel => {
+        panel.hidden = panel.dataset.marketQuotePanel !== source;
+      });
+
+      if (source === "simulation") {
+        window.requestAnimationFrame(() => {
+          if (marketStreamGridReady) marketStreamGrid?.redraw(true);
+        });
+      }
+    }
+
+    function handleMarketQuoteTabKeydown(event) {
+      const currentIndex = marketQuoteTabs.indexOf(event.currentTarget);
+      let nextIndex;
+
+      switch (event.key) {
+        case "ArrowRight": nextIndex = (currentIndex + 1) % marketQuoteTabs.length; break;
+        case "ArrowLeft": nextIndex = (currentIndex - 1 + marketQuoteTabs.length) % marketQuoteTabs.length; break;
+        case "Home": nextIndex = 0; break;
+        case "End": nextIndex = marketQuoteTabs.length - 1; break;
+        default: return;
+      }
+
+      event.preventDefault();
+      const nextTab = marketQuoteTabs[nextIndex];
+      selectMarketQuoteTab(nextTab.dataset.marketQuoteTab);
+      nextTab.focus();
+    }
+
+    const marketHistoryTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Moscow",
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23"
+    });
+    const marketHistoryInputFormatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Moscow",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23"
+    });
+    const marketHistorySyncDateFormatter = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "short",
+      day: "2-digit"
+    });
+    const marketHistorySyncMonthFormatter = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "long"
+    });
+    const marketHistorySyncForm = document.getElementById("marketHistorySyncForm");
+    const marketHistorySyncInstrument = document.getElementById("marketHistorySyncInstrument");
+    const marketHistorySyncFromDate = document.getElementById("marketHistorySyncFromDate");
+    const marketHistorySyncThroughDate = document.getElementById("marketHistorySyncThroughDate");
+    const marketHistorySyncButton = document.getElementById("marketHistorySyncButton");
+    const marketHistorySyncButtonText = document.getElementById("marketHistorySyncButtonText");
+    const marketHistorySyncProgress = document.getElementById("marketHistorySyncProgress");
+    const marketHistorySyncSummary = document.getElementById("marketHistorySyncSummary");
+    const marketHistorySyncCount = document.getElementById("marketHistorySyncCount");
+    const marketHistorySyncProgressBar = document.getElementById("marketHistorySyncProgressBar");
+    const marketHistorySyncCalendar = document.getElementById("marketHistorySyncCalendar");
+    const MARKET_HISTORY_SYNC_MAX_DAY_COUNT = 366;
+    const MARKET_HISTORY_SYNC_WEEKDAYS = Object.freeze(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+    let marketHistorySyncRunning = false;
+    let marketHistorySyncPlan = null;
+    let marketHistorySyncActiveDate = "";
+    let marketHistorySyncFailure = null;
+    const marketHistorySyncDayStates = new Map();
+    const marketHistorySyncDayDetails = new Map();
+
     function marketGridActionMarkup(action, icon, label, { danger = false, primary = false, disabled = false } = {}) {
-      const variant = danger ? "btn-outline-danger" : primary ? "btn-outline-primary" : "btn-outline-secondary";
-      const tooltipAttribute = ["edit", "delete", "simulation"].includes(action)
+      const variant = danger ? "btn-outline-danger" : primary ? "btn-primary" : "btn-outline-secondary";
+      const tooltipAttribute = ["edit", "delete", "simulation", "save", "cancel"].includes(action)
         ? ""
         : ` title="${escapeHtml(label)}"`;
       return `
@@ -14217,7 +14865,8 @@
       count,
       singularLabel,
       pluralLabel,
-      editing = false
+      editing = false,
+      { showCount = false, showTooltip = true } = {}
     ) {
       const normalizedCount = Math.max(0, Number(count) || 0);
       const hasRelatedRows = normalizedCount > 0;
@@ -14228,13 +14877,19 @@
           ? `View ${normalizedCount} ${label}`
           : `No ${pluralLabel}`;
       const disabled = editing || !hasRelatedRows;
-      const wrapperTooltip = disabled
+      const wrapperTooltip = showTooltip && disabled
         ? ` tabindex="0" data-tooltip="${escapeHtml(tooltip)}"`
         : "";
-      const buttonTooltip = disabled ? "" : ` data-tooltip="${escapeHtml(tooltip)}"`;
+      const buttonTooltip = showTooltip && !disabled
+        ? ` data-tooltip="${escapeHtml(tooltip)}"`
+        : "";
+      const countMarkup = showCount
+        ? `<span class="reference-related-count" aria-label="${normalizedCount} ${escapeHtml(label)}">${normalizedCount}</span>`
+        : "";
 
       return `
         <span class="reference-related-view-control"${wrapperTooltip}>
+          ${countMarkup}
           <button type="button" class="btn btn-sm btn-outline-secondary market-grid-action"
             data-market-grid-action="${escapeHtml(action)}"
             aria-label="${escapeHtml(tooltip)}"${buttonTooltip}${disabled ? " disabled" : ""}>
@@ -14326,7 +14981,8 @@
         item.pairCount,
         "Ccy Pair",
         "Ccy Pairs",
-        Boolean(item.isEditing)
+        Boolean(item.isEditing),
+        { showCount: true, showTooltip: false }
       );
     }
 
@@ -14592,9 +15248,6 @@
     function renderMarketPairOptionRows() {
       const data = marketPairs
         .map((pair, sourceIndex) => ({ pair, sourceIndex }))
-        .filter(({ pair }) => !marketSettingsRouteScope
-          || pair.baseCcy === marketSettingsRouteScope.currencyCode
-          || pair.quoteCcy === marketSettingsRouteScope.currencyCode)
         .map(({ pair, sourceIndex }) => ({
           id: pair.pairCode,
           sourceIndex,
@@ -14606,7 +15259,7 @@
         }))
         .sort((left, right) => left.currencyPair.localeCompare(right.currencyPair));
 
-      if (!marketSettingsRouteScope && marketPairOptionsEditState?.mode === "create") {
+      if (marketPairOptionsEditState?.mode === "create") {
         data.unshift({
           id: "__new_currency_pair__",
           sourceIndex: null,
@@ -14641,7 +15294,7 @@
             formatter: marketPairOptionDecimalsFormatter
           }),
           tabulatorSizedColumn("count", {
-            title: tabulatorIconColumnTitle("rule", "Pricing Rules using this Ccy Pair"),
+            title: tabulatorIconColumnTitle("rule", "Pricing Rules using Currency Pair"),
             field: "pricingRulesCount",
             cssClass: "reference-related-view-cell",
             headerSort: false,
@@ -14657,7 +15310,6 @@
             headerSort: false,
             hozAlign: "center",
             headerHozAlign: "center",
-            visible: !marketSettingsRouteScope,
             formatter: marketPairOptionActionsFormatter,
             cellClick: handleMarketPairOptionGridAction
           })
@@ -14668,12 +15320,14 @@
         registerUiTableTabulator("ccy_pair_options_grid", marketPairOptionGrid);
         marketPairOptionGrid.on("tableBuilt", () => {
           marketPairOptionGridReady = true;
-          syncMarketPairActionsColumn();
+          applyMarketPairRouteCurrencyFilter();
+          syncMarketPairClearFiltersButton();
           marketPairOptionGrid.redraw(true);
         });
+        marketPairOptionGrid.on("dataFiltered", syncMarketPairClearFiltersButton);
       } else if (marketPairOptionGridReady) {
         marketPairOptionGrid.replaceData(data);
-        syncMarketPairActionsColumn();
+        syncMarketPairClearFiltersButton();
       }
     }
 
@@ -14742,7 +15396,8 @@
         item.pricingRulesCount,
         "Pricing Rule",
         "Pricing Rules",
-        Boolean(item.isEditing)
+        Boolean(item.isEditing),
+        { showCount: true, showTooltip: false }
       );
     }
 
@@ -15217,26 +15872,6 @@
       return marketLastQuotes.get(pairValue) || null;
     }
 
-    function syncDealMarketQuotes() {
-      if (!editForm?.elements?.currentMarketBid) {
-        return null;
-      }
-
-      const quote = currentMarketQuoteForPair(editForm.elements.currencyPair.value);
-      const pair = marketPairs.find(item => item.currencyPair === normalizedPricingRuleCurrencyPair(editForm.elements.currencyPair.value));
-      editForm.elements.currentMarketBid.value = quote ? formatMarketQuote(quote.bid, pair) : "";
-      editForm.elements.currentMarketOffer.value = quote ? formatMarketQuote(quote.offer, pair) : "";
-      editForm.elements.currentMarketStatus.value = !DEMO_API_ENABLED
-        ? "Backend unavailable"
-        : !marketSimulationConfigured(pair)
-          ? "Not configured"
-          : !marketStreamConnected
-            ? "Connecting"
-            : marketStreamRunning ? "Live" : "Stopped";
-
-      return quote;
-    }
-
     function renderMarketStreamRow(pair, index) {
       const isConfigured = marketSimulationConfigured(pair);
       const quote = isConfigured ? marketLastQuotes.get(pair.currencyPair) || null : null;
@@ -15365,7 +16000,6 @@
       );
       marketStreamToggleButton.disabled = !DEMO_API_ENABLED
         || (!marketStreamRunning && !marketPairs.some(marketSimulationConfigured));
-      syncDealMarketQuotes();
       syncAddClientDealMarketQuote();
       if (addHedgeDealDialog.open) {
         syncAddHedgeDealDerivedFields();
@@ -15374,11 +16008,766 @@
       }
     }
 
+    function marketHistorySyncDateTimestamp(value) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
+
+      if (!match) {
+        return Number.NaN;
+      }
+
+      const timestamp = Date.UTC(
+        Number(match[1]),
+        Number(match[2]) - 1,
+        Number(match[3])
+      );
+
+      return new Date(timestamp).toISOString().slice(0, 10) === value
+        ? timestamp
+        : Number.NaN;
+    }
+
+    function marketHistorySyncYesterday() {
+      const today = marketHistoryMoscowParts(Date.now());
+      const todayTimestamp = Date.UTC(
+        Number(today.year),
+        Number(today.month) - 1,
+        Number(today.day)
+      );
+
+      return new Date(todayTimestamp - 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+    }
+
+    function formatMarketHistorySyncDate(value) {
+      const timestamp = marketHistorySyncDateTimestamp(value);
+      return Number.isFinite(timestamp)
+        ? marketHistorySyncDateFormatter.format(new Date(timestamp))
+        : "";
+    }
+
+    function marketHistorySyncDateStatus(status) {
+      const definitions = {
+        PENDING: { className: "pending", icon: "schedule", label: "Pending" },
+        LOADING: { className: "loading", icon: "downloading", label: "Loading" },
+        COMPLETED: { className: "completed", icon: "check", label: "Completed" },
+        ALREADY_LOADED: { className: "already-loaded", icon: "done_all", label: "Already loaded" },
+        ERROR: { className: "error", icon: "error", label: "Error" }
+      };
+
+      return definitions[status] || definitions.PENDING;
+    }
+
+    function normalizedMarketHistorySyncPlan(value) {
+      if (!value || typeof value !== "object" || !Array.isArray(value.days)) {
+        throw new Error("Historical source synchronization response is invalid.");
+      }
+
+      const instrumentId = String(value.instrumentId || "");
+      const fromDate = String(value.fromDate || "");
+      const throughDate = String(value.throughDate || "");
+      const fromTimestamp = marketHistorySyncDateTimestamp(fromDate);
+      const throughTimestamp = marketHistorySyncDateTimestamp(throughDate);
+      const seenDates = new Set();
+      let previousTimestamp = Number.NEGATIVE_INFINITY;
+      const days = value.days.map(day => {
+        const date = String(day?.date || "");
+        const timestamp = marketHistorySyncDateTimestamp(date);
+        const status = String(day?.status || "");
+
+        if (
+          !Number.isFinite(timestamp)
+          || timestamp < fromTimestamp
+          || timestamp > throughTimestamp
+          || timestamp <= previousTimestamp
+          || seenDates.has(date)
+          || !["PENDING", "COMPLETED"].includes(status)
+        ) {
+          throw new Error("Historical source synchronization response is invalid.");
+        }
+
+        previousTimestamp = timestamp;
+        seenDates.add(date);
+        return Object.freeze({ date, status });
+      });
+      const completedDayCount = days.filter(day => day.status === "COMPLETED").length;
+      const pendingDayCount = days.length - completedDayCount;
+
+      if (
+        !instrumentId
+        || !Number.isFinite(fromTimestamp)
+        || !Number.isFinite(throughTimestamp)
+        || fromTimestamp > throughTimestamp
+        || Number(value.totalDayCount) !== days.length
+        || Number(value.completedDayCount) !== completedDayCount
+        || Number(value.pendingDayCount) !== pendingDayCount
+        || Boolean(value.complete) !== (pendingDayCount === 0)
+      ) {
+        throw new Error("Historical source synchronization response is invalid.");
+      }
+
+      return Object.freeze({
+        instrumentId,
+        fromDate,
+        throughDate,
+        totalDayCount: days.length,
+        completedDayCount,
+        pendingDayCount,
+        complete: pendingDayCount === 0,
+        days: Object.freeze(days)
+      });
+    }
+
+    function initializeMarketHistorySyncBoundary() {
+      const throughDate = marketHistorySyncYesterday();
+      const throughTimestamp = marketHistorySyncDateTimestamp(throughDate);
+      const earliestDate = new Date(
+        throughTimestamp - (MARKET_HISTORY_SYNC_MAX_DAY_COUNT - 1) * 24 * 60 * 60 * 1000
+      ).toISOString().slice(0, 10);
+      marketHistorySyncFromDate.min = earliestDate;
+      marketHistorySyncFromDate.max = throughDate;
+      marketHistorySyncThroughDate.value = formatMarketHistorySyncDate(throughDate);
+      marketHistorySyncThroughDate.textContent = formatMarketHistorySyncDate(throughDate);
+      marketHistorySyncThroughDate.dataset.date = throughDate;
+
+      const fromTimestamp = marketHistorySyncDateTimestamp(marketHistorySyncFromDate.value);
+      marketHistorySyncFromDate.setCustomValidity(
+        Number.isFinite(fromTimestamp) && fromTimestamp < marketHistorySyncDateTimestamp(earliestDate)
+          ? `From date must be within the latest ${MARKET_HISTORY_SYNC_MAX_DAY_COUNT} closed Moscow calendar days.`
+          : Number.isFinite(fromTimestamp) && fromTimestamp > throughTimestamp
+            ? "From date must be no later than yesterday in Moscow time."
+            : ""
+      );
+    }
+
+    function applyMarketHistorySyncServerBoundary(throughDate) {
+      marketHistorySyncFromDate.max = throughDate;
+      marketHistorySyncThroughDate.value = formatMarketHistorySyncDate(throughDate);
+      marketHistorySyncThroughDate.textContent = formatMarketHistorySyncDate(throughDate);
+      marketHistorySyncThroughDate.dataset.date = throughDate;
+    }
+
+    function setMarketHistorySyncRunning(running) {
+      marketHistorySyncRunning = running;
+      marketHistorySyncInstrument.disabled = running || marketHistoryLoading;
+      marketHistorySyncFromDate.disabled = running || marketHistoryLoading;
+      marketHistorySyncButton.disabled = running || marketHistoryLoading;
+      marketHistoryLoadButton.disabled = running || marketHistoryLoading;
+      marketHistorySyncButtonText.textContent = running
+        ? "Synchronizing…"
+        : "Synchronize source candles";
+      marketHistorySyncProgress.setAttribute("aria-busy", String(running));
+    }
+
+    function marketHistorySyncRenderedStatus(day) {
+      if (marketHistorySyncFailure?.date === day.date) {
+        return "ERROR";
+      }
+
+      if (marketHistorySyncActiveDate === day.date) {
+        return "LOADING";
+      }
+
+      return marketHistorySyncDayStates.get(day.date)
+        || (day.status === "COMPLETED" ? "COMPLETED" : "PENDING");
+    }
+
+    function marketHistorySyncDayTitle(day, statusDefinition) {
+      const detail = marketHistorySyncDayDetails.get(day.date);
+      return [
+        formatMarketHistorySyncDate(day.date),
+        statusDefinition.label,
+        detail
+      ].filter(Boolean).join(" — ");
+    }
+
+    function marketHistorySyncCalendarMonth(monthKey, days) {
+      const month = document.createElement("section");
+      month.className = "market-history-calendar-month";
+
+      const title = document.createElement("h3");
+      title.className = "market-history-calendar-title";
+      title.textContent = marketHistorySyncMonthFormatter.format(
+        new Date(`${monthKey}-01T12:00:00.000Z`)
+      );
+      month.append(title);
+
+      const grid = document.createElement("div");
+      grid.className = "market-history-calendar-grid";
+      grid.setAttribute("role", "list");
+
+      for (const weekday of MARKET_HISTORY_SYNC_WEEKDAYS) {
+        const label = document.createElement("span");
+        label.className = "market-history-calendar-weekday";
+        label.setAttribute("aria-hidden", "true");
+        label.textContent = weekday;
+        grid.append(label);
+      }
+
+      const firstTimestamp = marketHistorySyncDateTimestamp(days[0].date);
+      const leadingSpaceCount = (new Date(firstTimestamp).getUTCDay() + 6) % 7;
+
+      for (let index = 0; index < leadingSpaceCount; index += 1) {
+        const spacer = document.createElement("span");
+        spacer.className = "market-history-calendar-spacer";
+        spacer.setAttribute("aria-hidden", "true");
+        grid.append(spacer);
+      }
+
+      for (const day of days) {
+        const status = marketHistorySyncRenderedStatus(day);
+        const statusDefinition = marketHistorySyncDateStatus(status);
+        const cell = document.createElement("div");
+        cell.className = `market-history-calendar-day is-${statusDefinition.className}`;
+        cell.setAttribute("role", "listitem");
+        cell.dataset.marketHistorySyncDate = day.date;
+        cell.title = marketHistorySyncDayTitle(day, statusDefinition);
+
+        const date = document.createElement("time");
+        date.className = "market-history-calendar-day-number";
+        date.dateTime = day.date;
+        date.textContent = String(Number(day.date.slice(-2)));
+
+        const icon = document.createElement("span");
+        icon.className = "button-icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = statusDefinition.icon;
+
+        const accessibleStatus = document.createElement("span");
+        accessibleStatus.className = "visually-hidden";
+        accessibleStatus.textContent = `${formatMarketHistorySyncDate(day.date)}: ${statusDefinition.label}.`;
+        cell.append(date, icon, accessibleStatus);
+        grid.append(cell);
+      }
+
+      month.append(grid);
+      return month;
+    }
+
+    function renderMarketHistorySyncPlan() {
+      if (!marketHistorySyncPlan) {
+        marketHistorySyncProgress.hidden = true;
+        marketHistorySyncSummary.textContent = "";
+        marketHistorySyncCount.textContent = "";
+        marketHistorySyncProgressBar.style.width = "0%";
+        marketHistorySyncCalendar.replaceChildren();
+        return;
+      }
+
+      marketHistorySyncProgress.hidden = false;
+      const completedCount = marketHistorySyncPlan.completedDayCount;
+      const totalCount = marketHistorySyncPlan.totalDayCount;
+      const progressPercent = totalCount === 0
+        ? 100
+        : Math.round((completedCount / totalCount) * 100);
+      marketHistorySyncCount.textContent = `${completedCount} / ${totalCount} days`;
+      marketHistorySyncProgressBar.style.width = `${progressPercent}%`;
+      marketHistorySyncProgressBar.setAttribute("aria-valuenow", String(completedCount));
+      marketHistorySyncProgressBar.setAttribute("aria-valuemin", "0");
+      marketHistorySyncProgressBar.setAttribute("aria-valuemax", String(totalCount));
+
+      if (marketHistorySyncFailure) {
+        marketHistorySyncSummary.textContent = `Stopped on ${formatMarketHistorySyncDate(marketHistorySyncFailure.date)}. ${marketHistorySyncFailure.message}`;
+      } else if (marketHistorySyncActiveDate) {
+        marketHistorySyncSummary.textContent = `Synchronizing ${formatMarketHistorySyncDate(marketHistorySyncActiveDate)}…`;
+      } else if (marketHistorySyncPlan.complete) {
+        marketHistorySyncSummary.textContent = "All selected historical days are synchronized.";
+      } else {
+        marketHistorySyncSummary.textContent = `${marketHistorySyncPlan.pendingDayCount} days are ready for synchronization.`;
+      }
+
+      const months = new Map();
+
+      for (const day of marketHistorySyncPlan.days) {
+        const monthKey = day.date.slice(0, 7);
+
+        if (!months.has(monthKey)) {
+          months.set(monthKey, []);
+        }
+
+        months.get(monthKey).push(day);
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      for (const [monthKey, days] of months) {
+        fragment.append(marketHistorySyncCalendarMonth(monthKey, days));
+      }
+
+      marketHistorySyncCalendar.replaceChildren(fragment);
+
+      if (marketHistorySyncActiveDate) {
+        marketHistorySyncCalendar
+          .querySelector(`[data-market-history-sync-date="${marketHistorySyncActiveDate}"]`)
+          ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+    }
+
+    function resetMarketHistorySyncPlan() {
+      if (marketHistorySyncRunning) {
+        return;
+      }
+
+      marketHistorySyncPlan = null;
+      marketHistorySyncActiveDate = "";
+      marketHistorySyncFailure = null;
+      marketHistorySyncDayStates.clear();
+      marketHistorySyncDayDetails.clear();
+      initializeMarketHistorySyncBoundary();
+      renderMarketHistorySyncPlan();
+    }
+
+    function applyInitialMarketHistorySyncPlan(value) {
+      marketHistorySyncPlan = normalizedMarketHistorySyncPlan(value);
+      applyMarketHistorySyncServerBoundary(marketHistorySyncPlan.throughDate);
+      marketHistorySyncDayStates.clear();
+      marketHistorySyncDayDetails.clear();
+
+      for (const day of marketHistorySyncPlan.days) {
+        if (day.status === "COMPLETED") {
+          marketHistorySyncDayStates.set(day.date, "ALREADY_LOADED");
+          marketHistorySyncDayDetails.set(day.date, "This day was already covered before this run.");
+        }
+      }
+    }
+
+    function applyMarketHistorySyncStep(value) {
+      const processedDay = value?.processedDay;
+      const pendingDates = new Set(
+        marketHistorySyncPlan?.days
+          .filter(day => day.status === "PENDING")
+          .map(day => day.date)
+        || []
+      );
+      const plan = normalizedMarketHistorySyncPlan(value);
+
+      if (processedDay === null && plan.complete) {
+        marketHistorySyncPlan = plan;
+        applyMarketHistorySyncServerBoundary(plan.throughDate);
+        return;
+      }
+
+      const processedDate = String(processedDay?.date || "");
+      const completedDay = plan.days.find(day => day.date === processedDate);
+
+      if (
+        !processedDay
+        || !pendingDates.has(processedDate)
+        || processedDay.status !== "COMPLETED"
+        || completedDay?.status !== "COMPLETED"
+        || plan.completedDayCount <= marketHistorySyncPlan.completedDayCount
+      ) {
+        throw new Error("Historical source synchronization response is invalid.");
+      }
+
+      const pageCount = Number(processedDay.pageCount);
+      const fetchedCandleCount = Number(processedDay.fetchedCandleCount);
+      const storedCandleCount = Number(processedDay.storedCandleCount);
+
+      if (
+        !Number.isSafeInteger(pageCount)
+        || pageCount < 0
+        || !Number.isSafeInteger(fetchedCandleCount)
+        || fetchedCandleCount < 0
+        || !Number.isSafeInteger(storedCandleCount)
+        || storedCandleCount < 0
+      ) {
+        throw new Error("Historical source synchronization response is invalid.");
+      }
+
+      if (processedDay.skipped === true) {
+        marketHistorySyncDayStates.set(processedDate, "ALREADY_LOADED");
+        marketHistorySyncDayDetails.set(processedDate, "This day was already covered.");
+      } else {
+        marketHistorySyncDayStates.set(processedDate, "COMPLETED");
+        marketHistorySyncDayDetails.set(
+          processedDate,
+          fetchedCandleCount === 0
+            ? "Completed successfully; the source returned no minute candles."
+            : `${fetchedCandleCount} candles fetched; ${storedCandleCount} stored.`
+        );
+      }
+
+      marketHistorySyncPlan = plan;
+      applyMarketHistorySyncServerBoundary(plan.throughDate);
+    }
+
+    async function synchronizeMarketHistorySourceCandles(event) {
+      event.preventDefault();
+      initializeMarketHistorySyncBoundary();
+
+      if (
+        marketHistorySyncRunning
+        || marketHistoryLoading
+        || !marketHistorySyncForm.reportValidity()
+      ) {
+        return;
+      }
+
+      const command = {
+        instrumentId: marketHistorySyncInstrument.value,
+        fromDate: marketHistorySyncFromDate.value
+      };
+      const query = new URLSearchParams(command);
+      marketHistorySyncPlan = null;
+      marketHistorySyncFailure = null;
+      marketHistorySyncActiveDate = "";
+      marketHistorySyncDayStates.clear();
+      marketHistorySyncDayDetails.clear();
+      renderMarketHistorySyncPlan();
+      setMarketHistorySyncRunning(true);
+      setMarketStatus("Preparing historical source candle synchronization…");
+
+      try {
+        applyInitialMarketHistorySyncPlan(await demoApiRequest(
+          `/api/v1/market-pulse/historical-candles/manual-sync/plan?${query.toString()}`
+        ));
+        renderMarketHistorySyncPlan();
+
+        while (!marketHistorySyncPlan.complete) {
+          const nextDay = marketHistorySyncPlan.days.find(day => day.status === "PENDING");
+
+          if (!nextDay) {
+            throw new Error("Historical source synchronization response is invalid.");
+          }
+
+          marketHistorySyncActiveDate = nextDay.date;
+          renderMarketHistorySyncPlan();
+
+          try {
+            const result = await demoApiRequest(
+              "/api/v1/market-pulse/historical-candles/manual-sync/step",
+              {
+                method: "POST",
+                body: JSON.stringify(command)
+              }
+            );
+            applyMarketHistorySyncStep(result);
+            marketHistorySyncActiveDate = "";
+            renderMarketHistorySyncPlan();
+          } catch (error) {
+            marketHistorySyncActiveDate = "";
+            marketHistorySyncFailure = {
+              date: nextDay.date,
+              message: error.message
+            };
+            marketHistorySyncDayStates.set(nextDay.date, "ERROR");
+            renderMarketHistorySyncPlan();
+            throw error;
+          }
+        }
+
+        setMarketStatus("Historical source candles synchronized successfully.", "success");
+      } catch (error) {
+        if (!marketHistorySyncFailure) {
+          marketHistorySyncSummary.textContent = "Historical source synchronization could not be started.";
+          marketHistorySyncProgress.hidden = false;
+        }
+
+        setMarketStatus(error.message, "error");
+      } finally {
+        setMarketHistorySyncRunning(false);
+      }
+    }
+
+    function marketHistoryMoscowParts(timestamp) {
+      return Object.fromEntries(
+        marketHistoryInputFormatter
+          .formatToParts(new Date(timestamp))
+          .filter(part => part.type !== "literal")
+          .map(part => [part.type, part.value])
+      );
+    }
+
+    function marketHistoryMoscowTimestamp(value) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+
+      if (!match) {
+        return Number.NaN;
+      }
+
+      const [, year, month, day, hour, minute] = match;
+      const moscowWallClock = Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hour),
+        Number(minute),
+        0
+      );
+      let timestamp = moscowWallClock;
+
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const parts = marketHistoryMoscowParts(timestamp);
+        const renderedAsUtc = Date.UTC(
+          Number(parts.year),
+          Number(parts.month) - 1,
+          Number(parts.day),
+          Number(parts.hour),
+          Number(parts.minute),
+          Number(parts.second)
+        );
+        timestamp = moscowWallClock - (renderedAsUtc - timestamp);
+      }
+
+      const resolved = marketHistoryMoscowParts(timestamp);
+
+      return resolved.year === year
+        && resolved.month === month
+        && resolved.day === day
+        && resolved.hour === hour
+        && resolved.minute === minute
+        ? timestamp
+        : Number.NaN;
+    }
+
+    function initializeMarketHistoryPeriod() {
+      if (marketHistoryFrom.value || marketHistoryTill.value) {
+        return;
+      }
+
+      const moscowToday = marketHistoryMoscowParts(Date.now());
+      const previousBusinessDay = new Date(Date.UTC(
+        Number(moscowToday.year),
+        Number(moscowToday.month) - 1,
+        Number(moscowToday.day)
+      ));
+      previousBusinessDay.setUTCDate(previousBusinessDay.getUTCDate() - 1);
+
+      while ([0, 6].includes(previousBusinessDay.getUTCDay())) {
+        previousBusinessDay.setUTCDate(previousBusinessDay.getUTCDate() - 1);
+      }
+
+      const pad = value => String(value).padStart(2, "0");
+      const businessDate = [
+        previousBusinessDay.getUTCFullYear(),
+        pad(previousBusinessDay.getUTCMonth() + 1),
+        pad(previousBusinessDay.getUTCDate())
+      ].join("-");
+      marketHistoryFrom.value = `${businessDate}T10:00`;
+      marketHistoryTill.value = `${businessDate}T14:00`;
+    }
+
+    function marketHistoryTimestamp(value) {
+      if (typeof value === "number") {
+        return value * 1000;
+      }
+
+      if (value && typeof value === "object") {
+        return Date.UTC(value.year, value.month - 1, value.day);
+      }
+
+      return Number.NaN;
+    }
+
+    function formatMarketHistoryTime(value) {
+      const timestamp = marketHistoryTimestamp(value);
+
+      if (!Number.isFinite(timestamp)) {
+        return "";
+      }
+
+      return marketHistoryTimeFormatter.format(new Date(timestamp));
+    }
+
+    function ensureMarketHistoryChart() {
+      if (marketHistoryChart) {
+        return;
+      }
+
+      const charts = window.LightweightCharts;
+
+      if (!charts?.createChart || !charts?.CandlestickSeries) {
+        throw new Error("Candlestick chart library is unavailable.");
+      }
+
+      const rootStyle = getComputedStyle(document.documentElement);
+      const color = name => rootStyle.getPropertyValue(name).trim();
+      marketHistoryChart = charts.createChart(marketHistoryChartEl, {
+        width: Math.max(320, marketHistoryChartEl.clientWidth),
+        height: 420,
+        layout: {
+          attributionLogo: true,
+          background: {
+            type: charts.ColorType.Solid,
+            color: color("--bs-body-bg") || "#ffffff"
+          },
+          textColor: color("--bs-secondary-color") || "#6c757d"
+        },
+        grid: {
+          vertLines: { color: color("--bs-border-color-translucent") || "#e9ecef" },
+          horzLines: { color: color("--bs-border-color-translucent") || "#e9ecef" }
+        },
+        rightPriceScale: {
+          borderColor: color("--bs-border-color") || "#dee2e6"
+        },
+        timeScale: {
+          borderColor: color("--bs-border-color") || "#dee2e6",
+          timeVisible: true,
+          secondsVisible: false,
+          tickMarkFormatter: formatMarketHistoryTime
+        },
+        localization: {
+          timeFormatter: formatMarketHistoryTime
+        }
+      });
+      marketHistorySeries = marketHistoryChart.addSeries(charts.CandlestickSeries, {
+        upColor: "#198754",
+        downColor: "#dc3545",
+        borderUpColor: "#198754",
+        borderDownColor: "#dc3545",
+        wickUpColor: "#198754",
+        wickDownColor: "#dc3545"
+      });
+
+      if (typeof ResizeObserver === "function") {
+        marketHistoryResizeObserver = new ResizeObserver(entries => {
+          const width = Math.floor(entries[0]?.contentRect?.width || 0);
+
+          if (width > 0) {
+            marketHistoryChart.applyOptions({ width });
+          }
+        });
+        marketHistoryResizeObserver.observe(marketHistoryChartEl);
+      }
+    }
+
+    function normalizedMarketHistoryCandles(candles) {
+      if (!Array.isArray(candles)) {
+        throw new Error("Historical market data response is invalid.");
+      }
+
+      return candles.map(candle => {
+        const time = Math.floor(Date.parse(candle?.begin) / 1000);
+        const open = Number(candle?.open);
+        const high = Number(candle?.high);
+        const low = Number(candle?.low);
+        const close = Number(candle?.close);
+
+        if (
+          ![time, open, high, low, close].every(Number.isFinite)
+          || high < Math.max(open, close)
+          || low > Math.min(open, close)
+        ) {
+          throw new Error("Historical market data response is invalid.");
+        }
+
+        return { time, open, high, low, close };
+      }).sort((left, right) => left.time - right.time);
+    }
+
+    function setMarketHistoryLoading(loading) {
+      marketHistoryLoading = loading;
+      marketHistoryLoadButton.disabled = loading || marketHistorySyncRunning;
+      marketHistorySyncInstrument.disabled = loading || marketHistorySyncRunning;
+      marketHistorySyncFromDate.disabled = loading || marketHistorySyncRunning;
+      marketHistorySyncButton.disabled = loading || marketHistorySyncRunning;
+      marketHistoryLoadButton.textContent = loading ? "Loading…" : "Load candles";
+    }
+
+    async function loadMarketHistoryCandles(event) {
+      event.preventDefault();
+
+      if (marketHistoryLoading || !marketHistoryForm.reportValidity()) {
+        return;
+      }
+
+      const fromTimestamp = marketHistoryMoscowTimestamp(marketHistoryFrom.value);
+      const tillTimestamp = marketHistoryMoscowTimestamp(marketHistoryTill.value);
+      const rangeMs = tillTimestamp - fromTimestamp;
+
+      if (!Number.isFinite(rangeMs) || rangeMs <= 0) {
+        setMarketStatus("From must be earlier than Till.", "warning");
+        return;
+      }
+
+      if (rangeMs > 6 * 60 * 60 * 1000) {
+        setMarketStatus("Historical data range must not exceed six hours.", "warning");
+        return;
+      }
+
+      const payload = {
+        instrumentId: marketHistoryInstrument.value,
+        timeframe: marketHistoryTimeframe.value,
+        from: new Date(fromTimestamp).toISOString(),
+        till: new Date(tillTimestamp).toISOString()
+      };
+
+      setMarketHistoryLoading(true);
+      marketHistorySummary.textContent = "Loading historical candles…";
+      setMarketStatus("Requesting one historical data window from MOEX ISS…");
+
+      try {
+        const result = await demoApiRequest(
+          "/api/v1/market-pulse/historical-candles/sync",
+          {
+            method: "POST",
+            body: JSON.stringify(payload)
+          }
+        );
+        const candles = normalizedMarketHistoryCandles(result?.candles);
+        const storedMinuteCandleCount = Number(result?.storedMinuteCandleCount);
+
+        if (!Number.isInteger(storedMinuteCandleCount) || storedMinuteCandleCount < 0) {
+          throw new Error("Historical market data response is invalid.");
+        }
+
+        const timeframeLabel = result?.timeframe === "FIFTEEN_MINUTES"
+          ? "15-minute"
+          : "5-minute";
+        ensureMarketHistoryChart();
+        marketHistorySeries.setData(candles);
+        marketHistoryChart.timeScale().fitContent();
+        marketHistoryChartEl.setAttribute(
+          "aria-label",
+          `CNY/RUB ${timeframeLabel} Candlestick chart`
+        );
+        marketHistoryEmpty.hidden = candles.length > 0;
+        marketHistoryEmpty.textContent = candles.length > 0
+          ? ""
+          : "MOEX ISS returned no candles for this period.";
+        const candleSummary = candles.length === 1
+          ? `1 ${timeframeLabel} candle loaded. Time is shown in Moscow time.`
+          : `${candles.length} ${timeframeLabel} candles loaded. Time is shown in Moscow time.`;
+        const storageSummary = storedMinuteCandleCount === 1
+          ? "1 closed one-minute candle stored."
+          : `${storedMinuteCandleCount} closed one-minute candles stored.`;
+        marketHistorySummary.textContent = `${candleSummary} ${storageSummary}`;
+        setMarketStatus(
+          candles.length > 0
+            ? "Historical market data loaded and stored successfully."
+            : "No complete display candles were available for the selected period.",
+          candles.length > 0 ? "success" : "warning"
+        );
+      } catch (error) {
+        marketHistorySummary.textContent = "Historical candles could not be loaded.";
+        setMarketStatus(error.message, "error");
+      } finally {
+        setMarketHistoryLoading(false);
+      }
+    }
+
     function renderMarketPage() {
       updateMarketVisibility();
       renderMarketCcyOptionRows();
       renderMarketPairOptionRows();
       renderMarketQuoteState();
+
+      if (activeMarketKind() === "data-management") {
+        initializeMarketHistorySyncBoundary();
+      }
+
+      if (activeMarketKind() === "charts") {
+        initializeMarketHistoryPeriod();
+        window.requestAnimationFrame(() => {
+          try {
+            ensureMarketHistoryChart();
+          } catch (error) {
+            marketHistorySummary.textContent = "Candlestick chart is unavailable.";
+            setMarketStatus(error.message, "error");
+          }
+        });
+      }
     }
 
     async function startMarketStream() {
@@ -15421,6 +16810,15 @@
         await startMarketStream();
       }
     }
+
+    marketQuoteTabs.forEach(tab => {
+      tab.addEventListener("click", () => selectMarketQuoteTab(tab.dataset.marketQuoteTab));
+      tab.addEventListener("keydown", handleMarketQuoteTabKeydown);
+    });
+
+    marketHistorySyncForm.addEventListener("submit", synchronizeMarketHistorySourceCandles);
+    marketHistorySyncInstrument.addEventListener("change", resetMarketHistorySyncPlan);
+    marketHistorySyncFromDate.addEventListener("change", resetMarketHistorySyncPlan);
     function databaseTableSection(tableName) {
       const sectionId = DATABASE_TABLE_SECTION_ID_BY_TABLE.get(tableName) || "other";
       return DATABASE_TABLE_SECTION_BY_ID.get(sectionId);
@@ -15824,18 +17222,19 @@
       workspaceNavMenuEntries.forEach(entry => {
         entry.toggle.classList.toggle("is-active", entry.routes.includes(activeRoute));
       });
+      renderWorkspacePageHeading();
     }
 
-    function fxPositionRoute(mode = "MANUAL") {
-      return `#fx-position:${normalizedPositionManagementMode(mode).toLowerCase()}`;
+    function positionRoute(mode = "MANUAL") {
+      return `#position:${normalizedPositionManagementMode(mode).toLowerCase()}`;
     }
 
     function batchingBlotterRoute() {
-      return fxPositionRoute("MANUAL");
+      return positionRoute("MANUAL");
     }
 
-    function fxPositionModeFromLocation(hash = location.hash) {
-      const match = /^#fx-position(?::(manual|auto))?$/i.exec(String(hash || "").trim());
+    function positionModeFromLocation(hash = location.hash) {
+      const match = /^#position(?::(manual|auto))?$/i.exec(String(hash || "").trim());
       return match?.[1]?.toUpperCase() === "AUTO" ? "AUTO" : "MANUAL";
     }
 
@@ -15847,9 +17246,9 @@
       return "#batching:formation-audit";
     }
 
-    function setFxDealsActiveTab(activeRoute) {
-      fxDealsTabs.forEach(tab => {
-        const isActive = tab.dataset.fxDealsRoute === activeRoute;
+    function setDealsActiveTab(activeRoute) {
+      dealsTabs.forEach(tab => {
+        const isActive = tab.dataset.dealsRoute === activeRoute;
         tab.classList.toggle("active", isActive);
         tab.setAttribute("aria-selected", String(isActive));
       });
@@ -15872,12 +17271,28 @@
       };
     }
 
-    function clientProfileRoute(counterpartyId = "") {
+    function normalizedTradingCounterpartyListRoute(value) {
+      const candidate = String(value || "").trim();
+      const match = /^#trading-counterparties(?:\?trade-context=(\d+))?$/.exec(candidate);
+      const tradeContextId = Number(match?.[1]);
+
+      return match && (!match[1] || Number.isInteger(tradeContextId) && tradeContextId > 0)
+        ? candidate
+        : "#trading-counterparties";
+    }
+
+    function clientProfileRoute(counterpartyId = "", returnHash = "") {
       const routeToken = String(counterpartyId ?? "").trim();
 
-      return routeToken
-        ? `#trading-counterparties/${encodeURIComponent(routeToken)}`
-        : "#trading-counterparties";
+      if (!routeToken) {
+        return "#trading-counterparties";
+      }
+
+      const route = `#trading-counterparties/${encodeURIComponent(routeToken)}`;
+      const normalizedReturnHash = normalizedTradingCounterpartyListRoute(returnHash);
+      return normalizedReturnHash === "#trading-counterparties"
+        ? route
+        : `${route}?return=${encodeURIComponent(normalizedReturnHash)}`;
     }
 
     function normalizedPricingRulesReturnRoute(value) {
@@ -15907,22 +17322,15 @@
       return `${counterpartyRoute}?${parameters.toString()}`;
     }
 
-    function normalizedPricingContextReturnRoute(value) {
-      const candidate = String(value || "").trim();
+    function tradingCounterpartiesForTradeContextRoute(tradeContextId) {
+      const normalizedTradeContextId = Number(tradeContextId);
 
-      return pricingRouteStateFromLocation(candidate).matches ? candidate : pricingRoute();
-    }
-
-    function tradingCounterpartiesForExecutionContextRoute(executionContextId, returnHash = location.hash) {
-      const normalizedExecutionContextId = Number(executionContextId);
-
-      if (!Number.isInteger(normalizedExecutionContextId) || normalizedExecutionContextId <= 0) {
+      if (!Number.isInteger(normalizedTradeContextId) || normalizedTradeContextId <= 0) {
         return clientProfileRoute();
       }
 
       const parameters = new URLSearchParams();
-      parameters.set("execution-context", String(normalizedExecutionContextId));
-      parameters.set("return", normalizedPricingContextReturnRoute(returnHash));
+      parameters.set("trade-context", String(normalizedTradeContextId));
       return `#trading-counterparties?${parameters.toString()}`;
     }
 
@@ -15932,7 +17340,7 @@
       );
 
       if (!match) {
-        return { matches: false, mode: "list", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+        return { matches: false, mode: "list", counterpartyId: "", tradeContextId: null, returnHash: pricingRoute() };
       }
 
       let routeToken = "";
@@ -15940,29 +17348,29 @@
       try {
         routeToken = match[1] ? decodeURIComponent(match[1]) : "";
       } catch (_error) {
-        return { matches: false, mode: "list", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+        return { matches: false, mode: "list", counterpartyId: "", tradeContextId: null, returnHash: pricingRoute() };
       }
 
       const parameters = new URLSearchParams(match[2] || "");
-      const executionContextId = Number(parameters.get("execution-context"));
+      const tradeContextId = Number(parameters.get("trade-context"));
       const pricingRuleId = String(parameters.get("pricing-rule") || "").trim();
 
-      if (!routeToken && Number.isInteger(executionContextId) && executionContextId > 0) {
+      if (!routeToken && Number.isInteger(tradeContextId) && tradeContextId > 0) {
         return {
           matches: true,
-          mode: "related",
+          mode: "list",
           counterpartyId: "",
-          executionContextId,
-          returnHash: normalizedPricingContextReturnRoute(parameters.get("return"))
+          tradeContextId,
+          returnHash: pricingRoute()
         };
       }
 
       if (!routeToken) {
-        return { matches: true, mode: "list", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+        return { matches: true, mode: "list", counterpartyId: "", tradeContextId: null, returnHash: pricingRoute() };
       }
 
       if (routeToken.toLowerCase() === "new") {
-        return { matches: true, mode: "create", counterpartyId: "", executionContextId: null, returnHash: pricingRoute() };
+        return { matches: true, mode: "create", counterpartyId: "", tradeContextId: null, returnHash: pricingRoute() };
       }
 
       if (pricingRuleId) {
@@ -15970,13 +17378,20 @@
           matches: true,
           mode: "pricing-rule",
           counterpartyId: routeToken,
-          executionContextId: null,
+          tradeContextId: null,
           pricingRuleId,
           returnHash: normalizedPricingRulesReturnRoute(parameters.get("return"))
         };
       }
 
-      return { matches: true, mode: "detail", counterpartyId: routeToken, executionContextId: null, returnHash: pricingRoute() };
+      return {
+        matches: true,
+        mode: "detail",
+        counterpartyId: routeToken,
+        tradeContextId: null,
+        returnHash: pricingRoute(),
+        listReturnHash: normalizedTradingCounterpartyListRoute(parameters.get("return"))
+      };
     }
 
     function usersRoute(userId = "") {
@@ -16003,7 +17418,7 @@
     }
 
     function marketRoute() {
-      return "#market-pulse";
+      return "#market-pulse:quote-stream";
     }
 
     function settingsRoute(kind = "currencies") {
@@ -16012,15 +17427,7 @@
         : "#settings:currencies";
     }
 
-    function normalizedCurrencySettingsReturnRoute(value) {
-      const candidate = String(value || "").trim();
-
-      return /^(?:#settings:currencies|#(?:market-pulse|market):ccy-options)$/.test(candidate)
-        ? candidate
-        : settingsRoute("currencies");
-    }
-
-    function currencyPairSettingsForCurrencyRoute(currencyCode, returnHash = location.hash) {
+    function currencyPairSettingsForCurrencyRoute(currencyCode) {
       const normalizedCurrencyCode = String(currencyCode || "").trim().toUpperCase();
 
       if (!/^[A-Z]{3}$/.test(normalizedCurrencyCode)) {
@@ -16029,7 +17436,6 @@
 
       const parameters = new URLSearchParams();
       parameters.set("currency", normalizedCurrencyCode);
-      parameters.set("return", normalizedCurrencySettingsReturnRoute(returnHash));
       return `${settingsRoute("pairs")}?${parameters.toString()}`;
     }
 
@@ -16040,7 +17446,7 @@
       const routeToken = settingsMatch?.[1] || legacyMatch?.[1] || "";
 
       if (!routeToken) {
-        return { matches: false, kind: "streams", mode: "list", scope: null };
+        return { matches: false, kind: "streams", mode: "list", filter: null };
       }
 
       const kind = routeToken === "currency-pairs" || routeToken === "ccy-pair-options"
@@ -16053,15 +17459,12 @@
         return {
           matches: true,
           kind,
-          mode: "related",
-          scope: {
-            currencyCode,
-            returnHash: normalizedCurrencySettingsReturnRoute(parameters.get("return"))
-          }
+          mode: "filtered",
+          filter: { currencyCode }
         };
       }
 
-      return { matches: true, kind, mode: "list", scope: null };
+      return { matches: true, kind, mode: "list", filter: null };
     }
 
     function normalizedCurrencyPairSettingsReturnRoute(value) {
@@ -16088,24 +17491,27 @@
     }
 
     const PROCESS_CATALOG_GLOSSARY_TERM_KEYS = new Set([
+      "position-management-mode",
+      "auto-position-management-mode",
+      "manual-position-management-mode",
       "auto-hedging",
-      "auto-hedging-admission",
-      "execution-context-admission-mode",
-      "auto-hedging-admission-policy",
+      "auto-management-admission",
+      "trade-context-admission-mode",
+      "auto-mode-eligibility",
       "eligibility-check",
       "admission-state",
       "ccy-pair",
-      "fx-batch",
+      "batch",
       "batching",
       "market-pulse",
-      "fx-trade",
+      "trade",
       "client-deal",
       "hedge-deal",
-      "fx-position",
-      "execution-context",
+      "position",
+      "trade-context",
       "servicing-location",
       "accounting-system",
-      "execution-system",
+      "originating-system",
       "pricing-mode",
       "transfer-rate",
       "base-currency",
@@ -16118,6 +17524,14 @@
       "batch-internal-swap"
     ]);
 
+    const PROCESS_CATALOG_GLOSSARY_TERM_ALIASES = new Map([
+      ["manual-management", "manual-position-management-mode"],
+      ["auto-management", "auto-position-management-mode"],
+      ["execution-context", "trade-context"],
+      ["execution-system", "originating-system"],
+      ["execution-context-admission-mode", "trade-context-admission-mode"]
+    ]);
+
     function domainGlossaryTermFromRoute() {
       const routePrefix = `${domainGlossaryRoute()}/`;
       if (!location.hash.startsWith(routePrefix)) {
@@ -16125,7 +17539,8 @@
       }
       try {
         const termKey = decodeURIComponent(location.hash.slice(routePrefix.length));
-        return PROCESS_CATALOG_GLOSSARY_TERM_KEYS.has(termKey) ? termKey : null;
+        const canonicalTermKey = PROCESS_CATALOG_GLOSSARY_TERM_ALIASES.get(termKey) || termKey;
+        return PROCESS_CATALOG_GLOSSARY_TERM_KEYS.has(canonicalTermKey) ? canonicalTermKey : null;
       } catch (_error) {
         return null;
       }
@@ -16136,63 +17551,66 @@
       en: Object.freeze({
         pageTitle: "Process Catalog",
         manualBatching: "Manual Batching",
-        autoHedgingDefinition: "An automated FX risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.",
-        autoHedgingAdmissionDefinition: "The domain decision boundary that determines whether an FX Trade remains held under manual control or may be released to Auto Hedging.",
-        executionContextAdmissionModeDefinition: "A mandatory Execution Context setting that defines the permitted admission path for its FX Trades.",
-        autoHedgingAdmissionPolicyDefinition: "The complete set of mandatory rules that combines the Execution Context Admission Mode with configured Eligibility Checks to decide the Admission State.",
-        eligibilityCheckDefinition: "A safety condition evaluated from FX Trade, reference, or market data to determine eligibility for Auto Hedging. Every applicable check must pass before release.",
-        ccyPairDefinition: "An ordered pair of currencies defining the Base Currency and Quote Currency used to express an FX Trade amount and exchange rate.",
-        automationAdmissionStateDefinition: "Shows whether a specific FX Trade is currently held for manual control or released to Auto Hedging.",
+        autoPositionManagementModeDefinition: "A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode may be assigned at initial registration or after an operator approves a move from Manual Mode of Position Management; it does not mean that an automated action has already occurred.",
+        manualPositionManagementModeDefinition: "A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator may manage it entirely in this mode or approve a move to Auto Mode of Position Management if the applicable eligibility requirements are met.",
+        positionManagementModeDefinition: "The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.",
+        autoHedgingDefinition: "An automated risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.",
+        autoManagementAdmissionDefinition: "The domain decision boundary that determines whether a Trade remains in Manual Management or may be released to Auto Management.",
+        tradeContextAdmissionModeDefinition: "A Trade Context setting used only for Initial Admission: admit an eligible new trade automatically or require operator review.",
+        autoModeEligibilityDefinition: "Requirements configured by Trade Type and Ccy Pair and checked whenever a Trade is considered for Position Management — Auto Mode. Initial Mode Assignment separately applies Trade Context and Pricing Rule settings.",
+        eligibilityCheckDefinition: "A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before release.",
+        ccyPairDefinition: "An ordered pair of currencies defining the Base Currency and Quote Currency used to express a Trade amount and exchange rate.",
+        automationAdmissionStateDefinition: "Shows whether a specific Trade is currently in Manual Management or released to Auto Management.",
         domainGlossary: "Domain Glossary",
         domainGlossarySubtitle: "Core terms used across documented processes",
         goal: "Process goal:",
         definitions: "Core definitions",
-        fxBatchDefinition: "A fixed package of FX Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical FX Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active FX Position view, which organizes trades and simplifies control of the current currency position.",
+        batchDefinition: "A fixed package of Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active Position view, which organizes trades and simplifies control of the current currency position.",
         batchingTerm: "Batching",
         marketPulseDefinition: "An application module that provides current normalized market quotes (Bid and Offer) for currency pairs to pricing, validation, and risk-management processes. In the current demo, quotes are generated by a simulator; the domain concept is independent of the data source and may later use real market-data feeds.",
-        batchingDefinition: "A manual or automatic process that selects, validates, groups and neutralizes FX Trades compatible by Batching Key to form one or more FX Batches. A user selects FX Trades for Manual Batching; configured rules select them for Automatic Batching.",
-        fxTradeDefinition: "A Client Deal, Hedge Deal, or technical FX transaction included in currency-position calculations and displayed in FX Position.",
-        clientDealDefinition: "An FX Trade executed with a client and forming the client component of the currency position.",
-        hedgeDealDefinition: "An FX Trade executed with a hedge counterparty to manage or neutralize the currency position.",
-        fxPositionDefinition: "Application interface for monitoring the currency position and performing operations with FX Trades, including Batching.",
-        executionContextDefinition: "A configuration context that determines how an FX Trade is processed for pricing, position management, and other applicable processes. In the current demo, it is defined by the combination of Servicing Location, Accounting System (when applicable), and Execution System.",
-        servicingLocationDefinition: "The organizational and geographic point at which an FX Trade is serviced, such as a branch or head office in a particular region.",
-        accountingSystemDefinition: "An internal system of record of a bank or financial institution in which an FX Trade and its related accounting entries are registered.",
-        executionSystemDefinition: "The system or execution channel in which an FX Trade is actually executed. Its Pricing Mode describes how the execution price is produced or approved.",
-        pricingModeDefinition: "An Execution System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.",
-        transferRateDefinition: "An internal accounting rate of an FX Trade used to calculate its currency position and allocate analytical P&L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.",
-        baseCurrencyDefinition: "The first currency in a currency pair; its amount forms the base currency leg of an FX Trade.",
+        batchingDefinition: "A manual or automatic process that selects, validates, groups and neutralizes Trades compatible by Batching Key to form one or more Batches. A user selects Trades for Manual Batching; configured rules select them for Automatic Batching.",
+        tradeDefinition: "A Client Deal, Hedge Deal, or technical transaction included in currency-position calculations and displayed in Position.",
+        clientDealDefinition: "A Trade executed with a client and forming the client component of the currency position.",
+        hedgeDealDefinition: "A Trade executed with a hedge counterparty to manage or neutralize the currency position.",
+        positionDefinition: "Application interface for monitoring the currency position and performing operations with Trades, including Batching.",
+        tradeContextDefinition: "Trade Context describes the business environment in which a Trade originates, is serviced, and is reflected in accounting. It provides common coordinates against which rules for different processes apply. These coordinates are Servicing Location, Accounting System (when applicable), and Originating System.",
+        servicingLocationDefinition: "The organizational and geographic point at which a Trade is serviced, such as a branch or head office in a particular region.",
+        accountingSystemDefinition: "An internal system of record of a bank or financial institution in which a Trade and its related accounting entries are registered.",
+        originatingSystemDefinition: "The business system in which a Trade is first registered as a business fact.",
+        pricingModeDefinition: "An Originating System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.",
+        transferRateDefinition: "An internal accounting rate of a Trade used to calculate its currency position and allocate analytical P&L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.",
+        baseCurrencyDefinition: "The first currency in a currency pair; its amount forms the base currency leg of a Trade.",
         quoteCurrencyDefinition: "The second currency in a currency pair, in which the value of the Base Currency is expressed.",
-        tradeDateDefinition: "The date on which an FX Trade is executed; Tenor and Value Dates are determined relative to it.",
-        tenorDefinition: "The standard settlement term of an FX Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.",
-        valueDateDefinition: "The settlement date for one currency leg of an FX Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.",
-        batchingKeyDefinition: "A composite compatibility key that determines whether FX Trades may be included in one FX Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.",
-        crossTenorBatchingDefinition: "A Batching mode that allows compatible FX Trades with different Tenors and Value Dates to be included in one FX Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.",
-        batchInternalSwapDefinition: "An internal technical entity of an FX Batch that aligns FX Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across FX Batches and offset by a single net swap at the end of the accounting day.",
-        selectedFxTrades: "Selected FX Trades",
-        formedFxBatch: "Formed FX Batch",
+        tradeDateDefinition: "The date on which a Trade is executed; Tenor and Value Dates are determined relative to it.",
+        tenorDefinition: "The standard settlement term of a Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.",
+        valueDateDefinition: "The settlement date for one currency leg of a Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.",
+        batchingKeyDefinition: "A composite compatibility key that determines whether Trades may be included in one Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.",
+        crossTenorBatchingDefinition: "A Batching mode that allows compatible Trades with different Tenors and Value Dates to be included in one Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.",
+        batchInternalSwapDefinition: "An internal technical entity of a Batch that aligns Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across Batches and offset by a single net swap at the end of the accounting day.",
+        selectedTrades: "Selected Trades",
+        formedBatch: "Formed Batch",
         stageInput: "INPUT",
         stageDecision: "DECISION",
         stageControl: "CONTROL",
         stageDomain: "DOMAIN",
         stageCommit: "COMMIT",
-        selectFxTrades: "FX Trade Selection for FX Batch Formation",
+        selectTrades: "Trade Selection for Batch Formation",
         resolveTenors: "Resolve Batching Key",
         tenorResolvedRequest: "Tenor-resolved request",
         validateAndPlan: "Verify Command & Selection",
         deterministicGroupPlan: "Deterministic group plan",
         formAndNeutralize: "Form & Neutralize",
-        neutralBatchModel: "Neutral FX Batch model",
+        neutralBatchModel: "Neutral Batch model",
         oneDbTransaction: "ONE DB TX",
         commitAndRefresh: "Commit & Refresh",
-        formedBatches: "Formed FX Batches",
+        formedBatches: "Formed Batches",
         sameTenor: "Same Tenor",
         continueAction: "Continue",
         mixedTenors: "Mixed Batching Key",
         chooseOrSplit: "Choose one Group",
         serverTransactionFailure: "Server transaction failure",
         fullRollback: "Full rollback",
-        fxPositionUnchanged: "FX Position unchanged",
+        positionUnchanged: "Position unchanged",
         stageObjective: "Stage goal:",
         executionSteps: "Execution steps",
         controlsAndFailure: "Controls & failure",
@@ -16205,65 +17623,68 @@
         stageResult: "Stage result"
       }),
       ru: Object.freeze({
-        transferRateDefinition: "\u0412\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u0443\u0447\u0451\u0442\u043d\u044b\u0439 \u043a\u0443\u0440\u0441 FX Trade, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u044b\u0439 \u0434\u043b\u044f \u0440\u0430\u0441\u0447\u0451\u0442\u0430 \u0432\u0430\u043b\u044e\u0442\u043d\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0434\u043e\u0445\u043e\u0434\u0430. \u0418\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u044d\u0442\u043e\u043c\u0443 \u043a\u0443\u0440\u0441\u0443 \u043a\u043b\u0438\u0435\u043d\u0442\u0441\u043a\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043b\u0430\u0441\u044c \u0438\u0437 \u043a\u043d\u0438\u0433\u0438 Sales \u0432 \u043a\u043d\u0438\u0433\u0443 \u043f\u043e\u0434\u0440\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u044f, \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0438 \u043f\u0435\u0440\u0435\u043a\u0440\u044b\u0432\u0430\u044e\u0449\u0435\u0433\u043e \u043f\u043e\u0437\u0438\u0446\u0438\u044e. \u0412 \u0442\u0435\u043a\u0443\u0449\u0435\u043c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438 \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0438 \u043c\u0435\u0436\u0434\u0443 \u043a\u043d\u0438\u0433\u0430\u043c\u0438 \u0438\u043b\u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0430\u043c\u0438 \u043d\u0435\u0442; \u043e\u0442\u0440\u0430\u0441\u043b\u0435\u0432\u043e\u0439 \u0442\u0435\u0440\u043c\u0438\u043d \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u043b\u044f \u043e\u0431\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f \u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0433\u043e \u0440\u0430\u0441\u0447\u0451\u0442\u043d\u043e\u0433\u043e \u043a\u0443\u0440\u0441\u0430.",
+        transferRateDefinition: "\u0412\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u0443\u0447\u0451\u0442\u043d\u044b\u0439 \u043a\u0443\u0440\u0441 Trade, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u044b\u0439 \u0434\u043b\u044f \u0440\u0430\u0441\u0447\u0451\u0442\u0430 \u0432\u0430\u043b\u044e\u0442\u043d\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0434\u043e\u0445\u043e\u0434\u0430. \u0418\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u044d\u0442\u043e\u043c\u0443 \u043a\u0443\u0440\u0441\u0443 \u043a\u043b\u0438\u0435\u043d\u0442\u0441\u043a\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043b\u0430\u0441\u044c \u0438\u0437 \u043a\u043d\u0438\u0433\u0438 Sales \u0432 \u043a\u043d\u0438\u0433\u0443 \u043f\u043e\u0434\u0440\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u044f, \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0438 \u043f\u0435\u0440\u0435\u043a\u0440\u044b\u0432\u0430\u044e\u0449\u0435\u0433\u043e \u043f\u043e\u0437\u0438\u0446\u0438\u044e. \u0412 \u0442\u0435\u043a\u0443\u0449\u0435\u043c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438 \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0438 \u043c\u0435\u0436\u0434\u0443 \u043a\u043d\u0438\u0433\u0430\u043c\u0438 \u0438\u043b\u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0430\u043c\u0438 \u043d\u0435\u0442; \u043e\u0442\u0440\u0430\u0441\u043b\u0435\u0432\u043e\u0439 \u0442\u0435\u0440\u043c\u0438\u043d \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u043b\u044f \u043e\u0431\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f \u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0433\u043e \u0440\u0430\u0441\u0447\u0451\u0442\u043d\u043e\u0433\u043e \u043a\u0443\u0440\u0441\u0430.",
         pageTitle: "Каталог процессов",
         manualBatching: "Ручной Batching",
+        autoPositionManagementModeDefinition: "Режим управления позицией, в котором трейд доступен автоматическим процессам, включая хеджирование и формирование batch, с учётом правил каждого процесса. Трейд должен соответствовать применимым требованиям допуска. Режим может назначаться при первоначальной регистрации или после одобренного оператором перевода из Manual Mode of Position Management; сам по себе он не означает, что автоматическое действие уже выполнено.",
+        manualPositionManagementModeDefinition: "Режим управления позицией, в котором управление трейдом контролирует оператор, включая проверку, ручное хеджирование и формирование batch. Трейд не участвует в автоматических процессах управления позицией. Оператор может полностью обработать его в этом режиме либо одобрить перевод в Auto Mode of Position Management при выполнении применимых требований допуска.",
+        positionManagementModeDefinition: "Назначенный трейду режим: Auto Mode of Position Management или Manual Mode of Position Management. Определяет способ управления позицией трейда и не является его экономической экспозицией или состоянием отдельного процесса управления.",
         autoHedgingDefinition: "Автоматизированный процесс управления валютным риском, который контролирует открытую валютную позицию и применяет настроенные алгоритмы и ограничения для удержания валютного риска в утверждённых пределах.",
-        autoHedgingAdmissionDefinition: "Доменная граница принятия решения, определяющая, остаётся ли FX Trade под ручным контролем или может быть допущена к Auto Hedging.",
-        executionContextAdmissionModeDefinition: "Обязательная настройка Execution Context, определяющая допустимый путь допуска связанных с ним FX Trades.",
-        autoHedgingAdmissionPolicyDefinition: "Полный набор обязательных правил, объединяющий Execution Context Admission Mode с настроенными Eligibility Checks для определения Admission State.",
-        eligibilityCheckDefinition: "Условие безопасности, проверяемое по данным FX Trade, справочным или рыночным данным для определения возможности участия в Auto Hedging. Перед допуском должны быть пройдены все применимые проверки.",
-        ccyPairDefinition: "Упорядоченная пара валют, определяющая Base Currency и Quote Currency, в которых выражаются сумма и обменный курс FX Trade.",
-        automationAdmissionStateDefinition: "Показывает, удерживается ли конкретная FX Trade для ручного контроля или уже допущена к Auto Hedging.",
+        autoManagementAdmissionDefinition: "Доменная граница принятия решения, определяющая, остаётся ли Trade в Manual Management или может быть допущена к Auto Management.",
+        tradeContextAdmissionModeDefinition: "Настройка Trade Context только для Initial Admission: автоматически допустить новый трейд при выполнении критериев либо направить на ручную проверку.",
+        autoModeEligibilityDefinition: "Требования, настроенные по Trade Type и Ccy Pair и проверяемые каждый раз, когда рассматривается перевод Trade в Position Management — Auto Mode. Initial Mode Assignment отдельно учитывает настройки Trade Context и Pricing Rule.",
+        eligibilityCheckDefinition: "Условие безопасности, проверяемое по данным Trade, справочным или рыночным данным для определения возможности участия в Auto Management. Перед допуском должны быть пройдены все применимые проверки.",
+        ccyPairDefinition: "Упорядоченная пара валют, определяющая Base Currency и Quote Currency, в которых выражаются сумма и обменный курс Trade.",
+        automationAdmissionStateDefinition: "Показывает, находится ли конкретный Trade в Manual Management или уже допущен к Auto Management.",
         domainGlossary: "Domain Glossary",
         domainGlossarySubtitle: "Основные термины, используемые в описаниях процессов",
         goal: "Цель процесса:",
         definitions: "Основные определения",
-        fxBatchDefinition: "Зафиксированный пакет совместимых по Batching Key FX Trades — Client Deals, Hedge Deals и технических FX Trades, — совокупная ОВП которых равна нулю. После формирования участники пакета исключаются из активного представления FX Position, что систематизирует сделки и упрощает контроль текущей валютной позиции.",
+        batchDefinition: "Зафиксированный пакет совместимых по Batching Key Trades — Client Deals, Hedge Deals и технических Trades, — совокупная ОВП которых равна нулю. После формирования участники пакета исключаются из активного представления Position, что систематизирует сделки и упрощает контроль текущей валютной позиции.",
         marketPulseDefinition: "Модуль приложения, предоставляющий текущие нормализованные рыночные котировки (Bid и Offer) по валютным парам для ценообразования, проверок и процессов управления риском. В текущей демонстрационной реализации котировки формируются симулятором; доменное понятие не зависит от источника данных и в дальнейшем может использовать реальные потоки рыночных данных.",
         batchingTerm: "Batching",
-        batchingDefinition: "Ручной или автоматический процесс выбора, проверки, группировки и нейтрализации совместимых по Batching Key FX Trades, результатом которого становится один или несколько FX Batches. При ручном Batching FX Trades выбирает пользователь, при автоматическом — система по настроенным правилам.",
-        fxTradeDefinition: "Client Deal, Hedge Deal или техническая FX Trade, учитываемая при расчёте валютной позиции и отображаемая в FX Position.",
-        clientDealDefinition: "FX Trade, заключённый с клиентом и формирующий клиентскую часть валютной позиции.",
-        hedgeDealDefinition: "FX Trade, заключённый с хеджирующим контрагентом для управления или нейтрализации валютной позиции.",
-        fxPositionDefinition: "Интерфейс приложения для контроля валютной позиции и выполнения операций с FX Trades, в том числе для выполнения Batching.",
-        executionContextDefinition: "Конфигурационный контекст, определяющий обработку FX Trade в части ценообразования, управления позицией и других применимых процессов. В текущей демо-реализации он задаётся сочетанием Servicing Location, Accounting System (когда применимо) и Execution System.",
-        servicingLocationDefinition: "Организационная и географическая точка обслуживания FX Trade, например филиал или головной офис в определённом регионе.",
-        accountingSystemDefinition: "Внутренняя учётная система банка или финансовой организации, в которой регистрируются FX Trade и связанные с ней бухгалтерские проводки.",
-        executionSystemDefinition: "Система или канал исполнения, в котором непосредственно заключается FX Trade. Её Pricing Mode определяет способ формирования или подтверждения цены исполнения.",
-        pricingModeDefinition: "Атрибут Execution System, определяющий способ формирования или подтверждения цены исполнения: AUTO_PRICED — автоматическое ценообразование, DEALER_PRICED — цену устанавливает дилер, DEALER_APPROVED — предложенная системой цена требует подтверждения дилером.",
-        baseCurrencyDefinition: "Первая валюта в валютной паре; её сумма образует базовую валютную часть FX Trade.",
+        batchingDefinition: "Ручной или автоматический процесс выбора, проверки, группировки и нейтрализации совместимых по Batching Key Trades, результатом которого становится один или несколько Batches. При ручном Batching Trades выбирает пользователь, при автоматическом — система по настроенным правилам.",
+        tradeDefinition: "Client Deal, Hedge Deal или техническая Trade, учитываемая при расчёте валютной позиции и отображаемая в Position.",
+        clientDealDefinition: "Trade, заключённый с клиентом и формирующий клиентскую часть валютной позиции.",
+        hedgeDealDefinition: "Trade, заключённый с хеджирующим контрагентом для управления или нейтрализации валютной позиции.",
+        positionDefinition: "Интерфейс приложения для контроля валютной позиции и выполнения операций с Trades, в том числе для выполнения Batching.",
+        tradeContextDefinition: "Trade Context описывает бизнес-среду возникновения, обслуживания и учётного отражения сделки. Он задаёт общие координаты, относительно которых применяются правила разных процессов. Эти координаты — Servicing Location, Accounting System (когда применимо) и Originating System.",
+        servicingLocationDefinition: "Организационная и географическая точка обслуживания Trade, например филиал или головной офис в определённом регионе.",
+        accountingSystemDefinition: "Внутренняя учётная система банка или финансовой организации, в которой регистрируются Trade и связанные с ней бухгалтерские проводки.",
+        originatingSystemDefinition: "Бизнес-система, в которой сделка впервые зарегистрирована как бизнес-факт.",
+        pricingModeDefinition: "Атрибут Originating System, определяющий способ формирования или подтверждения цены исполнения: AUTO_PRICED — автоматическое ценообразование, DEALER_PRICED — цену устанавливает дилер, DEALER_APPROVED — предложенная системой цена требует подтверждения дилером.",
+        baseCurrencyDefinition: "Первая валюта в валютной паре; её сумма образует базовую валютную часть Trade.",
         quoteCurrencyDefinition: "Вторая валюта в валютной паре; в ней выражается стоимость Base Currency.",
-        tradeDateDefinition: "Дата заключения FX Trade, относительно которой определяется Tenor и рассчитываются Value Dates.",
-        tenorDefinition: "Стандартное обозначение срока расчётов по FX Trade относительно Trade Date. В текущей модели используются TOD, TOM и SPOT.",
-        valueDateDefinition: "Дата расчётов по одной из валют FX Trade. Для каждого FX Trade отдельно определяются Base Currency Value Date и Quote Currency Value Date.",
-        batchingKeyDefinition: "Составной ключ совместимости FX Trades, определяющий возможность их включения в один FX Batch. Он всегда включает валютную пару, Trade Date и точность обеих валют. При отключённом Cross-Tenor Batching ключ также включает Tenor и обе Value Dates. При включённом Cross-Tenor Batching эти параметры могут различаться, поскольку сделки приводятся к общему Tenor с помощью Batch Internal Swap.",
-        crossTenorBatchingDefinition: "Режим Batching, позволяющий включать в один FX Batch совместимые FX Trades с различающимися Tenor и Value Dates. Перед формированием FX Batch их расчётные сроки приводятся к общему Tenor с помощью Batch Internal Swap.",
-        batchInternalSwapDefinition: "Внутренняя техническая сущность FX Batch, приводящая FX Trades с разными расчётными сроками к общему Tenor. Она не является отдельной рыночной сделкой; позиции по всем таким сущностям агрегируются и перекрываются одним нетто-свопом в конце учётного дня.",
-        selectedFxTrades: "Выбранные FX Trades",
-        formedFxBatch: "Сформированный FX Batch",
+        tradeDateDefinition: "Дата заключения Trade, относительно которой определяется Tenor и рассчитываются Value Dates.",
+        tenorDefinition: "Стандартное обозначение срока расчётов по Trade относительно Trade Date. В текущей модели используются TOD, TOM и SPOT.",
+        valueDateDefinition: "Дата расчётов по одной из валют Trade. Для каждого Trade отдельно определяются Base Currency Value Date и Quote Currency Value Date.",
+        batchingKeyDefinition: "Составной ключ совместимости Trades, определяющий возможность их включения в один Batch. Он всегда включает валютную пару, Trade Date и точность обеих валют. При отключённом Cross-Tenor Batching ключ также включает Tenor и обе Value Dates. При включённом Cross-Tenor Batching эти параметры могут различаться, поскольку сделки приводятся к общему Tenor с помощью Batch Internal Swap.",
+        crossTenorBatchingDefinition: "Режим Batching, позволяющий включать в один Batch совместимые Trades с различающимися Tenor и Value Dates. Перед формированием Batch их расчётные сроки приводятся к общему Tenor с помощью Batch Internal Swap.",
+        batchInternalSwapDefinition: "Внутренняя техническая сущность Batch, приводящая Trades с разными расчётными сроками к общему Tenor. Она не является отдельной рыночной сделкой; позиции по всем таким сущностям агрегируются и перекрываются одним нетто-свопом в конце учётного дня.",
+        selectedTrades: "Выбранные Trades",
+        formedBatch: "Сформированный Batch",
         stageInput: "ВХОД",
         stageDecision: "РЕШЕНИЕ",
         stageControl: "КОНТРОЛЬ",
         stageDomain: "ДОМЕН",
         stageCommit: "ФИКСАЦИЯ",
-        selectFxTrades: "Выбор FX Trades для создания FX Batch",
+        selectTrades: "Выбор Trades для создания Batch",
         resolveTenors: "Разрешить Batching Key",
         tenorResolvedRequest: "Запрос с разрешённым Tenor",
         validateAndPlan: "Проверить команду и выборку",
         deterministicGroupPlan: "Детерминированный план групп",
         formAndNeutralize: "Сформировать и нейтрализовать",
-        neutralBatchModel: "Нейтральная модель FX Batch",
+        neutralBatchModel: "Нейтральная модель Batch",
         oneDbTransaction: "ОДНА ТРАНЗАКЦИЯ БД",
         commitAndRefresh: "Зафиксировать и обновить",
-        formedBatches: "Сформированные FX Batches",
+        formedBatches: "Сформированные Batches",
         sameTenor: "Один Tenor",
         continueAction: "Продолжить",
         mixedTenors: "Разные Batching Key",
         chooseOrSplit: "Выбрать одну группу",
         serverTransactionFailure: "Ошибка серверной транзакции",
         fullRollback: "Полный откат",
-        fxPositionUnchanged: "FX Position не изменена",
+        positionUnchanged: "Position не изменена",
         stageObjective: "Цель этапа:",
         executionSteps: "Шаги выполнения",
         controlsAndFailure: "Проверки и ошибки",
@@ -16314,54 +17735,54 @@
         theme: "is-input",
         icon: "checklist",
         kicker: "01 · Input",
-        title: "FX Trade Selection for FX Batch Formation",
-        objective: "Freeze the operator's eligible FX Position selection for deterministic Manual Batching.",
+        title: "Trade Selection for Batch Formation",
+        objective: "Freeze the operator's eligible Position selection for deterministic Manual Batching.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "Browser", title: "Read the current FX Position selection.", detail: "Resolve selectedTradeIds against rows currently displayed for the active currency pair." }),
-          Object.freeze({ boundary: "Browser", title: "Keep only FX Trades eligible for Batching.", detail: "Exclude synthetic rows and require a positive Trade ID, BUY or SELL side, and a positive Transfer Rate." }),
-          Object.freeze({ boundary: "Browser", title: "Create an eligible FX Trade snapshot.", detail: "Copy the matching FX Position rows into sourceDeals for the next stage. The mutable checkbox state itself remains browser-only." })
+          Object.freeze({ boundary: "Browser", title: "Read the current Position selection.", detail: "Resolve selectedTradeIds against rows currently displayed for the active currency pair." }),
+          Object.freeze({ boundary: "Browser", title: "Keep only Trades eligible for Batching.", detail: "Exclude synthetic rows and require a positive Trade ID, BUY or SELL side, and a positive Transfer Rate." }),
+          Object.freeze({ boundary: "Browser", title: "Create an eligible Trade snapshot.", detail: "Copy the matching Position rows into sourceDeals for the next stage. The mutable checkbox state itself remains browser-only." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "At least one eligible FX Trade remains after filtering.", failure: "Show a warning and stop before any request is sent." }),
-          Object.freeze({ check: "Every selected source exposes the minimum data required by the batching UI.", failure: "Ignore the non-batchable row; FX Position and the database remain unchanged." })
+          Object.freeze({ check: "At least one eligible Trade remains after filtering.", failure: "Show a warning and stop before any request is sent." }),
+          Object.freeze({ check: "Every selected source exposes the minimum data required by the batching UI.", failure: "Ignore the non-batchable row; Position and the database remain unchanged." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Input", name: "selectedTradeIds: Set", scope: "Browser", purpose: "Mutable checkbox selection maintained by FX Position." }),
-          Object.freeze({ kind: "Runtime", name: "sourceDeals: FxPositionRow[]", scope: "Browser", purpose: "Eligible source rows captured from the current display." }),
-          Object.freeze({ kind: "Output", name: "eligible source snapshot", scope: "Manual Batching process", purpose: "Captured set of eligible FX Trades for further processing." })
+          Object.freeze({ kind: "Input", name: "selectedTradeIds: Set", scope: "Browser", purpose: "Mutable checkbox selection maintained by Position." }),
+          Object.freeze({ kind: "Runtime", name: "sourceDeals: PositionRow[]", scope: "Browser", purpose: "Eligible source rows captured from the current display." }),
+          Object.freeze({ kind: "Output", name: "eligible source snapshot", scope: "Manual Batching process", purpose: "Captured set of eligible Trades for further processing." })
         ]),
         traceability: Object.freeze([
           Object.freeze({ label: "Persistence", value: "Not persisted. The checkbox selection exists only in browser memory." }),
           Object.freeze({ label: "Audit", value: "No audit record is created at this stage." }),
           Object.freeze({ label: "Application logging", value: "No stage event is emitted; only the user-facing warning/status may change." })
         ]),
-        result: "Eligible FX Trade snapshot captured from the current FX Position state."
+        result: "Eligible Trade snapshot captured from the current Position state."
       }),
       tenor: Object.freeze({
         theme: "is-tenor",
         icon: "alt_route",
         kicker: "02 · Decision",
         title: "Resolve Batching Key",
-        objective: "Resolve a mixed Batching Key selection to one compatible Trade set for one FX Batch.",
+        objective: "Resolve a mixed Batching Key selection to one compatible Trade set for one Batch.",
         steps: Object.freeze([
           Object.freeze({ boundary: "Browser", title: "Group by the complete Batching Key.", detail: "Use Ccy Pair, currency precision, Trade Date, Tenor and both Value Dates while retaining the eligible source rows in each group." }),
           Object.freeze({ boundary: "Browser", title: "Choose one compatible group.", detail: "A single Batching Key continues directly. For a mixed selection, the dealer chooses one group; the browser never creates independent batches for the remaining groups." }),
           Object.freeze({ boundary: "Browser", title: "Prepare the immutable request identity.", detail: "Sort numeric tradeIds and generate one idempotencyKey for the exact selection." }),
-          Object.freeze({ boundary: "API", title: "Submit the Manual Batching command.", detail: "POST tradeIds to /api/v1/fx-batches, with the idempotencyKey in the request header." })
+          Object.freeze({ boundary: "API", title: "Submit the Manual Batching command.", detail: "POST tradeIds to /api/v1/batches, with the idempotencyKey in the request header." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "Technical FX Swap neutralization is not implemented and Cross-Tenor Batching remains disabled.", failure: "A mixed Batching Key cannot be submitted as one FX Batch; user resolution is required." }),
-          Object.freeze({ check: "The selected Batching Key group contains at least one eligible source FX Trade.", failure: "Do not submit an empty compatibility group." })
+          Object.freeze({ check: "Technical FX Swap neutralization is not implemented and Cross-Tenor Batching remains disabled.", failure: "A mixed Batching Key cannot be submitted as one Batch; user resolution is required." }),
+          Object.freeze({ check: "The selected Batching Key group contains at least one eligible source Trade.", failure: "Do not submit an empty compatibility group." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Input", name: "sourceDeals: FxPositionRow[]", scope: "Browser", purpose: "Eligible FX Trades received from Stage 01." }),
+          Object.freeze({ kind: "Input", name: "sourceDeals: PositionRow[]", scope: "Browser", purpose: "Eligible Trades received from Stage 01." }),
           Object.freeze({ kind: "Runtime", name: "compatibilityGroups: Map<BatchingKey, Trade[]>", scope: "Browser", purpose: "UI decision model for a mixed Batching Key selection." }),
           Object.freeze({ kind: "Output", name: "tradeIds: number[]", scope: "API command", purpose: "Sorted Trade IDs submitted to the server." }),
           Object.freeze({ kind: "Output", name: "idempotencyKey: UUID", scope: "Request header", purpose: "Stable identity reused when the exact request is retried." })
         ]),
         traceability: Object.freeze([
           Object.freeze({ label: "Persistence", value: "No durable write occurs until the server transaction starts in Stage 03." }),
-          Object.freeze({ label: "Audit", value: "The exact Trade selection is recorded later as FX Batch membership if the transaction commits." }),
+          Object.freeze({ label: "Audit", value: "The exact Trade selection is recorded later as Batch membership if the transaction commits." }),
           Object.freeze({ label: "Application logging", value: "No separate event records the dialog choice." })
         ]),
         result: "One compatible Trade selection with sorted Trade IDs and a stable idempotency key."
@@ -16371,91 +17792,91 @@
         icon: "fact_check",
         kicker: "03 · Control",
         title: "Verify Command & Selection",
-        objective: "Verify the command and rebuild one authoritative eligible FX Trade selection inside one database transaction.",
+        objective: "Verify the command and rebuild one authoritative eligible Trade selection inside one database transaction.",
         steps: Object.freeze([
           Object.freeze({ boundary: "Application", title: "Normalize the command.", detail: "Require a valid idempotency key and 1–200 unique positive Trade IDs; then sort the IDs." }),
-          Object.freeze({ boundary: "DB", title: "Resolve an existing FX Batch by idempotency key.", detail: "Replay the matching completed FX Batch, or reject reuse of the key for different Trade IDs or a different formation reason." }),
-          Object.freeze({ boundary: "DB", title: "Rebuild the authoritative source selection.", detail: "Load the complete current FX Trade records for every requested ID; reject missing, unavailable, already batched and unsupported technical FX Trades." }),
+          Object.freeze({ boundary: "DB", title: "Resolve an existing Batch by idempotency key.", detail: "Replay the matching completed Batch, or reject reuse of the key for different Trade IDs or a different formation reason." }),
+          Object.freeze({ boundary: "DB", title: "Rebuild the authoritative source selection.", detail: "Load the complete current Trade records for every requested ID; reject missing, unavailable, already batched and unsupported technical Trades." }),
           Object.freeze({ boundary: "Domain", title: "Verify the complete Batching Key.", detail: "Require one currency pair, Trade Date, Tenor, both Value Dates and compatible currency precision for the entire selection." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "Idempotency key, formation reason and sorted Trade IDs match any prior completed FX Batch.", failure: "Return the prior FX Batch on an exact replay; reject a conflicting command." }),
-          Object.freeze({ check: "Every requested FX Trade is currently eligible and has valid baseline source data, including Side, Tenor and Transfer Rate.", failure: "Abort before persistence; no FX Batch becomes durable." }),
+          Object.freeze({ check: "Idempotency key, formation reason and sorted Trade IDs match any prior completed Batch.", failure: "Return the prior Batch on an exact replay; reject a conflicting command." }),
+          Object.freeze({ check: "Every requested Trade is currently eligible and has valid baseline source data, including Side, Tenor and Transfer Rate.", failure: "Abort before persistence; no Batch becomes durable." }),
           Object.freeze({ check: "Stage 04 revalidates the single selection and its Batching Key at the domain boundary.", failure: "A domain failure rolls back the transaction." })
         ]),
         artifacts: Object.freeze([
           Object.freeze({ kind: "Input", name: "{ idempotencyKey, tradeIds }", scope: "Application", purpose: "Manual batching command received from the API." }),
           Object.freeze({ kind: "Runtime", name: "normalized", scope: "Application", purpose: "Canonical command with sorted Trade IDs." }),
-          Object.freeze({ kind: "Output", name: "sourceTrades[]", scope: "Stage 04", purpose: "One complete authoritative selection for one FX Batch." })
+          Object.freeze({ kind: "Output", name: "sourceTrades[]", scope: "Stage 04", purpose: "One complete authoritative selection for one Batch." })
         ]),
         traceability: Object.freeze([
-          Object.freeze({ label: "Persistence", value: "No durable row exists until the FX Batch aggregate is persisted in Stage 05." }),
-          Object.freeze({ label: "Audit", value: "fx_batches stores the public idempotency key; fx_batch_members stores the exact source Trade selection." }),
+          Object.freeze({ label: "Persistence", value: "No durable row exists until the Batch aggregate is persisted in Stage 05." }),
+          Object.freeze({ label: "Audit", value: "batches stores the public idempotency key; batch_members stores the exact source Trade selection." }),
           Object.freeze({ label: "Application logging", value: "No per-check event or replay-attempt event is emitted." })
         ]),
-        result: "One verified authoritative FX Trade selection ready for FX Batch formation."
+        result: "One verified authoritative Trade selection ready for Batch formation."
       }),
       form: Object.freeze({
         theme: "is-domain",
         icon: "calculate",
         kicker: "04 · Domain",
         title: "Form & Neutralize",
-        objective: "Form one FX Batch model with zero Base Currency position and neutral Quote Currency cash.",
+        objective: "Form one Batch model with zero Base Currency position and neutral Quote Currency cash.",
         steps: Object.freeze([
           Object.freeze({ boundary: "Application", title: "Pass the verified source selection to the domain.", detail: "Use the authoritative records rebuilt in Stage 03 without a second database read." }),
           Object.freeze({ boundary: "Domain", title: "Revalidate the group and its Batching Key.", detail: "Recheck every source invariant and require one pair, Trade Date, Tenor, both Value Dates, currency precision, positive amounts and positive Transfer Rates." }),
-          Object.freeze({ boundary: "Domain", title: "Calculate source FX Trade balance contributions.", detail: "Compute signed Base Currency and Quote Currency balances plus exact Transfer Rate-based Quote Currency amounts in minor units." }),
+          Object.freeze({ boundary: "Domain", title: "Calculate source Trade balance contributions.", detail: "Compute signed Base Currency and Quote Currency balances plus exact Transfer Rate-based Quote Currency amounts in minor units." }),
           Object.freeze({ boundary: "Domain", title: "Neutralize a non-zero Base Currency position.", detail: "Use the imbalance-producing side's Base Currency-weighted Transfer Rate to create an opposite Balance Trade and mirrored Position Out." }),
           Object.freeze({ boundary: "Domain", title: "Neutralize Quote Currency cash.", detail: "Create Quote Cash Out opposite to the remaining Quote Currency balance. This output is created even for a flat or zero-cash result." })
         ]),
         controls: Object.freeze([
           Object.freeze({ check: "All members share one Batching Key and current currency precision.", failure: "Reject the group and roll back the entire manual operation." }),
-          Object.freeze({ check: "Each source FX Trade amount fits safe minor-unit storage and has a positive Transfer Rate.", failure: "Reject before the FX Batch can reach FORMED status." }),
-          Object.freeze({ check: "FX Batch members plus Balance Trade have Base Currency OVP 0; Quote Cash Out brings Quote Currency cash to 0.", failure: "Database formation guards prevent the FX Batch from being marked FORMED." })
+          Object.freeze({ check: "Each source Trade amount fits safe minor-unit storage and has a positive Transfer Rate.", failure: "Reject before the Batch can reach FORMED status." }),
+          Object.freeze({ check: "Batch members plus Balance Trade have Base Currency OVP 0; Quote Cash Out brings Quote Currency cash to 0.", failure: "Database formation guards prevent the Batch from being marked FORMED." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Input", name: "sourceTrades[]", scope: "Domain", purpose: "Complete FX Trades sharing one Batching Key." }),
-          Object.freeze({ kind: "Runtime", name: "netBaseCcyAmountMinor", scope: "Domain", purpose: "Signed Base Currency position of source FX Trades." }),
-          Object.freeze({ kind: "Runtime", name: "netQuoteCcyAmountMinor", scope: "Domain", purpose: "Signed Quote Currency cash contribution of source FX Trades." }),
+          Object.freeze({ kind: "Input", name: "sourceTrades[]", scope: "Domain", purpose: "Complete Trades sharing one Batching Key." }),
+          Object.freeze({ kind: "Runtime", name: "netBaseCcyAmountMinor", scope: "Domain", purpose: "Signed Base Currency position of source Trades." }),
+          Object.freeze({ kind: "Runtime", name: "netQuoteCcyAmountMinor", scope: "Domain", purpose: "Signed Quote Currency cash contribution of source Trades." }),
           Object.freeze({ kind: "Output", name: "formation.balanceTrade?", scope: "Stage 05", purpose: "Optional member created only when the Base Currency position is non-zero." }),
           Object.freeze({ kind: "Output", name: "formation.positionOut?", scope: "Stage 05", purpose: "Optional output mirroring the Balance Trade when the Base Currency position is non-zero." }),
           Object.freeze({ kind: "Output", name: "formation.quoteCashOut", scope: "Stage 05", purpose: "Mandatory Quote cash output, including a possible zero amount." })
         ]),
         traceability: Object.freeze([
           Object.freeze({ label: "Persistence", value: "The formation object is calculated in memory; its records are inserted by the repository before the outer transaction commits." }),
-          Object.freeze({ label: "Audit", value: "The FX Batch carries formation reason MANUAL_SELECTION with selectedTradeCount." }),
+          Object.freeze({ label: "Audit", value: "The Batch carries formation reason MANUAL_SELECTION with selectedTradeCount." }),
           Object.freeze({ label: "Application logging", value: "Intermediate net balances and individual domain decisions are not emitted as stage events." })
         ]),
-        result: "Neutral formation model containing source members, optional technical FX Trades and mandatory Quote Cash Out."
+        result: "Neutral formation model containing source members, optional technical Trades and mandatory Quote Cash Out."
       }),
       commit: Object.freeze({
         theme: "is-commit",
         icon: "database",
         kicker: "05 · Commit",
         title: "Commit & Refresh",
-        objective: "Persist one FX Batch atomically and refresh the operator's FX Position.",
+        objective: "Persist one Batch atomically and refresh the operator's Position.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "DB", title: "Persist the FX Batch aggregate.", detail: "Insert fx_batches, all members, optional technical Trade extensions and mandatory Quote Cash Out; then mark the FX Batch FORMED." }),
-          Object.freeze({ boundary: "DB", title: "Commit one aggregate transaction.", detail: "Commit only after the complete FX Batch passes all database integrity checks." }),
-          Object.freeze({ boundary: "API", title: "Return the formed FX Batch.", detail: "Respond with the single batchId, formation data and replayed flag." }),
-          Object.freeze({ boundary: "Browser", title: "Refresh FX Position after success.", detail: "Reload DB-backed FX Position, remove only submitted rows from the UI selection and render the refreshed position." })
+          Object.freeze({ boundary: "DB", title: "Persist the Batch aggregate.", detail: "Insert batches, all members, optional technical Trade extensions and mandatory Quote Cash Out; then mark the Batch FORMED." }),
+          Object.freeze({ boundary: "DB", title: "Commit one aggregate transaction.", detail: "Commit only after the complete Batch passes all database integrity checks." }),
+          Object.freeze({ boundary: "API", title: "Return the formed Batch.", detail: "Respond with the single batchId, formation data and replayed flag." }),
+          Object.freeze({ boundary: "Browser", title: "Refresh Position after success.", detail: "Reload DB-backed Position, remove only submitted rows from the UI selection and render the refreshed position." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "The complete FX Batch aggregate reaches FORMED before commit.", failure: "A server transaction error rolls back the aggregate; FX Position data remains unchanged." }),
-          Object.freeze({ check: "The HTTP response is received and FX Position reload succeeds.", failure: "If refresh fails after commit, the FX Batch remains formed in the database and the UI reports an error until reloaded." })
+          Object.freeze({ check: "The complete Batch aggregate reaches FORMED before commit.", failure: "A server transaction error rolls back the aggregate; Position data remains unchanged." }),
+          Object.freeze({ check: "The HTTP response is received and Position reload succeeds.", failure: "If refresh fails after commit, the Batch remains formed in the database and the UI reports an error until reloaded." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Input", name: "formation + sourceTrades[]", scope: "Repository", purpose: "Complete result for the single FX Batch." }),
-          Object.freeze({ kind: "Output", name: "fx_batches / members / outputs", scope: "Database", purpose: "Durable FX Batch aggregate, membership and output records." }),
-          Object.freeze({ kind: "Output", name: "{ batchId, replayed, ...batch }", scope: "API response", purpose: "Single FX Batch result returned to the browser." }),
-          Object.freeze({ kind: "Output", name: "refreshed fxPositions", scope: "Browser", purpose: "FX Position with formed batch members excluded and Position Out visible when present." })
+          Object.freeze({ kind: "Input", name: "formation + sourceTrades[]", scope: "Repository", purpose: "Complete result for the single Batch." }),
+          Object.freeze({ kind: "Output", name: "batches / members / outputs", scope: "Database", purpose: "Durable Batch aggregate, membership and output records." }),
+          Object.freeze({ kind: "Output", name: "{ batchId, replayed, ...batch }", scope: "API response", purpose: "Single Batch result returned to the browser." }),
+          Object.freeze({ kind: "Output", name: "refreshed positions", scope: "Browser", purpose: "Position with formed batch members excluded and Position Out visible when present." })
         ]),
         traceability: Object.freeze([
-          Object.freeze({ label: "Persistence", value: "fx_batches, fx_batch_members, fx_trade_exposure and specialized technical records are committed together." }),
-          Object.freeze({ label: "Audit", value: "The public idempotency key, immutable membership, formation reason/details and v_fx_batch_formation_audit provide durable traceability." }),
+          Object.freeze({ label: "Persistence", value: "batches, batch_members, trade_exposures and specialized technical records are committed together." }),
+          Object.freeze({ label: "Audit", value: "The public idempotency key, immutable membership, formation reason/details and v_batch_formation_audit provide durable traceability." }),
           Object.freeze({ label: "Application logging", value: "There is no separate success/failure event log for each process stage or UI refresh." })
         ]),
-        result: "One durable formed FX Batch and a refreshed FX Position; an exact retry replays the same result."
+        result: "One durable formed Batch and a refreshed Position; an exact retry replays the same result."
       })
     });
     const MANUAL_BATCH_PROCESS_STAGES_RU = Object.freeze({
@@ -16463,54 +17884,54 @@
         theme: "is-input",
         icon: "checklist",
         kicker: "01 · Вход",
-        title: "Выбор FX Trades для создания FX Batch",
-        objective: "Зафиксировать корректный набор FX Trades, выбранных пользователем в FX Position, для создания FX Batch.",
+        title: "Выбор Trades для создания Batch",
+        objective: "Зафиксировать корректный набор Trades, выбранных пользователем в Position, для создания Batch.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "Браузер", title: "Получить выбранные FX Trades из FX Position.", detail: "Сопоставить selectedTradeIds со строками, отображаемыми для выбранной валютной пары." }),
-          Object.freeze({ boundary: "Браузер", title: "Оставить только допустимые FX Trades.", detail: "Исключить синтетические строки; потребовать положительный Trade ID, сторону BUY или SELL и положительный Transfer Rate." }),
-          Object.freeze({ boundary: "Браузер", title: "Создать снимок исходных FX Trades.", detail: "Скопировать подходящие строки FX Position в sourceDeals для следующего этапа. Состояние флажков остаётся только в браузере." })
+          Object.freeze({ boundary: "Браузер", title: "Получить выбранные Trades из Position.", detail: "Сопоставить selectedTradeIds со строками, отображаемыми для выбранной валютной пары." }),
+          Object.freeze({ boundary: "Браузер", title: "Оставить только допустимые Trades.", detail: "Исключить синтетические строки; потребовать положительный Trade ID, сторону BUY или SELL и положительный Transfer Rate." }),
+          Object.freeze({ boundary: "Браузер", title: "Создать снимок исходных Trades.", detail: "Скопировать подходящие строки Position в sourceDeals для следующего этапа. Состояние флажков остаётся только в браузере." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "После фильтрации должен остаться хотя бы один допустимый FX Trade.", failure: "Показать предупреждение и остановить процесс до отправки запроса." }),
-          Object.freeze({ check: "Каждая выбранная строка должна содержать минимальные данные, необходимые интерфейсу Batching.", failure: "Пропустить недопустимую строку; FX Position и база данных остаются без изменений." })
+          Object.freeze({ check: "После фильтрации должен остаться хотя бы один допустимый Trade.", failure: "Показать предупреждение и остановить процесс до отправки запроса." }),
+          Object.freeze({ check: "Каждая выбранная строка должна содержать минимальные данные, необходимые интерфейсу Batching.", failure: "Пропустить недопустимую строку; Position и база данных остаются без изменений." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Вход", name: "selectedTradeIds: Set", scope: "Браузер", purpose: "Изменяемый набор флажков, которым управляет FX Position." }),
-          Object.freeze({ kind: "В процессе", name: "sourceDeals: FxPositionRow[]", scope: "Браузер", purpose: "Допустимые исходные строки, зафиксированные из текущего отображения." }),
-          Object.freeze({ kind: "Выход", name: "eligible source snapshot", scope: "Процесс Manual Batching", purpose: "Зафиксированный набор допустимых FX Trades для дальнейшей обработки." })
+          Object.freeze({ kind: "Вход", name: "selectedTradeIds: Set", scope: "Браузер", purpose: "Изменяемый набор флажков, которым управляет Position." }),
+          Object.freeze({ kind: "В процессе", name: "sourceDeals: PositionRow[]", scope: "Браузер", purpose: "Допустимые исходные строки, зафиксированные из текущего отображения." }),
+          Object.freeze({ kind: "Выход", name: "eligible source snapshot", scope: "Процесс Manual Batching", purpose: "Зафиксированный набор допустимых Trades для дальнейшей обработки." })
         ]),
         traceability: Object.freeze([
           Object.freeze({ label: "Хранение", value: "Не сохраняется. Выбор флажками существует только в памяти браузера." }),
           Object.freeze({ label: "Аудит", value: "На этом этапе запись аудита не создаётся." }),
           Object.freeze({ label: "Журнал приложения", value: "Событие этапа не создаётся; может измениться только пользовательское предупреждение или статус." })
         ]),
-        result: "Сформирован снимок допустимых FX Trades, зафиксированный из текущего состояния FX Position."
+        result: "Сформирован снимок допустимых Trades, зафиксированный из текущего состояния Position."
       }),
       tenor: Object.freeze({
         theme: "is-tenor",
         icon: "alt_route",
         kicker: "02 · Решение",
         title: "Разрешить Batching Key",
-        objective: "Выделить из смешанной выборки один набор FX Trades с общим Batching Key для одного FX Batch.",
+        objective: "Выделить из смешанной выборки один набор Trades с общим Batching Key для одного Batch.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "Браузер", title: "Сгруппировать по полному Batching Key.", detail: "Учесть Ccy Pair, точность валют, Trade Date, Tenor и обе Value Dates; сохранить допустимые FX Trades каждой группы." }),
-          Object.freeze({ boundary: "Браузер", title: "Выбрать одну совместимую группу.", detail: "Единый Batching Key продолжается напрямую. Для смешанной выборки дилер выбирает одну группу; браузер не создаёт независимые FX Batches для остальных групп." }),
+          Object.freeze({ boundary: "Браузер", title: "Сгруппировать по полному Batching Key.", detail: "Учесть Ccy Pair, точность валют, Trade Date, Tenor и обе Value Dates; сохранить допустимые Trades каждой группы." }),
+          Object.freeze({ boundary: "Браузер", title: "Выбрать одну совместимую группу.", detail: "Единый Batching Key продолжается напрямую. Для смешанной выборки дилер выбирает одну группу; браузер не создаёт независимые Batches для остальных групп." }),
           Object.freeze({ boundary: "Браузер", title: "Подготовить неизменяемую идентичность запроса.", detail: "Отсортировать числовые tradeIds и создать один idempotencyKey для точного набора." }),
-          Object.freeze({ boundary: "API", title: "Отправить команду процесса «Ручной Batching».", detail: "Передать tradeIds запросом POST в /api/v1/fx-batches, указав idempotencyKey в заголовке." })
+          Object.freeze({ boundary: "API", title: "Отправить команду процесса «Ручной Batching».", detail: "Передать tradeIds запросом POST в /api/v1/batches, указав idempotencyKey в заголовке." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "Нейтрализация техническими FX Swap ещё не реализована, поэтому Cross-Tenor Batching остаётся отключён.", failure: "Смешанный Batching Key нельзя отправить как один FX Batch; требуется решение пользователя." }),
-          Object.freeze({ check: "Выбранная группа Batching Key должна содержать хотя бы один допустимый исходный FX Trade.", failure: "Не отправлять пустую совместимую группу." })
+          Object.freeze({ check: "Нейтрализация техническими FX Swap ещё не реализована, поэтому Cross-Tenor Batching остаётся отключён.", failure: "Смешанный Batching Key нельзя отправить как один Batch; требуется решение пользователя." }),
+          Object.freeze({ check: "Выбранная группа Batching Key должна содержать хотя бы один допустимый исходный Trade.", failure: "Не отправлять пустую совместимую группу." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Вход", name: "sourceDeals: FxPositionRow[]", scope: "Браузер", purpose: "Набор допустимых FX Trades, полученный с этапа 01." }),
+          Object.freeze({ kind: "Вход", name: "sourceDeals: PositionRow[]", scope: "Браузер", purpose: "Набор допустимых Trades, полученный с этапа 01." }),
           Object.freeze({ kind: "В процессе", name: "compatibilityGroups: Map<BatchingKey, Trade[]>", scope: "Браузер", purpose: "Модель выбора для смешанной выборки Batching Key." }),
           Object.freeze({ kind: "Выход", name: "tradeIds: number[]", scope: "Команда API", purpose: "Отсортированные Trade ID, отправляемые серверу." }),
           Object.freeze({ kind: "Выход", name: "idempotencyKey: UUID", scope: "Заголовок запроса", purpose: "Стабильная идентичность, повторно используемая для точного повтора запроса." })
         ]),
         traceability: Object.freeze([
           Object.freeze({ label: "Хранение", value: "До начала серверной транзакции на этапе 03 долговременная запись не выполняется." }),
-          Object.freeze({ label: "Аудит", value: "Точный набор Trade будет записан как состав FX Batch, если транзакция завершится успешно." }),
+          Object.freeze({ label: "Аудит", value: "Точный набор Trade будет записан как состав Batch, если транзакция завершится успешно." }),
           Object.freeze({ label: "Журнал приложения", value: "Выбор в диалоговом окне отдельным событием не регистрируется." })
         ]),
         result: "Один совместимый набор с отсортированными Trade ID и стабильным ключом идемпотентности."
@@ -16520,91 +17941,91 @@
         icon: "fact_check",
         kicker: "03 · Контроль",
         title: "Проверить команду и выборку",
-        objective: "Проверить команду и заново построить по данным БД одну актуальную допустимую выборку FX Trades внутри одной транзакции.",
+        objective: "Проверить команду и заново построить по данным БД одну актуальную допустимую выборку Trades внутри одной транзакции.",
         steps: Object.freeze([
           Object.freeze({ boundary: "Приложение", title: "Нормализовать команду.", detail: "Потребовать корректный idempotency key и от 1 до 200 уникальных положительных Trade ID; затем отсортировать ID." }),
-          Object.freeze({ boundary: "БД", title: "Найти существующий FX Batch по ключу идемпотентности.", detail: "Повторно вернуть совпадающий FX Batch либо отклонить использование ключа с другими Trade ID или другой причиной формирования." }),
-          Object.freeze({ boundary: "БД", title: "Заново построить актуальную серверную выборку.", detail: "Загрузить полные актуальные данные FX Trade для каждого запрошенного ID; отклонить отсутствующие, недоступные, уже включённые в FX Batch и неподдерживаемые технические FX Trades." }),
+          Object.freeze({ boundary: "БД", title: "Найти существующий Batch по ключу идемпотентности.", detail: "Повторно вернуть совпадающий Batch либо отклонить использование ключа с другими Trade ID или другой причиной формирования." }),
+          Object.freeze({ boundary: "БД", title: "Заново построить актуальную серверную выборку.", detail: "Загрузить полные актуальные данные Trade для каждого запрошенного ID; отклонить отсутствующие, недоступные, уже включённые в Batch и неподдерживаемые технические Trades." }),
           Object.freeze({ boundary: "Домен", title: "Проверить полный Batching Key.", detail: "Потребовать одну валютную пару, Trade Date, Tenor, обе Value Dates и совместимую точность валют для всей выборки." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "Ключ идемпотентности, причина формирования и отсортированные Trade ID должны совпадать с предыдущим FX Batch.", failure: "Для точного повтора вернуть прежний FX Batch; конфликтующую команду отклонить." }),
-          Object.freeze({ check: "Каждый запрошенный FX Trade должен быть актуально допустим и содержать корректные базовые данные, включая Side, Tenor и Transfer Rate.", failure: "Прервать обработку до сохранения; FX Batch не становится постоянным." }),
+          Object.freeze({ check: "Ключ идемпотентности, причина формирования и отсортированные Trade ID должны совпадать с предыдущим Batch.", failure: "Для точного повтора вернуть прежний Batch; конфликтующую команду отклонить." }),
+          Object.freeze({ check: "Каждый запрошенный Trade должен быть актуально допустим и содержать корректные базовые данные, включая Side, Tenor и Transfer Rate.", failure: "Прервать обработку до сохранения; Batch не становится постоянным." }),
           Object.freeze({ check: "На этапе 04 единая выборка и её Batching Key повторно проверяются на границе домена.", failure: "Доменная ошибка откатывает транзакцию целиком." })
         ]),
         artifacts: Object.freeze([
           Object.freeze({ kind: "Вход", name: "{ idempotencyKey, tradeIds }", scope: "Приложение", purpose: "Команда процесса «Ручной Batching», полученная от API." }),
           Object.freeze({ kind: "В процессе", name: "normalized", scope: "Приложение", purpose: "Каноническая команда с отсортированными Trade ID." }),
-          Object.freeze({ kind: "Выход", name: "sourceTrades[]", scope: "Этап 04", purpose: "Одна полная актуальная выборка для одного FX Batch." })
+          Object.freeze({ kind: "Выход", name: "sourceTrades[]", scope: "Этап 04", purpose: "Одна полная актуальная выборка для одного Batch." })
         ]),
         traceability: Object.freeze([
-          Object.freeze({ label: "Хранение", value: "Постоянная запись не появляется до сохранения агрегата FX Batch на этапе 05." }),
-          Object.freeze({ label: "Аудит", value: "fx_batches хранит публичный idempotency key, а fx_batch_members — точный набор исходных Trade." }),
+          Object.freeze({ label: "Хранение", value: "Постоянная запись не появляется до сохранения агрегата Batch на этапе 05." }),
+          Object.freeze({ label: "Аудит", value: "batches хранит публичный idempotency key, а batch_members — точный набор исходных Trade." }),
           Object.freeze({ label: "Журнал приложения", value: "События отдельных проверок и попыток повтора не создаются." })
         ]),
-        result: "Одна проверенная актуальная серверная выборка FX Trades готова к формированию FX Batch."
+        result: "Одна проверенная актуальная серверная выборка Trades готова к формированию Batch."
       }),
       form: Object.freeze({
         theme: "is-domain",
         icon: "calculate",
         kicker: "04 · Домен",
         title: "Сформировать и нейтрализовать",
-        objective: "Сформировать одну модель FX Batch с нулевой позицией в Base Currency и нейтральным cash в Quote Currency.",
+        objective: "Сформировать одну модель Batch с нулевой позицией в Base Currency и нейтральным cash в Quote Currency.",
         steps: Object.freeze([
           Object.freeze({ boundary: "Приложение", title: "Передать в домен проверенную исходную выборку.", detail: "Использовать актуальные записи, восстановленные на этапе 03, без повторного чтения базы данных." }),
           Object.freeze({ boundary: "Домен", title: "Повторно проверить группу и её Batching Key.", detail: "Повторить проверку каждого исходного инварианта и потребовать одну валютную пару, Trade Date, Tenor, обе Value Dates, точность валют, положительные суммы и положительные Transfer Rate." }),
-          Object.freeze({ boundary: "Домен", title: "Рассчитать вклад исходных FX Trades в баланс.", detail: "Вычислить знаковые балансы в Base Currency и Quote Currency, а также точные суммы в Quote Currency по Transfer Rate в minor units." }),
+          Object.freeze({ boundary: "Домен", title: "Рассчитать вклад исходных Trades в баланс.", detail: "Вычислить знаковые балансы в Base Currency и Quote Currency, а также точные суммы в Quote Currency по Transfer Rate в minor units." }),
           Object.freeze({ boundary: "Домен", title: "Нейтрализовать ненулевую позицию в Base Currency.", detail: "По стороне, создавшей дисбаланс, рассчитать взвешенный по Base Currency Transfer Rate и создать противоположный Balance Trade и зеркальный Position Out." }),
           Object.freeze({ boundary: "Домен", title: "Нейтрализовать cash в Quote Currency.", detail: "Создать Quote Cash Out, противоположный оставшемуся балансу в Quote Currency. Выход создаётся даже при плоском или нулевом cash-результате." })
         ]),
         controls: Object.freeze([
           Object.freeze({ check: "Все участники должны иметь один Batching Key и актуальную точность валют.", failure: "Отклонить группу и полностью откатить ручную операцию." }),
-          Object.freeze({ check: "Каждая исходная сумма FX Trade должна помещаться в безопасный диапазон minor units и иметь положительный Transfer Rate.", failure: "Отклонить операцию до перевода FX Batch в статус FORMED." }),
-          Object.freeze({ check: "Участники FX Batch вместе с Balance Trade должны дать ОВП в Base Currency, равную 0; Quote Cash Out должен привести cash в Quote Currency к 0.", failure: "Защитные ограничения формирования в БД не позволят пометить FX Batch как FORMED." })
+          Object.freeze({ check: "Каждая исходная сумма Trade должна помещаться в безопасный диапазон minor units и иметь положительный Transfer Rate.", failure: "Отклонить операцию до перевода Batch в статус FORMED." }),
+          Object.freeze({ check: "Участники Batch вместе с Balance Trade должны дать ОВП в Base Currency, равную 0; Quote Cash Out должен привести cash в Quote Currency к 0.", failure: "Защитные ограничения формирования в БД не позволят пометить Batch как FORMED." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Вход", name: "sourceTrades[]", scope: "Домен", purpose: "Полный совместимый набор FX Trades, включаемых в один FX Batch." }),
-          Object.freeze({ kind: "В процессе", name: "netBaseCcyAmountMinor", scope: "Домен", purpose: "Знаковая позиция исходных FX Trades в Base Currency." }),
-          Object.freeze({ kind: "В процессе", name: "netQuoteCcyAmountMinor", scope: "Домен", purpose: "Знаковый вклад исходных FX Trades в cash в Quote Currency." }),
+          Object.freeze({ kind: "Вход", name: "sourceTrades[]", scope: "Домен", purpose: "Полный совместимый набор Trades, включаемых в один Batch." }),
+          Object.freeze({ kind: "В процессе", name: "netBaseCcyAmountMinor", scope: "Домен", purpose: "Знаковая позиция исходных Trades в Base Currency." }),
+          Object.freeze({ kind: "В процессе", name: "netQuoteCcyAmountMinor", scope: "Домен", purpose: "Знаковый вклад исходных Trades в cash в Quote Currency." }),
           Object.freeze({ kind: "Выход", name: "formation.balanceTrade?", scope: "Этап 05", purpose: "Необязательный участник, создаваемый только при ненулевой позиции в Base Currency." }),
           Object.freeze({ kind: "Выход", name: "formation.positionOut?", scope: "Этап 05", purpose: "Необязательный выход, зеркальный Balance Trade при ненулевой позиции в Base Currency." }),
           Object.freeze({ kind: "Выход", name: "formation.quoteCashOut", scope: "Этап 05", purpose: "Обязательный Quote cash output, включая возможную нулевую сумму." })
         ]),
         traceability: Object.freeze([
           Object.freeze({ label: "Хранение", value: "Модель формирования рассчитывается в памяти; репозиторий вставляет её записи до фиксации внешней транзакции." }),
-          Object.freeze({ label: "Аудит", value: "FX Batch получает причину формирования MANUAL_SELECTION и selectedTradeCount." }),
+          Object.freeze({ label: "Аудит", value: "Batch получает причину формирования MANUAL_SELECTION и selectedTradeCount." }),
           Object.freeze({ label: "Журнал приложения", value: "Промежуточные net-балансы и отдельные доменные решения как события этапа не публикуются." })
         ]),
-        result: "Нейтральная модель формирования с исходными участниками, необязательными техническими FX Trades и обязательным Quote Cash Out."
+        result: "Нейтральная модель формирования с исходными участниками, необязательными техническими Trades и обязательным Quote Cash Out."
       }),
       commit: Object.freeze({
         theme: "is-commit",
         icon: "database",
         kicker: "05 · Фиксация",
         title: "Зафиксировать и обновить",
-        objective: "Атомарно сохранить один FX Batch и обновить FX Position оператора.",
+        objective: "Атомарно сохранить один Batch и обновить Position оператора.",
         steps: Object.freeze([
-          Object.freeze({ boundary: "БД", title: "Сохранить агрегат FX Batch.", detail: "Вставить fx_batches, всех участников, необязательные расширения технических Trade и обязательный Quote Cash Out; затем перевести FX Batch в FORMED." }),
-          Object.freeze({ boundary: "БД", title: "Зафиксировать одну транзакцию агрегата.", detail: "Выполнить commit только после прохождения всех проверок целостности полного FX Batch." }),
-          Object.freeze({ boundary: "API", title: "Вернуть сформированный FX Batch.", detail: "Ответить одиночным batchId, данными формирования и признаком replayed." }),
-          Object.freeze({ boundary: "Браузер", title: "Обновить FX Position после успеха.", detail: "Повторно загрузить FX Position из БД, убрать из UI-выделения только отправленные строки и отрисовать обновлённую позицию." })
+          Object.freeze({ boundary: "БД", title: "Сохранить агрегат Batch.", detail: "Вставить batches, всех участников, необязательные расширения технических Trade и обязательный Quote Cash Out; затем перевести Batch в FORMED." }),
+          Object.freeze({ boundary: "БД", title: "Зафиксировать одну транзакцию агрегата.", detail: "Выполнить commit только после прохождения всех проверок целостности полного Batch." }),
+          Object.freeze({ boundary: "API", title: "Вернуть сформированный Batch.", detail: "Ответить одиночным batchId, данными формирования и признаком replayed." }),
+          Object.freeze({ boundary: "Браузер", title: "Обновить Position после успеха.", detail: "Повторно загрузить Position из БД, убрать из UI-выделения только отправленные строки и отрисовать обновлённую позицию." })
         ]),
         controls: Object.freeze([
-          Object.freeze({ check: "Полный агрегат FX Batch должен достичь статуса FORMED до commit.", failure: "Ошибка серверной транзакции откатывает агрегат; данные FX Position не изменяются." }),
-          Object.freeze({ check: "HTTP-ответ должен быть получен, а повторная загрузка FX Position — завершиться успешно.", failure: "Если обновление UI завершится ошибкой уже после фиксации транзакции, FX Batch останется сформированным в БД, а интерфейс будет показывать ошибку до перезагрузки." })
+          Object.freeze({ check: "Полный агрегат Batch должен достичь статуса FORMED до commit.", failure: "Ошибка серверной транзакции откатывает агрегат; данные Position не изменяются." }),
+          Object.freeze({ check: "HTTP-ответ должен быть получен, а повторная загрузка Position — завершиться успешно.", failure: "Если обновление UI завершится ошибкой уже после фиксации транзакции, Batch останется сформированным в БД, а интерфейс будет показывать ошибку до перезагрузки." })
         ]),
         artifacts: Object.freeze([
-          Object.freeze({ kind: "Вход", name: "formation + sourceTrades[]", scope: "Репозиторий", purpose: "Полный результат единственного FX Batch." }),
-          Object.freeze({ kind: "Выход", name: "fx_batches / members / outputs", scope: "База данных", purpose: "Постоянные записи агрегата FX Batch, его состава и выходов." }),
-          Object.freeze({ kind: "Выход", name: "{ batchId, replayed, ...batch }", scope: "Ответ API", purpose: "Результат одного FX Batch, возвращаемый браузеру." }),
-          Object.freeze({ kind: "Выход", name: "refreshed fxPositions", scope: "Браузер", purpose: "FX Position без участников сформированного FX Batch и с видимым Position Out, если он существует." })
+          Object.freeze({ kind: "Вход", name: "formation + sourceTrades[]", scope: "Репозиторий", purpose: "Полный результат единственного Batch." }),
+          Object.freeze({ kind: "Выход", name: "batches / members / outputs", scope: "База данных", purpose: "Постоянные записи агрегата Batch, его состава и выходов." }),
+          Object.freeze({ kind: "Выход", name: "{ batchId, replayed, ...batch }", scope: "Ответ API", purpose: "Результат одного Batch, возвращаемый браузеру." }),
+          Object.freeze({ kind: "Выход", name: "refreshed positions", scope: "Браузер", purpose: "Position без участников сформированного Batch и с видимым Position Out, если он существует." })
         ]),
         traceability: Object.freeze([
-          Object.freeze({ label: "Хранение", value: "fx_batches, fx_batch_members, fx_trade_exposure и специализированные технические записи фиксируются совместно." }),
-          Object.freeze({ label: "Аудит", value: "Публичный idempotency key, неизменяемый состав, причина и детали FX Batch, а также v_fx_batch_formation_audit обеспечивают долговременную трассируемость." }),
+          Object.freeze({ label: "Хранение", value: "batches, batch_members, trade_exposures и специализированные технические записи фиксируются совместно." }),
+          Object.freeze({ label: "Аудит", value: "Публичный idempotency key, неизменяемый состав, причина и детали Batch, а также v_batch_formation_audit обеспечивают долговременную трассируемость." }),
           Object.freeze({ label: "Журнал приложения", value: "Отдельного журнала успеха или ошибки для каждого этапа процесса и обновления UI нет." })
         ]),
-        result: "Сформированный и сохранённый FX Batch, а также обновлённая FX Position; точный повтор возвращает тот же результат."
+        result: "Сформированный и сохранённый Batch, а также обновлённая Position; точный повтор возвращает тот же результат."
       })
     });
     const MANUAL_BATCH_PROCESS_THEMES = Object.freeze([
@@ -16708,9 +18129,16 @@
     }
 
     const MANUAL_PROCESS_TERM_REFERENCES = Object.freeze([
-      Object.freeze({ text: "Execution Context Admission Mode", key: "execution-context-admission-mode" }),
-      Object.freeze({ text: "Auto Hedging Admission Policy", key: "auto-hedging-admission-policy" }),
-      Object.freeze({ text: "Auto Hedging Admission", key: "auto-hedging-admission" }),
+      Object.freeze({ text: "Position Management — Auto Mode", key: "auto-position-management-mode" }),
+      Object.freeze({ text: "Position Management — Manual Mode", key: "manual-position-management-mode" }),
+      Object.freeze({ text: "Auto Mode of Position Management", key: "auto-position-management-mode" }),
+      Object.freeze({ text: "Manual Mode of Position Management", key: "manual-position-management-mode" }),
+      Object.freeze({ text: "Trade Context Admission Mode", key: "trade-context-admission-mode" }),
+      Object.freeze({ text: "Auto Mode Eligibility", key: "auto-mode-eligibility" }),
+      Object.freeze({ text: "Auto Management Admission", key: "auto-management-admission" }),
+      Object.freeze({ text: "Position Management Mode", key: "position-management-mode" }),
+      Object.freeze({ text: "Manual Management", key: "manual-position-management-mode" }),
+      Object.freeze({ text: "Auto Management", key: "auto-position-management-mode" }),
       Object.freeze({ text: "Eligibility Checks", key: "eligibility-check" }),
       Object.freeze({ text: "Eligibility Check", key: "eligibility-check" }),
       Object.freeze({ text: "Admission State", key: "admission-state" }),
@@ -16718,29 +18146,29 @@
       Object.freeze({ text: "Auto Hedging", key: "auto-hedging" }),
       Object.freeze({ text: "Servicing Location", key: "servicing-location" }),
       Object.freeze({ text: "Accounting System", key: "accounting-system" }),
-      Object.freeze({ text: "Execution Context", key: "execution-context" }),
-      Object.freeze({ text: "Execution System", key: "execution-system" }),
+      Object.freeze({ text: "Trade Context", key: "trade-context" }),
+      Object.freeze({ text: "Originating System", key: "originating-system" }),
       Object.freeze({ text: "Pricing Mode", key: "pricing-mode" }),
       Object.freeze({ text: "Market Pulse", key: "market-pulse" }),
       Object.freeze({ text: "Cross-Tenor Batching", key: "cross-tenor-batching" }),
       Object.freeze({ text: "Batch Internal Swaps", key: "batch-internal-swap" }),
       Object.freeze({ text: "Batch Internal Swap", key: "batch-internal-swap" }),
-      Object.freeze({ text: "FX Batches", key: "fx-batch" }),
+      Object.freeze({ text: "Batches", key: "batch" }),
       Object.freeze({ text: "Client Deals", key: "client-deal" }),
       Object.freeze({ text: "Hedge Deals", key: "hedge-deal" }),
-      Object.freeze({ text: "FX Position", key: "fx-position" }),
+      Object.freeze({ text: "Position", key: "position" }),
       Object.freeze({ text: "Transfer Rate", key: "transfer-rate" }),
       Object.freeze({ text: "Batching Key", key: "batching-key" }),
       Object.freeze({ text: "Base Currency", key: "base-currency" }),
       Object.freeze({ text: "Quote Currency", key: "quote-currency" }),
       Object.freeze({ text: "Trade Date", key: "trade-date" }),
       Object.freeze({ text: "Value Dates", key: "value-date" }),
-      Object.freeze({ text: "FX Trades", key: "fx-trade" }),
-      Object.freeze({ text: "FX Trade", key: "fx-trade" }),
+      Object.freeze({ text: "Trades", key: "trade" }),
+      Object.freeze({ text: "Trade", key: "trade" }),
       Object.freeze({ text: "Client Deal", key: "client-deal" }),
       Object.freeze({ text: "Hedge Deal", key: "hedge-deal" }),
       Object.freeze({ text: "Value Date", key: "value-date" }),
-      Object.freeze({ text: "FX Batch", key: "fx-batch" }),
+      Object.freeze({ text: "Batch", key: "batch" }),
       Object.freeze({ text: "Batching", key: "batching" }),
       Object.freeze({ text: "Tenors", key: "tenor" }),
       Object.freeze({ text: "Tenor", key: "tenor" })
@@ -17103,41 +18531,74 @@
     processCatalogLanguageButtons.forEach(button => {
       button.addEventListener("click", () => {
         setProcessCatalogLanguage(button.dataset.processLanguage);
+        renderWorkspacePageHeading();
       });
     });
 
     setProcessCatalogLanguage(processCatalogLanguage, { persist: false });
-    function clientFxDealsRoute() {
-      return "#client-fx-deals";
+    function clientDealsRoute() {
+      return "#client-deals";
     }
 
-    function hedgeFxDealsRoute() {
-      return "#hedge-fx-deals";
+    function hedgeDealsRoute() {
+      return "#hedge-deals";
     }
 
     function analyticalPnlReportRoute() {
       return "#reports:analytical-pnl";
     }
 
-    function hedgingSettingsRoute(section = "quick") {
-      if (section === "initial") {
-        return "#hedging-settings:auto-hedging:initial-admission";
-      }
-      if (section === "manual-release") {
-        return "#hedging-settings:auto-hedging:manual-release";
-      }
-      return "#hedging-settings:quick-hedge";
+    const POSITION_MANAGEMENT_SETTINGS_NAVIGATION = Object.freeze({
+      root: Object.freeze({ label: "Position Management Settings", route: "#position-management-settings" }),
+      sections: Object.freeze({
+        quick: Object.freeze({ label: "Quick Hedge", segment: "quick-hedge" }),
+        eligibility: Object.freeze({ label: "Auto Mode Eligibility", segment: "auto-mode-eligibility" }),
+        initial: Object.freeze({ label: "Initial Mode Assignment", segment: "initial-mode-assignment" })
+      })
+    });
+
+    function positionManagementSettingsRoute(section = "eligibility") {
+      const navigation = POSITION_MANAGEMENT_SETTINGS_NAVIGATION;
+      const item = navigation.sections[section] || navigation.sections.eligibility;
+      return `${navigation.root.route}/${item.segment}`;
     }
 
-    function hedgingSettingsSectionFromLocation(hash = location.hash) {
-      const normalizedHash = String(hash || "").trim().toLowerCase();
-      if (normalizedHash === "#hedging-settings:auto-hedging:initial-admission") {
-        return "initial";
+    function positionManagementSettingsSectionFromLocation(hash = location.hash) {
+      const normalizedHash = String(hash || "").trim().toLowerCase().split("?")[0];
+      const navigation = POSITION_MANAGEMENT_SETTINGS_NAVIGATION;
+      if (normalizedHash === navigation.root.route) {
+        return "eligibility";
       }
-      if (normalizedHash === "#hedging-settings:auto-hedging:manual-release") {
-        return "manual-release";
+      for (const section of Object.keys(navigation.sections)) {
+        if (normalizedHash === positionManagementSettingsRoute(section)) {
+          return section;
+        }
       }
-      return "quick";
+      if (
+        /^#position-management-settings\/position-management-mode(?:\/(?:client-deals|hedge-deals|technical-trades)(?:\/eligibility-settings)?)?$/.test(normalizedHash)
+        || normalizedHash === "#auto-management-admission-criteria"
+      ) {
+        return "eligibility";
+      }
+      const legacySections = {
+        "client-deal": "eligibility",
+        "hedge-deal": "eligibility",
+        "technical-trades": "eligibility",
+        "initial-admission": "initial",
+        "manual-release": "initial",
+        "quick-hedge": "quick"
+      };
+      const legacy = /^#position-management-settings:([^:]+)$/.exec(normalizedHash);
+      return legacy ? legacySections[legacy[1]] || "eligibility" : "eligibility";
+    }
+
+    function positionManagementSettingsNavigationItems(section) {
+      const navigation = POSITION_MANAGEMENT_SETTINGS_NAVIGATION;
+      const item = navigation.sections[section] || navigation.sections.eligibility;
+      return [
+        { label: navigation.root.label, href: navigation.root.route },
+        { label: item.label, href: positionManagementSettingsRoute(section) }
+      ];
     }
 
     function batchingSettingsRoute() {
@@ -17154,7 +18615,7 @@
         field: "settlementSystemId"
       }),
       tradeCaptureChannel: Object.freeze({
-        parameter: "execution-system",
+        parameter: "originating-system",
         field: "tradeCaptureChannelId"
       })
     });
@@ -17164,26 +18625,37 @@
       const normalizedReferenceId = String(referenceId ?? "").trim();
 
       return filter && normalizedReferenceId
-        ? `#execution-context?${filter.parameter}=${encodeURIComponent(normalizedReferenceId)}`
-        : "#execution-context";
+        ? `#trade-context?${filter.parameter}=${encodeURIComponent(normalizedReferenceId)}`
+        : "#trade-context";
     }
 
-    function normalizedAutoHedgingAdmissionReturnRoute(value) {
-      const candidate = String(value || "").trim();
-      const initialAdmissionRoute = hedgingSettingsRoute("initial");
-
-      return candidate === initialAdmissionRoute ? candidate : initialAdmissionRoute;
+    function normalizedAutoManagementAdmissionReturnRoute(value) {
+      if (!isPositionManagementSettingsRoute(String(value || "").trim())) {
+        return positionManagementSettingsRoute("initial");
+      }
+      const section = positionManagementSettingsSectionFromLocation(value);
+      return positionManagementSettingsRoute(
+        ["quick", "eligibility", "initial"].includes(section) ? section : "initial"
+      );
     }
 
-    function autoHedgingAdmissionExecutionContextRoute(returnHash = hedgingSettingsRoute("initial")) {
+    function autoManagementAdmissionTradeContextRoute(returnHash = positionManagementSettingsRoute("initial")) {
       const parameters = new URLSearchParams();
-      parameters.set("focus", "auto-hedging-admission");
-      parameters.set("return", normalizedAutoHedgingAdmissionReturnRoute(returnHash));
-      return `#execution-context?${parameters.toString()}`;
+      parameters.set("focus", "auto-management-admission");
+      parameters.set("return", normalizedAutoManagementAdmissionReturnRoute(returnHash));
+      return `#trade-context?${parameters.toString()}`;
+    }
+
+    function canonicalTradeContextRoute(hash) {
+      return String(hash || "")
+        .replace(/^#execution-context(?=\?|$)/, "#trade-context")
+        .replace(/^#reference-data:execution-systems(?=\?|$)/, "#reference-data:originating-systems")
+        .replace(/([?&])execution-context=/g, "$1trade-context=")
+        .replace(/([?&])execution-system=/g, "$1originating-system=");
     }
 
     function pricingRouteStateFromLocation(hash = location.hash) {
-      const match = /^#(?:execution-context|pricing)(?:\?([^#]*))?$/.exec(String(hash || "").trim());
+      const match = /^#(?:trade-context|pricing)(?:\?([^#]*))?$/.exec(String(hash || "").trim());
 
       if (!match) {
         return {
@@ -17203,39 +18675,47 @@
           value: String(parameters.get(filter.parameter) || "").trim()
         }))
         .find(entry => entry.value);
-      const focus = parameters.get("focus") === "auto-hedging-admission"
-        ? "auto-hedging-admission"
+      const focus = parameters.get("focus") === "auto-management-admission"
+        ? "auto-management-admission"
         : "";
 
       return {
         matches: true,
-        mode: scopedEntry ? "related" : focus ? "focused" : "default",
+        mode: scopedEntry ? "filtered" : focus ? "focused" : "default",
         scope: scopedEntry || null,
         focus,
         returnHash: focus
-          ? normalizedAutoHedgingAdmissionReturnRoute(parameters.get("return"))
+          ? normalizedAutoManagementAdmissionReturnRoute(parameters.get("return"))
           : pricingRoute()
       };
     }
 
     function referenceDataRouteToken(kind) {
+      if (kind === "tradePurpose") {
+        return "trade-purposes";
+      }
+
       if (kind === "settlementSystem") {
         return "accounting-systems";
       }
 
       if (kind === "tradeCaptureChannel") {
-        return "execution-systems";
+        return "originating-systems";
       }
 
       return "servicing-locations";
     }
 
     function referenceDataKindFromToken(token) {
+      if (token === "trade-purposes") {
+        return "tradePurpose";
+      }
+
       if (token === "accounting-systems" || token === "settlement-systems") {
         return "settlementSystem";
       }
 
-      if (token === "execution-systems" || token === "trade-capture-channels") {
+      if (token === "originating-systems" || token === "trade-capture-channels") {
         return "tradeCaptureChannel";
       }
 
@@ -17262,13 +18742,13 @@
         : "#pricing-rules:external-counterparties";
     }
 
-    function autoHedgingAdmissionPricingRulesRoute(
-      returnHash = hedgingSettingsRoute("initial"),
+    function autoManagementAdmissionPricingRulesRoute(
+      returnHash = positionManagementSettingsRoute("initial"),
       scope = "EXTERNAL"
     ) {
       const parameters = new URLSearchParams();
-      parameters.set("focus", "auto-hedging-admission");
-      parameters.set("return", normalizedAutoHedgingAdmissionReturnRoute(returnHash));
+      parameters.set("focus", "auto-management-admission");
+      parameters.set("return", normalizedAutoManagementAdmissionReturnRoute(returnHash));
       return `${pricingRulesRoute(scope)}?${parameters.toString()}`;
     }
 
@@ -17325,8 +18805,8 @@
       const scope = match[1] === "internal-units" ? "INTERNAL" : "EXTERNAL";
       const parameters = new URLSearchParams(match[2] || "");
       const pairCode = normalizedCcyPairRouteCode(parameters.get("ccy-pair"));
-      const focus = !pairCode && parameters.get("focus") === "auto-hedging-admission"
-        ? "auto-hedging-admission"
+      const focus = !pairCode && parameters.get("focus") === "auto-management-admission"
+        ? "auto-management-admission"
         : "";
 
       if (focus) {
@@ -17337,7 +18817,7 @@
           pairCode: "",
           currencyPair: "",
           focus,
-          returnHash: normalizedAutoHedgingAdmissionReturnRoute(parameters.get("return"))
+          returnHash: normalizedAutoManagementAdmissionReturnRoute(parameters.get("return"))
         };
       }
 
@@ -17352,8 +18832,8 @@
     }
 
     function isBatchingBlotterRoute() {
-      return /^#fx-position(?::(?:manual|auto))?$/i.test(location.hash)
-        || location.hash === "#fx-position-management"
+      return /^#position(?::(?:manual|auto))?$/i.test(location.hash)
+        || location.hash === "#position-management"
         || location.hash === "#batching-blotter";
     }
 
@@ -17379,10 +18859,9 @@
     }
 
     function isMarketRoute() {
-      return location.hash === "#market-pulse"
-        || location.hash === "#market-pulse:streams"
-        || location.hash === "#market"
-        || location.hash === "#market:streams";
+      return /^#(?:market-pulse|market)(?::(?:quote-stream|charts|data-management|history|streams))?$/.test(
+        location.hash
+      );
     }
 
     function isCurrencySettingsRoute() {
@@ -17407,21 +18886,23 @@
         || isDomainGlossaryRoute();
     }
 
-    function isClientFxDealsRoute() {
-      return location.hash === clientFxDealsRoute();
+    function isClientDealsRoute() {
+      return location.hash === clientDealsRoute();
     }
 
-    function isHedgeFxDealsRoute() {
-      return location.hash === hedgeFxDealsRoute();
+    function isHedgeDealsRoute() {
+      return location.hash === hedgeDealsRoute();
     }
 
     function isAnalyticalPnlReportRoute() {
       return location.hash === analyticalPnlReportRoute();
     }
 
-    function isHedgingSettingsRoute() {
-      return location.hash === "#hedging-settings"
-        || /^#hedging-settings:(?:quick-hedge|auto-hedging:(?:initial-admission|manual-release))$/.test(location.hash);
+    function isPositionManagementSettingsRoute(hash = location.hash) {
+      return /^#position-management-settings(?:\/(?:quick-hedge|auto-mode-eligibility|initial-mode-assignment))?(?:\?[^#]*)?$/.test(hash)
+        || /^#position-management-settings\/position-management-mode(?:\/(?:client-deals|hedge-deals|technical-trades)(?:\/eligibility-settings)?)?(?:\?[^#]*)?$/.test(hash)
+        || /^#position-management-settings:(?:quick-hedge|client-deal|hedge-deal|technical-trades|initial-admission|manual-release)$/.test(hash)
+        || /^#auto-management-admission-criteria(?:\?[^#]*)?$/.test(hash);
     }
 
     function isBatchingSettingsRoute() {
@@ -17624,9 +19105,9 @@
         target.pricingRuleControlStatus || ""
       );
       target.pricingContextId = normalizedPricingContextIdValue(
-        storedAnyField(source, "pricingContextId", "pricing_context_id") || fxPositionExecutionContextId(source)
+        storedAnyField(source, "pricingContextId", "pricing_context_id") || positionTradeContextId(source)
       );
-      applyPricingContextToFxPosition(target);
+      applyPricingContextToPosition(target);
       target.entryMarketBid = storedOptionalNumber(
         storedAnyField(source, "entryMarketBid", "entry_market_bid", "ledgerMarketBid", "ledger_market_bid", "marketBid", "market_reference_bid", "market_rate"),
         target.entryMarketBid
@@ -17640,7 +19121,7 @@
       target.isBatched = storedBoolean(storedField(source, "isBatched", "is_batched"), target.isBatched === true);
     }
 
-    function buildStoredFxPosition(source) {
+    function buildStoredPosition(source) {
       const id = typeof source.id === "string" && source.id.trim() ? source.id.trim() : createDealId();
       const deal = {
         id,
@@ -17684,13 +19165,13 @@
       return deal;
     }
 
-    function fxPositionIdForDeal(deal) {
+    function positionIdForDeal(deal) {
       const storedPositionId = String(deal?.positionId || deal?.position_id || "").trim();
-      return storedPositionId || `FXP-${fxPositionType(deal)}-${deal.id}`;
+      return storedPositionId || `POS-${positionType(deal)}-${deal.id}`;
     }
 
-    function serializeFxDeal(deal) {
-      const positionId = fxPositionIdForDeal(deal);
+    function serializeDeal(deal) {
+      const positionId = positionIdForDeal(deal);
       deal.positionId = positionId;
 
       return {
@@ -17709,7 +19190,7 @@
         receivedTimestamp: deal.receivedTimestamp || "",
         entryDate: deal.entryDate || "",
         tradeDate: deal.tradeDate || deal.createDate || "",
-        settlementMethod: fxPositionSettlementMethod(deal),
+        settlementMethod: positionSettlementMethod(deal),
         tenor: deal.tenor || "",
         baseCurrency: deal.baseCurrency || "EUR",
         quoteCurrency: deal.quoteCurrency || "USD",
@@ -17717,27 +19198,27 @@
         amountSell: deal.amountSell,
         amountBuy: deal.amountBuy,
         clientRate: deal.clientRate,
-        pricingRuleId: fxDealPricingRuleId(deal),
-        pricingRuleMargin: fxDealPricingRuleMargin(deal),
+        pricingRuleId: dealPricingRuleId(deal),
+        pricingRuleMargin: dealPricingRuleMargin(deal),
         pricingRuleControlStatus: deal.pricingRuleControlStatus || "",
-        pricingContextId: fxPositionExecutionContextId(deal),
+        pricingContextId: positionTradeContextId(deal),
         tone: deal.tone
       };
     }
 
-    function serializeGeneratedFxPosition(deal) {
+    function serializeGeneratedPosition(deal) {
       return {
-        id: fxPositionIdForDeal(deal),
+        id: positionIdForDeal(deal),
         sourceDealId: deal.id,
-        sourceDealType: fxPositionType(deal),
-        positionType: fxPositionType(deal),
-        positionLabel: fxPositionTradeLabel(deal),
+        sourceDealType: positionType(deal),
+        positionType: positionType(deal),
+        positionLabel: positionTradeLabel(deal),
         tradeDate: positionTradeDate(deal),
         currencyPair: currencyPair(deal),
         baseCurrency: baseCurrency(deal),
         quoteCurrency: quoteCurrency(deal),
-        baseCcyPosition: fxDealBaseCurrencyPosition(deal),
-        quoteCcyPosition: fxDealQuoteCurrencyPosition(deal),
+        baseCcyPosition: dealBaseCurrencyPosition(deal),
+        quoteCcyPosition: dealQuoteCurrencyPosition(deal),
         tenor: positionTenor(deal),
         baseCcyValueDate: baseCurrencyValueDate(deal),
         quoteCcyValueDate: quoteCurrencyValueDate(deal),
@@ -17745,43 +19226,43 @@
         marketPulseOffer: marketOffer(deal),
         isBatched: deal.isBatched === true,
         batchId: deal.batchId || "",
-        transferRate: fxPositionTransferRate(deal),
+        transferRate: positionTransferRate(deal),
         analyticalPnl: pnlCash(deal)
       };
     }
 
-    function loadFxPositionsFromDatabase() {
-      const restoredFxPositions = DEMO_API_ENABLED
-        ? fxPositionRecords.map(record => {
+    function loadPositionsFromDatabase() {
+      const restoredPositions = DEMO_API_ENABLED
+        ? positionRecords.map(record => {
             const tradeType = String(record?.tradeType || "").trim().toUpperCase();
             let position;
 
             if (tradeType === "CLIENT_DEAL") {
-              position = fxPositionFromClientFxDeal(normalizedClientFxDeal(record));
+              position = positionFromClientDeal(normalizedClientDeal(record));
             } else if (tradeType === "HEDGE_DEAL") {
-              position = fxPositionFromHedgeFxDeal(normalizedHedgeFxDeal(record));
+              position = positionFromHedgeDeal(normalizedHedgeDeal(record));
             } else {
-              position = fxPositionFromBatchBalancingTrade(
+              position = positionFromBatchBalancingTrade(
                 normalizedBatchBalancingTrade(record)
               );
             }
 
-            const currentFxPositionMode = normalizedPositionManagementMode(
-              record?.currentFxPositionMode
-              ?? record?.current_fx_position_mode
-              ?? record?.fxPositionMode
-              ?? record?.fx_position_mode
+            const currentPositionManagementMode = normalizedPositionManagementMode(
+              record?.currentPositionManagementMode
+              ?? record?.current_position_management_mode
+              ?? record?.positionManagementMode
+              ?? record?.position_mode
             );
 
             return {
               ...position,
-              initialFxPositionMode: normalizedPositionManagementMode(
-                record?.initialFxPositionMode
-                ?? record?.initial_fx_position_mode,
-                currentFxPositionMode
+              initialPositionManagementMode: normalizedPositionManagementMode(
+                record?.initialPositionManagementMode
+                ?? record?.initial_position_management_mode,
+                currentPositionManagementMode
               ),
-              currentFxPositionMode,
-              fxPositionMode: currentFxPositionMode,
+              currentPositionManagementMode,
+              positionManagementMode: currentPositionManagementMode,
               positionManagementModeChangedAt: String(
                 record?.positionManagementModeChangedAt
                 ?? record?.position_management_mode_changed_at
@@ -17791,7 +19272,7 @@
           })
         : [];
 
-      fxPositions.splice(0, fxPositions.length, ...restoredFxPositions);
+      positions.splice(0, positions.length, ...restoredPositions);
     }
 
     function sideOf(deal) {
@@ -17806,7 +19287,7 @@
       return "flat";
     }
 
-    function fxPositionBaseCcyFractionDigits(deal) {
+    function positionBaseCcyFractionDigits(deal) {
       const fractionDigits = Number(deal?.baseCcyFractionDigits);
       return Number.isInteger(fractionDigits)
         && fractionDigits >= 0
@@ -17815,7 +19296,7 @@
         : null;
     }
 
-    function fxPositionBaseAmountMinor(deal) {
+    function positionBaseAmountMinor(deal) {
       const amount = deal?.baseCcyAmountMinor;
 
       if (!Number.isSafeInteger(amount) || amount <= 0) {
@@ -17825,7 +19306,7 @@
       return BigInt(amount);
     }
 
-    function fxPositionQuoteCcyFractionDigits(deal) {
+    function positionQuoteCcyFractionDigits(deal) {
       const fractionDigits = Number(deal?.quoteCcyFractionDigits);
       return Number.isInteger(fractionDigits)
         && fractionDigits >= 0
@@ -17834,7 +19315,7 @@
         : null;
     }
 
-    function fxPositionQuoteAmountMinor(deal) {
+    function positionQuoteAmountMinor(deal) {
       const amount = deal?.quoteCcyAmountMinor;
 
       if (!Number.isSafeInteger(amount) || amount <= 0) {
@@ -17853,16 +19334,16 @@
         * (10n ** BigInt(targetFractionDigits - sourceFractionDigits));
     }
 
-    function fxPositionBaseAmountCell(deal) {
-      const minorAmount = fxPositionBaseAmountMinor(deal);
-      const fractionDigits = fxPositionBaseCcyFractionDigits(deal);
+    function positionBaseAmountCell(deal) {
+      const minorAmount = positionBaseAmountMinor(deal);
+      const fractionDigits = positionBaseCcyFractionDigits(deal);
 
       return minorAmount === null || fractionDigits === null
-        ? amountCell(fxPositionBaseAmount(deal))
+        ? amountCell(positionBaseAmount(deal))
         : minorAmountCell(minorAmount, fractionDigits);
     }
 
-    function fxPositionSignedBaseAmount(deal) {
+    function positionSignedBaseAmount(deal) {
       const side = sideOf(deal);
 
       if (side === "sell") {
@@ -17876,17 +19357,17 @@
       return 0;
     }
 
-    function fxPositionBaseAmount(deal) {
-      const signedAmount = fxPositionSignedBaseAmount(deal);
+    function positionBaseAmount(deal) {
+      const signedAmount = positionSignedBaseAmount(deal);
 
       return Number.isFinite(signedAmount) ? Math.abs(signedAmount) : null;
     }
 
-    function fxPositionSettlementMethod(deal) {
+    function positionSettlementMethod(deal) {
       return normalizedContextCode(deal?.settlementMethod ?? deal?.settlement_method) || "PVP";
     }
 
-    function fxPositionType(deal) {
+    function positionType(deal) {
       if (deal.synthetic) {
         return "OPEN_POSITION";
       }
@@ -17897,39 +19378,39 @@
         || deal.type
         || "client_deal"
       ).toUpperCase();
-      return ["HEDGE_FX_DEAL", "MARKET_HEDGE", "HEDGE_DEAL"].includes(type) ? "HEDGE_DEAL" : type;
+      return ["HEDGE_DEAL", "MARKET_HEDGE", "HEDGE_DEAL"].includes(type) ? "HEDGE_DEAL" : type;
     }
 
-    function fxPositionTradeId(deal) {
-      if (deal?.synthetic === true || fxPositionType(deal) === "OPEN_POSITION") {
+    function positionTradeId(deal) {
+      if (deal?.synthetic === true || positionType(deal) === "OPEN_POSITION") {
         return "";
       }
 
       return String(
         deal?.tradeId
         ?? deal?.trade_id
-        ?? deal?.clientFxDealId
-        ?? deal?.hedgeFxDealId
+        ?? deal?.clientDealId
+        ?? deal?.hedgeDealId
         ?? deal?.sourceDealId
         ?? deal?.id
         ?? ""
       ).trim();
     }
 
-    function fxPositionCounterpartyName(deal, tradeType = fxPositionType(deal)) {
+    function positionCounterpartyName(deal, tradeType = positionType(deal)) {
       if (tradeType === "CLIENT_DEAL") {
         return String(deal?.clientName || deal?.counterpartyName || "").trim();
       }
 
       if (tradeType === "HEDGE_DEAL") {
-        return String(deal?.counterpartyName || hedgeFxDealSource(deal) || "").trim();
+        return String(deal?.counterpartyName || hedgeDealSource(deal) || "").trim();
       }
 
       return String(deal?.counterpartyName || deal?.clientName || deal?.executionVenue || "").trim();
     }
 
-    function fxPositionTradeTypePresentation(deal) {
-      const type = fxPositionType(deal);
+    function positionTradeTypePresentation(deal) {
+      const type = positionType(deal);
 
       if (type === "CLIENT_DEAL") {
         return { type, label: "CLIENT DEAL", icon: "handshake" };
@@ -17954,15 +19435,15 @@
       };
     }
 
-    function fxPositionTradeLabel(deal) {
-      const presentation = fxPositionTradeTypePresentation(deal);
-      const counterpartyName = fxPositionCounterpartyName(deal, presentation.type);
+    function positionTradeLabel(deal) {
+      const presentation = positionTradeTypePresentation(deal);
+      const counterpartyName = positionCounterpartyName(deal, presentation.type);
       return counterpartyName
         ? `${presentation.label} : ${counterpartyName}`
         : presentation.label;
     }
 
-    function fxPositionTradeContext(deal, tradeType = fxPositionType(deal)) {
+    function positionTradeContext(deal, tradeType = positionType(deal)) {
       if (tradeType === "BATCH_POSITION_OUT") {
         const batchId = Number(deal?.batchId);
         return Number.isInteger(batchId) && batchId > 0
@@ -17977,34 +19458,34 @@
           : "Batch Balance";
       }
 
-      return fxPositionCounterpartyName(deal, tradeType);
+      return positionCounterpartyName(deal, tradeType);
     }
 
-    function fxPositionTradeTypeTooltip(deal, presentation) {
+    function positionTradeTypeTooltip(deal, presentation) {
       if (presentation.type === "BATCH_POSITION_OUT") {
         const batchId = Number(deal?.batchId);
         return Number.isInteger(batchId) && batchId > 0
-          ? `BATCH POSITION OUT · created by FX Batch #${batchId}`
+          ? `BATCH POSITION OUT · created by Batch #${batchId}`
           : presentation.label;
       }
 
       if (presentation.type === "BATCH_BALANCE_TRADE") {
         const batchId = Number(deal?.batchId);
         return Number.isInteger(batchId) && batchId > 0
-          ? `BATCH BALANCE TRADE · created by FX Batch #${batchId}`
+          ? `BATCH BALANCE TRADE · created by Batch #${batchId}`
           : presentation.label;
       }
 
       return presentation.label;
     }
 
-    function fxPositionSide(deal) {
+    function positionSide(deal) {
       const side = sideOf(deal);
       return side === "sell" || side === "buy" ? side : "";
     }
 
     function sideTokenCell(deal) {
-      const side = fxPositionSide(deal);
+      const side = positionSide(deal);
 
       if (!side) {
         return "";
@@ -18013,11 +19494,11 @@
       return `<span class="side-token ${side}">${escapeHtml(side)}</span>`;
     }
 
-    function fxPositionTradeRate(deal) {
+    function positionTradeRate(deal) {
       return deal?.clientRate ?? null;
     }
 
-    function fxPositionTransferRate(deal) {
+    function positionTransferRate(deal) {
       return deal?.autoBatchRate ?? null;
     }
 
@@ -18244,39 +19725,39 @@
       return source.filter(isActiveCurrencyPair);
     }
 
-    function fxPositionRowsForMode(source, mode = activeFxPositionMode) {
+    function positionRowsForMode(source, mode = activePositionMode) {
       const normalizedMode = normalizedPositionManagementMode(mode);
       return source.filter(deal => normalizedPositionManagementMode(
-        deal?.currentFxPositionMode ?? deal?.fxPositionMode
+        deal?.currentPositionManagementMode ?? deal?.positionManagementMode
       ) === normalizedMode);
     }
 
-    function fxPositionModeCounts(source) {
+    function positionModeCounts(source) {
       const pairRows = activeCurrencyPairRows(source);
 
       return Object.freeze({
-        MANUAL: fxPositionRowsForMode(pairRows, "MANUAL").length,
-        AUTO: fxPositionRowsForMode(pairRows, "AUTO").length
+        MANUAL: positionRowsForMode(pairRows, "MANUAL").length,
+        AUTO: positionRowsForMode(pairRows, "AUTO").length
       });
     }
 
-    function fxPositionTradeCountForPair(source, pair) {
+    function positionTradeCountForPair(source, pair) {
       return source.filter(deal => currencyPair(deal) === pair).length;
     }
 
-    function renderFxPositionModeTabs(source) {
-      const counts = fxPositionModeCounts(source);
-      fxPositionManualCount.textContent = String(counts.MANUAL);
-      fxPositionAutoCount.textContent = String(counts.AUTO);
+    function renderPositionModeTabs(source) {
+      const counts = positionModeCounts(source);
+      positionManualCount.textContent = String(counts.MANUAL);
+      positionAutoCount.textContent = String(counts.AUTO);
 
-      fxPositionModeTabs.forEach(tab => {
-        const active = tab.dataset.fxPositionMode === activeFxPositionMode;
+      positionModeTabs.forEach(tab => {
+        const active = tab.dataset.positionManagementMode === activePositionMode;
         tab.classList.toggle("active", active);
         tab.setAttribute("aria-selected", String(active));
         tab.tabIndex = active ? 0 : -1;
 
         if (active) {
-          fxPositionGridPanel.setAttribute("aria-labelledby", tab.id);
+          positionGridPanel.setAttribute("aria-labelledby", tab.id);
         }
       });
     }
@@ -18291,7 +19772,7 @@
 
       currencyPairListEl.innerHTML = pairs
         .map(pair => {
-          const count = fxPositionTradeCountForPair(source, pair);
+          const count = positionTradeCountForPair(source, pair);
           const safePair = escapeHtml(pair);
           const active = pair === selectedCurrencyPair;
           const countLabel = escapeHtml(
@@ -18320,14 +19801,14 @@
       selectedTradeIds.clear();
       saveSelectedCurrencyPair();
       setBatchStatus("");
-      render(fxPositions);
+      render(positions);
     }
 
     function currentDisplayRows() {
-      return sortedDeals(activeCurrencyPairRows(fxPositionRowsForMode(fxPositions)));
+      return sortedDeals(activeCurrencyPairRows(positionRowsForMode(positions)));
     }
 
-    function clearHiddenFxPositionSelection() {
+    function clearHiddenPositionSelection() {
       const visibleTradeIds = new Set(currentDisplayRows().map(deal => deal.id));
 
       selectedTradeIds.forEach(tradeId => {
@@ -18337,40 +19818,40 @@
       });
     }
 
-    function setActiveFxPositionMode(mode) {
+    function setActivePositionMode(mode) {
       const nextMode = normalizedPositionManagementMode(mode);
 
-      if (nextMode === activeFxPositionMode) {
+      if (nextMode === activePositionMode) {
         return false;
       }
 
-      activeFxPositionMode = nextMode;
-      closeSendToAutoPositionModeDialog();
+      activePositionMode = nextMode;
+      closeMoveToAutoManagementDialog();
       closeOneBatchTenorDialog({ restoreFocus: false });
-      clearHiddenFxPositionSelection();
+      clearHiddenPositionSelection();
       setBatchStatus("");
       return true;
     }
 
-    function handleFxPositionModeTabKeydown(event) {
-      const currentIndex = fxPositionModeTabs.indexOf(event.currentTarget);
+    function handlePositionModeTabKeydown(event) {
+      const currentIndex = positionModeTabs.indexOf(event.currentTarget);
       let nextIndex = currentIndex;
 
       if (event.key === "ArrowLeft") {
-        nextIndex = (currentIndex - 1 + fxPositionModeTabs.length) % fxPositionModeTabs.length;
+        nextIndex = (currentIndex - 1 + positionModeTabs.length) % positionModeTabs.length;
       } else if (event.key === "ArrowRight") {
-        nextIndex = (currentIndex + 1) % fxPositionModeTabs.length;
+        nextIndex = (currentIndex + 1) % positionModeTabs.length;
       } else if (event.key === "Home") {
         nextIndex = 0;
       } else if (event.key === "End") {
-        nextIndex = fxPositionModeTabs.length - 1;
+        nextIndex = positionModeTabs.length - 1;
       } else {
         return;
       }
 
       event.preventDefault();
-      fxPositionModeTabs[nextIndex]?.focus();
-      fxPositionModeTabs[nextIndex]?.click();
+      positionModeTabs[nextIndex]?.focus();
+      positionModeTabs[nextIndex]?.click();
     }
 
     function updateSortButtons() {
@@ -18391,28 +19872,12 @@
         sortState.direction = "asc";
       }
 
-      render(fxPositions);
+      render(positions);
     }
 
-    function selectedEditableDeal() {
-      const selectedRows = currentDisplayRows().filter(deal => selectedTradeIds.has(deal.id));
-
-      if (
-        selectedRows.length !== 1
-        || selectedRows[0].synthetic
-        || fxPositionType(selectedRows[0]) !== "CLIENT_DEAL"
-        || selectedRows[0].databaseBackedClientFxDeal !== true
-        || selectedRows[0].historicalBatchMember === true
-      ) {
-        return null;
-      }
-
-      return selectedRows[0];
-    }
-
-    function isBatchableFxPositionTrade(deal) {
-      const tradeId = Number(fxPositionTradeId(deal));
-      const transferRate = Number(fxPositionTransferRate(deal));
+    function isBatchablePositionTrade(deal) {
+      const tradeId = Number(positionTradeId(deal));
+      const transferRate = Number(positionTransferRate(deal));
 
       return deal?.synthetic !== true
         && Number.isSafeInteger(tradeId)
@@ -18424,28 +19889,28 @@
 
     function selectedBatchSourceTrades() {
       return currentDisplayRows().filter(deal =>
-        selectedTradeIds.has(deal.id) && isBatchableFxPositionTrade(deal)
+        selectedTradeIds.has(deal.id) && isBatchablePositionTrade(deal)
       );
     }
 
-    function isManualReviewTradeEligibleForAuto(deal) {
-      const tradeType = fxPositionType(deal);
+    function isTradeEligibleForAutoManagement(deal) {
+      const tradeType = positionType(deal);
       const initialMode = normalizedPositionManagementMode(
-        deal?.initialFxPositionMode,
-        deal?.currentFxPositionMode ?? deal?.fxPositionMode
+        deal?.initialPositionManagementMode,
+        deal?.currentPositionManagementMode ?? deal?.positionManagementMode
       );
       const currentMode = normalizedPositionManagementMode(
-        deal?.currentFxPositionMode ?? deal?.fxPositionMode
+        deal?.currentPositionManagementMode ?? deal?.positionManagementMode
       );
 
       return initialMode === "MANUAL"
         && currentMode === "MANUAL"
         && ["CLIENT_DEAL", "HEDGE_DEAL"].includes(tradeType)
-        && isBatchableFxPositionTrade(deal);
+        && isBatchablePositionTrade(deal);
     }
 
-    function selectedManualReviewTradesForAuto() {
-      if (activeFxPositionMode !== "MANUAL") {
+    function selectedTradesForAutoManagement() {
+      if (activePositionMode !== "MANUAL") {
         return [];
       }
 
@@ -18454,61 +19919,61 @@
       );
 
       return selectedRows.length > 0
-        && selectedRows.every(isManualReviewTradeEligibleForAuto)
+        && selectedRows.every(isTradeEligibleForAutoManagement)
         ? selectedRows
         : [];
     }
 
-    function closeSendToAutoPositionModeDialog() {
-      if (sendToAutoPositionModeInFlight) {
+    function closeMoveToAutoManagementDialog() {
+      if (moveToAutoManagementInFlight) {
         return;
       }
 
       pendingSendToAutoTrades = [];
-      sendToAutoPositionModeStatus.textContent = "";
-      sendToAutoPositionModeStatus.hidden = true;
-      sendToAutoPositionModeDialogClose.disabled = false;
-      sendToAutoPositionModeCancelButton.disabled = false;
-      sendToAutoPositionModeConfirmButton.disabled = false;
+      moveToAutoManagementStatus.textContent = "";
+      moveToAutoManagementStatus.hidden = true;
+      moveToAutoManagementDialogClose.disabled = false;
+      moveToAutoManagementCancelButton.disabled = false;
+      moveToAutoManagementConfirmButton.disabled = false;
 
-      if (typeof sendToAutoPositionModeDialog.close === "function") {
-        sendToAutoPositionModeDialog.close();
+      if (typeof moveToAutoManagementDialog.close === "function") {
+        moveToAutoManagementDialog.close();
       } else {
-        sendToAutoPositionModeDialog.removeAttribute("open");
+        moveToAutoManagementDialog.removeAttribute("open");
       }
     }
 
-    function openSendToAutoPositionModeDialog() {
-      if (!DEMO_API_ENABLED || sendToAutoPositionModeInFlight) {
+    function openMoveToAutoManagementDialog() {
+      if (!DEMO_API_ENABLED || moveToAutoManagementInFlight) {
         return;
       }
 
-      const selectedTrades = selectedManualReviewTradesForAuto();
+      const selectedTrades = selectedTradesForAutoManagement();
 
       if (selectedTrades.length === 0) {
         setBatchStatus(
-          "Select one or more eligible Manual Review Client or Hedge Deals.",
+          "Select one or more eligible Manual Management Client or Hedge Deals.",
           "warning"
         );
         return;
       }
 
       pendingSendToAutoTrades = selectedTrades.map(deal => Object.freeze({
-        tradeId: Number(fxPositionTradeId(deal)),
-        tradeType: fxPositionType(deal)
+        tradeId: Number(positionTradeId(deal)),
+        tradeType: positionType(deal)
       }));
       const count = pendingSendToAutoTrades.length;
-      sendToAutoPositionModeSummary.textContent =
-        `Send ${count} selected FX Trade${count === 1 ? "" : "s"} to Auto Hedging?`;
-      sendToAutoPositionModeStatus.textContent = "";
-      sendToAutoPositionModeStatus.hidden = true;
+      moveToAutoManagementSummary.textContent =
+        `Move ${count} selected Trade${count === 1 ? "" : "s"} to Auto Management?`;
+      moveToAutoManagementStatus.textContent = "";
+      moveToAutoManagementStatus.hidden = true;
 
-      openDialogWithoutFieldFocus(sendToAutoPositionModeDialog);
+      openDialogWithoutFieldFocus(moveToAutoManagementDialog);
     }
 
-    async function confirmSendToAutoPositionMode() {
+    async function confirmMoveToAutoManagement() {
       if (
-        sendToAutoPositionModeInFlight
+        moveToAutoManagementInFlight
         || pendingSendToAutoTrades.length === 0
       ) {
         return;
@@ -18516,20 +19981,20 @@
 
       const submittedTrades = [...pendingSendToAutoTrades];
       const count = submittedTrades.length;
-      sendToAutoPositionModeInFlight = true;
-      sendToAutoPositionModeDialogClose.disabled = true;
-      sendToAutoPositionModeCancelButton.disabled = true;
-      sendToAutoPositionModeConfirmButton.disabled = true;
-      sendToAutoPositionModeStatus.textContent =
-        `Sending ${count} FX Trade${count === 1 ? "" : "s"} to Auto Hedging...`;
-      sendToAutoPositionModeStatus.className =
+      moveToAutoManagementInFlight = true;
+      moveToAutoManagementDialogClose.disabled = true;
+      moveToAutoManagementCancelButton.disabled = true;
+      moveToAutoManagementConfirmButton.disabled = true;
+      moveToAutoManagementStatus.textContent =
+        `Moving ${count} Trade${count === 1 ? "" : "s"} to Auto Management...`;
+      moveToAutoManagementStatus.className =
         "alert alert-secondary batch-rollback-status mt-3 mb-0";
-      sendToAutoPositionModeStatus.hidden = false;
+      moveToAutoManagementStatus.hidden = false;
       updateActionButtons();
 
       try {
         const result = await demoApiRequest(
-          "/api/v1/fx-positions/send-to-auto-batching",
+          "/api/v1/positions/move-to-auto-management",
           {
             method: "POST",
             body: JSON.stringify({ trades: submittedTrades })
@@ -18540,19 +20005,19 @@
           selectedTradeIds.delete(String(trade.tradeId));
         });
         await Promise.all([
-          reloadClientFxDealsFromApi(),
-          reloadHedgeFxDealsFromApi(),
-          reloadFxPositionsFromApi()
+          reloadClientDealsFromApi(),
+          reloadHedgeDealsFromApi(),
+          reloadPositionsFromApi()
         ]);
-        renderClientFxDeals(clientFxDeals);
-        renderHedgeFxDeals(hedgeFxDeals);
-        render(fxPositions);
-        sendToAutoPositionModeInFlight = false;
-        closeSendToAutoPositionModeDialog();
+        renderClientDeals(clientDeals);
+        renderHedgeDeals(hedgeDeals);
+        render(positions);
+        moveToAutoManagementInFlight = false;
+        closeMoveToAutoManagementDialog();
 
         const replayedCount = Number(result?.replayedCount || 0);
         setBatchStatus(
-          `${count} FX Trade${count === 1 ? " is" : "s are"} now in Auto Hedging.`
+          `${count} Trade${count === 1 ? " is" : "s are"} now in Auto Management.`
           + (replayedCount > 0
             ? ` ${replayedCount} already had the requested Current Mode.`
             : ""),
@@ -18560,17 +20025,17 @@
         );
       } catch (error) {
         const message = error.message
-          || "Unable to send selected FX Trades to Auto Hedging.";
-        sendToAutoPositionModeStatus.textContent = message;
-        sendToAutoPositionModeStatus.className =
+          || "Unable to move selected Trades to Auto Management.";
+        moveToAutoManagementStatus.textContent = message;
+        moveToAutoManagementStatus.className =
           "alert alert-danger batch-rollback-status mt-3 mb-0";
-        sendToAutoPositionModeStatus.hidden = false;
+        moveToAutoManagementStatus.hidden = false;
         setBatchStatus(message, "error");
       } finally {
-        sendToAutoPositionModeInFlight = false;
-        sendToAutoPositionModeDialogClose.disabled = false;
-        sendToAutoPositionModeCancelButton.disabled = false;
-        sendToAutoPositionModeConfirmButton.disabled = false;
+        moveToAutoManagementInFlight = false;
+        moveToAutoManagementDialogClose.disabled = false;
+        moveToAutoManagementCancelButton.disabled = false;
+        moveToAutoManagementConfirmButton.disabled = false;
         updateActionButtons();
       }
     }
@@ -18580,8 +20045,8 @@
         String(deal?.ccyPairCode || currencyPair(deal) || "").trim().toUpperCase(),
         String(baseCurrency(deal) || "").trim().toUpperCase(),
         String(quoteCurrency(deal) || "").trim().toUpperCase(),
-        fxPositionBaseCcyFractionDigits(deal),
-        fxPositionQuoteCcyFractionDigits(deal),
+        positionBaseCcyFractionDigits(deal),
+        positionQuoteCcyFractionDigits(deal),
         String(positionTradeDate(deal) || "").trim(),
         String(positionTenor(deal) || "").trim().toUpperCase(),
         String(baseCurrencyValueDate(deal) || "").trim(),
@@ -18702,7 +20167,7 @@
 
     async function submitOneBatchSelection(sourceDeals) {
       const tradeIds = sourceDeals
-        .map(deal => Number(fxPositionTradeId(deal)))
+        .map(deal => Number(positionTradeId(deal)))
         .sort((left, right) => left - right);
       const submittedDealIds = sourceDeals.map(deal => deal.id);
       const selectionKey = tradeIds.join(",");
@@ -18719,12 +20184,12 @@
       setOneBatchTenorDialogBusy(true);
       updateActionButtons();
       setBatchStatus(
-        `Forming FX Batch from ${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}...`
+        `Forming Batch from ${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}...`
       );
 
       try {
         const result = await demoApiRequest(
-          "/api/v1/fx-batches",
+          "/api/v1/batches",
           {
             method: "POST",
             headers: {
@@ -18733,7 +20198,7 @@
             body: JSON.stringify({ tradeIds })
           }
         );
-        await reloadFxPositionsFromApi();
+        await reloadPositionsFromApi();
 
         if (pendingOneBatchRequest === batchRequest) {
           pendingOneBatchRequest = null;
@@ -18742,15 +20207,15 @@
         submittedDealIds.forEach(dealId => selectedTradeIds.delete(dealId));
         oneBatchInFlight = false;
         closeOneBatchTenorDialog({ restoreFocus: false });
-        render(fxPositions);
+        render(positions);
 
         setBatchStatus(
-          `FX Batch ${result.batchId} was formed successfully from `
+          `Batch ${result.batchId} was formed successfully from `
             + `${tradeIds.length} selected trade${tradeIds.length === 1 ? "" : "s"}.`,
           "success"
         );
       } catch (error) {
-        const message = error.message || "Unable to form FX Batch.";
+        const message = error.message || "Unable to form Batch.";
         setBatchStatus(message, "error");
 
         if (oneBatchTenorDialog.open) {
@@ -18772,7 +20237,7 @@
 
       if (sourceDeals.length === 0) {
         setBatchStatus(
-          "Select one or more eligible FX Trades.",
+          "Select one or more eligible Trades.",
           "warning"
         );
         return;
@@ -18793,7 +20258,7 @@
     }
 
     function createDealId() {
-      const maxDealNumber = fxPositions.reduce((max, deal) => {
+      const maxDealNumber = positions.reduce((max, deal) => {
         const match = /^(?:deal-)?(\d+)$/.exec(deal.id || "");
         return match ? Math.max(max, Number(match[1])) : max;
       }, 0);
@@ -18853,21 +20318,21 @@
 
     async function generateClientDeal() {
       generateClientDealButton.disabled = true;
-      setBatchStatus("Generating Client FX Deal...");
+      setBatchStatus("Generating Client Deal...");
       try {
         const deal = await demoApiRequest(
           "/api/v1/client-deal-generation/one",
           { method: "POST" }
         );
         await refreshClientDealViewsFromApi();
-        render(fxPositions);
+        render(positions);
         setBatchStatus(
-          `${String(deal.side || "").toUpperCase()} Client FX Deal ${deal.tradeId} `
+          `${String(deal.side || "").toUpperCase()} Client Deal ${deal.tradeId} `
             + "was generated successfully.",
           "success"
         );
       } catch (error) {
-        setBatchStatus(error.message || "Unable to save the generated Client FX Deal.", "error");
+        setBatchStatus(error.message || "Unable to save the generated Client Deal.", "error");
       } finally {
         generateClientDealButton.disabled = false;
       }
@@ -18886,7 +20351,7 @@
           refreshClientDealViewsFromApi()
         ]);
         applyClientDealGenerationProcessState(processState);
-        render(fxPositions);
+        render(positions);
 
         if (processState.lastError) {
           setBatchStatus(processState.lastError, "error");
@@ -18936,7 +20401,7 @@
         const state = await demoApiRequest(endpoint, { method: "POST" });
         applyClientDealGenerationProcessState(state);
         await refreshClientDealViewsFromApi();
-        render(fxPositions);
+        render(positions);
 
         if (state.lastError) {
           setBatchStatus(state.lastError, "error");
@@ -18949,7 +20414,7 @@
             state.running
               ? `Automatic deal generation started. ${
                   state.minDealsPerCycle
-                }-${state.maxDealsPerCycle} Client FX Deals will be generated every ${
+                }-${state.maxDealsPerCycle} Client Deals will be generated every ${
                   minIntervalSeconds
                 }-${maxIntervalSeconds} seconds.`
               : "Automatic deal generation was stopped successfully.",
@@ -18979,12 +20444,12 @@
       }
     }
 
-    function applyFxAutoBatchingProcessState(state) {
-      fxAutoBatchingProcessState = {
-        ...fxAutoBatchingProcessState,
+    function applyAutoBatchingProcessState(state) {
+      autoBatchingProcessState = {
+        ...autoBatchingProcessState,
         ...(state && typeof state === "object" ? state : {})
       };
-      const running = fxAutoBatchingProcessState.running === true;
+      const running = autoBatchingProcessState.running === true;
 
       autoBatchButton.classList.toggle("is-running", running);
       autoBatchButton.setAttribute("aria-pressed", String(running));
@@ -18994,45 +20459,45 @@
       );
       autoBatchIcon.textContent = running ? "stop" : "play_arrow";
       autoBatchLabel.textContent = running ? "Stop Auto Batch" : "Auto Batch";
-      autoBatchButton.disabled = !DEMO_API_ENABLED || fxAutoBatchingToggleInFlight;
+      autoBatchButton.disabled = !DEMO_API_ENABLED || autoBatchingToggleInFlight;
 
-      if (running && fxAutoBatchingRefreshTimer === null) {
-        fxAutoBatchingRefreshTimer = window.setInterval(() => {
-          void refreshFxAutoBatchingProcess();
-        }, FX_AUTO_BATCHING_REFRESH_INTERVAL_MS);
-      } else if (!running && fxAutoBatchingRefreshTimer !== null) {
-        window.clearInterval(fxAutoBatchingRefreshTimer);
-        fxAutoBatchingRefreshTimer = null;
+      if (running && autoBatchingRefreshTimer === null) {
+        autoBatchingRefreshTimer = window.setInterval(() => {
+          void refreshAutoBatchingProcess();
+        }, AUTO_BATCHING_REFRESH_INTERVAL_MS);
+      } else if (!running && autoBatchingRefreshTimer !== null) {
+        window.clearInterval(autoBatchingRefreshTimer);
+        autoBatchingRefreshTimer = null;
       }
     }
 
-    async function refreshFxAutoBatchingProcess() {
-      if (fxAutoBatchingRefreshInFlight) {
+    async function refreshAutoBatchingProcess() {
+      if (autoBatchingRefreshInFlight) {
         return;
       }
 
-      fxAutoBatchingRefreshInFlight = true;
-      const previousBatchId = Number(fxAutoBatchingProcessState.lastFormedBatchId) || null;
+      autoBatchingRefreshInFlight = true;
+      const previousBatchId = Number(autoBatchingProcessState.lastFormedBatchId) || null;
 
       try {
-        const state = await demoApiRequest("/api/v1/fx-auto-batching/process");
-        applyFxAutoBatchingProcessState(state);
+        const state = await demoApiRequest("/api/v1/auto-batching/process");
+        applyAutoBatchingProcessState(state);
         const nextBatchId = Number(state.lastFormedBatchId) || null;
 
         if (nextBatchId !== null && nextBatchId !== previousBatchId) {
           await Promise.all([
-            reloadFxPositionsFromApi(),
-            reloadFxBatchesFromApi()
+            reloadPositionsFromApi(),
+            reloadBatchesFromApi()
           ]);
-          render(fxPositions);
+          render(positions);
           const tradeCount = Number(state.lastCandidateTradeCount) || 0;
           const pairCount = Number(state.lastCandidatePairCount) || 0;
           const batchCount = Number(state.lastCycleBatchCount) || 1;
           const successMessage = batchCount === 1
-            ? `FX Batch ${nextBatchId} was formed automatically from ${tradeCount} trade${
+            ? `Batch ${nextBatchId} was formed automatically from ${tradeCount} trade${
                 tradeCount === 1 ? "" : "s"
               }.`
-            : `${batchCount} FX Batches were formed automatically for ${pairCount} Ccy Pairs from ${
+            : `${batchCount} Batches were formed automatically for ${pairCount} Ccy Pairs from ${
                 tradeCount
               } trades.`;
           setBatchStatus(
@@ -19045,46 +20510,46 @@
       } catch (error) {
         setBatchStatus(error.message || "Unable to refresh Auto Batching process.", "error");
       } finally {
-        fxAutoBatchingRefreshInFlight = false;
+        autoBatchingRefreshInFlight = false;
       }
     }
 
-    async function toggleFxAutoBatchingProcess() {
-      const running = fxAutoBatchingProcessState.running === true;
+    async function toggleAutoBatchingProcess() {
+      const running = autoBatchingProcessState.running === true;
       const endpoint = running
-        ? "/api/v1/fx-auto-batching/process/stop"
-        : "/api/v1/fx-auto-batching/process/start";
+        ? "/api/v1/auto-batching/process/stop"
+        : "/api/v1/auto-batching/process/start";
 
-      fxAutoBatchingToggleInFlight = true;
+      autoBatchingToggleInFlight = true;
       autoBatchButton.disabled = true;
 
       try {
         const state = await demoApiRequest(endpoint, { method: "POST" });
-        applyFxAutoBatchingProcessState(state);
+        applyAutoBatchingProcessState(state);
         const intervalSeconds = Number(state.intervalMs) / 1000;
         setBatchStatus(
           state.running
-            ? `Auto Batching started and is waiting for the first new Trade. Existing FX Position trades are unchanged. Each opened Batching Window has a ${intervalSeconds}-second maximum interval.`
-            : "Auto Batching stopped. Open Batching Windows, when present, were cancelled; their Trades remain in FX Position.",
+            ? `Auto Batching started and is waiting for the first new Trade. Existing Position trades are unchanged. Each opened Batching Window has a ${intervalSeconds}-second maximum interval.`
+            : "Auto Batching stopped. Open Batching Windows, when present, were cancelled; their Trades remain in Position.",
           "success"
         );
       } catch (error) {
         setBatchStatus(error.message || "Unable to change Auto Batching process.", "error");
       } finally {
-        fxAutoBatchingToggleInFlight = false;
-        applyFxAutoBatchingProcessState(fxAutoBatchingProcessState);
+        autoBatchingToggleInFlight = false;
+        applyAutoBatchingProcessState(autoBatchingProcessState);
       }
     }
 
-    async function connectFxAutoBatchingProcess() {
+    async function connectAutoBatchingProcess() {
       if (!DEMO_API_ENABLED) {
         autoBatchButton.disabled = true;
         return;
       }
 
       try {
-        const state = await demoApiRequest("/api/v1/fx-auto-batching/process");
-        applyFxAutoBatchingProcessState(state);
+        const state = await demoApiRequest("/api/v1/auto-batching/process");
+        applyAutoBatchingProcessState(state);
       } catch (error) {
         autoBatchButton.disabled = true;
         setBatchStatus(error.message || "Unable to read Auto Batching process status.", "error");
@@ -19123,10 +20588,10 @@
       resetDemoTradesButton.disabled = true;
       resetDemoTradesConfirmButton.disabled = true;
       resetDemoTradesCancelButton.disabled = true;
-      resetDemoTradesStatus.textContent = "Resetting Demo Trades and FX Batches...";
+      resetDemoTradesStatus.textContent = "Resetting Demo Trades and Batches...";
       resetDemoTradesStatus.className = "alert alert-secondary batch-rollback-status";
       resetDemoTradesStatus.hidden = false;
-      setBatchStatus("Resetting Demo Trades and FX Batches...");
+      setBatchStatus("Resetting Demo Trades and Batches...");
 
       try {
         const result = await demoApiRequest(
@@ -19138,26 +20603,26 @@
         );
 
         applyClientDealGenerationProcessState(result.generationProcess);
-        applyFxAutoBatchingProcessState(result.autoBatchingProcess);
+        applyAutoBatchingProcessState(result.autoBatchingProcess);
         selectedTradeIds.clear();
 
         await Promise.all([
-          reloadClientFxDealsFromApi(),
-          reloadHedgeFxDealsFromApi(),
-          reloadFxBatchesFromApi()
+          reloadClientDealsFromApi(),
+          reloadHedgeDealsFromApi(),
+          reloadBatchesFromApi()
         ]);
-        await reloadFxPositionsFromApi();
+        await reloadPositionsFromApi();
 
-        renderClientFxDeals(clientFxDeals);
-        renderHedgeFxDeals(hedgeFxDeals);
-        render(fxPositions);
+        renderClientDeals(clientDeals);
+        renderHedgeDeals(hedgeDeals);
+        render(positions);
 
         const removedTrades = Number(result.removed?.trades || 0);
         const removedBatches = Number(result.removed?.batches || 0);
         closeResetDemoTradesDialog();
         setBatchStatus(
           `Demo workspace was reset successfully: ${removedTrades} trade${removedTrades === 1 ? "" : "s"} `
-          + `and ${removedBatches} FX batch${removedBatches === 1 ? "" : "es"} were removed.`,
+          + `and ${removedBatches} batch${removedBatches === 1 ? "" : "es"} were removed.`,
           "success"
         );
       } catch (error) {
@@ -19175,28 +20640,31 @@
     }
 
     function updateActionButtons() {
-      editDealButton.disabled = selectedEditableDeal() === null;
+      const selectedVisibleTradeCount = currentDisplayRows().filter(deal =>
+        selectedTradeIds.has(deal.id)
+      ).length;
+      selectedTradesCount.textContent = `${selectedVisibleTradeCount} selected`;
 
-      const manualReviewTrades = selectedManualReviewTradesForAuto();
-      sendToAutoPositionModeButton.hidden = activeFxPositionMode !== "MANUAL";
-      sendToAutoPositionModeButton.disabled =
+      const tradesForAutoManagement = selectedTradesForAutoManagement();
+      moveToAutoManagementButton.hidden = activePositionMode !== "MANUAL";
+      moveToAutoManagementButton.disabled =
         !DEMO_API_ENABLED
-        || sendToAutoPositionModeInFlight
-        || manualReviewTrades.length === 0;
+        || moveToAutoManagementInFlight
+        || tradesForAutoManagement.length === 0;
 
       oneBatchButton.disabled =
         !DEMO_API_ENABLED
         || oneBatchInFlight
         || selectedBatchSourceTrades().length === 0;
 
-      autoBatchButton.disabled = !DEMO_API_ENABLED || fxAutoBatchingToggleInFlight;
+      autoBatchButton.disabled = !DEMO_API_ENABLED || autoBatchingToggleInFlight;
     }
 
     function updateSelectAllCheckboxes(rows) {
       selectAllCheckboxes.forEach(checkbox => {
         const side = checkbox.dataset.selectSide;
         const sideRows = rows.filter(deal =>
-          sideOf(deal) === side && isBatchableFxPositionTrade(deal)
+          sideOf(deal) === side && isBatchablePositionTrade(deal)
         );
         const selectedRows = sideRows.filter(deal => selectedTradeIds.has(deal.id));
 
@@ -19208,7 +20676,7 @@
 
     function toggleSideSelection(side, checked) {
       currentDisplayRows()
-        .filter(deal => sideOf(deal) === side && isBatchableFxPositionTrade(deal))
+        .filter(deal => sideOf(deal) === side && isBatchablePositionTrade(deal))
         .forEach(deal => {
           if (checked) {
             selectedTradeIds.add(deal.id);
@@ -19218,12 +20686,12 @@
         });
 
       setBatchStatus("");
-      render(fxPositions);
+      render(positions);
     }
 
     function toggleSideSelectionByShortcut(side) {
       const sideRows = currentDisplayRows().filter(deal =>
-        sideOf(deal) === side && isBatchableFxPositionTrade(deal)
+        sideOf(deal) === side && isBatchablePositionTrade(deal)
       );
 
       if (sideRows.length === 0) {
@@ -19274,124 +20742,16 @@
       }
     }
 
-    function findFxPositionById(dealId) {
+    function findPositionById(dealId) {
       const normalizedDealId = String(dealId ?? "");
 
-      return fxPositions.find(deal => String(deal.id ?? "") === normalizedDealId) || null;
-    }
-
-    function clearFormValidity() {
-      Array.from(editForm.elements).forEach(element => {
-        if (typeof element.setCustomValidity === "function") {
-          element.setCustomValidity("");
-        }
-      });
-    }
-
-    function dealClientSelectProfiles(selectedName = "", selectedInnValue = "") {
-      const availableProfiles = clientDealProfiles();
-      const selectedInn = normalizedInn(selectedInnValue, "");
-      const selectedProfile =
-        availableProfiles.find(profile => profile.name === selectedName) ||
-        availableProfiles.find(profile => profile.inn === selectedInn) ||
-        null;
-
-      if (selectedProfile || !selectedName || availableProfiles.some(profile => profile.name === selectedName)) {
-        return availableProfiles;
-      }
-
-      const fallbackProfile = clientProfileByInn(selectedInn) || clientProfileByName(selectedName);
-      const fallbackInn = selectedInn || innForClientName(selectedName);
-
-      return [{
-        name: selectedName,
-        inn: fallbackInn,
-        clientCodeType: normalizedClientCodeType(fallbackProfile?.clientCodeType)
-      }, ...availableProfiles];
-    }
-
-    function populateDealClientOptions(selectedName = "", selectedInnValue = "") {
-      const options = dealClientSelectProfiles(selectedName, selectedInnValue);
-      const selectedInn = String(selectedInnValue || "").trim();
-      const selectedProfile =
-        options.find(profile => profile.name === selectedName) ||
-        options.find(profile => profile.inn === selectedInn) ||
-        options[0] ||
-        null;
-
-      editForm.elements.clientCode.innerHTML = options
-        .map(profile => `<option value="${escapeHtml(profile.inn)}">${escapeHtml(profile.inn)}</option>`)
-        .join("");
-      editForm.elements.clientName.innerHTML = options
-        .map(profile => `<option value="${escapeHtml(profile.name)}">${escapeHtml(profile.name)}</option>`)
-        .join("");
-
-      editForm.elements.clientCode.value = selectedProfile?.inn || "";
-      editForm.elements.clientName.value = selectedProfile?.name || "";
+      return positions.find(deal => String(deal.id ?? "") === normalizedDealId) || null;
     }
 
     function clientProfileByName(name) {
       const clientName = String(name || "").trim();
 
       return clientProfiles.find(profile => profile.name === clientName) || null;
-    }
-
-    function selectedDealClientProfile() {
-      const inn = editForm.elements.clientCode.value.trim();
-      const clientName = editForm.elements.clientName.value.trim();
-      const profileByInn = inn ? clientProfileByInn(inn) : null;
-      const profileByName = clientName ? clientProfileByName(clientName) : null;
-
-      if (profileByInn && profileByName && profileByInn.inn !== profileByName.inn) {
-        return null;
-      }
-
-      return profileByInn || profileByName || null;
-    }
-
-    function syncDealClientContext(sourceElement = null) {
-      const innInput = editForm.elements.clientCode;
-      const clientNameInput = editForm.elements.clientName;
-      const sourceName = sourceElement?.name || "";
-
-      innInput.setCustomValidity("");
-      clientNameInput.setCustomValidity("");
-
-      if (sourceName === "clientCode") {
-        const profile = clientProfileByInn(innInput.value.trim());
-
-        if (profile) {
-          clientNameInput.value = profile.name;
-        }
-
-        return;
-      }
-
-      if (sourceName === "clientName") {
-        const profile = clientProfileByName(clientNameInput.value);
-
-        if (profile) {
-          innInput.value = profile.inn;
-        }
-
-        return;
-      }
-
-      const profile = selectedDealClientProfile();
-
-      if (profile) {
-        innInput.value = profile.inn;
-        clientNameInput.value = profile.name;
-      }
-
-    }
-
-    function dealPricingRuleControl() {
-      return editForm.elements.pricingRuleId;
-    }
-
-    function selectedDealCurrencyPair() {
-      return normalizedPricingRuleCurrencyPair(editForm.elements.currencyPair.value);
     }
 
     function isHedgeDealPricingRule(rule, pricingMode) {
@@ -19469,8 +20829,8 @@
         .find(rule => String(rule.pricingRuleId) === pricingRuleId) || null;
     }
 
-    function selectedAddClientDealExecutionContext() {
-      return pricingContextById(addClientDealForm.elements.executionContextId.value);
+    function selectedAddClientDealTradeContext() {
+      return pricingContextById(addClientDealForm.elements.tradeContextId.value);
     }
 
     function isAddClientDealOnboardingPricing() {
@@ -19623,7 +20983,7 @@
     function addClientDealPricingRuleContentMarkup(rule, context, options = {}) {
       const contextMarkup = pricingContextFacetsMarkup(
         context,
-        options.executionSystemLabel === true ? { executionSystemLabel: true } : {}
+        options.originatingSystemLabel === true ? { originatingSystemLabel: true } : {}
       );
       const pricingModeIndicator = options.showPricingModeIndicator === false
         ? ""
@@ -19658,7 +21018,7 @@
           ? "Select a currency pair to see available Pricing Rules."
           : "No Pricing Rule is configured for this client and currency pair.";
 
-      addClientDealForm.elements.executionContextId.value = selectedOption?.context.pricingContextId || "";
+      addClientDealForm.elements.tradeContextId.value = selectedOption?.context.pricingContextId || "";
       addClientDealForm.elements.pricingRuleId.value = selectedOption?.rule.pricingRuleId || "";
       addClientDealForm.elements.manualPricingReason.value = onboardingPricing && onboardingAvailable
         ? CLIENT_ONBOARDING_MANUAL_PRICING
@@ -19671,7 +21031,7 @@
               ? addClientDealPricingRuleContentMarkup(
                   selectedOption.rule,
                   selectedOption.context,
-                  { executionSystemLabel: true, showPricingModeIndicator: false }
+                  { originatingSystemLabel: true, showPricingModeIndicator: false }
                 )
               : onboardingPricing && onboardingAvailable
                 ? `
@@ -19700,7 +21060,7 @@
                     ${addClientDealPricingRuleContentMarkup(
                       rule,
                       context,
-                      { executionSystemLabel: true, showPricingModeIndicator: false }
+                      { originatingSystemLabel: true, showPricingModeIndicator: false }
                     )}
                   </button>
                 `;
@@ -19773,7 +21133,7 @@
         return null;
       }
 
-      const amounts = exactFxAmountsFromDealt({
+      const amounts = exactAmountsFromDealt({
         dealtAmount: dealtInput.value,
         dealtCcyCode,
         baseCcyCode: currencies.base,
@@ -20009,7 +21369,7 @@
     }
 
     function syncAddClientDealScope() {
-      addClientDealForm.elements.executionContextId.value = "";
+      addClientDealForm.elements.tradeContextId.value = "";
       addClientDealForm.elements.pricingRuleId.value = "";
       addClientDealForm.elements.manualPricingReason.value = "";
       addClientDealManualTransferEdited = false;
@@ -20034,7 +21394,7 @@
       const onboardingButton = event.target.closest("[data-add-client-deal-onboarding-pricing]");
 
       if (onboardingButton) {
-        addClientDealForm.elements.executionContextId.value = "";
+        addClientDealForm.elements.tradeContextId.value = "";
         addClientDealForm.elements.pricingRuleId.value = "";
         addClientDealForm.elements.manualPricingReason.value =
           CLIENT_ONBOARDING_MANUAL_PRICING;
@@ -20062,7 +21422,7 @@
         return;
       }
 
-      addClientDealForm.elements.executionContextId.value = option.context.pricingContextId;
+      addClientDealForm.elements.tradeContextId.value = option.context.pricingContextId;
       addClientDealForm.elements.pricingRuleId.value = option.rule.pricingRuleId;
       addClientDealForm.elements.manualPricingReason.value = "";
       addClientDealManualTransferEdited = false;
@@ -20119,6 +21479,913 @@
         addClientDealDialog.close();
       } else {
         addClientDealDialog.removeAttribute("open");
+      }
+    }
+    function workspacePageHeading(hash = location.hash) {
+      const currentHash = String(hash || "").trim();
+      const heading = (selector, text) => ({ selector, text });
+      if (currentHash === "#trade-intake:messages") {
+        return heading("#tradeIntakeMessagesPage h1", "Trade Intake Messages");
+      }
+      if (/^#trade-intake(?::contract)?$/.test(currentHash)) {
+        return heading("#tradeContractPage h1", "Trade Contract");
+      }
+      if (isPositionManagementSettingsRoute(currentHash)) {
+        return heading("#positionManagementSettingsPage h1", "Position Management Settings");
+      }
+      const currency = currencySettingsRouteStateFromLocation(currentHash);
+      if (currency.matches) {
+        const title = currency.kind === "pairs" ? "Currency Pair Settings" : "Currency Settings";
+        return heading("#marketPageTitle", title);
+      }
+      const rules = pricingRulesRouteStateFromLocation(currentHash);
+      if (rules.matches) return heading("#pricingRulesPage h1", "Pricing Rules");
+      const contexts = pricingRouteStateFromLocation(currentHash);
+      if (contexts.matches) {
+        return heading("#pricingPage h1", contexts.mode === "related" ? `Trade Contexts — ${contexts.scope.value}` : "Trade Contexts");
+      }
+      const profile = clientProfileRouteStateFromLocation(currentHash);
+      if (profile.matches) {
+        let title = "Trading Counterparties";
+        if (profile.mode === "pricing-rule") title = `Pricing Rule ${profile.pricingRuleId}`;
+        else if (profile.counterpartyId) {
+          const record = clientProfiles.find(entry => String(entry.counterpartyId) === profile.counterpartyId);
+          title = record?.name || `Counterparty ${profile.counterpartyId}`;
+        } else if (profile.mode === "create") title = "New Counterparty";
+        return heading("#clientProfilePageTitle", title);
+      }
+      const user = /^#users(?:\/([^/?#]+))?$/.exec(currentHash);
+      if (user) {
+        let title = "Users";
+        if (user[1]) {
+          let userId;
+          try { userId = decodeURIComponent(user[1]); } catch (_error) { return heading("#usersPageTitle", title); }
+          const record = users.find(entry => String(entry.userId) === userId);
+          const name = record ? [record.firstName, record.lastName].filter(Boolean).join(" ") : "";
+          title = userId.toLowerCase() === "new" ? "New User" : name || `User ${userId}`;
+        }
+        return heading("#usersPageTitle", title);
+      }
+      const reference = /^#reference-data(?::([^:]+))?$/.exec(currentHash);
+      if (reference) {
+        return heading("#referenceDataPage h1", "Trade Context Components");
+      }
+      const batch = /^#batching:details\/(\d+)$/.exec(currentHash);
+      if (batch) return heading("#batchDetailsPage h1", `Batch ${batch[1]} — Structure`);
+      if (currentHash === batchFormationAuditRoute()) return heading("#batchesPage h1", "Audit View");
+      if (currentHash === batchingHistoryRoute()) return heading("#batchesPage h1", "Batches");
+      if (/^#position(?::(?:manual|auto))?$/.test(currentHash)) return heading("#mainPage h1", "Position");
+      if (currentHash === clientDealsRoute()) return heading("#dealsPage h1", "Client Deals");
+      if (currentHash === hedgeDealsRoute()) return heading("#dealsPage h1", "Hedge Deals");
+      if (currentHash.startsWith(domainGlossaryRoute())) {
+        let title = "Domain Glossary";
+        const encodedKey = currentHash.slice(domainGlossaryRoute().length + 1);
+        if (encodedKey) {
+          let key;
+          try { key = decodeURIComponent(encodedKey); } catch (_error) { return heading("#processesPage h1", title); }
+          const canonicalKey = PROCESS_CATALOG_GLOSSARY_TERM_ALIASES.get(key) || key;
+          const label = document.getElementById(`process-term-${canonicalKey}`)?.querySelector("dt")?.textContent;
+          if (label) title = label.trim();
+        }
+        return heading("#processesPage h1", title);
+      }
+      if (currentHash === manualBatchFormationProcessRoute()) return heading("#processesPage h1", "Manual Batching");
+      if (currentHash === batchingSettingsRoute()) return heading("#batchingSettingsPage h1", "Batching Settings");
+      if (currentHash === databaseRoute()) return heading("#databasePage h1", "Database");
+      const market = /^#(?:market|market-pulse)(?::(quote-stream|charts|data-management|history|streams))?$/.exec(currentHash);
+      if (market) {
+        const section = market[1];
+        const title = section === "charts"
+          ? "Charts"
+          : section === "data-management" || section === "history"
+            ? "Data Management"
+            : "Quote Stream";
+        return heading("#marketPageTitle", title);
+      }
+      if (currentHash === analyticalPnlReportRoute()) return heading("#analyticalPnlReportPage h1", "Analytical PnL Report");
+      return null;
+    }
+
+    function renderWorkspacePageHeading() {
+      const heading = workspacePageHeading();
+      if (!heading) return;
+      const element = document.querySelector(heading.selector);
+      if (element) element.textContent = heading.text;
+    }
+    let positionManagementQuickHedgeSettingsLoaded = false;
+    let activeAutoManagementAdmissionTradeType = "CLIENT_DEAL";
+    let autoManagementAdmissionViewVersion = 0;
+    const initialClientAutoManagementAdmissionPolicy = autoManagementAdmissionPolicy;
+    const autoManagementAdmissionPolicyStates = new Map();
+    const AUTO_MODE_ELIGIBILITY_TRADE_TYPE_PRESENTATION = Object.freeze({
+      CLIENT_DEAL: Object.freeze({ label: "Client Deal", icon: "handshake", evaluated: true }),
+      HEDGE_DEAL: Object.freeze({ label: "Hedge Deal", icon: "shield", evaluated: true }),
+      BATCH_POSITION_OUT: Object.freeze({ label: "Batch Position Out", icon: "output", evaluated: false })
+    });
+
+    function autoManagementAdmissionStateFor(tradeType) {
+      const type = AUTO_MODE_ELIGIBILITY_TRADE_TYPES.includes(tradeType)
+        ? tradeType
+        : "CLIENT_DEAL";
+      if (!autoManagementAdmissionPolicyStates.has(type)) {
+        autoManagementAdmissionPolicyStates.set(type, {
+          policy: type === "CLIENT_DEAL"
+            ? initialClientAutoManagementAdmissionPolicy
+            : normalizedAutoManagementAdmissionPolicy({ tradeType: type }),
+          loaded: false,
+          loading: false,
+          saving: false,
+          requestVersion: 0
+        });
+      }
+      return autoManagementAdmissionPolicyStates.get(type);
+    }
+
+    function syncActiveAutoManagementAdmissionPolicy() {
+      const state = autoManagementAdmissionStateFor(activeAutoManagementAdmissionTradeType);
+      autoManagementAdmissionPolicy = state.policy;
+      autoManagementAdmissionPolicyLoaded = state.loaded;
+      autoManagementAdmissionPolicySaving = state.saving;
+    }
+
+    function setAutoManagementAdmissionPolicyStatus(message = "", tone = "", tradeType = activeAutoManagementAdmissionTradeType) {
+      const status = document.querySelector(
+        '[data-auto-management-policy-status="' + tradeType + '"]'
+      );
+      if (status) {
+        setWorkbenchPageStatus(status, message, tone);
+      }
+    }
+
+    function setAutoManagementAdmissionCriteriaStatus(message = "", tone = "") {
+      setWorkbenchPageStatus(autoManagementAdmissionCriteriaStatus, message, tone);
+    }
+
+    function renderPositionManagementSettingsNavigation(section) {
+      const items = positionManagementSettingsNavigationItems(section);
+      const titleParts = items.map(item => item.label);
+      document.title = titleParts.join(" / ");
+      const canonicalHash = positionManagementSettingsRoute(section);
+      if (location.hash !== canonicalHash) {
+        window.history.replaceState(window.history.state, "", canonicalHash);
+      }
+      renderWorkspacePageHeading();
+    }
+
+    function setPositionManagementSettingsSection(sectionName) {
+      const normalizedSection = ["quick", "eligibility", "initial"].includes(sectionName)
+        ? sectionName
+        : "eligibility";
+
+      positionManagementSettingsSectionLinks.forEach(link => {
+        const active = link.dataset.positionManagementSettingsSection === normalizedSection;
+        link.classList.toggle("is-active", active);
+        if (link.getAttribute("role") === "tab") {
+          link.setAttribute("aria-selected", String(active));
+          link.tabIndex = active ? 0 : -1;
+        }
+        if (active) {
+          link.setAttribute("aria-current", "page");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      });
+      positionManagementSettingsSectionPanels.forEach(panel => {
+        panel.hidden = panel.dataset.positionManagementSettingsSectionPanel !== normalizedSection;
+      });
+      hedgeQuickModeSettingsStatus.hidden = normalizedSection !== "quick";
+      if (normalizedSection === "quick" && hedgeQuickModeSettingsGridReady) {
+        requestAnimationFrame(() => hedgeQuickModeSettingsGrid.redraw(true));
+      }
+    }
+
+    function setAutoManagementAdmissionPolicyBusy(busy) {
+      const isBusy = busy === true;
+      const filtersDisabled = isBusy || Boolean(autoManagementAdmissionEditingPairCode);
+      autoManagementAdmissionCriteriaForm.setAttribute("aria-busy", String(isBusy));
+      if (autoManagementAdmissionCriteriaSave) autoManagementAdmissionCriteriaSave.disabled = true;
+      autoManagementAdmissionTradeTypeFilter.disabled = filtersDisabled;
+      autoManagementAdmissionPairSearch.disabled = filtersDisabled;
+      autoManagementAdmissionPairFilter.disabled = filtersDisabled;
+      autoManagementAdmissionPairRows
+        .querySelectorAll("[data-auto-management-admission-pair-enabled]")
+        .forEach(control => {
+          control.disabled = isBusy
+            || !autoManagementAdmissionPolicyLoaded
+            || !autoManagementAdmissionEditingPairCode;
+        });
+      autoManagementAdmissionPairRows
+        .querySelectorAll("[data-auto-management-admission-pair-limit]")
+        .forEach(control => {
+          const row = control.closest("[data-auto-management-admission-pair-code]");
+          const enabledControl = row?.querySelector(
+            "[data-auto-management-admission-pair-enabled]"
+          );
+          control.disabled = isBusy
+            || !autoManagementAdmissionPolicyLoaded
+            || !autoManagementAdmissionEditingPairCode
+            || !enabledControl?.checked;
+        });
+      autoManagementAdmissionPairRows
+        .querySelectorAll("[data-auto-management-admission-deviation]")
+        .forEach(control => {
+          const row = control.closest("[data-auto-management-admission-pair-code]");
+          const enabledControl = row?.querySelector(
+            "[data-auto-management-admission-pair-enabled]"
+          );
+          control.disabled = isBusy
+            || !autoManagementAdmissionPolicyLoaded
+            || !autoManagementAdmissionEditingPairCode
+            || !enabledControl?.checked;
+        });
+
+      autoManagementAdmissionPairRows.querySelectorAll('[data-admission-action]').forEach(button => {
+        button.disabled = isBusy || !autoManagementAdmissionPolicyLoaded
+          || (button.dataset.admissionAction === 'edit' && Boolean(autoManagementAdmissionEditingPairCode));
+      });
+      if (!isBusy && autoManagementAdmissionPolicyLoaded) {
+        updateAutoManagementAdmissionCriteriaSaveAvailability();
+      }
+    }
+
+    function autoModeEligibilityTradeTypePresentation(tradeType) {
+      return AUTO_MODE_ELIGIBILITY_TRADE_TYPE_PRESENTATION[tradeType]
+        || AUTO_MODE_ELIGIBILITY_TRADE_TYPE_PRESENTATION.CLIENT_DEAL;
+    }
+
+    function autoManagementAdmissionRuleGroups() {
+      const groupsByPairCode = new Map();
+
+      AUTO_MODE_ELIGIBILITY_TRADE_TYPES.forEach(tradeType => {
+        const state = autoManagementAdmissionStateFor(tradeType);
+        state.policy.currencyPairs.forEach(pair => {
+          if (!groupsByPairCode.has(pair.ccyPairCode)) {
+            groupsByPairCode.set(pair.ccyPairCode, {
+              ccyPairCode: pair.ccyPairCode,
+              currencyPair: pair.currencyPair,
+              rules: []
+            });
+          }
+          groupsByPairCode.get(pair.ccyPairCode).rules.push({ tradeType, pair });
+        });
+      });
+
+      return Array.from(groupsByPairCode.values());
+    }
+
+    function autoManagementAdmissionRuleRows() {
+      return autoManagementAdmissionRuleGroups().flatMap(group => group.rules);
+    }
+
+    function autoManagementAdmissionRuleMatchesFilters({ tradeType, pair }) {
+      const tradeTypeFilter = String(autoManagementAdmissionTradeTypeFilter.value || "ALL")
+        .trim()
+        .toUpperCase();
+      const pairQuery = String(autoManagementAdmissionPairSearch.value || "")
+        .trim()
+        .toUpperCase();
+      const statusFilter = String(autoManagementAdmissionPairFilter.value || "ALL")
+        .trim()
+        .toUpperCase();
+      const evaluated = autoModeEligibilityTradeTypePresentation(tradeType).evaluated;
+      const editing = tradeType === autoManagementAdmissionEditingTradeType
+        && pair.ccyPairCode === autoManagementAdmissionEditingPairCode;
+      const matchesTradeType = tradeTypeFilter === "ALL" || tradeType === tradeTypeFilter;
+      const matchesPair = !pairQuery
+        || `${pair.currencyPair} ${pair.ccyPairCode}`.toUpperCase().includes(pairQuery);
+      const matchesStatus = statusFilter === "ALL"
+        || (statusFilter === "ENABLED" && evaluated && pair.enabled)
+        || (statusFilter === "DISABLED" && evaluated && !pair.enabled)
+        || (statusFilter === "NOT_EVALUATED" && !evaluated);
+
+      return editing || (matchesTradeType && matchesPair && matchesStatus);
+    }
+
+    function filteredAutoManagementAdmissionRuleGroups() {
+      return autoManagementAdmissionRuleGroups()
+        .map(group => ({
+          ...group,
+          rules: group.rules.filter(autoManagementAdmissionRuleMatchesFilters)
+        }))
+        .filter(group => group.rules.length > 0);
+    }
+
+    function autoManagementAdmissionPairRowMarkup(
+      pair,
+      tradeType,
+      { renderPairCell = true, pairRowspan = 1, groupEnd = true, tableEnd = false } = {}
+    ) {
+      const tradeTypePresentation = autoModeEligibilityTradeTypePresentation(tradeType);
+      const evaluated = tradeTypePresentation.evaluated;
+      const editing = evaluated
+        && autoManagementAdmissionEditingTradeType === tradeType
+        && autoManagementAdmissionEditingPairCode === pair.ccyPairCode;
+      const controlSuffix = `${tradeType}_${pair.ccyPairCode}`.toLowerCase();
+      const switchId = `autoManagementAdmissionEnabled_${controlSuffix}`;
+      const limitId = `autoManagementAdmissionLimit_${controlSuffix}`;
+      const deviationId = `autoManagementAdmissionDeviation_${controlSuffix}`;
+      const amountValue = pair.maxBaseCcyAmount === null
+        ? ""
+        : groupedDecimalText(pair.maxBaseCcyAmount);
+      const deviationValue = pair.maxTransferRateDeviationPercent === null
+        ? ""
+        : pair.maxTransferRateDeviationPercent;
+      const eligibilityMarkup = !evaluated
+        ? `<span class="app-status-token" aria-label="Auto Mode Eligibility is not evaluated">Not evaluated</span>`
+        : editing
+        ? `
+            <div class="form-check form-switch auto-management-admission-pair-enabled">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="${escapeHtml(switchId)}"
+                aria-label="${escapeHtml(pair.currencyPair)} eligible for Auto Mode"
+                data-auto-management-admission-pair-enabled
+                ${pair.enabled ? "checked" : ""}
+                ${autoManagementAdmissionPolicyLoaded ? "" : "disabled"}
+              >
+            </div>
+          `
+        : `<span class="app-status-token${pair.enabled ? " is-active" : ""}" aria-label="Eligible for Auto Mode: ${pair.enabled ? "Yes" : "No"}">${pair.enabled ? "Yes" : "No"}</span>`;
+      const amountMarkup = !evaluated
+        ? `<span class="auto-management-admission-read-value">—</span>`
+        : editing
+        ? `
+            <div class="input-group input-group-sm auto-management-admission-pair-limit">
+              <label class="visually-hidden" for="${escapeHtml(limitId)}">Maximum Trade Amount for ${escapeHtml(pair.currencyPair)} in ${escapeHtml(pair.baseCcyCode)}</label>
+              <input
+                class="form-control text-end"
+                type="text"
+                id="${escapeHtml(limitId)}"
+                value="${escapeHtml(amountValue)}"
+                inputmode="decimal"
+                aria-label="Maximum Trade Amount for ${escapeHtml(pair.currencyPair)} in ${escapeHtml(pair.baseCcyCode)}"
+                data-auto-management-admission-pair-limit
+                ${pair.enabled && autoManagementAdmissionPolicyLoaded ? "" : "disabled"}
+              >
+              <span class="input-group-text">${escapeHtml(pair.baseCcyCode)}</span>
+            </div>
+          `
+        : `<span class="auto-management-admission-read-value">${amountValue ? `${escapeHtml(amountValue)} ${escapeHtml(pair.baseCcyCode)}` : "—"}</span>`;
+      const deviationMarkup = !evaluated
+        ? `<span class="auto-management-admission-read-value">—</span>`
+        : editing
+        ? `
+            <div class="input-group input-group-sm auto-management-admission-deviation-limit">
+              <label class="visually-hidden" for="${escapeHtml(deviationId)}">Maximum Transfer Rate Deviation for ${escapeHtml(pair.currencyPair)}</label>
+              <input
+                class="form-control text-end"
+                type="text"
+                id="${escapeHtml(deviationId)}"
+                value="${escapeHtml(deviationValue)}"
+                inputmode="decimal"
+                aria-label="Maximum Transfer Rate Deviation for ${escapeHtml(pair.currencyPair)}"
+                data-auto-management-admission-deviation
+                required
+                ${pair.enabled && autoManagementAdmissionPolicyLoaded ? "" : "disabled"}
+              >
+              <span class="input-group-text" aria-hidden="true">%</span>
+            </div>
+          `
+        : `<span class="auto-management-admission-read-value">${deviationValue === "" ? "—" : `${escapeHtml(deviationValue)}%`}</span>`;
+      const pairCellMarkup = renderPairCell
+        ? `<td class="auto-mode-eligibility-pair-cell${tableEnd ? " is-table-end" : ""}" rowspan="${pairRowspan}">${escapeHtml(pair.currencyPair)}</td>`
+        : "";
+
+      return `
+        <tr
+          data-auto-management-admission-trade-type="${escapeHtml(tradeType)}"
+          data-auto-management-admission-pair-code="${escapeHtml(pair.ccyPairCode)}"
+          data-auto-management-admission-pair-is-enabled="${String(pair.enabled)}"
+          data-auto-management-admission-evaluated="${String(evaluated)}"
+          data-auto-management-admission-group-end="${String(groupEnd)}"
+        >
+          ${pairCellMarkup}
+          <td>
+            <span class="auto-mode-eligibility-trade-type">
+              <span class="position-trade-type-chip" aria-hidden="true">
+                <span class="button-icon position-trade-type-icon">${escapeHtml(tradeTypePresentation.icon)}</span>
+              </span>
+              <span>${escapeHtml(tradeTypePresentation.label)}</span>
+            </span>
+          </td>
+          <td class="text-center" data-auto-management-admission-column="auto-mode-eligibility">
+            ${eligibilityMarkup}
+          </td>
+          <td class="text-end" data-auto-management-admission-column="amount-limit">
+            ${amountMarkup}
+          </td>
+          <td class="text-end" data-auto-management-admission-column="transfer-rate-deviation">
+            ${deviationMarkup}
+          </td>
+          <td class="text-center" data-disable-overflow-tooltip>
+            <div class="d-inline-flex gap-1 auto-management-admission-row-actions" data-disable-tooltips>
+              ${!evaluated ? `<span class="auto-management-admission-read-value" aria-label="No actions available">—</span>` : editing ? `
+                <button type="submit" class="btn btn-sm btn-primary reference-grid-action" id="autoManagementAdmissionCriteriaSave" data-admission-action="save" aria-label="Save ${escapeHtml(pair.currencyPair)}"><span class="button-icon" aria-hidden="true">save</span></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-admission-action="cancel" aria-label="Cancel editing ${escapeHtml(pair.currencyPair)}"><span class="button-icon" aria-hidden="true">close</span></button>
+              ` : `
+                <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-admission-action="edit" aria-label="Edit ${escapeHtml(pair.currencyPair)}"><span class="button-icon" aria-hidden="true">edit</span></button>
+              `}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    function cancelAutoManagementAdmissionCriteriaPage() {
+      if (
+        autoManagementAdmissionPolicySaving
+        || !autoManagementAdmissionEditingPairCode
+      ) {
+        return;
+      }
+
+      autoManagementAdmissionEditingTradeType = null;
+      autoManagementAdmissionEditingPairCode = null;
+      renderAutoManagementAdmissionPolicy();
+      setAutoManagementAdmissionCriteriaStatus();
+    }
+
+    function editAutoManagementAdmissionCriteriaPage(tradeType, ccyPairCode) {
+      const state = autoManagementAdmissionStateFor(tradeType);
+      if (
+        !autoModeEligibilityTradeTypePresentation(tradeType).evaluated
+        || state.saving
+        || !state.loaded
+        || autoManagementAdmissionEditingPairCode
+        || !state.policy.currencyPairs.some(pair => pair.ccyPairCode === ccyPairCode)
+      ) {
+        return;
+      }
+
+      activeAutoManagementAdmissionTradeType = tradeType;
+      syncActiveAutoManagementAdmissionPolicy();
+      autoManagementAdmissionEditingTradeType = tradeType;
+      autoManagementAdmissionEditingPairCode = ccyPairCode;
+      renderAutoManagementAdmissionPolicy();
+      setAutoManagementAdmissionCriteriaStatus();
+    }
+
+    function renderAutoManagementAdmissionPolicy() {
+      const groups = filteredAutoManagementAdmissionRuleGroups();
+      autoManagementAdmissionPairRows.innerHTML = groups
+        .flatMap((group, groupIndex) => group.rules.map(({ pair, tradeType }, index) =>
+          autoManagementAdmissionPairRowMarkup(pair, tradeType, {
+            renderPairCell: index === 0,
+            pairRowspan: group.rules.length,
+            groupEnd: index === group.rules.length - 1,
+            tableEnd: groupIndex === groups.length - 1
+          })
+        ))
+        .join("");
+      autoManagementAdmissionCriteriaSave = autoManagementAdmissionPairRows.querySelector("[data-admission-action=save]");
+      autoManagementAdmissionPairEmpty.textContent =
+        autoManagementAdmissionRuleRows().length === 0
+          ? "No Auto Mode Eligibility Rules are available."
+          : "No rules match the current filters.";
+      autoManagementAdmissionPairEmpty.hidden = groups.length > 0;
+      const busy = AUTO_MODE_ELIGIBILITY_TRADE_TYPES.some(tradeType => {
+        const state = autoManagementAdmissionStateFor(tradeType);
+        return state.loading || state.saving;
+      });
+      setAutoManagementAdmissionPolicyBusy(busy);
+      updateAutoManagementAdmissionCriteriaSaveAvailability();
+    }
+
+    function decimalFractionDigitCount(value) {
+      const decimal = String(value || "").split(".")[1] || "";
+      return decimal.length;
+    }
+
+    function autoManagementAdmissionPolicyDraft() {
+      let policyValid = true;
+      const currencyPairs = autoManagementAdmissionPolicy.currencyPairs.map(pair => {
+        if (pair.ccyPairCode !== autoManagementAdmissionEditingPairCode) {
+          return {
+            ccyPairCode: pair.ccyPairCode,
+            enabled: pair.enabled,
+            maxBaseCcyAmount: pair.maxBaseCcyAmount,
+            maxTransferRateDeviationPercent: pair.maxTransferRateDeviationPercent
+          };
+        }
+        const row = autoManagementAdmissionPairRows.querySelector(
+          `[data-auto-management-admission-trade-type="${activeAutoManagementAdmissionTradeType}"]`
+          + `[data-auto-management-admission-pair-code="${pair.ccyPairCode}"]`
+        );
+        const enabled = row?.querySelector(
+          "[data-auto-management-admission-pair-enabled]"
+        )?.checked === true;
+        const amountInput = row?.querySelector(
+          "[data-auto-management-admission-pair-limit]"
+        );
+        const deviationInput = row?.querySelector(
+          "[data-auto-management-admission-deviation]"
+        );
+        const parsedMaxBaseCcyAmount = positiveDecimalInputText(amountInput?.value);
+        const maxBaseCcyAmount = enabled ? parsedMaxBaseCcyAmount : null;
+        const validAmount = !enabled || (
+          parsedMaxBaseCcyAmount !== null
+          && decimalFractionDigitCount(parsedMaxBaseCcyAmount)
+            <= pair.baseCcyFractionDigits
+        );
+        const deviation = normalizedDecimalInputText(deviationInput?.value);
+        let validDeviation = !enabled;
+        try {
+          validDeviation = !enabled || (deviation !== null
+            && new Big(deviation).gte(0)
+            && new Big(deviation).lte(100));
+        } catch {}
+
+        if (amountInput) {
+          amountInput.setCustomValidity(
+            validAmount
+              ? ""
+              : `Enter a positive ${pair.baseCcyCode} amount with no more than ${pair.baseCcyFractionDigits} decimal places.`
+          );
+        }
+        if (deviationInput) {
+          deviationInput.setCustomValidity(
+            validDeviation
+              ? ""
+              : "Enter a percentage from 0 through 100."
+          );
+        }
+        policyValid = policyValid && validAmount && validDeviation;
+
+        return {
+          ccyPairCode: pair.ccyPairCode,
+          enabled,
+          maxBaseCcyAmount,
+          maxTransferRateDeviationPercent: enabled ? deviation : null
+        };
+      });
+
+      if (!policyValid) {
+        return null;
+      }
+
+      return {
+        tradeType: activeAutoManagementAdmissionTradeType,
+        currencyPairs
+      };
+    }
+
+    function sameAutoManagementAdmissionPolicyDraft(draft) {
+      if (!draft) {
+        return false;
+      }
+
+      return draft.currencyPairs.every((draftPair, index) => {
+        const savedPair = autoManagementAdmissionPolicy.currencyPairs[index];
+
+        if (
+          !savedPair
+          || draftPair.ccyPairCode !== savedPair.ccyPairCode
+          || draftPair.enabled !== savedPair.enabled
+        ) {
+          return false;
+        }
+
+        if (
+          draftPair.maxTransferRateDeviationPercent === null
+          || savedPair.maxTransferRateDeviationPercent === null
+        ) {
+          if (
+            draftPair.maxTransferRateDeviationPercent
+            !== savedPair.maxTransferRateDeviationPercent
+          ) {
+            return false;
+          }
+        } else {
+          try {
+            if (!new Big(draftPair.maxTransferRateDeviationPercent).eq(
+              savedPair.maxTransferRateDeviationPercent
+            )) {
+              return false;
+            }
+          } catch {
+            return false;
+          }
+        }
+
+        if (draftPair.maxBaseCcyAmount === null || savedPair.maxBaseCcyAmount === null) {
+          return draftPair.maxBaseCcyAmount === savedPair.maxBaseCcyAmount;
+        }
+
+        try {
+          return new Big(draftPair.maxBaseCcyAmount).eq(savedPair.maxBaseCcyAmount);
+        } catch {
+          return false;
+        }
+      });
+    }
+
+    function updateAutoManagementAdmissionCriteriaSaveAvailability() {
+      if (!autoManagementAdmissionCriteriaSave) return;
+      if (
+        autoManagementAdmissionPolicySaving
+        || !autoManagementAdmissionPolicyLoaded
+        || !autoManagementAdmissionEditingPairCode
+      ) {
+        setSaveButtonAvailability(
+          autoManagementAdmissionCriteriaSave,
+          false,
+          autoManagementAdmissionPolicySaving
+            ? "Saving Policy"
+            : autoManagementAdmissionPolicyLoaded
+              ? "Select Edit to change Admission Criteria"
+              : "Policy is not loaded"
+        );
+        return;
+      }
+
+      const draft = autoManagementAdmissionPolicyDraft();
+      const canSave = Boolean(draft)
+        && !sameAutoManagementAdmissionPolicyDraft(draft);
+      const unavailableReason = draft
+        ? "No changes to save"
+        : "Enter valid Ccy Pair admission criteria";
+      setSaveButtonAvailability(
+        autoManagementAdmissionCriteriaSave,
+        canSave,
+        unavailableReason
+      );
+    }
+
+    function syncAutoManagementAdmissionPairControl(row) {
+      const enabledControl = row?.querySelector(
+        "[data-auto-management-admission-pair-enabled]"
+      );
+      const limitControl = row?.querySelector(
+        "[data-auto-management-admission-pair-limit]"
+      );
+      const deviationControl = row?.querySelector(
+        "[data-auto-management-admission-deviation]"
+      );
+
+      if (!enabledControl || !limitControl || !deviationControl) {
+        return;
+      }
+
+      const requirementsDisabled = autoManagementAdmissionPolicySaving
+        || !autoManagementAdmissionPolicyLoaded
+        || !autoManagementAdmissionEditingPairCode
+        || !enabledControl.checked;
+      limitControl.disabled = requirementsDisabled;
+      deviationControl.disabled = requirementsDisabled;
+      if (!enabledControl.checked) {
+        limitControl.setCustomValidity("");
+        deviationControl.setCustomValidity("");
+      }
+      updateAutoManagementAdmissionCriteriaSaveAvailability();
+    }
+
+    async function loadAutoManagementAdmissionRuleMatrix() {
+      const requestVersion = ++autoManagementAdmissionViewVersion;
+      AUTO_MODE_ELIGIBILITY_TRADE_TYPES.forEach(tradeType => {
+        const state = autoManagementAdmissionStateFor(tradeType);
+        state.loading = true;
+        state.loaded = false;
+      });
+      renderAutoManagementAdmissionPolicy();
+      setAutoManagementAdmissionCriteriaStatus("Loading Auto Mode Eligibility Rules...");
+
+      try {
+        if (!DEMO_API_ENABLED) {
+          throw new Error("SQLite API is unavailable. Start the demo to configure the rules.");
+        }
+        const response = await demoApiRequest(
+          "/api/v1/auto-mode-eligibility-rules?scope=all"
+        );
+        if (!Array.isArray(response?.ruleSets)) {
+          throw new Error("Auto Mode Eligibility Rules response is invalid.");
+        }
+        const ruleSets = new Map(
+          response.ruleSets.map(ruleSet => {
+            const normalized = normalizedAutoManagementAdmissionPolicy(ruleSet);
+            return [normalized.tradeType, normalized];
+          })
+        );
+        AUTO_MODE_ELIGIBILITY_TRADE_TYPES.forEach(tradeType => {
+          const state = autoManagementAdmissionStateFor(tradeType);
+          const policy = ruleSets.get(tradeType);
+          if (!policy) {
+            throw new Error(`Auto Mode Eligibility Rules are missing for ${tradeType}.`);
+          }
+          state.policy = policy;
+          state.loaded = true;
+        });
+        syncActiveAutoManagementAdmissionPolicy();
+        setAutoManagementAdmissionCriteriaStatus();
+      } catch (error) {
+        setAutoManagementAdmissionCriteriaStatus(
+          error.message || "Unable to load Auto Mode Eligibility Rules.",
+          "error"
+        );
+      } finally {
+        AUTO_MODE_ELIGIBILITY_TRADE_TYPES.forEach(tradeType => {
+          autoManagementAdmissionStateFor(tradeType).loading = false;
+        });
+        if (requestVersion === autoManagementAdmissionViewVersion) {
+          renderAutoManagementAdmissionPolicy();
+        }
+      }
+    }
+
+    async function loadAutoManagementAdmissionCriteriaPage({ reload = true } = {}) {
+      ensureAutoManagementAdmissionPolicyEventBindings();
+      if (reload) {
+        autoManagementAdmissionTradeTypeFilter.value = "ALL";
+        autoManagementAdmissionPairSearch.value = "";
+        autoManagementAdmissionPairFilter.value = "ALL";
+      }
+      const matrixLoaded = AUTO_MODE_ELIGIBILITY_TRADE_TYPES.every(
+        tradeType => autoManagementAdmissionStateFor(tradeType).loaded
+      );
+      if (reload || !matrixLoaded) {
+        await loadAutoManagementAdmissionRuleMatrix();
+      } else {
+        renderAutoManagementAdmissionPolicy();
+      }
+    }
+
+    async function persistAutoManagementAdmissionPolicy(draft) {
+      const tradeType = draft.tradeType;
+      const state = autoManagementAdmissionStateFor(tradeType);
+      if (state.saving || !state.loaded || tradeType !== activeAutoManagementAdmissionTradeType) {
+        return false;
+      }
+      state.saving = true;
+      state.requestVersion += 1;
+      state.loading = false;
+      syncActiveAutoManagementAdmissionPolicy();
+      setAutoManagementAdmissionPolicyBusy(true);
+      setAutoManagementAdmissionPolicyStatus("Saving Admission Criteria...", "", tradeType);
+      setAutoManagementAdmissionCriteriaStatus("Saving changes...");
+      try {
+        const response = await demoApiRequest(
+          "/api/v1/auto-mode-eligibility-rules",
+          {
+            method: "PUT",
+            body: JSON.stringify(draft)
+          }
+        );
+        if (response.tradeType !== tradeType) {
+          throw new Error("Admission Policy response does not match the saved trade type.");
+        }
+        state.policy = normalizedAutoManagementAdmissionPolicy(response);
+        state.loaded = true;
+        setAutoManagementAdmissionPolicyStatus("Admission Criteria saved.", "success", tradeType);
+        if (activeAutoManagementAdmissionTradeType === tradeType) {
+          syncActiveAutoManagementAdmissionPolicy();
+          renderAutoManagementAdmissionPolicy();
+          setAutoManagementAdmissionCriteriaStatus("Admission Criteria saved.", "success");
+        }
+        return true;
+      } catch (error) {
+        const message = error.message || "Unable to save Admission Criteria.";
+        setAutoManagementAdmissionPolicyStatus(message, "error", tradeType);
+        if (activeAutoManagementAdmissionTradeType === tradeType) {
+          setAutoManagementAdmissionCriteriaStatus(message, "error");
+        }
+        return false;
+      } finally {
+        state.saving = false;
+        if (activeAutoManagementAdmissionTradeType === tradeType) {
+          syncActiveAutoManagementAdmissionPolicy();
+          setAutoManagementAdmissionPolicyBusy(false);
+          updateAutoManagementAdmissionCriteriaSaveAvailability();
+        }
+      }
+    }
+
+    async function saveAutoManagementAdmissionCriteriaPage() {
+      if (!autoManagementAdmissionEditingPairCode || autoManagementAdmissionPolicySaving) return;
+      const draft = autoManagementAdmissionPolicyDraft();
+      const invalidControl = autoManagementAdmissionPairRows.querySelector(":invalid");
+
+      if (!draft || invalidControl) {
+        if (invalidControl) {
+          autoManagementAdmissionPairSearch.value = "";
+          autoManagementAdmissionPairFilter.value = "ALL";
+          invalidControl.focus();
+          invalidControl.reportValidity();
+        } else {
+          setAutoManagementAdmissionCriteriaStatus(
+            "Enter valid Ccy Pair admission criteria.",
+            "error"
+          );
+        }
+        updateAutoManagementAdmissionCriteriaSaveAvailability();
+        return;
+      }
+
+      if (sameAutoManagementAdmissionPolicyDraft(draft)) {
+        return;
+      }
+
+      const viewVersion = autoManagementAdmissionViewVersion;
+      if (await persistAutoManagementAdmissionPolicy(draft)
+        && viewVersion === autoManagementAdmissionViewVersion) {
+        autoManagementAdmissionEditingTradeType = null;
+        autoManagementAdmissionEditingPairCode = null;
+        renderAutoManagementAdmissionPolicy();
+      }
+    }
+
+    function ensureAutoManagementAdmissionPolicyEventBindings() {
+      if (autoManagementAdmissionPolicyEventsBound) {
+        return;
+      }
+
+      autoManagementAdmissionPolicyEventsBound = true;
+      autoManagementAdmissionPairRows.addEventListener('click', event => {
+        const button = event.target.closest('[data-admission-action]');
+        if (!button || button.disabled) return;
+        if (button.dataset.admissionAction === 'edit') {
+          const row = button.closest('[data-auto-management-admission-pair-code]');
+          editAutoManagementAdmissionCriteriaPage(
+            row.dataset.autoManagementAdmissionTradeType,
+            row.dataset.autoManagementAdmissionPairCode
+          );
+        } else if (button.dataset.admissionAction === 'cancel') {
+          cancelAutoManagementAdmissionCriteriaPage();
+        }
+      });
+      autoManagementAdmissionCriteriaForm.addEventListener("submit", event => {
+        event.preventDefault();
+        saveAutoManagementAdmissionCriteriaPage();
+      });
+      autoManagementAdmissionPairRows.addEventListener("change", event => {
+        if (!event.target.matches("[data-auto-management-admission-pair-enabled]")) {
+          return;
+        }
+        syncAutoManagementAdmissionPairControl(
+          event.target.closest("[data-auto-management-admission-pair-code]")
+        );
+      });
+      autoManagementAdmissionPairRows.addEventListener("input", event => {
+        if (event.target.matches(
+          "[data-auto-management-admission-pair-limit], "
+          + "[data-auto-management-admission-deviation]"
+        )) {
+          updateAutoManagementAdmissionCriteriaSaveAvailability();
+        }
+      });
+      autoManagementAdmissionPairSearch.addEventListener(
+        "input",
+        renderAutoManagementAdmissionPolicy
+      );
+      autoManagementAdmissionPairSearch.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+        }
+      });
+      autoManagementAdmissionPairFilter.addEventListener(
+        "change",
+        renderAutoManagementAdmissionPolicy
+      );
+      autoManagementAdmissionTradeTypeFilter.addEventListener(
+        "change",
+        renderAutoManagementAdmissionPolicy
+      );
+    }
+
+    async function loadPositionManagementSettingsPage({ reload = true } = {}) {
+      const section = positionManagementSettingsSectionFromLocation();
+      setPositionManagementSettingsSection(section);
+      renderPositionManagementSettingsNavigation(section);
+      ensureAutoManagementAdmissionPolicyEventBindings();
+      if (section === "eligibility") {
+        await loadAutoManagementAdmissionCriteriaPage({ reload });
+        return;
+      }
+      autoManagementAdmissionViewVersion += 1;
+      if (section !== "quick" || (!reload && positionManagementQuickHedgeSettingsLoaded)) {
+        return;
+      }
+      hedgeQuickModeSettingsForm.reset();
+      hedgeQuickModeCounterpartyPickerExpanded = false;
+      hedgeQuickModePricingRulesExpanded = false;
+      setHedgeQuickModeSettingsView("overview");
+      renderHedgeQuickModeSettingsOverview();
+      hedgeQuickModeSettingsNewButton.disabled = true;
+      hedgeQuickModeSettingsSaveButton.disabled = true;
+      setHedgeQuickModeSettingsStatus("Loading Quick Hedge settings...");
+
+      try {
+        await reloadHedgeQuickModeSettingsFromApi();
+        positionManagementQuickHedgeSettingsLoaded = true;
+        showHedgeQuickModeSettingsOverview();
+      } catch (error) {
+        renderHedgeQuickModeSettingsOverview();
+        setHedgeQuickModeSettingsStatus(
+          error.message || "Unable to load Quick Hedge settings.",
+          "error"
+        );
+      } finally {
+        hedgeQuickModeSettingsSaveButton.disabled = false;
       }
     }
     function setBatchingSettingsStatus(message = "", tone = "") {
@@ -20193,8 +22460,8 @@
       setBatchingSettingsStatus("Saving General Batching settings...");
 
       try {
-        batchingSettings = normalizedFxBatchingSettings(
-          await demoApiRequest("/api/v1/fx-batching-settings", {
+        batchingSettings = normalizedBatchingSettings(
+          await demoApiRequest("/api/v1/batching-settings", {
             method: "PUT",
             body: JSON.stringify(payload)
           })
@@ -20406,11 +22673,11 @@
 
       try {
         const [generalSettingsResponse, autoSettingsResponse] = await Promise.all([
-          demoApiRequest("/api/v1/fx-batching-settings"),
-          demoApiRequest("/api/v1/fx-auto-batching-settings")
+          demoApiRequest("/api/v1/batching-settings"),
+          demoApiRequest("/api/v1/auto-batching-settings")
         ]);
-        batchingSettings = normalizedFxBatchingSettings(generalSettingsResponse);
-        autoBatchingSettings = normalizedFxAutoBatchingSettings(autoSettingsResponse);
+        batchingSettings = normalizedBatchingSettings(generalSettingsResponse);
+        autoBatchingSettings = normalizedAutoBatchingSettings(autoSettingsResponse);
         renderBatchingSettings();
         renderAutoBatchingSettings();
         setBatchingSettingsStatus();
@@ -20437,14 +22704,14 @@
       setBatchingSettingsStatus("Saving Auto Batching settings...");
 
       try {
-        autoBatchingSettings = normalizedFxAutoBatchingSettings(
-          await demoApiRequest("/api/v1/fx-auto-batching-settings", {
+        autoBatchingSettings = normalizedAutoBatchingSettings(
+          await demoApiRequest("/api/v1/auto-batching-settings", {
             method: "PUT",
             body: JSON.stringify(payload)
           })
         );
-        applyFxAutoBatchingProcessState(
-          await demoApiRequest("/api/v1/fx-auto-batching/process")
+        applyAutoBatchingProcessState(
+          await demoApiRequest("/api/v1/auto-batching/process")
         );
         renderAutoBatchingSettings();
         setBatchingSettingsStatus(
@@ -20464,795 +22731,6 @@
       setWorkbenchPageStatus(hedgeQuickModeSettingsStatus, message, tone);
     }
 
-    function setAutoHedgingAdmissionPolicyStatus(message = "", tone = "") {
-      setWorkbenchPageStatus(autoHedgingAdmissionPolicyStatus, message, tone);
-    }
-
-    function setAutoHedgingAdmissionDialogStatus(element, message = "", tone = "") {
-      setWorkbenchPageStatus(element, message, tone);
-    }
-
-    function setHedgingSettingsAutoGroupExpanded(expanded) {
-      const isExpanded = expanded === true;
-      hedgingSettingsAutoGroupToggle.setAttribute("aria-expanded", String(isExpanded));
-      hedgingSettingsAutoSubnav.hidden = !isExpanded;
-    }
-
-    function setHedgingSettingsSection(sectionName) {
-      const normalizedSection = sectionName === "initial" || sectionName === "manual-release"
-        ? sectionName
-        : "quick";
-
-      hedgingSettingsSectionLinks.forEach(link => {
-        const active = link.dataset.hedgingSettingsSection === normalizedSection;
-        link.classList.toggle("is-active", active);
-        if (active) {
-          link.setAttribute("aria-current", "page");
-        } else {
-          link.removeAttribute("aria-current");
-        }
-      });
-      hedgingSettingsSectionPanels.forEach(panel => {
-        panel.hidden = panel.dataset.hedgingSettingsSectionPanel !== normalizedSection;
-      });
-      hedgeQuickModeSettingsStatus.hidden = normalizedSection !== "quick";
-
-      setHedgingSettingsAutoGroupExpanded(normalizedSection !== "quick");
-      if (normalizedSection === "quick" && hedgeQuickModeSettingsGridReady) {
-        requestAnimationFrame(() => hedgeQuickModeSettingsGrid.redraw(true));
-      }
-    }
-
-    function setAutoHedgingSettingsSegmentExpanded(toggle, expanded) {
-      const panelId = toggle?.getAttribute("aria-controls");
-      const panel = panelId ? document.getElementById(panelId) : null;
-      const segment = toggle?.closest(".auto-hedging-trade-segment");
-
-      if (!toggle || !panel || !segment) {
-        return;
-      }
-
-      toggle.setAttribute("aria-expanded", String(expanded));
-      panel.hidden = !expanded;
-      segment.classList.toggle("is-expanded", expanded);
-    }
-
-    function toggleAutoHedgingSettingsSegment(toggle) {
-      const expand = toggle.getAttribute("aria-expanded") !== "true";
-      const segmentList = toggle.closest("[data-auto-hedging-settings-segments]");
-
-      if (expand && segmentList) {
-        segmentList.querySelectorAll("[data-auto-hedging-segment-toggle]")
-          .forEach(otherToggle => {
-            if (otherToggle !== toggle) {
-              setAutoHedgingSettingsSegmentExpanded(otherToggle, false);
-            }
-          });
-      }
-
-      setAutoHedgingSettingsSegmentExpanded(toggle, expand);
-    }
-
-    function setAutoHedgingAdmissionPolicyBusy(busy) {
-      const isBusy = busy === true;
-      autoHedgingAdmissionPolicyPanel.setAttribute("aria-busy", String(isBusy));
-      autoHedgingAdmissionPairDialogForm.setAttribute("aria-busy", String(isBusy));
-      [
-        autoHedgingAdmissionCcyPairEditButton,
-        autoHedgingAdmissionAmountLimitEditButton,
-        autoHedgingAdmissionDeviationEditButton
-      ].forEach(button => {
-        button.disabled = isBusy || !autoHedgingAdmissionPolicyLoaded;
-      });
-      autoHedgingAdmissionPairDialogClose.disabled = isBusy;
-      autoHedgingAdmissionPairDialogCancel.disabled = isBusy;
-      autoHedgingAdmissionPairDialogSave.disabled = true;
-      autoHedgingAdmissionPairSearch.disabled = isBusy;
-      autoHedgingAdmissionPairFilter.disabled = isBusy;
-      autoHedgingAdmissionPairRows
-        .querySelectorAll("[data-auto-hedging-admission-pair-enabled]")
-        .forEach(control => {
-          control.disabled = isBusy || !autoHedgingAdmissionPolicyLoaded;
-        });
-      autoHedgingAdmissionPairRows
-        .querySelectorAll("[data-auto-hedging-admission-pair-limit]")
-        .forEach(control => {
-          const row = control.closest("[data-auto-hedging-admission-pair-code]");
-          const enabledControl = row?.querySelector(
-            "[data-auto-hedging-admission-pair-enabled]"
-          );
-          control.disabled = isBusy
-            || !autoHedgingAdmissionPolicyLoaded
-            || !enabledControl?.checked;
-        });
-      autoHedgingAdmissionPairRows
-        .querySelectorAll("[data-auto-hedging-admission-deviation]")
-        .forEach(control => {
-          control.disabled = isBusy || !autoHedgingAdmissionPolicyLoaded;
-        });
-
-      if (!isBusy && autoHedgingAdmissionPolicyLoaded) {
-        updateAutoHedgingAdmissionDialogSaveAvailability();
-      }
-    }
-
-    function autoHedgingAdmissionPairRowMarkup(pair) {
-      const controlSuffix = pair.ccyPairCode.toLowerCase();
-      const switchId = `autoHedgingAdmissionEnabled_${controlSuffix}`;
-      const limitId = `autoHedgingAdmissionLimit_${controlSuffix}`;
-      const deviationId = `autoHedgingAdmissionDeviation_${controlSuffix}`;
-      const amountValue = pair.maxBaseCcyAmount === null
-        ? ""
-        : groupedDecimalText(pair.maxBaseCcyAmount);
-      const deviationValue = pair.maxTransferRateDeviationPercent === null
-        ? ""
-        : pair.maxTransferRateDeviationPercent;
-
-      return `
-        <tr
-          data-auto-hedging-admission-pair-code="${escapeHtml(pair.ccyPairCode)}"
-          data-auto-hedging-admission-pair-search="${escapeHtml(`${pair.currencyPair} ${pair.ccyPairCode} ${pair.baseCcyCode}`.toUpperCase())}"
-        >
-          <td>
-            <strong>${escapeHtml(pair.currencyPair)}</strong>
-          </td>
-          <td class="text-center" data-auto-hedging-admission-column="automatic-admission">
-            <div class="form-check form-switch auto-hedging-admission-pair-enabled">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                role="switch"
-                id="${escapeHtml(switchId)}"
-                aria-label="${escapeHtml(pair.currencyPair)} eligible for Auto Hedging"
-                data-auto-hedging-admission-pair-enabled
-                ${pair.enabled ? "checked" : ""}
-                ${autoHedgingAdmissionPolicyLoaded ? "" : "disabled"}
-              >
-            </div>
-          </td>
-          <td data-auto-hedging-admission-column="amount-limit">
-            <div class="input-group input-group-sm auto-hedging-admission-pair-limit">
-              <label class="visually-hidden" for="${escapeHtml(limitId)}">Maximum Trade Amount for ${escapeHtml(pair.currencyPair)} in ${escapeHtml(pair.baseCcyCode)}</label>
-              <input
-                class="form-control"
-                type="text"
-                id="${escapeHtml(limitId)}"
-                value="${escapeHtml(amountValue)}"
-                inputmode="decimal"
-                aria-label="Maximum Trade Amount for ${escapeHtml(pair.currencyPair)} in ${escapeHtml(pair.baseCcyCode)}"
-                data-auto-hedging-admission-pair-limit
-                ${pair.enabled && autoHedgingAdmissionPolicyLoaded ? "" : "disabled"}
-              >
-              <span class="input-group-text">${escapeHtml(pair.baseCcyCode)}</span>
-            </div>
-          </td>
-          <td data-auto-hedging-admission-column="transfer-rate-deviation">
-            <div class="input-group input-group-sm auto-hedging-admission-deviation-limit">
-              <label class="visually-hidden" for="${escapeHtml(deviationId)}">Maximum Transfer Rate Deviation for ${escapeHtml(pair.currencyPair)}</label>
-              <input
-                class="form-control"
-                type="text"
-                id="${escapeHtml(deviationId)}"
-                value="${escapeHtml(deviationValue)}"
-                inputmode="decimal"
-                aria-label="Maximum Transfer Rate Deviation for ${escapeHtml(pair.currencyPair)}"
-                data-auto-hedging-admission-deviation
-                required
-                ${autoHedgingAdmissionPolicyLoaded ? "" : "disabled"}
-              >
-              <span class="input-group-text" aria-hidden="true">%</span>
-            </div>
-          </td>
-        </tr>
-      `;
-    }
-
-    function filterAutoHedgingAdmissionPairs() {
-      const query = String(autoHedgingAdmissionPairSearch.value || "")
-        .trim()
-        .toUpperCase();
-      const statusFilter = String(autoHedgingAdmissionPairFilter.value || "ALL")
-        .trim()
-        .toUpperCase();
-      let visibleCount = 0;
-
-      autoHedgingAdmissionPairRows
-        .querySelectorAll("[data-auto-hedging-admission-pair-code]")
-        .forEach(row => {
-          const enabled = row.querySelector(
-            "[data-auto-hedging-admission-pair-enabled]"
-          )?.checked === true;
-          const matchesQuery = !query
-            || String(row.dataset.autoHedgingAdmissionPairSearch || "").includes(query);
-          const matchesStatus = statusFilter === "ALL"
-            || (statusFilter === "ENABLED" && enabled)
-            || (statusFilter === "DISABLED" && !enabled);
-          const visible = matchesQuery && matchesStatus;
-
-          row.hidden = !visible;
-          if (visible) {
-            visibleCount += 1;
-          }
-        });
-
-      autoHedgingAdmissionPairEmpty.textContent =
-        autoHedgingAdmissionPolicy.currencyPairs.length === 0
-          ? "No Currency Pairs are available in the policy."
-          : "No Currency Pairs match the current filters.";
-      autoHedgingAdmissionPairEmpty.hidden = visibleCount > 0;
-    }
-
-    function autoHedgingAdmissionPairControlSnapshot() {
-      return Array.from(
-        autoHedgingAdmissionPairRows.querySelectorAll(
-          "[data-auto-hedging-admission-pair-code]"
-        )
-      ).map(row => ({
-        ccyPairCode: row.dataset.autoHedgingAdmissionPairCode,
-        enabled: row.querySelector(
-          "[data-auto-hedging-admission-pair-enabled]"
-        )?.checked === true,
-        amount: row.querySelector(
-          "[data-auto-hedging-admission-pair-limit]"
-        )?.value || "",
-        deviation: row.querySelector(
-          "[data-auto-hedging-admission-deviation]"
-        )?.value || ""
-      }));
-    }
-
-    function restoreAutoHedgingAdmissionPairControlSnapshot(snapshot) {
-      const valuesByPair = new Map(
-        (Array.isArray(snapshot) ? snapshot : [])
-          .map(item => [item.ccyPairCode, item])
-      );
-
-      autoHedgingAdmissionPairRows
-        .querySelectorAll("[data-auto-hedging-admission-pair-code]")
-        .forEach(row => {
-          const saved = valuesByPair.get(row.dataset.autoHedgingAdmissionPairCode);
-          const enabledControl = row.querySelector(
-            "[data-auto-hedging-admission-pair-enabled]"
-          );
-          const amountControl = row.querySelector(
-            "[data-auto-hedging-admission-pair-limit]"
-          );
-          const deviationControl = row.querySelector(
-            "[data-auto-hedging-admission-deviation]"
-          );
-
-          if (!saved || !enabledControl || !amountControl || !deviationControl) {
-            return;
-          }
-
-          enabledControl.checked = saved.enabled;
-          amountControl.value = saved.amount;
-          deviationControl.value = saved.deviation;
-          amountControl.setCustomValidity("");
-          deviationControl.setCustomValidity("");
-          amountControl.disabled = autoHedgingAdmissionPolicySaving
-            || !autoHedgingAdmissionPolicyLoaded
-            || !saved.enabled;
-        });
-
-      filterAutoHedgingAdmissionPairs();
-      updateAutoHedgingAdmissionDialogSaveAvailability();
-    }
-
-    function normalizedAutoHedgingAdmissionFocus(value) {
-      return ["automatic-admission", "amount-limit", "transfer-rate-deviation"].includes(value)
-        ? value
-        : "automatic-admission";
-    }
-
-    function setAutoHedgingAdmissionDialogFocus(focusTarget) {
-      const target = normalizedAutoHedgingAdmissionFocus(focusTarget);
-      const table = autoHedgingAdmissionPairDialog.querySelector(
-        ".auto-hedging-admission-pair-table"
-      );
-      autoHedgingAdmissionPairDialogFocus = target;
-      autoHedgingAdmissionPairDialog.dataset.autoHedgingAdmissionFocus = target;
-      if (table) {
-        table.dataset.autoHedgingAdmissionFocus = target;
-      }
-      autoHedgingAdmissionPairDialog
-        .querySelectorAll("[data-auto-hedging-admission-column]")
-        .forEach(cell => {
-          cell.classList.toggle(
-            "is-auto-hedging-admission-column-focused",
-            cell.dataset.autoHedgingAdmissionColumn === target
-          );
-        });
-    }
-
-    function focusAutoHedgingAdmissionDialogColumn() {
-      const selectorByTarget = {
-        "automatic-admission": "[data-auto-hedging-admission-pair-enabled]:not(:disabled)",
-        "amount-limit": "[data-auto-hedging-admission-pair-limit]:not(:disabled)",
-        "transfer-rate-deviation": "[data-auto-hedging-admission-deviation]:not(:disabled)"
-      };
-      const control = autoHedgingAdmissionPairDialog.querySelector(
-        selectorByTarget[autoHedgingAdmissionPairDialogFocus]
-      ) || autoHedgingAdmissionPairSearch;
-      const targetHeader = autoHedgingAdmissionPairDialog.querySelector(
-        `thead [data-auto-hedging-admission-column="${autoHedgingAdmissionPairDialogFocus}"]`
-      );
-      const reducedMotion = window.matchMedia?.(
-        "(prefers-reduced-motion: reduce)"
-      ).matches === true;
-      targetHeader?.scrollIntoView({
-        behavior: reducedMotion ? "auto" : "smooth",
-        block: "nearest",
-        inline: "nearest"
-      });
-      control?.focus({ preventScroll: true });
-    }
-
-    function openAutoHedgingAdmissionPairDialog(event) {
-      if (!autoHedgingAdmissionPolicyLoaded || autoHedgingAdmissionPolicySaving) {
-        return;
-      }
-
-      const trigger = event?.currentTarget || null;
-      autoHedgingAdmissionPairDialogSnapshot =
-        autoHedgingAdmissionPairControlSnapshot();
-      autoHedgingAdmissionPairDialogReturnFocus = trigger;
-      autoHedgingAdmissionPairSearch.value = "";
-      autoHedgingAdmissionPairFilter.value = "ALL";
-      filterAutoHedgingAdmissionPairs();
-      const focusTarget = normalizedAutoHedgingAdmissionFocus(
-        trigger?.dataset.autoHedgingAdmissionFocus
-      );
-      setAutoHedgingAdmissionDialogStatus(autoHedgingAdmissionPairDialogStatus);
-      updateAutoHedgingAdmissionDialogSaveAvailability();
-      openDialogWithoutFieldFocus(autoHedgingAdmissionPairDialog);
-      if (autoHedgingAdmissionPairDialogFocusTimer !== null) {
-        window.clearTimeout(autoHedgingAdmissionPairDialogFocusTimer);
-      }
-      autoHedgingAdmissionPairDialogFocusTimer = window.setTimeout(() => {
-        autoHedgingAdmissionPairDialogFocusTimer = null;
-        if (!autoHedgingAdmissionPairDialog.open) {
-          return;
-        }
-        setAutoHedgingAdmissionDialogFocus(focusTarget);
-        focusAutoHedgingAdmissionDialogColumn();
-      }, 0);
-    }
-
-    function closeAutoHedgingAdmissionPairDialog({ restore = false } = {}) {
-      if (autoHedgingAdmissionPairDialogFocusTimer !== null) {
-        window.clearTimeout(autoHedgingAdmissionPairDialogFocusTimer);
-        autoHedgingAdmissionPairDialogFocusTimer = null;
-      }
-      if (restore) {
-        restoreAutoHedgingAdmissionPairControlSnapshot(
-          autoHedgingAdmissionPairDialogSnapshot
-        );
-      }
-      autoHedgingAdmissionPairDialogSnapshot = null;
-      setAutoHedgingAdmissionDialogStatus(autoHedgingAdmissionPairDialogStatus);
-
-      if (typeof autoHedgingAdmissionPairDialog.close === "function") {
-        autoHedgingAdmissionPairDialog.close();
-      } else {
-        autoHedgingAdmissionPairDialog.removeAttribute("open");
-      }
-
-      autoHedgingAdmissionPairDialog
-        .querySelectorAll(".is-auto-hedging-admission-column-focused")
-        .forEach(cell => cell.classList.remove(
-          "is-auto-hedging-admission-column-focused"
-        ));
-      const returnFocus = autoHedgingAdmissionPairDialogReturnFocus;
-      autoHedgingAdmissionPairDialogReturnFocus = null;
-      returnFocus?.focus();
-    }
-
-    function renderAutoHedgingAdmissionPolicy() {
-      const enabledPairCount = autoHedgingAdmissionPolicy.currencyPairs
-        .filter(pair => pair.enabled)
-        .length;
-      const configuredDeviationCount = autoHedgingAdmissionPolicy.currencyPairs
-        .filter(pair => pair.maxTransferRateDeviationPercent !== null)
-        .length;
-
-      autoHedgingAdmissionPolicyRevision.textContent =
-        `Revision ${autoHedgingAdmissionPolicy.revision}`;
-      autoHedgingManualReleaseSharedRevision.textContent =
-        `Revision ${autoHedgingAdmissionPolicy.revision}`;
-      autoHedgingManualReleaseSharedPairSummary.textContent =
-        `${enabledPairCount} of ${autoHedgingAdmissionPolicy.currencyPairs.length} enabled`;
-      autoHedgingManualReleaseSharedDeviation.textContent =
-        `${configuredDeviationCount} of ${autoHedgingAdmissionPolicy.currencyPairs.length} Ccy Pairs configured`;
-      autoHedgingAdmissionPairRows.innerHTML = autoHedgingAdmissionPolicy.currencyPairs
-        .map(autoHedgingAdmissionPairRowMarkup)
-        .join("");
-      filterAutoHedgingAdmissionPairs();
-      setAutoHedgingAdmissionPolicyBusy(autoHedgingAdmissionPolicySaving);
-      updateAutoHedgingAdmissionDialogSaveAvailability();
-    }
-
-    function decimalFractionDigitCount(value) {
-      const decimal = String(value || "").split(".")[1] || "";
-      return decimal.length;
-    }
-
-    function autoHedgingAdmissionPolicyDraft() {
-      let policyValid = true;
-      const currencyPairs = autoHedgingAdmissionPolicy.currencyPairs.map(pair => {
-        const row = autoHedgingAdmissionPairRows.querySelector(
-          `[data-auto-hedging-admission-pair-code="${pair.ccyPairCode}"]`
-        );
-        const enabled = row?.querySelector(
-          "[data-auto-hedging-admission-pair-enabled]"
-        )?.checked === true;
-        const amountInput = row?.querySelector(
-          "[data-auto-hedging-admission-pair-limit]"
-        );
-        const deviationInput = row?.querySelector(
-          "[data-auto-hedging-admission-deviation]"
-        );
-        const parsedMaxBaseCcyAmount = positiveDecimalInputText(amountInput?.value);
-        const maxBaseCcyAmount = enabled ? parsedMaxBaseCcyAmount : null;
-        const validAmount = !enabled || (
-          parsedMaxBaseCcyAmount !== null
-          && decimalFractionDigitCount(parsedMaxBaseCcyAmount)
-            <= pair.baseCcyFractionDigits
-        );
-        const deviation = normalizedDecimalInputText(deviationInput?.value);
-        let validDeviation = false;
-        try {
-          validDeviation = deviation !== null
-            && new Big(deviation).gte(0)
-            && new Big(deviation).lte(100);
-        } catch {}
-
-        if (amountInput) {
-          amountInput.setCustomValidity(
-            validAmount
-              ? ""
-              : `Enter a positive ${pair.baseCcyCode} amount with no more than ${pair.baseCcyFractionDigits} decimal places.`
-          );
-        }
-        if (deviationInput) {
-          deviationInput.setCustomValidity(
-            validDeviation
-              ? ""
-              : "Enter a percentage from 0 through 100."
-          );
-        }
-        policyValid = policyValid && validAmount && validDeviation;
-
-        return {
-          ccyPairCode: pair.ccyPairCode,
-          enabled,
-          maxBaseCcyAmount,
-          maxTransferRateDeviationPercent: deviation
-        };
-      });
-
-      if (!policyValid) {
-        return null;
-      }
-
-      return {
-        expectedRevision: autoHedgingAdmissionPolicy.revision,
-        currencyPairs
-      };
-    }
-
-    function sameAutoHedgingAdmissionPolicyDraft(draft) {
-      if (!draft) {
-        return false;
-      }
-
-      return draft.currencyPairs.every((draftPair, index) => {
-        const savedPair = autoHedgingAdmissionPolicy.currencyPairs[index];
-
-        if (
-          !savedPair
-          || draftPair.ccyPairCode !== savedPair.ccyPairCode
-          || draftPair.enabled !== savedPair.enabled
-        ) {
-          return false;
-        }
-
-        if (
-          draftPair.maxTransferRateDeviationPercent === null
-          || savedPair.maxTransferRateDeviationPercent === null
-        ) {
-          if (
-            draftPair.maxTransferRateDeviationPercent
-            !== savedPair.maxTransferRateDeviationPercent
-          ) {
-            return false;
-          }
-        } else {
-          try {
-            if (!new Big(draftPair.maxTransferRateDeviationPercent).eq(
-              savedPair.maxTransferRateDeviationPercent
-            )) {
-              return false;
-            }
-          } catch {
-            return false;
-          }
-        }
-
-        if (draftPair.maxBaseCcyAmount === null || savedPair.maxBaseCcyAmount === null) {
-          return draftPair.maxBaseCcyAmount === savedPair.maxBaseCcyAmount;
-        }
-
-        try {
-          return new Big(draftPair.maxBaseCcyAmount).eq(savedPair.maxBaseCcyAmount);
-        } catch {
-          return false;
-        }
-      });
-    }
-
-    function updateAutoHedgingAdmissionDialogSaveAvailability() {
-      if (
-        autoHedgingAdmissionPolicySaving
-        || !autoHedgingAdmissionPolicyLoaded
-      ) {
-        setSaveButtonAvailability(
-          autoHedgingAdmissionPairDialogSave,
-          false,
-          autoHedgingAdmissionPolicySaving ? "Saving Policy" : "Policy is not loaded"
-        );
-        return;
-      }
-
-      const draft = autoHedgingAdmissionPolicyDraft();
-      const canSave = Boolean(draft)
-        && !sameAutoHedgingAdmissionPolicyDraft(draft);
-      const unavailableReason = draft
-        ? "No changes to save"
-        : "Enter valid Ccy Pair admission criteria";
-      setSaveButtonAvailability(
-        autoHedgingAdmissionPairDialogSave,
-        canSave,
-        unavailableReason
-      );
-    }
-
-    function syncAutoHedgingAdmissionPairControl(row) {
-      const enabledControl = row?.querySelector(
-        "[data-auto-hedging-admission-pair-enabled]"
-      );
-      const limitControl = row?.querySelector(
-        "[data-auto-hedging-admission-pair-limit]"
-      );
-
-      if (!enabledControl || !limitControl) {
-        return;
-      }
-
-      limitControl.disabled = autoHedgingAdmissionPolicySaving
-        || !autoHedgingAdmissionPolicyLoaded
-        || !enabledControl.checked;
-      if (!enabledControl.checked) {
-        limitControl.setCustomValidity("");
-      }
-      filterAutoHedgingAdmissionPairs();
-      updateAutoHedgingAdmissionDialogSaveAvailability();
-    }
-
-    async function reloadAutoHedgingAdmissionPolicyFromApi() {
-      const response = await demoApiRequest(
-        "/api/v1/auto-hedging-admission-policy"
-      );
-      autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(response);
-      autoHedgingAdmissionPolicyLoaded = true;
-      renderAutoHedgingAdmissionPolicy();
-      return autoHedgingAdmissionPolicy;
-    }
-
-    async function loadAutoHedgingAdmissionPolicySettings() {
-      autoHedgingAdmissionPolicyLoaded = false;
-      setAutoHedgingAdmissionPolicyBusy(true);
-
-      if (!DEMO_API_ENABLED) {
-        renderAutoHedgingAdmissionPolicy();
-        setAutoHedgingAdmissionPolicyStatus(
-          "SQLite API is unavailable. Start the demo to configure the policy.",
-          "error"
-        );
-        return;
-      }
-
-      setAutoHedgingAdmissionPolicyStatus("Loading Auto Hedging Admission Policy...");
-
-      try {
-        await reloadAutoHedgingAdmissionPolicyFromApi();
-        setAutoHedgingAdmissionPolicyStatus();
-      } catch (error) {
-        autoHedgingAdmissionPolicyLoaded = false;
-        renderAutoHedgingAdmissionPolicy();
-        setAutoHedgingAdmissionPolicyStatus(
-          error.message || "Unable to load Auto Hedging Admission Policy.",
-          "error"
-        );
-      } finally {
-        setAutoHedgingAdmissionPolicyBusy(false);
-      }
-    }
-
-    async function persistAutoHedgingAdmissionPolicy(draft, dialogStatus) {
-      if (autoHedgingAdmissionPolicySaving) {
-        return false;
-      }
-
-      autoHedgingAdmissionPolicySaving = true;
-      setAutoHedgingAdmissionPolicyBusy(true);
-      setAutoHedgingAdmissionPolicyStatus("Saving Auto Hedging Admission Policy...");
-      setAutoHedgingAdmissionDialogStatus(dialogStatus, "Saving changes...");
-
-      try {
-        const response = await demoApiRequest(
-          "/api/v1/auto-hedging-admission-policy",
-          {
-            method: "PUT",
-            body: JSON.stringify(draft)
-          }
-        );
-        autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(response);
-        autoHedgingAdmissionPolicyLoaded = true;
-        renderAutoHedgingAdmissionPolicy();
-        setAutoHedgingAdmissionPolicyStatus(
-          "Auto Hedging Admission Policy was saved successfully.",
-          "success"
-        );
-        return true;
-      } catch (error) {
-        if (error.status === 409) {
-          try {
-            await reloadAutoHedgingAdmissionPolicyFromApi();
-            autoHedgingAdmissionPairDialogSnapshot =
-              autoHedgingAdmissionPairControlSnapshot();
-            const conflictMessage =
-              "The policy was updated elsewhere. The latest revision has been loaded; review it before saving again.";
-            setAutoHedgingAdmissionPolicyStatus(conflictMessage, "error");
-            setAutoHedgingAdmissionDialogStatus(
-              dialogStatus,
-              conflictMessage,
-              "error"
-            );
-          } catch (reloadError) {
-            autoHedgingAdmissionPolicyLoaded = false;
-            const reloadMessage = reloadError.message
-              || "The policy changed, but its latest revision could not be loaded.";
-            setAutoHedgingAdmissionPolicyStatus(reloadMessage, "error");
-            setAutoHedgingAdmissionDialogStatus(
-              dialogStatus,
-              reloadMessage,
-              "error"
-            );
-          }
-        } else {
-          const errorMessage = error.message
-            || "Unable to save Auto Hedging Admission Policy.";
-          setAutoHedgingAdmissionPolicyStatus(errorMessage, "error");
-          setAutoHedgingAdmissionDialogStatus(
-            dialogStatus,
-            errorMessage,
-            "error"
-          );
-        }
-        return false;
-      } finally {
-        autoHedgingAdmissionPolicySaving = false;
-        setAutoHedgingAdmissionPolicyBusy(false);
-        updateAutoHedgingAdmissionDialogSaveAvailability();
-      }
-    }
-
-    async function saveAutoHedgingAdmissionPairDialog() {
-      const draft = autoHedgingAdmissionPolicyDraft();
-      const invalidControl = autoHedgingAdmissionPairRows.querySelector(":invalid");
-
-      if (!draft || invalidControl) {
-        if (invalidControl) {
-          autoHedgingAdmissionPairSearch.value = "";
-          autoHedgingAdmissionPairFilter.value = "ALL";
-          filterAutoHedgingAdmissionPairs();
-          invalidControl.focus();
-          invalidControl.reportValidity();
-        } else {
-          setAutoHedgingAdmissionDialogStatus(
-            autoHedgingAdmissionPairDialogStatus,
-            "Enter valid Ccy Pair admission criteria.",
-            "error"
-          );
-        }
-        updateAutoHedgingAdmissionDialogSaveAvailability();
-        return;
-      }
-
-      if (sameAutoHedgingAdmissionPolicyDraft(draft)) {
-        closeAutoHedgingAdmissionPairDialog();
-        return;
-      }
-
-      if (await persistAutoHedgingAdmissionPolicy(
-        draft,
-        autoHedgingAdmissionPairDialogStatus
-      )) {
-        closeAutoHedgingAdmissionPairDialog();
-      }
-    }
-
-    function ensureAutoHedgingAdmissionPolicyEventBindings() {
-      if (autoHedgingAdmissionPolicyEventsBound) {
-        return;
-      }
-
-      autoHedgingAdmissionPolicyEventsBound = true;
-      [
-        autoHedgingAdmissionCcyPairEditButton,
-        autoHedgingAdmissionAmountLimitEditButton,
-        autoHedgingAdmissionDeviationEditButton
-      ].forEach(button => {
-        button.addEventListener("click", openAutoHedgingAdmissionPairDialog);
-      });
-      autoHedgingAdmissionPairDialogClose.addEventListener("click", () => {
-        closeAutoHedgingAdmissionPairDialog({ restore: true });
-      });
-      autoHedgingAdmissionPairDialogCancel.addEventListener("click", () => {
-        closeAutoHedgingAdmissionPairDialog({ restore: true });
-      });
-      autoHedgingAdmissionPairDialogForm.addEventListener("submit", event => {
-        event.preventDefault();
-        saveAutoHedgingAdmissionPairDialog();
-      });
-      autoHedgingAdmissionPairDialog.addEventListener("cancel", event => {
-        event.preventDefault();
-        if (!autoHedgingAdmissionPolicySaving) {
-          closeAutoHedgingAdmissionPairDialog({ restore: true });
-        }
-      });
-      autoHedgingAdmissionPairRows.addEventListener("change", event => {
-        if (!event.target.matches("[data-auto-hedging-admission-pair-enabled]")) {
-          return;
-        }
-        syncAutoHedgingAdmissionPairControl(
-          event.target.closest("[data-auto-hedging-admission-pair-code]")
-        );
-      });
-      autoHedgingAdmissionPairRows.addEventListener("input", event => {
-        if (event.target.matches(
-          "[data-auto-hedging-admission-pair-limit], "
-          + "[data-auto-hedging-admission-deviation]"
-        )) {
-          updateAutoHedgingAdmissionDialogSaveAvailability();
-        }
-      });
-      autoHedgingAdmissionPairSearch.addEventListener(
-        "input",
-        filterAutoHedgingAdmissionPairs
-      );
-      autoHedgingAdmissionPairSearch.addEventListener("keydown", event => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-        }
-      });
-      autoHedgingAdmissionPairFilter.addEventListener(
-        "change",
-        filterAutoHedgingAdmissionPairs
-      );
-      hedgingSettingsAutoGroupToggle.addEventListener("click", () => {
-        setHedgingSettingsAutoGroupExpanded(
-          hedgingSettingsAutoGroupToggle.getAttribute("aria-expanded") !== "true"
-        );
-      });
-      autoHedgingSettingsSegmentToggles.forEach(toggle => {
-        toggle.addEventListener("click", () => {
-          toggleAutoHedgingSettingsSegment(toggle);
-        });
-      });
-    }
-
     function hedgeQuickModeUnconfiguredPairs() {
       const configuredPairs = new Set(
         hedgeQuickModeSettings.map(setting => setting.currencyPair)
@@ -21267,7 +22745,7 @@
           Number(rule.pricingRuleId) === Number(setting.pricingRuleId)
         ) || null;
         const context = pricingContextById(
-          setting.executionContextId || pricingRule?.pricingContextId
+          setting.tradeContextId || pricingRule?.pricingContextId
         );
 
         return {
@@ -21275,7 +22753,7 @@
           context,
           contextPath: context
             ? pricingContextDisplayPath(context)
-            : "Missing Execution Context",
+            : "Missing Trade Context",
           presetsSummary: `${setting.baseCcyCode} ${setting.presets
             .map(preset => groupedDecimalText(preset.baseCcyAmount))
             .join(" / ")}`,
@@ -21292,12 +22770,12 @@
       const setting = cell.getRow().getData();
 
       if (!setting.context) {
-        return '<span class="text-secondary">Missing Execution Context</span>';
+        return '<span class="text-secondary">Missing Trade Context</span>';
       }
 
       return `
         <span class="client-pricing-context-candidate-path">
-          ${pricingContextFacetsMarkup(setting.context, { executionSystemLabel: true })}
+          ${pricingContextFacetsMarkup(setting.context, { originatingSystemLabel: true })}
         </span>
       `;
     }
@@ -21385,7 +22863,7 @@
             title: `
               <span class="hedge-quick-settings-column-title">
                 <span class="button-icon" aria-hidden="true">hub</span>
-                <span>Execution Context</span>
+                <span>Trade Context</span>
               </span>
             `,
             field: "contextPath",
@@ -21467,7 +22945,9 @@
       hedgeQuickModeSettingsOverview.hidden = !overview;
       hedgeQuickModeSettingsEditor.hidden = overview;
       hedgeQuickModeSettingsHeader.hidden = overview;
-      hedgeQuickModeSettingsBackButton.hidden = overview;
+      document.getElementById("hedgeQuickModeSettingsEditorTitle").textContent =
+        currentHedgeQuickModeSetting() ? hedgeQuickModeSettingsPair() : "New Quick Hedge Setting";
+      renderWorkspacePageHeading();
       hedgeQuickModeSettingsActiveField.hidden = overview;
       hedgeQuickModeSettingsSaveButton.hidden = overview;
       hedgeQuickModeSettingsDeleteButton.hidden =
@@ -21897,42 +23377,6 @@
       setHedgeQuickModeCounterpartyPickerExpanded(true);
     }
 
-    async function loadHedgingSettingsPage({ reload = true } = {}) {
-      setHedgingSettingsSection(hedgingSettingsSectionFromLocation());
-      if (!reload) {
-        return;
-      }
-
-      ensureAutoHedgingAdmissionPolicyEventBindings();
-      renderAutoHedgingAdmissionPolicy();
-      const autoHedgingAdmissionPolicyLoad =
-        loadAutoHedgingAdmissionPolicySettings();
-
-      hedgeQuickModeSettingsForm.reset();
-      hedgeQuickModeCounterpartyPickerExpanded = false;
-      hedgeQuickModePricingRulesExpanded = false;
-      setHedgeQuickModeSettingsView("overview");
-      renderHedgeQuickModeSettingsOverview();
-      hedgeQuickModeSettingsNewButton.disabled = true;
-      hedgeQuickModeSettingsSaveButton.disabled = true;
-      setHedgeQuickModeSettingsStatus("Loading Quick Hedge settings...");
-
-      try {
-        await reloadHedgeQuickModeSettingsFromApi();
-        showHedgeQuickModeSettingsOverview();
-      } catch (error) {
-        renderHedgeQuickModeSettingsOverview();
-        setHedgeQuickModeSettingsStatus(
-          error.message || "Unable to load Quick Hedge settings.",
-          "error"
-        );
-      } finally {
-        hedgeQuickModeSettingsSaveButton.disabled = false;
-      }
-
-      await autoHedgingAdmissionPolicyLoad;
-    }
-
     function validateHedgeQuickModeSettingsForm() {
       const counterparty = selectedHedgeQuickModeCounterparty();
       const rule = selectedHedgeQuickModePricingRule();
@@ -22026,7 +23470,7 @@
           `Quick Hedge settings for ${currencyPair} were saved successfully.`,
           "success"
         );
-        render(fxPositions);
+        render(positions);
       } catch (error) {
         setHedgeQuickModeSettingsStatus(
           error.message || "Unable to save Quick Hedge settings.",
@@ -22061,7 +23505,7 @@
           `Quick Hedge settings for ${setting.currencyPair} were deleted successfully.`,
           "success"
         );
-        render(fxPositions);
+        render(positions);
       } catch (error) {
         setHedgeQuickModeSettingsStatus(
           error.message || "Unable to delete Quick Hedge settings.",
@@ -22304,7 +23748,7 @@
       return addClientDealPricingRuleContentMarkup(
         rule,
         context,
-        { executionSystemLabel: true, showPricingModeIndicator: false }
+        { originatingSystemLabel: true, showPricingModeIndicator: false }
       );
     }
 
@@ -22402,7 +23846,7 @@
         return;
       }
 
-      const ourSide = oppositeFxSide(addHedgeDealForm.elements.side.value);
+      const ourSide = oppositeSide(addHedgeDealForm.elements.side.value);
       const marketRate = ourSide === "SELL"
         ? document.getElementById("addHedgeDealMarketBid").value
         : ourSide === "BUY"
@@ -22413,12 +23857,12 @@
 
       if (!marketRate) {
         tradeRateInput.setCustomValidity(
-          "A Market Pulse quote is required for an Auto Priced Hedge FX Deal."
+          "A Market Pulse quote is required for an Auto Priced Hedge Deal."
         );
       }
     }
 
-    function oppositeFxSide(side) {
+    function oppositeSide(side) {
       const normalizedSide = String(side || "").trim().toUpperCase();
 
       if (normalizedSide === "BUY") {
@@ -22436,7 +23880,7 @@
       const pairValue = normalizedPricingRuleCurrencyPair(addHedgeDealForm.elements.currencyPair.value);
       const currencies = currenciesFromPair(pairValue || "BASE/QUOTE");
       const positionSide = addHedgeDealForm.elements.side.value;
-      const ourSide = oppositeFxSide(positionSide);
+      const ourSide = oppositeSide(positionSide);
 
       addHedgeDealForm.querySelector("[data-add-hedge-deal-base-ccy]").textContent = currencies.base;
       addHedgeDealForm.querySelector("[data-add-hedge-deal-quote-ccy]").textContent = currencies.quote;
@@ -22477,7 +23921,7 @@
         return null;
       }
 
-      const amounts = exactFxAmountsFromDealt({
+      const amounts = exactAmountsFromDealt({
         dealtAmount: dealtInput.value,
         dealtCcyCode,
         baseCcyCode: currencies.base,
@@ -22691,7 +24135,7 @@
     async function createQuickHedgeDeal(ourSide, presetCode) {
       const normalizedOurSide = String(ourSide || "").trim().toUpperCase();
       const positionManagementMode = normalizedPositionManagementMode(
-        activeFxPositionMode
+        activePositionMode
       );
       const setting = hedgeQuickModeSettingForPair();
       const normalizedPresetCode = String(presetCode || "").trim().toUpperCase();
@@ -22721,11 +24165,11 @@
       );
 
       try {
-        const created = await demoApiRequest("/api/v1/hedge-fx-deals/quick-mode", {
+        const created = await demoApiRequest("/api/v1/hedge-deals/quick-mode", {
           method: "POST",
           body: JSON.stringify({
             ccyPairCode: setting.ccyPairCode,
-            side: oppositeFxSide(normalizedOurSide),
+            side: oppositeSide(normalizedOurSide),
             presetCode: preset.presetCode,
             positionManagementMode
           })
@@ -22734,14 +24178,14 @@
         await refreshHedgeDealViewsFromApi();
         selectedCurrencyPair = normalizedPricingRuleCurrencyPair(created.currencyPair);
         saveSelectedCurrencyPair();
-        render(fxPositions);
+        render(positions);
         setBatchStatus(
-          `Hedge FX Deal ${created.tradeId} was created successfully in Quick Mode.`,
+          `Hedge Deal ${created.tradeId} was created successfully in Quick Mode.`,
           "success"
         );
       } catch (error) {
         setBatchStatus(
-          error.message || "Unable to create the Quick Mode Hedge FX Deal.",
+          error.message || "Unable to create the Quick Mode Hedge Deal.",
           "error"
         );
       } finally {
@@ -22769,7 +24213,7 @@
 
       addHedgeDealQuickModeSelection = isQuickMode ? quickModeSelection : null;
       addHedgeDealPositionManagementMode = normalizedPositionManagementMode(
-        activeFxPositionMode
+        activePositionMode
       );
       addHedgeDealPricingModeLocked = isQuickMode;
       addHedgeDealSideLocked = validOurSide;
@@ -22787,7 +24231,7 @@
         addHedgeDealForm.elements.currencyPair.value =
           quickModeSelection.setting.currencyPair;
       }
-      addHedgeDealForm.elements.side.value = oppositeFxSide(normalizedOurSide);
+      addHedgeDealForm.elements.side.value = oppositeSide(normalizedOurSide);
       addHedgeDealForm.elements.tenor.value = isQuickMode
         ? quickModeSelection.setting.defaultTenor
         : "TOD";
@@ -22887,7 +24331,7 @@
             tenor: addHedgeDealForm.elements.tenor.value,
             positionManagementMode: addHedgeDealPositionManagementMode
           };
-          endpoint = "/api/v1/hedge-fx-deals/quick-mode";
+          endpoint = "/api/v1/hedge-deals/quick-mode";
         } else {
           const currencies = currenciesFromPair(rule.ccyPairCode.replace("_", "/"));
           requestBody = {
@@ -22905,8 +24349,8 @@
           }
 
           endpoint = autoPriced
-            ? "/api/v1/hedge-fx-deals/auto-priced"
-            : "/api/v1/hedge-fx-deals";
+            ? "/api/v1/hedge-deals/auto-priced"
+            : "/api/v1/hedge-deals";
         }
 
         const created = await demoApiRequest(endpoint, {
@@ -22918,13 +24362,13 @@
         selectedCurrencyPair = normalizedPricingRuleCurrencyPair(created.currencyPair);
         saveSelectedCurrencyPair();
         closeAddHedgeDealDialog();
-        render(fxPositions);
+        render(positions);
         setBatchStatus(
-          `Hedge FX Deal ${created.tradeId} was created successfully.`,
+          `Hedge Deal ${created.tradeId} was created successfully.`,
           "success"
         );
       } catch (error) {
-        setBatchStatus(error.message || "Unable to create the Hedge FX Deal.", "error");
+        setBatchStatus(error.message || "Unable to create the Hedge Deal.", "error");
       } finally {
         addHedgeDealSubmitButton.disabled = false;
       }
@@ -22938,14 +24382,14 @@
 
     async function currentClientDealsForDuplicateCheck() {
       if (!DEMO_API_ENABLED) {
-        return clientFxDealRecords(fxPositions);
+        return clientDealRecords(positions);
       }
 
-      return reloadClientFxDealsFromApi();
+      return reloadClientDealsFromApi();
     }
 
     async function clientDealDuplicateCandidates(targetDeal) {
-      const draftDeal = normalizedClientFxDeal(targetDeal);
+      const draftDeal = normalizedClientDeal(targetDeal);
       const currentDeals = await currentClientDealsForDuplicateCheck();
 
       return currentDeals.filter(deal =>
@@ -22955,30 +24399,43 @@
     }
 
     function clientDealDuplicateCheckColumns() {
-      return [
-        {
-          title: "Trade Details",
-          columns: [
-            tabulatorSizedColumn("referenceId", {
-              title: "Trade ID",
-              field: "tradeId",
-              sorter: "number"
-            })
-          ]
-        },
-        {
-          title: "Trade Economics",
-          columns: [
-            tabulatorSizedColumn("date", { title: "Trade Date", field: "tradeDate", formatter: clientFxDealsDateFormatter }),
-            tabulatorSizedColumn("pair", { title: "Ccy Pair", field: "currencyPair" }),
-            tabulatorSizedColumn("shortText", { title: "Client Side", field: "side", formatter: clientFxDealsSideFormatter, hozAlign: "center", headerHozAlign: "center" }),
-            tabulatorSizedColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right" }),
-            tabulatorSizedColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right" }),
-            tabulatorSizedColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right" }),
-            tabulatorSizedColumn("tenor", { title: "Tenor", field: "tenor", hozAlign: "center", headerHozAlign: "center" })
-          ]
-        }
-      ];
+      const visibleFields = new Set([
+        "tradeId",
+        "tradeDate",
+        "currencyPair",
+        "side",
+        "baseCcyAmount",
+        "quoteCcyAmount",
+        "tradeRate",
+        "tenor"
+      ]);
+      const columns = clientDealColumnDefinitions()
+        .flatMap(group => group.columns || [group])
+        .filter(column => visibleFields.has(column.field))
+        .map(column => {
+          const {
+            headerFilter,
+            headerFilterFunc,
+            width,
+            minWidth,
+            maxWidth,
+            cssClass,
+            ...plainColumn
+          } = column;
+
+          return plainColumn;
+        });
+
+      return uiTableColumns("client_deals_grid", columns).map(column => {
+        const {
+          width,
+          minWidth,
+          maxWidth,
+          ...fluidColumn
+        } = column;
+
+        return fluidColumn;
+      });
     }
 
     function clientDealDuplicateCheckData(candidates) {
@@ -22998,7 +24455,7 @@
       clientDealDuplicateCheckGrid = new Tabulator(clientDealDuplicateCheckGridEl, {
         data,
         index: "rowKey",
-        layout: "fitData",
+        layout: "fitColumns",
         placeholder: "No matching client deals.",
         movableColumns: false,
         resizableColumns: false,
@@ -23019,7 +24476,7 @@
       const dealLabel = data.length === 1 ? "deal" : "deals";
 
       pendingClientDealCreation = targetDeal;
-      clientDealDuplicateCheckSummary.textContent = `${data.length} existing ${dealLabel} found for ${targetDeal.clientName} and ${currencyPair(targetDeal)}. Review them before creating another deal.`;
+      clientDealDuplicateCheckSummary.textContent = `${data.length} existing ${dealLabel} found for ${targetDeal.clientName} and ${currencyPair(targetDeal)}. Make sure the new deal is not a duplicate.`;
       setClientDealDuplicateCheckStatus();
       addClientDealSubmitButton.disabled = true;
 
@@ -23061,12 +24518,12 @@
       setClientDealDuplicateCheckStatus();
 
       try {
-        const createdDeal = await createClientFxDealRecord(targetDeal);
+        const createdDeal = await createClientDealRecord(targetDeal);
         await refreshClientDealViewsFromApi();
         selectedCurrencyPair = createdDeal.currencyPair;
         saveSelectedCurrencyPair();
         setBatchStatus(
-          `Client FX Deal ${createdDeal.clientDealId} was created successfully.`,
+          `Client Deal ${createdDeal.clientDealId} was created successfully.`,
           "success"
         );
 
@@ -23075,10 +24532,10 @@
         }
 
         closeAddClientDealDialog();
-        render(fxPositions);
+        render(positions);
         return true;
       } catch (error) {
-        const message = error.message || "Unable to create the Client FX Deal.";
+        const message = error.message || "Unable to create the Client Deal.";
         setBatchStatus(message, "error");
 
         if (clientDealDuplicateCheckDialog.open) {
@@ -23106,7 +24563,7 @@
 
       const profile = selectedAddClientDealProfile();
       const pricingRule = selectedAddClientDealPricingRule();
-      const pricingContext = selectedAddClientDealExecutionContext();
+      const pricingContext = selectedAddClientDealTradeContext();
       const onboardingPricing = isAddClientDealOnboardingPricing();
       const formValid = addClientDealForm.reportValidity();
 
@@ -23226,7 +24683,7 @@
         entryMarketStreamStatus: marketStreamRunning ? "RUNNING" : "STOPPED",
         comment: String(addClientDealForm.elements.comment.value || "").trim()
       };
-      targetDeal.settlementMethod = fxPositionSettlementMethod(targetDeal);
+      targetDeal.settlementMethod = positionSettlementMethod(targetDeal);
 
       addClientDealSubmitButton.disabled = true;
       let duplicateCandidates;
@@ -23234,7 +24691,7 @@
       try {
         duplicateCandidates = await clientDealDuplicateCandidates(targetDeal);
       } catch (error) {
-        setBatchStatus(error.message || "Unable to check existing Client FX Deals.", "error");
+        setBatchStatus(error.message || "Unable to check existing Client Deals.", "error");
         addClientDealSubmitButton.disabled = false;
         return;
       }
@@ -23247,594 +24704,15 @@
       await persistCreatedClientDeal(targetDeal);
     }
 
-    function dealPricingRuleEmptyMessage() {
-      const profile = selectedDealClientProfile();
-
-      if (!profile) {
-        return "Select a client";
-      }
-
-      return "No Pricing Rule";
-    }
-
-    function dealPricingRulesForSelectedClient() {
-      const profile = selectedDealClientProfile();
-
-      if (!profile) {
-        return [];
-      }
-
-      return clientPricingRulesForInn(profile.inn)
-        .sort((left, right) =>
-          left.currencyPair.localeCompare(right.currencyPair) ||
-          left.pricingContextId.localeCompare(right.pricingContextId)
-        );
-    }
-
-    function selectedDealPricingRule() {
-      const selectedRuleId = dealPricingRuleControl().value;
-
-      return dealPricingRulesForSelectedClient().find(rule => rule.pricingRuleId === selectedRuleId) || null;
-    }
-
-    function dealPricingRuleLabel(rule) {
-      const context = pricingContextById(rule?.pricingContextId);
-      const margin = `${editNumber(rule?.marginPercent ?? 0, 4)}%`;
-
-      if (!context) {
-        return `${rule.currencyPair} | Missing Execution Context | ${margin}`;
-      }
-
-      return [
-        rule.currencyPair,
-        servicingBranchDisplayName(context.servicingBranchCode),
-        settlementSystemDisplayName(context.settlementSystemId),
-        tradeCaptureChannelDisplayName(context.tradeCaptureChannelId),
-        margin
-      ].join(" | ");
-    }
-
-    function renderDealPricingRuleOptions() {
-      const control = dealPricingRuleControl();
-      const selectedValue = control.value;
-      const rules = dealPricingRulesForSelectedClient();
-      const selectedRuleId = rules.some(rule => rule.pricingRuleId === selectedValue) ? selectedValue : "";
-      const placeholder = rules.length === 0
-        ? dealPricingRuleEmptyMessage()
-        : "No Pricing Rule";
-
-      control.innerHTML = `
-        <option value="">${escapeHtml(placeholder)}</option>
-        ${rules
-          .map(rule => `<option value="${escapeHtml(rule.pricingRuleId)}">${escapeHtml(dealPricingRuleLabel(rule))}</option>`)
-          .join("")}
-      `;
-      control.disabled = false;
-      control.value = selectedRuleId;
-      control.classList.remove("is-error");
-    }
-
-    function renderDealPricingRuleResult() {
-      const rule = selectedDealPricingRule();
-      const context = pricingContextById(rule?.pricingContextId);
-      const hasMissingContext = Boolean(rule && !context);
-
-      dealPricingRuleResults.classList.toggle("is-selected", false);
-      dealPricingRuleResults.classList.toggle("is-error", hasMissingContext);
-      dealPricingRuleResults.classList.toggle("is-warning", false);
-      dealPricingRuleResults.hidden = !hasMissingContext;
-
-      if (!hasMissingContext) {
-        dealPricingRuleResults.innerHTML = "";
-        return;
-      }
-
-      dealPricingRuleResults.innerHTML = `
-        <span class="client-pricing-context-result-title">Pricing Rule</span>
-        Missing Execution Context for selected rule.
-      `;
-    }
-
-    function syncDealPricingRuleSelection() {
-      renderDealPricingRuleOptions();
-
-      const rule = selectedDealPricingRule();
-      const context = pricingContextById(rule?.pricingContextId);
-
-      dealPricingRuleControl().setCustomValidity("");
-
-      if (rule) {
-        renderDealCurrencyPairOptions(rule.currencyPair);
-      } else {
-        renderDealCurrencyPairOptions();
-      }
-
-      editForm.elements.currencyPair.disabled = Boolean(rule);
-
-      editForm.elements.branchCode.value = context?.servicingBranchCode || "";
-      renderDealPricingRuleResult();
-    }
-
-    function handleDealPricingRuleInput() {
-      syncDealPricingRuleSelection();
-      syncDealFormDerivedFields();
-    }
-
-    function setDealPricingRuleSelection(rule) {
-      const control = dealPricingRuleControl();
-
-      renderDealPricingRuleOptions();
-      control.value = rule?.pricingRuleId || "";
-      syncDealPricingRuleSelection();
-    }
-
-    function pricingContextForDealFormSource(deal) {
-      return pricingContextById(fxPositionExecutionContextId(deal));
-    }
-
-    function pricingRuleForDealFormSource(deal) {
-      if (deal?.pricingRuleControlStatus === "PRICING_RULE_REQUIRED") {
-        return null;
-      }
-
-      const storedRuleId = String(deal?.pricingRuleId || deal?.pricing_rule_id || "").trim();
-      const storedRule = clientPricingRules.find(rule => rule.pricingRuleId === storedRuleId);
-
-      if (storedRule) {
-        return storedRule;
-      }
-
-      const context = pricingContextForDealFormSource(deal);
-      const pair = currencyPair(deal);
-
-      return clientPricingRulesForInn(deal?.inn || "").find(rule =>
-        rule.currencyPair === pair && rule.pricingContextId === context?.pricingContextId
-      ) || null;
-    }
-
-    function renderLockedEditClientDealContext(deal) {
-      const clientPickerValue = document.getElementById("editClientDealClientPickerValue");
-      const pricingRulePicker = document.getElementById("editClientDealPricingRulePicker");
-      const profile = clientProfiles.find(item => item.counterpartyId === Number(deal.counterpartyId))
-        || clientProfileByInn(deal.inn)
-        || {
-          clientCodeType: normalizedClientCodeType(deal.clientCodeType),
-          inn: deal.inn || "—",
-          name: deal.clientName || "—"
-        };
-      const rule = pricingRuleForDealFormSource(deal);
-      const context = pricingContextById(rule?.pricingContextId)
-        || pricingContextForDealFormSource(deal);
-
-      clientPickerValue.innerHTML = addClientDealProfileIdentityMarkup(profile);
-      pricingRulePicker.innerHTML = `
-        <span class="form-label client-deal-context-picker-label" id="editClientDealPricingRuleLabel">Pricing Rule</span>
-        <div class="input-group client-deal-pricing-rule-select is-disabled">
-          <div class="form-control client-deal-pricing-rule-select-value" aria-labelledby="editClientDealPricingRuleLabel">
-            ${rule && context
-              ? addClientDealPricingRuleContentMarkup(rule, context)
-              : '<span class="client-deal-pricing-rule-placeholder">Pricing Rule is unavailable.</span><span></span>'}
-          </div>
-          <button type="button" class="btn btn-outline-secondary client-deal-pricing-rule-select-toggle" aria-label="Pricing Rule selection is locked" disabled>
-            <span class="button-icon" aria-hidden="true">arrow_drop_down</span>
-          </button>
-        </div>
-      `;
-    }
-
-    function validateDealPricingRuleSelection() {
-      const control = dealPricingRuleControl();
-      const selectedRuleId = control.value;
-      const rule = selectedDealPricingRule();
-      const context = pricingContextById(rule?.pricingContextId);
-
-      if (!selectedRuleId) {
-        control.setCustomValidity("");
-        return { rule: null, context: null };
-      }
-
-      control.setCustomValidity(rule ? "" : "Selected Pricing Rule is not available.");
-
-      if (!rule) {
-        control.reportValidity();
-        return null;
-      }
-
-      control.setCustomValidity(context ? "" : "Selected Pricing Rule has no valid Execution Context.");
-
-      if (!context) {
-        renderDealPricingRuleResult();
-        control.reportValidity();
-        return null;
-      }
-
-      return { rule, context };
-    }
-
-    function renderDealCurrencyPairOptions(selectedValue = "") {
-      const control = editForm.elements.currencyPair;
-      const selectedPair = normalizedPricingRuleCurrencyPair(selectedValue || control.value);
-      const pairValues = marketCurrencyPairValues();
-      const optionPairValues = selectedPair && !pairValues.includes(selectedPair)
-        ? [selectedPair, ...pairValues]
-        : pairValues;
-      const activePair = activeCurrencyPairOrDefault();
-      const nextValue = selectedPair && optionPairValues.includes(selectedPair)
-        ? selectedPair
-        : pairValues.includes(activePair)
-          ? activePair
-          : pairValues[0] || "";
-
-      control.innerHTML = `
-        <option value="">${pairValues.length === 0 ? "No Ccy Pairs configured" : ""}</option>
-        ${optionPairValues
-          .map(pair => `<option value="${escapeHtml(pair)}">${escapeHtml(pair)}</option>`)
-          .join("")}
-      `;
-      control.value = nextValue;
-    }
-
-    function dealFormCurrencies() {
-      const pair = normalizedPricingRuleCurrencyPair(editForm.elements.currencyPair.value) || activeCurrencyPairOrDefault();
-
-      return currenciesFromPair(pair);
-    }
-
-    function syncDealCurrencyLabels() {
-      const currencies = dealFormCurrencies();
-      const baseLabels = editForm.querySelectorAll("[data-base-currency-label]");
-      const quoteLabels = editForm.querySelectorAll("[data-quote-currency-label]");
-      const fixingSelect = editForm.elements.amountFixingCurrency;
-      const selectedFixing = fixingSelect.value === "quote" ? "quote" : "base";
-
-      baseLabels.forEach(label => {
-        label.textContent = currencies.base;
-      });
-      quoteLabels.forEach(label => {
-        label.textContent = currencies.quote;
-      });
-
-      fixingSelect.innerHTML = `
-        <option value="base">${escapeHtml(currencies.base)} (base)</option>
-        <option value="quote">${escapeHtml(currencies.quote)} (quote)</option>
-      `;
-      fixingSelect.value = selectedFixing;
-    }
-
-    function syncDealAmountInputs() {
-      const fixing = editForm.elements.amountFixingCurrency.value === "quote" ? "quote" : "base";
-      const baseInput = editForm.elements.amount;
-      const quoteInput = editForm.elements.quoteAmount;
-      const currencies = dealFormCurrencies();
-      const baseFractionDigits = currencyFractionDigits(currencies.base);
-      const quoteFractionDigits = currencyFractionDigits(currencies.quote);
-      const amounts = exactFxAmountsFromDealt({
-        dealtAmount: fixing === "quote" ? quoteInput.value : baseInput.value,
-        dealtCcyCode: fixing === "quote" ? currencies.quote : currencies.base,
-        baseCcyCode: currencies.base,
-        quoteCcyCode: currencies.quote,
-        baseFractionDigits,
-        quoteFractionDigits,
-        tradeRate: editForm.elements.clientRate.value
-      });
-
-      baseInput.readOnly = fixing === "quote";
-      quoteInput.readOnly = fixing === "base";
-      baseInput.setCustomValidity("");
-      quoteInput.setCustomValidity("");
-
-      if (!amounts) {
-        if (fixing === "quote") {
-          baseInput.value = "";
-        } else {
-          quoteInput.value = "";
-        }
-
-        return;
-      }
-
-      if (fixing === "quote") {
-        baseInput.value = groupedDecimalText(
-          minorToMajorDecimal(amounts.baseAmountMinor, baseFractionDigits)
-        );
-        return;
-      }
-
-      quoteInput.value = groupedDecimalText(
-        minorToMajorDecimal(amounts.quoteAmountMinor, quoteFractionDigits)
-      );
-    }
-
-    function formatDealAmountInput(input) {
-      const value = normalizeNumber(input.value);
-
-      if (Number.isFinite(value)) {
-        input.value = amountInputValue(value);
-      }
-    }
-
-    function formatDealAmountInputs() {
-      formatDealAmountInput(editForm.elements.amount);
-      formatDealAmountInput(editForm.elements.quoteAmount);
-      syncDealFormDerivedFields();
-    }
-
-    function syncDealTransferRateFromPricingRule() {
-      const pricingRule = selectedDealPricingRule();
-      const transferRateInput = editForm.elements.autoBatchRate;
-
-      if (!pricingRule) {
-        transferRateInput.readOnly = false;
-
-        if (transferRateInput.dataset.pricingRuleCalculated === "true") {
-          transferRateInput.value = "";
-          delete transferRateInput.dataset.pricingRuleCalculated;
-        }
-
-        return;
-      }
-
-      const side = editForm.elements.side.value;
-      const clientRate = normalizeNumber(editForm.elements.clientRate.value);
-      const marginPercent = Number(pricingRule?.marginPercent);
-      const pair = marketPairs.find(item => item.currencyPair === selectedDealCurrencyPair());
-      const transferRate = transferRateFromPricingRule(
-        side,
-        clientRate,
-        marginPercent,
-        pair?.defaultQuoteDecimals
-      );
-
-      transferRateInput.readOnly = true;
-      transferRateInput.dataset.pricingRuleCalculated = "true";
-      transferRateInput.value = Number.isFinite(transferRate)
-        ? formatMarketQuote(transferRate, pair)
-        : "";
-    }
-
-    function syncDealTransferCalculations() {
-      const currencies = dealFormCurrencies();
-      const pnl = exactAnalyticalPnlText({
-        side: String(editForm.elements.side.value || "").toUpperCase(),
-        baseCcyAmount: editForm.elements.amount.value,
-        tradeRate: editForm.elements.clientRate.value,
-        transferRate: editForm.elements.autoBatchRate.value,
-        quoteFractionDigits: currencyFractionDigits(currencies.quote)
-      });
-
-      editForm.elements.pnlCash.value = pnl === null ? "" : groupedDecimalText(pnl);
-    }
-
-    function prepareEditDealForm() {
-      editForm.querySelectorAll("input, select").forEach(control => {
-        const isComment = control.name === "comment";
-
-        control.disabled = control.tagName === "SELECT" && !isComment;
-        if (control instanceof HTMLInputElement) {
-          control.readOnly = !isComment;
-        }
-      });
-      dealIdentitySection.open = false;
-    }
-
-    function syncDealFormDerivedFields(event = null) {
-      syncDealClientContext(event?.target || null);
-      syncDealPricingRuleSelection();
-
-      const pricingRule = selectedDealPricingRule();
-      const pricingContext = pricingContextById(pricingRule?.pricingContextId);
-      const tradeDate = parseDisplayDate(editForm.elements.tradeDate.value);
-
-      if (pricingContext) {
-        editForm.elements.branchCode.value = pricingContext.servicingBranchCode;
-      } else {
-        editForm.elements.branchCode.value = "";
-      }
-
-      editForm.elements.branchCode.setCustomValidity("");
-      syncDealCurrencyLabels();
-
-      if (isValidDate(tradeDate)) {
-        editForm.elements.valueDate.value = formatDisplayDate(valueDateFromTradeDate(tradeDate, editForm.elements.tenor.value));
-        editForm.elements.tradeDate.setCustomValidity("");
-      } else if (editForm.elements.tradeDate.value.trim()) {
-        editForm.elements.valueDate.value = "";
-        editForm.elements.tradeDate.setCustomValidity("Trade Date must look like 29.06.2026.");
-      }
-
-      syncDealMarketQuotes();
-      syncDealTransferRateFromPricingRule();
-      syncDealAmountInputs();
-      syncDealTransferCalculations();
-    }
-
-    function syncSyntheticAutoBatchRate() {
-      const deal = editingDealId ? findFxPositionById(editingDealId) : null;
-
-      if (deal?.synthetic) {
-        editForm.elements.autoBatchRate.value = editForm.elements.clientRate.value;
-      }
-    }
-
-    function showDealDialog() {
-      openDialogWithoutFieldFocus(editDialog);
-    }
-
-    function openEditDialog(dealId) {
-      const deal = findFxPositionById(dealId);
-
-      if (
-        !deal
-        || deal.synthetic
-        || fxPositionType(deal) !== "CLIENT_DEAL"
-        || deal.databaseBackedClientFxDeal !== true
-      ) {
-        return;
-      }
-
-      const side = sideOf(deal);
-      const amount = side === "buy" ? deal.amountBuy : deal.amountSell;
-      const autoBatchInput = editForm.elements.autoBatchRate;
-      const pair = currencyPair(deal);
-      const currencies = currenciesFromPair(pair);
-      const storedMarketStatus = String(deal.entryMarketStreamStatus || "").trim().toUpperCase();
-      const marketStatusIndicator = editForm.querySelector("[data-edit-client-deal-market-status]");
-
-      editingDealId = deal.id;
-      editForm.reset();
-      delete editForm.elements.autoBatchRate.dataset.pricingRuleCalculated;
-      clearFormValidity();
-      populateDealClientOptions(deal.clientName || clientDealProfiles()[0]?.name || "", deal.inn || "");
-
-      editForm.elements.dealId.value = deal.id || "";
-      editForm.elements.entryDate.value = deal.executionTimestamp || positionEntryDate(deal);
-      editForm.elements.branchCode.value = deal.branchCode || "";
-      editForm.elements.clientCode.value = deal.inn || innForClientName(deal.clientName);
-      editForm.elements.clientName.value = deal.clientName || "";
-      renderDealCurrencyPairOptions(pair);
-      editForm.elements.tradeDate.value = positionTradeDate(deal);
-      editForm.elements.valueDate.value = baseCurrencyValueDate(deal);
-      editForm.elements.quoteValueDate.value = quoteCurrencyValueDate(deal);
-      editForm.elements.tenor.value = positionTenor(deal) || "TOD";
-      editForm.elements.side.innerHTML = `
-        <option value="buy">BUY ${escapeHtml(currencies.base)}</option>
-        <option value="sell">SELL ${escapeHtml(currencies.base)}</option>
-      `;
-      editForm.elements.side.value = side === "buy" ? "buy" : "sell";
-      editForm.elements.amountFixingCurrency.value = "base";
-      editForm.elements.amount.value = amountInputValue(amount);
-      editForm.elements.quoteAmount.value = Number.isFinite(Number(deal.quoteCcyAmount))
-        ? amountInputValue(Number(deal.quoteCcyAmount))
-        : "";
-      editForm.elements.clientRate.value = editNumber(deal.clientRate, 4);
-      autoBatchInput.value = editNumber(deal.autoBatchRate, 4);
-      editForm.elements.pnlCash.value = amountInputValue(pnlCash(deal));
-      editForm.elements.currentMarketBid.value = Number.isFinite(Number(deal.entryMarketBid))
-        ? formatMarketQuote(Number(deal.entryMarketBid), marketPairs.find(item => item.currencyPair === pair))
-        : "";
-      editForm.elements.currentMarketOffer.value = Number.isFinite(Number(deal.entryMarketOffer))
-        ? formatMarketQuote(Number(deal.entryMarketOffer), marketPairs.find(item => item.currencyPair === pair))
-        : "";
-      editForm.elements.currentMarketStatus.value = storedMarketStatus;
-      editForm.elements.comment.value = String(deal.comment || "");
-      setDealPricingRuleSelection(pricingRuleForDealFormSource(deal));
-
-      syncDealCurrencyLabels();
-      renderLockedEditClientDealContext(deal);
-      editForm.querySelector("[data-edit-client-deal-trade-date-summary]").textContent =
-        editForm.elements.tradeDate.value || "—";
-      editForm.querySelector("[data-edit-client-deal-base-value-date-summary]").textContent =
-        editForm.elements.valueDate.value || "—";
-      editForm.querySelector("[data-edit-client-deal-quote-value-date-summary]").textContent =
-        editForm.elements.quoteValueDate.value || "—";
-      marketStatusIndicator.classList.toggle("is-active", storedMarketStatus === "RUNNING");
-      marketStatusIndicator.classList.toggle("is-stopped", storedMarketStatus === "STOPPED");
-      document.getElementById("editClientDealMarketPulse").classList.toggle(
-        "is-live",
-        storedMarketStatus === "RUNNING"
-          && Number.isFinite(Number(deal.entryMarketBid))
-          && Number.isFinite(Number(deal.entryMarketOffer))
-      );
-      editForm.querySelectorAll("[data-edit-client-deal-loss-field]").forEach(field => {
-        field.classList.toggle("is-negative-pnl", Number(deal.pnlCash) < 0);
-      });
-      marketStatusIndicator.querySelector("[data-edit-client-deal-market-status-text]").textContent =
-        storedMarketStatus === "RUNNING"
-          ? "Active"
-          : storedMarketStatus === "STOPPED"
-            ? "Stopped"
-            : "Unavailable";
-      prepareEditDealForm();
-      dealIdentitySection.open = true;
-
-      showDealDialog();
-    }
-
-    function openSelectedEditDialog() {
-      const deal = selectedEditableDeal();
-
-      if (!deal) {
-        return;
-      }
-
-      openEditDialog(deal.id);
-    }
-
-    function closeEditDialog() {
-      if (typeof editDialog.close === "function") {
-        editDialog.close();
-      } else {
-        editDialog.removeAttribute("open");
-        editingDealId = null;
-      }
-    }
-
-    async function saveEditedDeal(event) {
-      event.preventDefault();
-
-      const deal = editingDealId ? findFxPositionById(editingDealId) : null;
-
-      if (
-        !deal
-        || fxPositionType(deal) !== "CLIENT_DEAL"
-        || deal.databaseBackedClientFxDeal !== true
-        || !Number.isInteger(deal.clientFxDealId)
-        || deal.clientFxDealId <= 0
-      ) {
-        closeEditDialog();
-        return;
-      }
-
-      if (!DEMO_API_ENABLED) {
-        setBatchStatus("SQLite API is unavailable. Comment was not saved.", "error");
-        return;
-      }
-
-      const comment = String(editForm.elements.comment.value || "").trim();
-      editForm.elements.comment.setCustomValidity(
-        comment.length <= 500 && !/[\r\n]/.test(comment)
-          ? ""
-          : "Comment must be a single line of no more than 500 characters."
-      );
-
-      if (!editForm.elements.comment.reportValidity()) {
-        return;
-      }
-
-      const submitButton = document.getElementById("dealSubmitButton");
-      submitButton.disabled = true;
-
-      try {
-        await demoApiRequest(
-          `/api/v1/client-fx-deals/${encodeURIComponent(deal.clientFxDealId)}`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({ comment })
-          }
-        );
-        await refreshClientDealViewsFromApi();
-        setBatchStatus(
-          `Comment for Client FX Deal ${deal.clientFxDealId} was saved successfully.`,
-          "success"
-        );
-        closeEditDialog();
-        render(fxPositions);
-      } catch (error) {
-        setBatchStatus(error.message || "Unable to save the Client FX Deal Comment.", "error");
-      } finally {
-        submitButton.disabled = false;
-      }
-    }
-
     function renderDealRow(deal) {
       const side = sideOf(deal);
       const sourceClass = deal.synthetic ? "open-row" : `source-${deal.tone || "blue"}`;
       const selected = selectedTradeIds.has(deal.id);
-      const positionType = fxPositionType(deal);
-      const hedgeDealClass = positionType === "HEDGE_DEAL"
+      const tradeType = positionType(deal);
+      const hedgeDealClass = tradeType === "HEDGE_DEAL"
         ? " is-hedge-deal"
         : "";
-      const batchTechnicalClass = ["BATCH_POSITION_OUT", "BATCH_BALANCE_TRADE"].includes(positionType)
+      const batchTechnicalClass = ["BATCH_POSITION_OUT", "BATCH_BALANCE_TRADE"].includes(tradeType)
         ? " is-batch-technical"
         : "";
       const rowClass =
@@ -23843,17 +24721,17 @@
       const buyActive = side === "buy";
       const flatActive = side === "flat";
       const safeId = escapeHtml(deal.id);
-      const safeTradeLabel = escapeHtml(fxPositionTradeLabel(deal));
-      const safeTradeId = escapeHtml(fxPositionTradeId(deal));
-      const tradeTypePresentation = fxPositionTradeTypePresentation(deal);
-      const tradeContext = fxPositionTradeContext(deal, tradeTypePresentation.type);
-      const tradeTypeTooltip = fxPositionTradeTypeTooltip(deal, tradeTypePresentation);
+      const safeTradeLabel = escapeHtml(positionTradeLabel(deal));
+      const safeTradeId = escapeHtml(positionTradeId(deal));
+      const tradeTypePresentation = positionTradeTypePresentation(deal);
+      const tradeContext = positionTradeContext(deal, tradeTypePresentation.type);
+      const tradeTypeTooltip = positionTradeTypeTooltip(deal, tradeTypePresentation);
       const baseCcyAmount = flatActive
-        ? formattedMinorAmount("0", fxPositionBaseCcyFractionDigits(deal) ?? 0)
-        : fxPositionBaseAmountCell(deal);
-      const tradeRate = fxPositionTradeRate(deal);
-      const transferRate = fxPositionTransferRate(deal);
-      const selectionBox = isBatchableFxPositionTrade(deal)
+        ? formattedMinorAmount("0", positionBaseCcyFractionDigits(deal) ?? 0)
+        : positionBaseAmountCell(deal);
+      const tradeRate = positionTradeRate(deal);
+      const transferRate = positionTransferRate(deal);
+      const selectionBox = isBatchablePositionTrade(deal)
         ? `<input type="checkbox" class="form-check-input deal-checkbox" data-deal-id="${safeId}" aria-label="Select ${safeTradeLabel}" ${selected ? "checked" : ""}>`
         : "";
       const tradeIdCopyButton = safeTradeId
@@ -23907,9 +24785,20 @@
         </tr>
       `;
     }
+    function isTradeIntakeRoute(hash = location.hash) {
+      return /^#trade-intake(?::contract|:messages)?$/.test(canonicalTradeIntakeRoute(hash));
+    }
+
+    function canonicalTradeIntakeRoute(hash = location.hash) {
+      const route = String(hash || "").trim();
+      if (/^#trade-inbox(?::trade-data-contract)?$/.test(route) || route === "#trade-intake:trade-contract") {
+        return "#trade-intake:contract";
+      }
+      return route;
+    }
     function batchingSummaryFractionDigits(source) {
       return source.reduce((maximum, deal) => {
-        const fractionDigits = fxPositionBaseCcyFractionDigits(deal);
+        const fractionDigits = positionBaseCcyFractionDigits(deal);
         return fractionDigits === null ? maximum : Math.max(maximum, fractionDigits);
       }, 0);
     }
@@ -23919,8 +24808,8 @@
         return 0n;
       }
 
-      const amountMinor = fxPositionBaseAmountMinor(deal);
-      const sourceFractionDigits = fxPositionBaseCcyFractionDigits(deal);
+      const amountMinor = positionBaseAmountMinor(deal);
+      const sourceFractionDigits = positionBaseCcyFractionDigits(deal);
 
       if (amountMinor === null || sourceFractionDigits === null) {
         return 0n;
@@ -23978,13 +24867,13 @@
         tradeRate: sideWeightedAverage(
           source,
           side,
-          fxPositionTradeRate,
+          positionTradeRate,
           targetFractionDigits
         ),
         transferRate: sideWeightedAverage(
           source,
           side,
-          fxPositionTransferRate,
+          positionTransferRate,
           targetFractionDigits
         )
       };
@@ -24098,10 +24987,10 @@
       }
 
       const marketBidHeader = document.querySelector(
-        ".fx-position-grid .column-title .market-left"
+        ".position-grid .column-title .market-left"
       );
       const marketOfferHeader = document.querySelector(
-        ".fx-position-grid .column-title .market-right"
+        ".position-grid .column-title .market-right"
       );
       const sellAction = hedgeQuickModeToolbar.querySelector(
         '[data-hedge-quick-action="SELL"]'
@@ -24448,9 +25337,9 @@
       `;
     }
 
-    function fxPositionGridFillRow() {
+    function positionGridFillRow() {
       return `
-        <tr class="fx-position-grid-fill" aria-hidden="true">
+        <tr class="position-grid-fill" aria-hidden="true">
           <td class="identity trade-id-column"></td>
           <td class="identity client"></td>
           <td class="identity date"></td>
@@ -24470,10 +25359,10 @@
       `;
     }
 
-    function syncFxPositionGridFillHeight() {
-      const fillRow = rowsEl.querySelector(".fx-position-grid-fill");
+    function syncPositionGridFillHeight() {
+      const fillRow = rowsEl.querySelector(".position-grid-fill");
 
-      if (!fillRow || !fxPositionGridFrame || !fxPositionGrid) {
+      if (!fillRow || !positionGridFrame || !positionGrid) {
         return;
       }
 
@@ -24484,7 +25373,7 @@
 
       const availableHeight = Math.max(
         0,
-        Math.floor(fxPositionGridFrame.clientHeight - fxPositionGrid.getBoundingClientRect().height)
+        Math.floor(positionGridFrame.clientHeight - positionGrid.getBoundingClientRect().height)
       );
       const fillHeight = `${availableHeight}px`;
 
@@ -24494,30 +25383,30 @@
       });
     }
 
-    function scheduleFxPositionGridFillHeight() {
-      if (fxPositionGridFillFrame !== null) {
+    function schedulePositionGridFillHeight() {
+      if (positionGridFillFrame !== null) {
         return;
       }
 
-      fxPositionGridFillFrame = window.requestAnimationFrame(() => {
-        fxPositionGridFillFrame = null;
-        syncFxPositionGridFillHeight();
+      positionGridFillFrame = window.requestAnimationFrame(() => {
+        positionGridFillFrame = null;
+        syncPositionGridFillHeight();
       });
     }
 
-    function clientFxDealClientCode(deal) {
+    function clientDealClientCode(deal) {
       return deal.clientCode || deal.inn || "";
     }
 
-    function clientFxDealClientCodeType(deal) {
+    function clientDealClientCodeType(deal) {
       return deal.clientCodeType ||
-        clientProfileByInn(clientFxDealClientCode(deal))?.clientCodeType ||
-        (clientFxDealClientCode(deal) ? "INN" : "");
+        clientProfileByInn(clientDealClientCode(deal))?.clientCodeType ||
+        (clientDealClientCode(deal) ? "INN" : "");
     }
 
-    function fxDealBaseCurrencyPosition(deal) {
-      const amountMinor = fxPositionBaseAmountMinor(deal);
-      const fractionDigits = fxPositionBaseCcyFractionDigits(deal);
+    function dealBaseCurrencyPosition(deal) {
+      const amountMinor = positionBaseAmountMinor(deal);
+      const fractionDigits = positionBaseCcyFractionDigits(deal);
       const side = sideOf(deal);
 
       if (amountMinor === null
@@ -24530,9 +25419,9 @@
       return minorToMajorDecimal(signedMinor.toString(), fractionDigits);
     }
 
-    function fxDealQuoteCurrencyPosition(deal) {
-      const amountMinor = fxPositionQuoteAmountMinor(deal);
-      const fractionDigits = fxPositionQuoteCcyFractionDigits(deal);
+    function dealQuoteCurrencyPosition(deal) {
+      const amountMinor = positionQuoteAmountMinor(deal);
+      const fractionDigits = positionQuoteCcyFractionDigits(deal);
       const side = sideOf(deal);
 
       if (amountMinor === null
@@ -24557,12 +25446,12 @@
       return formattedAmount ? `${formattedAmount} ${currency}` : "";
     }
 
-    function clientFxDealRecords(source) {
+    function clientDealRecords(source) {
       const records = DEMO_API_ENABLED
-        ? clientFxDeals
+        ? clientDeals
         : source
-            .filter(deal => deal.synthetic !== true && fxPositionType(deal) === "CLIENT_DEAL")
-            .map(normalizedClientFxDeal);
+            .filter(deal => deal.synthetic !== true && positionType(deal) === "CLIENT_DEAL")
+            .map(normalizedClientDeal);
 
       return records
         .sort((left, right) =>
@@ -24573,16 +25462,16 @@
         );
     }
 
-    function clientFxDealsDateLabel(value) {
+    function clientDealsDateLabel(value) {
       const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || "").trim());
       return match ? `${match[3]}.${match[2]}.${match[1]}` : String(value || "");
     }
 
-    function clientFxDealsDateFormatter(cell) {
-      return escapeHtml(clientFxDealsDateLabel(cell.getValue()));
+    function clientDealsDateFormatter(cell) {
+      return escapeHtml(clientDealsDateLabel(cell.getValue()));
     }
 
-    function clientFxDealsTimestampFormatter(cell) {
+    function clientDealsTimestampFormatter(cell) {
       const value = String(cell.getValue() || "").trim();
       const timestamp = new Date(value);
 
@@ -24597,7 +25486,7 @@
       );
     }
 
-    function clientFxDealsAmountFormatter(cell) {
+    function clientDealsAmountFormatter(cell) {
       const row = cell.getRow().getData();
       const field = cell.getField();
       const minorField = field === "baseCcyAmount"
@@ -24623,21 +25512,21 @@
       return escapeHtml(amountCell(cell.getValue()));
     }
 
-    function clientFxDealsRateFormatter(cell) {
+    function clientDealsRateFormatter(cell) {
       return escapeHtml(rateCell(cell.getValue()));
     }
 
-    function clientFxDealsMarginFormatter(cell) {
+    function clientDealsMarginFormatter(cell) {
       const margin = cell.getValue();
       return Number.isFinite(margin) ? `${escapeHtml(editNumber(margin, 4))}%` : "";
     }
 
-    function clientFxDealsCurrencyAmountFormatter(cell, formatterParams) {
+    function clientDealsCurrencyAmountFormatter(cell, formatterParams) {
       const row = cell.getRow().getData();
       return escapeHtml(currencyPositionCell(cell.getValue(), row[formatterParams.currencyField]));
     }
 
-    function clientFxDealsSideFormatter(cell) {
+    function clientDealsSideFormatter(cell) {
       const side = String(cell.getValue() || "").toLowerCase();
       const baseCcy = String(cell.getRow().getData().currencyPair || "").split("/")[0];
       const label = baseCcy ? `${side} ${baseCcy}` : side;
@@ -24647,7 +25536,7 @@
         : "";
     }
 
-    function clientFxDealsAnalyticalPnlFormatter(cell) {
+    function clientDealsAnalyticalPnlFormatter(cell) {
       const row = cell.getRow().getData();
       const pnlMinor = row.analyticalPnlQuoteMinor;
       const fractionDigits = Number(row.analyticalPnlQuoteFractionDigits);
@@ -24667,24 +25556,24 @@
       return `<span class="${tone.trim()}">${escapeHtml(formattedValue)}</span>`;
     }
 
-    function clientFxDealsPositionManagementModeFormatter(cell) {
+    function clientDealsPositionManagementModeFormatter(cell) {
       return positionManagementModeBadgeMarkup(cell.getValue());
     }
 
-    function clientFxDealsExecutionContextLabel(executionContextId) {
-      const normalizedId = Number(executionContextId);
+    function clientDealsTradeContextLabel(tradeContextId) {
+      const normalizedId = Number(tradeContextId);
 
       if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
         return "";
       }
 
       const context = pricingContextById(String(normalizedId));
-      return context ? pricingContextDisplayPath(context) : `Execution Context #${normalizedId}`;
+      return context ? pricingContextDisplayPath(context) : `Trade Context #${normalizedId}`;
     }
 
-    function fxDealsExecutionContextFormatter(cell) {
+    function dealsTradeContextFormatter(cell) {
       const row = cell.getRow().getData();
-      const normalizedId = Number(row.executionContextId);
+      const normalizedId = Number(row.tradeContextId);
       const context = Number.isInteger(normalizedId) && normalizedId > 0
         ? pricingContextById(String(normalizedId))
         : null;
@@ -24696,9 +25585,9 @@
       const label = pricingContextDisplayPath(context);
       return `
         <span
-          class="client-pricing-context-candidate-path fx-deals-execution-context-path"
+          class="client-pricing-context-candidate-path deals-trade-context-path"
           role="group"
-          aria-label="Execution Context: ${escapeHtml(label)}"
+          aria-label="Trade Context: ${escapeHtml(label)}"
           data-smart-width-content
         >
           ${pricingContextFacetsMarkup(context)}
@@ -24706,38 +25595,38 @@
       `;
     }
 
-    function clientFxDealsValueColumn(size, definition) {
+    function clientDealsValueColumn(size, definition) {
       return tabulatorSizedColumn(size, definition);
     }
 
-    function clientFxDealsFilterableColumn(size, definition) {
-      return clientFxDealsValueColumn(size, {
+    function clientDealsFilterableColumn(size, definition) {
+      return clientDealsValueColumn(size, {
         headerFilter: "input",
         headerFilterFunc: "like",
         ...definition
       });
     }
 
-    function fxDealsViewMode(scope) {
-      return scope === "hedge" ? hedgeFxDealsViewMode : clientFxDealsViewMode;
+    function dealsViewMode(scope) {
+      return scope === "hedge" ? hedgeDealsViewMode : clientDealsViewMode;
     }
 
-    function syncFxDealsAuditToggle(scope) {
-      const auditViewEnabled = fxDealsViewMode(scope) === FX_DEALS_VIEW_MODE_AUDIT;
+    function syncDealsAuditToggle(scope) {
+      const auditViewEnabled = dealsViewMode(scope) === DEALS_VIEW_MODE_AUDIT;
 
-      fxDealsAuditToggles
-        .filter(toggle => toggle.dataset.fxDealsViewScope === scope)
+      dealsAuditToggles
+        .filter(toggle => toggle.dataset.dealsViewScope === scope)
         .forEach(toggle => {
           toggle.checked = auditViewEnabled;
         });
     }
 
-    function applyFxDealsViewMode(scope) {
-      const table = scope === "hedge" ? hedgeFxDealsGrid : clientFxDealsGrid;
+    function applyDealsViewMode(scope) {
+      const table = scope === "hedge" ? hedgeDealsGrid : clientDealsGrid;
       const auditFields = scope === "hedge"
-        ? ["requestTimestamp", "executionTimestamp", "initialFxPositionMode", "currentFxPositionMode"]
-        : ["executionTimestamp", "initialFxPositionMode", "currentFxPositionMode"];
-      const showAuditFields = fxDealsViewMode(scope) === FX_DEALS_VIEW_MODE_AUDIT;
+        ? ["requestTimestamp", "executionTimestamp", "initialPositionManagementMode", "currentPositionManagementMode"]
+        : ["executionTimestamp", "initialPositionManagementMode", "currentPositionManagementMode"];
+      const showAuditFields = dealsViewMode(scope) === DEALS_VIEW_MODE_AUDIT;
 
       auditFields.forEach(field => {
         const column = table?.getColumn(field);
@@ -24750,47 +25639,47 @@
       });
 
       table?.redraw(true);
-      syncFxDealsAuditToggle(scope);
+      syncDealsAuditToggle(scope);
     }
 
-    function setFxDealsViewMode(scope, mode) {
+    function setDealsViewMode(scope, mode) {
       const normalizedScope = scope === "hedge" ? "hedge" : "client";
-      const normalizedMode = mode === FX_DEALS_VIEW_MODE_AUDIT
-        ? FX_DEALS_VIEW_MODE_AUDIT
-        : FX_DEALS_VIEW_MODE_STANDARD;
+      const normalizedMode = mode === DEALS_VIEW_MODE_AUDIT
+        ? DEALS_VIEW_MODE_AUDIT
+        : DEALS_VIEW_MODE_STANDARD;
 
       if (normalizedScope === "hedge") {
-        hedgeFxDealsViewMode = normalizedMode;
+        hedgeDealsViewMode = normalizedMode;
       } else {
-        clientFxDealsViewMode = normalizedMode;
+        clientDealsViewMode = normalizedMode;
       }
 
-      applyFxDealsViewMode(normalizedScope);
+      applyDealsViewMode(normalizedScope);
     }
 
-    function clientFxDealColumnDefinitions() {
+    function clientDealColumnDefinitions() {
       return [
         {
           title: "Trade Details",
           cssClass: "client-deals-group-identity",
           columns: [
-            clientFxDealsFilterableColumn("referenceId", {
+            clientDealsFilterableColumn("referenceId", {
               title: "Trade ID",
               field: "tradeId",
               sorter: "number",
               cssClass: "client-deals-col-identity"
             }),
-            clientFxDealsFilterableColumn("timestamp", {
+            clientDealsFilterableColumn("timestamp", {
               title: "Execution Timestamp",
               field: "executionTimestamp",
-              visible: clientFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT,
-              formatter: clientFxDealsTimestampFormatter,
+              visible: clientDealsViewMode === DEALS_VIEW_MODE_AUDIT,
+              formatter: clientDealsTimestampFormatter,
               cssClass: "client-deals-col-identity"
             }),
-            clientFxDealsFilterableColumn("timestamp", {
+            clientDealsFilterableColumn("timestamp", {
               title: "Received Timestamp",
               field: "receivedTimestamp",
-              formatter: clientFxDealsTimestampFormatter,
+              formatter: clientDealsTimestampFormatter,
               cssClass: "client-deals-col-identity client-deals-group-end"
             })
           ]
@@ -24799,85 +25688,85 @@
           title: "Client Details",
           cssClass: "client-deals-group-client",
           columns: [
-            clientFxDealsFilterableColumn("type", { title: "Business ID Type", field: "clientCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
-            clientFxDealsFilterableColumn("code", { title: "Business ID", field: "clientCode", headerSort: false, cssClass: "client-deals-col-client" }),
-            clientFxDealsFilterableColumn("name", { title: "Client Name", field: "clientName", cssClass: "client-deals-col-client client-deals-group-end" })
+            clientDealsFilterableColumn("type", { title: "Business ID Type", field: "clientCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
+            clientDealsFilterableColumn("code", { title: "Business ID", field: "clientCode", headerSort: false, cssClass: "client-deals-col-client" }),
+            clientDealsFilterableColumn("name", { title: "Client Name", field: "clientName", cssClass: "client-deals-col-client client-deals-group-end" })
           ]
         },
         {
           title: "Trade Economics",
           cssClass: "client-deals-group-terms",
           columns: [
-            clientFxDealsFilterableColumn("date", { title: "Trade Date", field: "tradeDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-terms" }),
-            clientFxDealsFilterableColumn("pair", { title: "Ccy Pair", field: "currencyPair", cssClass: "client-deals-col-terms" }),
-            clientFxDealsFilterableColumn("shortText", { title: "Client Side", field: "side", headerSort: false, formatter: clientFxDealsSideFormatter, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" }),
-            clientFxDealsValueColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            clientFxDealsValueColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            clientFxDealsValueColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms client-deals-group-end" })
+            clientDealsFilterableColumn("date", { title: "Trade Date", field: "tradeDate", formatter: clientDealsDateFormatter, cssClass: "client-deals-col-terms" }),
+            clientDealsFilterableColumn("pair", { title: "Ccy Pair", field: "currencyPair", cssClass: "client-deals-col-terms" }),
+            clientDealsFilterableColumn("shortText", { title: "Client Side", field: "side", headerSort: false, formatter: clientDealsSideFormatter, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" }),
+            clientDealsValueColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientDealsValueColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientDealsValueColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms client-deals-group-end" })
           ]
         },
         {
           title: "Value Date Details",
           cssClass: "client-deals-group-value-dates",
           columns: [
-            clientFxDealsFilterableColumn("valueDate", { title: "Base Ccy Value Date", field: "baseCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates" }),
-            clientFxDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates client-deals-group-end" })
+            clientDealsFilterableColumn("valueDate", { title: "Base Ccy Value Date", field: "baseCcyValueDate", formatter: clientDealsDateFormatter, cssClass: "client-deals-col-value-dates" }),
+            clientDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientDealsDateFormatter, cssClass: "client-deals-col-value-dates client-deals-group-end" })
           ]
         },
         {
           title: "Pricing Details",
           cssClass: "client-deals-group-pricing",
           columns: [
-            clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, cssClass: "client-deals-col-pricing" }),
-            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number client-deals-group-end" })
+            clientDealsFilterableColumn("contextPath", { title: "Trade Context", field: "tradeContextLabel", headerSort: false, formatter: dealsTradeContextFormatter, cssClass: "client-deals-col-pricing" }),
+            clientDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number client-deals-group-end" })
           ]
         },
         {
-          title: "FX Position Processing",
+          title: "Position Processing",
           cssClass: "client-deals-group-position-processing",
           columns: [
-            clientFxDealsFilterableColumn("shortText", { title: "Initial FX Position Mode", field: "initialFxPositionMode", visible: clientFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
-            clientFxDealsFilterableColumn("shortText", { title: "Current FX Position Mode", field: "currentFxPositionMode", visible: clientFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
-            clientFxDealsValueColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
-            clientFxDealsValueColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientFxDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
+            clientDealsFilterableColumn("shortText", { title: "Initial Position Management Mode", field: "initialPositionManagementMode", visible: clientDealsViewMode === DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientDealsFilterableColumn("shortText", { title: "Current Position Management Mode", field: "currentPositionManagementMode", visible: clientDealsViewMode === DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientDealsValueColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
+            clientDealsValueColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
           ]
         }
       ];
     }
 
-    function clientFxDealsGridData(source) {
-      return clientFxDealRecords(source).map((deal, index) => {
+    function clientDealsGridData(source) {
+      return clientDealRecords(source).map((deal, index) => {
         const tradeId = Number(deal.tradeId ?? deal.clientDealId);
 
         return {
-          rowKey: `${tradeId || "client-fx-deal"}:${index}`,
+          rowKey: `${tradeId || "client-deal"}:${index}`,
           ...deal,
           tradeId,
-          executionContextLabel: clientFxDealsExecutionContextLabel(deal.executionContextId),
-          pricingRuleMargin: fxDealPricingRuleMargin(deal)
+          tradeContextLabel: clientDealsTradeContextLabel(deal.tradeContextId),
+          pricingRuleMargin: dealPricingRuleMargin(deal)
         };
       });
     }
 
-    function updateClientFxDealsCount(filteredCount = clientFxDealsTotalCount) {
-      const total = clientFxDealsTotalCount;
+    function updateClientDealsCount(filteredCount = clientDealsTotalCount) {
+      const total = clientDealsTotalCount;
       const dealLabel = total === 1 ? "deal" : "deals";
-      clientFxDealsCountEl.textContent = filteredCount === total
+      clientDealsCountEl.textContent = filteredCount === total
         ? `${total} ${dealLabel}`
         : `${filteredCount} of ${total} deals`;
     }
 
-    function initializeClientFxDealsGrid(data) {
-      const columns = uiTableColumns("client_fx_deals_grid", clientFxDealColumnDefinitions());
-      clientFxDealsGrid = new Tabulator(clientFxDealsGridEl, {
+    function initializeClientDealsGrid(data) {
+      const columns = uiTableColumns("client_deals_grid", clientDealColumnDefinitions());
+      clientDealsGrid = new Tabulator(clientDealsGridEl, {
         data,
         index: "rowKey",
         layout: "fitData",
         renderVertical: "virtual",
         renderVerticalBuffer: 320,
         maxHeight: "calc(100vh - 225px)",
-        placeholder: "No client FX deals.",
+        placeholder: "No client deals.",
         movableColumns: false,
         resizableColumns: false,
         columnHeaderVertAlign: "bottom",
@@ -24891,76 +25780,76 @@
         },
         columns
       });
-      registerUiTableTabulator("client_fx_deals_grid", clientFxDealsGrid);
+      registerUiTableTabulator("client_deals_grid", clientDealsGrid);
 
-      clientFxDealsGrid.on("tableBuilt", () => {
-        clientFxDealsGridReady = true;
-        updateClientFxDealsCount(data.length);
-        applyFxDealsViewMode("client");
+      clientDealsGrid.on("tableBuilt", () => {
+        clientDealsGridReady = true;
+        updateClientDealsCount(data.length);
+        applyDealsViewMode("client");
       });
-      clientFxDealsGrid.on("dataFiltered", (_filters, rows) => {
-        updateClientFxDealsCount(rows.length);
+      clientDealsGrid.on("dataFiltered", (_filters, rows) => {
+        updateClientDealsCount(rows.length);
       });
     }
 
-    function renderClientFxDeals(source) {
-      const data = clientFxDealsGridData(source);
-      clientFxDealsPendingData = data;
-      clientFxDealsTotalCount = data.length;
+    function renderClientDeals(source) {
+      const data = clientDealsGridData(source);
+      clientDealsPendingData = data;
+      clientDealsTotalCount = data.length;
 
-      if (!clientFxDealsGrid) {
-        updateClientFxDealsCount(data.length);
+      if (!clientDealsGrid) {
+        updateClientDealsCount(data.length);
 
-        if (!clientFxDealsPage.hidden) {
-          initializeClientFxDealsGrid(data);
+        if (!clientDealsPage.hidden) {
+          initializeClientDealsGrid(data);
         }
 
         return;
       }
 
-      if (!clientFxDealsGridReady || clientFxDealsPage.hidden) {
+      if (!clientDealsGridReady || clientDealsPage.hidden) {
         return;
       }
 
-      clientFxDealsGrid.replaceData(clientFxDealsPendingData).then(() => {
-        clientFxDealsPendingData = [];
-        clientFxDealsGrid.redraw(true);
+      clientDealsGrid.replaceData(clientDealsPendingData).then(() => {
+        clientDealsPendingData = [];
+        clientDealsGrid.redraw(true);
       });
     }
 
-    function isHedgeFxDeal(deal) {
-      return ["HEDGE_FX_DEAL", "MARKET_HEDGE", "HEDGE_DEAL"].includes(fxPositionType(deal));
+    function isHedgeDeal(deal) {
+      return ["HEDGE_DEAL", "MARKET_HEDGE", "HEDGE_DEAL"].includes(positionType(deal));
     }
 
-    function hedgeFxDealSourceType(deal) {
+    function hedgeDealSourceType(deal) {
       return deal?.executionVenueType || deal?.execution_venue_type || deal?.hedgeSourceType || deal?.hedge_source_type || "";
     }
 
-    function hedgeFxDealSource(deal) {
+    function hedgeDealSource(deal) {
       return deal?.executionVenue || deal?.execution_venue || deal?.hedgeSource || deal?.hedge_source || "";
     }
 
-    function hedgeFxDealExecutionContext(deal) {
+    function hedgeDealTradeContext(deal) {
       const explicitContextId = normalizedPricingContextIdValue(
-        deal?.executionContextId ?? deal?.execution_context_id ?? deal?.pricingContextId ?? deal?.pricing_context_id
+        deal?.tradeContextId ?? deal?.trade_context_id ?? deal?.pricingContextId ?? deal?.pricing_context_id
       );
 
       if (explicitContextId) {
         return explicitContextId;
       }
 
-      return [hedgeFxDealSourceType(deal), hedgeFxDealSource(deal)]
+      return [hedgeDealSourceType(deal), hedgeDealSource(deal)]
         .map(value => String(value || "").trim())
         .filter(Boolean)
         .join(" : ");
     }
 
-    function hedgeFxDealRecords(source) {
+    function hedgeDealRecords(source) {
       const records = DEMO_API_ENABLED
-        ? hedgeFxDeals
+        ? hedgeDeals
         : source
-            .filter(deal => deal.synthetic !== true && isHedgeFxDeal(deal))
-            .map(normalizedHedgeFxDeal);
+            .filter(deal => deal.synthetic !== true && isHedgeDeal(deal))
+            .map(normalizedHedgeDeal);
 
       return records
         .sort((left, right) =>
@@ -24971,36 +25860,36 @@
         );
     }
 
-    function hedgeFxDealColumnDefinitions() {
+    function hedgeDealColumnDefinitions() {
       return [
         {
           title: "Trade Details",
           cssClass: "client-deals-group-identity",
           columns: [
-            clientFxDealsFilterableColumn("referenceId", {
+            clientDealsFilterableColumn("referenceId", {
               title: "Trade ID",
               field: "tradeId",
               sorter: "number",
               cssClass: "client-deals-col-identity"
             }),
-            clientFxDealsFilterableColumn("timestamp", {
+            clientDealsFilterableColumn("timestamp", {
               title: "Request Timestamp",
               field: "requestTimestamp",
-              visible: hedgeFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT,
-              formatter: clientFxDealsTimestampFormatter,
+              visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT,
+              formatter: clientDealsTimestampFormatter,
               cssClass: "client-deals-col-identity"
             }),
-            clientFxDealsFilterableColumn("timestamp", {
+            clientDealsFilterableColumn("timestamp", {
               title: "Execution Timestamp",
               field: "executionTimestamp",
-              visible: hedgeFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT,
-              formatter: clientFxDealsTimestampFormatter,
+              visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT,
+              formatter: clientDealsTimestampFormatter,
               cssClass: "client-deals-col-identity"
             }),
-            clientFxDealsFilterableColumn("timestamp", {
+            clientDealsFilterableColumn("timestamp", {
               title: "Received Timestamp",
               field: "receivedTimestamp",
-              formatter: clientFxDealsTimestampFormatter,
+              formatter: clientDealsTimestampFormatter,
               cssClass: "client-deals-col-identity client-deals-group-end"
             })
           ]
@@ -25009,85 +25898,85 @@
           title: "Trading Counterparty Details",
           cssClass: "client-deals-group-client",
           columns: [
-            clientFxDealsFilterableColumn("type", { title: "Business ID Type", field: "counterpartyCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
-            clientFxDealsFilterableColumn("code", { title: "Business ID", field: "counterpartyCode", headerSort: false, cssClass: "client-deals-col-client" }),
-            clientFxDealsFilterableColumn("name", { title: "Counterparty Name", field: "counterpartyName", cssClass: "client-deals-col-client client-deals-group-end" })
+            clientDealsFilterableColumn("type", { title: "Business ID Type", field: "counterpartyCodeType", headerSort: false, cssClass: "client-deals-col-client" }),
+            clientDealsFilterableColumn("code", { title: "Business ID", field: "counterpartyCode", headerSort: false, cssClass: "client-deals-col-client" }),
+            clientDealsFilterableColumn("name", { title: "Counterparty Name", field: "counterpartyName", cssClass: "client-deals-col-client client-deals-group-end" })
           ]
         },
         {
           title: "Trade Economics",
           cssClass: "client-deals-group-terms",
           columns: [
-            clientFxDealsFilterableColumn("date", { title: "Trade Date", field: "tradeDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-terms" }),
-            clientFxDealsFilterableColumn("pair", { title: "Ccy Pair", field: "currencyPair", cssClass: "client-deals-col-terms" }),
-            clientFxDealsFilterableColumn("shortText", { title: "Hedge Side", field: "side", headerSort: false, formatter: clientFxDealsSideFormatter, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" }),
-            clientFxDealsValueColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            clientFxDealsValueColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientFxDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            clientFxDealsValueColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
-            clientFxDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms client-deals-group-end" })
+            clientDealsFilterableColumn("date", { title: "Trade Date", field: "tradeDate", formatter: clientDealsDateFormatter, cssClass: "client-deals-col-terms" }),
+            clientDealsFilterableColumn("pair", { title: "Ccy Pair", field: "currencyPair", cssClass: "client-deals-col-terms" }),
+            clientDealsFilterableColumn("shortText", { title: "Hedge Side", field: "side", headerSort: false, formatter: clientDealsSideFormatter, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms" }),
+            clientDealsValueColumn("amount", { title: "Base Ccy Amount", field: "baseCcyAmount", sorter: "number", formatter: clientDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientDealsValueColumn("amount", { title: "Quote Ccy Amount", field: "quoteCcyAmount", sorter: "number", formatter: clientDealsAmountFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientDealsValueColumn("rate", { title: "Trade Rate", field: "tradeRate", sorter: "number", formatter: clientDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-terms client-deals-number" }),
+            clientDealsFilterableColumn("tenor", { title: "Tenor", field: "tenor", headerSort: false, hozAlign: "center", headerHozAlign: "center", cssClass: "client-deals-col-terms client-deals-group-end" })
           ]
         },
         {
           title: "Value Date Details",
           cssClass: "client-deals-group-value-dates",
           columns: [
-            clientFxDealsFilterableColumn("valueDate", { title: "Base Ccy Value Date", field: "baseCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates" }),
-            clientFxDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientFxDealsDateFormatter, cssClass: "client-deals-col-value-dates client-deals-group-end" })
+            clientDealsFilterableColumn("valueDate", { title: "Base Ccy Value Date", field: "baseCcyValueDate", formatter: clientDealsDateFormatter, cssClass: "client-deals-col-value-dates" }),
+            clientDealsFilterableColumn("valueDate", { title: "Quote Ccy Value Date", field: "quoteCcyValueDate", formatter: clientDealsDateFormatter, cssClass: "client-deals-col-value-dates client-deals-group-end" })
           ]
         },
         {
           title: "Pricing Details",
           cssClass: "client-deals-group-pricing",
           columns: [
-            clientFxDealsFilterableColumn("contextPath", { title: "Execution Context", field: "executionContextLabel", headerSort: false, formatter: fxDealsExecutionContextFormatter, cssClass: "client-deals-col-pricing" }),
-            clientFxDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientFxDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number client-deals-group-end" })
+            clientDealsFilterableColumn("contextPath", { title: "Trade Context", field: "tradeContextLabel", headerSort: false, formatter: dealsTradeContextFormatter, cssClass: "client-deals-col-pricing" }),
+            clientDealsValueColumn("margin", { title: "Margin %", field: "pricingRuleMargin", sorter: "number", formatter: clientDealsMarginFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-pricing client-deals-number client-deals-group-end" })
           ]
         },
         {
-          title: "FX Position Processing",
+          title: "Position Processing",
           cssClass: "client-deals-group-position-processing",
           columns: [
-            clientFxDealsFilterableColumn("shortText", { title: "Initial FX Position Mode", field: "initialFxPositionMode", visible: hedgeFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
-            clientFxDealsFilterableColumn("shortText", { title: "Current FX Position Mode", field: "currentFxPositionMode", visible: hedgeFxDealsViewMode === FX_DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientFxDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
-            clientFxDealsValueColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientFxDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
-            clientFxDealsValueColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientFxDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
+            clientDealsFilterableColumn("shortText", { title: "Initial Position Management Mode", field: "initialPositionManagementMode", visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientDealsFilterableColumn("shortText", { title: "Current Position Management Mode", field: "currentPositionManagementMode", visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientDealsValueColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
+            clientDealsValueColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
           ]
         }
       ];
     }
 
-    function hedgeFxDealsGridData(source) {
-      return hedgeFxDealRecords(source).map((deal, index) => {
+    function hedgeDealsGridData(source) {
+      return hedgeDealRecords(source).map((deal, index) => {
         const tradeId = Number(deal.tradeId ?? deal.hedgeDealId);
 
         return {
-          rowKey: `${tradeId || "hedge-fx-deal"}:${index}`,
+          rowKey: `${tradeId || "hedge-deal"}:${index}`,
           ...deal,
           tradeId,
-          executionContextLabel: clientFxDealsExecutionContextLabel(deal.executionContextId),
-          pricingRuleMargin: fxDealPricingRuleMargin(deal)
+          tradeContextLabel: clientDealsTradeContextLabel(deal.tradeContextId),
+          pricingRuleMargin: dealPricingRuleMargin(deal)
         };
       });
     }
 
-    function updateHedgeFxDealsCount(filteredCount = hedgeFxDealsTotalCount) {
-      const total = hedgeFxDealsTotalCount;
+    function updateHedgeDealsCount(filteredCount = hedgeDealsTotalCount) {
+      const total = hedgeDealsTotalCount;
       const dealLabel = total === 1 ? "deal" : "deals";
-      hedgeFxDealsCountEl.textContent = filteredCount === total
+      hedgeDealsCountEl.textContent = filteredCount === total
         ? `${total} ${dealLabel}`
         : `${filteredCount} of ${total} deals`;
     }
 
-    function initializeHedgeFxDealsGrid(data) {
-      const columns = uiTableColumns("hedge_fx_deals_grid", hedgeFxDealColumnDefinitions());
-      hedgeFxDealsGrid = new Tabulator(hedgeFxDealsGridEl, {
+    function initializeHedgeDealsGrid(data) {
+      const columns = uiTableColumns("hedge_deals_grid", hedgeDealColumnDefinitions());
+      hedgeDealsGrid = new Tabulator(hedgeDealsGridEl, {
         data,
         index: "rowKey",
         layout: "fitData",
         renderVertical: "virtual",
         renderVerticalBuffer: 320,
         maxHeight: "calc(100vh - 225px)",
-        placeholder: "No hedge FX deals.",
+        placeholder: "No hedge deals.",
         movableColumns: false,
         resizableColumns: false,
         columnHeaderVertAlign: "bottom",
@@ -25101,40 +25990,40 @@
         },
         columns
       });
-      registerUiTableTabulator("hedge_fx_deals_grid", hedgeFxDealsGrid);
+      registerUiTableTabulator("hedge_deals_grid", hedgeDealsGrid);
 
-      hedgeFxDealsGrid.on("tableBuilt", () => {
-        hedgeFxDealsGridReady = true;
-        updateHedgeFxDealsCount(data.length);
-        applyFxDealsViewMode("hedge");
+      hedgeDealsGrid.on("tableBuilt", () => {
+        hedgeDealsGridReady = true;
+        updateHedgeDealsCount(data.length);
+        applyDealsViewMode("hedge");
       });
-      hedgeFxDealsGrid.on("dataFiltered", (_filters, rows) => {
-        updateHedgeFxDealsCount(rows.length);
+      hedgeDealsGrid.on("dataFiltered", (_filters, rows) => {
+        updateHedgeDealsCount(rows.length);
       });
     }
 
-    function renderHedgeFxDeals(source) {
-      const data = hedgeFxDealsGridData(source);
-      hedgeFxDealsPendingData = data;
-      hedgeFxDealsTotalCount = data.length;
+    function renderHedgeDeals(source) {
+      const data = hedgeDealsGridData(source);
+      hedgeDealsPendingData = data;
+      hedgeDealsTotalCount = data.length;
 
-      if (!hedgeFxDealsGrid) {
-        updateHedgeFxDealsCount(data.length);
+      if (!hedgeDealsGrid) {
+        updateHedgeDealsCount(data.length);
 
-        if (!hedgeFxDealsPage.hidden) {
-          initializeHedgeFxDealsGrid(data);
+        if (!hedgeDealsPage.hidden) {
+          initializeHedgeDealsGrid(data);
         }
 
         return;
       }
 
-      if (!hedgeFxDealsGridReady || hedgeFxDealsPage.hidden) {
+      if (!hedgeDealsGridReady || hedgeDealsPage.hidden) {
         return;
       }
 
-      hedgeFxDealsGrid.replaceData(hedgeFxDealsPendingData).then(() => {
-        hedgeFxDealsPendingData = [];
-        hedgeFxDealsGrid.redraw(true);
+      hedgeDealsGrid.replaceData(hedgeDealsPendingData).then(() => {
+        hedgeDealsPendingData = [];
+        hedgeDealsGrid.redraw(true);
       });
     }
 
@@ -25220,7 +26109,7 @@
           headerSort: false
         },
         columns: uiTableColumns("analytical_pnl_summary_grid", [
-          clientFxDealsFilterableColumn("code", {
+          clientDealsFilterableColumn("code", {
             title: "Currency",
             field: "currency",
             headerSort: true
@@ -25420,45 +26309,67 @@
 
     function render(source) {
       ensureSelectedCurrencyPair(source);
-      clearHiddenFxPositionSelection();
+      clearHiddenPositionSelection();
       const rows = currentDisplayRows();
 
-      renderFxPositionModeTabs(source);
+      renderPositionModeTabs(source);
       updateSortButtons();
       renderCurrencyPairList(source);
       updateActionButtons();
       updateSelectAllCheckboxes(rows);
-      rowsEl.innerHTML = `${rows.map(renderDealRow).join("")}${fxPositionGridFillRow()}`;
+      rowsEl.innerHTML = `${rows.map(renderDealRow).join("")}${positionGridFillRow()}`;
       renderBatchingSummary(rows);
-      renderClientFxDeals(source);
-      renderHedgeFxDeals(source);
+      renderClientDeals(source);
+      renderHedgeDeals(source);
       renderClientProfiles();
       renderUsers();
       renderReferenceData();
       renderPricingContexts();
       renderPricingRules();
-      renderClientExecutionContextsPanel(selectedClientProfile());
+      renderClientTradeContextsPanel(selectedClientProfile());
       renderClientPricingRulesPanel(selectedClientProfile());
       renderMarketPage();
       scheduleSmartColumnSizing();
-      scheduleFxPositionGridFillHeight();
+      schedulePositionGridFillHeight();
     }
 
     function applyInitialPageMode() {
-      const hedgingSettingsWasVisible = !hedgingSettingsPage.hidden;
+      const canonicalHash = canonicalTradeIntakeRoute(canonicalTradeContextRoute(location.hash));
+      if (canonicalHash !== location.hash) {
+        window.history.replaceState(window.history.state, "", canonicalHash);
+      }
+      const positionManagementSettingsWasVisible = !positionManagementSettingsPage.hidden;
       batchDetailsRequestSequence += 1;
       analyticalPnlReportRequestSequence += 1;
-      fxDealsPage.hidden = true;
-      clientFxDealsPage.hidden = true;
-      hedgeFxDealsPage.hidden = true;
+      dealsPage.hidden = true;
+      clientDealsPage.hidden = true;
+      hedgeDealsPage.hidden = true;
       analyticalPnlReportPage.hidden = true;
       batchingSettingsPage.hidden = true;
-      hedgingSettingsPage.hidden = true;
+      positionManagementSettingsPage.hidden = true;
       databasePage.hidden = true;
       processesPage.hidden = true;
-      fxBatchesPage.hidden = true;
+      batchesPage.hidden = true;
       batchingHistoryPage.hidden = true;
       batchDetailsPage.hidden = true;
+
+      tradeContractPage.hidden = true;
+      tradeIntakeMessagesPage.hidden = true;
+
+      if (isTradeIntakeRoute()) {
+        const showMessages = location.hash === "#trade-intake:messages";
+        setWorkspaceRoute(showMessages ? "trade-intake-messages" : "trade-contract");
+        marketPage.hidden = true;
+        mainPage.hidden = true;
+        clientProfilePage.hidden = true;
+        pricingPage.hidden = true;
+        referenceDataPage.hidden = true;
+        pricingRulesPage.hidden = true;
+        tradeContractPage.hidden = showMessages;
+        tradeIntakeMessagesPage.hidden = !showMessages;
+        document.title = showMessages ? "Trade Intake Messages" : "Trade Contract | Trade Intake";
+        return;
+      }
 
       if (location.hash === "#batching:details") {
         location.hash = batchingHistoryRoute();
@@ -25487,9 +26398,9 @@
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        fxBatchesPage.hidden = false;
+        batchesPage.hidden = false;
         batchingHistoryPage.hidden = false;
-        document.title = "FX Batches";
+        document.title = "Batches";
         loadBatchingHistoryPage();
         return;
       }
@@ -25502,41 +26413,41 @@
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        fxBatchesPage.hidden = false;
+        batchesPage.hidden = false;
         batchingHistoryPage.hidden = false;
-        setFxBatchesViewMode(FX_BATCHES_VIEW_MODE_AUDIT);
-        document.title = "FX Batches";
+        setBatchesViewMode(BATCHES_VIEW_MODE_AUDIT);
+        document.title = "Batches";
         loadBatchingHistoryPage();
         return;
       }
 
-      if (isClientFxDealsRoute()) {
-        setWorkspaceRoute("client-fx-deals");
+      if (isClientDealsRoute()) {
+        setWorkspaceRoute("client-deals");
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        fxDealsPage.hidden = false;
-        clientFxDealsPage.hidden = false;
-        setFxDealsActiveTab("client-fx-deals");
-        document.title = "Client FX Deals";
+        dealsPage.hidden = false;
+        clientDealsPage.hidden = false;
+        setDealsActiveTab("client-deals");
+        document.title = "Client Deals";
         return;
       }
 
-      if (isHedgeFxDealsRoute()) {
-        setWorkspaceRoute("hedge-fx-deals");
+      if (isHedgeDealsRoute()) {
+        setWorkspaceRoute("hedge-deals");
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        fxDealsPage.hidden = false;
-        hedgeFxDealsPage.hidden = false;
-        setFxDealsActiveTab("hedge-fx-deals");
-        document.title = "Hedge FX Deals";
+        dealsPage.hidden = false;
+        hedgeDealsPage.hidden = false;
+        setDealsActiveTab("hedge-deals");
+        document.title = "Hedge Deals";
         return;
       }
 
@@ -25568,17 +26479,17 @@
         return;
       }
 
-      if (isHedgingSettingsRoute()) {
-        setWorkspaceRoute("hedging-settings");
+      if (isPositionManagementSettingsRoute()) {
+        setWorkspaceRoute("position-management-settings");
         marketPage.hidden = true;
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        hedgingSettingsPage.hidden = false;
-        document.title = "Hedging Settings";
-        loadHedgingSettingsPage({ reload: !hedgingSettingsWasVisible });
+        positionManagementSettingsPage.hidden = false;
+        document.title = "Position Management Settings";
+        loadPositionManagementSettingsPage({ reload: !positionManagementSettingsWasVisible });
         return;
       }
 
@@ -25621,23 +26532,32 @@
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
         marketPage.hidden = false;
-        document.title = marketSettingsRouteScope
-          ? `${settingsTitle} - ${marketSettingsRouteScope.currencyCode}`
-          : settingsTitle;
+        document.title = settingsTitle;
         renderMarketPage();
         return;
       }
 
       if (isMarketRoute()) {
+        const marketKind = activeMarketKind();
+        const marketRouteKey = marketKind === "charts"
+          ? "market-charts"
+          : marketKind === "data-management"
+            ? "market-data-management"
+            : "market-quote-stream";
+        const marketTitle = marketKind === "charts"
+          ? "Charts"
+          : marketKind === "data-management"
+            ? "Data Management"
+            : "Quote Stream";
         syncMarketSettingsRouteView();
-        setWorkspaceRoute("market");
+        setWorkspaceRoute(marketRouteKey);
         mainPage.hidden = true;
         clientProfilePage.hidden = true;
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
         marketPage.hidden = false;
-        document.title = "Market Pulse";
+        document.title = `${marketTitle} | Market Pulse`;
         renderMarketPage();
         return;
       }
@@ -25678,9 +26598,7 @@
         pricingRulesPage.hidden = true;
         pricingPage.hidden = false;
         syncPricingContextRouteView();
-        document.title = pricingContextRouteScope
-          ? `Execution Contexts - ${pricingContextRouteScope.value}`
-          : "Execution Context";
+        document.title = "Trade Context";
         return;
       }
 
@@ -25694,7 +26612,7 @@
         pricingPage.hidden = true;
         pricingRulesPage.hidden = true;
         referenceDataPage.hidden = false;
-        document.title = `Reference Data - ${referenceDataPluralLabel(activeReferenceDataKind())}`;
+        document.title = `Trade Context Components - ${referenceDataPluralLabel(activeReferenceDataKind())}`;
         return;
       }
 
@@ -25710,14 +26628,12 @@
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = false;
-        document.title = pricingRulesRouteScope
-          ? `Pricing Rules - ${pricingRulesRouteScope.currencyPair}`
-          : "Pricing Rules";
+        document.title = "Pricing Rules";
         return;
       }
 
       if (isBatchingBlotterRoute()) {
-        setActiveFxPositionMode(fxPositionModeFromLocation());
+        setActivePositionMode(positionModeFromLocation());
         setWorkspaceRoute("batching");
         marketPage.hidden = true;
         mainPage.hidden = false;
@@ -25725,7 +26641,7 @@
         pricingPage.hidden = true;
         referenceDataPage.hidden = true;
         pricingRulesPage.hidden = true;
-        document.title = "FX Position";
+        document.title = "Position";
         return;
       }
 
@@ -25808,7 +26724,7 @@
       "click",
       () => openAddHedgeDealDialog()
     );
-    fxPositionGridFrame.addEventListener(
+    positionGridFrame.addEventListener(
       "scroll",
       scheduleHedgeQuickModeQuoteAlignment,
       { passive: true }
@@ -25862,7 +26778,6 @@
         setHedgeQuickModeUnlocked(false);
       }
     });
-    editDealButton.addEventListener("click", openSelectedEditDialog);
     resetDemoTradesButton.addEventListener("click", openResetDemoTradesDialog);
     resetDemoTradesDialogClose.addEventListener("click", closeResetDemoTradesDialog);
     resetDemoTradesCancelButton.addEventListener("click", closeResetDemoTradesDialog);
@@ -25873,22 +26788,22 @@
     });
     generateClientDealButton.addEventListener("click", generateClientDeal);
     runClientDealGenerationButton.addEventListener("click", toggleClientDealGenerationProcess);
-    sendToAutoPositionModeButton.addEventListener("click", openSendToAutoPositionModeDialog);
-    sendToAutoPositionModeDialogClose.addEventListener(
+    moveToAutoManagementButton.addEventListener("click", openMoveToAutoManagementDialog);
+    moveToAutoManagementDialogClose.addEventListener(
       "click",
-      closeSendToAutoPositionModeDialog
+      closeMoveToAutoManagementDialog
     );
-    sendToAutoPositionModeCancelButton.addEventListener(
+    moveToAutoManagementCancelButton.addEventListener(
       "click",
-      closeSendToAutoPositionModeDialog
+      closeMoveToAutoManagementDialog
     );
-    sendToAutoPositionModeConfirmButton.addEventListener(
+    moveToAutoManagementConfirmButton.addEventListener(
       "click",
-      confirmSendToAutoPositionMode
+      confirmMoveToAutoManagement
     );
-    sendToAutoPositionModeDialog.addEventListener("cancel", event => {
+    moveToAutoManagementDialog.addEventListener("cancel", event => {
       event.preventDefault();
-      closeSendToAutoPositionModeDialog();
+      closeMoveToAutoManagementDialog();
     });
     oneBatchButton.addEventListener("click", formOneBatchFromSelection);
     oneBatchTenorDialogClose.addEventListener("click", () => closeOneBatchTenorDialog());
@@ -25902,7 +26817,7 @@
 
       if (sourceDeals.length === 0) {
         setOneBatchTenorStatus(
-          "Select a compatible Batching Key group containing at least one FX Trade."
+          "Select a compatible Batching Key group containing at least one Trade."
         );
         return;
       }
@@ -25913,7 +26828,7 @@
       event.preventDefault();
       closeOneBatchTenorDialog();
     });
-    autoBatchButton.addEventListener("click", toggleFxAutoBatchingProcess);
+    autoBatchButton.addEventListener("click", toggleAutoBatchingProcess);
     batchRollbackDialogClose.addEventListener("click", closeBatchRollbackDialog);
     batchRollbackCancelButton.addEventListener("click", closeBatchRollbackDialog);
     batchRollbackConfirmButton.addEventListener("click", confirmBatchRollback);
@@ -25927,7 +26842,7 @@
     });
     hedgeQuickModeSettingsButton.addEventListener("click", event => {
       event.stopPropagation();
-      location.hash = hedgingSettingsRoute();
+      location.hash = positionManagementSettingsRoute("quick");
     });
     autoBatchingSettingsButton.addEventListener("click", event => {
       event.stopPropagation();
@@ -26035,10 +26950,6 @@
       "click",
       () => openHedgeQuickModeSettingsEditor()
     );
-    hedgeQuickModeSettingsBackButton.addEventListener(
-      "click",
-      () => showHedgeQuickModeSettingsOverview()
-    );
     hedgeQuickModeSettingsCancelButton.addEventListener(
       "click",
       () => {
@@ -26051,9 +26962,6 @@
       "click",
       deleteHedgeQuickModeSettings
     );
-    editForm.addEventListener("submit", saveEditedDeal);
-    editDialogClose.addEventListener("click", closeEditDialog);
-    editCancelButton.addEventListener("click", closeEditDialog);
     clientDealGenerationProcessSettingsForm.addEventListener(
       "submit",
       saveClientDealGenerationProcessSettings
@@ -26136,6 +27044,7 @@
       }
     });
     marketPairOptionNewButton.addEventListener("click", () => startMarketPairOptionEdit());
+    marketPairClearFiltersButton.addEventListener("click", clearMarketPairFilters);
     marketPairOptionRowsEl.addEventListener("input", event => {
       const row = event.target.closest("[data-market-pair-option-edit-index]");
 
@@ -26156,6 +27065,7 @@
     marketSimulationDialog.addEventListener("close", () => {
       editingMarketSimulationCurrencyPair = null;
     });
+    marketHistoryForm.addEventListener("submit", loadMarketHistoryCandles);
     marketStreamToggleButton.addEventListener("click", toggleMarketStream);
     databaseRefreshButton.addEventListener("click", () => loadDatabaseExplorer());
     databaseTableSearchEl.addEventListener("input", () => {
@@ -26223,10 +27133,65 @@
       updateClientProfileSubmitAvailability();
     });
     clientProfileNewButton.addEventListener("click", () => {
-      if (!clientProfileRouteScope) {
-        startTradingCounterpartyRowCreate();
+      startTradingCounterpartyRowCreate();
+    });
+    tradingCounterpartyTradeContextFilter.addEventListener("change", () => {
+      tradingCounterpartyRowEditState = null;
+      setClientProfileStatus("");
+      location.hash = tradingCounterpartiesForTradeContextRoute(
+        tradingCounterpartyTradeContextFilter.value
+      );
+    });
+    tradingCounterpartyTradeContextToggle.addEventListener("click", () => {
+      setTradingCounterpartyTradeContextMenuOpen(
+        tradingCounterpartyTradeContextMenu.hidden
+      );
+    });
+    tradingCounterpartyTradeContextMenu.addEventListener("click", event => {
+      const option = event.target.closest("[data-trading-counterparty-trade-context-value]");
+
+      if (!option) {
+        return;
+      }
+
+      tradingCounterpartyTradeContextFilter.value = option.dataset.tradingCounterpartyTradeContextValue;
+      setTradingCounterpartyTradeContextMenuOpen(false);
+      tradingCounterpartyTradeContextToggle.focus();
+      tradingCounterpartyTradeContextFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    tradingCounterpartyTradeContextClear.addEventListener("click", () => {
+      if (!tradingCounterpartyTradeContextFilter.value) {
+        return;
+      }
+
+      tradingCounterpartyTradeContextFilter.value = "";
+      setTradingCounterpartyTradeContextMenuOpen(false);
+      tradingCounterpartyTradeContextFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    tradingCounterpartyFilterToolbar.addEventListener("keydown", event => {
+      if (event.key !== "Escape" || tradingCounterpartyTradeContextMenu.hidden) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      setTradingCounterpartyTradeContextMenuOpen(false);
+      tradingCounterpartyTradeContextToggle.focus();
+    });
+    document.addEventListener("click", event => {
+      if (!tradingCounterpartyTradeContextMenu.hidden
+        && !tradingCounterpartyFilterToolbar.contains(event.target)) {
+        setTradingCounterpartyTradeContextMenuOpen(false);
       }
     });
+    if (typeof ResizeObserver === "function") {
+      const tradingCounterpartyTableResizeObserver = new ResizeObserver(
+        syncTradingCounterpartyFilterToolbarWidth
+      );
+      tradingCounterpartyTableResizeObserver.observe(clientProfileListView);
+    }
+    window.addEventListener("resize", syncTradingCounterpartyFilterToolbarWidth);
+    window.requestAnimationFrame(syncTradingCounterpartyFilterToolbarWidth);
     tradingCounterpartyScopeTabs.addEventListener("click", event => {
       const button = event.target.closest("[data-trading-counterparty-scope]");
 
@@ -26236,12 +27201,11 @@
 
       tradingCounterpartyRowEditState = null;
       setTradingCounterpartyScopeTab(button.dataset.tradingCounterpartyScope);
-      if (!clientProfileRouteScope || clientProfileRouteScope.status === "loaded") {
+      if (!clientProfileTradeContextFilter || clientProfileTradeContextFilter.status === "loaded") {
         setClientProfileStatus("");
       }
       renderClientProfiles();
     });
-    clientProfileBackButton.addEventListener("click", navigateBackFromClientProfileRoute);
     tradingCounterpartyIdSortButton.addEventListener("click", () => {
       tradingCounterpartyIdSortDirection = tradingCounterpartyIdSortDirection === "asc" ? "desc" : "asc";
       renderClientProfiles();
@@ -26253,16 +27217,15 @@
     clientProfileResetButton.addEventListener("click", () => {
       navigateBackFromClientProfileRoute();
     });
+    clientProfileBackButton.addEventListener("click", () => {
+      navigateBackFromClientProfileRoute();
+    });
     clientProfileDeleteButton.addEventListener("click", () => {
       if (editingClientProfileIndex !== null) {
         removeClientProfile(editingClientProfileIndex);
       }
     });
     clientProfileRowsEl.addEventListener("click", event => {
-      if (clientProfileRouteScope) {
-        return;
-      }
-
       const actionButton = event.target.closest("[data-profile-action]");
 
       if (actionButton) {
@@ -26341,7 +27304,7 @@
       }
     });
     clientProfileRowsEl.addEventListener("keydown", event => {
-      if (clientProfileRouteScope || (event.key !== "Enter" && event.key !== " ")) {
+      if (event.key !== "Enter" && event.key !== " ") {
         return;
       }
 
@@ -26369,7 +27332,6 @@
     });
     usersForm.addEventListener("change", updateUsersSubmitAvailability);
     usersNewButton.addEventListener("click", startUserRowCreate);
-    usersBackButton.addEventListener("click", () => navigateToUsersRoute());
     usersIdSortButton.addEventListener("click", () => {
       usersIdSortDirection = usersIdSortDirection === "asc" ? "desc" : "asc";
       renderUsers();
@@ -26440,21 +27402,21 @@
         updateUserRowSaveAvailability(row);
       }
     });
-    clientExecutionContextsAttachButton.addEventListener("click", () => {
+    clientTradeContextsAttachButton.addEventListener("click", () => {
       const profile = selectedClientProfile();
-      const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
-      const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+      const counterpartyId = tradingCounterpartyTradeContextKey(profile);
+      const loadState = tradingCounterpartyTradeContextLoadStates.get(counterpartyId);
 
       if (profile && loadState?.status === "error") {
-        refreshTradingCounterpartyExecutionContexts(profile);
+        refreshTradingCounterpartyTradeContexts(profile);
         return;
       }
 
-      openClientExecutionContextAttachDialog();
+      openClientTradeContextAttachDialog();
     });
-    clientExecutionContextsPanel.addEventListener("click", event => {
+    clientTradeContextsPanel.addEventListener("click", event => {
       const inlineEditorButton = event.target.closest("[data-client-pricing-rule-inline-action]");
-      const contextButton = event.target.closest("[data-client-execution-context-action]");
+      const contextButton = event.target.closest("[data-client-trade-context-action]");
       const pricingRuleButton = event.target.closest("[data-client-pricing-rule-action]");
 
       if (inlineEditorButton) {
@@ -26490,13 +27452,13 @@
       }
 
       const profile = selectedClientProfile();
-      const contextId = normalizedIntegerId(contextButton.dataset.clientExecutionContextId);
+      const contextId = normalizedIntegerId(contextButton.dataset.clientTradeContextId);
 
       if (!profile || !contextId) {
         return;
       }
 
-      if (contextButton.dataset.clientExecutionContextAction === "toggle") {
+      if (contextButton.dataset.clientTradeContextAction === "toggle") {
         const collapsedContexts = clientPricingConfigurationCollapsedSet(profile);
         const contextKey = String(contextId);
 
@@ -26506,24 +27468,24 @@
           collapsedContexts.add(contextKey);
         }
 
-        renderClientExecutionContextsPanel(profile);
-        clientExecutionContextsPanel
-          .querySelector(`[data-client-execution-context-action="toggle"][data-client-execution-context-id="${contextId}"]`)
+        renderClientTradeContextsPanel(profile);
+        clientTradeContextsPanel
+          .querySelector(`[data-client-trade-context-action="toggle"][data-client-trade-context-id="${contextId}"]`)
           ?.focus();
         return;
       }
 
-      if (contextButton.dataset.clientExecutionContextAction === "add-rule") {
+      if (contextButton.dataset.clientTradeContextAction === "add-rule") {
         startClientPricingRuleCreate(contextId);
         return;
       }
 
-      if (contextButton.dataset.clientExecutionContextAction === "detach") {
-        detachClientExecutionContext(profile, contextId);
+      if (contextButton.dataset.clientTradeContextAction === "detach") {
+        detachClientTradeContext(profile, contextId);
       }
     });
     ["input", "change"].forEach(eventName => {
-      clientExecutionContextsPanel.addEventListener(eventName, event => {
+      clientTradeContextsPanel.addEventListener(eventName, event => {
         const row = event.target.closest("[data-client-pricing-rule-inline-editor]");
 
         if (row) {
@@ -26531,7 +27493,7 @@
         }
       });
     });
-    clientExecutionContextsPanel.addEventListener("keydown", event => {
+    clientTradeContextsPanel.addEventListener("keydown", event => {
       const row = event.target.closest("[data-client-pricing-rule-inline-editor]");
 
       if (!row) {
@@ -26546,38 +27508,38 @@
         cancelClientPricingRuleInlineEditor();
       }
     });
-    clientExecutionContextAttachForm.addEventListener("submit", attachSelectedExecutionContexts);
-    clientExecutionContextAttachDialogClose.addEventListener("click", closeClientExecutionContextAttachDialog);
-    clientExecutionContextAttachCancelButton.addEventListener("click", closeClientExecutionContextAttachDialog);
-    clientExecutionContextAttachDialog.addEventListener("cancel", event => {
-      if (clientExecutionContextAttachSaving) {
+    clientTradeContextAttachForm.addEventListener("submit", attachSelectedTradeContexts);
+    clientTradeContextAttachDialogClose.addEventListener("click", closeClientTradeContextAttachDialog);
+    clientTradeContextAttachCancelButton.addEventListener("click", closeClientTradeContextAttachDialog);
+    clientTradeContextAttachDialog.addEventListener("cancel", event => {
+      if (clientTradeContextAttachSaving) {
         event.preventDefault();
       }
     });
-    clientExecutionContextAttachDialog.addEventListener("close", () => {
-      clientExecutionContextAttachCounterpartyId = "";
-      selectedClientExecutionContextIds.clear();
-      setClientExecutionContextAttachStatus("");
+    clientTradeContextAttachDialog.addEventListener("close", () => {
+      clientTradeContextAttachCounterpartyId = "";
+      selectedClientTradeContextIds.clear();
+      setClientTradeContextAttachStatus("");
     });
-    clientExecutionContextAttachFilterControls.forEach(control => {
-      control.addEventListener("input", renderClientExecutionContextAttachTable);
-      control.addEventListener("change", renderClientExecutionContextAttachTable);
+    clientTradeContextAttachFilterControls.forEach(control => {
+      control.addEventListener("input", renderClientTradeContextAttachTable);
+      control.addEventListener("change", renderClientTradeContextAttachTable);
     });
-    clientExecutionContextAttachIdSort.addEventListener("click", () => {
-      clientExecutionContextAttachSortDirection = clientExecutionContextAttachSortDirection === "asc" ? "desc" : "asc";
-      renderClientExecutionContextAttachTable();
+    clientTradeContextAttachIdSort.addEventListener("click", () => {
+      clientTradeContextAttachSortDirection = clientTradeContextAttachSortDirection === "asc" ? "desc" : "asc";
+      renderClientTradeContextAttachTable();
     });
-    clientExecutionContextAttachSelectAll.addEventListener("change", () => {
-      filteredAvailableExecutionContextsForAttach().forEach(context => {
-        if (clientExecutionContextAttachSelectAll.checked) {
-          selectedClientExecutionContextIds.add(context.pricingContextId);
+    clientTradeContextAttachSelectAll.addEventListener("change", () => {
+      filteredAvailableTradeContextsForAttach().forEach(context => {
+        if (clientTradeContextAttachSelectAll.checked) {
+          selectedClientTradeContextIds.add(context.pricingContextId);
         } else {
-          selectedClientExecutionContextIds.delete(context.pricingContextId);
+          selectedClientTradeContextIds.delete(context.pricingContextId);
         }
       });
-      renderClientExecutionContextAttachTable();
+      renderClientTradeContextAttachTable();
     });
-    clientExecutionContextAttachRows.addEventListener("change", event => {
+    clientTradeContextAttachRows.addEventListener("change", event => {
       const checkbox = event.target.closest("[data-client-context-attach-select]");
 
       if (!checkbox) {
@@ -26587,14 +27549,14 @@
       const contextId = normalizedIntegerId(checkbox.dataset.clientContextAttachSelect);
 
       if (checkbox.checked) {
-        selectedClientExecutionContextIds.add(contextId);
+        selectedClientTradeContextIds.add(contextId);
       } else {
-        selectedClientExecutionContextIds.delete(contextId);
+        selectedClientTradeContextIds.delete(contextId);
       }
-      renderClientExecutionContextAttachTable();
-      focusClientExecutionContextAttachCheckbox(contextId);
+      renderClientTradeContextAttachTable();
+      focusClientTradeContextAttachCheckbox(contextId);
     });
-    clientExecutionContextAttachRows.addEventListener("click", event => {
+    clientTradeContextAttachRows.addEventListener("click", event => {
       if (event.target.closest("input, button, a, select")) {
         return;
       }
@@ -26602,16 +27564,16 @@
       const row = event.target.closest("[data-client-context-attach-id]");
       const contextId = normalizedIntegerId(row?.dataset.clientContextAttachId);
 
-      if (!contextId || clientExecutionContextAttachSaving) {
+      if (!contextId || clientTradeContextAttachSaving) {
         return;
       }
 
-      if (selectedClientExecutionContextIds.has(contextId)) {
-        selectedClientExecutionContextIds.delete(contextId);
+      if (selectedClientTradeContextIds.has(contextId)) {
+        selectedClientTradeContextIds.delete(contextId);
       } else {
-        selectedClientExecutionContextIds.add(contextId);
+        selectedClientTradeContextIds.add(contextId);
       }
-      renderClientExecutionContextAttachTable();
+      renderClientTradeContextAttachTable();
     });
     clientPricingRuleForm.addEventListener("submit", event => {
       event.preventDefault();
@@ -26626,7 +27588,7 @@
         renderClientPricingContextBuilder();
       }
 
-      syncClientPricingRuleAutoHedgingAdmissionControl();
+      syncClientPricingRuleAutoManagementAdmissionControl();
       updateClientPricingRuleSubmitAvailability();
     });
     clientPricingRuleForm.addEventListener("change", event => {
@@ -26638,7 +27600,7 @@
         renderClientPricingContextBuilder();
       }
 
-      syncClientPricingRuleAutoHedgingAdmissionControl();
+      syncClientPricingRuleAutoManagementAdmissionControl();
       updateClientPricingRuleSubmitAvailability();
     });
     clientPricingRuleForm.addEventListener("click", event => {
@@ -26763,6 +27725,7 @@
       renderClientPricingRulesPanel(selectedClientProfile());
     });
     pricingContextNewButton.addEventListener("click", startPricingContextCreate);
+    pricingContextClearFiltersButton.addEventListener("click", clearPricingContextFilters);
     pricingContextIdSortButton.addEventListener("click", () => {
       pricingContextIdSortDirection = pricingContextIdSortDirection === "asc" ? "desc" : "asc";
       renderPricingContexts();
@@ -26772,8 +27735,8 @@
       renderPricingRules();
     });
     pricingContextHeaderFilterControls.forEach(control => {
-      control.addEventListener("input", renderPricingContexts);
-      control.addEventListener("change", renderPricingContexts);
+      control.addEventListener("input", handlePricingContextHeaderFilterChange);
+      control.addEventListener("change", handlePricingContextHeaderFilterChange);
     });
     pricingContextRowsEl.addEventListener("click", event => {
       const button = event.target.closest("[data-pricing-context-action]");
@@ -26828,7 +27791,11 @@
       });
     });
     pricingRuleHeaderFilterControls.forEach(control => {
-      control.addEventListener("input", renderPricingRules);
+      control.addEventListener("input", handlePricingRuleHeaderFilterInput);
+    });
+    pricingRulesClearFiltersButton.addEventListener("click", clearPricingRuleFilters);
+    pricingRulesAdvancedViewToggle.addEventListener("change", () => {
+      setPricingRulesAdvancedView(pricingRulesAdvancedViewToggle.checked);
     });
     ["input", "change"].forEach(eventName => {
       pricingRuleRowsEl.addEventListener(eventName, event => {
@@ -26840,11 +27807,11 @@
 
         if (event.target.matches("[data-pricing-rule-field='inn']")) {
           const profile = clientProfileByInn(event.target.value.trim());
-          const counterpartyId = tradingCounterpartyExecutionContextKey(profile);
-          const loadState = tradingCounterpartyExecutionContextLoadStates.get(counterpartyId);
+          const counterpartyId = tradingCounterpartyTradeContextKey(profile);
+          const loadState = tradingCounterpartyTradeContextLoadStates.get(counterpartyId);
 
           if (loadState?.status === "error") {
-            tradingCounterpartyExecutionContextLoadStates.delete(counterpartyId);
+            tradingCounterpartyTradeContextLoadStates.delete(counterpartyId);
           }
         }
 
@@ -26911,10 +27878,17 @@
     servicingBranchRowsEl.addEventListener("click", handleReferenceDataClick);
     settlementSystemRowsEl.addEventListener("click", handleReferenceDataClick);
     tradeCaptureChannelRowsEl.addEventListener("click", handleReferenceDataClick);
+    tradePurposeNewButton.addEventListener("click", () => startReferenceDataCreate("tradePurpose"));
+    tradePurposeIdSortButton.addEventListener("click", () => {
+      tradePurposeIdSortDirection = tradePurposeIdSortDirection === "asc" ? "desc" : "asc";
+      renderReferenceData();
+    });
+    tradePurposeRowsEl.addEventListener("click", handleReferenceDataClick);
     [
       servicingBranchRowsEl,
       settlementSystemRowsEl,
-      tradeCaptureChannelRowsEl
+      tradeCaptureChannelRowsEl,
+      tradePurposeRowsEl
     ].forEach(rowsElement => {
       rowsElement.addEventListener("input", event => {
         const row = event.target.closest("[data-reference-edit-row]");
@@ -27069,7 +28043,7 @@
     });
     addHedgeDealSideControl.addEventListener("change", () => {
       addHedgeDealForm.elements.side.value =
-        oppositeFxSide(addHedgeDealSideControl.value);
+        oppositeSide(addHedgeDealSideControl.value);
       syncAddHedgeDealDerivedFields();
     });
     addHedgeDealPricingModeControl.addEventListener("change", () => {
@@ -27220,58 +28194,28 @@
       });
       input.addEventListener("blur", () => groupDecimalInputValue(input));
     });
-    [
-      editForm.elements.clientCode,
-      editForm.elements.clientName,
-      editForm.elements.currencyPair,
-      editForm.elements.side,
-      editForm.elements.amountFixingCurrency,
-      editForm.elements.amount,
-      editForm.elements.quoteAmount,
-      editForm.elements.clientRate,
-      editForm.elements.autoBatchRate,
-      editForm.elements.tenor,
-      editForm.elements.tradeDate
-    ].forEach(element => {
-      element.addEventListener("input", syncDealFormDerivedFields);
-      element.addEventListener("change", syncDealFormDerivedFields);
-    });
-    editForm.elements.amount.addEventListener("blur", formatDealAmountInputs);
-    editForm.elements.quoteAmount.addEventListener("blur", formatDealAmountInputs);
-    editForm.elements.pricingRuleId.addEventListener("input", handleDealPricingRuleInput);
-    editForm.elements.pricingRuleId.addEventListener("change", handleDealPricingRuleInput);
-    editForm.elements.clientRate.addEventListener("input", () => {
-      syncSyntheticAutoBatchRate();
-      syncDealFormDerivedFields();
-    });
-    editDialog.addEventListener("close", () => {
-      editingDealId = null;
-      prepareEditDealForm();
-      clearFormValidity();
-    });
-
-    fxDealsAuditToggles.forEach(toggle => {
+    dealsAuditToggles.forEach(toggle => {
       toggle.addEventListener("change", () => {
-        setFxDealsViewMode(
-          toggle.dataset.fxDealsViewScope,
-          toggle.checked ? FX_DEALS_VIEW_MODE_AUDIT : FX_DEALS_VIEW_MODE_STANDARD
+        setDealsViewMode(
+          toggle.dataset.dealsViewScope,
+          toggle.checked ? DEALS_VIEW_MODE_AUDIT : DEALS_VIEW_MODE_STANDARD
         );
       });
     });
-    syncFxDealsAuditToggle("client");
-    syncFxDealsAuditToggle("hedge");
+    syncDealsAuditToggle("client");
+    syncDealsAuditToggle("hedge");
 
-    fxBatchesAuditViewToggle.addEventListener("change", () => {
-      setFxBatchesViewMode(
-        fxBatchesAuditViewToggle.checked
-          ? FX_BATCHES_VIEW_MODE_AUDIT
-          : FX_BATCHES_VIEW_MODE_STANDARD
+    batchesAuditViewToggle.addEventListener("change", () => {
+      setBatchesViewMode(
+        batchesAuditViewToggle.checked
+          ? BATCHES_VIEW_MODE_AUDIT
+          : BATCHES_VIEW_MODE_STANDARD
       );
     });
-    syncFxBatchesAuditToggle();
+    syncBatchesAuditToggle();
 
-    fxPositionModeTabs.forEach(tab => {
-      tab.addEventListener("keydown", handleFxPositionModeTabKeydown);
+    positionModeTabs.forEach(tab => {
+      tab.addEventListener("keydown", handlePositionModeTabKeydown);
     });
 
     initializeAnalyticalPnlReportDefaultDateRange();
@@ -27366,25 +28310,25 @@
 
     window.addEventListener("hashchange", () => {
       applyInitialPageMode();
-      render(fxPositions);
+      render(positions);
     });
     window.addEventListener("beforeunload", () => marketStreamEventSource?.close());
     window.addEventListener("resize", repositionAppTooltip);
     window.addEventListener("resize", scheduleSmartColumnSizing);
     window.addEventListener("resize", scheduleHedgeQuickModeQuoteAlignment);
-    window.addEventListener("resize", scheduleFxPositionGridFillHeight);
+    window.addEventListener("resize", schedulePositionGridFillHeight);
     window.addEventListener("scroll", repositionAppTooltip, true);
 
-    if (fxPositionGridFrame && typeof ResizeObserver === "function") {
-      const fxPositionLayoutObserver = new ResizeObserver(() => {
-        scheduleFxPositionGridFillHeight();
+    if (positionGridFrame && typeof ResizeObserver === "function") {
+      const positionLayoutObserver = new ResizeObserver(() => {
+        schedulePositionGridFillHeight();
         scheduleHedgeQuickModeQuoteAlignment();
       });
 
-      fxPositionLayoutObserver.observe(fxPositionGridFrame);
+      positionLayoutObserver.observe(positionGridFrame);
 
-      if (fxPositionGrid) {
-        fxPositionLayoutObserver.observe(fxPositionGrid);
+      if (positionGrid) {
+        positionLayoutObserver.observe(positionGrid);
       }
     }
 
@@ -27424,8 +28368,8 @@
 
     connectMarketPulseSimulation();
     connectClientDealGenerationProcess();
-    connectFxAutoBatchingProcess();
+    connectAutoBatchingProcess();
     initializeHedgeQuickModeToolbar();
     setTradingCounterpartyScopeTab(activeTradingCounterpartyScope);
     applyInitialPageMode();
-    render(fxPositions);
+    render(positions);

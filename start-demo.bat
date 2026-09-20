@@ -2,9 +2,9 @@
 cd /d "%~dp0"
 set "DEMO_PORT=8000"
 set "DEMO_URL=http://127.0.0.1:%DEMO_PORT%"
-title Demo FX Position Application
+title Demo Position Application
 
-echo Starting Demo FX Position Application...
+echo Starting Demo Position Application...
 echo Opening %DEMO_URL% in your browser.
 echo Press Ctrl+C in this window to stop the application.
 echo.

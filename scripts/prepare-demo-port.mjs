@@ -134,7 +134,7 @@ async function main() {
   const result = await prepareDemoPort({ projectRoot: process.cwd(), port });
 
   if (result.stoppedPid) {
-    console.log(`Stopped the previous Demo FX Position Application (PID ${result.stoppedPid}).`);
+    console.log(`Stopped the previous Demo Position Application (PID ${result.stoppedPid}).`);
   }
 }
 

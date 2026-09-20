@@ -6,6 +6,9 @@ const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { URL } = require("node:url");
 const { DatabaseSync } = require("node:sqlite");
+const { migrateDomainTerminology } = require("./backend/database/migrate-domain-terminology");
+const { createTradePurposeModule } = require("./backend/trade-purpose/config/trade-purpose-module");
+const { seedInitialTradePurposes } = require("./backend/trade-purpose/infrastructure/persistence/sqlite-trade-purpose-repository");
 const {
   DEMO_APPLICATION_ID,
   runtimeFilePath,
@@ -18,72 +21,105 @@ const {
   MAX_ONE_WAY_DURATION_SECONDS,
   MIN_ONE_WAY_DURATION_SECONDS,
   MarketPulseSimulator
-} = require("./backend/market-pulse-simulation/market-pulse-simulator");
+} = require("./backend/market-pulse/simulation/market-pulse-simulator");
+const {
+  GetHistoricalCandlesUseCase
+} = require("./backend/market-pulse/historical-data/application/get-historical-candles-use-case");
+const {
+  BackfillHistoricalCandleRangeUseCase
+} = require("./backend/market-pulse/historical-data/application/backfill-historical-candle-range-use-case");
+const {
+  BackfillHistoricalCandlesUseCase
+} = require("./backend/market-pulse/historical-data/application/backfill-historical-candles-use-case");
+const {
+  GetHistoricalCandleBackfillStatusUseCase
+} = require("./backend/market-pulse/historical-data/application/get-historical-candle-backfill-status-use-case");
+const {
+  SyncOneMinuteCandlesUseCase
+} = require("./backend/market-pulse/historical-data/application/sync-one-minute-candles-use-case");
+const {
+  GetManualHistoricalSourceCandleSyncPlanUseCase
+} = require("./backend/market-pulse/historical-data/application/get-manual-historical-source-candle-sync-plan-use-case");
+const {
+  SyncNextManualHistoricalSourceCandleDayUseCase
+} = require("./backend/market-pulse/historical-data/application/sync-next-manual-historical-source-candle-day-use-case");
+const {
+  createHistoricalCandlesApi
+} = require("./backend/market-pulse/historical-data/api/historical-candles-api");
+const {
+  MoexIssHistoricalMarketDataSource
+} = require("./backend/market-pulse/historical-data/infrastructure/moex-iss-historical-market-data-source");
+const {
+  SqliteMarketSourceCandleRepository
+} = require("./backend/market-pulse/historical-data/infrastructure/persistence/sqlite-market-source-candle-repository");
+const {
+  migrateMarketCandleStorage
+} = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-market-candle-storage");
 const {
   calculateAnalyticalPnlMinor,
-  calculateClientFxDealEconomics,
+  calculateClientDealEconomics,
   roundToFractionDigits
-} = require("./backend/client-fx-deal/client-fx-deal-economics");
+} = require("./backend/client-deal/client-deal-economics");
 const {
-  generatedClientFxDeal
-} = require("./backend/client-fx-deal/client-fx-deal-generator");
+  generatedClientDeal
+} = require("./backend/client-deal/client-deal-generator");
 const {
   ClientDealGenerationProcess
-} = require("./backend/client-fx-deal/client-deal-generation-process");
+} = require("./backend/client-deal/client-deal-generation-process");
 const {
-  createHedgeFxDealTerms
-} = require("./backend/hedge-fx-deal/hedge-fx-deal-terms");
+  createHedgeDealTerms
+} = require("./backend/hedge-deal/hedge-deal-terms");
 const {
   autoPricedHedgeTradeRate
-} = require("./backend/hedge-fx-deal/auto-priced-hedge-rate");
+} = require("./backend/hedge-deal/auto-priced-hedge-rate");
 const {
   HEDGE_QUICK_MODE_PRESET_CODES,
   hedgeQuickModeInstruction,
   hedgeQuickModePresets
-} = require("./backend/hedge-fx-deal/hedge-quick-mode");
+} = require("./backend/hedge-deal/hedge-quick-mode");
 const {
-  FormFxBatchUseCase
-} = require("./backend/fx-batching/application/form-fx-batch-use-case");
+  FormBatchUseCase
+} = require("./backend/batching/application/form-batch-use-case");
 const {
   migrateLegacyManualBatchFormations
 } = require(
-  "./backend/fx-batching/infrastructure/persistence/migrate-legacy-manual-batch-formations"
+  "./backend/batching/infrastructure/persistence/migrate-legacy-manual-batch-formations"
 );
 const {
-  FxAutoBatchingProcess
-} = require("./backend/fx-batching/application/fx-auto-batching-process");
+  AutoBatchingProcess
+} = require("./backend/batching/application/auto-batching-process");
 const {
-  selectFxTradesForAutoBatchingRun
-} = require("./backend/fx-batching/application/fx-auto-batching-trade-scope");
+  selectTradesForAutoBatchingRun
+} = require("./backend/batching/application/auto-batching-trade-scope");
 const {
-  planFxAutoBatching
-} = require("./backend/fx-batching/domain/fx-auto-batching-policy");
+  planAutoBatching
+} = require("./backend/batching/domain/auto-batching-policy");
 const {
-  FX_BATCH_FORMATION_REASON_CODE,
-  FX_BATCH_FORMATION_REASON_CODES,
-  FX_BATCH_FORMATION_REASON_DETAILS_MAX_LENGTH
-} = require("./backend/fx-batching/domain/fx-batch-formation-reason");
+  BATCH_FORMATION_REASON_CODE,
+  BATCH_FORMATION_REASON_CODES,
+  BATCH_FORMATION_REASON_DETAILS_MAX_LENGTH
+} = require("./backend/batching/domain/batch-formation-reason");
 const {
-  FX_AUTO_BATCHING_CCY_PAIR_CODES_DEFAULT,
-  FX_AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT,
-  FX_AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT,
-  FX_AUTO_BATCHING_TENOR_COMPATIBILITY_MODE_DEFAULT,
-  fxAutoBatchingSettings: validatedFxAutoBatchingSettings
-} = require("./backend/fx-batching/domain/fx-auto-batching-settings");
+  AUTO_BATCHING_CCY_PAIR_CODES_DEFAULT,
+  AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT,
+  AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT,
+  AUTO_BATCHING_TENOR_COMPATIBILITY_MODE_DEFAULT,
+  autoBatchingSettings: validatedAutoBatchingSettings
+} = require("./backend/batching/domain/auto-batching-settings");
 const {
-  FX_BATCHING_ALLOW_CROSS_TENOR_BATCHING_DEFAULT,
-  fxBatchingSettings: validatedFxBatchingSettings
-} = require("./backend/fx-batching/domain/fx-batching-settings");
+  BATCHING_ALLOW_CROSS_TENOR_BATCHING_DEFAULT,
+  batchingSettings: validatedBatchingSettings
+} = require("./backend/batching/domain/batching-settings");
 const {
-  FX_BATCH_MEMBER_ROLE,
-  FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES,
-  FX_BATCH_STATUS
-} = require("./backend/fx-batching/domain/fx-trade-batching-policy");
+  BATCH_MEMBER_ROLE,
+  BATCH_MEMBERSHIP_BLOCKING_STATUSES,
+  BATCH_STATUS
+} = require("./backend/batching/domain/trade-batching-policy");
 const {
-  fxTradeBalanceContributions
-} = require("./backend/fx-batching/domain/fx-batch-balance");
+  tradeBalanceContributions
+} = require("./backend/batching/domain/batch-balance");
 const {
-  calculateFxAmountsFromDealt,
+  calculateAmountsFromDealt,
   calculateQuoteMinor,
   majorToMinor,
   majorToMinorExact,
@@ -107,26 +143,38 @@ const {
   analyticalPnlSummary
 } = require("./backend/reporting/analytical-pnl-summary");
 const {
-  FX_POSITION_MANAGEMENT_MODE,
-  normalizeFxPositionManagementMode,
-  resolveFxPositionManagementMode
-} = require("./backend/fx-position-management/domain/fx-position-management-policy");
+  POSITION_MANAGEMENT_MODE,
+  normalizePositionManagementMode
+} = require("./backend/position-management/domain/position-management-policy");
 const {
-  AUTO_HEDGING_ADMISSION_MODE,
-  normalizeAutoHedgingAdmissionMode
-} = require("./backend/auto-hedging-admission/domain/auto-hedging-admission-mode");
+  AUTO_MANAGEMENT_ADMISSION_MODE,
+  normalizeAutoManagementAdmissionMode
+} = require("./backend/auto-management-admission/domain/auto-management-admission-mode");
 const {
-  normalizePricingRuleAutoHedgingAdmissionModeOverride,
-  resolvePricingRuleAutoHedgingAdmissionMode
+  normalizePricingRuleAutoManagementAdmissionModeOverride,
+  resolvePricingRuleAutoManagementAdmissionMode
 } = require(
-  "./backend/auto-hedging-admission/domain/pricing-rule-admission-policy"
+  "./backend/auto-management-admission/domain/pricing-rule-admission-policy"
 );
 const {
-  determineInitialAdmissionState
-} = require("./backend/auto-hedging-admission/domain/auto-hedging-admission-decision");
+  determineInitialAdmissionState,
+  decideReleaseToAutoManagement
+} = require("./backend/auto-management-admission/domain/auto-management-admission-decision");
 const {
-  SendFxTradesToAutoPositionManagementUseCase
-} = require("./backend/fx-position-management/application/send-fx-trades-to-auto-position-management-use-case");
+  migrateAutoManagementTerminology
+} = require("./backend/auto-management-admission/infrastructure/persistence/migrate-auto-management-terminology");
+const {
+  migrateAdmissionEnforcement
+} = require("./backend/auto-management-admission/infrastructure/persistence/migrate-admission-enforcement");
+const {
+  migrateAutoModeEligibilityRules
+} = require("./backend/auto-management-admission/infrastructure/persistence/migrate-auto-mode-eligibility-rules");
+const {
+  normalizeAutoManagementAdmissionTradeType
+} = require("./backend/auto-management-admission/domain/auto-management-admission-trade-type");
+const {
+  MoveTradesToAutoManagementUseCase
+} = require("./backend/position-management/application/move-trades-to-auto-management-use-case");
 
 const HOST = "127.0.0.1";
 const UI_TABLE_DEFAULT_CONFIRMATION = "SAVE_AS_DEFAULT";
@@ -163,9 +211,9 @@ const SERVICING_LOCATION_REGION_MAX_LENGTH = 50;
 const SERVICING_LOCATION_TYPE_MAX_LENGTH = "HEAD_OFFICE".length;
 const ACCOUNTING_SYSTEM_ID_MAX_LENGTH = 20;
 const ACCOUNTING_SYSTEM_NAME_MAX_LENGTH = 50;
-const EXECUTION_SYSTEM_ID_MAX_LENGTH = 30;
-const EXECUTION_SYSTEM_NAME_MAX_LENGTH = 50;
-const EXECUTION_SYSTEM_PRICING_MODE_MAX_LENGTH = "DEALER_APPROVED".length;
+const ORIGINATING_SYSTEM_ID_MAX_LENGTH = 30;
+const ORIGINATING_SYSTEM_NAME_MAX_LENGTH = 50;
+const ORIGINATING_SYSTEM_PRICING_MODE_MAX_LENGTH = "DEALER_APPROVED".length;
 const CCY_OPTION_NAME_MAX_LENGTH = 20;
 const CCY_OPTION_COUNTRY_MAX_LENGTH = 30;
 const COUNTERPARTY_CODE_MAX_LENGTH = 20;
@@ -173,14 +221,19 @@ const COUNTERPARTY_NAME_MAX_LENGTH = 200;
 const USER_CODE_MAX_LENGTH = 30;
 const USER_NAME_MAX_LENGTH = 50;
 const USER_ROLES = ["DEALER", "SUPERVISOR", "ADMIN"];
-const FX_TRADE_TYPES = [
+const TRADE_TYPES = [
   "CLIENT_DEAL",
   "HEDGE_DEAL",
   "BATCH_BALANCE_TRADE",
   "BATCH_POSITION_OUT"
 ];
-const FX_BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS =
-  FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES.map(() => "?").join(", ");
+const AUTO_MODE_ELIGIBILITY_MATRIX_TRADE_TYPES = [
+  "CLIENT_DEAL",
+  "HEDGE_DEAL",
+  "BATCH_POSITION_OUT"
+];
+const BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS =
+  BATCH_MEMBERSHIP_BLOCKING_STATUSES.map(() => "?").join(", ");
 const CLIENT_ONBOARDING_MANUAL_PRICING = "CLIENT_ONBOARDING";
 const HEDGE_DEAL_PRICING_MODES = new Set(["AUTO_PRICED", "DEALER_PRICED"]);
 
@@ -223,6 +276,7 @@ const database = new DatabaseSync(DATABASE_PATH);
 database.exec("PRAGMA foreign_keys = ON");
 database.exec("PRAGMA journal_mode = WAL");
 database.exec("PRAGMA busy_timeout = 5000");
+migrateDomainTerminology(database);
 const databaseAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
   FROM sqlite_master
@@ -238,15 +292,20 @@ const accountingSystemsAlreadyInitialized = Boolean(database.prepare(`
   FROM sqlite_master
   WHERE type = 'table' AND name = 'accounting_systems'
 `).get());
-const executionSystemsAlreadyInitialized = Boolean(database.prepare(`
+const originatingSystemsAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
   FROM sqlite_master
-  WHERE type = 'table' AND name = 'execution_systems'
+  WHERE type = 'table' AND name = 'originating_systems'
 `).get());
-const executionContextsAlreadyInitialized = Boolean(database.prepare(`
+const tradeContextsAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
   FROM sqlite_master
-  WHERE type = 'table' AND name = 'execution_contexts'
+  WHERE type = 'table' AND name = 'trade_contexts'
+`).get());
+const tradePurposesAlreadyInitialized = Boolean(database.prepare(`
+  SELECT 1 AS present
+  FROM sqlite_master
+  WHERE type = 'table' AND name = 'trade_purposes'
 `).get());
 const tradingCounterpartiesAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
@@ -271,105 +330,111 @@ const clientDealGenerationSettingsAlreadyInitialized = Boolean(database.prepare(
 const hedgeQuickModeSettingsAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
   FROM sqlite_master
-  WHERE type = 'table' AND name = 'fx_hedge_quick_mode_settings'
+  WHERE type = 'table' AND name = 'hedge_quick_mode_settings'
 `).get());
-const clientFxDealsAlreadyInitialized = Boolean(database.prepare(`
+const clientDealsAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
   FROM sqlite_master
-  WHERE type = 'table' AND name = 'client_fx_deals'
+  WHERE type = 'table' AND name = 'client_deals'
 `).get());
-const hedgeFxDealsAlreadyInitialized = Boolean(database.prepare(`
+const hedgeDealsAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
   FROM sqlite_master
-  WHERE type = 'table' AND name = 'fx_hedge_deals'
+  WHERE type = 'table' AND name = 'hedge_deals'
 `).get());
-const fxTradePositionManagementAlreadyInitialized = Boolean(database.prepare(`
+const tradePositionManagementAlreadyInitialized = Boolean(database.prepare(`
   SELECT 1 AS present
   FROM sqlite_master
-  WHERE type = 'table' AND name = 'fx_trade_position_management'
+  WHERE type = 'table' AND name = 'trade_position_management'
 `).get());
-migrateUnprefixedBatchTables(database);
+migrateAutoManagementTerminology(database);
 migrateTradingCounterpartyTerminology(database);
-prepareTradingCounterpartyExecutionContextSchema(database);
-if (sqliteTableExists(database, "fx_batches")) {
-  ensureFxBatchFormationTiming(database);
-  ensureFxBatchFormationReason(database);
+prepareTradingCounterpartyTradeContextSchema(database);
+if (sqliteTableExists(database, "batches")) {
+  ensureBatchFormationTiming(database);
+  ensureBatchFormationReason(database);
 }
-migrateFxTradePositionManagementState(database);
-// Upgrade the Execution Context columns before schema.sql creates triggers that
+migrateTradePositionManagementState(database);
+// Upgrade the Trade Context columns before schema.sql creates triggers that
 // reference their current names on an already initialized SQLite database.
-ensureFxPositionManagementPolicyColumns(database);
+ensurePositionManagementPolicyColumns(database);
+migrateAdmissionEnforcement(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
-if (!fxTradePositionManagementAlreadyInitialized) {
+migrateMarketCandleStorage(database);
+if (sqliteTableExists(database, "trading_counterparties")
+  && !tableColumnNames(database, "trading_counterparties").has("counterparty_scope")) {
+  dropTradingCounterpartyProfileIntegrityTriggers(database);
+}
+migrateAutoModeEligibilityRules(database);
+if (!tradePositionManagementAlreadyInitialized) {
   database.exec(`
-    DROP TRIGGER IF EXISTS trg_fx_trade_position_management_initialize;
-    DROP TABLE IF EXISTS fx_trade_position_management;
+    DROP TRIGGER IF EXISTS trg_trade_position_management_initialize;
+    DROP TABLE IF EXISTS trade_position_management;
   `);
 }
 database.exec("DROP VIEW IF EXISTS analytical_pnl_report");
-database.exec("DROP VIEW IF EXISTS v_fx_batch_formation_audit");
-dropTradingCounterpartyExecutionContextIntegrityTriggers(database);
+database.exec("DROP VIEW IF EXISTS v_batch_formation_audit");
+dropTradingCounterpartyTradeContextIntegrityTriggers(database);
 ensureHedgeQuickModeSettingsDefaultTenor(database);
 dropBatchIntegrityTriggers(database);
-migrateLegacyFxBatchOutputTables(database);
+migrateLegacyBatchOutputTables(database);
 migrateLegacyBatchTables(database);
-assertFxBatchMembershipConsistency(database);
+assertBatchMembershipConsistency(database);
 dropBatchIntegrityTriggers(database);
 dropLegacyDemoHiddenBatches(database);
-if (!hedgeFxDealsAlreadyInitialized) {
-  database.exec("DROP TABLE fx_hedge_deals");
+if (!hedgeDealsAlreadyInitialized) {
+  database.exec("DROP TABLE hedge_deals");
 }
-dropFxTradeExposureDealtCurrencyTriggers(database);
-dropClientFxDealTriggers(database);
-dropHedgeFxDealTriggers(database);
+dropTradeExposureDealtCurrencyTriggers(database);
+dropClientDealTriggers(database);
+dropHedgeDealTriggers(database);
 dropClientDealGenerationSettingsTriggers(database);
 dropHedgeQuickModeSettingsTriggers(database);
-dropAutoHedgingAdmissionPolicyCompletenessTriggers(database);
 migrateCcyOptionsConstraints(database);
 if (databaseAlreadyInitialized) {
   migrateLegacySimulationSettings(database);
 }
 ensureMarketQuoteSimulationSettings(database);
 migrateCcyPairOptionsConstraints(database);
-migrateFxTradeExposureTypes(database);
-migrateLegacyExecutionContextIds(database);
+migrateTradeExposureTypes(database);
+migrateLegacyTradeContextIds(database);
 migrateServicingLocationTextLimits(database);
 migrateAccountingSystemsShape(database);
-migrateExecutionSystemsShape(database);
+migrateOriginatingSystemsShape(database);
 migrateTradingCounterpartyModel(database);
+migrateTradingCounterpartyScope(database);
 migrateExternalCounterpartyKinds(database);
 ensurePricingRuleClientDealReferenceIndex(database);
 migrateHedgeQuickModeSettingsCounterpartyReference(database);
 migrateClientDealGenerationSettingsToMinorUnits(database);
 ensureClientDealGenerationProcessSettings(database);
 synchronizeClientDealGenerationSettings(database);
-migrateClientFxDealsToTradeExposure(database);
-migrateFxTradeExposureAmountsToMinorUnits(database);
-migrateFxTradeExposureTradeSemantics(database);
-migrateFxBatchTradeSemantics(database);
-migrateFxTradeExposureTimestamps(database);
-migrateFxBatchRollbackSemantics(database);
-migrateFxBatchMemberRoleSemantics(database);
-backfillLegacyFxBatchFormationReasonDetails(database);
+migrateClientDealsToTradeExposure(database);
+migrateTradeExposureAmountsToMinorUnits(database);
+migrateTradeExposureTradeSemantics(database);
+migrateBatchTradeSemantics(database);
+migrateTradeExposureTimestamps(database);
+migrateBatchRollbackSemantics(database);
+migrateBatchMemberRoleSemantics(database);
+backfillLegacyBatchFormationReasonDetails(database);
 migrateLegacyManualBatchFormations(database);
-migrateFxBatchTradeMembershipSemantics(database);
-migrateFxBatchQuoteCashOutput(database);
-migrateFxDealAnalyticalPnlToMinorUnits(database);
-migrateFxHedgeDealRequestTimestamp(database);
-ensureFxTradeExposureDealtCurrencyTriggers(database);
-migrateFxTradeMarketSnapshot(database);
-ensureClientFxDealIndexes(database);
-backfillInitialClientFxDealAttribution(database);
-ensureClientFxDealTriggers(database);
+migrateBatchTradeMembershipSemantics(database);
+migrateBatchQuoteCashOutput(database);
+migrateDealAnalyticalPnlToMinorUnits(database);
+migrateHedgeDealRequestTimestamp(database);
+ensureTradeExposureDealtCurrencyTriggers(database);
+migrateTradeMarketSnapshot(database);
+ensureClientDealIndexes(database);
+backfillInitialClientDealAttribution(database);
+ensureClientDealTriggers(database);
 rebuildLegacyCounterpartyConstraintNames(database);
-ensureFxBatchFormationTiming(database);
-ensureFxBatchFormationReason(database);
-database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
-ensureFxPositionManagementPolicyColumns(database);
-migrateAutoHedgingAdmissionPairDeviations(database);
-ensureFxTradePositionManagementRows(database);
+ensureBatchFormationTiming(database);
+ensureBatchFormationReason(database);
+ensurePositionManagementPolicyColumns(database);
+ensureTradePositionManagementRows(database);
 repairLegacyBatchTechnicalTradeManagementModes(database);
-ensureHedgeFxDealTriggers(database);
+database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
+ensureHedgeDealTriggers(database);
 
 if (!databaseAlreadyInitialized) {
   database.exec(fs.readFileSync(SEED_PATH, "utf8"));
@@ -382,12 +447,16 @@ if (!databaseAlreadyInitialized) {
     seedInitialAccountingSystems(database);
   }
 
-  if (!executionSystemsAlreadyInitialized) {
-    seedInitialExecutionSystems(database);
+  if (!originatingSystemsAlreadyInitialized) {
+    seedInitialOriginatingSystems(database);
   }
 
-  if (!executionContextsAlreadyInitialized) {
-    seedInitialExecutionContexts(database);
+  if (!tradeContextsAlreadyInitialized) {
+    seedInitialTradeContexts(database);
+  }
+
+  if (!tradePurposesAlreadyInitialized) {
+    seedInitialTradePurposes(database);
   }
 
   if (!tradingCounterpartiesAlreadyInitialized) {
@@ -406,8 +475,8 @@ if (!databaseAlreadyInitialized) {
     seedInitialClientDealGenerationSettings(database);
   }
 
-  if (!clientFxDealsAlreadyInitialized) {
-    seedInitialClientFxDeals(database);
+  if (!clientDealsAlreadyInitialized) {
+    seedInitialClientDeals(database);
   }
 
 }
@@ -418,14 +487,17 @@ if (databaseAlreadyInitialized && !hedgeQuickModeSettingsAlreadyInitialized) {
 
 // Финальная миграция может перестроить частично созданную relation-таблицу уже
 // после schema.sql, поэтому integrity-триггеры восстанавливаются явно.
-migrateTradingCounterpartyExecutionContexts(database);
-ensureTradingCounterpartyExecutionContextIntegrityTriggers(database);
+migrateTradingCounterpartyTradeContexts(database);
+ensureTradingCounterpartyTradeContextIntegrityTriggers(database);
 ensureUiTableColumnSettings(database);
 ensureUiColorTokens(database);
-ensureFxBatchingSettings(database);
-ensureFxAutoBatchingSettings(database);
-ensureAutoHedgingAdmissionPolicy(database);
-ensureFxBatchFormationReason(database);
+ensureBatchingSettings(database);
+ensureAutoBatchingSettings(database);
+ensureAutoModeEligibilityRules(database);
+ensureBatchFormationReason(database);
+assertTradingCounterpartyProfileConsistency(database);
+
+const tradePurposeApi = createTradePurposeModule(database);
 
 function tableColumnNames(sqlite, tableName) {
   return new Set(sqlite.prepare(`PRAGMA table_info(${tableName})`).all().map(column => column.name));
@@ -447,23 +519,23 @@ function runInImmediateTransaction(sqlite, operation) {
   }
 }
 
-function ensureFxBatchingSettings(sqlite) {
+function ensureBatchingSettings(sqlite) {
   runInImmediateTransaction(sqlite, () => {
     sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS fx_batching_settings
+      CREATE TABLE IF NOT EXISTS batching_settings
       (
         settings_id INTEGER PRIMARY KEY,
         allow_cross_tenor_batching INTEGER NOT NULL DEFAULT 0,
         updated_at TEXT NOT NULL
           DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-        CONSTRAINT chk_fx_batching_settings_singleton
+        CONSTRAINT chk_batching_settings_singleton
           CHECK (settings_id = 1),
-        CONSTRAINT chk_fx_batching_settings_cross_tenor
+        CONSTRAINT chk_batching_settings_cross_tenor
           CHECK (
             typeof(allow_cross_tenor_batching) = 'integer'
             AND allow_cross_tenor_batching = 0
           ),
-        CONSTRAINT chk_fx_batching_settings_updated_at
+        CONSTRAINT chk_batching_settings_updated_at
           CHECK (
             length(updated_at) = 24
             AND updated_at GLOB '????-??-??T??:??:??.???Z'
@@ -473,22 +545,22 @@ function ensureFxBatchingSettings(sqlite) {
     `);
 
     sqlite.prepare(`
-      INSERT OR IGNORE INTO fx_batching_settings
+      INSERT OR IGNORE INTO batching_settings
         (settings_id, allow_cross_tenor_batching)
       VALUES (1, ?)
-    `).run(FX_BATCHING_ALLOW_CROSS_TENOR_BATCHING_DEFAULT ? 1 : 0);
+    `).run(BATCHING_ALLOW_CROSS_TENOR_BATCHING_DEFAULT ? 1 : 0);
   });
 }
 
-function ensureFxAutoBatchingSettings(sqlite) {
-  const columns = tableColumnNames(sqlite, "fx_auto_batching_settings");
+function ensureAutoBatchingSettings(sqlite) {
+  const columns = tableColumnNames(sqlite, "auto_batching_settings");
 
   if (!columns.has("default_transfer_rate_spread_percent")) {
     sqlite.exec(`
-      ALTER TABLE fx_auto_batching_settings
+      ALTER TABLE auto_batching_settings
       ADD COLUMN default_transfer_rate_spread_percent TEXT NOT NULL
-        DEFAULT '${FX_AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT}'
-        CONSTRAINT chk_fx_auto_batching_settings_transfer_rate_spread
+        DEFAULT '${AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT}'
+        CONSTRAINT chk_auto_batching_settings_transfer_rate_spread
         CHECK (
           typeof(default_transfer_rate_spread_percent) = 'text'
           AND default_transfer_rate_spread_percent GLOB '[0-9]*'
@@ -503,16 +575,16 @@ function ensureFxAutoBatchingSettings(sqlite) {
 
   if (!columns.has("tenor_compatibility_mode")) {
     sqlite.exec(`
-      ALTER TABLE fx_auto_batching_settings
+      ALTER TABLE auto_batching_settings
       ADD COLUMN tenor_compatibility_mode TEXT NOT NULL
-        DEFAULT '${FX_AUTO_BATCHING_TENOR_COMPATIBILITY_MODE_DEFAULT}'
-        CONSTRAINT chk_fx_auto_batching_settings_tenor_compatibility
+        DEFAULT '${AUTO_BATCHING_TENOR_COMPATIBILITY_MODE_DEFAULT}'
+        CONSTRAINT chk_auto_batching_settings_tenor_compatibility
         CHECK (tenor_compatibility_mode = 'SAME_TENOR_ONLY')
     `);
   }
 
   sqlite.prepare(`
-    INSERT OR IGNORE INTO fx_auto_batching_settings
+    INSERT OR IGNORE INTO auto_batching_settings
       (
         settings_id,
         max_interval_seconds,
@@ -521,60 +593,60 @@ function ensureFxAutoBatchingSettings(sqlite) {
       )
     VALUES (1, ?, ?, ?)
   `).run(
-    FX_AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT,
-    FX_AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT,
-    FX_AUTO_BATCHING_TENOR_COMPATIBILITY_MODE_DEFAULT
+    AUTO_BATCHING_MAX_INTERVAL_SECONDS_DEFAULT,
+    AUTO_BATCHING_MAX_TRANSFER_RATE_SPREAD_PERCENT_DEFAULT,
+    AUTO_BATCHING_TENOR_COMPATIBILITY_MODE_DEFAULT
   );
 
   sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS fx_auto_batching_ccy_pairs
+    CREATE TABLE IF NOT EXISTS auto_batching_ccy_pairs
     (
       settings_id INTEGER NOT NULL DEFAULT 1,
       ccy_pair_code TEXT NOT NULL,
       PRIMARY KEY (settings_id, ccy_pair_code),
-      CONSTRAINT fk_fx_auto_batching_ccy_pairs_settings
+      CONSTRAINT fk_auto_batching_ccy_pairs_settings
         FOREIGN KEY (settings_id)
-          REFERENCES fx_auto_batching_settings (settings_id)
+          REFERENCES auto_batching_settings (settings_id)
           ON UPDATE RESTRICT
           ON DELETE CASCADE,
-      CONSTRAINT fk_fx_auto_batching_ccy_pairs_ccy_pair
+      CONSTRAINT fk_auto_batching_ccy_pairs_ccy_pair
         FOREIGN KEY (ccy_pair_code)
           REFERENCES ccy_pair_options (ccy_pair_code)
           ON UPDATE RESTRICT
           ON DELETE RESTRICT,
-      CONSTRAINT chk_fx_auto_batching_ccy_pairs_singleton
+      CONSTRAINT chk_auto_batching_ccy_pairs_singleton
         CHECK (settings_id = 1)
     ) WITHOUT ROWID
   `);
 
   const configuredPairCount = Number(sqlite.prepare(`
     SELECT COUNT(*) AS pair_count
-    FROM fx_auto_batching_ccy_pairs
+    FROM auto_batching_ccy_pairs
     WHERE settings_id = 1
   `).get().pair_count);
 
   if (configuredPairCount === 0) {
     const insertDefaultPair = sqlite.prepare(`
-      INSERT OR IGNORE INTO fx_auto_batching_ccy_pairs
+      INSERT OR IGNORE INTO auto_batching_ccy_pairs
         (settings_id, ccy_pair_code)
       SELECT 1, ccy_pair_code
       FROM ccy_pair_options
       WHERE ccy_pair_code = ?
     `);
 
-    FX_AUTO_BATCHING_CCY_PAIR_CODES_DEFAULT.forEach(ccyPairCode => {
+    AUTO_BATCHING_CCY_PAIR_CODES_DEFAULT.forEach(ccyPairCode => {
       insertDefaultPair.run(ccyPairCode);
     });
 
     const insertedDefaultPairCount = Number(sqlite.prepare(`
       SELECT COUNT(*) AS pair_count
-      FROM fx_auto_batching_ccy_pairs
+      FROM auto_batching_ccy_pairs
       WHERE settings_id = 1
     `).get().pair_count);
 
     if (insertedDefaultPairCount === 0) {
       sqlite.prepare(`
-        INSERT INTO fx_auto_batching_ccy_pairs
+        INSERT INTO auto_batching_ccy_pairs
           (settings_id, ccy_pair_code)
         SELECT 1, ccy_pair_code
         FROM ccy_pair_options
@@ -585,210 +657,37 @@ function ensureFxAutoBatchingSettings(sqlite) {
   }
 }
 
-function ensureAutoHedgingAdmissionPolicy(sqlite) {
+function ensureAutoModeEligibilityRules(sqlite) {
   runInImmediateTransaction(sqlite, () => {
-    const current = sqlite.prepare(`
-      SELECT revision
-      FROM auto_hedging_admission_policy_current
-      WHERE policy_id = 1
-    `).get();
-
-    if (current) {
-      return;
-    }
-
-    let revision = Number(sqlite.prepare(`
-      SELECT COALESCE(MAX(revision), 0) AS revision
-      FROM auto_hedging_admission_policy_revisions
-    `).get().revision);
-
-    if (revision === 0) {
-      revision = 1;
-      const revisionColumns = tableColumnNames(
-        sqlite,
-        "auto_hedging_admission_policy_revisions"
-      );
-      if (revisionColumns.has("max_transfer_rate_deviation_percent")) {
-        sqlite.prepare(`
-          INSERT INTO auto_hedging_admission_policy_revisions
-            (revision, max_transfer_rate_deviation_percent)
-          VALUES (?, '1.00')
-        `).run(revision);
-      } else {
-        sqlite.prepare(`
-          INSERT INTO auto_hedging_admission_policy_revisions (revision)
-          VALUES (?)
-        `).run(revision);
-      }
-
-      sqlite.prepare(`
-        INSERT INTO auto_hedging_admission_policy_pair_deviations
-          (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
-        SELECT ?, ccy_pair_code, '1.00'
-        FROM ccy_pair_options
-      `).run(revision);
-
-      const seedPair = sqlite.prepare(`
-        INSERT INTO auto_hedging_admission_policy_pair_rules
-          (
-            revision,
-            ccy_pair_code,
-            max_base_ccy_amount_minor,
-            base_ccy_fraction_digits
-          )
-        SELECT ?, pair.ccy_pair_code, ?, base_ccy.fraction_digits
-        FROM ccy_pair_options pair
-        INNER JOIN ccy_options base_ccy
-          ON base_ccy.ccy_code = pair.base_ccy_code
-        WHERE pair.ccy_pair_code = ?
-      `);
-      const defaultPairs = sqlite.prepare(`
-        SELECT
-          pair.ccy_pair_code AS ccyPairCode,
-          base_ccy.fraction_digits AS baseCcyFractionDigits
-        FROM ccy_pair_options pair
-        INNER JOIN ccy_options base_ccy
-          ON base_ccy.ccy_code = pair.base_ccy_code
-        WHERE pair.ccy_pair_code IN ('EUR_USD', 'GBP_USD')
-        ORDER BY pair.ccy_pair_code
-      `).all();
-
-      defaultPairs.forEach(pair => {
-        const amountMinor = minorToSafeInteger(
-          majorToMinorExact("100000000", pair.baseCcyFractionDigits),
-          `Default ${pair.ccyPairCode} Auto Hedging amount limit`
-        );
-        seedPair.run(revision, amountMinor, pair.ccyPairCode);
-      });
-    }
-
-    sqlite.prepare(`
-      INSERT INTO auto_hedging_admission_policy_current
-        (policy_id, revision)
-      VALUES (1, ?)
-    `).run(revision);
-  });
-}
-
-function migrateAutoHedgingAdmissionPairDeviations(sqlite) {
-  if (!sqliteTableExists(sqlite, "auto_hedging_admission_policy_revisions")
-    || !sqliteTableExists(sqlite, "auto_hedging_admission_policy_pair_deviations")
-    || !sqliteTableExists(sqlite, "ccy_pair_options")) {
-    return;
-  }
-
-  const revisionColumns = tableColumnNames(
-    sqlite,
-    "auto_hedging_admission_policy_revisions"
-  );
-  if (!revisionColumns.has("max_transfer_rate_deviation_percent")) {
-    return;
-  }
-
-  sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS application_schema_migrations
-    (
-      migration_key TEXT PRIMARY KEY,
-      applied_at TEXT NOT NULL
-        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-    ) WITHOUT ROWID;
-  `);
-
-  const migrationKey = "auto_hedging_admission_pair_deviations_v1";
-  if (sqlite.prepare(`
-    SELECT 1 AS applied
-    FROM application_schema_migrations
-    WHERE migration_key = ?
-  `).get(migrationKey)) {
-    return;
-  }
-
-  const deviationRowCount = Number(sqlite.prepare(`
-    SELECT COUNT(*) AS rowCount
-    FROM auto_hedging_admission_policy_pair_deviations
-  `).get().rowCount);
-  const expectedDeviationRowCount = Number(sqlite.prepare(`
-    SELECT
-      (SELECT COUNT(*) FROM auto_hedging_admission_policy_revisions)
-      * (SELECT COUNT(*) FROM ccy_pair_options) AS rowCount
-  `).get().rowCount);
-  if (deviationRowCount !== 0
-    && deviationRowCount !== expectedDeviationRowCount) {
-    throw new Error(
-      "Legacy Auto Hedging Admission pair deviations are partially populated; "
-      + "startup migration cannot preserve immutable revision history safely."
-    );
-  }
-  if (deviationRowCount === expectedDeviationRowCount
-    && deviationRowCount !== 0
-    && sqlite.prepare(`
-      SELECT 1 AS mismatch
-      FROM auto_hedging_admission_policy_pair_deviations deviation
-      INNER JOIN auto_hedging_admission_policy_revisions revision
-        ON revision.revision = deviation.revision
-      WHERE deviation.max_transfer_rate_deviation_percent
-        IS NOT revision.max_transfer_rate_deviation_percent
-      LIMIT 1
-    `).get()) {
-    throw new Error(
-      "Legacy Auto Hedging Admission pair deviations do not match their "
-      + "revision-level source values; startup migration cannot preserve "
-      + "immutable revision history safely."
-    );
-  }
-
-  runInImmediateTransaction(sqlite, () => {
-    // Published revisions are immutable in normal operation. This narrowly
-    // scoped startup migration is the only place allowed to complete their
-    // new per-pair projection.
     sqlite.exec(`
-      DROP TRIGGER IF EXISTS
-        trg_auto_hedging_admission_policy_pair_deviations_lock_published_insert;
-    `);
-    if (deviationRowCount === 0) {
-      sqlite.exec(`
-        INSERT INTO auto_hedging_admission_policy_pair_deviations
-          (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
-        SELECT
-          revision.revision,
-          pair.ccy_pair_code,
-          revision.max_transfer_rate_deviation_percent
-        FROM auto_hedging_admission_policy_revisions revision
-        CROSS JOIN ccy_pair_options pair;
-      `);
-    }
-    sqlite.prepare(`
-      INSERT INTO application_schema_migrations (migration_key)
-      VALUES (?)
-    `).run(migrationKey);
-    sqlite.exec(`
-      CREATE TRIGGER
-        trg_auto_hedging_admission_policy_pair_deviations_lock_published_insert
-      BEFORE INSERT ON auto_hedging_admission_policy_pair_deviations
-      FOR EACH ROW
-      WHEN NEW.revision <= COALESCE(
+      INSERT OR IGNORE INTO auto_mode_eligibility_rules
         (
-          SELECT current.revision
-          FROM auto_hedging_admission_policy_current current
-          WHERE current.policy_id = 1
-        ),
-        0
-      )
-      BEGIN
-        SELECT RAISE(ABORT, 'AUTO_HEDGING_ADMISSION_POLICY_REVISION_IMMUTABLE');
-      END;
+          trade_type,
+          ccy_pair_code,
+          is_eligible,
+          max_base_ccy_amount_minor,
+          max_transfer_rate_deviation_percent
+        )
+      SELECT trade_type.trade_type, pair.ccy_pair_code, 0, NULL, NULL
+      FROM
+        (
+          SELECT 'CLIENT_DEAL' AS trade_type
+          UNION ALL SELECT 'HEDGE_DEAL'
+          UNION ALL SELECT 'BATCH_POSITION_OUT'
+        ) trade_type
+      CROSS JOIN ccy_pair_options pair;
     `);
   });
 }
 
-function ensureFxBatchFormationTiming(sqlite) {
-  const columns = tableColumnNames(sqlite, "fx_batches");
+function ensureBatchFormationTiming(sqlite) {
+  const columns = tableColumnNames(sqlite, "batches");
 
   if (!columns.has("window_opened_at")) {
     sqlite.exec(`
-      ALTER TABLE fx_batches
+      ALTER TABLE batches
       ADD COLUMN window_opened_at TEXT
-        CONSTRAINT chk_fx_batches_window_opened_at
+        CONSTRAINT chk_batches_window_opened_at
         CHECK (
           window_opened_at IS NULL
           OR (
@@ -803,9 +702,9 @@ function ensureFxBatchFormationTiming(sqlite) {
 
   if (!columns.has("window_closed_at")) {
     sqlite.exec(`
-      ALTER TABLE fx_batches
+      ALTER TABLE batches
       ADD COLUMN window_closed_at TEXT
-        CONSTRAINT chk_fx_batches_window_closed_at
+        CONSTRAINT chk_batches_window_closed_at
         CHECK (
           window_closed_at IS NULL
           OR (
@@ -819,31 +718,31 @@ function ensureFxBatchFormationTiming(sqlite) {
   }
 }
 
-function ensureFxBatchFormationReason(sqlite) {
-  const columns = tableColumnNames(sqlite, "fx_batches");
+function ensureBatchFormationReason(sqlite) {
+  const columns = tableColumnNames(sqlite, "batches");
 
   if (!columns.has("formation_reason_code")) {
     sqlite.exec(`
-      ALTER TABLE fx_batches
+      ALTER TABLE batches
       ADD COLUMN formation_reason_code TEXT NOT NULL
-        DEFAULT '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
-        CONSTRAINT chk_fx_batches_formation_reason_code
+        DEFAULT '${BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
+        CONSTRAINT chk_batches_formation_reason_code
         CHECK (formation_reason_code IN (
-          '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}',
-          '${FX_BATCH_FORMATION_REASON_CODE.MAX_INTERVAL_REACHED}',
-          '${FX_BATCH_FORMATION_REASON_CODE.TRANSFER_RATE_CORRIDOR_BREACHED}'
+          '${BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}',
+          '${BATCH_FORMATION_REASON_CODE.MAX_INTERVAL_REACHED}',
+          '${BATCH_FORMATION_REASON_CODE.TRANSFER_RATE_CORRIDOR_BREACHED}'
         ))
     `);
   }
 
   if (!columns.has("formation_reason_details_json")) {
     sqlite.exec(`
-      ALTER TABLE fx_batches
+      ALTER TABLE batches
       ADD COLUMN formation_reason_details_json TEXT NOT NULL DEFAULT '{}'
-        CONSTRAINT chk_fx_batches_formation_reason_details
+        CONSTRAINT chk_batches_formation_reason_details
         CHECK (
           length(formation_reason_details_json) BETWEEN 2
-            AND ${FX_BATCH_FORMATION_REASON_DETAILS_MAX_LENGTH}
+            AND ${BATCH_FORMATION_REASON_DETAILS_MAX_LENGTH}
           AND json_valid(formation_reason_details_json) = 1
           AND substr(formation_reason_details_json, 1, 1) = '{'
           AND substr(formation_reason_details_json, -1, 1) = '}'
@@ -852,14 +751,14 @@ function ensureFxBatchFormationReason(sqlite) {
   }
 
   sqlite.exec(`
-    DROP TRIGGER IF EXISTS trg_fx_batches_validate_formation_reason_insert;
-    DROP TRIGGER IF EXISTS trg_fx_batches_validate_formation_reason_update;
-    DROP TRIGGER IF EXISTS trg_fx_batches_validate_formation_timing_insert;
-    DROP TRIGGER IF EXISTS trg_fx_batches_validate_formation_timing_update;
-    DROP TRIGGER IF EXISTS trg_fx_batches_immutable_update;
+    DROP TRIGGER IF EXISTS trg_batches_validate_formation_reason_insert;
+    DROP TRIGGER IF EXISTS trg_batches_validate_formation_reason_update;
+    DROP TRIGGER IF EXISTS trg_batches_validate_formation_timing_insert;
+    DROP TRIGGER IF EXISTS trg_batches_validate_formation_timing_update;
+    DROP TRIGGER IF EXISTS trg_batches_immutable_update;
 
-    CREATE TRIGGER trg_fx_batches_validate_formation_reason_insert
-    BEFORE INSERT ON fx_batches
+    CREATE TRIGGER trg_batches_validate_formation_reason_insert
+    BEFORE INSERT ON batches
     FOR EACH ROW
     WHEN CASE
       WHEN json_valid(NEW.formation_reason_details_json) = 0 THEN 1
@@ -870,8 +769,8 @@ function ensureFxBatchFormationReason(sqlite) {
       SELECT RAISE(ABORT, 'batch formation reason details must be a JSON object');
     END;
 
-    CREATE TRIGGER trg_fx_batches_validate_formation_reason_update
-    BEFORE UPDATE OF formation_reason_details_json ON fx_batches
+    CREATE TRIGGER trg_batches_validate_formation_reason_update
+    BEFORE UPDATE OF formation_reason_details_json ON batches
     FOR EACH ROW
     WHEN CASE
       WHEN json_valid(NEW.formation_reason_details_json) = 0 THEN 1
@@ -882,16 +781,16 @@ function ensureFxBatchFormationReason(sqlite) {
       SELECT RAISE(ABORT, 'batch formation reason details must be a JSON object');
     END;
 
-    CREATE TRIGGER trg_fx_batches_validate_formation_timing_insert
-    BEFORE INSERT ON fx_batches
+    CREATE TRIGGER trg_batches_validate_formation_timing_insert
+    BEFORE INSERT ON batches
     FOR EACH ROW
     WHEN
       (
-        NEW.formation_reason_code = '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
+        NEW.formation_reason_code = '${BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
         AND (NEW.window_opened_at IS NOT NULL OR NEW.window_closed_at IS NOT NULL)
       )
       OR (
-        NEW.formation_reason_code <> '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
+        NEW.formation_reason_code <> '${BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
         AND (
           NEW.window_opened_at IS NULL
           OR NEW.window_closed_at IS NULL
@@ -903,17 +802,17 @@ function ensureFxBatchFormationReason(sqlite) {
       SELECT RAISE(ABORT, 'batch formation timing is inconsistent');
     END;
 
-    CREATE TRIGGER trg_fx_batches_validate_formation_timing_update
+    CREATE TRIGGER trg_batches_validate_formation_timing_update
     BEFORE UPDATE OF formation_reason_code, window_opened_at, window_closed_at, created_at
-    ON fx_batches
+    ON batches
     FOR EACH ROW
     WHEN
       (
-        NEW.formation_reason_code = '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
+        NEW.formation_reason_code = '${BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
         AND (NEW.window_opened_at IS NOT NULL OR NEW.window_closed_at IS NOT NULL)
       )
       OR (
-        NEW.formation_reason_code <> '${FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
+        NEW.formation_reason_code <> '${BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION}'
         AND (
           NEW.window_opened_at IS NULL
           OR NEW.window_closed_at IS NULL
@@ -925,8 +824,8 @@ function ensureFxBatchFormationReason(sqlite) {
       SELECT RAISE(ABORT, 'batch formation timing is inconsistent');
     END;
 
-    CREATE TRIGGER trg_fx_batches_immutable_update
-    BEFORE UPDATE ON fx_batches
+    CREATE TRIGGER trg_batches_immutable_update
+    BEFORE UPDATE ON batches
     FOR EACH ROW
     WHEN
       OLD.batch_status = 'ROLLED_BACK'
@@ -952,22 +851,22 @@ function ensureFxBatchFormationReason(sqlite) {
   `);
 }
 
-function backfillLegacyFxBatchFormationReasonDetails(sqlite) {
+function backfillLegacyBatchFormationReasonDetails(sqlite) {
   if (
-    !sqliteTableExists(sqlite, "fx_batches")
-    || !sqliteTableExists(sqlite, "fx_batch_members")
+    !sqliteTableExists(sqlite, "batches")
+    || !sqliteTableExists(sqlite, "batch_members")
   ) {
     return;
   }
 
   sqlite.exec(`
-    UPDATE fx_batches
+    UPDATE batches
     SET formation_reason_details_json = json_object(
       'selectedTradeCount',
       (
         SELECT COUNT(*)
-        FROM fx_batch_members member
-        WHERE member.batch_id = fx_batches.batch_id
+        FROM batch_members member
+        WHERE member.batch_id = batches.batch_id
           AND member.member_role = 'TRADE'
       )
     )
@@ -975,8 +874,8 @@ function backfillLegacyFxBatchFormationReasonDetails(sqlite) {
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
       AND EXISTS (
         SELECT 1
-        FROM fx_batch_members member
-        WHERE member.batch_id = fx_batches.batch_id
+        FROM batch_members member
+        WHERE member.batch_id = batches.batch_id
           AND member.member_role = 'TRADE'
       );
   `);
@@ -990,52 +889,40 @@ function sqliteTableExists(sqlite, tableName) {
   `).get(tableName));
 }
 
-function ensureFxPositionManagementPolicyColumns(sqlite) {
-  if (
-    sqliteTableExists(sqlite, "execution_contexts")
-    && !tableColumnNames(sqlite, "execution_contexts")
-      .has("default_position_management_mode")
-  ) {
-    sqlite.exec(`
-      ALTER TABLE execution_contexts
-      ADD COLUMN default_position_management_mode TEXT NOT NULL DEFAULT 'MANUAL'
-        CHECK (default_position_management_mode IN ('MANUAL', 'AUTO'))
-    `);
-  }
+function ensurePositionManagementPolicyColumns(sqlite) {
+  if (sqliteTableExists(sqlite, "trade_contexts")) {
+    const contextColumns = tableColumnNames(sqlite, "trade_contexts");
 
-  if (sqliteTableExists(sqlite, "execution_contexts")) {
-    const contextColumns = tableColumnNames(sqlite, "execution_contexts");
-
-    if (contextColumns.has("auto_hedging_admission_policy")
-      && !contextColumns.has("auto_hedging_admission_mode")) {
+    if (contextColumns.has("auto_management_admission_policy")
+      && !contextColumns.has("auto_management_admission_mode")) {
       sqlite.exec(`
-        ALTER TABLE execution_contexts
-        RENAME COLUMN auto_hedging_admission_policy TO auto_hedging_admission_mode
+        ALTER TABLE trade_contexts
+        RENAME COLUMN auto_management_admission_policy TO auto_management_admission_mode
       `);
     }
   }
 
   if (
-    sqliteTableExists(sqlite, "execution_contexts")
-    && !tableColumnNames(sqlite, "execution_contexts")
-      .has("auto_hedging_admission_mode")
+    sqliteTableExists(sqlite, "trade_contexts")
+    && !tableColumnNames(sqlite, "trade_contexts")
+      .has("auto_management_admission_mode")
   ) {
     sqlite.exec(`
-      ALTER TABLE execution_contexts
-      ADD COLUMN auto_hedging_admission_mode TEXT NOT NULL DEFAULT 'MANUAL_ONLY'
+      ALTER TABLE trade_contexts
+      ADD COLUMN auto_management_admission_mode TEXT NOT NULL DEFAULT 'REVIEW_REQUIRED'
         CHECK (
-          auto_hedging_admission_mode IN
-            ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
+          auto_management_admission_mode IN
+            ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED')
         );
 
-      UPDATE execution_contexts
-      SET auto_hedging_admission_mode = 'AUTO_IF_ELIGIBLE'
-      WHERE default_position_management_mode = 'AUTO'
+      UPDATE trade_contexts
+      SET auto_management_admission_mode = 'AUTO_IF_ELIGIBLE'
+      WHERE ${tableColumnNames(sqlite, 'trade_contexts').has('default_position_management_mode') ? "default_position_management_mode = 'AUTO'" : '0'}
         AND EXISTS
         (
           SELECT 1
-          FROM execution_systems system
-          WHERE system.execution_system_id = execution_contexts.execution_system_id
+          FROM originating_systems system
+          WHERE system.originating_system_id = trade_contexts.originating_system_id
             AND system.pricing_mode = 'AUTO_PRICED'
         );
     `);
@@ -1044,40 +931,25 @@ function ensureFxPositionManagementPolicyColumns(sqlite) {
   if (
     sqliteTableExists(sqlite, "pricing_rules")
     && !tableColumnNames(sqlite, "pricing_rules")
-      .has("position_management_mode_override")
+      .has("auto_management_admission_mode_override")
   ) {
     sqlite.exec(`
       ALTER TABLE pricing_rules
-      ADD COLUMN position_management_mode_override TEXT
+      ADD COLUMN auto_management_admission_mode_override TEXT
         CHECK (
-          position_management_mode_override IS NULL
-          OR position_management_mode_override IN ('MANUAL', 'AUTO')
-        )
-    `);
-  }
-
-  if (
-    sqliteTableExists(sqlite, "pricing_rules")
-    && !tableColumnNames(sqlite, "pricing_rules")
-      .has("auto_hedging_admission_mode_override")
-  ) {
-    sqlite.exec(`
-      ALTER TABLE pricing_rules
-      ADD COLUMN auto_hedging_admission_mode_override TEXT
-        CHECK (
-          auto_hedging_admission_mode_override IS NULL
-          OR auto_hedging_admission_mode_override = 'MANUAL_ONLY'
+          auto_management_admission_mode_override IS NULL
+          OR auto_management_admission_mode_override = 'REVIEW_REQUIRED'
         )
     `);
   }
 }
 
-function migrateFxTradePositionManagementState(sqlite) {
-  if (!sqliteTableExists(sqlite, "fx_trade_position_management")) {
+function migrateTradePositionManagementState(sqlite) {
+  if (!sqliteTableExists(sqlite, "trade_position_management")) {
     return;
   }
 
-  const columns = tableColumnNames(sqlite, "fx_trade_position_management");
+  const columns = tableColumnNames(sqlite, "trade_position_management");
   const canonicalColumns = [
     "trade_id",
     "trade_type",
@@ -1110,13 +982,13 @@ function migrateFxTradePositionManagementState(sqlite) {
     || requiredColumns.some(column => !columns.has(column))
   ) {
     throw new Error(
-      "FX Trade Position Management schema cannot be migrated safely."
+      "Trade Position Management schema cannot be migrated safely."
     );
   }
 
   const originalRowCount = Number(sqlite.prepare(`
     SELECT COUNT(*) AS count
-    FROM fx_trade_position_management
+    FROM trade_position_management
   `).get().count);
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -1124,11 +996,11 @@ function migrateFxTradePositionManagementState(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      DROP TRIGGER IF EXISTS trg_fx_trade_position_management_initialize;
-      DROP INDEX IF EXISTS idx_fx_trade_position_management_mode;
-      DROP INDEX IF EXISTS idx_fx_trade_position_management_current_mode;
+      DROP TRIGGER IF EXISTS trg_trade_position_management_initialize;
+      DROP INDEX IF EXISTS idx_trade_position_management_mode;
+      DROP INDEX IF EXISTS idx_trade_position_management_current_mode;
 
-      CREATE TABLE fx_trade_position_management_migrated
+      CREATE TABLE trade_position_management_migrated
       (
           trade_id                          INTEGER NOT NULL,
           trade_type                        TEXT    NOT NULL,
@@ -1139,24 +1011,24 @@ function migrateFxTradePositionManagementState(sqlite) {
           updated_at                        TEXT    NOT NULL
               DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-          CONSTRAINT pk_fx_trade_position_management
+          CONSTRAINT pk_trade_position_management
               PRIMARY KEY (trade_id, trade_type),
-          CONSTRAINT fk_fx_trade_position_management_trade
+          CONSTRAINT fk_trade_position_management_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE CASCADE,
-          CONSTRAINT chk_fx_trade_position_management_initial_mode
+          CONSTRAINT chk_trade_position_management_initial_mode
               CHECK (initial_position_management_mode IN ('MANUAL', 'AUTO')),
-          CONSTRAINT chk_fx_trade_position_management_current_mode
+          CONSTRAINT chk_trade_position_management_current_mode
               CHECK (current_position_management_mode IN ('MANUAL', 'AUTO')),
-          CONSTRAINT chk_fx_trade_position_management_created_at
+          CONSTRAINT chk_trade_position_management_created_at
               CHECK (
                   length(created_at) = 24
                   AND created_at GLOB '????-??-??T??:??:??.???Z'
                   AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
               ),
-          CONSTRAINT chk_fx_trade_position_management_updated_at
+          CONSTRAINT chk_trade_position_management_updated_at
               CHECK (
                   length(updated_at) = 24
                   AND updated_at GLOB '????-??-??T??:??:??.???Z'
@@ -1165,7 +1037,7 @@ function migrateFxTradePositionManagementState(sqlite) {
               )
       );
 
-      INSERT INTO fx_trade_position_management_migrated
+      INSERT INTO trade_position_management_migrated
         (
           trade_id,
           trade_type,
@@ -1181,22 +1053,22 @@ function migrateFxTradePositionManagementState(sqlite) {
         ${legacyCurrentColumn},
         created_at,
         updated_at
-      FROM fx_trade_position_management
+      FROM trade_position_management
       ORDER BY trade_id, trade_type;
 
-      DROP TABLE fx_trade_position_management;
-      ALTER TABLE fx_trade_position_management_migrated
-        RENAME TO fx_trade_position_management;
+      DROP TABLE trade_position_management;
+      ALTER TABLE trade_position_management_migrated
+        RENAME TO trade_position_management;
     `);
 
     const migratedRowCount = Number(sqlite.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_trade_position_management
+      FROM trade_position_management
     `).get().count);
 
     if (migratedRowCount !== originalRowCount) {
       throw new Error(
-        "FX Trade Position Management migration did not preserve every row."
+        "Trade Position Management migration did not preserve every row."
       );
     }
 
@@ -1215,18 +1087,18 @@ function migrateFxTradePositionManagementState(sqlite) {
 
   if (foreignKeyViolations.length > 0) {
     throw new Error(
-      "FX Trade Position Management migration produced foreign key violations."
+      "Trade Position Management migration produced foreign key violations."
     );
   }
 }
 
-function ensureFxTradePositionManagementRows(sqlite) {
-  if (!sqliteTableExists(sqlite, "fx_trade_position_management")) {
+function ensureTradePositionManagementRows(sqlite) {
+  if (!sqliteTableExists(sqlite, "trade_position_management")) {
     return;
   }
 
   sqlite.exec(`
-    INSERT INTO fx_trade_position_management
+    INSERT INTO trade_position_management
       (
         trade_id,
         trade_type,
@@ -1238,11 +1110,11 @@ function ensureFxTradePositionManagementRows(sqlite) {
       exposure.trade_type,
       'MANUAL',
       'MANUAL'
-    FROM fx_trade_exposure exposure
+    FROM trade_exposures exposure
     WHERE NOT EXISTS
     (
       SELECT 1
-      FROM fx_trade_position_management management
+      FROM trade_position_management management
       WHERE management.trade_id = exposure.trade_id
         AND management.trade_type = exposure.trade_type
     )
@@ -1251,9 +1123,9 @@ function ensureFxTradePositionManagementRows(sqlite) {
 
 function repairLegacyBatchTechnicalTradeManagementModes(sqlite) {
   const requiredTables = [
-    "fx_batches",
-    "fx_batch_members",
-    "fx_trade_position_management"
+    "batches",
+    "batch_members",
+    "trade_position_management"
   ];
 
   if (requiredTables.some(tableName => !sqliteTableExists(sqlite, tableName))) {
@@ -1261,7 +1133,7 @@ function repairLegacyBatchTechnicalTradeManagementModes(sqlite) {
   }
 
   sqlite.exec(`
-    UPDATE fx_trade_position_management
+    UPDATE trade_position_management
     SET initial_position_management_mode = 'AUTO',
         current_position_management_mode = 'AUTO',
         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
@@ -1271,20 +1143,20 @@ function repairLegacyBatchTechnicalTradeManagementModes(sqlite) {
       AND EXISTS
       (
         SELECT 1
-        FROM fx_batch_members output_member
-        INNER JOIN fx_batches batch
+        FROM batch_members output_member
+        INNER JOIN batches batch
           ON batch.batch_id = output_member.batch_id
-        WHERE output_member.trade_id = fx_trade_position_management.trade_id
-          AND output_member.trade_type = fx_trade_position_management.trade_type
+        WHERE output_member.trade_id = trade_position_management.trade_id
+          AND output_member.trade_type = trade_position_management.trade_type
           AND
           (
             (
-              fx_trade_position_management.trade_type = 'BATCH_BALANCE_TRADE'
+              trade_position_management.trade_type = 'BATCH_BALANCE_TRADE'
               AND output_member.member_role = 'BALANCE_TRADE'
             )
             OR
             (
-              fx_trade_position_management.trade_type = 'BATCH_POSITION_OUT'
+              trade_position_management.trade_type = 'BATCH_POSITION_OUT'
               AND output_member.member_role = 'POSITION_OUT'
             )
           )
@@ -1292,15 +1164,15 @@ function repairLegacyBatchTechnicalTradeManagementModes(sqlite) {
           AND EXISTS
           (
             SELECT 1
-            FROM fx_batch_members source_member
+            FROM batch_members source_member
             WHERE source_member.batch_id = output_member.batch_id
               AND source_member.member_role = 'TRADE'
           )
           AND NOT EXISTS
           (
             SELECT 1
-            FROM fx_batch_members source_member
-            LEFT JOIN fx_trade_position_management source_management
+            FROM batch_members source_member
+            LEFT JOIN trade_position_management source_management
               ON source_management.trade_id = source_member.trade_id
               AND source_management.trade_type = source_member.trade_type
             WHERE source_member.batch_id = output_member.batch_id
@@ -1315,8 +1187,8 @@ function repairLegacyBatchTechnicalTradeManagementModes(sqlite) {
   `);
 }
 
-function prepareTradingCounterpartyExecutionContextSchema(sqlite) {
-  const tableName = "trading_counterparty_execution_contexts";
+function prepareTradingCounterpartyTradeContextSchema(sqlite) {
+  const tableName = "trading_counterparty_trade_contexts";
 
   if (!sqliteTableExists(sqlite, tableName)) {
     return;
@@ -1325,8 +1197,8 @@ function prepareTradingCounterpartyExecutionContextSchema(sqlite) {
   const columns = tableColumnNames(sqlite, tableName);
 
   // A legacy party_id column would make schema.sql fail while creating the reverse index.
-  if (!columns.has("counterparty_id") || !columns.has("execution_context_id")) {
-    migrateTradingCounterpartyExecutionContexts(sqlite);
+  if (!columns.has("counterparty_id") || !columns.has("trade_context_id")) {
+    migrateTradingCounterpartyTradeContexts(sqlite);
   }
 }
 
@@ -1335,6 +1207,13 @@ function uiTableColumnDefinitions(tableKey) {
 }
 
 function ensureUiTableColumnSettings(sqlite) {
+  const normalizedPersistedWidth = (value, fallback) => {
+    const width = Number(value);
+
+    return Number.isInteger(width)
+      ? Math.min(UI_TABLE_COLUMN_WIDTH_MAX_PX, Math.max(UI_TABLE_COLUMN_WIDTH_MIN_PX, width))
+      : fallback;
+  };
   const existingSettings = sqlite.prepare(`
     SELECT
       table_key AS tableKey,
@@ -1374,14 +1253,22 @@ function ensureUiTableColumnSettings(sqlite) {
         const existingSetting = existingSettingsByKey.get(
           `${tableKey}.${column.columnKey}`
         );
+        const defaultWidthPx = normalizedPersistedWidth(
+          existingSetting?.defaultWidthPx,
+          column.defaultWidthPx
+        );
+        const widthPx = normalizedPersistedWidth(
+          existingSetting?.widthPx,
+          defaultWidthPx
+        );
 
         insert.run(
           tableKey,
           column.columnKey,
           column.columnLabel,
           displayOrder,
-          existingSetting?.defaultWidthPx ?? column.defaultWidthPx,
-          existingSetting?.widthPx ?? column.defaultWidthPx,
+          defaultWidthPx,
+          widthPx,
           existingSetting?.updatedAt ?? null
         );
       });
@@ -1556,13 +1443,13 @@ function resetUiTableColumnSettings(tableKey) {
   return uiTableColumnSettings(tableKey);
 }
 
-function migrateFxTradeExposureTypes(sqlite) {
+function migrateTradeExposureTypes(sqlite) {
   const tableDefinition = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_trade_exposure'
+    WHERE type = 'table' AND name = 'trade_exposures'
   `).get()?.sql || "";
-  const supportsEveryTradeType = FX_TRADE_TYPES.every(tradeType =>
+  const supportsEveryTradeType = TRADE_TYPES.every(tradeType =>
     tableDefinition.includes(`'${tradeType}'`)
   );
 
@@ -1584,7 +1471,7 @@ function migrateFxTradeExposureTypes(sqlite) {
     "base_ccy_value_date",
     "quote_ccy_value_date"
   ];
-  const columns = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all()
+  const columns = sqlite.prepare("PRAGMA table_info(trade_exposures)").all()
     .map(column => column.name);
   const modernColumns = [
     "trade_id",
@@ -1609,31 +1496,31 @@ function migrateFxTradeExposureTypes(sqlite) {
   }
 
   if (columns.join(",") !== expectedColumns.join(",")) {
-    throw new Error("Unsupported FX Trade Exposure schema.");
+    throw new Error("Unsupported Trade Exposure schema.");
   }
 
   const invalidTrade = sqlite.prepare(`
     SELECT trade_id, trade_type
-    FROM fx_trade_exposure
-    WHERE trade_type NOT IN (${FX_TRADE_TYPES.map(() => "?").join(", ")})
+    FROM trade_exposures
+    WHERE trade_type NOT IN (${TRADE_TYPES.map(() => "?").join(", ")})
     LIMIT 1
-  `).get(...FX_TRADE_TYPES);
+  `).get(...TRADE_TYPES);
 
   if (invalidTrade) {
     throw new Error(
-      `FX Trade Exposure ${invalidTrade.trade_id} has unsupported type ${invalidTrade.trade_type}.`
+      `Trade Exposure ${invalidTrade.trade_id} has unsupported type ${invalidTrade.trade_type}.`
     );
   }
 
   const originalRowCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count
   );
   sqlite.exec("PRAGMA foreign_keys = OFF");
 
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE fx_trade_exposure_migrated
+      CREATE TABLE trade_exposures_migrated
       (
           trade_id             INTEGER PRIMARY KEY,
           entry_timestamp      TEXT    NOT NULL,
@@ -1648,18 +1535,18 @@ function migrateFxTradeExposureTypes(sqlite) {
           base_ccy_value_date  TEXT    NOT NULL,
           quote_ccy_value_date TEXT    NOT NULL,
 
-          CONSTRAINT fk_fx_trade_exposure_ccy_pair
+          CONSTRAINT fk_trade_exposures_ccy_pair
               FOREIGN KEY (ccy_pair_code)
                   REFERENCES ccy_pair_options (ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_trade_exposure_entry_timestamp
+          CONSTRAINT chk_trade_exposures_entry_timestamp
               CHECK (
                   length(entry_timestamp) = 24
                   AND entry_timestamp GLOB '????-??-??T??:??:??.???Z'
                   AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
               ),
-          CONSTRAINT chk_fx_trade_exposure_trade_type
+          CONSTRAINT chk_trade_exposures_trade_type
               CHECK (
                   trade_type IN
                   (
@@ -1669,14 +1556,14 @@ function migrateFxTradeExposureTypes(sqlite) {
                       'BATCH_POSITION_OUT'
                   )
               ),
-          CONSTRAINT chk_fx_trade_exposure_trade_date
+          CONSTRAINT chk_trade_exposures_trade_date
               CHECK (
                   trade_date GLOB '????-??-??'
                   AND strftime('%Y-%m-%d', trade_date) = trade_date
               ),
-          CONSTRAINT chk_fx_trade_exposure_side
+          CONSTRAINT chk_trade_exposures_side
               CHECK (side IN ('BUY', 'SELL')),
-          CONSTRAINT chk_fx_trade_exposure_amounts_and_rate
+          CONSTRAINT chk_trade_exposures_amounts_and_rate
               CHECK (
                   typeof(base_ccy_amount) IN ('integer', 'real')
                   AND base_ccy_amount > 0
@@ -1685,9 +1572,9 @@ function migrateFxTradeExposureTypes(sqlite) {
                   AND typeof(trade_rate) IN ('integer', 'real')
                   AND trade_rate > 0
               ),
-          CONSTRAINT chk_fx_trade_exposure_tenor
+          CONSTRAINT chk_trade_exposures_tenor
               CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
-          CONSTRAINT chk_fx_trade_exposure_value_dates
+          CONSTRAINT chk_trade_exposures_value_dates
               CHECK (
                   base_ccy_value_date GLOB '????-??-??'
                   AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
@@ -1696,7 +1583,7 @@ function migrateFxTradeExposureTypes(sqlite) {
               )
       );
 
-      INSERT INTO fx_trade_exposure_migrated
+      INSERT INTO trade_exposures_migrated
         (
           trade_id,
           entry_timestamp,
@@ -1724,35 +1611,35 @@ function migrateFxTradeExposureTypes(sqlite) {
         tenor,
         base_ccy_value_date,
         quote_ccy_value_date
-      FROM fx_trade_exposure
+      FROM trade_exposures
       ORDER BY trade_id;
 
-      DROP TABLE fx_trade_exposure;
-      ALTER TABLE fx_trade_exposure_migrated RENAME TO fx_trade_exposure;
+      DROP TABLE trade_exposures;
+      ALTER TABLE trade_exposures_migrated RENAME TO trade_exposures;
 
-      CREATE INDEX idx_fx_trade_exposure_entry_timestamp
-          ON fx_trade_exposure (entry_timestamp);
-      CREATE INDEX idx_fx_trade_exposure_trade_type
-          ON fx_trade_exposure (trade_type);
-      CREATE INDEX idx_fx_trade_exposure_trade_date
-          ON fx_trade_exposure (trade_date);
-      CREATE INDEX idx_fx_trade_exposure_ccy_pair
-          ON fx_trade_exposure (ccy_pair_code);
-      CREATE UNIQUE INDEX uq_fx_trade_exposure_identity
-          ON fx_trade_exposure (trade_id, trade_type);
+      CREATE INDEX idx_trade_exposures_entry_timestamp
+          ON trade_exposures (entry_timestamp);
+      CREATE INDEX idx_trade_exposures_trade_type
+          ON trade_exposures (trade_type);
+      CREATE INDEX idx_trade_exposures_trade_date
+          ON trade_exposures (trade_date);
+      CREATE INDEX idx_trade_exposures_ccy_pair
+          ON trade_exposures (ccy_pair_code);
+      CREATE UNIQUE INDEX uq_trade_exposures_identity
+          ON trade_exposures (trade_id, trade_type);
     `);
 
     const migratedRowCount = Number(
-      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+      sqlite.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count
     );
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (migratedRowCount !== originalRowCount) {
-      throw new Error("FX Trade Exposure type migration did not preserve every row.");
+      throw new Error("Trade Exposure type migration did not preserve every row.");
     }
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("FX Trade Exposure type migration produced foreign key violations.");
+      throw new Error("Trade Exposure type migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -1767,7 +1654,7 @@ function migrateFxTradeExposureTypes(sqlite) {
   }
 }
 
-function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
+function migrateTradeExposureAmountsToMinorUnits(sqlite) {
   const sourceColumns = [
     "trade_id",
     "entry_timestamp",
@@ -1833,12 +1720,12 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
     "base_ccy_value_date",
     "quote_ccy_value_date"
   ];
-  const tableInfo = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all();
+  const tableInfo = sqlite.prepare("PRAGMA table_info(trade_exposures)").all();
   const columns = tableInfo.map(column => column.name);
   const tableDefinition = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_trade_exposure'
+    WHERE type = 'table' AND name = 'trade_exposures'
   `).get()?.sql || "";
 
   const isIntermediateSchema = columns.join(",") === targetColumns.join(",");
@@ -1860,18 +1747,18 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
       && tableInfo[amountColumnOffset + 2]?.notnull === 1
       && tableInfo[amountColumnOffset + 3]?.type === "INTEGER"
       && tableInfo[amountColumnOffset + 3]?.notnull === 1
-      && tableDefinition.includes("chk_fx_trade_exposure_amounts")
-      && tableDefinition.includes("chk_fx_trade_exposure_fraction_digits");
+      && tableDefinition.includes("chk_trade_exposures_amounts")
+      && tableDefinition.includes("chk_trade_exposures_fraction_digits");
 
     if (!targetDefinitionsAreValid) {
-      throw new Error("Unsupported FX Trade Exposure minor-unit schema.");
+      throw new Error("Unsupported Trade Exposure minor-unit schema.");
     }
 
     return;
   }
 
   if (columns.join(",") !== sourceColumns.join(",")) {
-    throw new Error("Unsupported FX Trade Exposure amount schema.");
+    throw new Error("Unsupported Trade Exposure amount schema.");
   }
 
   const sourceRows = sqlite.prepare(`
@@ -1879,18 +1766,18 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
       e.*,
       base_ccy.fraction_digits AS base_ccy_fraction_digits,
       quote_ccy.fraction_digits AS quote_ccy_fraction_digits
-    FROM fx_trade_exposure e
+    FROM trade_exposures e
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = pair.quote_ccy_code
     ORDER BY e.trade_id
   `).all();
   const originalRowCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count
   );
 
   if (sourceRows.length !== originalRowCount) {
-    throw new Error("Every FX Trade Exposure must resolve both currency fraction digits.");
+    throw new Error("Every Trade Exposure must resolve both currency fraction digits.");
   }
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -1898,7 +1785,7 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE fx_trade_exposure_minor
+      CREATE TABLE trade_exposures_minor
       (
           trade_id                    INTEGER PRIMARY KEY,
           entry_timestamp             TEXT    NOT NULL,
@@ -1915,18 +1802,18 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
           base_ccy_value_date         TEXT    NOT NULL,
           quote_ccy_value_date        TEXT    NOT NULL,
 
-          CONSTRAINT fk_fx_trade_exposure_ccy_pair
+          CONSTRAINT fk_trade_exposures_ccy_pair
               FOREIGN KEY (ccy_pair_code)
                   REFERENCES ccy_pair_options (ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_trade_exposure_entry_timestamp
+          CONSTRAINT chk_trade_exposures_entry_timestamp
               CHECK (
                   length(entry_timestamp) = 24
                   AND entry_timestamp GLOB '????-??-??T??:??:??.???Z'
                   AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
               ),
-          CONSTRAINT chk_fx_trade_exposure_trade_type
+          CONSTRAINT chk_trade_exposures_trade_type
               CHECK (
                   trade_type IN
                   (
@@ -1936,35 +1823,35 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
                       'BATCH_POSITION_OUT'
                   )
               ),
-          CONSTRAINT chk_fx_trade_exposure_trade_date
+          CONSTRAINT chk_trade_exposures_trade_date
               CHECK (
                   trade_date GLOB '????-??-??'
                   AND strftime('%Y-%m-%d', trade_date) = trade_date
               ),
-          CONSTRAINT chk_fx_trade_exposure_side
+          CONSTRAINT chk_trade_exposures_side
               CHECK (side IN ('BUY', 'SELL')),
-          CONSTRAINT chk_fx_trade_exposure_amounts
+          CONSTRAINT chk_trade_exposures_amounts
               CHECK (
                   typeof(base_ccy_amount_minor) = 'integer'
                   AND base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
                   AND typeof(quote_ccy_amount_minor) = 'integer'
                   AND quote_ccy_amount_minor BETWEEN 1 AND 9007199254740991
               ),
-          CONSTRAINT chk_fx_trade_exposure_fraction_digits
+          CONSTRAINT chk_trade_exposures_fraction_digits
               CHECK (
                   typeof(base_ccy_fraction_digits) = 'integer'
                   AND base_ccy_fraction_digits BETWEEN 0 AND 10
                   AND typeof(quote_ccy_fraction_digits) = 'integer'
                   AND quote_ccy_fraction_digits BETWEEN 0 AND 10
               ),
-          CONSTRAINT chk_fx_trade_exposure_rate
+          CONSTRAINT chk_trade_exposures_rate
               CHECK (
                   typeof(trade_rate) IN ('integer', 'real')
                   AND trade_rate > 0
               ),
-          CONSTRAINT chk_fx_trade_exposure_tenor
+          CONSTRAINT chk_trade_exposures_tenor
               CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
-          CONSTRAINT chk_fx_trade_exposure_value_dates
+          CONSTRAINT chk_trade_exposures_value_dates
               CHECK (
                   base_ccy_value_date GLOB '????-??-??'
                   AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
@@ -1975,7 +1862,7 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
     `);
 
     const insert = sqlite.prepare(`
-      INSERT INTO fx_trade_exposure_minor
+      INSERT INTO trade_exposures_minor
         (
           trade_id,
           entry_timestamp,
@@ -2024,32 +1911,32 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
     });
 
     sqlite.exec(`
-      DROP TABLE fx_trade_exposure;
-      ALTER TABLE fx_trade_exposure_minor RENAME TO fx_trade_exposure;
+      DROP TABLE trade_exposures;
+      ALTER TABLE trade_exposures_minor RENAME TO trade_exposures;
 
-      CREATE INDEX idx_fx_trade_exposure_entry_timestamp
-          ON fx_trade_exposure (entry_timestamp);
-      CREATE INDEX idx_fx_trade_exposure_trade_type
-          ON fx_trade_exposure (trade_type);
-      CREATE INDEX idx_fx_trade_exposure_trade_date
-          ON fx_trade_exposure (trade_date);
-      CREATE INDEX idx_fx_trade_exposure_ccy_pair
-          ON fx_trade_exposure (ccy_pair_code);
-      CREATE UNIQUE INDEX uq_fx_trade_exposure_identity
-          ON fx_trade_exposure (trade_id, trade_type);
+      CREATE INDEX idx_trade_exposures_entry_timestamp
+          ON trade_exposures (entry_timestamp);
+      CREATE INDEX idx_trade_exposures_trade_type
+          ON trade_exposures (trade_type);
+      CREATE INDEX idx_trade_exposures_trade_date
+          ON trade_exposures (trade_date);
+      CREATE INDEX idx_trade_exposures_ccy_pair
+          ON trade_exposures (ccy_pair_code);
+      CREATE UNIQUE INDEX uq_trade_exposures_identity
+          ON trade_exposures (trade_id, trade_type);
     `);
 
     const migratedRowCount = Number(
-      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+      sqlite.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count
     );
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (migratedRowCount !== originalRowCount) {
-      throw new Error("FX Trade Exposure minor-unit migration did not preserve every row.");
+      throw new Error("Trade Exposure minor-unit migration did not preserve every row.");
     }
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("FX Trade Exposure minor-unit migration produced foreign key violations.");
+      throw new Error("Trade Exposure minor-unit migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -2064,7 +1951,7 @@ function migrateFxTradeExposureAmountsToMinorUnits(sqlite) {
   }
 }
 
-function migrateFxTradeExposureTradeSemantics(sqlite) {
+function migrateTradeExposureTradeSemantics(sqlite) {
   const sourceColumns = [
     "trade_id",
     "entry_timestamp",
@@ -2116,12 +2003,12 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
     "base_ccy_value_date",
     "quote_ccy_value_date"
   ];
-  const tableInfo = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all();
+  const tableInfo = sqlite.prepare("PRAGMA table_info(trade_exposures)").all();
   const columns = tableInfo.map(column => column.name);
   const tableDefinition = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_trade_exposure'
+    WHERE type = 'table' AND name = 'trade_exposures'
   `).get()?.sql || "";
 
   const usesTimestampedTarget =
@@ -2134,34 +2021,34 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
       && tableInfo[semanticColumnOffset + 1]?.type === "TEXT"
       && tableInfo[semanticColumnOffset + 1]?.notnull === 1
       && (
-        tableDefinition.includes("chk_fx_trade_exposure_base_ccy_side")
+        tableDefinition.includes("chk_trade_exposures_base_ccy_side")
         || tableDefinition.includes("base_ccy_side = 'FLAT'")
       )
-      && tableDefinition.includes("chk_fx_trade_exposure_dealt_ccy_code");
+      && tableDefinition.includes("chk_trade_exposures_dealt_ccy_code");
 
     if (!definitionsAreValid) {
-      throw new Error("Unsupported FX Trade Exposure trade-semantics schema.");
+      throw new Error("Unsupported Trade Exposure trade-semantics schema.");
     }
 
     return;
   }
 
   if (columns.join(",") !== sourceColumns.join(",")) {
-    throw new Error("Unsupported FX Trade Exposure trade-semantics migration source.");
+    throw new Error("Unsupported Trade Exposure trade-semantics migration source.");
   }
 
   const sourceRows = sqlite.prepare(`
     SELECT e.*, pair.base_ccy_code
-    FROM fx_trade_exposure e
+    FROM trade_exposures e
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     ORDER BY e.trade_id
   `).all();
   const originalRowCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count
   );
 
   if (sourceRows.length !== originalRowCount) {
-    throw new Error("Every FX Trade Exposure must resolve its Ccy Pair.");
+    throw new Error("Every Trade Exposure must resolve its Ccy Pair.");
   }
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -2169,7 +2056,7 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE fx_trade_exposure_semantics
+      CREATE TABLE trade_exposures_semantics
       (
           trade_id                    INTEGER PRIMARY KEY,
           entry_timestamp             TEXT    NOT NULL,
@@ -2187,23 +2074,23 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
           base_ccy_value_date         TEXT    NOT NULL,
           quote_ccy_value_date        TEXT    NOT NULL,
 
-          CONSTRAINT fk_fx_trade_exposure_ccy_pair
+          CONSTRAINT fk_trade_exposures_ccy_pair
               FOREIGN KEY (ccy_pair_code)
                   REFERENCES ccy_pair_options (ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_trade_exposure_dealt_ccy
+          CONSTRAINT fk_trade_exposures_dealt_ccy
               FOREIGN KEY (dealt_ccy_code)
                   REFERENCES ccy_options (ccy_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_trade_exposure_entry_timestamp
+          CONSTRAINT chk_trade_exposures_entry_timestamp
               CHECK (
                   length(entry_timestamp) = 24
                   AND entry_timestamp GLOB '????-??-??T??:??:??.???Z'
                   AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
               ),
-          CONSTRAINT chk_fx_trade_exposure_trade_type
+          CONSTRAINT chk_trade_exposures_trade_type
               CHECK (
                   trade_type IN
                   (
@@ -2213,41 +2100,41 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
                       'BATCH_POSITION_OUT'
                   )
               ),
-          CONSTRAINT chk_fx_trade_exposure_trade_date
+          CONSTRAINT chk_trade_exposures_trade_date
               CHECK (
                   trade_date GLOB '????-??-??'
                   AND strftime('%Y-%m-%d', trade_date) = trade_date
               ),
-          CONSTRAINT chk_fx_trade_exposure_base_ccy_side
+          CONSTRAINT chk_trade_exposures_base_ccy_side
               CHECK (base_ccy_side IN ('BUY', 'SELL')),
-          CONSTRAINT chk_fx_trade_exposure_dealt_ccy_code
+          CONSTRAINT chk_trade_exposures_dealt_ccy_code
               CHECK (
                   length(dealt_ccy_code) = 3
                   AND dealt_ccy_code = upper(dealt_ccy_code)
                   AND dealt_ccy_code NOT GLOB '*[^A-Z]*'
               ),
-          CONSTRAINT chk_fx_trade_exposure_amounts
+          CONSTRAINT chk_trade_exposures_amounts
               CHECK (
                   typeof(base_ccy_amount_minor) = 'integer'
                   AND base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
                   AND typeof(quote_ccy_amount_minor) = 'integer'
                   AND quote_ccy_amount_minor BETWEEN 1 AND 9007199254740991
               ),
-          CONSTRAINT chk_fx_trade_exposure_fraction_digits
+          CONSTRAINT chk_trade_exposures_fraction_digits
               CHECK (
                   typeof(base_ccy_fraction_digits) = 'integer'
                   AND base_ccy_fraction_digits BETWEEN 0 AND 10
                   AND typeof(quote_ccy_fraction_digits) = 'integer'
                   AND quote_ccy_fraction_digits BETWEEN 0 AND 10
               ),
-          CONSTRAINT chk_fx_trade_exposure_rate
+          CONSTRAINT chk_trade_exposures_rate
               CHECK (
                   typeof(trade_rate) IN ('integer', 'real')
                   AND trade_rate > 0
               ),
-          CONSTRAINT chk_fx_trade_exposure_tenor
+          CONSTRAINT chk_trade_exposures_tenor
               CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
-          CONSTRAINT chk_fx_trade_exposure_value_dates
+          CONSTRAINT chk_trade_exposures_value_dates
               CHECK (
                   base_ccy_value_date GLOB '????-??-??'
                   AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
@@ -2258,7 +2145,7 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
     `);
 
     const insert = sqlite.prepare(`
-      INSERT INTO fx_trade_exposure_semantics
+      INSERT INTO trade_exposures_semantics
         (
           trade_id,
           entry_timestamp,
@@ -2300,32 +2187,32 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
     });
 
     sqlite.exec(`
-      DROP TABLE fx_trade_exposure;
-      ALTER TABLE fx_trade_exposure_semantics RENAME TO fx_trade_exposure;
+      DROP TABLE trade_exposures;
+      ALTER TABLE trade_exposures_semantics RENAME TO trade_exposures;
 
-      CREATE INDEX idx_fx_trade_exposure_entry_timestamp
-          ON fx_trade_exposure (entry_timestamp);
-      CREATE INDEX idx_fx_trade_exposure_trade_type
-          ON fx_trade_exposure (trade_type);
-      CREATE INDEX idx_fx_trade_exposure_trade_date
-          ON fx_trade_exposure (trade_date);
-      CREATE INDEX idx_fx_trade_exposure_ccy_pair
-          ON fx_trade_exposure (ccy_pair_code);
-      CREATE UNIQUE INDEX uq_fx_trade_exposure_identity
-          ON fx_trade_exposure (trade_id, trade_type);
+      CREATE INDEX idx_trade_exposures_entry_timestamp
+          ON trade_exposures (entry_timestamp);
+      CREATE INDEX idx_trade_exposures_trade_type
+          ON trade_exposures (trade_type);
+      CREATE INDEX idx_trade_exposures_trade_date
+          ON trade_exposures (trade_date);
+      CREATE INDEX idx_trade_exposures_ccy_pair
+          ON trade_exposures (ccy_pair_code);
+      CREATE UNIQUE INDEX uq_trade_exposures_identity
+          ON trade_exposures (trade_id, trade_type);
     `);
 
     const migratedRowCount = Number(
-      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+      sqlite.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count
     );
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (migratedRowCount !== originalRowCount) {
-      throw new Error("FX Trade Exposure trade-semantics migration did not preserve every row.");
+      throw new Error("Trade Exposure trade-semantics migration did not preserve every row.");
     }
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("FX Trade Exposure trade-semantics migration produced foreign key violations.");
+      throw new Error("Trade Exposure trade-semantics migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -2340,17 +2227,17 @@ function migrateFxTradeExposureTradeSemantics(sqlite) {
   }
 }
 
-function ensureFxTradeExposureTimestampIndexes(sqlite) {
+function ensureTradeExposureTimestampIndexes(sqlite) {
   sqlite.exec(`
-    CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_execution_timestamp
-        ON fx_trade_exposure (execution_timestamp);
-    CREATE INDEX IF NOT EXISTS idx_fx_trade_exposure_received_timestamp
-        ON fx_trade_exposure (received_timestamp);
+    CREATE INDEX IF NOT EXISTS idx_trade_exposures_execution_timestamp
+        ON trade_exposures (execution_timestamp);
+    CREATE INDEX IF NOT EXISTS idx_trade_exposures_received_timestamp
+        ON trade_exposures (received_timestamp);
   `);
 }
 
-function migrateFxTradeExposureTimestamps(sqlite) {
-  const tableInfo = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)").all();
+function migrateTradeExposureTimestamps(sqlite) {
+  const tableInfo = sqlite.prepare("PRAGMA table_info(trade_exposures)").all();
   const columns = tableInfo.map(column => column.name);
   const legacyColumns = [
     "trade_id",
@@ -2393,37 +2280,37 @@ function migrateFxTradeExposureTimestamps(sqlite) {
     const tableDefinition = sqlite.prepare(`
       SELECT sql
       FROM sqlite_master
-      WHERE type = 'table' AND name = 'fx_trade_exposure'
+      WHERE type = 'table' AND name = 'trade_exposures'
     `).get()?.sql || "";
     const definitionsAreValid = tableInfo[1]?.type === "TEXT"
       && tableInfo[1]?.notnull === 1
       && tableInfo[2]?.type === "TEXT"
       && tableInfo[2]?.notnull === 1
-      && tableDefinition.includes("chk_fx_trade_exposure_execution_timestamp")
-      && tableDefinition.includes("chk_fx_trade_exposure_received_timestamp")
+      && tableDefinition.includes("chk_trade_exposures_execution_timestamp")
+      && tableDefinition.includes("chk_trade_exposures_received_timestamp")
       && !tableDefinition.includes("entry_timestamp");
 
     if (!definitionsAreValid) {
-      throw new Error("Unsupported FX Trade Exposure timestamp schema.");
+      throw new Error("Unsupported Trade Exposure timestamp schema.");
     }
 
-    ensureFxTradeExposureTimestampIndexes(sqlite);
+    ensureTradeExposureTimestampIndexes(sqlite);
     return;
   }
 
   if (columnSignature !== legacyColumns.join(",")) {
-    throw new Error("Unsupported FX Trade Exposure timestamp migration source.");
+    throw new Error("Unsupported Trade Exposure timestamp migration source.");
   }
 
   const originalRowCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count
   );
   sqlite.exec("PRAGMA foreign_keys = OFF");
 
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE fx_trade_exposure_timestamps
+      CREATE TABLE trade_exposures_timestamps
       (
           trade_id                    INTEGER PRIMARY KEY,
           execution_timestamp         TEXT    NOT NULL,
@@ -2442,33 +2329,33 @@ function migrateFxTradeExposureTimestamps(sqlite) {
           base_ccy_value_date         TEXT    NOT NULL,
           quote_ccy_value_date        TEXT    NOT NULL,
 
-          CONSTRAINT fk_fx_trade_exposure_ccy_pair
+          CONSTRAINT fk_trade_exposures_ccy_pair
               FOREIGN KEY (ccy_pair_code)
                   REFERENCES ccy_pair_options (ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_trade_exposure_dealt_ccy
+          CONSTRAINT fk_trade_exposures_dealt_ccy
               FOREIGN KEY (dealt_ccy_code)
                   REFERENCES ccy_options (ccy_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT uq_fx_trade_exposure_identity
+          CONSTRAINT uq_trade_exposures_identity
               UNIQUE (trade_id, trade_type),
-          CONSTRAINT chk_fx_trade_exposure_execution_timestamp
+          CONSTRAINT chk_trade_exposures_execution_timestamp
               CHECK (
                   length(execution_timestamp) = 24
                   AND execution_timestamp GLOB '????-??-??T??:??:??.???Z'
                   AND strftime('%Y-%m-%dT%H:%M:%fZ', execution_timestamp)
                       = execution_timestamp
               ),
-          CONSTRAINT chk_fx_trade_exposure_received_timestamp
+          CONSTRAINT chk_trade_exposures_received_timestamp
               CHECK (
                   length(received_timestamp) = 24
                   AND received_timestamp GLOB '????-??-??T??:??:??.???Z'
                   AND strftime('%Y-%m-%dT%H:%M:%fZ', received_timestamp)
                       = received_timestamp
               ),
-          CONSTRAINT chk_fx_trade_exposure_trade_type
+          CONSTRAINT chk_trade_exposures_trade_type
               CHECK (
                   trade_type IN
                   (
@@ -2478,18 +2365,18 @@ function migrateFxTradeExposureTimestamps(sqlite) {
                       'BATCH_POSITION_OUT'
                   )
               ),
-          CONSTRAINT chk_fx_trade_exposure_trade_date
+          CONSTRAINT chk_trade_exposures_trade_date
               CHECK (
                   trade_date GLOB '????-??-??'
                   AND strftime('%Y-%m-%d', trade_date) = trade_date
               ),
-          CONSTRAINT chk_fx_trade_exposure_dealt_ccy_code
+          CONSTRAINT chk_trade_exposures_dealt_ccy_code
               CHECK (
                   length(dealt_ccy_code) = 3
                   AND dealt_ccy_code = upper(dealt_ccy_code)
                   AND dealt_ccy_code NOT GLOB '*[^A-Z]*'
               ),
-          CONSTRAINT chk_fx_trade_exposure_amounts
+          CONSTRAINT chk_trade_exposures_amounts
               CHECK (
                   (
                       trade_type = 'BATCH_POSITION_OUT'
@@ -2510,16 +2397,16 @@ function migrateFxTradeExposureTimestamps(sqlite) {
                       AND trade_rate > 0
                   )
               ),
-          CONSTRAINT chk_fx_trade_exposure_fraction_digits
+          CONSTRAINT chk_trade_exposures_fraction_digits
               CHECK (
                   typeof(base_ccy_fraction_digits) = 'integer'
                   AND base_ccy_fraction_digits BETWEEN 0 AND 10
                   AND typeof(quote_ccy_fraction_digits) = 'integer'
                   AND quote_ccy_fraction_digits BETWEEN 0 AND 10
               ),
-          CONSTRAINT chk_fx_trade_exposure_tenor
+          CONSTRAINT chk_trade_exposures_tenor
               CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
-          CONSTRAINT chk_fx_trade_exposure_value_dates
+          CONSTRAINT chk_trade_exposures_value_dates
               CHECK (
                   base_ccy_value_date GLOB '????-??-??'
                   AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
@@ -2528,7 +2415,7 @@ function migrateFxTradeExposureTimestamps(sqlite) {
               )
       );
 
-      INSERT INTO fx_trade_exposure_timestamps
+      INSERT INTO trade_exposures_timestamps
         (
           trade_id,
           execution_timestamp,
@@ -2564,37 +2451,37 @@ function migrateFxTradeExposureTimestamps(sqlite) {
           tenor,
           base_ccy_value_date,
           quote_ccy_value_date
-      FROM fx_trade_exposure
+      FROM trade_exposures
       ORDER BY trade_id;
 
-      DROP TABLE fx_trade_exposure;
-      ALTER TABLE fx_trade_exposure_timestamps RENAME TO fx_trade_exposure;
+      DROP TABLE trade_exposures;
+      ALTER TABLE trade_exposures_timestamps RENAME TO trade_exposures;
 
-      CREATE INDEX idx_fx_trade_exposure_execution_timestamp
-          ON fx_trade_exposure (execution_timestamp);
-      CREATE INDEX idx_fx_trade_exposure_received_timestamp
-          ON fx_trade_exposure (received_timestamp);
-      CREATE INDEX idx_fx_trade_exposure_trade_type
-          ON fx_trade_exposure (trade_type);
-      CREATE INDEX idx_fx_trade_exposure_trade_date
-          ON fx_trade_exposure (trade_date);
-      CREATE INDEX idx_fx_trade_exposure_ccy_pair
-          ON fx_trade_exposure (ccy_pair_code);
-      CREATE UNIQUE INDEX uq_fx_trade_exposure_identity
-          ON fx_trade_exposure (trade_id, trade_type);
+      CREATE INDEX idx_trade_exposures_execution_timestamp
+          ON trade_exposures (execution_timestamp);
+      CREATE INDEX idx_trade_exposures_received_timestamp
+          ON trade_exposures (received_timestamp);
+      CREATE INDEX idx_trade_exposures_trade_type
+          ON trade_exposures (trade_type);
+      CREATE INDEX idx_trade_exposures_trade_date
+          ON trade_exposures (trade_date);
+      CREATE INDEX idx_trade_exposures_ccy_pair
+          ON trade_exposures (ccy_pair_code);
+      CREATE UNIQUE INDEX uq_trade_exposures_identity
+          ON trade_exposures (trade_id, trade_type);
     `);
 
     const migratedRowCount = Number(
-      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+      sqlite.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count
     );
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (migratedRowCount !== originalRowCount) {
-      throw new Error("FX Trade Exposure timestamp migration did not preserve every row.");
+      throw new Error("Trade Exposure timestamp migration did not preserve every row.");
     }
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("FX Trade Exposure timestamp migration produced foreign key violations.");
+      throw new Error("Trade Exposure timestamp migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -2609,21 +2496,21 @@ function migrateFxTradeExposureTimestamps(sqlite) {
   }
 }
 
-function migrateFxBatchTradeSemantics(sqlite) {
+function migrateBatchTradeSemantics(sqlite) {
   const exposureSql = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_trade_exposure'
+    WHERE type = 'table' AND name = 'trade_exposures'
   `).get()?.sql || "";
   const membersSql = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_batch_members'
+    WHERE type = 'table' AND name = 'batch_members'
   `).get()?.sql || "";
   const balanceTradeSql = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_batch_balance_trade'
+    WHERE type = 'table' AND name = 'batch_balance_trades'
   `).get()?.sql || "";
   const alreadyMigrated = exposureSql.includes("'BATCH_BALANCE_TRADE'")
     && exposureSql.includes("base_ccy_side = 'FLAT'")
@@ -2640,16 +2527,16 @@ function migrateFxBatchTradeSemantics(sqlite) {
   }
 
   const exposureCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count
   );
   const batchCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM batches").get().count
   );
   const memberCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM batch_members").get().count
   );
   const outputCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM batch_position_outputs").get().count
   );
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -2657,7 +2544,7 @@ function migrateFxBatchTradeSemantics(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE fx_trade_exposure_batch_semantics
+      CREATE TABLE trade_exposures_batch_semantics
       (
           trade_id                    INTEGER PRIMARY KEY,
           entry_timestamp             TEXT    NOT NULL,
@@ -2675,25 +2562,25 @@ function migrateFxBatchTradeSemantics(sqlite) {
           base_ccy_value_date         TEXT    NOT NULL,
           quote_ccy_value_date        TEXT    NOT NULL,
 
-          CONSTRAINT fk_fx_trade_exposure_ccy_pair
+          CONSTRAINT fk_trade_exposures_ccy_pair
               FOREIGN KEY (ccy_pair_code)
                   REFERENCES ccy_pair_options (ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_trade_exposure_dealt_ccy
+          CONSTRAINT fk_trade_exposures_dealt_ccy
               FOREIGN KEY (dealt_ccy_code)
                   REFERENCES ccy_options (ccy_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT uq_fx_trade_exposure_identity
+          CONSTRAINT uq_trade_exposures_identity
               UNIQUE (trade_id, trade_type),
-          CONSTRAINT chk_fx_trade_exposure_entry_timestamp
+          CONSTRAINT chk_trade_exposures_entry_timestamp
               CHECK (
                   length(entry_timestamp) = 24
                   AND entry_timestamp GLOB '????-??-??T??:??:??.???Z'
                   AND strftime('%Y-%m-%dT%H:%M:%fZ', entry_timestamp) = entry_timestamp
               ),
-          CONSTRAINT chk_fx_trade_exposure_trade_type
+          CONSTRAINT chk_trade_exposures_trade_type
               CHECK (
                   trade_type IN
                   (
@@ -2703,18 +2590,18 @@ function migrateFxBatchTradeSemantics(sqlite) {
                       'BATCH_POSITION_OUT'
                   )
               ),
-          CONSTRAINT chk_fx_trade_exposure_trade_date
+          CONSTRAINT chk_trade_exposures_trade_date
               CHECK (
                   trade_date GLOB '????-??-??'
                   AND strftime('%Y-%m-%d', trade_date) = trade_date
               ),
-          CONSTRAINT chk_fx_trade_exposure_dealt_ccy_code
+          CONSTRAINT chk_trade_exposures_dealt_ccy_code
               CHECK (
                   length(dealt_ccy_code) = 3
                   AND dealt_ccy_code = upper(dealt_ccy_code)
                   AND dealt_ccy_code NOT GLOB '*[^A-Z]*'
               ),
-          CONSTRAINT chk_fx_trade_exposure_amounts
+          CONSTRAINT chk_trade_exposures_amounts
               CHECK (
                   (
                       trade_type = 'BATCH_POSITION_OUT'
@@ -2735,16 +2622,16 @@ function migrateFxBatchTradeSemantics(sqlite) {
                       AND trade_rate > 0
                   )
               ),
-          CONSTRAINT chk_fx_trade_exposure_fraction_digits
+          CONSTRAINT chk_trade_exposures_fraction_digits
               CHECK (
                   typeof(base_ccy_fraction_digits) = 'integer'
                   AND base_ccy_fraction_digits BETWEEN 0 AND 10
                   AND typeof(quote_ccy_fraction_digits) = 'integer'
                   AND quote_ccy_fraction_digits BETWEEN 0 AND 10
               ),
-          CONSTRAINT chk_fx_trade_exposure_tenor
+          CONSTRAINT chk_trade_exposures_tenor
               CHECK (tenor IN ('TOD', 'TOM', 'SPOT')),
-          CONSTRAINT chk_fx_trade_exposure_value_dates
+          CONSTRAINT chk_trade_exposures_value_dates
               CHECK (
                   base_ccy_value_date GLOB '????-??-??'
                   AND strftime('%Y-%m-%d', base_ccy_value_date) = base_ccy_value_date
@@ -2753,7 +2640,7 @@ function migrateFxBatchTradeSemantics(sqlite) {
               )
       );
 
-      INSERT INTO fx_trade_exposure_batch_semantics
+      INSERT INTO trade_exposures_batch_semantics
       SELECT
           trade_id,
           entry_timestamp,
@@ -2773,10 +2660,10 @@ function migrateFxBatchTradeSemantics(sqlite) {
           tenor,
           base_ccy_value_date,
           quote_ccy_value_date
-      FROM fx_trade_exposure
+      FROM trade_exposures
       ORDER BY trade_id;
 
-      CREATE TABLE fx_batches_batch_semantics
+      CREATE TABLE batches_batch_semantics
       (
           batch_id        INTEGER PRIMARY KEY AUTOINCREMENT,
           idempotency_key TEXT    NOT NULL,
@@ -2785,23 +2672,23 @@ function migrateFxBatchTradeSemantics(sqlite) {
           created_at      TEXT    NOT NULL
               DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 
-          CONSTRAINT fk_fx_batches_ccy_pair
+          CONSTRAINT fk_batches_ccy_pair
               FOREIGN KEY (ccy_pair_code)
                   REFERENCES ccy_pair_options (ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT uq_fx_batches_idempotency_key
+          CONSTRAINT uq_batches_idempotency_key
               UNIQUE (idempotency_key),
-          CONSTRAINT chk_fx_batches_id
+          CONSTRAINT chk_batches_id
               CHECK (batch_id > 0),
-          CONSTRAINT chk_fx_batches_idempotency_key
+          CONSTRAINT chk_batches_idempotency_key
               CHECK (
                   length(idempotency_key) BETWEEN 1 AND 100
                   AND idempotency_key = trim(idempotency_key)
               ),
-          CONSTRAINT chk_fx_batches_status
+          CONSTRAINT chk_batches_status
               CHECK (batch_status IN ('BUILDING', 'FORMED')),
-          CONSTRAINT chk_fx_batches_created_at
+          CONSTRAINT chk_batches_created_at
               CHECK (
                   length(created_at) = 24
                   AND created_at GLOB '????-??-??T??:??:??.???Z'
@@ -2809,35 +2696,35 @@ function migrateFxBatchTradeSemantics(sqlite) {
               )
       );
 
-      INSERT INTO fx_batches_batch_semantics
+      INSERT INTO batches_batch_semantics
       SELECT batch_id, idempotency_key, ccy_pair_code, batch_status, created_at
-      FROM fx_batches
+      FROM batches
       ORDER BY batch_id;
 
-      CREATE TABLE fx_batch_members_batch_semantics
+      CREATE TABLE batch_members_batch_semantics
       (
           batch_id    INTEGER NOT NULL,
           trade_id    INTEGER NOT NULL,
           trade_type  TEXT    NOT NULL,
           member_role TEXT    NOT NULL,
 
-          CONSTRAINT pk_fx_batch_members
+          CONSTRAINT pk_batch_members
               PRIMARY KEY (batch_id, trade_id),
-          CONSTRAINT fk_fx_batch_members_batch
+          CONSTRAINT fk_batch_members_batch
               FOREIGN KEY (batch_id)
-                  REFERENCES fx_batches_batch_semantics (batch_id)
+                  REFERENCES batches_batch_semantics (batch_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_batch_members_trade
+          CONSTRAINT fk_batch_members_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure_batch_semantics (trade_id, trade_type)
+                  REFERENCES trade_exposures_batch_semantics (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT uq_fx_batch_members_trade
+          CONSTRAINT uq_batch_members_trade
               UNIQUE (trade_id),
-          CONSTRAINT chk_fx_batch_members_role
+          CONSTRAINT chk_batch_members_role
               CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'BALANCE_QUOTE_CASH')),
-          CONSTRAINT chk_fx_batch_members_role_trade_type
+          CONSTRAINT chk_batch_members_role_trade_type
               CHECK (
                   (member_role = 'TRADE'
                       AND trade_type IN
@@ -2853,7 +2740,7 @@ function migrateFxBatchTradeSemantics(sqlite) {
               )
       );
 
-      INSERT INTO fx_batch_members_batch_semantics
+      INSERT INTO batch_members_batch_semantics
       SELECT
           batch_id,
           trade_id,
@@ -2862,63 +2749,63 @@ function migrateFxBatchTradeSemantics(sqlite) {
               ELSE trade_type
           END,
           member_role
-      FROM fx_batch_members
+      FROM batch_members
       ORDER BY batch_id, trade_id;
 
-      CREATE TABLE fx_batch_position_output_batch_semantics
+      CREATE TABLE batch_position_outputs_batch_semantics
       (
           batch_id    INTEGER PRIMARY KEY,
           trade_id    INTEGER NOT NULL,
           trade_type  TEXT    NOT NULL,
 
-          CONSTRAINT fk_fx_batch_position_output_batch
+          CONSTRAINT fk_batch_position_outputs_batch
               FOREIGN KEY (batch_id)
-                  REFERENCES fx_batches_batch_semantics (batch_id)
+                  REFERENCES batches_batch_semantics (batch_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_batch_position_output_trade
+          CONSTRAINT fk_batch_position_outputs_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure_batch_semantics (trade_id, trade_type)
+                  REFERENCES trade_exposures_batch_semantics (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT uq_fx_batch_position_output_trade
+          CONSTRAINT uq_batch_position_outputs_trade
               UNIQUE (trade_id),
-          CONSTRAINT chk_fx_batch_position_output_trade_type
+          CONSTRAINT chk_batch_position_outputs_trade_type
               CHECK (trade_type = 'BATCH_POSITION_OUT')
       );
 
-      INSERT INTO fx_batch_position_output_batch_semantics
+      INSERT INTO batch_position_outputs_batch_semantics
       SELECT batch_id, trade_id, trade_type
-      FROM fx_batch_position_output
+      FROM batch_position_outputs
       ORDER BY batch_id, trade_id;
 
-      DROP TABLE fx_batch_position_output;
-      DROP TABLE fx_batch_members;
-      DROP TABLE fx_batches;
-      DROP TABLE fx_trade_exposure;
+      DROP TABLE batch_position_outputs;
+      DROP TABLE batch_members;
+      DROP TABLE batches;
+      DROP TABLE trade_exposures;
 
-      ALTER TABLE fx_trade_exposure_batch_semantics
-          RENAME TO fx_trade_exposure;
-      ALTER TABLE fx_batches_batch_semantics
-          RENAME TO fx_batches;
-      ALTER TABLE fx_batch_members_batch_semantics
-          RENAME TO fx_batch_members;
-      ALTER TABLE fx_batch_position_output_batch_semantics
-          RENAME TO fx_batch_position_output;
+      ALTER TABLE trade_exposures_batch_semantics
+          RENAME TO trade_exposures;
+      ALTER TABLE batches_batch_semantics
+          RENAME TO batches;
+      ALTER TABLE batch_members_batch_semantics
+          RENAME TO batch_members;
+      ALTER TABLE batch_position_outputs_batch_semantics
+          RENAME TO batch_position_outputs;
     `);
 
     const migratedCounts = {
       exposure: Number(
-        sqlite.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count
+        sqlite.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count
       ),
       batches: Number(
-        sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count
+        sqlite.prepare("SELECT COUNT(*) AS count FROM batches").get().count
       ),
       members: Number(
-        sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count
+        sqlite.prepare("SELECT COUNT(*) AS count FROM batch_members").get().count
       ),
       outputs: Number(
-        sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count
+        sqlite.prepare("SELECT COUNT(*) AS count FROM batch_position_outputs").get().count
       )
     };
 
@@ -2926,13 +2813,13 @@ function migrateFxBatchTradeSemantics(sqlite) {
       || migratedCounts.batches !== batchCount
       || migratedCounts.members !== memberCount
       || migratedCounts.outputs !== outputCount) {
-      throw new Error("FX Batch trade-semantics migration did not preserve every row.");
+      throw new Error("Batch trade-semantics migration did not preserve every row.");
     }
 
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("FX Batch trade-semantics migration produced foreign key violations.");
+      throw new Error("Batch trade-semantics migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -2947,17 +2834,17 @@ function migrateFxBatchTradeSemantics(sqlite) {
   }
 }
 
-function migrateFxBatchRollbackSemantics(sqlite) {
-  const batchColumns = [...tableColumnNames(sqlite, "fx_batches")];
+function migrateBatchRollbackSemantics(sqlite) {
+  const batchColumns = [...tableColumnNames(sqlite, "batches")];
   const batchSql = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_batches'
+    WHERE type = 'table' AND name = 'batches'
   `).get()?.sql || "";
   const membersSql = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_batch_members'
+    WHERE type = 'table' AND name = 'batch_members'
   `).get()?.sql || "";
   const alreadyMigrated = batchColumns.includes("rolled_back_at")
     && batchSql.includes("'ROLLED_BACK'")
@@ -2969,21 +2856,21 @@ function migrateFxBatchRollbackSemantics(sqlite) {
 
   const invalidBatch = sqlite.prepare(`
     SELECT batch_id, batch_status
-    FROM fx_batches
+    FROM batches
     WHERE batch_status NOT IN ('BUILDING', 'FORMED')
     LIMIT 1
   `).get();
 
   if (invalidBatch) {
     throw new Error(
-      `FX Batch ${invalidBatch.batch_id} has unsupported status ${invalidBatch.batch_status}.`
+      `Batch ${invalidBatch.batch_id} has unsupported status ${invalidBatch.batch_status}.`
     );
   }
 
   const originalCounts = {
-    batches: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count),
-    members: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count),
-    outputs: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count)
+    batches: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM batches").get().count),
+    members: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM batch_members").get().count),
+    outputs: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM batch_position_outputs").get().count)
   };
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -2991,7 +2878,7 @@ function migrateFxBatchRollbackSemantics(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE fx_batches_rollback_semantics
+      CREATE TABLE batches_rollback_semantics
       (
           batch_id        INTEGER PRIMARY KEY AUTOINCREMENT,
           idempotency_key TEXT    NOT NULL,
@@ -3001,29 +2888,29 @@ function migrateFxBatchRollbackSemantics(sqlite) {
               DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
           rolled_back_at  TEXT,
 
-          CONSTRAINT fk_fx_batches_ccy_pair
+          CONSTRAINT fk_batches_ccy_pair
               FOREIGN KEY (ccy_pair_code)
                   REFERENCES ccy_pair_options (ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT uq_fx_batches_idempotency_key
+          CONSTRAINT uq_batches_idempotency_key
               UNIQUE (idempotency_key),
-          CONSTRAINT chk_fx_batches_id
+          CONSTRAINT chk_batches_id
               CHECK (batch_id > 0),
-          CONSTRAINT chk_fx_batches_idempotency_key
+          CONSTRAINT chk_batches_idempotency_key
               CHECK (
                   length(idempotency_key) BETWEEN 1 AND 100
                   AND idempotency_key = trim(idempotency_key)
               ),
-          CONSTRAINT chk_fx_batches_status
+          CONSTRAINT chk_batches_status
               CHECK (batch_status IN ('BUILDING', 'FORMED', 'ROLLED_BACK')),
-          CONSTRAINT chk_fx_batches_created_at
+          CONSTRAINT chk_batches_created_at
               CHECK (
                   length(created_at) = 24
                   AND created_at GLOB '????-??-??T??:??:??.???Z'
                   AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
               ),
-          CONSTRAINT chk_fx_batches_rolled_back_at
+          CONSTRAINT chk_batches_rolled_back_at
               CHECK (
                   (
                       batch_status IN ('BUILDING', 'FORMED')
@@ -3038,34 +2925,34 @@ function migrateFxBatchRollbackSemantics(sqlite) {
               )
       );
 
-      INSERT INTO fx_batches_rollback_semantics
+      INSERT INTO batches_rollback_semantics
         (batch_id, idempotency_key, ccy_pair_code, batch_status, created_at)
       SELECT batch_id, idempotency_key, ccy_pair_code, batch_status, created_at
-      FROM fx_batches
+      FROM batches
       ORDER BY batch_id;
 
-      CREATE TABLE fx_batch_members_rollback_semantics
+      CREATE TABLE batch_members_rollback_semantics
       (
           batch_id    INTEGER NOT NULL,
           trade_id    INTEGER NOT NULL,
           trade_type  TEXT    NOT NULL,
           member_role TEXT    NOT NULL,
 
-          CONSTRAINT pk_fx_batch_members
+          CONSTRAINT pk_batch_members
               PRIMARY KEY (batch_id, trade_id),
-          CONSTRAINT fk_fx_batch_members_batch
+          CONSTRAINT fk_batch_members_batch
               FOREIGN KEY (batch_id)
-                  REFERENCES fx_batches_rollback_semantics (batch_id)
+                  REFERENCES batches_rollback_semantics (batch_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_batch_members_trade
+          CONSTRAINT fk_batch_members_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_batch_members_role
+          CONSTRAINT chk_batch_members_role
               CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'BALANCE_QUOTE_CASH')),
-          CONSTRAINT chk_fx_batch_members_role_trade_type
+          CONSTRAINT chk_batch_members_role_trade_type
               CHECK (
                   (member_role = 'TRADE'
                       AND trade_type IN
@@ -3081,66 +2968,66 @@ function migrateFxBatchRollbackSemantics(sqlite) {
               )
       );
 
-      INSERT INTO fx_batch_members_rollback_semantics
+      INSERT INTO batch_members_rollback_semantics
       SELECT batch_id, trade_id, trade_type, member_role
-      FROM fx_batch_members
+      FROM batch_members
       ORDER BY batch_id, trade_id;
 
-      CREATE TABLE fx_batch_position_output_rollback_semantics
+      CREATE TABLE batch_position_outputs_rollback_semantics
       (
           batch_id    INTEGER PRIMARY KEY,
           trade_id    INTEGER NOT NULL,
           trade_type  TEXT    NOT NULL,
 
-          CONSTRAINT fk_fx_batch_position_output_batch
+          CONSTRAINT fk_batch_position_outputs_batch
               FOREIGN KEY (batch_id)
-                  REFERENCES fx_batches_rollback_semantics (batch_id)
+                  REFERENCES batches_rollback_semantics (batch_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_batch_position_output_trade
+          CONSTRAINT fk_batch_position_outputs_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT uq_fx_batch_position_output_trade
+          CONSTRAINT uq_batch_position_outputs_trade
               UNIQUE (trade_id),
-          CONSTRAINT chk_fx_batch_position_output_trade_type
+          CONSTRAINT chk_batch_position_outputs_trade_type
               CHECK (trade_type = 'BATCH_POSITION_OUT')
       );
 
-      INSERT INTO fx_batch_position_output_rollback_semantics
+      INSERT INTO batch_position_outputs_rollback_semantics
       SELECT batch_id, trade_id, trade_type
-      FROM fx_batch_position_output
+      FROM batch_position_outputs
       ORDER BY batch_id, trade_id;
 
-      DROP TABLE fx_batch_position_output;
-      DROP TABLE fx_batch_members;
-      DROP TABLE fx_batches;
+      DROP TABLE batch_position_outputs;
+      DROP TABLE batch_members;
+      DROP TABLE batches;
 
-      ALTER TABLE fx_batches_rollback_semantics
-          RENAME TO fx_batches;
-      ALTER TABLE fx_batch_members_rollback_semantics
-          RENAME TO fx_batch_members;
-      ALTER TABLE fx_batch_position_output_rollback_semantics
-          RENAME TO fx_batch_position_output;
+      ALTER TABLE batches_rollback_semantics
+          RENAME TO batches;
+      ALTER TABLE batch_members_rollback_semantics
+          RENAME TO batch_members;
+      ALTER TABLE batch_position_outputs_rollback_semantics
+          RENAME TO batch_position_outputs;
     `);
 
     const migratedCounts = {
-      batches: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count),
-      members: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count),
-      outputs: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count)
+      batches: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM batches").get().count),
+      members: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM batch_members").get().count),
+      outputs: Number(sqlite.prepare("SELECT COUNT(*) AS count FROM batch_position_outputs").get().count)
     };
 
     if (migratedCounts.batches !== originalCounts.batches
       || migratedCounts.members !== originalCounts.members
       || migratedCounts.outputs !== originalCounts.outputs) {
-      throw new Error("FX Batch rollback migration did not preserve every row.");
+      throw new Error("Batch rollback migration did not preserve every row.");
     }
 
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("FX Batch rollback migration produced foreign key violations.");
+      throw new Error("Batch rollback migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -3155,11 +3042,11 @@ function migrateFxBatchRollbackSemantics(sqlite) {
   }
 }
 
-function migrateFxBatchMemberRoleSemantics(sqlite) {
+function migrateBatchMemberRoleSemantics(sqlite) {
   const membersSql = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_batch_members'
+    WHERE type = 'table' AND name = 'batch_members'
   `).get()?.sql || "";
   const normalizedMembersSql = membersSql.replace(/\s+/g, " ");
 
@@ -3186,20 +3073,20 @@ function migrateFxBatchMemberRoleSemantics(sqlite) {
 
   const unsupportedCashMember = sqlite.prepare(`
     SELECT batch_id, trade_id
-    FROM fx_batch_members
+    FROM batch_members
     WHERE member_role = 'BALANCE_QUOTE_CASH'
     LIMIT 1
   `).get();
 
   if (unsupportedCashMember) {
     throw new Error(
-      `Legacy FX Batch ${unsupportedCashMember.batch_id} stores Quote cash as `
-        + `FX Trade ${unsupportedCashMember.trade_id}; automatic migration is unsafe.`
+      `Legacy Batch ${unsupportedCashMember.batch_id} stores Quote cash as `
+        + `Trade ${unsupportedCashMember.trade_id}; automatic migration is unsafe.`
     );
   }
 
   const originalCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM batch_members").get().count
   );
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -3207,28 +3094,28 @@ function migrateFxBatchMemberRoleSemantics(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE fx_batch_members_role_semantics
+      CREATE TABLE batch_members_role_semantics
       (
           batch_id    INTEGER NOT NULL,
           trade_id    INTEGER NOT NULL,
           trade_type  TEXT    NOT NULL,
           member_role TEXT    NOT NULL,
 
-          CONSTRAINT pk_fx_batch_members
+          CONSTRAINT pk_batch_members
               PRIMARY KEY (batch_id, trade_id),
-          CONSTRAINT fk_fx_batch_members_batch
+          CONSTRAINT fk_batch_members_batch
               FOREIGN KEY (batch_id)
-                  REFERENCES fx_batches (batch_id)
+                  REFERENCES batches (batch_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_batch_members_trade
+          CONSTRAINT fk_batch_members_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_batch_members_role
+          CONSTRAINT chk_batch_members_role
               CHECK (member_role IN ('TRADE', 'BALANCE_TRADE')),
-          CONSTRAINT chk_fx_batch_members_role_trade_type
+          CONSTRAINT chk_batch_members_role_trade_type
               CHECK (
                   member_role = 'TRADE'
                   OR (member_role = 'BALANCE_TRADE'
@@ -3236,25 +3123,25 @@ function migrateFxBatchMemberRoleSemantics(sqlite) {
               )
       );
 
-      INSERT INTO fx_batch_members_role_semantics
+      INSERT INTO batch_members_role_semantics
         (batch_id, trade_id, trade_type, member_role)
       SELECT batch_id, trade_id, trade_type, member_role
-      FROM fx_batch_members
+      FROM batch_members
       ORDER BY batch_id, trade_id;
 
-      DROP TABLE fx_batch_members;
+      DROP TABLE batch_members;
 
-      ALTER TABLE fx_batch_members_role_semantics
-          RENAME TO fx_batch_members;
+      ALTER TABLE batch_members_role_semantics
+          RENAME TO batch_members;
     `);
 
     const migratedCount = Number(
-      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count
+      sqlite.prepare("SELECT COUNT(*) AS count FROM batch_members").get().count
     );
 
     if (migratedCount !== originalCount) {
       throw new Error(
-        "FX Batch member-role migration did not preserve every row."
+        "Batch member-role migration did not preserve every row."
       );
     }
 
@@ -3262,7 +3149,7 @@ function migrateFxBatchMemberRoleSemantics(sqlite) {
 
     if (foreignKeyViolations.length > 0) {
       throw new Error(
-        "FX Batch member-role migration produced foreign key violations."
+        "Batch member-role migration produced foreign key violations."
       );
     }
 
@@ -3278,22 +3165,22 @@ function migrateFxBatchMemberRoleSemantics(sqlite) {
   }
 }
 
-function migrateFxBatchQuoteCashOutput(sqlite) {
+function migrateBatchQuoteCashOutput(sqlite) {
   const targetTableExists = Boolean(sqlite.prepare(`
     SELECT 1 AS present
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_batch_quote_cash_output'
+    WHERE type = 'table' AND name = 'batch_quote_cash_outputs'
   `).get());
 
   if (!targetTableExists) {
-    throw new Error("FX Batch Quote cash output table was not initialized.");
+    throw new Error("Batch Quote cash output table was not initialized.");
   }
 
   sqlite.exec("BEGIN IMMEDIATE");
 
   try {
     sqlite.exec(`
-    INSERT INTO fx_batch_quote_cash_output
+    INSERT INTO batch_quote_cash_outputs
       (
         batch_id,
         quote_ccy_code,
@@ -3314,14 +3201,14 @@ function migrateFxBatchQuoteCashOutput(sqlite) {
       MIN(exposure.quote_ccy_fraction_digits),
       MIN(exposure.quote_ccy_value_date),
       batch.created_at
-    FROM fx_batches batch
+    FROM batches batch
     INNER JOIN ccy_pair_options pair
       ON pair.ccy_pair_code = batch.ccy_pair_code
-    INNER JOIN fx_batch_members member ON member.batch_id = batch.batch_id
-    INNER JOIN fx_trade_exposure exposure
+    INNER JOIN batch_members member ON member.batch_id = batch.batch_id
+    INNER JOIN trade_exposures exposure
       ON exposure.trade_id = member.trade_id
       AND exposure.trade_type = member.trade_type
-    LEFT JOIN fx_batch_quote_cash_output cash
+    LEFT JOIN batch_quote_cash_outputs cash
       ON cash.batch_id = batch.batch_id
     WHERE batch.batch_status IN ('FORMED', 'ROLLED_BACK')
       AND member.member_role IN ('TRADE', 'BALANCE_TRADE')
@@ -3333,8 +3220,8 @@ function migrateFxBatchQuoteCashOutput(sqlite) {
 
     const missingCashOutput = sqlite.prepare(`
     SELECT batch.batch_id AS batchId
-    FROM fx_batches batch
-    LEFT JOIN fx_batch_quote_cash_output cash
+    FROM batches batch
+    LEFT JOIN batch_quote_cash_outputs cash
       ON cash.batch_id = batch.batch_id
     WHERE batch.batch_status IN ('FORMED', 'ROLLED_BACK')
       AND cash.batch_id IS NULL
@@ -3343,24 +3230,24 @@ function migrateFxBatchQuoteCashOutput(sqlite) {
 
     if (missingCashOutput) {
       throw new Error(
-        `Completed FX Batch ${missingCashOutput.batchId} cannot be migrated to `
+        `Completed Batch ${missingCashOutput.batchId} cannot be migrated to `
           + "the Quote cash output model."
       );
     }
 
     const invalidCashOutput = sqlite.prepare(`
       SELECT batch.batch_id AS batchId
-      FROM fx_batches batch
+      FROM batches batch
       INNER JOIN ccy_pair_options pair
         ON pair.ccy_pair_code = batch.ccy_pair_code
-      INNER JOIN fx_batch_quote_cash_output cash
+      INNER JOIN batch_quote_cash_outputs cash
         ON cash.batch_id = batch.batch_id
       WHERE cash.quote_ccy_code <> pair.quote_ccy_code
         OR EXISTS
         (
           SELECT 1
-          FROM fx_batch_members member
-          INNER JOIN fx_trade_exposure exposure
+          FROM batch_members member
+          INNER JOIN trade_exposures exposure
             ON exposure.trade_id = member.trade_id
             AND exposure.trade_type = member.trade_type
           WHERE member.batch_id = batch.batch_id
@@ -3380,8 +3267,8 @@ function migrateFxBatchQuoteCashOutput(sqlite) {
                 ELSE -exposure.quote_ccy_amount_minor
               END
             ), 0)
-            FROM fx_batch_members member
-            INNER JOIN fx_trade_exposure exposure
+            FROM batch_members member
+            INNER JOIN trade_exposures exposure
               ON exposure.trade_id = member.trade_id
               AND exposure.trade_type = member.trade_type
             WHERE member.batch_id = batch.batch_id
@@ -3393,7 +3280,7 @@ function migrateFxBatchQuoteCashOutput(sqlite) {
 
     if (invalidCashOutput) {
       throw new Error(
-        `FX Batch ${invalidCashOutput.batchId} has an invalid Quote cash output.`
+        `Batch ${invalidCashOutput.batchId} has an invalid Quote cash output.`
       );
     }
 
@@ -3407,30 +3294,30 @@ function migrateFxBatchQuoteCashOutput(sqlite) {
   }
 }
 
-function migrateFxBatchTradeMembershipSemantics(sqlite) {
+function migrateBatchTradeMembershipSemantics(sqlite) {
   for (const tableName of [
-    "fx_batch_members",
-    "fx_batch_balance_trade",
-    "fx_batch_position_output"
+    "batch_members",
+    "batch_balance_trades",
+    "batch_position_outputs"
   ]) {
     if (!sqliteTableExists(sqlite, tableName)) {
-      throw new Error(`FX Batch table ${tableName} was not initialized.`);
+      throw new Error(`Batch table ${tableName} was not initialized.`);
     }
   }
 
   const membersSql = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_batch_members'
+    WHERE type = 'table' AND name = 'batch_members'
   `).get()?.sql || "";
   const normalizedMembersSql = membersSql.replace(/\s+/g, " ");
   const balanceTradeColumns = [...tableColumnNames(
     sqlite,
-    "fx_batch_balance_trade"
+    "batch_balance_trades"
   )];
   const positionOutputColumns = [...tableColumnNames(
     sqlite,
-    "fx_batch_position_output"
+    "batch_position_outputs"
   )];
   const canonicalMembers =
     /\bCHECK\s*\(\s*member_role\s+IN\s*\(\s*'TRADE'\s*,\s*'BALANCE_TRADE'\s*,\s*'POSITION_OUT'\s*\)\s*\)/i
@@ -3444,13 +3331,13 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
   if (canonicalMembers && canonicalSubtypes) {
     const invalidTechnicalTrade = sqlite.prepare(`
       SELECT member.batch_id AS batchId, member.trade_id AS tradeId
-      FROM fx_batch_members member
+      FROM batch_members member
       WHERE (
           member.member_role = 'BALANCE_TRADE'
           AND NOT EXISTS
           (
             SELECT 1
-            FROM fx_batch_balance_trade balance_trade
+            FROM batch_balance_trades balance_trade
             WHERE balance_trade.trade_id = member.trade_id
               AND balance_trade.trade_type = member.trade_type
           )
@@ -3460,7 +3347,7 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
           AND NOT EXISTS
           (
             SELECT 1
-            FROM fx_batch_position_output output
+            FROM batch_position_outputs output
             WHERE output.trade_id = member.trade_id
               AND output.trade_type = member.trade_type
           )
@@ -3470,19 +3357,19 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
 
     if (invalidTechnicalTrade) {
       throw new Error(
-        `FX Batch ${invalidTechnicalTrade.batchId} technical Trade `
+        `Batch ${invalidTechnicalTrade.batchId} technical Trade `
           + `${invalidTechnicalTrade.tradeId} has no subtype record.`
       );
     }
 
     const technicalTradeWithoutOrigin = sqlite.prepare(`
       SELECT exposure.trade_id AS tradeId, exposure.trade_type AS tradeType
-      FROM fx_trade_exposure exposure
+      FROM trade_exposures exposure
       WHERE exposure.trade_type IN ('BATCH_BALANCE_TRADE', 'BATCH_POSITION_OUT')
         AND NOT EXISTS
         (
           SELECT 1
-          FROM fx_batch_members member
+          FROM batch_members member
           WHERE member.trade_id = exposure.trade_id
             AND member.trade_type = exposure.trade_type
             AND member.member_role = CASE exposure.trade_type
@@ -3495,7 +3382,7 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
 
     if (technicalTradeWithoutOrigin) {
       throw new Error(
-        `FX technical Trade ${technicalTradeWithoutOrigin.tradeId} `
+        `technical Trade ${technicalTradeWithoutOrigin.tradeId} `
           + `(${technicalTradeWithoutOrigin.tradeType}) has no origin Batch membership.`
       );
     }
@@ -3505,14 +3392,14 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
 
   const unsupportedMember = sqlite.prepare(`
     SELECT batch_id AS batchId, trade_id AS tradeId, member_role AS memberRole
-    FROM fx_batch_members
+    FROM batch_members
     WHERE member_role NOT IN ('TRADE', 'BALANCE_TRADE', 'POSITION_OUT')
     LIMIT 1
   `).get();
 
   if (unsupportedMember) {
     throw new Error(
-      `FX Batch ${unsupportedMember.batchId} Trade ${unsupportedMember.tradeId} `
+      `Batch ${unsupportedMember.batchId} Trade ${unsupportedMember.tradeId} `
         + `has unsupported member role ${unsupportedMember.memberRole}.`
     );
   }
@@ -3525,28 +3412,28 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE fx_batch_members_complete_semantics
+      CREATE TABLE batch_members_complete_semantics
       (
           batch_id    INTEGER NOT NULL,
           trade_id    INTEGER NOT NULL,
           trade_type  TEXT    NOT NULL,
           member_role TEXT    NOT NULL,
 
-          CONSTRAINT pk_fx_batch_members
+          CONSTRAINT pk_batch_members
               PRIMARY KEY (batch_id, trade_id),
-          CONSTRAINT fk_fx_batch_members_batch
+          CONSTRAINT fk_batch_members_batch
               FOREIGN KEY (batch_id)
-                  REFERENCES fx_batches (batch_id)
+                  REFERENCES batches (batch_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_batch_members_trade
+          CONSTRAINT fk_batch_members_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_batch_members_role
+          CONSTRAINT chk_batch_members_role
               CHECK (member_role IN ('TRADE', 'BALANCE_TRADE', 'POSITION_OUT')),
-          CONSTRAINT chk_fx_batch_members_role_trade_type
+          CONSTRAINT chk_batch_members_role_trade_type
               CHECK (
                   member_role = 'TRADE'
                   OR (
@@ -3560,66 +3447,66 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
               )
       );
 
-      INSERT INTO fx_batch_members_complete_semantics
+      INSERT INTO batch_members_complete_semantics
         (batch_id, trade_id, trade_type, member_role)
       SELECT batch_id, trade_id, trade_type, member_role
-      FROM fx_batch_members
+      FROM batch_members
       ORDER BY batch_id, trade_id;
 
-      CREATE TABLE fx_batch_balance_trade_subtype
+      CREATE TABLE batch_balance_trades_subtype
       (
           trade_id   INTEGER PRIMARY KEY,
           trade_type TEXT NOT NULL DEFAULT 'BATCH_BALANCE_TRADE',
 
-          CONSTRAINT fk_fx_batch_balance_trade_trade
+          CONSTRAINT fk_batch_balance_trades_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_batch_balance_trade_trade_type
+          CONSTRAINT chk_batch_balance_trades_trade_type
               CHECK (trade_type = 'BATCH_BALANCE_TRADE')
       );
 
-      INSERT INTO fx_batch_balance_trade_subtype (trade_id, trade_type)
+      INSERT INTO batch_balance_trades_subtype (trade_id, trade_type)
       SELECT trade_id, trade_type
-      FROM fx_trade_exposure
+      FROM trade_exposures
       WHERE trade_type = 'BATCH_BALANCE_TRADE'
       ORDER BY trade_id;
 
-      CREATE TABLE fx_batch_position_output_subtype
+      CREATE TABLE batch_position_outputs_subtype
       (
           trade_id   INTEGER PRIMARY KEY,
           trade_type TEXT NOT NULL DEFAULT 'BATCH_POSITION_OUT',
 
-          CONSTRAINT fk_fx_batch_position_output_trade
+          CONSTRAINT fk_batch_position_outputs_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_batch_position_output_trade_type
+          CONSTRAINT chk_batch_position_outputs_trade_type
               CHECK (trade_type = 'BATCH_POSITION_OUT')
       );
 
-      INSERT INTO fx_batch_position_output_subtype (trade_id, trade_type)
+      INSERT INTO batch_position_outputs_subtype (trade_id, trade_type)
       SELECT trade_id, trade_type
-      FROM fx_trade_exposure
+      FROM trade_exposures
       WHERE trade_type = 'BATCH_POSITION_OUT'
       ORDER BY trade_id;
     `);
 
     if (balanceTradeHasBatchId) {
       sqlite.exec(`
-        INSERT OR IGNORE INTO fx_batch_members_complete_semantics
+        INSERT OR IGNORE INTO batch_members_complete_semantics
           (batch_id, trade_id, trade_type, member_role)
         SELECT batch_id, trade_id, trade_type, 'BALANCE_TRADE'
-        FROM fx_batch_balance_trade
+        FROM batch_balance_trades
         ORDER BY batch_id, trade_id;
       `);
 
       const missingBalanceOrigin = sqlite.prepare(`
         SELECT balance_trade.batch_id AS batchId, balance_trade.trade_id AS tradeId
-        FROM fx_batch_balance_trade balance_trade
-        LEFT JOIN fx_batch_members_complete_semantics member
+        FROM batch_balance_trades balance_trade
+        LEFT JOIN batch_members_complete_semantics member
           ON member.batch_id = balance_trade.batch_id
           AND member.trade_id = balance_trade.trade_id
           AND member.trade_type = balance_trade.trade_type
@@ -3630,7 +3517,7 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
 
       if (missingBalanceOrigin) {
         throw new Error(
-          `FX Batch ${missingBalanceOrigin.batchId} Balance Trade `
+          `Batch ${missingBalanceOrigin.batchId} Balance Trade `
             + `${missingBalanceOrigin.tradeId} conflicts with its membership.`
         );
       }
@@ -3638,17 +3525,17 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
 
     if (positionOutputHasBatchId) {
       sqlite.exec(`
-        INSERT OR IGNORE INTO fx_batch_members_complete_semantics
+        INSERT OR IGNORE INTO batch_members_complete_semantics
           (batch_id, trade_id, trade_type, member_role)
         SELECT batch_id, trade_id, trade_type, 'POSITION_OUT'
-        FROM fx_batch_position_output
+        FROM batch_position_outputs
         ORDER BY batch_id, trade_id;
       `);
 
       const missingPositionOutputOrigin = sqlite.prepare(`
         SELECT output.batch_id AS batchId, output.trade_id AS tradeId
-        FROM fx_batch_position_output output
-        LEFT JOIN fx_batch_members_complete_semantics member
+        FROM batch_position_outputs output
+        LEFT JOIN batch_members_complete_semantics member
           ON member.batch_id = output.batch_id
           AND member.trade_id = output.trade_id
           AND member.trade_type = output.trade_type
@@ -3659,33 +3546,33 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
 
       if (missingPositionOutputOrigin) {
         throw new Error(
-          `FX Batch ${missingPositionOutputOrigin.batchId} Position Out `
+          `Batch ${missingPositionOutputOrigin.batchId} Position Out `
             + `${missingPositionOutputOrigin.tradeId} conflicts with its membership.`
         );
       }
     }
 
     sqlite.exec(`
-      DROP TABLE fx_batch_balance_trade;
-      DROP TABLE fx_batch_position_output;
-      DROP TABLE fx_batch_members;
+      DROP TABLE batch_balance_trades;
+      DROP TABLE batch_position_outputs;
+      DROP TABLE batch_members;
 
-      ALTER TABLE fx_batch_members_complete_semantics
-        RENAME TO fx_batch_members;
-      ALTER TABLE fx_batch_balance_trade_subtype
-        RENAME TO fx_batch_balance_trade;
-      ALTER TABLE fx_batch_position_output_subtype
-        RENAME TO fx_batch_position_output;
+      ALTER TABLE batch_members_complete_semantics
+        RENAME TO batch_members;
+      ALTER TABLE batch_balance_trades_subtype
+        RENAME TO batch_balance_trades;
+      ALTER TABLE batch_position_outputs_subtype
+        RENAME TO batch_position_outputs;
     `);
 
     const incompleteTechnicalTrade = sqlite.prepare(`
       SELECT exposure.trade_id AS tradeId, exposure.trade_type AS tradeType
-      FROM fx_trade_exposure exposure
+      FROM trade_exposures exposure
       WHERE exposure.trade_type IN ('BATCH_BALANCE_TRADE', 'BATCH_POSITION_OUT')
         AND NOT EXISTS
         (
           SELECT 1
-          FROM fx_batch_members member
+          FROM batch_members member
           WHERE member.trade_id = exposure.trade_id
             AND member.trade_type = exposure.trade_type
             AND member.member_role = CASE exposure.trade_type
@@ -3698,7 +3585,7 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
 
     if (incompleteTechnicalTrade) {
       throw new Error(
-        `FX technical Trade ${incompleteTechnicalTrade.tradeId} `
+        `technical Trade ${incompleteTechnicalTrade.tradeId} `
           + `(${incompleteTechnicalTrade.tradeType}) has no origin Batch membership.`
       );
     }
@@ -3707,7 +3594,7 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
 
     if (foreignKeyViolations.length > 0) {
       throw new Error(
-        "FX Batch full-membership migration produced foreign key violations."
+        "Batch full-membership migration produced foreign key violations."
       );
     }
 
@@ -3723,44 +3610,44 @@ function migrateFxBatchTradeMembershipSemantics(sqlite) {
   }
 }
 
-function assertFxBatchMembershipConsistency(sqlite) {
+function assertBatchMembershipConsistency(sqlite) {
   const conflict = sqlite.prepare(`
     SELECT
       member.trade_id AS tradeId,
       member.trade_type AS tradeType,
       GROUP_CONCAT(member.batch_id, ',') AS batchIds
-    FROM fx_batch_members member
-    INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+    FROM batch_members member
+    INNER JOIN batches batch ON batch.batch_id = member.batch_id
     WHERE member.member_role = 'TRADE'
       AND batch.batch_status IN
-      (${FX_BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS})
+      (${BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS})
     GROUP BY member.trade_id, member.trade_type
     HAVING COUNT(*) > 1
     LIMIT 1
-  `).get(...FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES);
+  `).get(...BATCH_MEMBERSHIP_BLOCKING_STATUSES);
 
   if (conflict) {
     throw new Error(
-      `FX Trade ${conflict.tradeId} (${conflict.tradeType}) belongs to multiple `
+      `Trade ${conflict.tradeId} (${conflict.tradeType}) belongs to multiple `
         + `active batches: ${conflict.batchIds}.`
     );
   }
 }
 
-function dropFxTradeExposureDealtCurrencyTriggers(sqlite) {
+function dropTradeExposureDealtCurrencyTriggers(sqlite) {
   sqlite.exec(`
-    DROP TRIGGER IF EXISTS trg_fx_trade_exposure_require_dealt_ccy_insert;
-    DROP TRIGGER IF EXISTS trg_fx_trade_exposure_require_dealt_ccy_update;
+    DROP TRIGGER IF EXISTS trg_trade_exposures_require_dealt_ccy_insert;
+    DROP TRIGGER IF EXISTS trg_trade_exposures_require_dealt_ccy_update;
     DROP TRIGGER IF EXISTS trg_ccy_pair_options_preserve_exposure_dealt_ccy;
   `);
 }
 
-function ensureFxTradeExposureDealtCurrencyTriggers(sqlite) {
-  dropFxTradeExposureDealtCurrencyTriggers(sqlite);
+function ensureTradeExposureDealtCurrencyTriggers(sqlite) {
+  dropTradeExposureDealtCurrencyTriggers(sqlite);
 
   sqlite.exec(`
-    CREATE TRIGGER trg_fx_trade_exposure_require_dealt_ccy_insert
-    BEFORE INSERT ON fx_trade_exposure
+    CREATE TRIGGER trg_trade_exposures_require_dealt_ccy_insert
+    BEFORE INSERT ON trade_exposures
     FOR EACH ROW
     WHEN NOT EXISTS
     (
@@ -3770,11 +3657,11 @@ function ensureFxTradeExposureDealtCurrencyTriggers(sqlite) {
         AND NEW.dealt_ccy_code IN (p.base_ccy_code, p.quote_ccy_code)
     )
     BEGIN
-      SELECT RAISE(ABORT, 'fx_trade_exposure.dealt_ccy_code must belong to its Ccy Pair');
+      SELECT RAISE(ABORT, 'trade_exposures.dealt_ccy_code must belong to its Ccy Pair');
     END;
 
-    CREATE TRIGGER trg_fx_trade_exposure_require_dealt_ccy_update
-    BEFORE UPDATE OF ccy_pair_code, dealt_ccy_code ON fx_trade_exposure
+    CREATE TRIGGER trg_trade_exposures_require_dealt_ccy_update
+    BEFORE UPDATE OF ccy_pair_code, dealt_ccy_code ON trade_exposures
     FOR EACH ROW
     WHEN NOT EXISTS
     (
@@ -3784,7 +3671,7 @@ function ensureFxTradeExposureDealtCurrencyTriggers(sqlite) {
         AND NEW.dealt_ccy_code IN (p.base_ccy_code, p.quote_ccy_code)
     )
     BEGIN
-      SELECT RAISE(ABORT, 'fx_trade_exposure.dealt_ccy_code must belong to its Ccy Pair');
+      SELECT RAISE(ABORT, 'trade_exposures.dealt_ccy_code must belong to its Ccy Pair');
     END;
 
     CREATE TRIGGER trg_ccy_pair_options_preserve_exposure_dealt_ccy
@@ -3793,19 +3680,19 @@ function ensureFxTradeExposureDealtCurrencyTriggers(sqlite) {
     WHEN EXISTS
     (
       SELECT 1
-      FROM fx_trade_exposure e
+      FROM trade_exposures e
       WHERE e.ccy_pair_code = OLD.ccy_pair_code
         AND e.dealt_ccy_code NOT IN (NEW.base_ccy_code, NEW.quote_ccy_code)
     )
     BEGIN
-      SELECT RAISE(ABORT, 'a Ccy Pair used by fx_trade_exposure must preserve its dealt currency');
+      SELECT RAISE(ABORT, 'a Ccy Pair used by trade_exposures must preserve its dealt currency');
     END;
   `);
 }
 
-function migrateFxTradeMarketSnapshot(sqlite) {
-  const targetTable = "fx_trade_market_snapshot";
-  const legacyTable = "fx_trade_audit";
+function migrateTradeMarketSnapshot(sqlite) {
+  const targetTable = "trade_market_snapshots";
+  const legacyTable = "trade_audit";
   const expectedColumns = [
     "trade_id",
     "trade_type",
@@ -3869,9 +3756,9 @@ function migrateFxTradeMarketSnapshot(sqlite) {
   }
 }
 
-function migrateTradingCounterpartyExecutionContexts(sqlite) {
-  const tableName = "trading_counterparty_execution_contexts";
-  const migratedTableName = "trading_counterparty_execution_contexts_migrated";
+function migrateTradingCounterpartyTradeContexts(sqlite) {
+  const tableName = "trading_counterparty_trade_contexts";
+  const migratedTableName = "trading_counterparty_trade_contexts_migrated";
   const tableInfo = sqlite.prepare(`PRAGMA table_info(${tableName})`).all();
   const foreignKeys = sqlite.prepare(`PRAGMA foreign_key_list(${tableName})`).all();
   const columns = tableInfo.map(column => column.name);
@@ -3882,14 +3769,14 @@ function migrateTradingCounterpartyExecutionContexts(sqlite) {
       && key.on_update === "RESTRICT"
       && key.on_delete === "CASCADE"
   );
-  const hasExecutionContextForeignKey = foreignKeys.some(key =>
-    key.from === "execution_context_id"
-      && key.table === "execution_contexts"
-      && key.to === "execution_context_id"
+  const hasTradeContextForeignKey = foreignKeys.some(key =>
+    key.from === "trade_context_id"
+      && key.table === "trade_contexts"
+      && key.to === "trade_context_id"
       && key.on_update === "RESTRICT"
       && key.on_delete === "RESTRICT"
   );
-  const schemaIsCurrent = columns.join(",") === "counterparty_id,execution_context_id"
+  const schemaIsCurrent = columns.join(",") === "counterparty_id,trade_context_id"
     && String(tableInfo[0]?.type || "").toUpperCase() === "INTEGER"
     && tableInfo[0]?.notnull === 1
     && tableInfo[0]?.pk === 1
@@ -3897,17 +3784,17 @@ function migrateTradingCounterpartyExecutionContexts(sqlite) {
     && tableInfo[1]?.notnull === 1
     && tableInfo[1]?.pk === 2
     && hasCounterpartyForeignKey
-    && hasExecutionContextForeignKey;
+    && hasTradeContextForeignKey;
 
   runInImmediateTransaction(sqlite, () => {
-    sqlite.exec("DROP TABLE IF EXISTS trading_party_execution_contexts");
+    sqlite.exec("DROP TABLE IF EXISTS trading_party_trade_contexts");
 
     if (!schemaIsCurrent) {
       // Триггеры Pricing Rule ссылаются на эту таблицу по имени. Удаляем их только
       // на время перестройки legacy-таблицы; следующий проход schema.sql восстановит их.
       sqlite.exec(`
-        DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_execution_context_insert;
-        DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_execution_context_update;
+        DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_trade_context_insert;
+        DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_trade_context_update;
       `);
 
       const sourceCounterpartyColumn = columns.includes("counterparty_id")
@@ -3915,7 +3802,7 @@ function migrateTradingCounterpartyExecutionContexts(sqlite) {
         : columns.includes("party_id")
           ? "party_id"
           : null;
-      const canPreserveRows = sourceCounterpartyColumn && columns.includes("execution_context_id");
+      const canPreserveRows = sourceCounterpartyColumn && columns.includes("trade_context_id");
 
       sqlite.exec(`
         DROP TABLE IF EXISTS ${migratedTableName};
@@ -3923,18 +3810,18 @@ function migrateTradingCounterpartyExecutionContexts(sqlite) {
         CREATE TABLE ${migratedTableName}
         (
             counterparty_id      INTEGER NOT NULL,
-            execution_context_id INTEGER NOT NULL,
+            trade_context_id INTEGER NOT NULL,
 
-            CONSTRAINT pk_trading_counterparty_execution_contexts
-                PRIMARY KEY (counterparty_id, execution_context_id),
-            CONSTRAINT fk_trading_counterparty_execution_contexts_counterparty
+            CONSTRAINT pk_trading_counterparty_trade_contexts
+                PRIMARY KEY (counterparty_id, trade_context_id),
+            CONSTRAINT fk_trading_counterparty_trade_contexts_counterparty
                 FOREIGN KEY (counterparty_id)
                     REFERENCES trading_counterparties (counterparty_id)
                     ON UPDATE RESTRICT
                     ON DELETE CASCADE,
-            CONSTRAINT fk_trading_counterparty_execution_contexts_execution_context
-                FOREIGN KEY (execution_context_id)
-                    REFERENCES execution_contexts (execution_context_id)
+            CONSTRAINT fk_trading_counterparty_trade_contexts_trade_context
+                FOREIGN KEY (trade_context_id)
+                    REFERENCES trade_contexts (trade_context_id)
                     ON UPDATE RESTRICT
                     ON DELETE RESTRICT
         );
@@ -3943,13 +3830,13 @@ function migrateTradingCounterpartyExecutionContexts(sqlite) {
       if (canPreserveRows) {
         sqlite.exec(`
           INSERT OR IGNORE INTO ${migratedTableName}
-            (counterparty_id, execution_context_id)
-          SELECT source.${sourceCounterpartyColumn}, source.execution_context_id
+            (counterparty_id, trade_context_id)
+          SELECT source.${sourceCounterpartyColumn}, source.trade_context_id
           FROM ${tableName} source
           INNER JOIN trading_counterparties counterparty
             ON counterparty.counterparty_id = source.${sourceCounterpartyColumn}
-          INNER JOIN execution_contexts context
-            ON context.execution_context_id = source.execution_context_id;
+          INNER JOIN trade_contexts context
+            ON context.trade_context_id = source.trade_context_id;
         `);
       }
 
@@ -3962,15 +3849,15 @@ function migrateTradingCounterpartyExecutionContexts(sqlite) {
     if (sqliteTableExists(sqlite, "pricing_rules")) {
       sqlite.exec(`
         INSERT OR IGNORE INTO ${tableName}
-          (counterparty_id, execution_context_id)
-        SELECT DISTINCT counterparty_id, execution_context_id
+          (counterparty_id, trade_context_id)
+        SELECT DISTINCT counterparty_id, trade_context_id
         FROM pricing_rules;
       `);
     }
 
     sqlite.exec(`
-      CREATE INDEX IF NOT EXISTS idx_trading_counterparty_execution_contexts_context
-        ON ${tableName} (execution_context_id, counterparty_id);
+      CREATE INDEX IF NOT EXISTS idx_trading_counterparty_trade_contexts_context
+        ON ${tableName} (trade_context_id, counterparty_id);
     `);
 
     const foreignKeyViolations = sqlite
@@ -3985,83 +3872,83 @@ function migrateTradingCounterpartyExecutionContexts(sqlite) {
   });
 }
 
-function dropTradingCounterpartyExecutionContextIntegrityTriggers(sqlite) {
+function dropTradingCounterpartyTradeContextIntegrityTriggers(sqlite) {
   sqlite.exec(`
-    DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_execution_context_insert;
-    DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_execution_context_update;
-    DROP TRIGGER IF EXISTS trg_trading_counterparty_execution_contexts_preserve_pricing_rules_delete;
-    DROP TRIGGER IF EXISTS trg_trading_counterparty_execution_contexts_immutable_update;
+    DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_trade_context_insert;
+    DROP TRIGGER IF EXISTS trg_pricing_rules_require_attached_trade_context_update;
+    DROP TRIGGER IF EXISTS trg_trading_counterparty_trade_contexts_preserve_pricing_rules_delete;
+    DROP TRIGGER IF EXISTS trg_trading_counterparty_trade_contexts_immutable_update;
   `);
 }
 
-function ensureTradingCounterpartyExecutionContextIntegrityTriggers(sqlite) {
+function ensureTradingCounterpartyTradeContextIntegrityTriggers(sqlite) {
   sqlite.exec(`
-    CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_execution_context_insert
+    CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_trade_context_insert
     BEFORE INSERT ON pricing_rules
     FOR EACH ROW
     WHEN NOT EXISTS
     (
         SELECT 1
-        FROM trading_counterparty_execution_contexts assignment
+        FROM trading_counterparty_trade_contexts assignment
         WHERE assignment.counterparty_id = NEW.counterparty_id
-          AND assignment.execution_context_id = NEW.execution_context_id
+          AND assignment.trade_context_id = NEW.trade_context_id
     )
     BEGIN
-        SELECT RAISE(ABORT, 'Pricing Rule Execution Context must be attached to its Trading Counterparty');
+        SELECT RAISE(ABORT, 'Pricing Rule Trade Context must be attached to its Trading Counterparty');
     END;
 
-    CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_execution_context_update
-    BEFORE UPDATE OF counterparty_id, execution_context_id ON pricing_rules
+    CREATE TRIGGER IF NOT EXISTS trg_pricing_rules_require_attached_trade_context_update
+    BEFORE UPDATE OF counterparty_id, trade_context_id ON pricing_rules
     FOR EACH ROW
     WHEN NOT EXISTS
     (
         SELECT 1
-        FROM trading_counterparty_execution_contexts assignment
+        FROM trading_counterparty_trade_contexts assignment
         WHERE assignment.counterparty_id = NEW.counterparty_id
-          AND assignment.execution_context_id = NEW.execution_context_id
+          AND assignment.trade_context_id = NEW.trade_context_id
     )
     BEGIN
-        SELECT RAISE(ABORT, 'Pricing Rule Execution Context must be attached to its Trading Counterparty');
+        SELECT RAISE(ABORT, 'Pricing Rule Trade Context must be attached to its Trading Counterparty');
     END;
 
-    CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_execution_contexts_preserve_pricing_rules_delete
-    BEFORE DELETE ON trading_counterparty_execution_contexts
+    CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_trade_contexts_preserve_pricing_rules_delete
+    BEFORE DELETE ON trading_counterparty_trade_contexts
     FOR EACH ROW
     WHEN EXISTS
     (
         SELECT 1
         FROM pricing_rules rule
         WHERE rule.counterparty_id = OLD.counterparty_id
-          AND rule.execution_context_id = OLD.execution_context_id
+          AND rule.trade_context_id = OLD.trade_context_id
     )
     BEGIN
-        SELECT RAISE(ABORT, 'an Execution Context assignment used by Pricing Rules cannot be detached from its Trading Counterparty');
+        SELECT RAISE(ABORT, 'a Trade Context assignment used by Pricing Rules cannot be detached from its Trading Counterparty');
     END;
 
-    CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_execution_contexts_immutable_update
-    BEFORE UPDATE OF counterparty_id, execution_context_id ON trading_counterparty_execution_contexts
+    CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_trade_contexts_immutable_update
+    BEFORE UPDATE OF counterparty_id, trade_context_id ON trading_counterparty_trade_contexts
     FOR EACH ROW
     WHEN NEW.counterparty_id <> OLD.counterparty_id
-      OR NEW.execution_context_id <> OLD.execution_context_id
+      OR NEW.trade_context_id <> OLD.trade_context_id
     BEGIN
-        SELECT RAISE(ABORT, 'an Execution Context assignment identity cannot be changed; attach a new Context and detach the old one');
+        SELECT RAISE(ABORT, 'a Trade Context assignment identity cannot be changed; attach a new Context and detach the old one');
     END;
   `);
 }
 
-function dropClientFxDealTriggers(sqlite) {
+function dropClientDealTriggers(sqlite) {
   sqlite.exec(`
-    DROP TRIGGER IF EXISTS trg_client_fx_deals_require_client_insert;
-    DROP TRIGGER IF EXISTS trg_client_fx_deals_require_client_update;
+    DROP TRIGGER IF EXISTS trg_client_deals_require_client_insert;
+    DROP TRIGGER IF EXISTS trg_client_deals_require_client_update;
     DROP TRIGGER IF EXISTS trg_trading_counterparties_preserve_client_deals;
     DROP TRIGGER IF EXISTS trg_trading_counterparty_roles_preserve_client_deals;
   `);
 }
 
-function dropHedgeFxDealTriggers(sqlite) {
+function dropHedgeDealTriggers(sqlite) {
   sqlite.exec(`
-    DROP TRIGGER IF EXISTS trg_fx_hedge_deals_require_hedge_counterparty_insert;
-    DROP TRIGGER IF EXISTS trg_fx_hedge_deals_require_hedge_counterparty_update;
+    DROP TRIGGER IF EXISTS trg_hedge_deals_require_hedge_counterparty_insert;
+    DROP TRIGGER IF EXISTS trg_hedge_deals_require_hedge_counterparty_update;
     DROP TRIGGER IF EXISTS trg_trading_counterparties_preserve_hedge_deals;
     DROP TRIGGER IF EXISTS trg_trading_counterparty_roles_preserve_hedge_deals;
   `);
@@ -4078,40 +3965,33 @@ function dropClientDealGenerationSettingsTriggers(sqlite) {
     DROP TRIGGER IF EXISTS trg_pricing_rules_preserve_auto_priced_client_generation_settings;
     DROP TRIGGER IF EXISTS trg_trading_counterparties_preserve_auto_priced_client_generation_settings;
     DROP TRIGGER IF EXISTS trg_trading_counterparty_roles_preserve_auto_priced_client_generation_settings;
-    DROP TRIGGER IF EXISTS trg_execution_contexts_preserve_auto_priced_client_generation_settings;
-    DROP TRIGGER IF EXISTS trg_execution_systems_preserve_auto_priced_client_generation_settings;
+    DROP TRIGGER IF EXISTS trg_trade_contexts_preserve_auto_priced_client_generation_settings;
+    DROP TRIGGER IF EXISTS trg_originating_systems_preserve_auto_priced_client_generation_settings;
   `);
 }
 
 function dropHedgeQuickModeSettingsTriggers(sqlite) {
   sqlite.exec(`
-    DROP TRIGGER IF EXISTS trg_fx_hedge_quick_mode_settings_require_auto_priced_hedge_insert;
-    DROP TRIGGER IF EXISTS trg_fx_hedge_quick_mode_settings_require_auto_priced_hedge_update;
-    DROP TRIGGER IF EXISTS trg_fx_hedge_quick_mode_settings_require_base_precision_insert;
-    DROP TRIGGER IF EXISTS trg_fx_hedge_quick_mode_settings_require_base_precision_update;
-    DROP TRIGGER IF EXISTS trg_pricing_rules_preserve_fx_hedge_quick_mode_settings;
-    DROP TRIGGER IF EXISTS trg_trading_counterparties_preserve_fx_hedge_quick_mode_settings;
-    DROP TRIGGER IF EXISTS trg_trading_counterparty_roles_preserve_fx_hedge_quick_mode_settings;
-    DROP TRIGGER IF EXISTS trg_execution_contexts_preserve_fx_hedge_quick_mode_settings;
-    DROP TRIGGER IF EXISTS trg_execution_systems_preserve_fx_hedge_quick_mode_settings;
-    DROP TRIGGER IF EXISTS trg_ccy_options_preserve_fx_hedge_quick_mode_settings_precision;
-  `);
-}
-
-function dropAutoHedgingAdmissionPolicyCompletenessTriggers(sqlite) {
-  sqlite.exec(`
-    DROP TRIGGER IF EXISTS trg_auto_hedging_admission_policy_current_complete_insert;
-    DROP TRIGGER IF EXISTS trg_auto_hedging_admission_policy_current_complete_update;
+    DROP TRIGGER IF EXISTS trg_hedge_quick_mode_settings_require_auto_priced_hedge_insert;
+    DROP TRIGGER IF EXISTS trg_hedge_quick_mode_settings_require_auto_priced_hedge_update;
+    DROP TRIGGER IF EXISTS trg_hedge_quick_mode_settings_require_base_precision_insert;
+    DROP TRIGGER IF EXISTS trg_hedge_quick_mode_settings_require_base_precision_update;
+    DROP TRIGGER IF EXISTS trg_pricing_rules_preserve_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_trading_counterparties_preserve_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_trading_counterparty_roles_preserve_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_trade_contexts_preserve_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_originating_systems_preserve_hedge_quick_mode_settings;
+    DROP TRIGGER IF EXISTS trg_ccy_options_preserve_hedge_quick_mode_settings_precision;
   `);
 }
 
 function ensureHedgeQuickModeSettingsDefaultTenor(sqlite) {
-  if (tableColumnNames(sqlite, "fx_hedge_quick_mode_settings").has("default_tenor")) {
+  if (tableColumnNames(sqlite, "hedge_quick_mode_settings").has("default_tenor")) {
     return;
   }
 
   sqlite.exec(`
-    ALTER TABLE fx_hedge_quick_mode_settings
+    ALTER TABLE hedge_quick_mode_settings
     ADD COLUMN default_tenor TEXT NOT NULL DEFAULT 'TOD'
       CHECK (default_tenor IN ('TOD', 'TOM', 'SPOT'));
   `);
@@ -4131,7 +4011,7 @@ function migrateHedgeQuickModeSettingsCounterpartyReference(sqlite) {
     "default_tenor"
   ];
   const legacyColumns = targetColumns.filter(column => column !== "counterparty_id");
-  const columns = [...tableColumnNames(sqlite, "fx_hedge_quick_mode_settings")];
+  const columns = [...tableColumnNames(sqlite, "hedge_quick_mode_settings")];
 
   if (columns.join(",") === targetColumns.join(",")) {
     return;
@@ -4143,7 +4023,7 @@ function migrateHedgeQuickModeSettingsCounterpartyReference(sqlite) {
 
   const sourceRows = sqlite.prepare(`
     SELECT settings.*, rule.counterparty_id
-    FROM fx_hedge_quick_mode_settings settings
+    FROM hedge_quick_mode_settings settings
     INNER JOIN pricing_rules rule
       ON rule.pricing_rule_id = settings.pricing_rule_id
       AND rule.ccy_pair_code = settings.ccy_pair_code
@@ -4151,7 +4031,7 @@ function migrateHedgeQuickModeSettingsCounterpartyReference(sqlite) {
   `).all();
   const originalRowCount = Number(sqlite.prepare(`
     SELECT COUNT(*) AS count
-    FROM fx_hedge_quick_mode_settings
+    FROM hedge_quick_mode_settings
   `).get().count);
 
   if (sourceRows.length !== originalRowCount) {
@@ -4165,7 +4045,7 @@ function migrateHedgeQuickModeSettingsCounterpartyReference(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE fx_hedge_quick_mode_settings_migrated
+      CREATE TABLE hedge_quick_mode_settings_migrated
       (
           ccy_pair_code                       TEXT    PRIMARY KEY,
           counterparty_id                            INTEGER NOT NULL,
@@ -4178,27 +4058,27 @@ function migrateHedgeQuickModeSettingsCounterpartyReference(sqlite) {
           is_active                           INTEGER NOT NULL DEFAULT 1,
           default_tenor                       TEXT    NOT NULL DEFAULT 'TOD',
 
-          CONSTRAINT fk_fx_hedge_quick_mode_settings_pair
+          CONSTRAINT fk_hedge_quick_mode_settings_pair
               FOREIGN KEY (ccy_pair_code)
                   REFERENCES ccy_pair_options (ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_quick_mode_settings_counterparty
+          CONSTRAINT fk_hedge_quick_mode_settings_counterparty
               FOREIGN KEY (counterparty_id)
                   REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_quick_mode_settings_rule_counterparty_pair
+          CONSTRAINT fk_hedge_quick_mode_settings_rule_counterparty_pair
               FOREIGN KEY (pricing_rule_id, counterparty_id, ccy_pair_code)
                   REFERENCES pricing_rules (pricing_rule_id, counterparty_id, ccy_pair_code)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_hedge_quick_mode_settings_fraction_digits
+          CONSTRAINT chk_hedge_quick_mode_settings_fraction_digits
               CHECK (
                   typeof(base_ccy_fraction_digits) = 'integer'
                   AND base_ccy_fraction_digits BETWEEN 0 AND 10
               ),
-          CONSTRAINT chk_fx_hedge_quick_mode_settings_amounts
+          CONSTRAINT chk_hedge_quick_mode_settings_amounts
               CHECK (
                   typeof(small_base_ccy_amount_minor) = 'integer'
                   AND small_base_ccy_amount_minor BETWEEN 1 AND 9007199254740991
@@ -4212,15 +4092,15 @@ function migrateHedgeQuickModeSettingsCounterpartyReference(sqlite) {
                   AND medium_base_ccy_amount_minor < large_base_ccy_amount_minor
                   AND large_base_ccy_amount_minor < xlarge_base_ccy_amount_minor
               ),
-          CONSTRAINT chk_fx_hedge_quick_mode_settings_active
+          CONSTRAINT chk_hedge_quick_mode_settings_active
               CHECK (is_active IN (0, 1)),
-          CONSTRAINT chk_fx_hedge_quick_mode_settings_default_tenor
+          CONSTRAINT chk_hedge_quick_mode_settings_default_tenor
               CHECK (default_tenor IN ('TOD', 'TOM', 'SPOT'))
       );
     `);
 
     const insert = sqlite.prepare(`
-      INSERT INTO fx_hedge_quick_mode_settings_migrated
+      INSERT INTO hedge_quick_mode_settings_migrated
         (
           ccy_pair_code,
           counterparty_id,
@@ -4252,14 +4132,14 @@ function migrateHedgeQuickModeSettingsCounterpartyReference(sqlite) {
     }
 
     sqlite.exec(`
-      DROP TABLE fx_hedge_quick_mode_settings;
-      ALTER TABLE fx_hedge_quick_mode_settings_migrated
-        RENAME TO fx_hedge_quick_mode_settings;
+      DROP TABLE hedge_quick_mode_settings;
+      ALTER TABLE hedge_quick_mode_settings_migrated
+        RENAME TO hedge_quick_mode_settings;
     `);
 
     const migratedRowCount = Number(sqlite.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_hedge_quick_mode_settings
+      FROM hedge_quick_mode_settings
     `).get().count);
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
@@ -4287,15 +4167,15 @@ function migrateHedgeQuickModeSettingsCounterpartyReference(sqlite) {
   }
 }
 
-function migrateLegacyFxBatchOutputTables(sqlite) {
+function migrateLegacyBatchOutputTables(sqlite) {
   const tableExists = tableName => Boolean(sqlite.prepare(`
     SELECT 1
     FROM sqlite_master
     WHERE type = 'table' AND name = ?
   `).get(tableName));
-  const legacyPositionTableExists = tableExists("fx_batch_outputs");
-  const legacyCashMemberTableExists = tableExists("fx_batch_quote_cash_members");
-  const legacyCashOutputTableExists = tableExists("fx_batch_quote_cash_outputs");
+  const legacyPositionTableExists = tableExists("batch_outputs");
+  const legacyCashMemberTableExists = tableExists("batch_quote_cash_members");
+  const legacyCashOutputTableExists = tableExists("legacy_batch_quote_cash_outputs");
 
   if (!legacyPositionTableExists
     && !legacyCashMemberTableExists
@@ -4305,12 +4185,12 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
 
   let positionTargetHasBatchId = tableColumnNames(
     sqlite,
-    "fx_batch_position_output"
+    "batch_position_outputs"
   ).has("batch_id");
   const legacyPositionOutputCount = legacyPositionTableExists
     ? Number(sqlite.prepare(`
       SELECT COUNT(*) AS count
-      FROM fx_batch_outputs
+      FROM batch_outputs
     `).get().count)
     : 0;
   const requiresPositionBridge = legacyPositionOutputCount > 0
@@ -4326,7 +4206,7 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
     if (legacyPositionTableExists) {
       const invalidPositionOutput = sqlite.prepare(`
         SELECT batch_id, trade_id, trade_type, output_role
-        FROM fx_batch_outputs
+        FROM batch_outputs
         WHERE trade_type <> 'BATCH_POSITION_OUT'
           OR output_role <> 'POSITION_OUT'
         LIMIT 1
@@ -4334,44 +4214,44 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
 
       if (invalidPositionOutput) {
         throw new Error(
-          `Legacy FX Batch ${invalidPositionOutput.batch_id} has an unsupported `
+          `Legacy Batch ${invalidPositionOutput.batch_id} has an unsupported `
             + `position output ${invalidPositionOutput.trade_id}.`
         );
       }
 
       if (requiresPositionBridge) {
         sqlite.exec(`
-          CREATE TABLE fx_batch_position_output_legacy_semantics
+          CREATE TABLE batch_position_outputs_legacy_semantics
           (
               batch_id   INTEGER PRIMARY KEY,
               trade_id   INTEGER NOT NULL UNIQUE,
               trade_type TEXT    NOT NULL,
 
-              CONSTRAINT fk_fx_batch_position_output_batch
+              CONSTRAINT fk_batch_position_outputs_batch
                   FOREIGN KEY (batch_id)
-                      REFERENCES fx_batches (batch_id)
+                      REFERENCES batches (batch_id)
                       ON UPDATE RESTRICT
                       ON DELETE RESTRICT,
-              CONSTRAINT fk_fx_batch_position_output_trade
+              CONSTRAINT fk_batch_position_outputs_trade
                   FOREIGN KEY (trade_id, trade_type)
-                      REFERENCES fx_trade_exposure (trade_id, trade_type)
+                      REFERENCES trade_exposures (trade_id, trade_type)
                       ON UPDATE RESTRICT
                       ON DELETE RESTRICT,
-              CONSTRAINT chk_fx_batch_position_output_trade_type
+              CONSTRAINT chk_batch_position_outputs_trade_type
                   CHECK (trade_type = 'BATCH_POSITION_OUT')
           );
 
-          INSERT INTO fx_batch_position_output_legacy_semantics
+          INSERT INTO batch_position_outputs_legacy_semantics
             (batch_id, trade_id, trade_type)
           SELECT batch_id, trade_id, trade_type
-          FROM fx_batch_outputs
+          FROM batch_outputs
           ORDER BY batch_id, trade_id;
 
-          INSERT OR IGNORE INTO fx_batch_position_output_legacy_semantics
+          INSERT OR IGNORE INTO batch_position_outputs_legacy_semantics
             (batch_id, trade_id, trade_type)
           SELECT member.batch_id, target.trade_id, target.trade_type
-          FROM fx_batch_position_output target
-          INNER JOIN fx_batch_members member
+          FROM batch_position_outputs target
+          INNER JOIN batch_members member
             ON member.trade_id = target.trade_id
             AND member.trade_type = target.trade_type
             AND member.member_role = 'POSITION_OUT'
@@ -4380,8 +4260,8 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
 
         const unmappedPositionSubtype = sqlite.prepare(`
           SELECT target.trade_id AS tradeId
-          FROM fx_batch_position_output target
-          LEFT JOIN fx_batch_position_output_legacy_semantics migrated
+          FROM batch_position_outputs target
+          LEFT JOIN batch_position_outputs_legacy_semantics migrated
             ON migrated.trade_id = target.trade_id
             AND migrated.trade_type = target.trade_type
           WHERE migrated.trade_id IS NULL
@@ -4395,34 +4275,34 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
         }
 
         sqlite.exec(`
-          DROP TABLE fx_batch_position_output;
-          ALTER TABLE fx_batch_position_output_legacy_semantics
-            RENAME TO fx_batch_position_output;
+          DROP TABLE batch_position_outputs;
+          ALTER TABLE batch_position_outputs_legacy_semantics
+            RENAME TO batch_position_outputs;
         `);
         positionTargetHasBatchId = true;
       }
 
       if (positionTargetHasBatchId) {
         sqlite.exec(`
-          INSERT OR IGNORE INTO fx_batch_position_output
+          INSERT OR IGNORE INTO batch_position_outputs
             (batch_id, trade_id, trade_type)
           SELECT batch_id, trade_id, trade_type
-          FROM fx_batch_outputs;
+          FROM batch_outputs;
         `);
       } else {
         sqlite.exec(`
-          INSERT OR IGNORE INTO fx_batch_position_output
+          INSERT OR IGNORE INTO batch_position_outputs
             (trade_id, trade_type)
           SELECT trade_id, trade_type
-          FROM fx_batch_outputs;
+          FROM batch_outputs;
         `);
       }
 
       const missingPositionOutput = positionTargetHasBatchId
         ? sqlite.prepare(`
           SELECT legacy.batch_id, legacy.trade_id
-          FROM fx_batch_outputs legacy
-          LEFT JOIN fx_batch_position_output target
+          FROM batch_outputs legacy
+          LEFT JOIN batch_position_outputs target
             ON target.batch_id = legacy.batch_id
             AND target.trade_id = legacy.trade_id
             AND target.trade_type = legacy.trade_type
@@ -4431,8 +4311,8 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
         `).get()
         : sqlite.prepare(`
           SELECT legacy.batch_id, legacy.trade_id
-          FROM fx_batch_outputs legacy
-          LEFT JOIN fx_batch_position_output target
+          FROM batch_outputs legacy
+          LEFT JOIN batch_position_outputs target
             ON target.trade_id = legacy.trade_id
             AND target.trade_type = legacy.trade_type
           WHERE target.trade_id IS NULL
@@ -4441,7 +4321,7 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
 
       if (missingPositionOutput) {
         throw new Error(
-          `Legacy FX Batch ${missingPositionOutput.batch_id} position output `
+          `Legacy Batch ${missingPositionOutput.batch_id} position output `
             + `${missingPositionOutput.trade_id} could not be migrated.`
         );
       }
@@ -4449,7 +4329,7 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
 
     if (legacyCashMemberTableExists) {
       sqlite.exec(`
-        INSERT OR IGNORE INTO fx_batch_quote_cash_output
+        INSERT OR IGNORE INTO batch_quote_cash_outputs
           (
             batch_id,
             quote_ccy_code,
@@ -4465,13 +4345,13 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
           quote_ccy_fraction_digits,
           quote_ccy_value_date,
           created_at
-        FROM fx_batch_quote_cash_members;
+        FROM batch_quote_cash_members;
       `);
 
       const missingCashOutput = sqlite.prepare(`
         SELECT legacy.batch_id
-        FROM fx_batch_quote_cash_members legacy
-        LEFT JOIN fx_batch_quote_cash_output target
+        FROM batch_quote_cash_members legacy
+        LEFT JOIN batch_quote_cash_outputs target
           ON target.batch_id = legacy.batch_id
           AND target.quote_ccy_code = legacy.quote_ccy_code
           AND target.quote_balance_contribution_minor
@@ -4485,7 +4365,7 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
 
       if (missingCashOutput) {
         throw new Error(
-          `Legacy FX Batch ${missingCashOutput.batch_id} Quote cash output `
+          `Legacy Batch ${missingCashOutput.batch_id} Quote cash output `
             + "could not be migrated."
         );
       }
@@ -4493,7 +4373,7 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
 
     if (legacyCashOutputTableExists) {
       sqlite.exec(`
-        INSERT OR IGNORE INTO fx_batch_quote_cash_output
+        INSERT OR IGNORE INTO batch_quote_cash_outputs
           (
             batch_id,
             quote_ccy_code,
@@ -4509,13 +4389,13 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
           quote_ccy_fraction_digits,
           quote_ccy_value_date,
           created_at
-        FROM fx_batch_quote_cash_outputs;
+        FROM legacy_batch_quote_cash_outputs;
       `);
 
       const missingLegacyCashOutput = sqlite.prepare(`
         SELECT legacy.batch_id
-        FROM fx_batch_quote_cash_outputs legacy
-        LEFT JOIN fx_batch_quote_cash_output target
+        FROM legacy_batch_quote_cash_outputs legacy
+        LEFT JOIN batch_quote_cash_outputs target
           ON target.batch_id = legacy.batch_id
           AND target.quote_ccy_code = legacy.quote_ccy_code
           AND target.quote_balance_contribution_minor
@@ -4529,31 +4409,31 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
 
       if (missingLegacyCashOutput) {
         throw new Error(
-          `Legacy FX Batch ${missingLegacyCashOutput.batch_id} Quote cash output `
+          `Legacy Batch ${missingLegacyCashOutput.batch_id} Quote cash output `
             + "could not be migrated."
         );
       }
     }
 
     const positionForeignKeyViolations =
-      sqlite.prepare("PRAGMA foreign_key_check(fx_batch_position_output)").all();
+      sqlite.prepare("PRAGMA foreign_key_check(batch_position_outputs)").all();
     const cashForeignKeyViolations =
-      sqlite.prepare("PRAGMA foreign_key_check(fx_batch_quote_cash_output)").all();
+      sqlite.prepare("PRAGMA foreign_key_check(batch_quote_cash_outputs)").all();
 
     if (positionForeignKeyViolations.length > 0 || cashForeignKeyViolations.length > 0) {
-      throw new Error("FX Batch output-table migration produced foreign key violations.");
+      throw new Error("Batch output-table migration produced foreign key violations.");
     }
 
     if (legacyPositionTableExists) {
-      sqlite.exec("DROP TABLE fx_batch_outputs");
+      sqlite.exec("DROP TABLE batch_outputs");
     }
 
     if (legacyCashMemberTableExists) {
-      sqlite.exec("DROP TABLE fx_batch_quote_cash_members");
+      sqlite.exec("DROP TABLE batch_quote_cash_members");
     }
 
     if (legacyCashOutputTableExists) {
-      sqlite.exec("DROP TABLE fx_batch_quote_cash_outputs");
+      sqlite.exec("DROP TABLE legacy_batch_quote_cash_outputs");
     }
 
     sqlite.exec("COMMIT");
@@ -4571,7 +4451,7 @@ function migrateLegacyFxBatchOutputTables(sqlite) {
 }
 
 function migrateLegacyBatchTables(sqlite) {
-  const legacyTables = ["batch_balancing_trades", "fx_trade_batches"];
+  const legacyTables = ["batch_balancing_trades", "trade_batches"];
   const existingLegacyTables = legacyTables.filter(tableName => Boolean(sqlite.prepare(`
     SELECT 1
     FROM sqlite_master
@@ -4601,60 +4481,10 @@ function migrateLegacyBatchTables(sqlite) {
       sqlite.exec("DROP TABLE batch_balancing_trades");
     }
 
-    if (existingLegacyTables.includes("fx_trade_batches")) {
-      sqlite.exec("DROP TABLE fx_trade_batches");
+    if (existingLegacyTables.includes("trade_batches")) {
+      sqlite.exec("DROP TABLE trade_batches");
     }
 
-    sqlite.exec("COMMIT");
-  } catch (error) {
-    try {
-      sqlite.exec("ROLLBACK");
-    } catch {}
-
-    throw error;
-  }
-}
-
-function migrateUnprefixedBatchTables(sqlite) {
-  const tableRenames = [
-    ["batches", "fx_batches"],
-    ["batch_members", "fx_batch_members"],
-    ["batch_outputs", "fx_batch_outputs"]
-  ];
-  const existingTables = new Set(sqlite.prepare(`
-    SELECT name
-    FROM sqlite_master
-    WHERE type = 'table'
-  `).all().map(row => row.name));
-  const presentSources = tableRenames.filter(([source]) => existingTables.has(source));
-
-  if (presentSources.length === 0) {
-    return;
-  }
-
-  if (presentSources.length !== tableRenames.length) {
-    throw new Error("Incomplete unprefixed Batch schema cannot be renamed automatically.");
-  }
-
-  for (const [, target] of tableRenames) {
-    if (existingTables.has(target)) {
-      throw new Error(`Batch table rename target ${target} already exists.`);
-    }
-  }
-
-  sqlite.exec("BEGIN IMMEDIATE");
-
-  try {
-    for (const [source, target] of tableRenames) {
-      sqlite.exec(`ALTER TABLE ${source} RENAME TO ${target}`);
-    }
-
-    sqlite.exec(`
-      DROP INDEX IF EXISTS idx_batches_status_pair;
-      DROP INDEX IF EXISTS idx_batch_members_trade;
-      DROP INDEX IF EXISTS uq_batch_members_single_balancer;
-      DROP INDEX IF EXISTS idx_batch_outputs_batch;
-    `);
     sqlite.exec("COMMIT");
   } catch (error) {
     try {
@@ -4672,7 +4502,7 @@ function dropBatchIntegrityTriggers(sqlite) {
     WHERE type = 'trigger'
       AND (
         name LIKE 'trg_batch%'
-        OR name LIKE 'trg_fx_batch%'
+        OR name LIKE 'trg_batch%'
         OR name LIKE 'trg_formed_batch%'
       )
   `).all().map(row => row.name);
@@ -4690,11 +4520,11 @@ function dropLegacyDemoHiddenBatches(sqlite) {
   const legacyTableExists = Boolean(sqlite.prepare(`
     SELECT 1 AS present
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_demo_hidden_batches'
+    WHERE type = 'table' AND name = 'demo_hidden_batches'
   `).get());
 
   if (legacyTableExists) {
-    sqlite.exec("DROP TABLE fx_demo_hidden_batches");
+    sqlite.exec("DROP TABLE demo_hidden_batches");
   }
 }
 
@@ -4912,8 +4742,8 @@ function synchronizeClientDealGenerationSettings(sqlite) {
       FROM pricing_rules r
       INNER JOIN trading_counterparty_roles role
         ON role.counterparty_id = r.counterparty_id AND role.role_code = 'CLIENT'
-      INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-      INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+      INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+      INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
       WHERE r.pricing_rule_id = client_deal_generation_settings.pricing_rule_id
         AND e.pricing_mode = 'AUTO_PRICED'
     );
@@ -4926,8 +4756,8 @@ function synchronizeClientDealGenerationSettings(sqlite) {
     FROM pricing_rules r
     INNER JOIN trading_counterparty_roles role
       ON role.counterparty_id = r.counterparty_id AND role.role_code = 'CLIENT'
-    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
     INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     WHERE e.pricing_mode = 'AUTO_PRICED'
@@ -4958,22 +4788,22 @@ function synchronizeClientDealGenerationSettings(sqlite) {
   }
 }
 
-function clientDealGenerationReferenceEligible(counterpartyId, executionContextId) {
+function clientDealGenerationReferenceEligible(counterpartyId, tradeContextId) {
   return Boolean(database.prepare(`
     SELECT 1 AS eligible
     FROM trading_counterparty_roles role
-    INNER JOIN execution_contexts c ON c.execution_context_id = ?
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = ?
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     WHERE role.counterparty_id = ?
       AND role.role_code = 'CLIENT'
       AND e.pricing_mode = 'AUTO_PRICED'
-  `).get(executionContextId, counterpartyId));
+  `).get(tradeContextId, counterpartyId));
 }
 
-function ensureClientFxDealTriggers(sqlite) {
+function ensureClientDealTriggers(sqlite) {
   sqlite.exec(`
-    CREATE TRIGGER IF NOT EXISTS trg_client_fx_deals_require_client_insert
-    BEFORE INSERT ON client_fx_deals
+    CREATE TRIGGER IF NOT EXISTS trg_client_deals_require_client_insert
+    BEFORE INSERT ON client_deals
     FOR EACH ROW
     WHEN NOT EXISTS
     (
@@ -4982,11 +4812,11 @@ function ensureClientFxDealTriggers(sqlite) {
         WHERE counterparty_id = NEW.counterparty_id AND role_code = 'CLIENT'
     )
     BEGIN
-        SELECT RAISE(ABORT, 'client_fx_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
+        SELECT RAISE(ABORT, 'client_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
     END;
 
-    CREATE TRIGGER IF NOT EXISTS trg_client_fx_deals_require_client_update
-    BEFORE UPDATE OF counterparty_id ON client_fx_deals
+    CREATE TRIGGER IF NOT EXISTS trg_client_deals_require_client_update
+    BEFORE UPDATE OF counterparty_id ON client_deals
     FOR EACH ROW
     WHEN NOT EXISTS
     (
@@ -4995,24 +4825,24 @@ function ensureClientFxDealTriggers(sqlite) {
         WHERE counterparty_id = NEW.counterparty_id AND role_code = 'CLIENT'
     )
     BEGIN
-        SELECT RAISE(ABORT, 'client_fx_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
+        SELECT RAISE(ABORT, 'client_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role');
     END;
 
     CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_client_deals
     BEFORE DELETE ON trading_counterparty_roles
     FOR EACH ROW
     WHEN OLD.role_code = 'CLIENT'
-        AND EXISTS (SELECT 1 FROM client_fx_deals WHERE counterparty_id = OLD.counterparty_id)
+        AND EXISTS (SELECT 1 FROM client_deals WHERE counterparty_id = OLD.counterparty_id)
     BEGIN
-        SELECT RAISE(ABORT, 'a Trading Counterparty used by client_fx_deals must retain the CLIENT role');
+        SELECT RAISE(ABORT, 'a Trading Counterparty used by client_deals must retain the CLIENT role');
     END;
   `);
 }
 
-function ensureHedgeFxDealTriggers(sqlite) {
+function ensureHedgeDealTriggers(sqlite) {
   sqlite.exec(`
-    CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_deals_require_hedge_counterparty_insert
-    BEFORE INSERT ON fx_hedge_deals
+    CREATE TRIGGER IF NOT EXISTS trg_hedge_deals_require_hedge_counterparty_insert
+    BEFORE INSERT ON hedge_deals
     FOR EACH ROW
     WHEN NOT EXISTS
     (
@@ -5021,11 +4851,11 @@ function ensureHedgeFxDealTriggers(sqlite) {
       WHERE counterparty_id = NEW.counterparty_id AND role_code = 'HEDGE_COUNTERPARTY'
     )
     BEGIN
-      SELECT RAISE(ABORT, 'fx_hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
+      SELECT RAISE(ABORT, 'hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
     END;
 
-    CREATE TRIGGER IF NOT EXISTS trg_fx_hedge_deals_require_hedge_counterparty_update
-    BEFORE UPDATE OF counterparty_id ON fx_hedge_deals
+    CREATE TRIGGER IF NOT EXISTS trg_hedge_deals_require_hedge_counterparty_update
+    BEFORE UPDATE OF counterparty_id ON hedge_deals
     FOR EACH ROW
     WHEN NOT EXISTS
     (
@@ -5034,24 +4864,24 @@ function ensureHedgeFxDealTriggers(sqlite) {
       WHERE counterparty_id = NEW.counterparty_id AND role_code = 'HEDGE_COUNTERPARTY'
     )
     BEGIN
-      SELECT RAISE(ABORT, 'fx_hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
+      SELECT RAISE(ABORT, 'hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role');
     END;
 
     CREATE TRIGGER IF NOT EXISTS trg_trading_counterparty_roles_preserve_hedge_deals
     BEFORE DELETE ON trading_counterparty_roles
     FOR EACH ROW
     WHEN OLD.role_code = 'HEDGE_COUNTERPARTY'
-      AND EXISTS (SELECT 1 FROM fx_hedge_deals WHERE counterparty_id = OLD.counterparty_id)
+      AND EXISTS (SELECT 1 FROM hedge_deals WHERE counterparty_id = OLD.counterparty_id)
     BEGIN
-      SELECT RAISE(ABORT, 'a Trading Counterparty used by fx_hedge_deals must retain the HEDGE_COUNTERPARTY role');
+      SELECT RAISE(ABORT, 'a Trading Counterparty used by hedge_deals must retain the HEDGE_COUNTERPARTY role');
     END;
   `);
 }
 
-function migrateClientFxDealsToTradeExposure(sqlite) {
-  const tableInfo = sqlite.prepare("PRAGMA table_info(client_fx_deals)").all();
+function migrateClientDealsToTradeExposure(sqlite) {
+  const tableInfo = sqlite.prepare("PRAGMA table_info(client_deals)").all();
   const columns = tableInfo.map(column => column.name);
-  const exposureColumns = sqlite.prepare("PRAGMA table_info(fx_trade_exposure)")
+  const exposureColumns = sqlite.prepare("PRAGMA table_info(trade_exposures)")
     .all()
     .map(column => column.name);
   const exposureUsesMajorAmounts = exposureColumns.includes("base_ccy_amount")
@@ -5065,17 +4895,17 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   const exposureUsesExecutionAndReceivedTimestamps =
     exposureColumns.includes("execution_timestamp")
     && exposureColumns.includes("received_timestamp");
-  const foreignKeys = sqlite.prepare("PRAGMA foreign_key_list(client_fx_deals)").all();
+  const foreignKeys = sqlite.prepare("PRAGMA foreign_key_list(client_deals)").all();
   const tableDefinition = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'client_fx_deals'
+    WHERE type = 'table' AND name = 'client_deals'
   `).get()?.sql || "";
   const targetColumns = [
     "trade_id",
     "trade_type",
     "counterparty_id",
-    "execution_context_id",
+    "trade_context_id",
     "pricing_rule_id",
     "transfer_rate",
     "analytical_pnl_quote_minor",
@@ -5086,7 +4916,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     "trade_id",
     "trade_type",
     "counterparty_id",
-    "execution_context_id",
+    "trade_context_id",
     "pricing_rule_id",
     "transfer_rate",
     "analytical_pnl",
@@ -5096,7 +4926,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     "trade_id",
     "trade_type",
     "counterparty_id",
-    "execution_context_id",
+    "trade_context_id",
     "pricing_rule_id",
     "transfer_rate",
     "analytical_pnl"
@@ -5105,7 +4935,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     "trade_id",
     "trade_type",
     "counterparty_id",
-    "execution_context_id",
+    "trade_context_id",
     "pricing_rule_id",
     "transfer_rate",
     "analytical_pnl_quote_amount"
@@ -5139,10 +4969,10 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
         && keys[index].to === mapping.to);
   };
   const counterpartyForeignKeys = foreignKeys.filter(key => key.table === "trading_counterparties");
-  const executionContextForeignKeys = foreignKeys.filter(key => key.table === "execution_contexts");
+  const tradeContextForeignKeys = foreignKeys.filter(key => key.table === "trade_contexts");
   const hasSharedIdentityForeignKeys = foreignKeys.length === 3
     && foreignKeys.every(key => key.on_update === "RESTRICT" && key.on_delete === "RESTRICT")
-    && hasCompositeForeignKey("fx_trade_exposure", [
+    && hasCompositeForeignKey("trade_exposures", [
       { from: "trade_id", to: "trade_id" },
       { from: "trade_type", to: "trade_type" }
     ])
@@ -5151,20 +4981,20 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     && counterpartyForeignKeys[0].to === "counterparty_id";
   const hasTargetForeignKeys = foreignKeys.length === 7
     && foreignKeys.every(key => key.on_update === "RESTRICT" && key.on_delete === "RESTRICT")
-    && hasCompositeForeignKey("fx_trade_exposure", [
+    && hasCompositeForeignKey("trade_exposures", [
       { from: "trade_id", to: "trade_id" },
       { from: "trade_type", to: "trade_type" }
     ])
     && counterpartyForeignKeys.length === 1
     && counterpartyForeignKeys[0].from === "counterparty_id"
     && counterpartyForeignKeys[0].to === "counterparty_id"
-    && executionContextForeignKeys.length === 1
-    && executionContextForeignKeys[0].from === "execution_context_id"
-    && executionContextForeignKeys[0].to === "execution_context_id"
+    && tradeContextForeignKeys.length === 1
+    && tradeContextForeignKeys[0].from === "trade_context_id"
+    && tradeContextForeignKeys[0].to === "trade_context_id"
     && hasCompositeForeignKey("pricing_rules", [
       { from: "pricing_rule_id", to: "pricing_rule_id" },
       { from: "counterparty_id", to: "counterparty_id" },
-      { from: "execution_context_id", to: "execution_context_id" }
+      { from: "trade_context_id", to: "trade_context_id" }
     ]);
   const hasSharedIdentityColumnDefinitions = tableInfo[0]?.type === "INTEGER"
     && tableInfo[0]?.pk === 1
@@ -5190,13 +5020,13 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     && tableInfo[6]?.type === "NUMERIC"
     && tableInfo[6]?.notnull === 0
     && hasSharedIdentityColumnDefinitions
-    && tableDefinition.includes("chk_client_fx_deals_pricing_context")
-    && tableDefinition.includes("chk_client_fx_deals_transfer_rate")
-    && tableDefinition.includes("chk_client_fx_deals_analytical_pnl");
+    && tableDefinition.includes("chk_client_deals_pricing_context")
+    && tableDefinition.includes("chk_client_deals_transfer_rate")
+    && tableDefinition.includes("chk_client_deals_analytical_pnl");
   const hasMajorPnlTargetColumnDefinitions = hasPreCommentTargetColumnDefinitions
     && tableInfo[7]?.type === "TEXT"
     && tableInfo[7]?.notnull === 0
-    && tableDefinition.includes("chk_client_fx_deals_comment");
+    && tableDefinition.includes("chk_client_deals_comment");
   const hasTargetColumnDefinitions = tableInfo[0]?.type === "INTEGER"
     && tableInfo[0]?.pk === 1
     && tableInfo[1]?.type === "TEXT"
@@ -5217,16 +5047,16 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     && tableInfo[8]?.type === "TEXT"
     && tableInfo[8]?.notnull === 0
     && hasSharedIdentityColumnDefinitions
-    && tableDefinition.includes("chk_client_fx_deals_pricing_context")
-    && tableDefinition.includes("chk_client_fx_deals_transfer_rate")
-    && tableDefinition.includes("chk_client_fx_deals_analytical_pnl_quote")
-    && tableDefinition.includes("chk_client_fx_deals_comment");
-  const identityIndex = sqlite.prepare("PRAGMA index_list(fx_trade_exposure)").all()
-    .find(index => index.name === "uq_fx_trade_exposure_identity"
+    && tableDefinition.includes("chk_client_deals_pricing_context")
+    && tableDefinition.includes("chk_client_deals_transfer_rate")
+    && tableDefinition.includes("chk_client_deals_analytical_pnl_quote")
+    && tableDefinition.includes("chk_client_deals_comment");
+  const identityIndex = sqlite.prepare("PRAGMA index_list(trade_exposures)").all()
+    .find(index => index.name === "uq_trade_exposures_identity"
       && index.unique === 1
       && index.partial === 0);
   const identityIndexColumns = identityIndex
-    ? sqlite.prepare("PRAGMA index_info(uq_fx_trade_exposure_identity)").all().map(column => column.name)
+    ? sqlite.prepare("PRAGMA index_info(uq_trade_exposures_identity)").all().map(column => column.name)
     : [];
   const pricingReferenceIndex = sqlite.prepare("PRAGMA index_list(pricing_rules)").all()
     .find(index => index.name === "uq_pricing_rules_client_deal_reference"
@@ -5237,17 +5067,17 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     : [];
 
   if (!identityIndex || identityIndexColumns.join(",") !== "trade_id,trade_type") {
-    throw new Error("FX Trade Exposure identity index is missing or invalid.");
+    throw new Error("Trade Exposure identity index is missing or invalid.");
   }
 
   if (!pricingReferenceIndex
-    || pricingReferenceIndexColumns.join(",") !== "pricing_rule_id,counterparty_id,execution_context_id") {
-    throw new Error("Pricing Rule Client FX Deal reference index is missing or invalid.");
+    || pricingReferenceIndexColumns.join(",") !== "pricing_rule_id,counterparty_id,trade_context_id") {
+    throw new Error("Pricing Rule Client Deal reference index is missing or invalid.");
   }
 
   if (hasColumns(targetColumns)) {
     if (!hasTargetColumnDefinitions || !hasTargetForeignKeys) {
-      throw new Error("Unsupported Client FX Deal target schema.");
+      throw new Error("Unsupported Client Deal target schema.");
     }
 
     return;
@@ -5261,7 +5091,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
 
   if (hasMajorPnlTargetSchema
     && (!hasMajorPnlTargetColumnDefinitions || !hasTargetForeignKeys)) {
-    throw new Error("Unsupported major-PnL Client FX Deal target schema.");
+    throw new Error("Unsupported major-PnL Client Deal target schema.");
   }
 
   if (hasMajorPnlTargetSchema) {
@@ -5270,17 +5100,17 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
 
   if (hasPreviousTargetSchema
     && (!hasPreCommentTargetColumnDefinitions || !hasTargetForeignKeys)) {
-    throw new Error("Unsupported previous Client FX Deal target schema.");
+    throw new Error("Unsupported previous Client Deal target schema.");
   }
 
   if (hasPreCommentTargetSchema
     && (!hasPreCommentTargetColumnDefinitions || !hasTargetForeignKeys)) {
-    throw new Error("Unsupported pre-Comment Client FX Deal target schema.");
+    throw new Error("Unsupported pre-Comment Client Deal target schema.");
   }
 
   if (hasSharedIdentitySchema
     && (!hasSharedIdentityColumnDefinitions || !hasSharedIdentityForeignKeys)) {
-    throw new Error("Unsupported Client FX Deal shared identity schema.");
+    throw new Error("Unsupported Client Deal shared identity schema.");
   }
 
   if (!hasPreviousTargetSchema
@@ -5288,28 +5118,28 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     && !hasPreCommentTargetSchema
     && !hasSharedIdentitySchema
     && !hasLegacySchema) {
-    throw new Error("Unsupported Client FX Deal schema.");
+    throw new Error("Unsupported Client Deal schema.");
   }
 
   if (hasLegacySchema) {
     if (!exposureUsesMajorAmounts && !exposureUsesMinorAmounts) {
-      throw new Error("Unsupported FX Trade Exposure amount schema.");
+      throw new Error("Unsupported Trade Exposure amount schema.");
     }
 
     const invalidTenor = sqlite.prepare(`
       SELECT client_deal_id
-      FROM client_fx_deals
+      FROM client_deals
       WHERE tenor NOT IN ('TOD', 'TOM', 'SPOT')
       LIMIT 1
     `).get();
 
     if (invalidTenor) {
-      throw new Error(`Client FX Deal ${invalidTenor.client_deal_id} has an unsupported tenor.`);
+      throw new Error(`Client Deal ${invalidTenor.client_deal_id} has an unsupported tenor.`);
     }
 
     const invalidCounterparty = sqlite.prepare(`
       SELECT d.client_deal_id
-      FROM client_fx_deals d
+      FROM client_deals d
       LEFT JOIN trading_counterparties p ON p.counterparty_id = d.counterparty_id
       LEFT JOIN trading_counterparty_roles role
         ON role.counterparty_id = d.counterparty_id AND role.role_code = 'CLIENT'
@@ -5318,22 +5148,22 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     `).get();
 
     if (invalidCounterparty) {
-      throw new Error(`Client FX Deal ${invalidCounterparty.client_deal_id} does not reference a CLIENT Trading Counterparty.`);
+      throw new Error(`Client Deal ${invalidCounterparty.client_deal_id} does not reference a CLIENT Trading Counterparty.`);
     }
 
     const collidingExposure = sqlite.prepare(`
       SELECT d.client_deal_id
-      FROM client_fx_deals d
-      INNER JOIN fx_trade_exposure e ON e.trade_id = d.client_deal_id
+      FROM client_deals d
+      INNER JOIN trade_exposures e ON e.trade_id = d.client_deal_id
       LIMIT 1
     `).get();
 
     if (collidingExposure) {
-      throw new Error(`Client FX Deal ${collidingExposure.client_deal_id} collides with an existing FX Trade Exposure.`);
+      throw new Error(`Client Deal ${collidingExposure.client_deal_id} collides with an existing Trade Exposure.`);
     }
   }
 
-  const legacyRowCount = Number(sqlite.prepare("SELECT COUNT(*) AS count FROM client_fx_deals").get().count);
+  const legacyRowCount = Number(sqlite.prepare("SELECT COUNT(*) AS count FROM client_deals").get().count);
   sqlite.exec("PRAGMA foreign_keys = OFF");
 
   try {
@@ -5346,7 +5176,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
             pair.base_ccy_code,
             base_ccy.fraction_digits AS base_ccy_fraction_digits,
             quote_ccy.fraction_digits AS quote_ccy_fraction_digits
-          FROM client_fx_deals d
+          FROM client_deals d
           INNER JOIN ccy_pair_options pair
             ON pair.ccy_pair_code = d.ccy_pair_code
           INNER JOIN ccy_options base_ccy
@@ -5360,7 +5190,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
         const insertExposure = sqlite.prepare(exposureUsesFinalTradeSemantics
           ? exposureUsesExecutionAndReceivedTimestamps
             ? `
-              INSERT INTO fx_trade_exposure
+              INSERT INTO trade_exposures
                 (
                   trade_id,
                   execution_timestamp,
@@ -5382,7 +5212,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
               VALUES (?, ?, ?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
             : `
-            INSERT INTO fx_trade_exposure
+            INSERT INTO trade_exposures
               (
                 trade_id,
                 entry_timestamp,
@@ -5403,7 +5233,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
             VALUES (?, ?, 'CLIENT_DEAL', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `
           : `
-            INSERT INTO fx_trade_exposure
+            INSERT INTO trade_exposures
               (
                 trade_id,
                 entry_timestamp,
@@ -5462,7 +5292,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
         }
       } else {
         sqlite.exec(`
-          INSERT INTO fx_trade_exposure
+          INSERT INTO trade_exposures
             (
               trade_id,
               entry_timestamp,
@@ -5490,48 +5320,48 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
             d.tenor,
             d.base_ccy_value_date,
             d.quote_ccy_value_date
-          FROM client_fx_deals d;
+          FROM client_deals d;
         `);
       }
     }
 
     sqlite.exec(`
-      CREATE TABLE client_fx_deals_migrated
+      CREATE TABLE client_deals_migrated
       (
           trade_id                    INTEGER PRIMARY KEY,
           trade_type                  TEXT    NOT NULL DEFAULT 'CLIENT_DEAL',
           counterparty_id                    INTEGER NOT NULL,
-          execution_context_id        INTEGER,
+          trade_context_id        INTEGER,
           pricing_rule_id             INTEGER,
           transfer_rate               NUMERIC,
           analytical_pnl              NUMERIC,
           comment                     TEXT,
 
-          CONSTRAINT fk_client_fx_deals_trade
+          CONSTRAINT fk_client_deals_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_client_fx_deals_counterparty
+          CONSTRAINT fk_client_deals_counterparty
               FOREIGN KEY (counterparty_id)
                   REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_client_fx_deals_execution_context
-              FOREIGN KEY (execution_context_id)
-                  REFERENCES execution_contexts (execution_context_id)
+          CONSTRAINT fk_client_deals_trade_context
+              FOREIGN KEY (trade_context_id)
+                  REFERENCES trade_contexts (trade_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_client_fx_deals_pricing_rule_scope
-              FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
-                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
+          CONSTRAINT fk_client_deals_pricing_rule_scope
+              FOREIGN KEY (pricing_rule_id, counterparty_id, trade_context_id)
+                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, trade_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_client_fx_deals_trade_type
+          CONSTRAINT chk_client_deals_trade_type
               CHECK (trade_type = 'CLIENT_DEAL'),
-          CONSTRAINT chk_client_fx_deals_pricing_context
-              CHECK (pricing_rule_id IS NULL OR execution_context_id IS NOT NULL),
-          CONSTRAINT chk_client_fx_deals_transfer_rate
+          CONSTRAINT chk_client_deals_pricing_context
+              CHECK (pricing_rule_id IS NULL OR trade_context_id IS NOT NULL),
+          CONSTRAINT chk_client_deals_transfer_rate
               CHECK (
                   transfer_rate IS NULL
                   OR (
@@ -5539,12 +5369,12 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
                       AND transfer_rate > 0
                   )
               ),
-          CONSTRAINT chk_client_fx_deals_analytical_pnl
+          CONSTRAINT chk_client_deals_analytical_pnl
               CHECK (
                   analytical_pnl IS NULL
                   OR typeof(analytical_pnl) IN ('integer', 'real')
               ),
-          CONSTRAINT chk_client_fx_deals_comment
+          CONSTRAINT chk_client_deals_comment
               CHECK (
                   comment IS NULL
                   OR (
@@ -5559,7 +5389,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
     const sourceTradeIdColumn = hasLegacySchema ? "client_deal_id" : "trade_id";
     const sourceTradeTypeExpression = hasLegacySchema ? "'CLIENT_DEAL'" : "trade_type";
     const hasAttributionColumns = hasPreviousTargetSchema || hasPreCommentTargetSchema;
-    const sourceExecutionContextExpression = hasAttributionColumns ? "execution_context_id" : "NULL";
+    const sourceTradeContextExpression = hasAttributionColumns ? "trade_context_id" : "NULL";
     const sourcePricingRuleExpression = hasAttributionColumns ? "pricing_rule_id" : "NULL";
     const sourceTransferRateExpression = hasAttributionColumns ? "transfer_rate" : "NULL";
     const sourceAnalyticalPnlExpression = hasPreviousTargetSchema
@@ -5568,12 +5398,12 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
         ? "analytical_pnl"
         : "NULL";
     sqlite.exec(`
-      INSERT INTO client_fx_deals_migrated
+      INSERT INTO client_deals_migrated
         (
           trade_id,
           trade_type,
           counterparty_id,
-          execution_context_id,
+          trade_context_id,
           pricing_rule_id,
           transfer_rate,
           analytical_pnl,
@@ -5583,40 +5413,40 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
         ${sourceTradeIdColumn},
         ${sourceTradeTypeExpression},
         counterparty_id,
-        ${sourceExecutionContextExpression},
+        ${sourceTradeContextExpression},
         ${sourcePricingRuleExpression},
         ${sourceTransferRateExpression},
         ${sourceAnalyticalPnlExpression},
         NULL
-      FROM client_fx_deals
+      FROM client_deals
       ORDER BY ${sourceTradeIdColumn};
 
-      DROP TABLE client_fx_deals;
-      ALTER TABLE client_fx_deals_migrated RENAME TO client_fx_deals;
+      DROP TABLE client_deals;
+      ALTER TABLE client_deals_migrated RENAME TO client_deals;
 
-      CREATE INDEX idx_client_fx_deals_counterparty
-          ON client_fx_deals (counterparty_id);
-      CREATE INDEX idx_client_fx_deals_execution_context
-          ON client_fx_deals (execution_context_id);
-      CREATE INDEX idx_client_fx_deals_pricing_rule
-          ON client_fx_deals (pricing_rule_id);
+      CREATE INDEX idx_client_deals_counterparty
+          ON client_deals (counterparty_id);
+      CREATE INDEX idx_client_deals_trade_context
+          ON client_deals (trade_context_id);
+      CREATE INDEX idx_client_deals_pricing_rule
+          ON client_deals (pricing_rule_id);
     `);
 
-    const migratedRowCount = Number(sqlite.prepare("SELECT COUNT(*) AS count FROM client_fx_deals").get().count);
+    const migratedRowCount = Number(sqlite.prepare("SELECT COUNT(*) AS count FROM client_deals").get().count);
     const linkedRowCount = Number(sqlite.prepare(`
       SELECT COUNT(*) AS count
-      FROM client_fx_deals d
-      INNER JOIN fx_trade_exposure e
+      FROM client_deals d
+      INNER JOIN trade_exposures e
         ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
     `).get().count);
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (migratedRowCount !== legacyRowCount || linkedRowCount !== legacyRowCount) {
-      throw new Error("Client FX Deal migration did not preserve every row.");
+      throw new Error("Client Deal migration did not preserve every row.");
     }
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("Client FX Deal migration produced foreign key violations.");
+      throw new Error("Client Deal migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -5631,7 +5461,7 @@ function migrateClientFxDealsToTradeExposure(sqlite) {
   }
 }
 
-function migrateFxDealAnalyticalPnlTable(sqlite, {
+function migrateDealAnalyticalPnlTable(sqlite, {
   tableName,
   migratedTableName,
   tradeType,
@@ -5690,7 +5520,7 @@ function migrateFxDealAnalyticalPnlTable(sqlite, {
       d.*,
       quote_ccy.fraction_digits AS quote_ccy_fraction_digits
     FROM ${tableName} d
-    INNER JOIN fx_trade_exposure e
+    INNER JOIN trade_exposures e
       ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
     INNER JOIN ccy_pair_options pair
       ON pair.ccy_pair_code = e.ccy_pair_code
@@ -5719,7 +5549,7 @@ function migrateFxDealAnalyticalPnlTable(sqlite, {
       "trade_id",
       "trade_type",
       "counterparty_id",
-      "execution_context_id",
+      "trade_context_id",
       "pricing_rule_id",
       "transfer_rate",
       "analytical_pnl_quote_minor",
@@ -5754,7 +5584,7 @@ function migrateFxDealAnalyticalPnlTable(sqlite, {
         row.trade_id,
         row.trade_type,
         row.counterparty_id,
-        row.execution_context_id,
+        row.trade_context_id,
         row.pricing_rule_id,
         row.transfer_rate,
         analyticalPnlQuoteMinor,
@@ -5798,16 +5628,16 @@ function migrateFxDealAnalyticalPnlTable(sqlite, {
   }
 }
 
-function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
-  migrateFxDealAnalyticalPnlTable(sqlite, {
-    tableName: "client_fx_deals",
-    migratedTableName: "client_fx_deals_migrated",
+function migrateDealAnalyticalPnlToMinorUnits(sqlite) {
+  migrateDealAnalyticalPnlTable(sqlite, {
+    tableName: "client_deals",
+    migratedTableName: "client_deals_migrated",
     tradeType: "CLIENT_DEAL",
     targetColumns: [
       "trade_id",
       "trade_type",
       "counterparty_id",
-      "execution_context_id",
+      "trade_context_id",
       "pricing_rule_id",
       "transfer_rate",
       "analytical_pnl_quote_minor",
@@ -5818,52 +5648,52 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
       "trade_id",
       "trade_type",
       "counterparty_id",
-      "execution_context_id",
+      "trade_context_id",
       "pricing_rule_id",
       "transfer_rate",
       "analytical_pnl",
       "comment"
     ],
-    analyticalPnlConstraint: "chk_client_fx_deals_analytical_pnl_quote",
+    analyticalPnlConstraint: "chk_client_deals_analytical_pnl_quote",
     includesComment: true,
     createTableSql: `
-      CREATE TABLE client_fx_deals_migrated
+      CREATE TABLE client_deals_migrated
       (
           trade_id                    INTEGER PRIMARY KEY,
           trade_type                  TEXT    NOT NULL DEFAULT 'CLIENT_DEAL',
           counterparty_id                    INTEGER NOT NULL,
-          execution_context_id        INTEGER,
+          trade_context_id        INTEGER,
           pricing_rule_id             INTEGER,
           transfer_rate               NUMERIC,
           analytical_pnl_quote_minor  INTEGER,
           analytical_pnl_quote_fraction_digits INTEGER,
           comment                     TEXT,
 
-          CONSTRAINT fk_client_fx_deals_trade
+          CONSTRAINT fk_client_deals_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_client_fx_deals_counterparty
+          CONSTRAINT fk_client_deals_counterparty
               FOREIGN KEY (counterparty_id)
                   REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_client_fx_deals_execution_context
-              FOREIGN KEY (execution_context_id)
-                  REFERENCES execution_contexts (execution_context_id)
+          CONSTRAINT fk_client_deals_trade_context
+              FOREIGN KEY (trade_context_id)
+                  REFERENCES trade_contexts (trade_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_client_fx_deals_pricing_rule_scope
-              FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
-                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
+          CONSTRAINT fk_client_deals_pricing_rule_scope
+              FOREIGN KEY (pricing_rule_id, counterparty_id, trade_context_id)
+                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, trade_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_client_fx_deals_trade_type
+          CONSTRAINT chk_client_deals_trade_type
               CHECK (trade_type = 'CLIENT_DEAL'),
-          CONSTRAINT chk_client_fx_deals_pricing_context
-              CHECK (pricing_rule_id IS NULL OR execution_context_id IS NOT NULL),
-          CONSTRAINT chk_client_fx_deals_transfer_rate
+          CONSTRAINT chk_client_deals_pricing_context
+              CHECK (pricing_rule_id IS NULL OR trade_context_id IS NOT NULL),
+          CONSTRAINT chk_client_deals_transfer_rate
               CHECK (
                   transfer_rate IS NULL
                   OR (
@@ -5871,7 +5701,7 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
                       AND transfer_rate > 0
                   )
               ),
-          CONSTRAINT chk_client_fx_deals_analytical_pnl_quote
+          CONSTRAINT chk_client_deals_analytical_pnl_quote
               CHECK (
                   (
                       analytical_pnl_quote_minor IS NULL
@@ -5885,7 +5715,7 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
                       AND analytical_pnl_quote_fraction_digits BETWEEN 0 AND 10
                   )
               ),
-          CONSTRAINT chk_client_fx_deals_comment
+          CONSTRAINT chk_client_deals_comment
               CHECK (
                   comment IS NULL
                   OR (
@@ -5898,15 +5728,15 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
     `
   });
 
-  migrateFxDealAnalyticalPnlTable(sqlite, {
-    tableName: "fx_hedge_deals",
-    migratedTableName: "fx_hedge_deals_migrated",
+  migrateDealAnalyticalPnlTable(sqlite, {
+    tableName: "hedge_deals",
+    migratedTableName: "hedge_deals_migrated",
     tradeType: "HEDGE_DEAL",
     targetColumns: [
       "trade_id",
       "trade_type",
       "counterparty_id",
-      "execution_context_id",
+      "trade_context_id",
       "pricing_rule_id",
       "transfer_rate",
       "analytical_pnl_quote_minor",
@@ -5917,7 +5747,7 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
       "trade_type",
       "request_timestamp",
       "counterparty_id",
-      "execution_context_id",
+      "trade_context_id",
       "pricing_rule_id",
       "transfer_rate",
       "analytical_pnl_quote_minor",
@@ -5927,50 +5757,50 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
       "trade_id",
       "trade_type",
       "counterparty_id",
-      "execution_context_id",
+      "trade_context_id",
       "pricing_rule_id",
       "transfer_rate",
       "analytical_pnl"
     ],
-    analyticalPnlConstraint: "chk_fx_hedge_deals_analytical_pnl_quote",
+    analyticalPnlConstraint: "chk_hedge_deals_analytical_pnl_quote",
     includesComment: false,
     createTableSql: `
-      CREATE TABLE fx_hedge_deals_migrated
+      CREATE TABLE hedge_deals_migrated
       (
           trade_id                    INTEGER PRIMARY KEY,
           trade_type                  TEXT    NOT NULL DEFAULT 'HEDGE_DEAL',
           counterparty_id                    INTEGER NOT NULL,
-          execution_context_id        INTEGER,
+          trade_context_id        INTEGER,
           pricing_rule_id             INTEGER,
           transfer_rate               NUMERIC,
           analytical_pnl_quote_minor  INTEGER,
           analytical_pnl_quote_fraction_digits INTEGER,
 
-          CONSTRAINT fk_fx_hedge_deals_trade
+          CONSTRAINT fk_hedge_deals_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_deals_counterparty
+          CONSTRAINT fk_hedge_deals_counterparty
               FOREIGN KEY (counterparty_id)
                   REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_deals_execution_context
-              FOREIGN KEY (execution_context_id)
-                  REFERENCES execution_contexts (execution_context_id)
+          CONSTRAINT fk_hedge_deals_trade_context
+              FOREIGN KEY (trade_context_id)
+                  REFERENCES trade_contexts (trade_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_deals_pricing_rule_scope
-              FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
-                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
+          CONSTRAINT fk_hedge_deals_pricing_rule_scope
+              FOREIGN KEY (pricing_rule_id, counterparty_id, trade_context_id)
+                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, trade_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_hedge_deals_trade_type
+          CONSTRAINT chk_hedge_deals_trade_type
               CHECK (trade_type = 'HEDGE_DEAL'),
-          CONSTRAINT chk_fx_hedge_deals_pricing_context
-              CHECK (pricing_rule_id IS NULL OR execution_context_id IS NOT NULL),
-          CONSTRAINT chk_fx_hedge_deals_transfer_rate
+          CONSTRAINT chk_hedge_deals_pricing_context
+              CHECK (pricing_rule_id IS NULL OR trade_context_id IS NOT NULL),
+          CONSTRAINT chk_hedge_deals_transfer_rate
               CHECK (
                   transfer_rate IS NULL
                   OR (
@@ -5978,7 +5808,7 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
                       AND transfer_rate > 0
                   )
               ),
-          CONSTRAINT chk_fx_hedge_deals_analytical_pnl_quote
+          CONSTRAINT chk_hedge_deals_analytical_pnl_quote
               CHECK (
                   (
                       analytical_pnl_quote_minor IS NULL
@@ -5997,11 +5827,11 @@ function migrateFxDealAnalyticalPnlToMinorUnits(sqlite) {
   });
 }
 
-function migrateFxHedgeDealRequestTimestamp(sqlite) {
+function migrateHedgeDealRequestTimestamp(sqlite) {
   const tableExists = Boolean(sqlite.prepare(`
     SELECT 1 AS present
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_hedge_deals'
+    WHERE type = 'table' AND name = 'hedge_deals'
   `).get());
 
   if (!tableExists) {
@@ -6013,40 +5843,40 @@ function migrateFxHedgeDealRequestTimestamp(sqlite) {
     "trade_type",
     "request_timestamp",
     "counterparty_id",
-    "execution_context_id",
+    "trade_context_id",
     "pricing_rule_id",
     "transfer_rate",
     "analytical_pnl_quote_minor",
     "analytical_pnl_quote_fraction_digits"
   ];
   const legacyColumns = targetColumns.filter(column => column !== "request_timestamp");
-  const tableInfo = sqlite.prepare("PRAGMA table_info(fx_hedge_deals)").all();
+  const tableInfo = sqlite.prepare("PRAGMA table_info(hedge_deals)").all();
   const columnNames = tableInfo.map(column => column.name).join(",");
   const tableDefinition = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'fx_hedge_deals'
+    WHERE type = 'table' AND name = 'hedge_deals'
   `).get()?.sql || "";
 
   if (columnNames === targetColumns.join(",")) {
     const requestTimestampColumn = tableInfo[targetColumns.indexOf("request_timestamp")];
     const targetDefinitionIsValid = requestTimestampColumn?.type === "TEXT"
       && requestTimestampColumn?.notnull === 1
-      && tableDefinition.includes("chk_fx_hedge_deals_request_timestamp");
+      && tableDefinition.includes("chk_hedge_deals_request_timestamp");
 
     if (!targetDefinitionIsValid) {
-      throw new Error("Unsupported FX Hedge Deal Request Timestamp schema.");
+      throw new Error("Unsupported Hedge Deal Request Timestamp schema.");
     }
 
     return;
   }
 
   if (columnNames !== legacyColumns.join(",")) {
-    throw new Error("Unsupported FX Hedge Deal Request Timestamp migration source schema.");
+    throw new Error("Unsupported Hedge Deal Request Timestamp migration source schema.");
   }
 
   const originalRowCount = Number(
-    sqlite.prepare("SELECT COUNT(*) AS count FROM fx_hedge_deals").get().count
+    sqlite.prepare("SELECT COUNT(*) AS count FROM hedge_deals").get().count
   );
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -6054,50 +5884,50 @@ function migrateFxHedgeDealRequestTimestamp(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE fx_hedge_deals_request_timestamp_migrated
+      CREATE TABLE hedge_deals_request_timestamp_migrated
       (
           trade_id                    INTEGER PRIMARY KEY,
           trade_type                  TEXT    NOT NULL DEFAULT 'HEDGE_DEAL',
           request_timestamp           TEXT    NOT NULL,
           counterparty_id             INTEGER NOT NULL,
-          execution_context_id        INTEGER,
+          trade_context_id        INTEGER,
           pricing_rule_id             INTEGER,
           transfer_rate               NUMERIC,
           analytical_pnl_quote_minor  INTEGER,
           analytical_pnl_quote_fraction_digits INTEGER,
 
-          CONSTRAINT fk_fx_hedge_deals_trade
+          CONSTRAINT fk_hedge_deals_trade
               FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES fx_trade_exposure (trade_id, trade_type)
+                  REFERENCES trade_exposures (trade_id, trade_type)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_deals_counterparty
+          CONSTRAINT fk_hedge_deals_counterparty
               FOREIGN KEY (counterparty_id)
                   REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_deals_execution_context
-              FOREIGN KEY (execution_context_id)
-                  REFERENCES execution_contexts (execution_context_id)
+          CONSTRAINT fk_hedge_deals_trade_context
+              FOREIGN KEY (trade_context_id)
+                  REFERENCES trade_contexts (trade_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_fx_hedge_deals_pricing_rule_scope
-              FOREIGN KEY (pricing_rule_id, counterparty_id, execution_context_id)
-                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, execution_context_id)
+          CONSTRAINT fk_hedge_deals_pricing_rule_scope
+              FOREIGN KEY (pricing_rule_id, counterparty_id, trade_context_id)
+                  REFERENCES pricing_rules (pricing_rule_id, counterparty_id, trade_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_fx_hedge_deals_trade_type
+          CONSTRAINT chk_hedge_deals_trade_type
               CHECK (trade_type = 'HEDGE_DEAL'),
-          CONSTRAINT chk_fx_hedge_deals_request_timestamp
+          CONSTRAINT chk_hedge_deals_request_timestamp
               CHECK (
                   length(request_timestamp) = 24
                   AND request_timestamp GLOB '????-??-??T??:??:??.???Z'
                   AND strftime('%Y-%m-%dT%H:%M:%fZ', request_timestamp)
                       = request_timestamp
               ),
-          CONSTRAINT chk_fx_hedge_deals_pricing_context
-              CHECK (pricing_rule_id IS NULL OR execution_context_id IS NOT NULL),
-          CONSTRAINT chk_fx_hedge_deals_transfer_rate
+          CONSTRAINT chk_hedge_deals_pricing_context
+              CHECK (pricing_rule_id IS NULL OR trade_context_id IS NOT NULL),
+          CONSTRAINT chk_hedge_deals_transfer_rate
               CHECK (
                   transfer_rate IS NULL
                   OR (
@@ -6105,7 +5935,7 @@ function migrateFxHedgeDealRequestTimestamp(sqlite) {
                       AND transfer_rate > 0
                   )
               ),
-          CONSTRAINT chk_fx_hedge_deals_analytical_pnl_quote
+          CONSTRAINT chk_hedge_deals_analytical_pnl_quote
               CHECK (
                   (
                       analytical_pnl_quote_minor IS NULL
@@ -6121,13 +5951,13 @@ function migrateFxHedgeDealRequestTimestamp(sqlite) {
               )
       );
 
-      INSERT INTO fx_hedge_deals_request_timestamp_migrated
+      INSERT INTO hedge_deals_request_timestamp_migrated
       (
           trade_id,
           trade_type,
           request_timestamp,
           counterparty_id,
-          execution_context_id,
+          trade_context_id,
           pricing_rule_id,
           transfer_rate,
           analytical_pnl_quote_minor,
@@ -6138,34 +5968,34 @@ function migrateFxHedgeDealRequestTimestamp(sqlite) {
           d.trade_type,
           e.execution_timestamp,
           d.counterparty_id,
-          d.execution_context_id,
+          d.trade_context_id,
           d.pricing_rule_id,
           d.transfer_rate,
           d.analytical_pnl_quote_minor,
           d.analytical_pnl_quote_fraction_digits
-      FROM fx_hedge_deals d
-      INNER JOIN fx_trade_exposure e
+      FROM hedge_deals d
+      INNER JOIN trade_exposures e
         ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
       ORDER BY d.trade_id;
 
-      DROP TABLE fx_hedge_deals;
-      ALTER TABLE fx_hedge_deals_request_timestamp_migrated RENAME TO fx_hedge_deals;
+      DROP TABLE hedge_deals;
+      ALTER TABLE hedge_deals_request_timestamp_migrated RENAME TO hedge_deals;
 
-      CREATE INDEX idx_fx_hedge_deals_counterparty
-          ON fx_hedge_deals (counterparty_id);
+      CREATE INDEX idx_hedge_deals_counterparty
+          ON hedge_deals (counterparty_id);
     `);
 
     const migratedRowCount = Number(
-      sqlite.prepare("SELECT COUNT(*) AS count FROM fx_hedge_deals").get().count
+      sqlite.prepare("SELECT COUNT(*) AS count FROM hedge_deals").get().count
     );
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (migratedRowCount !== originalRowCount) {
-      throw new Error("FX Hedge Deal Request Timestamp migration did not preserve every row.");
+      throw new Error("Hedge Deal Request Timestamp migration did not preserve every row.");
     }
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("FX Hedge Deal Request Timestamp migration produced foreign key violations.");
+      throw new Error("Hedge Deal Request Timestamp migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -6180,25 +6010,25 @@ function migrateFxHedgeDealRequestTimestamp(sqlite) {
   }
 }
 
-function ensureClientFxDealIndexes(sqlite) {
+function ensureClientDealIndexes(sqlite) {
   sqlite.exec(`
-    CREATE INDEX IF NOT EXISTS idx_client_fx_deals_counterparty
-        ON client_fx_deals (counterparty_id);
-    CREATE INDEX IF NOT EXISTS idx_client_fx_deals_execution_context
-        ON client_fx_deals (execution_context_id);
-    CREATE INDEX IF NOT EXISTS idx_client_fx_deals_pricing_rule
-        ON client_fx_deals (pricing_rule_id);
+    CREATE INDEX IF NOT EXISTS idx_client_deals_counterparty
+        ON client_deals (counterparty_id);
+    CREATE INDEX IF NOT EXISTS idx_client_deals_trade_context
+        ON client_deals (trade_context_id);
+    CREATE INDEX IF NOT EXISTS idx_client_deals_pricing_rule
+        ON client_deals (pricing_rule_id);
   `);
 }
 
 function ensurePricingRuleClientDealReferenceIndex(sqlite) {
   sqlite.exec(`
     CREATE UNIQUE INDEX IF NOT EXISTS uq_pricing_rules_client_deal_reference
-        ON pricing_rules (pricing_rule_id, counterparty_id, execution_context_id);
+        ON pricing_rules (pricing_rule_id, counterparty_id, trade_context_id);
   `);
 }
 
-function backfillInitialClientFxDealAttribution(sqlite) {
+function backfillInitialClientDealAttribution(sqlite) {
   const deal = sqlite.prepare(`
     SELECT
       d.trade_id,
@@ -6209,14 +6039,14 @@ function backfillInitialClientFxDealAttribution(sqlite) {
       e.base_ccy_side AS side,
       e.ccy_pair_code,
       quote_ccy.fraction_digits AS quote_ccy_fraction_digits
-    FROM client_fx_deals d
-    INNER JOIN fx_trade_exposure e
+    FROM client_deals d
+    INNER JOIN trade_exposures e
       ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
     INNER JOIN trading_counterparties p ON p.counterparty_id = d.counterparty_id
     INNER JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = pair.quote_ccy_code
-    WHERE d.execution_context_id IS NULL
+    WHERE d.trade_context_id IS NULL
       AND d.pricing_rule_id IS NULL
       AND d.transfer_rate IS NULL
       AND d.analytical_pnl_quote_minor IS NULL
@@ -6241,7 +6071,7 @@ function backfillInitialClientFxDealAttribution(sqlite) {
   }
 
   const pricingRule = sqlite.prepare(`
-    SELECT r.pricing_rule_id, r.execution_context_id
+    SELECT r.pricing_rule_id, r.trade_context_id
     FROM pricing_rules r
     WHERE r.pricing_rule_id = 3
       AND r.counterparty_id = ?
@@ -6264,21 +6094,21 @@ function backfillInitialClientFxDealAttribution(sqlite) {
   });
 
   sqlite.prepare(`
-    UPDATE client_fx_deals
+    UPDATE client_deals
     SET
-      execution_context_id = ?,
+      trade_context_id = ?,
       pricing_rule_id = ?,
       transfer_rate = ?,
       analytical_pnl_quote_minor = ?,
       analytical_pnl_quote_fraction_digits = ?
     WHERE trade_id = ?
-      AND execution_context_id IS NULL
+      AND trade_context_id IS NULL
       AND pricing_rule_id IS NULL
       AND transfer_rate IS NULL
       AND analytical_pnl_quote_minor IS NULL
       AND analytical_pnl_quote_fraction_digits IS NULL
   `).run(
-    pricingRule.execution_context_id,
+    pricingRule.trade_context_id,
     pricingRule.pricing_rule_id,
     transferRate,
     minorToSafeInteger(analyticalPnlQuoteMinor, "Analytical PnL Quote Minor"),
@@ -6487,11 +6317,11 @@ function migrateCcyPairOptionsConstraints(sqlite) {
   }
 }
 
-function migrateLegacyExecutionContextIds(sqlite) {
-  const columns = sqlite.prepare("PRAGMA table_info(execution_contexts)").all();
+function migrateLegacyTradeContextIds(sqlite) {
+  const columns = sqlite.prepare("PRAGMA table_info(trade_contexts)").all();
   const columnByName = new Map(columns.map(column => [column.name, column]));
-  const foreignKeys = sqlite.prepare("PRAGMA foreign_key_list(execution_contexts)").all();
-  const idColumn = columnByName.get("execution_context_id");
+  const foreignKeys = sqlite.prepare("PRAGMA foreign_key_list(trade_contexts)").all();
+  const idColumn = columnByName.get("trade_context_id");
   const hasExpectedForeignKey = (column, referencedTable, referencedColumn) => foreignKeys.some(foreignKey =>
     foreignKey.from === column
     && foreignKey.table === referencedTable
@@ -6504,11 +6334,11 @@ function migrateLegacyExecutionContextIds(sqlite) {
     || columnByName.get("servicing_location_id")?.notnull !== 1
     || String(columnByName.get("accounting_system_id")?.type || "").toUpperCase() !== "TEXT"
     || columnByName.get("accounting_system_id")?.notnull !== 0
-    || String(columnByName.get("execution_system_id")?.type || "").toUpperCase() !== "TEXT"
-    || columnByName.get("execution_system_id")?.notnull !== 1
+    || String(columnByName.get("originating_system_id")?.type || "").toUpperCase() !== "TEXT"
+    || columnByName.get("originating_system_id")?.notnull !== 1
     || !hasExpectedForeignKey("servicing_location_id", "servicing_locations", "servicing_location_id")
     || !hasExpectedForeignKey("accounting_system_id", "accounting_systems", "accounting_system_id")
-    || !hasExpectedForeignKey("execution_system_id", "execution_systems", "execution_system_id");
+    || !hasExpectedForeignKey("originating_system_id", "originating_systems", "originating_system_id");
 
   if (!requiresMigration) {
     return;
@@ -6522,40 +6352,36 @@ function migrateLegacyExecutionContextIds(sqlite) {
         ELSE 'MANUAL'
       END`
     : "'MANUAL'";
-  const legacyAdmissionColumn = columnByName.has("auto_hedging_admission_mode")
-    ? "auto_hedging_admission_mode"
-    : columnByName.has("auto_hedging_admission_policy")
-      ? "auto_hedging_admission_policy"
+  const legacyAdmissionColumn = columnByName.has("auto_management_admission_mode")
+    ? "auto_management_admission_mode"
+    : columnByName.has("auto_management_admission_policy")
+      ? "auto_management_admission_policy"
       : null;
   const legacyAdmissionModeExpression = legacyAdmissionColumn
     ? `CASE
         WHEN ${legacyAdmissionColumn} IN
-          ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
+          ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED')
           THEN ${legacyAdmissionColumn}
         WHEN ${legacyDefaultModeExpression} = 'AUTO' THEN 'AUTO_IF_ELIGIBLE'
-        ELSE 'MANUAL_ONLY'
+        ELSE 'REVIEW_REQUIRED'
       END`
     : `CASE
         WHEN ${legacyDefaultModeExpression} = 'AUTO' THEN 'AUTO_IF_ELIGIBLE'
-        ELSE 'MANUAL_ONLY'
+        ELSE 'REVIEW_REQUIRED'
       END`;
-  const contextInsertColumns = `${preserveIntegerIds ? "execution_context_id, " : ""}`
-    + "servicing_location_id, accounting_system_id, execution_system_id, "
-    + "default_position_management_mode, auto_hedging_admission_mode";
-  const contextSelectColumns = `${preserveIntegerIds ? "execution_context_id, " : ""}`
-    + "servicing_location_id, accounting_system_id, execution_system_id, "
-    + `${legacyDefaultModeExpression}, ${legacyAdmissionModeExpression}`;
+  const contextInsertColumns = `${preserveIntegerIds ? "trade_context_id, " : ""}`
+    + "servicing_location_id, accounting_system_id, originating_system_id, "
+    + "auto_management_admission_mode";
+  const contextSelectColumns = `${preserveIntegerIds ? "trade_context_id, " : ""}`
+    + "servicing_location_id, accounting_system_id, originating_system_id, "
+    + legacyAdmissionModeExpression;
   const pricingRuleColumns = new Set(
     sqlite.prepare("PRAGMA table_info(pricing_rules)").all()
       .map(column => column.name)
   );
-  const positionManagementOverrideExpression = pricingRuleColumns
-    .has("position_management_mode_override")
-    ? "rule.position_management_mode_override"
-    : "NULL";
   const admissionModeOverrideExpression = pricingRuleColumns
-    .has("auto_hedging_admission_mode_override")
-    ? "rule.auto_hedging_admission_mode_override"
+    .has("auto_management_admission_mode_override")
+    ? "rule.auto_management_admission_mode_override"
     : "NULL";
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -6563,97 +6389,93 @@ function migrateLegacyExecutionContextIds(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      DROP TRIGGER IF EXISTS trg_execution_systems_lock_pricing_mode_while_referenced;
+      DROP TRIGGER IF EXISTS trg_originating_systems_lock_pricing_mode_while_referenced;
     `);
     sqlite.exec(`
-      CREATE TABLE execution_contexts_migrated
+      CREATE TABLE trade_contexts_migrated
       (
-          execution_context_id  INTEGER PRIMARY KEY,
+          trade_context_id  INTEGER PRIMARY KEY,
           servicing_location_id TEXT NOT NULL,
           accounting_system_id  TEXT,
-          execution_system_id   TEXT NOT NULL,
-          default_position_management_mode TEXT NOT NULL DEFAULT 'MANUAL',
-          auto_hedging_admission_mode TEXT NOT NULL DEFAULT 'MANUAL_ONLY',
+          originating_system_id   TEXT NOT NULL,
+          auto_management_admission_mode TEXT NOT NULL DEFAULT 'REVIEW_REQUIRED',
 
-          CONSTRAINT fk_execution_contexts_servicing_location
+          CONSTRAINT fk_trade_contexts_servicing_location
               FOREIGN KEY (servicing_location_id)
                   REFERENCES servicing_locations (servicing_location_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_execution_contexts_accounting_system
+          CONSTRAINT fk_trade_contexts_accounting_system
               FOREIGN KEY (accounting_system_id)
                   REFERENCES accounting_systems (accounting_system_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_execution_contexts_execution_system
-              FOREIGN KEY (execution_system_id)
-                  REFERENCES execution_systems (execution_system_id)
+          CONSTRAINT fk_trade_contexts_originating_system
+              FOREIGN KEY (originating_system_id)
+                  REFERENCES originating_systems (originating_system_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_execution_contexts_default_position_management_mode
-              CHECK (default_position_management_mode IN ('MANUAL', 'AUTO')),
-          CONSTRAINT chk_execution_contexts_auto_hedging_admission_mode
+          CONSTRAINT chk_trade_contexts_auto_management_admission_mode
               CHECK (
-                  auto_hedging_admission_mode IN
-                      ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
+                  auto_management_admission_mode IN
+                      ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED')
               )
       );
 
-      INSERT INTO execution_contexts_migrated
+      INSERT INTO trade_contexts_migrated
         (${contextInsertColumns})
       SELECT ${contextSelectColumns}
-      FROM execution_contexts
-      ORDER BY execution_context_id;
+      FROM trade_contexts
+      ORDER BY trade_context_id;
 
-      CREATE TEMP TABLE execution_context_id_map
+      CREATE TEMP TABLE trade_context_id_map
       (
-          legacy_execution_context_id TEXT PRIMARY KEY,
-          execution_context_id        INTEGER NOT NULL UNIQUE
+          legacy_trade_context_id TEXT PRIMARY KEY,
+          trade_context_id        INTEGER NOT NULL UNIQUE
       );
 
-      INSERT INTO execution_context_id_map
-        (legacy_execution_context_id, execution_context_id)
-      SELECT legacy.execution_context_id, migrated.execution_context_id
-      FROM execution_contexts legacy
-      INNER JOIN execution_contexts_migrated migrated
+      INSERT INTO trade_context_id_map
+        (legacy_trade_context_id, trade_context_id)
+      SELECT legacy.trade_context_id, migrated.trade_context_id
+      FROM trade_contexts legacy
+      INNER JOIN trade_contexts_migrated migrated
         ON migrated.servicing_location_id = legacy.servicing_location_id
         AND migrated.accounting_system_id IS legacy.accounting_system_id
-        AND migrated.execution_system_id = legacy.execution_system_id;
+        AND migrated.originating_system_id = legacy.originating_system_id;
 
-      UPDATE trading_counterparty_execution_contexts
-      SET execution_context_id =
+      UPDATE trading_counterparty_trade_contexts
+      SET trade_context_id =
       (
-        SELECT context_map.execution_context_id
-        FROM execution_context_id_map context_map
-        WHERE context_map.legacy_execution_context_id =
-          trading_counterparty_execution_contexts.execution_context_id
+        SELECT context_map.trade_context_id
+        FROM trade_context_id_map context_map
+        WHERE context_map.legacy_trade_context_id =
+          trading_counterparty_trade_contexts.trade_context_id
       )
       WHERE EXISTS
       (
         SELECT 1
-        FROM execution_context_id_map context_map
-        WHERE context_map.legacy_execution_context_id =
-          trading_counterparty_execution_contexts.execution_context_id
+        FROM trade_context_id_map context_map
+        WHERE context_map.legacy_trade_context_id =
+          trading_counterparty_trade_contexts.trade_context_id
       );
 
       CREATE TABLE pricing_rules_migrated
       (
           pricing_rule_id      INTEGER PRIMARY KEY,
           counterparty_id             INTEGER NOT NULL,
-          execution_context_id INTEGER NOT NULL,
+          trade_context_id INTEGER NOT NULL,
           ccy_pair_code        TEXT    NOT NULL,
           margin_percent       REAL    NOT NULL,
-          position_management_mode_override TEXT,
-          auto_hedging_admission_mode_override TEXT,
+          auto_management_admission_mode_override TEXT,
 
           CONSTRAINT fk_pricing_rules_counterparty
               FOREIGN KEY (counterparty_id)
                   REFERENCES trading_counterparties (counterparty_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT fk_pricing_rules_execution_context
-              FOREIGN KEY (execution_context_id)
-                  REFERENCES execution_contexts (execution_context_id)
+          CONSTRAINT fk_pricing_rules_trade_context
+              FOREIGN KEY (trade_context_id)
+                  REFERENCES trade_contexts (trade_context_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT fk_pricing_rules_ccy_pair
@@ -6662,18 +6484,13 @@ function migrateLegacyExecutionContextIds(sqlite) {
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
           CONSTRAINT uq_pricing_rules_scope
-              UNIQUE (counterparty_id, execution_context_id, ccy_pair_code),
+              UNIQUE (counterparty_id, trade_context_id, ccy_pair_code),
           CONSTRAINT chk_pricing_rules_margin
               CHECK (margin_percent >= 0 AND margin_percent < 100),
-          CONSTRAINT chk_pricing_rules_position_management_mode_override
+          CONSTRAINT chk_pricing_rules_auto_management_admission_mode_override
               CHECK (
-                  position_management_mode_override IS NULL
-                  OR position_management_mode_override IN ('MANUAL', 'AUTO')
-              ),
-          CONSTRAINT chk_pricing_rules_auto_hedging_admission_mode_override
-              CHECK (
-                  auto_hedging_admission_mode_override IS NULL
-                  OR auto_hedging_admission_mode_override = 'MANUAL_ONLY'
+                  auto_management_admission_mode_override IS NULL
+                  OR auto_management_admission_mode_override = 'REVIEW_REQUIRED'
               )
       );
 
@@ -6681,46 +6498,44 @@ function migrateLegacyExecutionContextIds(sqlite) {
         (
           pricing_rule_id,
           counterparty_id,
-          execution_context_id,
+          trade_context_id,
           ccy_pair_code,
           margin_percent,
-          position_management_mode_override,
-          auto_hedging_admission_mode_override
+          auto_management_admission_mode_override
         )
       SELECT
         rule.pricing_rule_id,
         rule.counterparty_id,
-        context_map.execution_context_id,
+        context_map.trade_context_id,
         rule.ccy_pair_code,
         rule.margin_percent,
-        ${positionManagementOverrideExpression},
         ${admissionModeOverrideExpression}
       FROM pricing_rules rule
-      INNER JOIN execution_context_id_map context_map
-        ON context_map.legacy_execution_context_id = rule.execution_context_id;
+      INNER JOIN trade_context_id_map context_map
+        ON context_map.legacy_trade_context_id = rule.trade_context_id;
 
       DROP TABLE pricing_rules;
-      DROP TABLE execution_contexts;
-      ALTER TABLE execution_contexts_migrated RENAME TO execution_contexts;
+      DROP TABLE trade_contexts;
+      ALTER TABLE trade_contexts_migrated RENAME TO trade_contexts;
       ALTER TABLE pricing_rules_migrated RENAME TO pricing_rules;
 
-      CREATE UNIQUE INDEX uq_execution_contexts_components
-          ON execution_contexts
+      CREATE UNIQUE INDEX uq_trade_contexts_components
+          ON trade_contexts
           (
               servicing_location_id,
               COALESCE(accounting_system_id, 'NOT_APPLICABLE'),
-              execution_system_id
+              originating_system_id
           );
-      CREATE INDEX idx_execution_contexts_servicing_location
-          ON execution_contexts (servicing_location_id);
-      CREATE INDEX idx_execution_contexts_accounting_system
-          ON execution_contexts (accounting_system_id);
-      CREATE INDEX idx_execution_contexts_execution_system
-          ON execution_contexts (execution_system_id);
+      CREATE INDEX idx_trade_contexts_servicing_location
+          ON trade_contexts (servicing_location_id);
+      CREATE INDEX idx_trade_contexts_accounting_system
+          ON trade_contexts (accounting_system_id);
+      CREATE INDEX idx_trade_contexts_originating_system
+          ON trade_contexts (originating_system_id);
       CREATE INDEX idx_pricing_rules_counterparty
           ON pricing_rules (counterparty_id);
-      CREATE INDEX idx_pricing_rules_execution_context
-          ON pricing_rules (execution_context_id);
+      CREATE INDEX idx_pricing_rules_trade_context
+          ON pricing_rules (trade_context_id);
       CREATE INDEX idx_pricing_rules_ccy_pair
           ON pricing_rules (ccy_pair_code);
       CREATE UNIQUE INDEX uq_pricing_rules_hedge_quick_mode_reference
@@ -6728,27 +6543,27 @@ function migrateLegacyExecutionContextIds(sqlite) {
       CREATE UNIQUE INDEX uq_pricing_rules_hedge_quick_mode_counterparty_reference
           ON pricing_rules (pricing_rule_id, counterparty_id, ccy_pair_code);
 
-      CREATE TRIGGER trg_execution_systems_lock_pricing_mode_while_referenced
-      BEFORE UPDATE OF pricing_mode ON execution_systems
+      CREATE TRIGGER trg_originating_systems_lock_pricing_mode_while_referenced
+      BEFORE UPDATE OF pricing_mode ON originating_systems
       FOR EACH ROW
       WHEN NEW.pricing_mode <> OLD.pricing_mode
           AND EXISTS
           (
               SELECT 1
-              FROM execution_contexts context
-              WHERE context.execution_system_id = OLD.execution_system_id
+              FROM trade_contexts context
+              WHERE context.originating_system_id = OLD.originating_system_id
           )
       BEGIN
-          SELECT RAISE(ABORT, 'an Execution System used by Execution Context cannot change Pricing Mode');
+          SELECT RAISE(ABORT, 'an Originating System used by Trade Context cannot change Pricing Mode');
       END;
 
-      DROP TABLE execution_context_id_map;
+      DROP TABLE trade_context_id_map;
     `);
 
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("Execution Context ID migration produced foreign key violations.");
+      throw new Error("Trade Context ID migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -6930,11 +6745,11 @@ function migrateAccountingSystemsShape(sqlite) {
   }
 }
 
-function migrateExecutionSystemsShape(sqlite) {
+function migrateOriginatingSystemsShape(sqlite) {
   const tableDefinition = sqlite.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'execution_systems'
+    WHERE type = 'table' AND name = 'originating_systems'
   `).get()?.sql || "";
 
   const requiresMigration = !tableDefinition.includes("BETWEEN 2 AND 30")
@@ -6946,22 +6761,22 @@ function migrateExecutionSystemsShape(sqlite) {
   }
 
   const invalidRecord = sqlite.prepare(`
-    SELECT execution_system_id
-    FROM execution_systems
-    WHERE length(execution_system_id) > ?
+    SELECT originating_system_id
+    FROM originating_systems
+    WHERE length(originating_system_id) > ?
       OR length(trim(name)) NOT BETWEEN 1 AND ?
       OR pricing_mode NOT IN ('AUTO_PRICED', 'DEALER_PRICED', 'DEALER_APPROVED')
       OR length(pricing_mode) > ?
       OR is_active NOT IN (0, 1)
     LIMIT 1
   `).get(
-    EXECUTION_SYSTEM_ID_MAX_LENGTH,
-    EXECUTION_SYSTEM_NAME_MAX_LENGTH,
-    EXECUTION_SYSTEM_PRICING_MODE_MAX_LENGTH
+    ORIGINATING_SYSTEM_ID_MAX_LENGTH,
+    ORIGINATING_SYSTEM_NAME_MAX_LENGTH,
+    ORIGINATING_SYSTEM_PRICING_MODE_MAX_LENGTH
   );
 
   if (invalidRecord) {
-    throw new Error(`Execution System ${invalidRecord.execution_system_id} exceeds the configured constraint.`);
+    throw new Error(`Originating System ${invalidRecord.originating_system_id} exceeds the configured constraint.`);
   }
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -6969,43 +6784,43 @@ function migrateExecutionSystemsShape(sqlite) {
   try {
     sqlite.exec("BEGIN IMMEDIATE");
     sqlite.exec(`
-      CREATE TABLE execution_systems_migrated
+      CREATE TABLE originating_systems_migrated
       (
-          execution_system_id TEXT    PRIMARY KEY,
+          originating_system_id TEXT    PRIMARY KEY,
           name                TEXT    NOT NULL,
           pricing_mode        TEXT    NOT NULL,
           is_active           INTEGER NOT NULL DEFAULT 1,
 
-          CONSTRAINT chk_execution_systems_id
+          CONSTRAINT chk_originating_systems_id
               CHECK (
-                  length(execution_system_id) BETWEEN 2 AND 30
-                  AND execution_system_id = upper(execution_system_id)
-                  AND execution_system_id NOT GLOB '*[^A-Z0-9_-]*'
+                  length(originating_system_id) BETWEEN 2 AND 30
+                  AND originating_system_id = upper(originating_system_id)
+                  AND originating_system_id NOT GLOB '*[^A-Z0-9_-]*'
               ),
-          CONSTRAINT chk_execution_systems_name
+          CONSTRAINT chk_originating_systems_name
               CHECK (length(trim(name)) BETWEEN 1 AND 50),
-          CONSTRAINT chk_execution_systems_pricing_mode
+          CONSTRAINT chk_originating_systems_pricing_mode
               CHECK (
                   pricing_mode IN ('AUTO_PRICED', 'DEALER_PRICED', 'DEALER_APPROVED')
                   AND length(pricing_mode) <= length('DEALER_APPROVED')
               ),
-          CONSTRAINT chk_execution_systems_active
+          CONSTRAINT chk_originating_systems_active
               CHECK (is_active IN (0, 1))
       );
 
-      INSERT INTO execution_systems_migrated
-        (execution_system_id, name, pricing_mode, is_active)
-      SELECT execution_system_id, name, pricing_mode, is_active
-      FROM execution_systems;
+      INSERT INTO originating_systems_migrated
+        (originating_system_id, name, pricing_mode, is_active)
+      SELECT originating_system_id, name, pricing_mode, is_active
+      FROM originating_systems;
 
-      DROP TABLE execution_systems;
-      ALTER TABLE execution_systems_migrated RENAME TO execution_systems;
+      DROP TABLE originating_systems;
+      ALTER TABLE originating_systems_migrated RENAME TO originating_systems;
     `);
 
     const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
 
     if (foreignKeyViolations.length > 0) {
-      throw new Error("Execution System migration produced foreign key violations.");
+      throw new Error("Originating System migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -7059,6 +6874,7 @@ function migrateTradingCounterpartyModel(sqlite) {
 
   try {
     sqlite.exec("BEGIN IMMEDIATE");
+    dropTradingCounterpartyProfileIntegrityTriggers(sqlite);
     sqlite.exec(`
       DELETE FROM trading_counterparty_roles;
       DELETE FROM external_counterparties;
@@ -7066,18 +6882,31 @@ function migrateTradingCounterpartyModel(sqlite) {
 
       CREATE TABLE trading_counterparties_migrated
       (
-          counterparty_id   INTEGER PRIMARY KEY,
-          counterparty_name TEXT    NOT NULL,
-          is_active  INTEGER NOT NULL DEFAULT 1,
+          counterparty_id    INTEGER PRIMARY KEY,
+          counterparty_scope TEXT    NOT NULL,
+          counterparty_name  TEXT    NOT NULL,
+          is_active          INTEGER NOT NULL DEFAULT 1,
 
+          CONSTRAINT chk_trading_counterparties_scope
+              CHECK (counterparty_scope IN ('EXTERNAL', 'INTERNAL')),
           CONSTRAINT chk_trading_counterparties_name
               CHECK (length(counterparty_name) BETWEEN 1 AND 200 AND length(trim(counterparty_name)) > 0),
           CONSTRAINT chk_trading_counterparties_active
               CHECK (is_active IN (0, 1))
       );
 
-      INSERT INTO trading_counterparties_migrated (counterparty_id, counterparty_name, is_active)
-      SELECT counterparty_id, counterparty_name, is_active
+      INSERT INTO trading_counterparties_migrated
+        (counterparty_id, counterparty_scope, counterparty_name, is_active)
+      SELECT
+        counterparty_id,
+        CASE
+          WHEN counterparty_type = 'INTERNAL_DESK'
+            OR counterparty_code_type = 'FRONT_SYSTEM_FOLDER_ID'
+          THEN 'INTERNAL'
+          ELSE 'EXTERNAL'
+        END,
+        counterparty_name,
+        is_active
       FROM trading_counterparties;
 
       INSERT INTO external_counterparties
@@ -7114,6 +6943,138 @@ function migrateTradingCounterpartyModel(sqlite) {
 
     if (foreignKeyViolations.length > 0) {
       throw new Error("Trading Counterparty profile migration produced foreign key violations.");
+    }
+
+    sqlite.exec("COMMIT");
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {}
+
+    throw error;
+  } finally {
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
+function dropTradingCounterpartyProfileIntegrityTriggers(sqlite) {
+  sqlite.exec(`
+    DROP TRIGGER IF EXISTS trg_external_counterparties_exclusive_profile_insert;
+    DROP TRIGGER IF EXISTS trg_external_counterparties_exclusive_profile_update;
+    DROP TRIGGER IF EXISTS trg_internal_units_exclusive_profile_insert;
+    DROP TRIGGER IF EXISTS trg_internal_units_exclusive_profile_update;
+    DROP TRIGGER IF EXISTS trg_trading_counterparties_immutable_scope;
+    DROP TRIGGER IF EXISTS trg_external_counterparties_preserve_profile;
+    DROP TRIGGER IF EXISTS trg_internal_units_preserve_profile;
+  `);
+}
+
+function tradingCounterpartyProfileIntegrityViolation(sqlite) {
+  if (!sqliteTableExists(sqlite, "trading_counterparties")
+    || !sqliteTableExists(sqlite, "external_counterparties")
+    || !sqliteTableExists(sqlite, "internal_units")) {
+    return null;
+  }
+
+  const hasScope = tableColumnNames(sqlite, "trading_counterparties").has("counterparty_scope");
+  const scopeProjection = hasScope
+    ? "counterparty.counterparty_scope"
+    : "NULL";
+  const scopeConstraint = hasScope
+    ? `
+      OR counterparty.counterparty_scope IS NULL
+      OR counterparty.counterparty_scope NOT IN ('EXTERNAL', 'INTERNAL')
+      OR (counterparty.counterparty_scope = 'EXTERNAL' AND external.counterparty_id IS NULL)
+      OR (counterparty.counterparty_scope = 'EXTERNAL' AND internal.counterparty_id IS NOT NULL)
+      OR (counterparty.counterparty_scope = 'INTERNAL' AND internal.counterparty_id IS NULL)
+      OR (counterparty.counterparty_scope = 'INTERNAL' AND external.counterparty_id IS NOT NULL)
+    `
+    : "";
+
+  return sqlite.prepare(`
+    SELECT
+      counterparty.counterparty_id AS counterpartyId,
+      ${scopeProjection} AS counterpartyScope,
+      external.counterparty_id IS NOT NULL AS hasExternalProfile,
+      internal.counterparty_id IS NOT NULL AS hasInternalProfile
+    FROM trading_counterparties counterparty
+    LEFT JOIN external_counterparties external
+      ON external.counterparty_id = counterparty.counterparty_id
+    LEFT JOIN internal_units internal
+      ON internal.counterparty_id = counterparty.counterparty_id
+    WHERE (external.counterparty_id IS NULL AND internal.counterparty_id IS NULL)
+      OR (external.counterparty_id IS NOT NULL AND internal.counterparty_id IS NOT NULL)
+      ${scopeConstraint}
+    LIMIT 1
+  `).get() || null;
+}
+
+function assertTradingCounterpartyProfileConsistency(sqlite) {
+  const violation = tradingCounterpartyProfileIntegrityViolation(sqlite);
+
+  if (!violation) {
+    return;
+  }
+
+  throw new Error(
+    `Trading Counterparty ${violation.counterpartyId} must have exactly one profile matching its Scope.`
+  );
+}
+
+function migrateTradingCounterpartyScope(sqlite) {
+  if (!sqliteTableExists(sqlite, "trading_counterparties")) {
+    return;
+  }
+
+  if (tableColumnNames(sqlite, "trading_counterparties").has("counterparty_scope")) {
+    assertTradingCounterpartyProfileConsistency(sqlite);
+    return;
+  }
+
+  assertTradingCounterpartyProfileConsistency(sqlite);
+  sqlite.exec("PRAGMA foreign_keys = OFF");
+
+  try {
+    sqlite.exec("BEGIN IMMEDIATE");
+    dropTradingCounterpartyProfileIntegrityTriggers(sqlite);
+    sqlite.exec(`
+      CREATE TABLE trading_counterparties_with_scope
+      (
+          counterparty_id    INTEGER PRIMARY KEY,
+          counterparty_scope TEXT    NOT NULL,
+          counterparty_name  TEXT    NOT NULL,
+          is_active          INTEGER NOT NULL DEFAULT 1,
+
+          CONSTRAINT chk_trading_counterparties_scope
+              CHECK (counterparty_scope IN ('EXTERNAL', 'INTERNAL')),
+          CONSTRAINT chk_trading_counterparties_name
+              CHECK (length(counterparty_name) BETWEEN 1 AND 200 AND length(trim(counterparty_name)) > 0),
+          CONSTRAINT chk_trading_counterparties_active
+              CHECK (is_active IN (0, 1))
+      );
+
+      INSERT INTO trading_counterparties_with_scope
+        (counterparty_id, counterparty_scope, counterparty_name, is_active)
+      SELECT
+        counterparty.counterparty_id,
+        CASE
+          WHEN external.counterparty_id IS NOT NULL THEN 'EXTERNAL'
+          ELSE 'INTERNAL'
+        END,
+        counterparty.counterparty_name,
+        counterparty.is_active
+      FROM trading_counterparties counterparty
+      LEFT JOIN external_counterparties external
+        ON external.counterparty_id = counterparty.counterparty_id;
+
+      DROP TABLE trading_counterparties;
+      ALTER TABLE trading_counterparties_with_scope RENAME TO trading_counterparties;
+    `);
+
+    const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
+
+    if (foreignKeyViolations.length > 0) {
+      throw new Error("Trading Counterparty Scope migration produced foreign key violations.");
     }
 
     sqlite.exec("COMMIT");
@@ -7192,9 +7153,9 @@ function migrateTradingCounterpartyTerminology(sqlite) {
       "internal_units",
       "trading_counterparty_roles",
       "pricing_rules",
-      "fx_hedge_quick_mode_settings",
-      "client_fx_deals",
-      "fx_hedge_deals"
+      "hedge_quick_mode_settings",
+      "client_deals",
+      "hedge_deals"
     ].forEach(tableName => {
       if (tableExists(tableName)) {
         renameColumn(tableName, "party_id", "counterparty_id");
@@ -7361,9 +7322,9 @@ function rebuildLegacyCounterpartyConstraintNames(sqlite) {
     "internal_units",
     "trading_counterparty_roles",
     "pricing_rules",
-    "fx_hedge_quick_mode_settings",
-    "client_fx_deals",
-    "fx_hedge_deals"
+    "hedge_quick_mode_settings",
+    "client_deals",
+    "hedge_deals"
   ];
   const legacyTerm = /(?<!counter)part(?:y|ies)/i;
   const tablesToRebuild = targetTables.filter(tableName => {
@@ -7552,10 +7513,10 @@ function seedInitialAccountingSystems(sqlite) {
   `);
 }
 
-function seedInitialExecutionSystems(sqlite) {
+function seedInitialOriginatingSystems(sqlite) {
   sqlite.exec(`
-    INSERT INTO execution_systems
-      (execution_system_id, name, pricing_mode, is_active)
+    INSERT INTO originating_systems
+      (originating_system_id, name, pricing_mode, is_active)
     VALUES
       ('CLICK_TRADE_EFX', 'Click Trade eFX', 'AUTO_PRICED', 1),
       ('RFQ', 'Request for Quote', 'DEALER_APPROVED', 1),
@@ -7563,35 +7524,34 @@ function seedInitialExecutionSystems(sqlite) {
   `);
 }
 
-function seedInitialExecutionContexts(sqlite) {
+function seedInitialTradeContexts(sqlite) {
   sqlite.exec(`
-    INSERT INTO execution_contexts
+    INSERT INTO trade_contexts
       (
         servicing_location_id,
         accounting_system_id,
-        execution_system_id,
-        default_position_management_mode,
-        auto_hedging_admission_mode
+        originating_system_id,
+        auto_management_admission_mode
       )
     VALUES
-      ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE'),
-      ('002', 'AFINA', 'RFQ', 'MANUAL', 'MANUAL_ONLY'),
-      ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL', 'MANUAL_ONLY'),
-      ('1234', 'AFINA', 'RFQ', 'MANUAL', 'MANUAL_ONLY'),
-      ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO', 'AUTO_IF_ELIGIBLE');
+      ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE'),
+      ('002', 'AFINA', 'RFQ', 'REVIEW_REQUIRED'),
+      ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'REVIEW_REQUIRED'),
+      ('1234', 'AFINA', 'RFQ', 'REVIEW_REQUIRED'),
+      ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE');
   `);
 }
 
 function seedInitialTradingCounterparties(sqlite) {
   sqlite.exec(`
     INSERT INTO trading_counterparties
-      (counterparty_name, is_active)
+      (counterparty_scope, counterparty_name, is_active)
     VALUES
-      ('Romashka Company', 1),
-      ('Vasilek Company', 1),
-      ('Gladiolus Company', 1),
-      ('Aurora Bank', 1),
-      ('Treasury Trading Desk', 1);
+      ('EXTERNAL', 'Romashka Company', 1),
+      ('EXTERNAL', 'Vasilek Company', 1),
+      ('EXTERNAL', 'Gladiolus Company', 1),
+      ('EXTERNAL', 'Aurora Bank', 1),
+      ('INTERNAL', 'Treasury Trading Desk', 1);
 
     WITH seed (counterparty_name, counterparty_code, counterparty_code_type, external_counterparty_kind, role_code) AS
     (
@@ -7651,25 +7611,25 @@ function seedInitialPricingRules(sqlite) {
   const resolveScope = sqlite.prepare(`
     SELECT
       p.counterparty_id AS counterpartyId,
-      e.execution_context_id AS executionContextId,
+      e.trade_context_id AS tradeContextId,
       pair.ccy_pair_code AS ccyPairCode
     FROM trading_counterparties p
     INNER JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
-    INNER JOIN execution_contexts e
+    INNER JOIN trade_contexts e
       ON e.servicing_location_id = ?
       AND COALESCE(e.accounting_system_id, 'NOT_APPLICABLE') = ?
-      AND e.execution_system_id = ?
+      AND e.originating_system_id = ?
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = ?
     WHERE external.counterparty_code_type = 'INN' AND external.counterparty_code = ?
   `);
   const attachContext = sqlite.prepare(`
-    INSERT OR IGNORE INTO trading_counterparty_execution_contexts
-      (counterparty_id, execution_context_id)
+    INSERT OR IGNORE INTO trading_counterparty_trade_contexts
+      (counterparty_id, trade_context_id)
     VALUES (?, ?)
   `);
   const insertRule = sqlite.prepare(`
     INSERT OR IGNORE INTO pricing_rules
-      (counterparty_id, execution_context_id, ccy_pair_code, margin_percent)
+      (counterparty_id, trade_context_id, ccy_pair_code, margin_percent)
     VALUES (?, ?, ?, ?)
   `);
 
@@ -7678,14 +7638,14 @@ function seedInitialPricingRules(sqlite) {
       counterpartyCode,
       servicingLocationId,
       accountingSystemId,
-      executionSystemId,
+      originatingSystemId,
       ccyPairCode,
       marginPercent
     ]) => {
       const scope = resolveScope.get(
         servicingLocationId,
         accountingSystemId,
-        executionSystemId,
+        originatingSystemId,
         ccyPairCode,
         counterpartyCode
       );
@@ -7694,10 +7654,10 @@ function seedInitialPricingRules(sqlite) {
         return;
       }
 
-      attachContext.run(scope.counterpartyId, scope.executionContextId);
+      attachContext.run(scope.counterpartyId, scope.tradeContextId);
       insertRule.run(
         scope.counterpartyId,
-        scope.executionContextId,
+        scope.tradeContextId,
         scope.ccyPairCode,
         marginPercent
       );
@@ -7720,17 +7680,17 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
     INNER JOIN trading_counterparties counterparty ON counterparty.counterparty_id = rule.counterparty_id
     INNER JOIN trading_counterparty_roles role
       ON role.counterparty_id = counterparty.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
-    INNER JOIN execution_contexts context
-      ON context.execution_context_id = rule.execution_context_id
-    INNER JOIN execution_systems execution
-      ON execution.execution_system_id = context.execution_system_id
+    INNER JOIN trade_contexts context
+      ON context.trade_context_id = rule.trade_context_id
+    INNER JOIN originating_systems originating
+      ON originating.originating_system_id = context.originating_system_id
     INNER JOIN ccy_pair_options pair
       ON pair.ccy_pair_code = rule.ccy_pair_code
     INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     WHERE rule.ccy_pair_code = 'EUR_USD'
       AND counterparty.is_active = 1
-      AND execution.pricing_mode = 'AUTO_PRICED'
-      AND execution.is_active = 1
+      AND originating.pricing_mode = 'AUTO_PRICED'
+      AND originating.is_active = 1
     ORDER BY rule.pricing_rule_id
   `).all();
 
@@ -7746,7 +7706,7 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
   );
 
   sqlite.prepare(`
-    INSERT INTO fx_hedge_quick_mode_settings
+    INSERT INTO hedge_quick_mode_settings
       (
         ccy_pair_code,
         counterparty_id,
@@ -7772,29 +7732,29 @@ function seedInitialHedgeQuickModeSettings(sqlite) {
   );
 }
 
-function seedInitialClientFxDeals(sqlite) {
+function seedInitialClientDeals(sqlite) {
   runInImmediateTransaction(sqlite, () => {
     const pricingRule = sqlite.prepare(`
-      SELECT r.pricing_rule_id, r.counterparty_id, r.execution_context_id
+      SELECT r.pricing_rule_id, r.counterparty_id, r.trade_context_id
       FROM pricing_rules r
       INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
       INNER JOIN external_counterparties external ON external.counterparty_id = p.counterparty_id
-      INNER JOIN execution_contexts e ON e.execution_context_id = r.execution_context_id
+      INNER JOIN trade_contexts e ON e.trade_context_id = r.trade_context_id
       WHERE external.counterparty_code_type = 'INN'
         AND external.counterparty_code = '7701234567'
         AND r.ccy_pair_code = 'EUR_USD'
         AND e.servicing_location_id = '002'
         AND e.accounting_system_id = 'CTF3'
-        AND e.execution_system_id = 'MANUAL_CLIENT_DEAL_ENTRY'
+        AND e.originating_system_id = 'MANUAL_CLIENT_DEAL_ENTRY'
       LIMIT 1
     `).get();
 
     if (!pricingRule) {
-      throw new Error("Initial Client FX Deal Pricing Rule was not found.");
+      throw new Error("Initial Client Deal Pricing Rule was not found.");
     }
 
     const exposureResult = sqlite.prepare(`
-      INSERT INTO fx_trade_exposure
+      INSERT INTO trade_exposures
         (
           execution_timestamp,
           received_timestamp,
@@ -7833,12 +7793,12 @@ function seedInitialClientFxDeals(sqlite) {
     `).run();
     const tradeId = Number(exposureResult.lastInsertRowid);
     const clientResult = sqlite.prepare(`
-      INSERT INTO client_fx_deals
+      INSERT INTO client_deals
         (
           trade_id,
           trade_type,
           counterparty_id,
-          execution_context_id,
+          trade_context_id,
           pricing_rule_id,
           transfer_rate,
           analytical_pnl_quote_minor,
@@ -7848,16 +7808,16 @@ function seedInitialClientFxDeals(sqlite) {
     `).run(
       tradeId,
       pricingRule.counterparty_id,
-      pricingRule.execution_context_id,
+      pricingRule.trade_context_id,
       pricingRule.pricing_rule_id
     );
 
     if (clientResult.changes !== 1) {
-      throw new Error("Initial Client FX Deal was not created.");
+      throw new Error("Initial Client Deal was not created.");
     }
 
     sqlite.prepare(`
-      INSERT INTO fx_trade_market_snapshot
+      INSERT INTO trade_market_snapshots
         (
           trade_id,
           trade_type,
@@ -7942,36 +7902,36 @@ function ccyPairOption(pairCode) {
   `).get(pairCode) || null;
 }
 
-function executionContextAdmissionMode(executionContextId) {
-  const normalizedId = normalizedExecutionContextId(executionContextId);
+function tradeContextAdmissionMode(tradeContextId) {
+  const normalizedId = normalizedTradeContextId(tradeContextId);
 
   if (normalizedId === null) {
     return null;
   }
 
   return database.prepare(`
-    SELECT auto_hedging_admission_mode AS autoHedgingAdmissionMode
-    FROM execution_contexts
-    WHERE execution_context_id = ?
-  `).get(normalizedId)?.autoHedgingAdmissionMode ?? null;
+    SELECT auto_management_admission_mode AS autoManagementAdmissionMode
+    FROM trade_contexts
+    WHERE trade_context_id = ?
+  `).get(normalizedId)?.autoManagementAdmissionMode ?? null;
 }
 
-function pricingRuleAutoHedgingAdmissionPolicy(
+function pricingRuleAutoManagementAdmissionPolicy(
   pricingRuleId,
-  executionContextId
+  tradeContextId
 ) {
-  const normalizedContextId = normalizedExecutionContextId(executionContextId);
+  const normalizedContextId = normalizedTradeContextId(tradeContextId);
 
   if (pricingRuleId === null || pricingRuleId === undefined) {
-    const executionContextMode = executionContextAdmissionMode(normalizedContextId);
+    const tradeContextMode = tradeContextAdmissionMode(normalizedContextId);
 
     return {
-      autoHedgingAdmissionModeOverride: null,
-      executionContextAdmissionMode: executionContextMode,
-      effectiveAutoHedgingAdmissionMode:
-        resolvePricingRuleAutoHedgingAdmissionMode({
-          autoHedgingAdmissionModeOverride: null,
-          executionContextAdmissionMode: executionContextMode
+      autoManagementAdmissionModeOverride: null,
+      tradeContextAdmissionMode: tradeContextMode,
+      effectiveAutoManagementAdmissionMode:
+        resolvePricingRuleAutoManagementAdmissionMode({
+          autoManagementAdmissionModeOverride: null,
+          tradeContextAdmissionMode: tradeContextMode
         })
     };
   }
@@ -7985,65 +7945,53 @@ function pricingRuleAutoHedgingAdmissionPolicy(
     ? null
     : database.prepare(`
         SELECT
-          rule.auto_hedging_admission_mode_override
-            AS autoHedgingAdmissionModeOverride,
-          context.auto_hedging_admission_mode AS executionContextAdmissionMode
+          rule.auto_management_admission_mode_override
+            AS autoManagementAdmissionModeOverride,
+          context.auto_management_admission_mode AS tradeContextAdmissionMode
         FROM pricing_rules rule
-        INNER JOIN execution_contexts context
-          ON context.execution_context_id = rule.execution_context_id
+        INNER JOIN trade_contexts context
+          ON context.trade_context_id = rule.trade_context_id
         WHERE rule.pricing_rule_id = ?
-          AND rule.execution_context_id = ?
+          AND rule.trade_context_id = ?
       `).get(normalizedPricingRuleId, normalizedContextId);
 
   if (!policy) {
     throw new Error(
-      `Auto Hedging Admission Policy was not found for Pricing Rule ${pricingRuleId} and Execution Context ${executionContextId}.`
+      `Initial Mode Assignment was not found for Pricing Rule ${pricingRuleId} and Trade Context ${tradeContextId}.`
     );
   }
 
   return {
     ...policy,
-    effectiveAutoHedgingAdmissionMode:
-      resolvePricingRuleAutoHedgingAdmissionMode(policy)
+    effectiveAutoManagementAdmissionMode:
+      resolvePricingRuleAutoManagementAdmissionMode(policy)
   };
 }
 
-function autoHedgingAdmissionPolicy() {
-  const current = database.prepare(`
-    SELECT
-      revision.revision
-    FROM auto_hedging_admission_policy_current current
-    INNER JOIN auto_hedging_admission_policy_revisions revision
-      ON revision.revision = current.revision
-    WHERE current.policy_id = 1
-  `).get();
-
-  if (!current) {
-    throw new Error("Auto Hedging Admission Policy is not configured.");
+function storedAutoModeEligibilityRules(tradeType) {
+  tradeType = normalizedText(tradeType).toUpperCase();
+  if (!TRADE_TYPES.includes(tradeType)) {
+    throw new RangeError(
+      `Auto Mode Eligibility Rule trade type must be one of: ${TRADE_TYPES.join(", ")}.`
+    );
   }
-
   const currencyPairs = database.prepare(`
     SELECT
       pair.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
       pair.base_ccy_code AS baseCcyCode,
-      COALESCE(rule.base_ccy_fraction_digits, base_ccy.fraction_digits)
-        AS baseCcyFractionDigits,
-      CASE WHEN rule.ccy_pair_code IS NULL THEN 0 ELSE 1 END AS enabled,
+      base_ccy.fraction_digits AS baseCcyFractionDigits,
+      COALESCE(rule.is_eligible, 0) AS enabled,
       rule.max_base_ccy_amount_minor AS maxBaseCcyAmountMinor,
-      deviation.max_transfer_rate_deviation_percent
-        AS maxTransferRateDeviationPercent
+      rule.max_transfer_rate_deviation_percent AS maxTransferRateDeviationPercent
     FROM ccy_pair_options pair
     INNER JOIN ccy_options base_ccy
       ON base_ccy.ccy_code = pair.base_ccy_code
-    LEFT JOIN auto_hedging_admission_policy_pair_rules rule
-      ON rule.revision = ?
+    LEFT JOIN auto_mode_eligibility_rules rule
+      ON rule.trade_type = ?
       AND rule.ccy_pair_code = pair.ccy_pair_code
-    LEFT JOIN auto_hedging_admission_policy_pair_deviations deviation
-      ON deviation.revision = ?
-      AND deviation.ccy_pair_code = pair.ccy_pair_code
     ORDER BY pair.base_ccy_code, pair.quote_ccy_code
-  `).all(current.revision, current.revision).map(pair => ({
+  `).all(tradeType).map(pair => ({
     ccyPairCode: pair.ccyPairCode,
     currencyPair: pair.currencyPair,
     baseCcyCode: pair.baseCcyCode,
@@ -8056,8 +8004,22 @@ function autoHedgingAdmissionPolicy() {
   }));
 
   return {
-    revision: current.revision,
+    tradeType,
     currencyPairs
+  };
+}
+
+function autoModeEligibilityRules(tradeType = "CLIENT_DEAL") {
+  return storedAutoModeEligibilityRules(
+    normalizeAutoManagementAdmissionTradeType(tradeType)
+  );
+}
+
+function autoModeEligibilityRuleMatrix() {
+  return {
+    ruleSets: AUTO_MODE_ELIGIBILITY_MATRIX_TRADE_TYPES.map(
+      storedAutoModeEligibilityRules
+    )
   };
 }
 
@@ -8078,21 +8040,23 @@ function normalizedMaxTransferRateDeviationPercent(value) {
   return text;
 }
 
-function validateAutoHedgingAdmissionPolicyPayload(body) {
+function validateAutoModeEligibilityRulesPayload(body) {
   if (body === null || typeof body !== "object" || Array.isArray(body)) {
-    return { error: "Auto Hedging Admission Policy payload must be a JSON object." };
+    return { error: "Auto Mode Eligibility Rules payload must be a JSON object." };
   }
 
-  const expectedRevision = body.expectedRevision;
-
+  let tradeType;
+  try {
+    tradeType = normalizeAutoManagementAdmissionTradeType(
+      body.tradeType === undefined ? "CLIENT_DEAL" : body.tradeType
+    );
+  } catch (error) {
+    return { error: error.message };
+  }
   if (Object.hasOwn(body, "maxTransferRateDeviationPercent")) {
     return {
       error: "Maximum Transfer Rate deviation must be configured for each Currency Pair."
     };
-  }
-
-  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
-    return { error: "Expected revision must be a positive integer." };
   }
 
   if (!Array.isArray(body.currencyPairs)) {
@@ -8108,8 +8072,7 @@ function validateAutoHedgingAdmissionPolicyPayload(body) {
       ON base_ccy.ccy_code = pair.base_ccy_code
   `).all().map(pair => [pair.ccyPairCode, pair]));
   const seenPairCodes = new Set();
-  const enabledPairRules = [];
-  const pairDeviationRules = [];
+  const rules = [];
 
   for (const item of body.currencyPairs) {
     if (item === null || typeof item !== "object" || Array.isArray(item)) {
@@ -8129,6 +8092,20 @@ function validateAutoHedgingAdmissionPolicyPayload(body) {
 
     seenPairCodes.add(ccyPairCode);
 
+    if (typeof item.enabled !== "boolean") {
+      return { error: `Enabled must be a boolean value for ${ccyPairCode}.` };
+    }
+
+    if (!item.enabled) {
+      rules.push({
+        ccyPairCode,
+        isEligible: false,
+        maxBaseCcyAmountMinor: null,
+        maxTransferRateDeviationPercent: null
+      });
+      continue;
+    }
+
     const maxTransferRateDeviationPercent =
       normalizedMaxTransferRateDeviationPercent(
         item.maxTransferRateDeviationPercent
@@ -8137,19 +8114,6 @@ function validateAutoHedgingAdmissionPolicyPayload(body) {
       return {
         error: `Maximum Transfer Rate deviation for ${ccyPairCode} must be a decimal string from 0 through 100 percent.`
       };
-    }
-
-    pairDeviationRules.push({
-      ccyPairCode,
-      maxTransferRateDeviationPercent
-    });
-
-    if (typeof item.enabled !== "boolean") {
-      return { error: `Enabled must be a boolean value for ${ccyPairCode}.` };
-    }
-
-    if (!item.enabled) {
-      continue;
     }
 
     if (typeof item.maxBaseCcyAmount !== "string") {
@@ -8171,10 +8135,11 @@ function validateAutoHedgingAdmissionPolicyPayload(body) {
       return { error: `Maximum Base Ccy amount for ${ccyPairCode} must be greater than zero.` };
     }
 
-    enabledPairRules.push({
+    rules.push({
       ccyPairCode,
-      baseCcyFractionDigits: pair.baseCcyFractionDigits,
-      maxBaseCcyAmountMinor
+      isEligible: true,
+      maxBaseCcyAmountMinor,
+      maxTransferRateDeviationPercent
     });
   }
 
@@ -8188,125 +8153,46 @@ function validateAutoHedgingAdmissionPolicyPayload(body) {
   }
 
   return {
-    expectedRevision,
-    pairDeviationRules,
-    enabledPairRules
+    tradeType,
+    rules
   };
 }
 
-function saveAutoHedgingAdmissionPolicy(payload) {
+function saveAutoModeEligibilityRules(payload) {
   runInImmediateTransaction(database, () => {
-    const currentRevision = Number(database.prepare(`
-      SELECT revision
-      FROM auto_hedging_admission_policy_current
-      WHERE policy_id = 1
-    `).get()?.revision || 0);
+    database.prepare(`
+      DELETE FROM auto_mode_eligibility_rules
+      WHERE trade_type = ?
+    `).run(payload.tradeType);
 
-    if (payload.expectedRevision !== currentRevision) {
-      const error = new Error(
-        `Auto Hedging Admission Policy revision ${payload.expectedRevision} is stale; current revision is ${currentRevision}.`
-      );
-      error.code = "AUTO_HEDGING_ADMISSION_POLICY_REVISION_CONFLICT";
-      error.currentRevision = currentRevision;
-      throw error;
-    }
-
-    const nextRevision = Number(database.prepare(`
-      SELECT COALESCE(MAX(revision), 0) + 1 AS nextRevision
-      FROM auto_hedging_admission_policy_revisions
-    `).get().nextRevision);
-
-    const revisionColumns = tableColumnNames(
-      database,
-      "auto_hedging_admission_policy_revisions"
-    );
-    if (revisionColumns.has("max_transfer_rate_deviation_percent")) {
-      // Existing databases retain the legacy NOT NULL column for a safe,
-      // non-destructive migration. It is no longer read as policy state.
-      database.prepare(`
-        INSERT INTO auto_hedging_admission_policy_revisions
-          (revision, max_transfer_rate_deviation_percent)
-        VALUES (?, '1.00')
-      `).run(nextRevision);
-    } else {
-      database.prepare(`
-        INSERT INTO auto_hedging_admission_policy_revisions (revision)
-        VALUES (?)
-      `).run(nextRevision);
-    }
-
-    const insertPairDeviation = database.prepare(`
-      INSERT INTO auto_hedging_admission_policy_pair_deviations
-        (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
-      VALUES (?, ?, ?)
+    const insertRule = database.prepare(`
+      INSERT INTO auto_mode_eligibility_rules
+        (
+          trade_type,
+          ccy_pair_code,
+          is_eligible,
+          max_base_ccy_amount_minor,
+          max_transfer_rate_deviation_percent
+        )
+      VALUES (?, ?, ?, ?, ?)
     `);
-    payload.pairDeviationRules.forEach(rule => {
-      insertPairDeviation.run(
-        nextRevision,
+
+    payload.rules.forEach(rule => {
+      insertRule.run(
+        payload.tradeType,
         rule.ccyPairCode,
+        rule.isEligible ? 1 : 0,
+        rule.maxBaseCcyAmountMinor,
         rule.maxTransferRateDeviationPercent
       );
     });
-
-    const insertPairRule = database.prepare(`
-      INSERT INTO auto_hedging_admission_policy_pair_rules
-        (
-          revision,
-          ccy_pair_code,
-          max_base_ccy_amount_minor,
-          base_ccy_fraction_digits
-        )
-      VALUES (?, ?, ?, ?)
-    `);
-
-    payload.enabledPairRules.forEach(rule => {
-      insertPairRule.run(
-        nextRevision,
-        rule.ccyPairCode,
-        rule.maxBaseCcyAmountMinor,
-        rule.baseCcyFractionDigits
-      );
-    });
-
-    database.prepare(`
-      UPDATE auto_hedging_admission_policy_current
-      SET revision = ?,
-          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-      WHERE policy_id = 1
-    `).run(nextRevision);
   });
 
-  return autoHedgingAdmissionPolicy();
+  return autoModeEligibilityRules(payload.tradeType);
 }
 
-function createCcyPairOptionWithAdmissionPolicy(payload) {
+function createCcyPairOptionWithEligibilityRules(payload) {
   return runInImmediateTransaction(database, () => {
-    const currentRevision = Number(database.prepare(`
-      SELECT revision
-      FROM auto_hedging_admission_policy_current
-      WHERE policy_id = 1
-    `).get()?.revision || 0);
-    if (currentRevision < 1) {
-      throw new Error("Auto Hedging Admission Policy is not configured.");
-    }
-
-    const existingPairCount = Number(database.prepare(`
-      SELECT COUNT(*) AS pairCount
-      FROM ccy_pair_options
-    `).get().pairCount);
-    const currentDeviationCount = Number(database.prepare(`
-      SELECT COUNT(*) AS deviationCount
-      FROM auto_hedging_admission_policy_pair_deviations
-      WHERE revision = ?
-    `).get(currentRevision).deviationCount);
-    if (currentDeviationCount !== existingPairCount) {
-      const error = new Error(
-        "The current Auto Hedging Admission Policy does not cover every existing Ccy Pair."
-      );
-      error.code = "AUTO_HEDGING_ADMISSION_POLICY_PAIR_DEVIATIONS_INCOMPLETE";
-      throw error;
-    }
-
     database.prepare(`
       INSERT INTO ccy_pair_options
         (ccy_pair_code, base_ccy_code, quote_ccy_code, default_quote_decimals)
@@ -8318,157 +8204,116 @@ function createCcyPairOptionWithAdmissionPolicy(payload) {
       payload.defaultQuoteDecimals
     );
 
-    const nextRevision = Number(database.prepare(`
-      SELECT COALESCE(MAX(revision), 0) + 1 AS nextRevision
-      FROM auto_hedging_admission_policy_revisions
-    `).get().nextRevision);
-    const revisionColumns = tableColumnNames(
-      database,
-      "auto_hedging_admission_policy_revisions"
-    );
-    if (revisionColumns.has("max_transfer_rate_deviation_percent")) {
-      database.prepare(`
-        INSERT INTO auto_hedging_admission_policy_revisions
-          (revision, max_transfer_rate_deviation_percent)
-        VALUES (?, '1.00')
-      `).run(nextRevision);
-    } else {
-      database.prepare(`
-        INSERT INTO auto_hedging_admission_policy_revisions (revision)
-        VALUES (?)
-      `).run(nextRevision);
-    }
-
-    database.prepare(`
-      INSERT INTO auto_hedging_admission_policy_pair_deviations
-        (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
-      SELECT ?, ccy_pair_code, max_transfer_rate_deviation_percent
-      FROM auto_hedging_admission_policy_pair_deviations
-      WHERE revision = ?
-    `).run(nextRevision, currentRevision);
-    database.prepare(`
-      INSERT INTO auto_hedging_admission_policy_pair_deviations
-        (revision, ccy_pair_code, max_transfer_rate_deviation_percent)
-      VALUES (?, ?, '1.00')
-    `).run(nextRevision, payload.pairCode);
-    database.prepare(`
-      INSERT INTO auto_hedging_admission_policy_pair_rules
+    const insertRule = database.prepare(`
+      INSERT INTO auto_mode_eligibility_rules
         (
-          revision,
+          trade_type,
           ccy_pair_code,
+          is_eligible,
           max_base_ccy_amount_minor,
-          base_ccy_fraction_digits
+          max_transfer_rate_deviation_percent
         )
-      SELECT
-        ?,
-        ccy_pair_code,
-        max_base_ccy_amount_minor,
-        base_ccy_fraction_digits
-      FROM auto_hedging_admission_policy_pair_rules
-      WHERE revision = ?
-    `).run(nextRevision, currentRevision);
-    database.prepare(`
-      UPDATE auto_hedging_admission_policy_current
-      SET revision = ?,
-          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-      WHERE policy_id = 1
-    `).run(nextRevision);
+      VALUES (?, ?, 0, NULL, NULL)
+    `);
+    for (const tradeType of AUTO_MODE_ELIGIBILITY_MATRIX_TRADE_TYPES) {
+      insertRule.run(tradeType, payload.pairCode);
+    }
 
     return ccyPairOption(payload.pairCode);
   });
 }
 
-function autoHedgingAdmissionEvaluationPolicy(ccyPairCode) {
+function autoModeEligibilityRule(ccyPairCode, tradeType) {
+  tradeType = normalizeAutoManagementAdmissionTradeType(tradeType);
   const normalizedPairCode = normalizedText(ccyPairCode).toUpperCase();
-  const policy = database.prepare(`
+  const rule = database.prepare(`
     SELECT
-      revision.revision,
-      deviation.max_transfer_rate_deviation_percent
-        AS maxTransferRateDeviationPercent,
-      rule.ccy_pair_code AS ruleCcyPairCode,
-      rule.max_base_ccy_amount_minor AS maxBaseCcyAmountMinor
-    FROM auto_hedging_admission_policy_current current
-    INNER JOIN auto_hedging_admission_policy_revisions revision
-      ON revision.revision = current.revision
-    LEFT JOIN auto_hedging_admission_policy_pair_rules rule
-      ON rule.revision = revision.revision
-      AND rule.ccy_pair_code = ?
-    LEFT JOIN auto_hedging_admission_policy_pair_deviations deviation
-      ON deviation.revision = revision.revision
-      AND deviation.ccy_pair_code = ?
-    WHERE current.policy_id = 1
-  `).get(normalizedPairCode, normalizedPairCode);
+      is_eligible AS isEligible,
+      max_transfer_rate_deviation_percent AS maxTransferRateDeviationPercent,
+      max_base_ccy_amount_minor AS maxBaseCcyAmountMinor
+    FROM auto_mode_eligibility_rules
+    WHERE trade_type = ? AND ccy_pair_code = ?
+  `).get(tradeType, normalizedPairCode);
 
-  if (!policy) {
-    throw new Error("Auto Hedging Admission Policy is not configured.");
+  if (!rule) {
+    throw new Error("Auto Mode Eligibility Rule is not configured.");
   }
 
   return {
-    revision: policy.revision,
-    maxTransferRateDeviationPercent: policy.maxTransferRateDeviationPercent,
-    pairRule: policy.ruleCcyPairCode
+    maxTransferRateDeviationPercent: rule.maxTransferRateDeviationPercent,
+    pairRule: rule.isEligible === 1
       ? {
-          ccyPairCode: policy.ruleCcyPairCode,
+          ccyPairCode: normalizedPairCode,
           enabled: true,
-          maxBaseCcyAmountMinor: policy.maxBaseCcyAmountMinor
+          maxBaseCcyAmountMinor: rule.maxBaseCcyAmountMinor
         }
       : null
   };
 }
 
-function recordClientFxDealShadowAdmissionDecision({
-  tradeId,
-  payload,
-  exposureAmounts
-}) {
-  const policy = autoHedgingAdmissionEvaluationPolicy(payload.ccyPairCode);
-  const pricingRulePolicy = pricingRuleAutoHedgingAdmissionPolicy(
-    payload.pricingRuleId,
-    payload.executionContextId
-  );
-  const decision = determineInitialAdmissionState({
-    admissionMode: pricingRulePolicy.effectiveAutoHedgingAdmissionMode,
-    ccyPairCode: payload.ccyPairCode,
-    baseCcyAmountMinor: exposureAmounts.baseCcyAmountMinor,
-    pairRule: policy.pairRule,
-    side: payload.side,
-    transferRate: payload.transferRate,
-    marketPulseStatus: payload.marketPulseStreamStatus,
-    marketBid: payload.marketPulseBid,
-    marketOffer: payload.marketPulseOffer,
-    maxTransferRateDeviationPercent: policy.maxTransferRateDeviationPercent
-  });
-
-  database.prepare(`
-    INSERT INTO fx_auto_hedging_admission_decisions
-      (
-        trade_id,
-        trade_type,
-        decision_sequence,
-        decision_stage,
-        policy_revision,
-        admission_mode,
-        admission_state,
-        releasable,
-        reason_codes_json,
-        checks_json,
-        is_enforced
-      )
-    VALUES (?, 'CLIENT_DEAL', 1, 'INITIAL', ?, ?, ?, ?, ?, ?, 0)
-  `).run(
-    tradeId,
-    policy.revision,
-    decision.admissionMode,
-    decision.state,
-    decision.releasable ? 1 : 0,
-    JSON.stringify(decision.reasonCodes),
-    JSON.stringify(decision.checks)
-  );
-
-  return decision;
+function evaluateTradeAdmission(tradeType, payload, exposureAmounts, stage = "INITIAL") {
+  const eligibilityRule = autoModeEligibilityRule(payload.ccyPairCode, tradeType);
+  const admissionMode = stage === "INITIAL"
+    ? pricingRuleAutoManagementAdmissionPolicy(
+        payload.pricingRuleId, payload.tradeContextId
+      ).effectiveAutoManagementAdmissionMode
+    : null;
+  const evaluate = stage === "RELEASE" ? decideReleaseToAutoManagement : determineInitialAdmissionState;
+  return evaluate({
+      admissionMode,
+      ccyPairCode: payload.ccyPairCode,
+      baseCcyAmountMinor: exposureAmounts.baseCcyAmountMinor,
+      pairRule: eligibilityRule.pairRule,
+      side: payload.side,
+      transferRate: payload.transferRate,
+      marketPulseStatus: payload.marketPulseStreamStatus,
+      marketBid: payload.marketPulseBid,
+      marketOffer: payload.marketPulseOffer,
+      maxTransferRateDeviationPercent: eligibilityRule.maxTransferRateDeviationPercent
+    });
 }
 
-function fxTradeExposureAmounts(payload, generatedAmounts = null) {
+function recordTradeAdmissionDecision(identity, decision, stage) {
+  database.prepare(`
+    INSERT INTO auto_management_admission_decisions
+      (trade_id, trade_type, decision_sequence, decision_stage, admission_mode,
+       admission_state, releasable, reason_codes_json, checks_json, is_enforced)
+    VALUES (?, ?, (SELECT COALESCE(MAX(decision_sequence), 0) + 1
+      FROM auto_management_admission_decisions WHERE trade_id = ? AND trade_type = ?),
+      ?, ?, ?, ?, ?, ?, 1)
+  `).run(identity.tradeId, identity.tradeType, identity.tradeId, identity.tradeType,
+    stage, decision.admissionMode, decision.state,
+    decision.releasable ? 1 : 0, JSON.stringify(decision.reasonCodes), JSON.stringify(decision.checks));
+}
+
+function materializeTradeAdmission(identity, payload, exposureAmounts) {
+  const decision = evaluateTradeAdmission(identity.tradeType, payload, exposureAmounts);
+  materializeTradePositionModeState(database, {
+    ...identity,
+    positionManagementMode: decision.state === "RELEASED" ? "AUTO" : "MANUAL"
+  });
+  recordTradeAdmissionDecision(identity, decision, "INITIAL");
+}
+
+function evaluateTradeRelease(identity) {
+  const trade = database.prepare(`
+    SELECT exposure.ccy_pair_code AS ccyPairCode, exposure.base_ccy_side AS side,
+      exposure.base_ccy_amount_minor AS baseCcyAmountMinor,
+      COALESCE(client.transfer_rate, hedge.transfer_rate) AS transferRate
+    FROM trade_exposures exposure
+    LEFT JOIN client_deals client USING (trade_id, trade_type)
+    LEFT JOIN hedge_deals hedge USING (trade_id, trade_type)
+    WHERE exposure.trade_id = ? AND exposure.trade_type = ?
+  `).get(identity.tradeId, identity.tradeType);
+  const market = marketPulseSimulator.snapshot();
+  const quote = market.quotes.find(item => item.pairCode === trade.ccyPairCode);
+  return evaluateTradeAdmission(identity.tradeType, {
+    ...trade, marketPulseStreamStatus: market.status,
+    marketPulseBid: quote?.bid, marketPulseOffer: quote?.offer
+  }, trade, "RELEASE");
+}
+
+function tradeExposureAmounts(payload, generatedAmounts = null) {
   const pair = ccyPairOption(payload.ccyPairCode);
 
   if (!pair) {
@@ -8492,7 +8337,7 @@ function fxTradeExposureAmounts(payload, generatedAmounts = null) {
   if (payload.dealtCcyAmount !== null
     && payload.dealtCcyAmount !== undefined
     && String(payload.dealtCcyAmount).trim() !== "") {
-    const calculated = calculateFxAmountsFromDealt({
+    const calculated = calculateAmountsFromDealt({
       dealtAmount: String(payload.dealtCcyAmount),
       dealtCcyCode,
       baseCcyCode: pair.baseCcy,
@@ -8520,11 +8365,11 @@ function fxTradeExposureAmounts(payload, generatedAmounts = null) {
   if (generatedAmounts) {
     if (generatedAmounts.baseCcyFractionDigits !== baseFractionDigits
       || generatedAmounts.quoteCcyFractionDigits !== quoteFractionDigits) {
-      throw new Error("Generated FX Trade currency fraction digits do not match Reference Data.");
+      throw new Error("Generated Trade currency fraction digits do not match Reference Data.");
     }
 
     if (BigInt(baseMinor) !== calculatedBaseMinor || BigInt(quoteMinor) !== calculatedQuoteMinor) {
-      throw new Error("Generated FX Trade major and minor amounts are inconsistent.");
+      throw new Error("Generated Trade major and minor amounts are inconsistent.");
     }
   }
 
@@ -8539,7 +8384,7 @@ function fxTradeExposureAmounts(payload, generatedAmounts = null) {
   };
 }
 
-function fxTradeRowWithMajorAmounts(row) {
+function tradeRowWithMajorAmounts(row) {
   const normalized = {
     ...row,
     baseCcyAmount: Number(minorToMajor(
@@ -8564,9 +8409,9 @@ function fxTradeRowWithMajorAmounts(row) {
   return normalized;
 }
 
-function fxBatchBalanceRow(row) {
-  const trade = fxTradeRowWithMajorAmounts(row);
-  const contributions = fxTradeBalanceContributions(trade);
+function batchBalanceRow(row) {
+  const trade = tradeRowWithMajorAmounts(row);
+  const contributions = tradeBalanceContributions(trade);
 
   return {
     ...trade,
@@ -8582,7 +8427,7 @@ function fxBatchBalanceRow(row) {
   };
 }
 
-function fxBatchQuoteCashOutput(batchId) {
+function batchQuoteCashOutput(batchId) {
   const row = database.prepare(`
     SELECT
       cash.batch_id AS batchId,
@@ -8593,8 +8438,8 @@ function fxBatchQuoteCashOutput(batchId) {
       cash.created_at AS createdAt,
       batch.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair
-    FROM fx_batch_quote_cash_output cash
-    INNER JOIN fx_batches batch
+    FROM batch_quote_cash_outputs cash
+    INNER JOIN batches batch
       ON batch.batch_id = cash.batch_id
     INNER JOIN ccy_pair_options pair
       ON pair.ccy_pair_code = batch.ccy_pair_code
@@ -8671,9 +8516,9 @@ function servicingLocations() {
       s.is_active AS active,
       (
         SELECT COUNT(*)
-        FROM execution_contexts c
+        FROM trade_contexts c
         WHERE c.servicing_location_id = s.servicing_location_id
-      ) AS executionContextCount
+      ) AS tradeContextCount
     FROM servicing_locations s
     ORDER BY s.servicing_location_id
   `).all().map(location => ({
@@ -8694,9 +8539,9 @@ function accountingSystems() {
       a.is_active AS active,
       (
         SELECT COUNT(*)
-        FROM execution_contexts c
+        FROM trade_contexts c
         WHERE c.accounting_system_id = a.accounting_system_id
-      ) AS executionContextCount
+      ) AS tradeContextCount
     FROM accounting_systems a
     ORDER BY a.accounting_system_id
   `).all().map(system => ({
@@ -8709,51 +8554,50 @@ function accountingSystem(accountingSystemId) {
   return accountingSystems().find(system => system.accountingSystemId === accountingSystemId) || null;
 }
 
-function executionSystems() {
+function originatingSystems() {
   return database.prepare(`
     SELECT
-      e.execution_system_id AS executionSystemId,
+      e.originating_system_id AS originatingSystemId,
       e.name,
       e.pricing_mode AS pricingMode,
       e.is_active AS active,
       (
         SELECT COUNT(*)
-        FROM execution_contexts c
-        WHERE c.execution_system_id = e.execution_system_id
-      ) AS executionContextCount
-    FROM execution_systems e
-    ORDER BY e.execution_system_id
+        FROM trade_contexts c
+        WHERE c.originating_system_id = e.originating_system_id
+      ) AS tradeContextCount
+    FROM originating_systems e
+    ORDER BY e.originating_system_id
   `).all().map(system => ({
     ...system,
     active: system.active === 1
   }));
 }
 
-function executionSystem(executionSystemId) {
-  return executionSystems().find(system => system.executionSystemId === executionSystemId) || null;
+function originatingSystem(originatingSystemId) {
+  return originatingSystems().find(system => system.originatingSystemId === originatingSystemId) || null;
 }
 
-function executionContexts() {
+function tradeContexts() {
   return database.prepare(`
     SELECT
-      context.execution_context_id AS executionContextId,
+      context.trade_context_id AS tradeContextId,
       context.servicing_location_id AS servicingLocationId,
       COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
-      context.execution_system_id AS executionSystemId,
-      context.default_position_management_mode AS defaultPositionManagementMode,
-      context.auto_hedging_admission_mode AS autoHedgingAdmissionMode,
+      context.originating_system_id AS originatingSystemId,
+      context.auto_management_admission_mode AS autoManagementAdmissionMode,
       (
         SELECT COUNT(*)
-        FROM trading_counterparty_execution_contexts assignment
-        WHERE assignment.execution_context_id = context.execution_context_id
+        FROM trading_counterparty_trade_contexts assignment
+        WHERE assignment.trade_context_id = context.trade_context_id
       ) AS assignedCounterpartyCount
-    FROM execution_contexts context
-    ORDER BY context.execution_context_id
+    FROM trade_contexts context
+    ORDER BY context.trade_context_id
   `).all();
 }
 
-function executionContext(executionContextId) {
-  return executionContexts().find(context => context.executionContextId === Number(executionContextId)) || null;
+function tradeContext(tradeContextId) {
+  return tradeContexts().find(context => context.tradeContextId === Number(tradeContextId)) || null;
 }
 
 function tradingCounterparties() {
@@ -8762,7 +8606,7 @@ function tradingCounterparties() {
       counterparty.counterparty_id AS counterpartyId,
       counterparty.counterparty_name AS counterpartyName,
       counterparty.is_active AS active,
-      CASE WHEN external.counterparty_id IS NOT NULL THEN 'EXTERNAL' ELSE 'INTERNAL' END AS counterpartyScope,
+      counterparty.counterparty_scope AS counterpartyScope,
       external.counterparty_code AS externalCounterpartyCode,
       external.counterparty_code_type AS externalCounterpartyCodeType,
       external.external_counterparty_kind AS externalCounterpartyKind,
@@ -8798,13 +8642,13 @@ function tradingCounterparty(counterpartyId) {
   return tradingCounterparties().find(counterparty => counterparty.counterpartyId === Number(counterpartyId)) || null;
 }
 
-function executionContextTradingCounterparties(executionContextId) {
+function tradeContextTradingCounterparties(tradeContextId) {
   const attachedCounterpartyIds = new Set(
     database.prepare(`
       SELECT counterparty_id AS counterpartyId
-      FROM trading_counterparty_execution_contexts
-      WHERE execution_context_id = ?
-    `).all(Number(executionContextId)).map(assignment => assignment.counterpartyId)
+      FROM trading_counterparty_trade_contexts
+      WHERE trade_context_id = ?
+    `).all(Number(tradeContextId)).map(assignment => assignment.counterpartyId)
   );
 
   return tradingCounterparties().filter(counterparty =>
@@ -8812,45 +8656,44 @@ function executionContextTradingCounterparties(executionContextId) {
   );
 }
 
-function tradingCounterpartyExecutionContexts(counterpartyId) {
+function tradingCounterpartyTradeContexts(counterpartyId) {
   return database.prepare(`
     SELECT
-      context.execution_context_id AS executionContextId,
+      context.trade_context_id AS tradeContextId,
       context.servicing_location_id AS servicingLocationId,
       COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
-      context.execution_system_id AS executionSystemId,
-      context.default_position_management_mode AS defaultPositionManagementMode,
-      context.auto_hedging_admission_mode AS autoHedgingAdmissionMode,
+      context.originating_system_id AS originatingSystemId,
+      context.auto_management_admission_mode AS autoManagementAdmissionMode,
       (
         SELECT COUNT(*)
-        FROM trading_counterparty_execution_contexts context_assignment
-        WHERE context_assignment.execution_context_id = context.execution_context_id
+        FROM trading_counterparty_trade_contexts context_assignment
+        WHERE context_assignment.trade_context_id = context.trade_context_id
       ) AS assignedCounterpartyCount,
       (
         SELECT COUNT(*)
         FROM pricing_rules rule
         WHERE rule.counterparty_id = assignment.counterparty_id
-          AND rule.execution_context_id = assignment.execution_context_id
+          AND rule.trade_context_id = assignment.trade_context_id
       ) AS pricingRulesCount
-    FROM trading_counterparty_execution_contexts assignment
-    INNER JOIN execution_contexts context
-      ON context.execution_context_id = assignment.execution_context_id
+    FROM trading_counterparty_trade_contexts assignment
+    INNER JOIN trade_contexts context
+      ON context.trade_context_id = assignment.trade_context_id
     WHERE assignment.counterparty_id = ?
-    ORDER BY context.execution_context_id
+    ORDER BY context.trade_context_id
   `).all(Number(counterpartyId));
 }
 
-function tradingCounterpartyExecutionContext(counterpartyId, executionContextId) {
-  return tradingCounterpartyExecutionContexts(counterpartyId)
-    .find(context => context.executionContextId === Number(executionContextId)) || null;
+function tradingCounterpartyTradeContext(counterpartyId, tradeContextId) {
+  return tradingCounterpartyTradeContexts(counterpartyId)
+    .find(context => context.tradeContextId === Number(tradeContextId)) || null;
 }
 
-function tradingCounterpartyExecutionContextPricingRulesCount(counterpartyId, executionContextId) {
+function tradingCounterpartyTradeContextPricingRulesCount(counterpartyId, tradeContextId) {
   return Number(database.prepare(`
     SELECT COUNT(*) AS count
     FROM pricing_rules
-    WHERE counterparty_id = ? AND execution_context_id = ?
-  `).get(Number(counterpartyId), Number(executionContextId)).count);
+    WHERE counterparty_id = ? AND trade_context_id = ?
+  `).get(Number(counterpartyId), Number(tradeContextId)).count);
 }
 
 function tradingCounterpartyHasRole(counterparty, roleCode) {
@@ -8883,38 +8726,32 @@ function pricingRules(pricingMode = null) {
       r.pricing_rule_id AS pricingRuleId,
       r.counterparty_id AS counterpartyId,
       p.counterparty_name AS counterpartyName,
-      r.execution_context_id AS executionContextId,
+      r.trade_context_id AS tradeContextId,
       r.ccy_pair_code AS ccyPairCode,
       c.base_ccy_code || '/' || c.quote_ccy_code AS currencyPair,
       r.margin_percent AS marginPercent,
       e.pricing_mode AS pricingMode,
-      r.position_management_mode_override AS positionManagementModeOverride,
-      x.default_position_management_mode AS executionContextDefaultPositionManagementMode,
-      r.auto_hedging_admission_mode_override AS autoHedgingAdmissionModeOverride,
-      x.auto_hedging_admission_mode AS executionContextAdmissionMode,
+      r.auto_management_admission_mode_override AS autoManagementAdmissionModeOverride,
+      x.auto_management_admission_mode AS tradeContextAdmissionMode,
       (
         SELECT COUNT(*)
-        FROM fx_hedge_quick_mode_settings settings
+        FROM hedge_quick_mode_settings settings
         WHERE settings.pricing_rule_id = r.pricing_rule_id
       ) AS quickHedgeSettingsCount
     FROM pricing_rules r
     INNER JOIN trading_counterparties p ON p.counterparty_id = r.counterparty_id
     INNER JOIN ccy_pair_options c ON c.ccy_pair_code = r.ccy_pair_code
-    INNER JOIN execution_contexts x ON x.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = x.execution_system_id
+    INNER JOIN trade_contexts x ON x.trade_context_id = r.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = x.originating_system_id
     WHERE (? IS NULL OR e.pricing_mode = ?)
-    ORDER BY p.counterparty_name, c.ccy_pair_code, r.execution_context_id
+    ORDER BY p.counterparty_name, c.ccy_pair_code, r.trade_context_id
   `).all(pricingMode, pricingMode).map(rule => {
     const counterparty = counterpartiesById.get(rule.counterpartyId);
 
     return {
       ...rule,
-      effectivePositionManagementMode: resolveFxPositionManagementMode({
-        pricingRuleOverride: rule.positionManagementModeOverride,
-        executionContextDefault: rule.executionContextDefaultPositionManagementMode
-      }),
-      effectiveAutoHedgingAdmissionMode:
-        resolvePricingRuleAutoHedgingAdmissionMode(rule),
+      effectiveAutoManagementAdmissionMode:
+        resolvePricingRuleAutoManagementAdmissionMode(rule),
       counterpartyType: counterparty?.counterpartyType || "",
       counterpartyRoles: counterparty?.counterpartyRoles || [],
       counterpartyScope: counterparty?.counterpartyScope || "",
@@ -8931,19 +8768,19 @@ function pricingRule(pricingRuleId) {
 function pricingRuleDeletionUsage(pricingRuleId) {
   const quickHedgePairs = database.prepare(`
     SELECT pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair
-    FROM fx_hedge_quick_mode_settings settings
+    FROM hedge_quick_mode_settings settings
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = settings.ccy_pair_code
     WHERE settings.pricing_rule_id = ?
     ORDER BY settings.ccy_pair_code
   `).all(pricingRuleId).map(item => item.currencyPair);
   const clientDealCount = Number(database.prepare(`
     SELECT COUNT(*) AS count
-    FROM client_fx_deals
+    FROM client_deals
     WHERE pricing_rule_id = ?
   `).get(pricingRuleId)?.count || 0);
   const hedgeDealCount = Number(database.prepare(`
     SELECT COUNT(*) AS count
-    FROM fx_hedge_deals
+    FROM hedge_deals
     WHERE pricing_rule_id = ?
   `).get(pricingRuleId)?.count || 0);
 
@@ -8958,12 +8795,12 @@ function pricingRuleDeletionConflictMessage(pricingRuleId, usage) {
   }
 
   if (usage.clientDealCount > 0) {
-    const label = usage.clientDealCount === 1 ? "Client FX Deal" : "Client FX Deals";
+    const label = usage.clientDealCount === 1 ? "Client Deal" : "Client Deals";
     references.push(`${usage.clientDealCount} ${label}`);
   }
 
   if (usage.hedgeDealCount > 0) {
-    const label = usage.hedgeDealCount === 1 ? "Hedge FX Deal" : "Hedge FX Deals";
+    const label = usage.hedgeDealCount === 1 ? "Hedge Deal" : "Hedge Deals";
     references.push(`${usage.hedgeDealCount} ${label}`);
   }
 
@@ -8995,8 +8832,8 @@ function eligibleHedgeDealPricingRules(pricingMode) {
 
   return pricingRules(normalizedPricingMode).filter(rule => {
     const counterparty = tradingCounterparty(rule.counterpartyId);
-    const context = executionContext(rule.executionContextId);
-    const system = context ? executionSystem(context.executionSystemId) : null;
+    const context = tradeContext(rule.tradeContextId);
+    const system = context ? originatingSystem(context.originatingSystemId) : null;
 
     return tradingCounterpartyHasRole(counterparty, "HEDGE_COUNTERPARTY")
       && counterparty.active
@@ -9036,11 +8873,11 @@ function hedgeQuickModeSettings() {
       'HEDGE_COUNTERPARTY' AS counterpartyType,
       counterparty.counterparty_name AS counterpartyName,
       counterparty.is_active AS counterpartyActive,
-      rule.execution_context_id AS executionContextId,
-      execution.execution_system_id AS executionSystemId,
-      execution.name AS executionSystemName,
-      execution.pricing_mode AS pricingMode,
-      execution.is_active AS executionSystemActive,
+      rule.trade_context_id AS tradeContextId,
+      originating.originating_system_id AS originatingSystemId,
+      originating.name AS originatingSystemName,
+      originating.pricing_mode AS pricingMode,
+      originating.is_active AS originatingSystemActive,
       settings.base_ccy_fraction_digits AS baseCcyFractionDigits,
       settings.small_base_ccy_amount_minor AS smallBaseCcyAmountMinor,
       settings.medium_base_ccy_amount_minor AS mediumBaseCcyAmountMinor,
@@ -9048,7 +8885,7 @@ function hedgeQuickModeSettings() {
       settings.xlarge_base_ccy_amount_minor AS xlargeBaseCcyAmountMinor,
       settings.is_active AS active,
       settings.default_tenor AS defaultTenor
-    FROM fx_hedge_quick_mode_settings settings
+    FROM hedge_quick_mode_settings settings
     INNER JOIN ccy_pair_options pair
       ON pair.ccy_pair_code = settings.ccy_pair_code
     INNER JOIN pricing_rules rule
@@ -9058,24 +8895,24 @@ function hedgeQuickModeSettings() {
     INNER JOIN trading_counterparties counterparty ON counterparty.counterparty_id = settings.counterparty_id
     INNER JOIN trading_counterparty_roles role
       ON role.counterparty_id = counterparty.counterparty_id AND role.role_code = 'HEDGE_COUNTERPARTY'
-    INNER JOIN execution_contexts context
-      ON context.execution_context_id = rule.execution_context_id
-    INNER JOIN execution_systems execution
-      ON execution.execution_system_id = context.execution_system_id
+    INNER JOIN trade_contexts context
+      ON context.trade_context_id = rule.trade_context_id
+    INNER JOIN originating_systems originating
+      ON originating.originating_system_id = context.originating_system_id
     ORDER BY pair.base_ccy_code, pair.quote_ccy_code
   `).all().map(row => {
     const settings = {
       ...row,
       active: row.active === 1,
       counterpartyActive: row.counterpartyActive === 1,
-      executionSystemActive: row.executionSystemActive === 1
+      originatingSystemActive: row.originatingSystemActive === 1
     };
 
     return {
       ...settings,
       available: settings.active
         && settings.counterpartyActive
-        && settings.executionSystemActive
+        && settings.originatingSystemActive
         && settings.counterpartyType === "HEDGE_COUNTERPARTY"
         && settings.pricingMode === "AUTO_PRICED",
       presets: hedgeQuickModePresets(settings)
@@ -9091,7 +8928,7 @@ function hedgeQuickModeSetting(ccyPairCode) {
 
 function replaceHedgeQuickModeSetting(payload) {
   database.prepare(`
-    INSERT INTO fx_hedge_quick_mode_settings
+    INSERT INTO hedge_quick_mode_settings
       (
         ccy_pair_code,
         counterparty_id,
@@ -9133,71 +8970,71 @@ function replaceHedgeQuickModeSetting(payload) {
 
 function deleteHedgeQuickModeSetting(ccyPairCode) {
   return database.prepare(`
-    DELETE FROM fx_hedge_quick_mode_settings
+    DELETE FROM hedge_quick_mode_settings
     WHERE ccy_pair_code = ?
   `).run(ccyPairCode).changes === 1;
 }
 
-function fxBatchingSettings() {
+function batchingSettings() {
   const row = database.prepare(`
     SELECT
       allow_cross_tenor_batching AS allowCrossTenorBatching,
       updated_at AS updatedAt
-    FROM fx_batching_settings
+    FROM batching_settings
     WHERE settings_id = 1
   `).get();
 
   if (!row) {
-    throw new Error("FX Batching Settings are not configured.");
+    throw new Error("Batching Settings are not configured.");
   }
 
   return {
-    ...validatedFxBatchingSettings({
+    ...validatedBatchingSettings({
       allowCrossTenorBatching: row.allowCrossTenorBatching === 1
     }),
     updatedAt: row.updatedAt
   };
 }
 
-function updateFxBatchingSettings(payload) {
+function updateBatchingSettings(payload) {
   const result = database.prepare(`
-    UPDATE fx_batching_settings
+    UPDATE batching_settings
     SET allow_cross_tenor_batching = ?,
         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
     WHERE settings_id = 1
   `).run(payload.allowCrossTenorBatching ? 1 : 0);
 
   if (result.changes !== 1) {
-    throw new Error("FX Batching Settings are not configured.");
+    throw new Error("Batching Settings are not configured.");
   }
 
-  return fxBatchingSettings();
+  return batchingSettings();
 }
 
-function fxAutoBatchingSettings() {
+function autoBatchingSettings() {
   const settings = database.prepare(`
     SELECT
       max_interval_seconds AS maxIntervalSeconds,
       default_transfer_rate_spread_percent AS maxTransferRateSpreadPercent,
       tenor_compatibility_mode AS tenorCompatibilityMode,
       updated_at AS updatedAt
-    FROM fx_auto_batching_settings
+    FROM auto_batching_settings
     WHERE settings_id = 1
   `).get();
 
   if (!settings) {
-    throw new Error("FX Auto Batching Settings are not configured.");
+    throw new Error("Auto Batching Settings are not configured.");
   }
 
   const eligibleCcyPairCodes = database.prepare(`
     SELECT ccy_pair_code AS ccyPairCode
-    FROM fx_auto_batching_ccy_pairs
+    FROM auto_batching_ccy_pairs
     WHERE settings_id = 1
     ORDER BY ccy_pair_code
   `).all().map(row => row.ccyPairCode);
 
   return {
-    ...validatedFxAutoBatchingSettings({
+    ...validatedAutoBatchingSettings({
       ...settings,
       eligibleCcyPairCodes
     }),
@@ -9205,10 +9042,10 @@ function fxAutoBatchingSettings() {
   };
 }
 
-function updateFxAutoBatchingSettings(payload) {
+function updateAutoBatchingSettings(payload) {
   return runInImmediateTransaction(database, () => {
     const result = database.prepare(`
-      UPDATE fx_auto_batching_settings
+      UPDATE auto_batching_settings
       SET max_interval_seconds = ?,
           default_transfer_rate_spread_percent = ?,
           tenor_compatibility_mode = ?,
@@ -9221,15 +9058,15 @@ function updateFxAutoBatchingSettings(payload) {
     );
 
     if (result.changes !== 1) {
-      throw new Error("FX Auto Batching Settings are not configured.");
+      throw new Error("Auto Batching Settings are not configured.");
     }
 
     database.prepare(`
-      DELETE FROM fx_auto_batching_ccy_pairs
+      DELETE FROM auto_batching_ccy_pairs
       WHERE settings_id = 1
     `).run();
     const insertPair = database.prepare(`
-      INSERT INTO fx_auto_batching_ccy_pairs
+      INSERT INTO auto_batching_ccy_pairs
         (settings_id, ccy_pair_code)
       VALUES (1, ?)
     `);
@@ -9238,7 +9075,7 @@ function updateFxAutoBatchingSettings(payload) {
       insertPair.run(ccyPairCode);
     });
 
-    return fxAutoBatchingSettings();
+    return autoBatchingSettings();
   });
 }
 
@@ -9300,7 +9137,7 @@ function clientDealGenerationSettings() {
       external.counterparty_code_type AS counterpartyCodeType,
       p.counterparty_name AS counterpartyName,
       p.is_active AS counterpartyActive,
-      r.execution_context_id AS executionContextId,
+      r.trade_context_id AS tradeContextId,
       r.ccy_pair_code AS ccyPairCode,
       pair.base_ccy_code || '/' || pair.quote_ccy_code AS currencyPair,
       pair.default_quote_decimals AS defaultQuoteDecimals,
@@ -9311,10 +9148,10 @@ function clientDealGenerationSettings() {
       location.name AS servicingLocationName,
       context.accounting_system_id AS accountingSystemId,
       COALESCE(accounting.name, 'Not applicable') AS accountingSystemName,
-      execution.execution_system_id AS executionSystemId,
-      execution.name AS executionSystemName,
-      execution.pricing_mode AS pricingMode,
-      execution.is_active AS executionSystemActive,
+      originating.originating_system_id AS originatingSystemId,
+      originating.name AS originatingSystemName,
+      originating.pricing_mode AS pricingMode,
+      originating.is_active AS originatingSystemActive,
       s.min_base_ccy_amount_minor AS minBaseCcyAmountMinor,
       s.max_base_ccy_amount_minor AS maxBaseCcyAmountMinor,
       s.base_ccy_amount_step_minor AS baseCcyAmountStepMinor,
@@ -9331,14 +9168,14 @@ function clientDealGenerationSettings() {
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
     INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     INNER JOIN ccy_options quote_ccy ON quote_ccy.ccy_code = pair.quote_ccy_code
-    INNER JOIN execution_contexts context ON context.execution_context_id = r.execution_context_id
+    INNER JOIN trade_contexts context ON context.trade_context_id = r.trade_context_id
     INNER JOIN servicing_locations location
       ON location.servicing_location_id = context.servicing_location_id
     LEFT JOIN accounting_systems accounting
       ON accounting.accounting_system_id = context.accounting_system_id
-    INNER JOIN execution_systems execution
-      ON execution.execution_system_id = context.execution_system_id
-    WHERE execution.pricing_mode = 'AUTO_PRICED'
+    INNER JOIN originating_systems originating
+      ON originating.originating_system_id = context.originating_system_id
+    WHERE originating.pricing_mode = 'AUTO_PRICED'
     ORDER BY p.counterparty_name, pair.ccy_pair_code, s.pricing_rule_id
   `).all().map(settings => ({
     ...settings,
@@ -9356,7 +9193,7 @@ function clientDealGenerationSettings() {
     )),
     active: settings.active === 1,
     counterpartyActive: settings.counterpartyActive === 1,
-    executionSystemActive: settings.executionSystemActive === 1
+    originatingSystemActive: settings.originatingSystemActive === 1
   }));
 }
 
@@ -9370,7 +9207,7 @@ function eligibleClientDealGenerationSettings() {
     .filter(settings =>
       settings.active
       && settings.counterpartyActive
-      && settings.executionSystemActive
+      && settings.originatingSystemActive
       && settings.pricingMode === "AUTO_PRICED"
     );
 }
@@ -9405,8 +9242,8 @@ function ensureClientDealGenerationSettingsForPricingRule(pricingRuleId) {
     FROM pricing_rules r
     INNER JOIN trading_counterparty_roles role
       ON role.counterparty_id = r.counterparty_id AND role.role_code = 'CLIENT'
-    INNER JOIN execution_contexts c ON c.execution_context_id = r.execution_context_id
-    INNER JOIN execution_systems e ON e.execution_system_id = c.execution_system_id
+    INNER JOIN trade_contexts c ON c.trade_context_id = r.trade_context_id
+    INNER JOIN originating_systems e ON e.originating_system_id = c.originating_system_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = r.ccy_pair_code
     INNER JOIN ccy_options base_ccy ON base_ccy.ccy_code = pair.base_ccy_code
     WHERE r.pricing_rule_id = ?
@@ -9439,7 +9276,7 @@ function ensureClientDealGenerationSettingsForPricingRule(pricingRuleId) {
   );
 }
 
-function clientFxDeals() {
+function clientDeals() {
   return database.prepare(`
     SELECT
       e.trade_id AS tradeId,
@@ -9448,15 +9285,15 @@ function clientFxDeals() {
         management.initial_position_management_mode,
         management.current_position_management_mode,
         'MANUAL'
-      ) AS initialFxPositionMode,
+      ) AS initialPositionManagementMode,
       COALESCE(
         management.current_position_management_mode,
         'MANUAL'
-      ) AS currentFxPositionMode,
+      ) AS currentPositionManagementMode,
       e.execution_timestamp AS executionTimestamp,
       e.received_timestamp AS receivedTimestamp,
       d.counterparty_id AS counterpartyId,
-      d.execution_context_id AS executionContextId,
+      d.trade_context_id AS tradeContextId,
       d.pricing_rule_id AS pricingRuleId,
       r.margin_percent AS pricingRuleMargin,
       d.transfer_rate AS transferRate,
@@ -9483,10 +9320,10 @@ function clientFxDeals() {
       e.tenor,
       e.base_ccy_value_date AS baseCcyValueDate,
       e.quote_ccy_value_date AS quoteCcyValueDate
-    FROM client_fx_deals d
-    INNER JOIN fx_trade_exposure e
+    FROM client_deals d
+    INNER JOIN trade_exposures e
       ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
-    LEFT JOIN fx_trade_position_management management
+    LEFT JOIN trade_position_management management
       ON management.trade_id = e.trade_id
       AND management.trade_type = e.trade_type
     INNER JOIN trading_counterparties p ON p.counterparty_id = d.counterparty_id
@@ -9494,17 +9331,17 @@ function clientFxDeals() {
     LEFT JOIN internal_units internal ON internal.counterparty_id = p.counterparty_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     LEFT JOIN pricing_rules r ON r.pricing_rule_id = d.pricing_rule_id
-    LEFT JOIN fx_trade_market_snapshot a
+    LEFT JOIN trade_market_snapshots a
       ON a.trade_id = e.trade_id AND a.trade_type = e.trade_type
     ORDER BY e.trade_id
-  `).all().map(fxTradeRowWithMajorAmounts);
+  `).all().map(tradeRowWithMajorAmounts);
 }
 
-function clientFxDeal(clientDealId) {
-  return clientFxDeals().find(deal => deal.clientDealId === Number(clientDealId)) || null;
+function clientDeal(clientDealId) {
+  return clientDeals().find(deal => deal.clientDealId === Number(clientDealId)) || null;
 }
 
-function hedgeFxDeals() {
+function hedgeDeals() {
   return database.prepare(`
     SELECT
       e.trade_id AS tradeId,
@@ -9513,16 +9350,16 @@ function hedgeFxDeals() {
         management.initial_position_management_mode,
         management.current_position_management_mode,
         'MANUAL'
-      ) AS initialFxPositionMode,
+      ) AS initialPositionManagementMode,
       COALESCE(
         management.current_position_management_mode,
         'MANUAL'
-      ) AS currentFxPositionMode,
+      ) AS currentPositionManagementMode,
       e.execution_timestamp AS executionTimestamp,
       e.received_timestamp AS receivedTimestamp,
       d.request_timestamp AS requestTimestamp,
       d.counterparty_id AS counterpartyId,
-      d.execution_context_id AS executionContextId,
+      d.trade_context_id AS tradeContextId,
       d.pricing_rule_id AS pricingRuleId,
       r.margin_percent AS pricingRuleMargin,
       d.transfer_rate AS transferRate,
@@ -9548,10 +9385,10 @@ function hedgeFxDeals() {
       e.tenor,
       e.base_ccy_value_date AS baseCcyValueDate,
       e.quote_ccy_value_date AS quoteCcyValueDate
-    FROM fx_hedge_deals d
-    INNER JOIN fx_trade_exposure e
+    FROM hedge_deals d
+    INNER JOIN trade_exposures e
       ON e.trade_id = d.trade_id AND e.trade_type = d.trade_type
-    LEFT JOIN fx_trade_position_management management
+    LEFT JOIN trade_position_management management
       ON management.trade_id = e.trade_id
       AND management.trade_type = e.trade_type
     INNER JOIN trading_counterparties p ON p.counterparty_id = d.counterparty_id
@@ -9559,14 +9396,14 @@ function hedgeFxDeals() {
     LEFT JOIN internal_units internal ON internal.counterparty_id = p.counterparty_id
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     LEFT JOIN pricing_rules r ON r.pricing_rule_id = d.pricing_rule_id
-    LEFT JOIN fx_trade_market_snapshot a
+    LEFT JOIN trade_market_snapshots a
       ON a.trade_id = e.trade_id AND a.trade_type = e.trade_type
     ORDER BY e.trade_id
-  `).all().map(fxTradeRowWithMajorAmounts);
+  `).all().map(tradeRowWithMajorAmounts);
 }
 
-function hedgeFxDeal(hedgeDealId) {
-  return hedgeFxDeals().find(deal => deal.hedgeDealId === Number(hedgeDealId)) || null;
+function hedgeDeal(hedgeDealId) {
+  return hedgeDeals().find(deal => deal.hedgeDealId === Number(hedgeDealId)) || null;
 }
 
 function analyticalPnlReportFilters(searchParams) {
@@ -9632,7 +9469,7 @@ function analyticalPnlReport(filters) {
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
   const rows = database.prepare(analyticalPnlReportQuery(whereSql))
     .all(...parameters)
-    .map(fxTradeRowWithMajorAmounts);
+    .map(tradeRowWithMajorAmounts);
   const summary = analyticalPnlSummary(rows);
 
   summary.totals.forEach(total => {
@@ -9653,7 +9490,7 @@ function analyticalPnlReport(filters) {
   };
 }
 
-function fxPositions() {
+function positions() {
   return database.prepare(`
     SELECT
       e.trade_id AS tradeId,
@@ -9662,15 +9499,15 @@ function fxPositions() {
         management.initial_position_management_mode,
         management.current_position_management_mode,
         'MANUAL'
-      ) AS initialFxPositionMode,
+      ) AS initialPositionManagementMode,
       COALESCE(
         management.current_position_management_mode,
         'MANUAL'
-      ) AS currentFxPositionMode,
+      ) AS currentPositionManagementMode,
       COALESCE(
         management.current_position_management_mode,
         'MANUAL'
-      ) AS fxPositionMode,
+      ) AS positionManagementMode,
       management.updated_at AS positionManagementModeChangedAt,
       e.execution_timestamp AS executionTimestamp,
       e.received_timestamp AS receivedTimestamp,
@@ -9688,7 +9525,7 @@ function fxPositions() {
       e.base_ccy_value_date AS baseCcyValueDate,
       e.quote_ccy_value_date AS quoteCcyValueDate,
       COALESCE(c.counterparty_id, h.counterparty_id) AS counterpartyId,
-      COALESCE(c.execution_context_id, h.execution_context_id) AS executionContextId,
+      COALESCE(c.trade_context_id, h.trade_context_id) AS tradeContextId,
       COALESCE(c.pricing_rule_id, h.pricing_rule_id) AS pricingRuleId,
       r.margin_percent AS pricingRuleMargin,
       COALESCE(
@@ -9722,22 +9559,22 @@ function fxPositions() {
       EXISTS
       (
         SELECT 1
-        FROM fx_batch_members historical_member
-        INNER JOIN fx_batches historical_batch
+        FROM batch_members historical_member
+        INNER JOIN batches historical_batch
           ON historical_batch.batch_id = historical_member.batch_id
         WHERE historical_member.trade_id = e.trade_id
           AND historical_member.trade_type = e.trade_type
           AND historical_member.member_role IN ('TRADE', 'BALANCE_TRADE')
           AND historical_batch.batch_status = 'ROLLED_BACK'
       ) AS historicalBatchMember
-    FROM fx_trade_exposure e
+    FROM trade_exposures e
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
-    LEFT JOIN fx_trade_position_management management
+    LEFT JOIN trade_position_management management
       ON management.trade_id = e.trade_id
       AND management.trade_type = e.trade_type
-    LEFT JOIN client_fx_deals c
+    LEFT JOIN client_deals c
       ON c.trade_id = e.trade_id AND c.trade_type = e.trade_type
-    LEFT JOIN fx_hedge_deals h
+    LEFT JOIN hedge_deals h
       ON h.trade_id = e.trade_id AND h.trade_type = e.trade_type
     LEFT JOIN trading_counterparties p
       ON p.counterparty_id = COALESCE(c.counterparty_id, h.counterparty_id)
@@ -9745,9 +9582,9 @@ function fxPositions() {
     LEFT JOIN internal_units internal ON internal.counterparty_id = p.counterparty_id
     LEFT JOIN pricing_rules r
       ON r.pricing_rule_id = COALESCE(c.pricing_rule_id, h.pricing_rule_id)
-    LEFT JOIN fx_trade_market_snapshot a
+    LEFT JOIN trade_market_snapshots a
       ON a.trade_id = e.trade_id AND a.trade_type = e.trade_type
-    LEFT JOIN fx_batch_members technical_origin
+    LEFT JOIN batch_members technical_origin
       ON technical_origin.trade_id = e.trade_id
       AND technical_origin.trade_type = e.trade_type
       AND technical_origin.member_role IN ('BALANCE_TRADE', 'POSITION_OUT')
@@ -9756,16 +9593,16 @@ function fxPositions() {
       AND NOT EXISTS
       (
         SELECT 1
-        FROM fx_batch_members member
-        INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+        FROM batch_members member
+        INNER JOIN batches batch ON batch.batch_id = member.batch_id
         WHERE member.trade_id = e.trade_id
           AND member.trade_type = e.trade_type
           AND member.member_role IN ('TRADE', 'BALANCE_TRADE')
           AND batch.batch_status = ?
       )
     ORDER BY e.trade_id
-  `).all(FX_BATCH_STATUS.FORMED).map(row => ({
-    ...fxTradeRowWithMajorAmounts(row),
+  `).all(BATCH_STATUS.FORMED).map(row => ({
+    ...tradeRowWithMajorAmounts(row),
     clientDealId: row.tradeType === "CLIENT_DEAL" ? row.tradeId : undefined,
     hedgeDealId: row.tradeType === "HEDGE_DEAL" ? row.tradeId : undefined,
     clientCode: row.tradeType === "CLIENT_DEAL" ? row.counterpartyCode : undefined,
@@ -9774,7 +9611,7 @@ function fxPositions() {
   }));
 }
 
-function fxBatches() {
+function batches() {
   return database.prepare(`
     SELECT
       batch.batch_id AS batchId,
@@ -9793,11 +9630,11 @@ function fxBatches() {
       batch.formation_reason_details_json AS formationReasonDetailsJson,
       audit.source_trade_count AS sourceTradeCount,
       batch.rolled_back_at AS rolledBackAt
-    FROM fx_batches batch
-    LEFT JOIN v_fx_batch_formation_audit audit
+    FROM batches batch
+    LEFT JOIN v_batch_formation_audit audit
       ON audit.batch_id = batch.batch_id
     ORDER BY batch.batch_id DESC
-  `).all().map(fxBatchWithAuditFields);
+  `).all().map(batchWithAuditFields);
 }
 
 function ensureMarketQuoteSimulationSettings(sqlite) {
@@ -9830,7 +9667,7 @@ function ensureMarketQuoteSimulationSettings(sqlite) {
   }
 }
 
-function fxBatchFormationAudit() {
+function batchFormationAudit() {
   return database.prepare(`
     SELECT
       batch_id AS batchId,
@@ -9849,13 +9686,13 @@ function fxBatchFormationAudit() {
       formation_reason_details_json AS formationReasonDetailsJson,
       source_trade_count AS sourceTradeCount,
       rolled_back_at AS rolledBackAt
-    FROM v_fx_batch_formation_audit
+    FROM v_batch_formation_audit
     ORDER BY batch_id DESC
-  `).all().map(fxBatchWithAuditFields);
+  `).all().map(batchWithAuditFields);
 }
 
-function fxBatchWithAuditFields(row) {
-  const batch = fxBatchWithFormationReason(row);
+function batchWithAuditFields(row) {
+  const batch = batchWithFormationReason(row);
   const windowOpenedAtMilliseconds = Date.parse(row.windowOpenedAt || "");
   const windowClosedAtMilliseconds = Date.parse(row.windowClosedAt || "");
   const windowDurationMs = Number.isFinite(windowOpenedAtMilliseconds)
@@ -9896,7 +9733,7 @@ function fxBatchWithAuditFields(row) {
   };
 }
 
-function parsedFxBatchFormationReasonDetails(value) {
+function parsedBatchFormationReasonDetails(value) {
   try {
     const details = JSON.parse(String(value || "{}"));
     return details && typeof details === "object" && !Array.isArray(details)
@@ -9925,10 +9762,10 @@ function conciseBatchReasonPercent(value) {
   return percent.toFixed(6).replace(/\.?0+$/, "");
 }
 
-function fxBatchFormationReasonDescription(reasonCode, details) {
+function batchFormationReasonDescription(reasonCode, details) {
   const tradeCountLabel = formationReasonTradeCountLabel(details);
 
-  if (reasonCode === FX_BATCH_FORMATION_REASON_CODE.MAX_INTERVAL_REACHED) {
+  if (reasonCode === BATCH_FORMATION_REASON_CODE.MAX_INTERVAL_REACHED) {
     const durationMilliseconds = Number(
       details?.windowDurationMilliseconds
         ?? details?.oldestTradeAgeMilliseconds
@@ -9955,7 +9792,7 @@ function fxBatchFormationReasonDescription(reasonCode, details) {
 
   if (
     reasonCode ===
-      FX_BATCH_FORMATION_REASON_CODE.TRANSFER_RATE_CORRIDOR_BREACHED
+      BATCH_FORMATION_REASON_CODE.TRANSFER_RATE_CORRIDOR_BREACHED
   ) {
     const acceptedRange = details?.acceptedMinTransferRate
       && details?.acceptedMaxTransferRate
@@ -9986,13 +9823,13 @@ function fxBatchFormationReasonDescription(reasonCode, details) {
   return ["Manual selection.", tradeCountLabel].filter(Boolean).join(" ");
 }
 
-function fxBatchWithFormationReason(batch) {
-  const formationReasonCode = FX_BATCH_FORMATION_REASON_CODES.includes(
+function batchWithFormationReason(batch) {
+  const formationReasonCode = BATCH_FORMATION_REASON_CODES.includes(
     batch?.formationReasonCode
   )
     ? batch.formationReasonCode
-    : FX_BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION;
-  const formationReasonDetails = parsedFxBatchFormationReasonDetails(
+    : BATCH_FORMATION_REASON_CODE.MANUAL_SELECTION;
+  const formationReasonDetails = parsedBatchFormationReasonDetails(
     batch?.formationReasonDetailsJson
   );
 
@@ -10000,14 +9837,14 @@ function fxBatchWithFormationReason(batch) {
     ...batch,
     formationReasonCode,
     formationReasonDetails,
-    formationReasonDescription: fxBatchFormationReasonDescription(
+    formationReasonDescription: batchFormationReasonDescription(
       formationReasonCode,
       formationReasonDetails
     )
   };
 }
 
-function fxBatchTrades() {
+function batchTrades() {
   return database.prepare(`
     WITH batch_trades AS
     (
@@ -10016,7 +9853,7 @@ function fxBatchTrades() {
         member.trade_id,
         member.trade_type,
         member.member_role AS batch_role
-      FROM fx_batch_members member
+      FROM batch_members member
       WHERE member.member_role IN ('BALANCE_TRADE', 'POSITION_OUT')
     )
     SELECT
@@ -10046,8 +9883,8 @@ function fxBatchTrades() {
       e.quote_ccy_value_date AS quoteCcyValueDate,
       (
         SELECT consuming_member.batch_id
-        FROM fx_batch_members consuming_member
-        INNER JOIN fx_batches consuming_batch
+        FROM batch_members consuming_member
+        INNER JOIN batches consuming_batch
           ON consuming_batch.batch_id = consuming_member.batch_id
         WHERE consuming_member.trade_id = t.trade_id
           AND consuming_member.trade_type = t.trade_type
@@ -10064,8 +9901,8 @@ function fxBatchTrades() {
       ) AS consumedByBatchId,
       (
         SELECT consuming_batch.batch_status
-        FROM fx_batch_members consuming_member
-        INNER JOIN fx_batches consuming_batch
+        FROM batch_members consuming_member
+        INNER JOIN batches consuming_batch
           ON consuming_batch.batch_id = consuming_member.batch_id
         WHERE consuming_member.trade_id = t.trade_id
           AND consuming_member.trade_type = t.trade_type
@@ -10090,30 +9927,30 @@ function fxBatchTrades() {
           AND NOT EXISTS
           (
             SELECT 1
-            FROM fx_batch_members consuming_member
-            INNER JOIN fx_batches consuming_batch
+            FROM batch_members consuming_member
+            INNER JOIN batches consuming_batch
               ON consuming_batch.batch_id = consuming_member.batch_id
             WHERE consuming_member.trade_id = t.trade_id
               AND consuming_member.trade_type = t.trade_type
               AND consuming_member.member_role = 'TRADE'
               AND consuming_batch.batch_status IN
-                (${FX_BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS})
+                (${BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS})
           )
         THEN 1
         ELSE 0
       END AS availableForBatching
     FROM batch_trades t
-    INNER JOIN fx_batches b ON b.batch_id = t.batch_id
-    INNER JOIN fx_trade_exposure e
+    INNER JOIN batches b ON b.batch_id = t.batch_id
+    INNER JOIN trade_exposures e
       ON e.trade_id = t.trade_id AND e.trade_type = t.trade_type
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     WHERE b.batch_status IN ('FORMED', 'ROLLED_BACK')
     ORDER BY t.batch_id, t.trade_id
-  `).all(...FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES)
-    .map(fxTradeRowWithMajorAmounts);
+  `).all(...BATCH_MEMBERSHIP_BLOCKING_STATUSES)
+    .map(tradeRowWithMajorAmounts);
 }
 
-function fxBatchContent(batchId) {
+function batchContent(batchId) {
   const rows = database.prepare(`
     WITH selected_batch (batch_id) AS
     (
@@ -10130,7 +9967,7 @@ function fxBatchContent(batchId) {
         member.member_role AS content_role,
         member.trade_id,
         member.trade_type
-      FROM fx_batch_members member
+      FROM batch_members member
       INNER JOIN selected_batch selected
         ON selected.batch_id = member.batch_id
     ),
@@ -10140,7 +9977,7 @@ function fxBatchContent(batchId) {
         trade_id,
         trade_type,
         batch_id AS created_by_batch_id
-      FROM fx_batch_members
+      FROM batch_members
       WHERE member_role IN ('BALANCE_TRADE', 'POSITION_OUT')
     )
     SELECT
@@ -10186,15 +10023,15 @@ function fxBatchContent(batchId) {
       counterparty.counterparty_name AS counterpartyName,
       origins.created_by_batch_id AS createdByBatchId
     FROM batch_content content
-    INNER JOIN fx_trade_exposure exposure
+    INNER JOIN trade_exposures exposure
       ON exposure.trade_id = content.trade_id
       AND exposure.trade_type = content.trade_type
     INNER JOIN ccy_pair_options pair
       ON pair.ccy_pair_code = exposure.ccy_pair_code
-    LEFT JOIN client_fx_deals client
+    LEFT JOIN client_deals client
       ON client.trade_id = exposure.trade_id
       AND client.trade_type = exposure.trade_type
-    LEFT JOIN fx_hedge_deals hedge
+    LEFT JOIN hedge_deals hedge
       ON hedge.trade_id = exposure.trade_id
       AND hedge.trade_type = exposure.trade_type
     LEFT JOIN trading_counterparties counterparty
@@ -10212,7 +10049,7 @@ function fxBatchContent(batchId) {
         ELSE 3
       END,
       exposure.trade_id
-  `).all(batchId).map(fxBatchBalanceRow);
+  `).all(batchId).map(batchBalanceRow);
 
   return rows.reduce((result, row) => {
     const { relationType, contentRole, ...trade } = row;
@@ -10227,7 +10064,7 @@ function fxBatchContent(batchId) {
   }, { members: [], outputs: [] });
 }
 
-function fxBatchSourceTrades(tradeIds) {
+function batchSourceTrades(tradeIds) {
   const placeholders = tradeIds.map(() => "?").join(", ");
   const sourceTrades = database.prepare(`
     SELECT
@@ -10256,14 +10093,14 @@ function fxBatchSourceTrades(tradeIds) {
       e.quote_ccy_value_date AS quoteCcyValueDate,
       pair.default_quote_decimals AS rateFractionDigits,
       management.current_position_management_mode AS currentPositionManagementMode
-    FROM fx_trade_exposure e
+    FROM trade_exposures e
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
-    INNER JOIN fx_trade_position_management management
+    INNER JOIN trade_position_management management
       ON management.trade_id = e.trade_id
       AND management.trade_type = e.trade_type
-    LEFT JOIN client_fx_deals c
+    LEFT JOIN client_deals c
       ON c.trade_id = e.trade_id AND c.trade_type = e.trade_type
-    LEFT JOIN fx_hedge_deals h
+    LEFT JOIN hedge_deals h
       ON h.trade_id = e.trade_id AND h.trade_type = e.trade_type
     WHERE e.trade_id IN (${placeholders})
       AND
@@ -10280,12 +10117,12 @@ function fxBatchSourceTrades(tradeIds) {
               AND EXISTS
               (
                 SELECT 1
-                FROM fx_batch_position_output source_output
-                INNER JOIN fx_batch_members origin
+                FROM batch_position_outputs source_output
+                INNER JOIN batch_members origin
                   ON origin.trade_id = source_output.trade_id
                   AND origin.trade_type = source_output.trade_type
                   AND origin.member_role = 'POSITION_OUT'
-                INNER JOIN fx_batches source_batch
+                INNER JOIN batches source_batch
                   ON source_batch.batch_id = origin.batch_id
                 WHERE source_output.trade_id = e.trade_id
                   AND source_output.trade_type = e.trade_type
@@ -10297,12 +10134,12 @@ function fxBatchSourceTrades(tradeIds) {
               AND EXISTS
               (
                 SELECT 1
-                FROM fx_batch_balance_trade source_balance_trade
-                INNER JOIN fx_batch_members origin
+                FROM batch_balance_trades source_balance_trade
+                INNER JOIN batch_members origin
                   ON origin.trade_id = source_balance_trade.trade_id
                   AND origin.trade_type = source_balance_trade.trade_type
                   AND origin.member_role = 'BALANCE_TRADE'
-                INNER JOIN fx_batches source_batch
+                INNER JOIN batches source_batch
                   ON source_batch.batch_id = origin.batch_id
                 WHERE source_balance_trade.trade_id = e.trade_id
                   AND source_balance_trade.trade_type = e.trade_type
@@ -10315,23 +10152,23 @@ function fxBatchSourceTrades(tradeIds) {
       AND NOT EXISTS
       (
         SELECT 1
-        FROM fx_batch_members m
-        INNER JOIN fx_batches b ON b.batch_id = m.batch_id
+        FROM batch_members m
+        INNER JOIN batches b ON b.batch_id = m.batch_id
         WHERE m.trade_id = e.trade_id
           AND m.trade_type = e.trade_type
           AND m.member_role = 'TRADE'
           AND b.batch_status IN
-            (${FX_BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS})
+            (${BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS})
       )
     ORDER BY e.trade_id
-  `).all(...tradeIds, ...FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES);
+  `).all(...tradeIds, ...BATCH_MEMBERSHIP_BLOCKING_STATUSES);
   const foundTradeIds = new Set(sourceTrades.map(trade => trade.tradeId));
   const missingTradeIds = tradeIds.filter(tradeId => !foundTradeIds.has(tradeId));
 
   if (missingTradeIds.length > 0) {
     const error = new Error(
       `Trade ${missingTradeIds.join(", ")} was not found or is not available `
-        + "for FX batching."
+        + "for batching."
     );
     error.code = "BATCH_SOURCE_TRADE_NOT_FOUND";
     throw error;
@@ -10350,13 +10187,12 @@ function fxBatchSourceTrades(tradeIds) {
   return sourceTrades;
 }
 
-function saveFormedFxBatch({
+function saveFormedBatch({
   idempotencyKey,
   sourceTrades,
   formation,
   formationReason,
-  formationTiming,
-  sourcePositionManagementMode
+  formationTiming
 }) {
     const firstSourceTrade = sourceTrades[0];
     const pair = ccyPairOption(firstSourceTrade.ccyPairCode);
@@ -10376,7 +10212,7 @@ function saveFormedFxBatch({
     }
 
     const batchResult = database.prepare(`
-      INSERT INTO fx_batches
+      INSERT INTO batches
         (
           idempotency_key,
           ccy_pair_code,
@@ -10396,7 +10232,7 @@ function saveFormedFxBatch({
     );
     const batchId = Number(batchResult.lastInsertRowid);
     const insertExposure = database.prepare(`
-      INSERT INTO fx_trade_exposure
+      INSERT INTO trade_exposures
         (
           execution_timestamp,
           received_timestamp,
@@ -10417,19 +10253,19 @@ function saveFormedFxBatch({
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertMember = database.prepare(`
-      INSERT INTO fx_batch_members (batch_id, trade_id, trade_type, member_role)
+      INSERT INTO batch_members (batch_id, trade_id, trade_type, member_role)
       VALUES (?, ?, ?, ?)
     `);
     const insertBalanceTrade = database.prepare(`
-      INSERT INTO fx_batch_balance_trade (trade_id, trade_type)
+      INSERT INTO batch_balance_trades (trade_id, trade_type)
       VALUES (?, ?)
     `);
     const insertOutput = database.prepare(`
-      INSERT INTO fx_batch_position_output (trade_id, trade_type)
+      INSERT INTO batch_position_outputs (trade_id, trade_type)
       VALUES (?, ?)
     `);
     const insertQuoteCashOutput = database.prepare(`
-      INSERT INTO fx_batch_quote_cash_output
+      INSERT INTO batch_quote_cash_outputs
         (
           batch_id,
           quote_ccy_code,
@@ -10445,7 +10281,7 @@ function saveFormedFxBatch({
         batchId,
         sourceTrade.tradeId,
         sourceTrade.tradeType,
-        FX_BATCH_MEMBER_ROLE.SOURCE_TRADE
+        BATCH_MEMBER_ROLE.SOURCE_TRADE
       );
     }
 
@@ -10471,10 +10307,10 @@ function saveFormedFxBatch({
       );
       const tradeId = Number(exposureResult.lastInsertRowid);
 
-      materializeFxTradePositionModeState(database, {
+      materializeTradePositionModeState(database, {
         tradeId,
         tradeType: trade.tradeType,
-        positionManagementMode: sourcePositionManagementMode
+        positionManagementMode: formation.positionManagementMode
       });
 
       if (trade.tradeType === "BATCH_BALANCE_TRADE") {
@@ -10483,7 +10319,7 @@ function saveFormedFxBatch({
           batchId,
           tradeId,
           trade.tradeType,
-          FX_BATCH_MEMBER_ROLE.BALANCE_TRADE
+          BATCH_MEMBER_ROLE.BALANCE_TRADE
         );
       } else {
         insertOutput.run(tradeId, trade.tradeType);
@@ -10491,7 +10327,7 @@ function saveFormedFxBatch({
           batchId,
           tradeId,
           trade.tradeType,
-          FX_BATCH_MEMBER_ROLE.POSITION_OUT
+          BATCH_MEMBER_ROLE.POSITION_OUT
         );
       }
       return tradeId;
@@ -10509,7 +10345,7 @@ function saveFormedFxBatch({
     );
 
     database.prepare(`
-      UPDATE fx_batches
+      UPDATE batches
       SET batch_status = 'FORMED'
       WHERE batch_id = ? AND batch_status = 'BUILDING'
     `).run(batchId);
@@ -10570,37 +10406,37 @@ function completedBatchResult(batchId) {
       window_closed_at AS windowClosedAt,
       created_at AS formedAt,
       rolled_back_at AS rolledBackAt
-    FROM fx_batches
+    FROM batches
     WHERE batch_id = ?
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
   `).get(batchId);
 
   if (!batchRecord) {
-    throw new Error(`Completed FX Batch ${batchId} was not found.`);
+    throw new Error(`Completed Batch ${batchId} was not found.`);
   }
 
-  const batch = fxBatchWithFormationReason(batchRecord);
+  const batch = batchWithFormationReason(batchRecord);
 
-  const quoteCashOut = fxBatchQuoteCashOutput(batchId);
+  const quoteCashOut = batchQuoteCashOutput(batchId);
 
   return {
     ...batch,
     sourceTradeIds: database.prepare(`
       SELECT trade_id AS tradeId
-      FROM fx_batch_members
+      FROM batch_members
       WHERE batch_id = ? AND member_role = 'TRADE'
       ORDER BY trade_id
     `).all(batchId).map(row => row.tradeId),
-    trades: fxBatchTrades().filter(trade => trade.batchId === Number(batchId)),
+    trades: batchTrades().filter(trade => trade.batchId === Number(batchId)),
     quoteCashOut
   };
 }
 
-function fxBatchDetails(batchId) {
+function batchDetails(batchId) {
   const batch = completedBatchResult(batchId);
-  const content = fxBatchContent(batchId);
+  const content = batchContent(batchId);
   const batchingKeyTrade = content.members[0] || content.outputs[0] || null;
-  const cashOutput = fxBatchQuoteCashOutput(batchId);
+  const cashOutput = batchQuoteCashOutput(batchId);
 
   return {
     ...batch,
@@ -10627,7 +10463,7 @@ function fxBatchDetails(batchId) {
 function formedBatchByIdempotencyKey(idempotencyKey) {
   const batch = database.prepare(`
     SELECT batch_id AS batchId
-    FROM fx_batches
+    FROM batches
     WHERE idempotency_key = ?
       AND batch_status IN ('FORMED', 'ROLLED_BACK')
   `).get(idempotencyKey);
@@ -10635,47 +10471,47 @@ function formedBatchByIdempotencyKey(idempotencyKey) {
   return batch ? completedBatchResult(batch.batchId) : null;
 }
 
-function fxBatchMemberTradeIds(batchId) {
+function batchMemberTradeIds(batchId) {
   return database.prepare(`
     SELECT trade_id AS tradeId
-    FROM fx_batch_members
+    FROM batch_members
     WHERE batch_id = ?
     ORDER BY trade_id
   `).all(batchId).map(row => Number(row.tradeId));
 }
 
-function rollbackFxBatchWithinTransaction(batchId) {
+function rollbackBatchWithinTransaction(batchId) {
   const batch = database.prepare(`
     SELECT batch_status AS batchStatus
-    FROM fx_batches
+    FROM batches
     WHERE batch_id = ?
   `).get(batchId);
 
   if (!batch) {
-    const error = new Error(`FX Batch ${batchId} was not found.`);
-    error.code = "FX_BATCH_NOT_FOUND";
+    const error = new Error(`Batch ${batchId} was not found.`);
+    error.code = "BATCH_NOT_FOUND";
     throw error;
   }
 
   if (batch.batchStatus === "ROLLED_BACK") {
     return {
       ...completedBatchResult(batchId),
-      returnedTradeIds: fxBatchMemberTradeIds(batchId),
+      returnedTradeIds: batchMemberTradeIds(batchId),
       replayed: true
     };
   }
 
   if (batch.batchStatus !== "FORMED") {
     const error = new Error(
-      `FX Batch ${batchId} cannot be rolled back from status ${batch.batchStatus}.`
+      `Batch ${batchId} cannot be rolled back from status ${batch.batchStatus}.`
     );
-    error.code = "FX_BATCH_NOT_ROLLBACKABLE";
+    error.code = "BATCH_NOT_ROLLBACKABLE";
     throw error;
   }
 
   const rolledBackAt = new Date().toISOString();
   const update = database.prepare(`
-    UPDATE fx_batches
+    UPDATE batches
     SET batch_status = 'ROLLED_BACK',
         rolled_back_at = ?
     WHERE batch_id = ?
@@ -10684,118 +10520,72 @@ function rollbackFxBatchWithinTransaction(batchId) {
   `).run(rolledBackAt, batchId);
 
   if (Number(update.changes) !== 1) {
-    const error = new Error(`FX Batch ${batchId} could not be rolled back.`);
-    error.code = "FX_BATCH_ROLLBACK_CONFLICT";
+    const error = new Error(`Batch ${batchId} could not be rolled back.`);
+    error.code = "BATCH_ROLLBACK_CONFLICT";
     throw error;
   }
 
   return {
     ...completedBatchResult(batchId),
-    returnedTradeIds: fxBatchMemberTradeIds(batchId),
+    returnedTradeIds: batchMemberTradeIds(batchId),
     replayed: false
   };
 }
 
-function rollbackFxBatch(batchId) {
+function rollbackBatch(batchId) {
   return runInImmediateTransaction(
     database,
-    () => rollbackFxBatchWithinTransaction(batchId)
+    () => rollbackBatchWithinTransaction(batchId)
   );
 }
 
-const formFxBatchUseCase = new FormFxBatchUseCase({
+const formBatchUseCase = new FormBatchUseCase({
   transactionRunner: {
     run: operation => runInImmediateTransaction(database, operation)
   },
-  fxBatchRepository: {
+  batchRepository: {
     findFormedByIdempotencyKey: formedBatchByIdempotencyKey,
-    saveFormed: saveFormedFxBatch
+    saveFormed: saveFormedBatch
   },
-  fxTradeExposureRepository: {
-    findBatchSources: fxBatchSourceTrades
+  tradeExposureRepository: {
+    findBatchSources: batchSourceTrades
   }
 });
 
-function latestFxTradeId() {
+function latestTradeId() {
   return Number(database.prepare(`
     SELECT COALESCE(MAX(trade_id), 0) AS trade_id
-    FROM fx_trade_exposure
+    FROM trade_exposures
   `).get().trade_id);
 }
 
-function initialFxPositionMode(sqlite, {
-  pricingRuleId = null,
-  executionContextId = null
-} = {}) {
-  if (pricingRuleId === null || pricingRuleId === undefined) {
-    return FX_POSITION_MANAGEMENT_MODE.MANUAL;
-  }
-
-  const policy = sqlite.prepare(`
-    SELECT
-      rule.position_management_mode_override AS pricingRuleOverride,
-      context.default_position_management_mode AS executionContextDefault
-    FROM pricing_rules rule
-    INNER JOIN execution_contexts context
-      ON context.execution_context_id = rule.execution_context_id
-    WHERE rule.pricing_rule_id = ?
-      AND rule.execution_context_id = ?
-  `).get(pricingRuleId, executionContextId);
-
-  if (!policy) {
-    throw new Error(
-      `FX Position Mode policy was not found for Pricing Rule ${pricingRuleId} and Execution Context ${executionContextId}.`
-    );
-  }
-
-  return resolveFxPositionManagementMode(policy);
-}
-
-function materializeFxTradePositionModeState(sqlite, {
+function materializeTradePositionModeState(sqlite, {
   tradeId,
   tradeType,
   positionManagementMode
 }) {
-  const fxPositionMode = normalizeFxPositionManagementMode(
+  const normalizedMode = normalizePositionManagementMode(
     positionManagementMode,
-    "Initial FX Position Mode"
+    "Initial Position Management Mode"
   );
   const result = sqlite.prepare(`
-    UPDATE fx_trade_position_management
+    UPDATE trade_position_management
     SET initial_position_management_mode = ?,
         current_position_management_mode = ?,
         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
     WHERE trade_id = ? AND trade_type = ?
-  `).run(fxPositionMode, fxPositionMode, tradeId, tradeType);
+  `).run(normalizedMode, normalizedMode, tradeId, tradeType);
 
   if (result.changes !== 1) {
     throw new Error(
-      `FX Position Mode state was not initialized for ${tradeType} ${tradeId}.`
+      `Position Management Mode state was not initialized for ${tradeType} ${tradeId}.`
     );
   }
 
-  return fxPositionMode;
+  return normalizedMode;
 }
 
-function materializeFxTradePositionMode(sqlite, {
-  tradeId,
-  tradeType,
-  pricingRuleId = null,
-  executionContextId = null
-}) {
-  const fxPositionMode = initialFxPositionMode(sqlite, {
-    pricingRuleId,
-    executionContextId
-  });
-
-  return materializeFxTradePositionModeState(sqlite, {
-    tradeId,
-    tradeType,
-    positionManagementMode: fxPositionMode
-  });
-}
-
-function fxTradePositionManagementStates(identities) {
+function tradePositionManagementStates(identities) {
   const findState = database.prepare(`
     SELECT
       management.trade_id AS tradeId,
@@ -10805,17 +10595,17 @@ function fxTradePositionManagementStates(identities) {
       EXISTS
       (
         SELECT 1
-        FROM fx_batch_members member
-        INNER JOIN fx_batches batch ON batch.batch_id = member.batch_id
+        FROM batch_members member
+        INNER JOIN batches batch ON batch.batch_id = member.batch_id
         WHERE member.trade_id = management.trade_id
           AND member.trade_type = management.trade_type
           AND member.member_role IN ('TRADE', 'BALANCE_TRADE')
           AND batch.batch_status IN
-            (${FX_BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS})
+            (${BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS})
       ) AS batchBlocked,
       transition.transitioned_at AS transitionedAt
-    FROM fx_trade_position_management management
-    LEFT JOIN fx_trade_position_management_transitions transition
+    FROM trade_position_management management
+    LEFT JOIN trade_position_management_transitions transition
       ON transition.trade_id = management.trade_id
       AND transition.trade_type = management.trade_type
       AND transition.reason_code = 'MANUAL_REVIEW_COMPLETED'
@@ -10824,13 +10614,13 @@ function fxTradePositionManagementStates(identities) {
   `);
 
   return identities.map(identity => findState.get(
-    ...FX_BATCH_MEMBERSHIP_BLOCKING_STATUSES,
+    ...BATCH_MEMBERSHIP_BLOCKING_STATUSES,
     identity.tradeId,
     identity.tradeType
   )).filter(Boolean);
 }
 
-function saveFxTradePositionManagementTransition({
+function saveTradePositionManagementTransition({
   identity,
   initialPositionManagementMode,
   previousPositionManagementMode,
@@ -10839,7 +10629,7 @@ function saveFxTradePositionManagementTransition({
   transitionedAt
 }) {
   const update = database.prepare(`
-    UPDATE fx_trade_position_management
+    UPDATE trade_position_management
     SET current_position_management_mode = ?,
         updated_at = ?
     WHERE trade_id = ?
@@ -10857,14 +10647,14 @@ function saveFxTradePositionManagementTransition({
 
   if (update.changes !== 1) {
     const error = new Error(
-      `FX Trade ${identity.tradeId} (${identity.tradeType}) changed during the FX Position Mode transition.`
+      `Trade ${identity.tradeId} (${identity.tradeType}) changed during the Position Management Mode transition.`
     );
-    error.code = "FX_POSITION_MODE_TRANSITION_CONFLICT";
+    error.code = "POSITION_MODE_TRANSITION_CONFLICT";
     throw error;
   }
 
   database.prepare(`
-    INSERT INTO fx_trade_position_management_transitions
+    INSERT INTO trade_position_management_transitions
       (
         trade_id,
         trade_type,
@@ -10885,26 +10675,31 @@ function saveFxTradePositionManagementTransition({
   );
 }
 
-const sendFxTradesToAutoPositionManagementUseCase =
-  new SendFxTradesToAutoPositionManagementUseCase({
+const moveTradesToAutoManagementUseCase =
+  new MoveTradesToAutoManagementUseCase({
+    clock: () => database.prepare("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now') AS timestamp").get().timestamp,
     transactionRunner: {
       run: operation => runInImmediateTransaction(database, operation)
     },
-    fxTradePositionManagementRepository: {
-      findByIdentities: fxTradePositionManagementStates,
-      saveTransition: saveFxTradePositionManagementTransition
+    admissionPolicy: {
+      evaluateRelease: evaluateTradeRelease,
+      recordRelease: (identity, decision) => recordTradeAdmissionDecision(identity, decision, "RELEASE")
+    },
+    tradePositionManagementRepository: {
+      findByIdentities: tradePositionManagementStates,
+      saveTransition: saveTradePositionManagementTransition
     }
   });
 
-function nextFxAutoBatchPlan({
+function nextAutoBatchPlan({
   afterTradeId = 0,
   excludedTradeIds = []
 } = {}) {
-  const settings = fxAutoBatchingSettings();
+  const settings = autoBatchingSettings();
 
-  return planFxAutoBatching({
-    trades: selectFxTradesForAutoBatchingRun({
-      trades: fxPositions(),
+  return planAutoBatching({
+    trades: selectTradesForAutoBatchingRun({
+      trades: positions(),
       afterTradeId,
       excludedTradeIds,
       eligibleCcyPairCodes: settings.eligibleCcyPairCodes
@@ -10916,15 +10711,15 @@ function nextFxAutoBatchPlan({
   });
 }
 
-const fxAutoBatchingProcess = new FxAutoBatchingProcess({
-  selectCandidates: nextFxAutoBatchPlan,
-  formBatch: command => formFxBatchUseCase.execute(command),
-  getIntervalMs: () => fxAutoBatchingSettings().maxIntervalSeconds * 1000,
-  getLatestTradeId: latestFxTradeId,
+const autoBatchingProcess = new AutoBatchingProcess({
+  selectCandidates: nextAutoBatchPlan,
+  formBatch: command => formBatchUseCase.execute(command),
+  getIntervalMs: () => autoBatchingSettings().maxIntervalSeconds * 1000,
+  getLatestTradeId: latestTradeId,
   createIdempotencyKey: () => `auto-batch:${randomUUID()}`
 });
 
-function clientFxDealWithCalculatedEconomics(payload, exposureAmounts) {
+function clientDealWithCalculatedEconomics(payload, exposureAmounts) {
   const pair = ccyPairOption(payload.ccyPairCode);
   const baseCcyAmount = exposureAmounts.baseCcyAmount;
   const analyticalPnlQuoteFractionDigits = pair.quoteCurrencyFractionDigits;
@@ -10957,7 +10752,7 @@ function clientFxDealWithCalculatedEconomics(payload, exposureAmounts) {
   }
 
   const rule = pricingRule(payload.pricingRuleId);
-  const economics = calculateClientFxDealEconomics({
+  const economics = calculateClientDealEconomics({
     clientSide: payload.side,
     baseCcyAmountMinor: exposureAmounts.baseCcyAmountMinor,
     baseCcyFractionDigits: exposureAmounts.baseCcyFractionDigits,
@@ -10979,14 +10774,12 @@ function clientFxDealWithCalculatedEconomics(payload, exposureAmounts) {
   };
 }
 
-function createClientFxDeal(payload, suppliedExposureAmounts = null) {
+function createClientDeal(payload, suppliedExposureAmounts = null) {
   const receivedTimestamp = new Date().toISOString();
-  let shadowExposureAmounts = suppliedExposureAmounts;
   const tradeId = runInImmediateTransaction(database, () => {
-    const exposureAmounts = suppliedExposureAmounts || fxTradeExposureAmounts(payload);
-    shadowExposureAmounts = exposureAmounts;
+    const exposureAmounts = suppliedExposureAmounts || tradeExposureAmounts(payload);
     const exposureResult = database.prepare(`
-      INSERT INTO fx_trade_exposure
+      INSERT INTO trade_exposures
         (
           execution_timestamp,
           received_timestamp,
@@ -11023,20 +10816,15 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
     );
     const tradeId = Number(exposureResult.lastInsertRowid);
 
-    materializeFxTradePositionMode(database, {
-      tradeId,
-      tradeType: "CLIENT_DEAL",
-      pricingRuleId: payload.pricingRuleId,
-      executionContextId: payload.executionContextId
-    });
+    materializeTradeAdmission({ tradeId, tradeType: "CLIENT_DEAL" }, payload, exposureAmounts);
 
     database.prepare(`
-      INSERT INTO client_fx_deals
+      INSERT INTO client_deals
         (
           trade_id,
           trade_type,
           counterparty_id,
-          execution_context_id,
+          trade_context_id,
           pricing_rule_id,
           transfer_rate,
           analytical_pnl_quote_minor,
@@ -11047,7 +10835,7 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
     `).run(
       tradeId,
       payload.counterpartyId,
-      payload.executionContextId,
+      payload.tradeContextId,
       payload.pricingRuleId,
       payload.transferRate,
       payload.analyticalPnlQuoteMinor,
@@ -11056,7 +10844,7 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
     );
 
     database.prepare(`
-      INSERT INTO fx_trade_market_snapshot
+      INSERT INTO trade_market_snapshots
         (
           trade_id,
           trade_type,
@@ -11077,30 +10865,18 @@ function createClientFxDeal(payload, suppliedExposureAmounts = null) {
     return tradeId;
   });
 
-  try {
-    recordClientFxDealShadowAdmissionDecision({
-      tradeId,
-      payload,
-      exposureAmounts: shadowExposureAmounts
-    });
-  } catch {
-    // Shadow evaluation is deliberately outside the trade transaction. Until
-    // enforcement is enabled, neither an evaluator nor an audit failure may
-    // reject an otherwise valid Client FX Deal.
-  }
-
-  fxAutoBatchingProcess.notifyTradeCreated();
+  autoBatchingProcess.notifyTradeCreated();
   return tradeId;
 }
 
-function hedgeFxDealWithCalculatedTerms(
+function hedgeDealWithCalculatedTerms(
   payload,
   exposureAmounts,
   rule = hedgeDealPricingRule(payload.pricingRuleId),
   marketPulseSnapshot = marketPulseSimulator.snapshot()
 ) {
   const pair = ccyPairOption(rule.ccyPairCode);
-  const terms = createHedgeFxDealTerms({
+  const terms = createHedgeDealTerms({
     hedgeSide: payload.side,
     baseCcyAmount: exposureAmounts.baseCcyAmount,
     tradeRate: payload.tradeRate,
@@ -11120,7 +10896,7 @@ function hedgeFxDealWithCalculatedTerms(
       "Analytical PnL Quote Minor"
     ),
     counterpartyId: rule.counterpartyId,
-    executionContextId: rule.executionContextId,
+    tradeContextId: rule.tradeContextId,
     pricingRuleId: rule.pricingRuleId,
     ccyPairCode: rule.ccyPairCode,
     dealtCcyCode: exposureAmounts.dealtCcyCode,
@@ -11136,7 +10912,7 @@ function hedgeFxDealWithCalculatedTerms(
   };
 }
 
-function autoPricedHedgeFxDealWithCalculatedTerms(payload) {
+function autoPricedHedgeDealWithCalculatedTerms(payload) {
   const rule = autoPricedHedgeDealPricingRule(payload.pricingRuleId);
   const pair = ccyPairOption(rule.ccyPairCode);
   const marketPulseSnapshot = marketPulseSimulator.snapshot();
@@ -11160,10 +10936,10 @@ function autoPricedHedgeFxDealWithCalculatedTerms(payload) {
       rateFractionDigits: pair.defaultQuoteDecimals
     }))
   };
-  const exposureAmounts = fxTradeExposureAmounts(pricedPayload);
+  const exposureAmounts = tradeExposureAmounts(pricedPayload);
 
   return {
-    deal: hedgeFxDealWithCalculatedTerms(
+    deal: hedgeDealWithCalculatedTerms(
       pricedPayload,
       exposureAmounts,
       rule,
@@ -11173,7 +10949,7 @@ function autoPricedHedgeFxDealWithCalculatedTerms(payload) {
   };
 }
 
-function createHedgeFxDeal(
+function createHedgeDeal(
   payload,
   suppliedExposureAmounts = null,
   requestTimestamp = payload.executionTimestamp
@@ -11184,9 +10960,9 @@ function createHedgeFxDeal(
 
   const receivedTimestamp = new Date().toISOString();
   const tradeId = runInImmediateTransaction(database, () => {
-    const exposureAmounts = suppliedExposureAmounts || fxTradeExposureAmounts(payload);
+    const exposureAmounts = suppliedExposureAmounts || tradeExposureAmounts(payload);
     const exposureResult = database.prepare(`
-      INSERT INTO fx_trade_exposure
+      INSERT INTO trade_exposures
         (
           execution_timestamp,
           received_timestamp,
@@ -11225,14 +11001,9 @@ function createHedgeFxDeal(
 
     if (payload.positionManagementMode === null
       || payload.positionManagementMode === undefined) {
-      materializeFxTradePositionMode(database, {
-        tradeId,
-        tradeType: "HEDGE_DEAL",
-        pricingRuleId: payload.pricingRuleId,
-        executionContextId: payload.executionContextId
-      });
+      materializeTradeAdmission({ tradeId, tradeType: "HEDGE_DEAL" }, payload, exposureAmounts);
     } else {
-      materializeFxTradePositionModeState(database, {
+      materializeTradePositionModeState(database, {
         tradeId,
         tradeType: "HEDGE_DEAL",
         positionManagementMode: payload.positionManagementMode
@@ -11240,13 +11011,13 @@ function createHedgeFxDeal(
     }
 
     database.prepare(`
-      INSERT INTO fx_hedge_deals
+      INSERT INTO hedge_deals
         (
           trade_id,
           trade_type,
           request_timestamp,
           counterparty_id,
-          execution_context_id,
+          trade_context_id,
           pricing_rule_id,
           transfer_rate,
           analytical_pnl_quote_minor,
@@ -11257,7 +11028,7 @@ function createHedgeFxDeal(
       tradeId,
       requestTimestamp,
       payload.counterpartyId,
-      payload.executionContextId,
+      payload.tradeContextId,
       payload.pricingRuleId,
       payload.transferRate,
       payload.analyticalPnlQuoteMinor,
@@ -11265,7 +11036,7 @@ function createHedgeFxDeal(
     );
 
     database.prepare(`
-      INSERT INTO fx_trade_market_snapshot
+      INSERT INTO trade_market_snapshots
         (
           trade_id,
           trade_type,
@@ -11286,22 +11057,41 @@ function createHedgeFxDeal(
     return tradeId;
   });
 
-  fxAutoBatchingProcess.notifyTradeCreated();
+  autoBatchingProcess.notifyTradeCreated();
   return tradeId;
-}
-
-function updateClientFxDealComment(tradeId, comment) {
-  const result = database.prepare(`
-    UPDATE client_fx_deals
-    SET comment = ?
-    WHERE trade_id = ? AND trade_type = 'CLIENT_DEAL'
-  `).run(comment, tradeId);
-
-  return result.changes === 1;
 }
 
 const marketPulseSimulator = new MarketPulseSimulator({
   loadConfigurations: marketPulseSimulationConfigurations
+});
+const historicalMarketDataSource = new MoexIssHistoricalMarketDataSource();
+const marketSourceCandleRepository = new SqliteMarketSourceCandleRepository({ database });
+const backfillHistoricalCandleRangeUseCase = new BackfillHistoricalCandleRangeUseCase({
+  historicalMarketDataSource,
+  marketSourceCandleRepository
+});
+const getManualHistoricalSourceCandleSyncPlanUseCase = new GetManualHistoricalSourceCandleSyncPlanUseCase({
+  marketSourceCandleRepository
+});
+const historicalCandlesApi = createHistoricalCandlesApi({
+  getHistoricalCandlesUseCase: new GetHistoricalCandlesUseCase({
+    historicalMarketDataSource
+  }),
+  syncOneMinuteCandlesUseCase: new SyncOneMinuteCandlesUseCase({
+    historicalMarketDataSource,
+    marketSourceCandleRepository
+  }),
+  backfillHistoricalCandlesUseCase: new BackfillHistoricalCandlesUseCase({
+    backfillRangeUseCase: backfillHistoricalCandleRangeUseCase
+  }),
+  getHistoricalCandleBackfillStatusUseCase: new GetHistoricalCandleBackfillStatusUseCase({
+    marketSourceCandleRepository
+  }),
+  getManualHistoricalSourceCandleSyncPlanUseCase,
+  syncNextManualHistoricalSourceCandleDayUseCase: new SyncNextManualHistoricalSourceCandleDayUseCase({
+    getPlanUseCase: getManualHistoricalSourceCandleSyncPlanUseCase,
+    backfillRangeUseCase: backfillHistoricalCandleRangeUseCase
+  })
 });
 
 function clientDealGenerationError(code, message) {
@@ -11323,7 +11113,7 @@ function configuredClientDealGenerationSettings() {
   return settings;
 }
 
-function generateOneClientFxDeal() {
+function generateOneClientDeal() {
   const settings = configuredClientDealGenerationSettings();
   const marketPulseSnapshot = marketPulseSimulator.snapshot();
   const settingsWithQuotes = settings
@@ -11342,82 +11132,82 @@ function generateOneClientFxDeal() {
 
   const selected = settingsWithQuotes[Math.floor(Math.random() * settingsWithQuotes.length)];
   const pair = ccyPairOption(selected.settings.ccyPairCode);
-  const payload = generatedClientFxDeal({
+  const payload = generatedClientDeal({
     settings: selected.settings,
     marketPulseSnapshot,
     quote: selected.quote,
     pair
   });
-  const validation = validateClientFxDealPayload(payload);
+  const validation = validateClientDealPayload(payload);
 
   if (validation.error) {
     throw clientDealGenerationError(
-      "GENERATED_CLIENT_FX_DEAL_INVALID",
+      "GENERATED_CLIENT_DEAL_INVALID",
       validation.error
     );
   }
 
-  const exposureAmounts = fxTradeExposureAmounts(validation);
-  const tradeId = createClientFxDeal(
-    clientFxDealWithCalculatedEconomics(validation, exposureAmounts),
+  const exposureAmounts = tradeExposureAmounts(validation);
+  const tradeId = createClientDeal(
+    clientDealWithCalculatedEconomics(validation, exposureAmounts),
     exposureAmounts
   );
-  return clientFxDeal(tradeId);
+  return clientDeal(tradeId);
 }
 
 const clientDealGenerationProcess = new ClientDealGenerationProcess({
-  generateOne: generateOneClientFxDeal,
+  generateOne: generateOneClientDeal,
   getGenerationCycle: clientDealGenerationCycle
 });
 
 const DEMO_TRADE_RESET_CONFIRMATION = "RESET_ALL_TRADES";
 const DEMO_TRADE_RESET_DELETE_TRIGGERS = Object.freeze([
-  "trg_fx_auto_hedging_admission_decisions_immutable_delete",
-  "trg_fx_batch_members_immutable_delete",
-  "trg_fx_batch_balance_trade_immutable_delete",
-  "trg_fx_batch_position_output_immutable_delete",
-  "trg_fx_batch_quote_cash_output_immutable_delete",
-  "trg_fx_batches_immutable_delete"
+  "trg_auto_management_admission_decisions_immutable_delete",
+  "trg_batch_members_immutable_delete",
+  "trg_batch_balance_trades_immutable_delete",
+  "trg_batch_position_outputs_immutable_delete",
+  "trg_batch_quote_cash_outputs_immutable_delete",
+  "trg_batches_immutable_delete"
 ]);
 
 function demoTradeTableCounts() {
   return {
-    trades: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_trade_exposure").get().count),
-    clientDeals: Number(database.prepare("SELECT COUNT(*) AS count FROM client_fx_deals").get().count),
-    hedgeDeals: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_hedge_deals").get().count),
+    trades: Number(database.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count),
+    clientDeals: Number(database.prepare("SELECT COUNT(*) AS count FROM client_deals").get().count),
+    hedgeDeals: Number(database.prepare("SELECT COUNT(*) AS count FROM hedge_deals").get().count),
     marketSnapshots: Number(
-      database.prepare("SELECT COUNT(*) AS count FROM fx_trade_market_snapshot").get().count
+      database.prepare("SELECT COUNT(*) AS count FROM trade_market_snapshots").get().count
     ),
-    autoHedgingAdmissionDecisions: Number(
+    autoManagementAdmissionDecisions: Number(
       database.prepare(`
         SELECT COUNT(*) AS count
-        FROM fx_auto_hedging_admission_decisions
+        FROM auto_management_admission_decisions
       `).get().count
     ),
     positionManagementStates: Number(
-      database.prepare("SELECT COUNT(*) AS count FROM fx_trade_position_management").get().count
+      database.prepare("SELECT COUNT(*) AS count FROM trade_position_management").get().count
     ),
     positionManagementTransitions: Number(
       database.prepare(`
         SELECT COUNT(*) AS count
-        FROM fx_trade_position_management_transitions
+        FROM trade_position_management_transitions
       `).get().count
     ),
-    batches: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batches").get().count),
-    batchMembers: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batch_members").get().count),
+    batches: Number(database.prepare("SELECT COUNT(*) AS count FROM batches").get().count),
+    batchMembers: Number(database.prepare("SELECT COUNT(*) AS count FROM batch_members").get().count),
     batchBalanceTrades: Number(
-      database.prepare("SELECT COUNT(*) AS count FROM fx_batch_balance_trade").get().count
+      database.prepare("SELECT COUNT(*) AS count FROM batch_balance_trades").get().count
     ),
-    batchOutputs: Number(database.prepare("SELECT COUNT(*) AS count FROM fx_batch_position_output").get().count),
+    batchOutputs: Number(database.prepare("SELECT COUNT(*) AS count FROM batch_position_outputs").get().count),
     batchQuoteCashMembers: Number(
-      database.prepare("SELECT COUNT(*) AS count FROM fx_batch_quote_cash_output").get().count
+      database.prepare("SELECT COUNT(*) AS count FROM batch_quote_cash_outputs").get().count
     )
   };
 }
 
 function resetDemoTrades() {
   clientDealGenerationProcess.stop();
-  fxAutoBatchingProcess.stop();
+  autoBatchingProcess.stop();
 
   const triggerPlaceholders = DEMO_TRADE_RESET_DELETE_TRIGGERS.map(() => "?").join(", ");
   const triggerDefinitions = database.prepare(`
@@ -11447,21 +11237,21 @@ function resetDemoTrades() {
     }
 
     database.exec(`
-      DELETE FROM fx_batch_quote_cash_output;
-      DELETE FROM fx_batch_members;
-      DELETE FROM fx_batch_position_output;
-      DELETE FROM fx_batch_balance_trade;
-      DELETE FROM fx_batches;
-      DELETE FROM fx_auto_hedging_admission_decisions;
-      DELETE FROM fx_trade_market_snapshot;
-      DELETE FROM client_fx_deals;
-      DELETE FROM fx_hedge_deals;
-      DELETE FROM fx_trade_exposure;
+      DELETE FROM batch_quote_cash_outputs;
+      DELETE FROM batch_members;
+      DELETE FROM batch_position_outputs;
+      DELETE FROM batch_balance_trades;
+      DELETE FROM batches;
+      DELETE FROM auto_management_admission_decisions;
+      DELETE FROM trade_market_snapshots;
+      DELETE FROM client_deals;
+      DELETE FROM hedge_deals;
+      DELETE FROM trade_exposures;
       DELETE FROM sqlite_sequence
       WHERE name IN
         (
-          'fx_batches',
-          'fx_trade_position_management_transitions'
+          'batches',
+          'trade_position_management_transitions'
         );
     `);
 
@@ -11472,7 +11262,7 @@ function resetDemoTrades() {
     const remaining = demoTradeTableCounts();
 
     if (Object.values(remaining).some(count => count !== 0)) {
-      throw new Error("Demo Trade reset did not clear every Trade and FX Batch table.");
+      throw new Error("Demo Trade reset did not clear every Trade and Batch table.");
     }
 
     if (database.prepare("PRAGMA foreign_key_check").all().length !== 0) {
@@ -11485,7 +11275,7 @@ function resetDemoTrades() {
   return {
     removed,
     generationProcess: clientDealGenerationProcess.reset(),
-    autoBatchingProcess: fxAutoBatchingProcess.reset(),
+    autoBatchingProcess: autoBatchingProcess.reset(),
     resetAt: new Date().toISOString()
   };
 }
@@ -11598,11 +11388,11 @@ function normalizedAccountingSystemId(value) {
   return normalizedText(value).toUpperCase();
 }
 
-function normalizedExecutionSystemId(value) {
+function normalizedOriginatingSystemId(value) {
   return normalizedText(value).toUpperCase();
 }
 
-function normalizedExecutionContextId(value) {
+function normalizedTradeContextId(value) {
   return integerInRange(value, 1, Number.MAX_SAFE_INTEGER);
 }
 
@@ -11788,21 +11578,21 @@ function validateAccountingSystemPayload(body) {
   return { accountingSystemId, name, active };
 }
 
-function validateExecutionSystemPayload(body) {
-  const executionSystemId = normalizedExecutionSystemId(body.executionSystemId);
+function validateOriginatingSystemPayload(body) {
+  const originatingSystemId = normalizedOriginatingSystemId(body.originatingSystemId);
   const name = normalizedText(body.name);
   const pricingMode = normalizedText(body.pricingMode).toUpperCase();
   const active = typeof body.active === "boolean" ? body.active : null;
 
-  if (!new RegExp(`^[A-Z0-9_-]{2,${EXECUTION_SYSTEM_ID_MAX_LENGTH}}$`).test(executionSystemId)) {
-    return { error: `Execution System ID must contain from 2 to ${EXECUTION_SYSTEM_ID_MAX_LENGTH} uppercase letters, digits, underscores or hyphens.` };
+  if (!new RegExp(`^[A-Z0-9_-]{2,${ORIGINATING_SYSTEM_ID_MAX_LENGTH}}$`).test(originatingSystemId)) {
+    return { error: `Originating System ID must contain from 2 to ${ORIGINATING_SYSTEM_ID_MAX_LENGTH} uppercase letters, digits, underscores or hyphens.` };
   }
 
-  if (!name || name.length > EXECUTION_SYSTEM_NAME_MAX_LENGTH) {
-    return { error: `Name must contain from one to ${EXECUTION_SYSTEM_NAME_MAX_LENGTH} characters.` };
+  if (!name || name.length > ORIGINATING_SYSTEM_NAME_MAX_LENGTH) {
+    return { error: `Name must contain from one to ${ORIGINATING_SYSTEM_NAME_MAX_LENGTH} characters.` };
   }
 
-  if (!PRICING_MODES.includes(pricingMode) || pricingMode.length > EXECUTION_SYSTEM_PRICING_MODE_MAX_LENGTH) {
+  if (!PRICING_MODES.includes(pricingMode) || pricingMode.length > ORIGINATING_SYSTEM_PRICING_MODE_MAX_LENGTH) {
     return { error: "Pricing Mode must be AUTO_PRICED, DEALER_PRICED or DEALER_APPROVED." };
   }
 
@@ -11810,7 +11600,7 @@ function validateExecutionSystemPayload(body) {
     return { error: "Active must be a boolean value." };
   }
 
-  return { executionSystemId, name, pricingMode, active };
+  return { originatingSystemId, name, pricingMode, active };
 }
 
 function validatedPositionManagementMode(value, label, { nullable = false } = {}) {
@@ -11819,9 +11609,9 @@ function validatedPositionManagementMode(value, label, { nullable = false } = {}
   }
 
   try {
-    return { value: normalizeFxPositionManagementMode(value, label) };
+    return { value: normalizePositionManagementMode(value, label) };
   } catch (error) {
-    if (error?.code === "INVALID_FX_POSITION_MANAGEMENT_MODE") {
+    if (error?.code === "INVALID_POSITION_MANAGEMENT_MODE") {
       return { error: `${label} must be MANUAL or AUTO${nullable ? ", or null to inherit" : ""}.` };
     }
 
@@ -11829,13 +11619,13 @@ function validatedPositionManagementMode(value, label, { nullable = false } = {}
   }
 }
 
-function validatedAutoHedgingAdmissionMode(value) {
+function validatedAutoManagementAdmissionMode(value) {
   try {
-    return { value: normalizeAutoHedgingAdmissionMode(value) };
+    return { value: normalizeAutoManagementAdmissionMode(value) };
   } catch (error) {
-    if (error?.code === "INVALID_AUTO_HEDGING_ADMISSION_MODE") {
+    if (error?.code === "INVALID_AUTO_MANAGEMENT_ADMISSION_MODE") {
       return {
-        error: "Auto Hedging Admission must be AUTO_IF_ELIGIBLE, REVIEW_REQUIRED or MANUAL_ONLY."
+        error: "Initial Mode Assignment must be AUTO_IF_ELIGIBLE or REVIEW_REQUIRED."
       };
     }
 
@@ -11843,16 +11633,16 @@ function validatedAutoHedgingAdmissionMode(value) {
   }
 }
 
-function validatedPricingRuleAutoHedgingAdmissionModeOverride(value) {
+function validatedPricingRuleAutoManagementAdmissionModeOverride(value) {
   try {
     return {
-      value: normalizePricingRuleAutoHedgingAdmissionModeOverride(value)
+      value: normalizePricingRuleAutoManagementAdmissionModeOverride(value)
     };
   } catch (error) {
     if (error?.code ===
-      "INVALID_PRICING_RULE_AUTO_HEDGING_ADMISSION_MODE_OVERRIDE") {
+      "INVALID_PRICING_RULE_AUTO_MANAGEMENT_ADMISSION_MODE_OVERRIDE") {
       return {
-        error: "Pricing Rule Auto Hedging Admission Mode Override must be MANUAL_ONLY, or null to inherit the Execution Context Admission Policy."
+        error: "Pricing Rule Initial Mode Assignment override must be REVIEW_REQUIRED, or null to use the Trade Context value."
       };
     }
 
@@ -11860,34 +11650,23 @@ function validatedPricingRuleAutoHedgingAdmissionModeOverride(value) {
   }
 }
 
-function validateExecutionContextPayload(body, current = null) {
+function validateTradeContextPayload(body, current = null) {
   if (body === null || typeof body !== "object" || Array.isArray(body)) {
-    return { error: "Execution Context payload must be a JSON object." };
+    return { error: "Trade Context payload must be a JSON object." };
   }
 
   const servicingLocationId = normalizedServicingLocationId(body.servicingLocationId);
   const accountingSystemId = normalizedAccountingSystemId(body.accountingSystemId);
-  const executionSystemId = normalizedExecutionSystemId(body.executionSystemId);
-  const requestedDefaultPositionManagementMode = Object.prototype.hasOwnProperty.call(
+  const originatingSystemId = normalizedOriginatingSystemId(body.originatingSystemId);
+  const requestedAutoManagementAdmissionMode = Object.prototype.hasOwnProperty.call(
     body,
-    "defaultPositionManagementMode"
+    "autoManagementAdmissionMode"
   )
-    ? body.defaultPositionManagementMode
-    : current?.defaultPositionManagementMode
-      ?? FX_POSITION_MANAGEMENT_MODE.MANUAL;
-  const defaultPositionManagementMode = validatedPositionManagementMode(
-    requestedDefaultPositionManagementMode,
-    "Default FX Position Mode"
-  );
-  const requestedAutoHedgingAdmissionMode = Object.prototype.hasOwnProperty.call(
-    body,
-    "autoHedgingAdmissionMode"
-  )
-    ? body.autoHedgingAdmissionMode
-    : current?.autoHedgingAdmissionMode
-      ?? AUTO_HEDGING_ADMISSION_MODE.MANUAL_ONLY;
-  const autoHedgingAdmissionMode = validatedAutoHedgingAdmissionMode(
-    requestedAutoHedgingAdmissionMode
+    ? body.autoManagementAdmissionMode
+    : current?.autoManagementAdmissionMode
+      ?? AUTO_MANAGEMENT_ADMISSION_MODE.REVIEW_REQUIRED;
+  const autoManagementAdmissionMode = validatedAutoManagementAdmissionMode(
+    requestedAutoManagementAdmissionMode
   );
 
   if (!isValidServicingLocationId(servicingLocationId)) {
@@ -11898,25 +11677,21 @@ function validateExecutionContextPayload(body, current = null) {
     return { error: "Accounting System ID is invalid." };
   }
 
-  if (!new RegExp(`^[A-Z0-9_-]{2,${EXECUTION_SYSTEM_ID_MAX_LENGTH}}$`).test(executionSystemId)) {
-    return { error: "Execution System ID is invalid." };
+  if (!new RegExp(`^[A-Z0-9_-]{2,${ORIGINATING_SYSTEM_ID_MAX_LENGTH}}$`).test(originatingSystemId)) {
+    return { error: "Originating System ID is invalid." };
   }
 
-  if (defaultPositionManagementMode.error) {
-    return defaultPositionManagementMode;
+  if (autoManagementAdmissionMode.error) {
+    return autoManagementAdmissionMode;
   }
 
-  if (autoHedgingAdmissionMode.error) {
-    return autoHedgingAdmissionMode;
-  }
+  const referencedOriginatingSystem = originatingSystem(originatingSystemId);
 
-  const referencedExecutionSystem = executionSystem(executionSystemId);
-
-  if (autoHedgingAdmissionMode.value === AUTO_HEDGING_ADMISSION_MODE.AUTO_IF_ELIGIBLE
-    && referencedExecutionSystem
-    && referencedExecutionSystem.pricingMode !== "AUTO_PRICED") {
+  if (autoManagementAdmissionMode.value === AUTO_MANAGEMENT_ADMISSION_MODE.AUTO_IF_ELIGIBLE
+    && referencedOriginatingSystem
+    && referencedOriginatingSystem.pricingMode !== "AUTO_PRICED") {
     return {
-      error: "AUTO_IF_ELIGIBLE requires an Execution System with AUTO_PRICED Pricing Mode."
+      error: "AUTO_IF_ELIGIBLE requires an Originating System with AUTO_PRICED Pricing Mode."
     };
   }
 
@@ -11926,25 +11701,24 @@ function validateExecutionContextPayload(body, current = null) {
     accountingSystemDatabaseId: accountingSystemId === NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID
       ? null
       : accountingSystemId,
-    executionSystemId,
-    defaultPositionManagementMode: defaultPositionManagementMode.value,
-    autoHedgingAdmissionMode: autoHedgingAdmissionMode.value
+    originatingSystemId,
+    autoManagementAdmissionMode: autoManagementAdmissionMode.value
   };
 }
 
-function validateTradingCounterpartyExecutionContextsPayload(body) {
-  if (!Array.isArray(body?.executionContextIds) || body.executionContextIds.length === 0) {
-    return { error: "Execution Context IDs must contain at least one item." };
+function validateTradingCounterpartyTradeContextsPayload(body) {
+  if (!Array.isArray(body?.tradeContextIds) || body.tradeContextIds.length === 0) {
+    return { error: "Trade Context IDs must contain at least one item." };
   }
 
-  const executionContextIds = body.executionContextIds
-    .map(normalizedExecutionContextId);
+  const tradeContextIds = body.tradeContextIds
+    .map(normalizedTradeContextId);
 
-  if (executionContextIds.some(executionContextId => executionContextId === null)) {
-    return { error: "Every Execution Context ID must be a positive integer." };
+  if (tradeContextIds.some(tradeContextId => tradeContextId === null)) {
+    return { error: "Every Trade Context ID must be a positive integer." };
   }
 
-  return { executionContextIds: [...new Set(executionContextIds)] };
+  return { tradeContextIds: [...new Set(tradeContextIds)] };
 }
 
 function validateTradingCounterpartyPayload(body) {
@@ -12057,7 +11831,6 @@ function validateTradingCounterpartyPayload(body) {
 
 function saveTradingCounterpartyProfile(sqlite, counterpartyId, payload) {
   if (payload.counterpartyScope === "EXTERNAL") {
-    sqlite.prepare("DELETE FROM internal_units WHERE counterparty_id = ?").run(counterpartyId);
     sqlite.prepare(`
       INSERT INTO external_counterparties
         (counterparty_id, counterparty_code, counterparty_code_type, external_counterparty_kind)
@@ -12075,7 +11848,6 @@ function saveTradingCounterpartyProfile(sqlite, counterpartyId, payload) {
     return;
   }
 
-  sqlite.prepare("DELETE FROM external_counterparties WHERE counterparty_id = ?").run(counterpartyId);
   sqlite.prepare(`
     INSERT INTO internal_units (counterparty_id, unit_code, unit_type)
     VALUES (?, ?, ?)
@@ -12162,23 +11934,16 @@ function validatePricingRulePayload(body) {
   }
 
   const counterpartyId = integerInRange(body.counterpartyId, 1, Number.MAX_SAFE_INTEGER);
-  const executionContextId = normalizedExecutionContextId(body.executionContextId);
+  const tradeContextId = normalizedTradeContextId(body.tradeContextId);
   const ccyPairCode = normalizedText(body.ccyPairCode).toUpperCase();
   const marginPercent = Number(body.marginPercent);
-  const positionManagementModeOverride = validatedPositionManagementMode(
-    Object.prototype.hasOwnProperty.call(body, "positionManagementModeOverride")
-      ? body.positionManagementModeOverride
-      : null,
-    "FX Position Mode Override",
-    { nullable: true }
-  );
-  const autoHedgingAdmissionModeOverride =
-    validatedPricingRuleAutoHedgingAdmissionModeOverride(
+  const autoManagementAdmissionModeOverride =
+    validatedPricingRuleAutoManagementAdmissionModeOverride(
       Object.prototype.hasOwnProperty.call(
         body,
-        "autoHedgingAdmissionModeOverride"
+        "autoManagementAdmissionModeOverride"
       )
-        ? body.autoHedgingAdmissionModeOverride
+        ? body.autoManagementAdmissionModeOverride
         : null
     );
 
@@ -12186,8 +11951,8 @@ function validatePricingRulePayload(body) {
     return { error: "Counterparty ID must be a positive integer." };
   }
 
-  if (!executionContextId) {
-    return { error: "Execution Context ID is invalid." };
+  if (!tradeContextId) {
+    return { error: "Trade Context ID is invalid." };
   }
 
   if (!/^[A-Z]{3}_[A-Z]{3}$/.test(ccyPairCode)) {
@@ -12198,21 +11963,16 @@ function validatePricingRulePayload(body) {
     return { error: "Margin Percent must be a number from 0 up to, but not including, 100." };
   }
 
-  if (positionManagementModeOverride.error) {
-    return positionManagementModeOverride;
-  }
-
-  if (autoHedgingAdmissionModeOverride.error) {
-    return autoHedgingAdmissionModeOverride;
+  if (autoManagementAdmissionModeOverride.error) {
+    return autoManagementAdmissionModeOverride;
   }
 
   return {
     counterpartyId,
-    executionContextId,
+    tradeContextId,
     ccyPairCode,
     marginPercent,
-    positionManagementModeOverride: positionManagementModeOverride.value,
-    autoHedgingAdmissionModeOverride: autoHedgingAdmissionModeOverride.value
+    autoManagementAdmissionModeOverride: autoManagementAdmissionModeOverride.value
   };
 }
 
@@ -12222,21 +11982,16 @@ function validatePricingRuleUpdatePayload(body, current) {
   }
 
   const hasMarginPercent = Object.prototype.hasOwnProperty.call(body, "marginPercent");
-  const hasPositionManagementModeOverride = Object.prototype.hasOwnProperty.call(
-    body,
-    "positionManagementModeOverride"
-  );
-  const hasAutoHedgingAdmissionModeOverride =
+  const hasAutoManagementAdmissionModeOverride =
     Object.prototype.hasOwnProperty.call(
       body,
-      "autoHedgingAdmissionModeOverride"
+      "autoManagementAdmissionModeOverride"
     );
 
   if (!hasMarginPercent
-    && !hasPositionManagementModeOverride
-    && !hasAutoHedgingAdmissionModeOverride) {
+    && !hasAutoManagementAdmissionModeOverride) {
     return {
-      error: "Pricing Rule update must include Margin Percent, FX Position Mode Override or Auto Hedging Admission Mode Override."
+      error: "Pricing Rule update must include Margin Percent or Initial Mode Assignment override."
     };
   }
 
@@ -12253,32 +12008,20 @@ function validatePricingRuleUpdatePayload(body, current) {
     return { error: "Margin Percent must be a number from 0 up to, but not including, 100." };
   }
 
-  const positionManagementModeOverride = validatedPositionManagementMode(
-    hasPositionManagementModeOverride
-      ? body.positionManagementModeOverride
-      : current.positionManagementModeOverride,
-    "FX Position Mode Override",
-    { nullable: true }
-  );
-  const autoHedgingAdmissionModeOverride =
-    validatedPricingRuleAutoHedgingAdmissionModeOverride(
-      hasAutoHedgingAdmissionModeOverride
-        ? body.autoHedgingAdmissionModeOverride
-        : current.autoHedgingAdmissionModeOverride
+  const autoManagementAdmissionModeOverride =
+    validatedPricingRuleAutoManagementAdmissionModeOverride(
+      hasAutoManagementAdmissionModeOverride
+        ? body.autoManagementAdmissionModeOverride
+        : current.autoManagementAdmissionModeOverride
     );
 
-  if (positionManagementModeOverride.error) {
-    return positionManagementModeOverride;
-  }
-
-  if (autoHedgingAdmissionModeOverride.error) {
-    return autoHedgingAdmissionModeOverride;
+  if (autoManagementAdmissionModeOverride.error) {
+    return autoManagementAdmissionModeOverride;
   }
 
   return {
     marginPercent,
-    positionManagementModeOverride: positionManagementModeOverride.value,
-    autoHedgingAdmissionModeOverride: autoHedgingAdmissionModeOverride.value
+    autoManagementAdmissionModeOverride: autoManagementAdmissionModeOverride.value
   };
 }
 
@@ -12295,8 +12038,8 @@ function pricingRuleImmutableTermsChanged(body, current) {
   }
 
   if (
-    Object.prototype.hasOwnProperty.call(body, "executionContextId")
-    && normalizedExecutionContextId(body.executionContextId) !== current.executionContextId
+    Object.prototype.hasOwnProperty.call(body, "tradeContextId")
+    && normalizedTradeContextId(body.tradeContextId) !== current.tradeContextId
   ) {
     return true;
   }
@@ -12425,10 +12168,10 @@ function validateClientDealGenerationSettingsPayload(body, baseCcyFractionDigits
   };
 }
 
-function validateClientFxDealPayload(body) {
+function validateClientDealPayload(body) {
   const executionTimestamp = normalizedText(body.executionTimestamp);
   const counterpartyId = integerInRange(body.counterpartyId, 1, Number.MAX_SAFE_INTEGER);
-  const executionContextId = optionalPositiveInteger(body.executionContextId);
+  const tradeContextId = optionalPositiveInteger(body.tradeContextId);
   const pricingRuleId = optionalPositiveInteger(body.pricingRuleId);
   const manualPricingReason = normalizedText(body.manualPricingReason).toUpperCase();
   const transferRate = normalizedPositiveDecimalText(body.transferRate);
@@ -12469,8 +12212,8 @@ function validateClientFxDealPayload(body) {
     return { error: "Counterparty ID must be a positive integer." };
   }
 
-  if (Number.isNaN(executionContextId)) {
-    return { error: "Execution Context ID must be a positive integer when provided." };
+  if (Number.isNaN(tradeContextId)) {
+    return { error: "Trade Context ID must be a positive integer when provided." };
   }
 
   if (Number.isNaN(pricingRuleId)) {
@@ -12482,9 +12225,9 @@ function validateClientFxDealPayload(body) {
     return { error: "Manual Pricing Reason must be CLIENT_ONBOARDING when provided." };
   }
 
-  if ((pricingRuleId === null) !== (executionContextId === null)) {
+  if ((pricingRuleId === null) !== (tradeContextId === null)) {
     return {
-      error: "Pricing Rule ID and Execution Context ID must either both be provided or both be omitted."
+      error: "Pricing Rule ID and Trade Context ID must either both be provided or both be omitted."
     };
   }
 
@@ -12564,7 +12307,7 @@ function validateClientFxDealPayload(body) {
   return {
     executionTimestamp,
     counterpartyId,
-    executionContextId,
+    tradeContextId,
     pricingRuleId,
     manualPricingReason: manualPricingReason || null,
     transferRate: pricingRuleId === null ? transferRate : null,
@@ -12585,7 +12328,7 @@ function validateClientFxDealPayload(body) {
   };
 }
 
-function validateHedgeFxDealBasePayload(body) {
+function validateHedgeDealBasePayload(body) {
   const pricingRuleId = optionalPositiveInteger(body.pricingRuleId);
   const ccyPairCode = normalizedText(body.ccyPairCode).toUpperCase();
   const side = normalizedText(body.side).toUpperCase();
@@ -12598,7 +12341,7 @@ function validateHedgeFxDealBasePayload(body) {
   )
     ? validatedPositionManagementMode(
       body.positionManagementMode,
-      "Hedge Deal FX Position Mode"
+      "Hedge Deal Position Management Mode"
     )
     : { value: null };
 
@@ -12641,8 +12384,8 @@ function validateHedgeFxDealBasePayload(body) {
   };
 }
 
-function validateHedgeFxDealPayload(body) {
-  const payload = validateHedgeFxDealBasePayload(body);
+function validateHedgeDealPayload(body) {
+  const payload = validateHedgeDealBasePayload(body);
 
   if (payload.error) {
     return payload;
@@ -12660,8 +12403,8 @@ function validateHedgeFxDealPayload(body) {
   };
 }
 
-function validateAutoPricedHedgeFxDealPayload(body) {
-  const payload = validateHedgeFxDealBasePayload(body);
+function validateAutoPricedHedgeDealPayload(body) {
+  const payload = validateHedgeDealBasePayload(body);
 
   if (payload.error) {
     return payload;
@@ -12671,7 +12414,7 @@ function validateAutoPricedHedgeFxDealPayload(body) {
     && body.tradeRate !== null
     && String(body.tradeRate).trim() !== "") {
     return {
-      error: "Trade Rate must not be provided for an AUTO_PRICED Hedge FX Deal."
+      error: "Trade Rate must not be provided for an AUTO_PRICED Hedge Deal."
     };
   }
 
@@ -12697,13 +12440,13 @@ function validateHedgeQuickModeDealPayload(body) {
   )
     ? validatedPositionManagementMode(
       body.positionManagementMode,
-      "Hedge Deal FX Position Mode"
+      "Hedge Deal Position Management Mode"
     )
     : { value: null };
 
   if (unexpectedFields.length > 0) {
     return {
-      error: `Only Ccy Pair Code, Side, Preset Code, Tenor and FX Position Mode may be provided. Unexpected fields: ${unexpectedFields.join(", ")}.`
+      error: `Only Ccy Pair Code, Side, Preset Code, Tenor and Position Management Mode may be provided. Unexpected fields: ${unexpectedFields.join(", ")}.`
     };
   }
 
@@ -12825,17 +12568,7 @@ function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractio
   };
 }
 
-function validateClientFxDealCommentPayload(body) {
-  const comment = normalizedText(body.comment);
-
-  if (comment.length > 500 || /[\r\n]/.test(comment)) {
-    return { error: "Comment must be a single line of no more than 500 characters." };
-  }
-
-  return { comment: comment || null };
-}
-
-function executionContextReferenceError(payload) {
+function tradeContextReferenceError(payload) {
   if (!servicingLocation(payload.servicingLocationId)) {
     return `Servicing Location ${payload.servicingLocationId} was not found.`;
   }
@@ -12844,8 +12577,8 @@ function executionContextReferenceError(payload) {
     return `Accounting System ${payload.accountingSystemId} was not found.`;
   }
 
-  if (!executionSystem(payload.executionSystemId)) {
-    return `Execution System ${payload.executionSystemId} was not found.`;
+  if (!originatingSystem(payload.originatingSystemId)) {
+    return `Originating System ${payload.originatingSystemId} was not found.`;
   }
 
   return "";
@@ -12856,8 +12589,8 @@ function pricingRuleReferenceError(payload) {
     return `Trading Counterparty ${payload.counterpartyId} was not found.`;
   }
 
-  if (!executionContext(payload.executionContextId)) {
-    return `Execution Context ${payload.executionContextId} was not found.`;
+  if (!tradeContext(payload.tradeContextId)) {
+    return `Trade Context ${payload.tradeContextId} was not found.`;
   }
 
   if (!ccyPairOption(payload.ccyPairCode)) {
@@ -12867,22 +12600,22 @@ function pricingRuleReferenceError(payload) {
   return "";
 }
 
-function validateFxBatchingSettingsPayload(body) {
+function validateBatchingSettingsPayload(body) {
   try {
-    return validatedFxBatchingSettings(body);
+    return validatedBatchingSettings(body);
   } catch (error) {
     return {
-      error: String(error?.code || "").includes("FX_BATCHING_SETTINGS")
+      error: String(error?.code || "").includes("BATCHING_SETTINGS")
         || error?.code === "IN_DEVELOPMENT"
         ? error.message
-        : "FX Batching Settings are invalid."
+        : "Batching Settings are invalid."
     };
   }
 }
 
-function validateFxAutoBatchingSettingsPayload(body) {
+function validateAutoBatchingSettingsPayload(body) {
   try {
-    const settings = validatedFxAutoBatchingSettings(body);
+    const settings = validatedAutoBatchingSettings(body);
     const unknownCcyPairCode = settings.eligibleCcyPairCodes.find(
       ccyPairCode => !ccyPairOption(ccyPairCode)
     );
@@ -12896,25 +12629,25 @@ function validateFxAutoBatchingSettingsPayload(body) {
     return settings;
   } catch (error) {
     return {
-      error: error?.code === "INVALID_FX_AUTO_BATCHING_SETTINGS"
+      error: error?.code === "INVALID_AUTO_BATCHING_SETTINGS"
         ? error.message
-        : "FX Auto Batching Settings are invalid."
+        : "Auto Batching Settings are invalid."
     };
   }
 }
 
-function pricingRuleExecutionContextAssignmentError(payload) {
-  if (tradingCounterpartyExecutionContext(
+function pricingRuleTradeContextAssignmentError(payload) {
+  if (tradingCounterpartyTradeContext(
     payload.counterpartyId,
-    payload.executionContextId
+    payload.tradeContextId
   )) {
     return "";
   }
 
-  return `Execution Context ${payload.executionContextId} is not attached to Trading Counterparty ${payload.counterpartyId}.`;
+  return `Trade Context ${payload.tradeContextId} is not attached to Trading Counterparty ${payload.counterpartyId}.`;
 }
 
-function clientFxDealReferenceError(payload) {
+function clientDealReferenceError(payload) {
   const counterparty = tradingCounterparty(payload.counterpartyId);
 
   if (!counterparty) {
@@ -12936,8 +12669,8 @@ function clientFxDealReferenceError(payload) {
     return `Dealt Ccy Code must be ${pair.baseCcy} or ${pair.quoteCcy}.`;
   }
 
-  if (payload.executionContextId !== null && !executionContext(payload.executionContextId)) {
-    return `Execution Context ${payload.executionContextId} was not found.`;
+  if (payload.tradeContextId !== null && !tradeContext(payload.tradeContextId)) {
+    return `Trade Context ${payload.tradeContextId} was not found.`;
   }
 
   if (payload.pricingRuleId !== null) {
@@ -12948,20 +12681,20 @@ function clientFxDealReferenceError(payload) {
     }
 
     if (!clientDealPricingRule(payload.pricingRuleId)) {
-      return `Pricing Rule ${payload.pricingRuleId} must use an Execution System with DEALER_PRICED pricing mode.`;
+      return `Pricing Rule ${payload.pricingRuleId} must use an Originating System with DEALER_PRICED pricing mode.`;
     }
 
     if (rule.counterpartyId !== payload.counterpartyId
-      || rule.executionContextId !== payload.executionContextId
+      || rule.tradeContextId !== payload.tradeContextId
       || rule.ccyPairCode !== payload.ccyPairCode) {
-      return `Pricing Rule ${payload.pricingRuleId} does not match the Client FX Deal scope.`;
+      return `Pricing Rule ${payload.pricingRuleId} does not match the Client Deal scope.`;
     }
   }
 
   return "";
 }
 
-function hedgeFxDealReferenceErrorForPricingMode(payload, pricingMode) {
+function hedgeDealReferenceErrorForPricingMode(payload, pricingMode) {
   const rule = pricingRule(payload.pricingRuleId);
 
   if (!rule) {
@@ -12973,7 +12706,7 @@ function hedgeFxDealReferenceErrorForPricingMode(payload, pricingMode) {
   }
 
   if (!eligibleHedgeDealPricingRule(payload.pricingRuleId, pricingMode)) {
-    return `Pricing Rule ${payload.pricingRuleId} must reference an active HEDGE_COUNTERPARTY and use an active ${pricingMode} Execution System.`;
+    return `Pricing Rule ${payload.pricingRuleId} must reference an active HEDGE_COUNTERPARTY and use an active ${pricingMode} Originating System.`;
   }
 
   if (rule.ccyPairCode !== payload.ccyPairCode) {
@@ -12990,12 +12723,12 @@ function hedgeFxDealReferenceErrorForPricingMode(payload, pricingMode) {
   return "";
 }
 
-function hedgeFxDealReferenceError(payload) {
-  return hedgeFxDealReferenceErrorForPricingMode(payload, "DEALER_PRICED");
+function hedgeDealReferenceError(payload) {
+  return hedgeDealReferenceErrorForPricingMode(payload, "DEALER_PRICED");
 }
 
-function autoPricedHedgeFxDealReferenceError(payload) {
-  return hedgeFxDealReferenceErrorForPricingMode(payload, "AUTO_PRICED");
+function autoPricedHedgeDealReferenceError(payload) {
+  return hedgeDealReferenceErrorForPricingMode(payload, "AUTO_PRICED");
 }
 
 function hedgeQuickModeSettingsReferenceError(payload) {
@@ -13020,7 +12753,7 @@ function hedgeQuickModeSettingsReferenceError(payload) {
   }
 
   if (rule.pricingMode !== "AUTO_PRICED") {
-    return `Pricing Rule ${payload.pricingRuleId} must use an AUTO_PRICED Execution System.`;
+    return `Pricing Rule ${payload.pricingRuleId} must use an AUTO_PRICED Originating System.`;
   }
 
   if (rule.ccyPairCode !== payload.ccyPairCode) {
@@ -13037,71 +12770,71 @@ function hedgeQuickModeSettingsReferenceError(payload) {
 function databaseConstraintMessage(error) {
   const message = error instanceof Error ? error.message : String(error);
 
-  if (message.includes("Pricing Rule Execution Context must be attached to its Trading Counterparty")) {
+  if (message.includes("Pricing Rule Trade Context must be attached to its Trading Counterparty")) {
     return {
       status: 409,
-      code: "PRICING_RULE_EXECUTION_CONTEXT_NOT_ATTACHED",
-      message: "A Pricing Rule can use only an Execution Context attached to its Trading Counterparty."
+      code: "PRICING_RULE_TRADE_CONTEXT_NOT_ATTACHED",
+      message: "A Pricing Rule can use only a Trade Context attached to its Trading Counterparty."
     };
   }
 
-  if (message.includes("an Execution Context assignment used by Pricing Rules cannot be detached")) {
+  if (message.includes("a Trade Context assignment used by Pricing Rules cannot be detached")) {
     return {
       status: 409,
-      code: "COUNTERPARTY_EXECUTION_CONTEXT_IN_USE",
-      message: "The Execution Context cannot be detached while Pricing Rules use this assignment."
+      code: "COUNTERPARTY_TRADE_CONTEXT_IN_USE",
+      message: "The Trade Context cannot be detached while Pricing Rules use this assignment."
     };
   }
 
-  if (message.includes("an Execution Context assignment identity cannot be changed")) {
+  if (message.includes("a Trade Context assignment identity cannot be changed")) {
     return {
       status: 409,
-      code: "COUNTERPARTY_EXECUTION_CONTEXT_IMMUTABLE",
-      message: "An Execution Context assignment cannot be changed. Attach a new Context and detach the old one."
+      code: "COUNTERPARTY_TRADE_CONTEXT_IMMUTABLE",
+      message: "A Trade Context assignment cannot be changed. Attach a new Context and detach the old one."
     };
   }
 
-  if (message.includes("an Execution System used by Execution Context cannot change Pricing Mode")) {
+  if (message.includes("an Originating System used by Trade Context cannot change Pricing Mode")) {
     return {
       status: 409,
-      code: "EXECUTION_SYSTEM_PRICING_MODE_IMMUTABLE",
-      message: "An Execution System Pricing Mode cannot be changed while it is used by Execution Context."
+      code: "ORIGINATING_SYSTEM_PRICING_MODE_IMMUTABLE",
+      message: "An Originating System Pricing Mode cannot be changed while it is used by Trade Context."
     };
   }
 
-  if (message.includes("a Trading Counterparty used by client_fx_deals must retain the CLIENT role")) {
+  if (message.includes("a Trading Counterparty used by client_deals must retain the CLIENT role")) {
     return {
       status: 409,
-      code: "TRADING_COUNTERPARTY_HAS_CLIENT_FX_DEALS",
-      message: "A Trading Counterparty used by Client FX Deals must retain the CLIENT role."
+      code: "TRADING_COUNTERPARTY_HAS_CLIENT_DEALS",
+      message: "A Trading Counterparty used by Client Deals must retain the CLIENT role."
     };
   }
 
-  if (message.includes("client_fx_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role")) {
+  if (message.includes("client_deals.counterparty_id must reference a Trading Counterparty with the CLIENT role")) {
     return {
       status: 400,
-      code: "INVALID_CLIENT_FX_DEAL_COUNTERPARTY",
-      message: "A Client FX Deal must reference a Trading Counterparty with the CLIENT role."
+      code: "INVALID_CLIENT_DEAL_COUNTERPARTY",
+      message: "A Client Deal must reference a Trading Counterparty with the CLIENT role."
     };
   }
 
-  if (message.includes("a Trading Counterparty used by fx_hedge_deals must retain the HEDGE_COUNTERPARTY role")) {
+  if (message.includes("a Trading Counterparty used by hedge_deals must retain the HEDGE_COUNTERPARTY role")) {
     return {
       status: 409,
-      code: "TRADING_COUNTERPARTY_HAS_HEDGE_FX_DEALS",
-      message: "A Trading Counterparty used by Hedge FX Deals must retain the HEDGE_COUNTERPARTY role."
+      code: "TRADING_COUNTERPARTY_HAS_HEDGE_DEALS",
+      message: "A Trading Counterparty used by Hedge Deals must retain the HEDGE_COUNTERPARTY role."
     };
   }
 
-  if (message.includes("fx_hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role")) {
+  if (message.includes("hedge_deals.counterparty_id must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role")) {
     return {
       status: 400,
-      code: "INVALID_HEDGE_FX_DEAL_COUNTERPARTY",
-      message: "A Hedge FX Deal must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role."
+      code: "INVALID_HEDGE_DEAL_COUNTERPARTY",
+      message: "A Hedge Deal must reference a Trading Counterparty with the HEDGE_COUNTERPARTY role."
     };
   }
 
-  if (message.includes("fx_hedge_quick_mode_settings must reference an AUTO_PRICED HEDGE_COUNTERPARTY")) {
+  if (message.includes("hedge_quick_mode_settings must reference an AUTO_PRICED HEDGE_COUNTERPARTY")) {
     return {
       status: 400,
       code: "INVALID_HEDGE_QUICK_MODE_SETTINGS_REFERENCE",
@@ -13109,7 +12842,7 @@ function databaseConstraintMessage(error) {
     };
   }
 
-  if (message.includes("fx_hedge_quick_mode_settings.base_ccy_fraction_digits")) {
+  if (message.includes("hedge_quick_mode_settings.base_ccy_fraction_digits")) {
     return {
       status: 400,
       code: "INVALID_HEDGE_QUICK_MODE_SETTINGS_PRECISION",
@@ -13118,11 +12851,11 @@ function databaseConstraintMessage(error) {
   }
 
   if ([
-    "a Pricing Rule used by fx_hedge_quick_mode_settings",
-    "a Trading Counterparty used by fx_hedge_quick_mode_settings",
-    "an Execution Context used by fx_hedge_quick_mode_settings",
-    "an Execution System used by fx_hedge_quick_mode_settings",
-    "base currency precision used by fx_hedge_quick_mode_settings"
+    "a Pricing Rule used by hedge_quick_mode_settings",
+    "a Trading Counterparty used by hedge_quick_mode_settings",
+    "a Trade Context used by hedge_quick_mode_settings",
+    "an Originating System used by hedge_quick_mode_settings",
+    "base currency precision used by hedge_quick_mode_settings"
   ].some(fragment => message.includes(fragment))) {
     return {
       status: 409,
@@ -13224,6 +12957,45 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (method === "GET" && pathname === "/api/v1/market-pulse/historical-candles") {
+    const result = await historicalCandlesApi.load(url.searchParams);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+
+  if (method === "POST" && pathname === "/api/v1/market-pulse/historical-candles/sync") {
+    const body = await readJsonBody(request);
+    const result = await historicalCandlesApi.sync(body);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+
+  if (method === "POST" && pathname === "/api/v1/market-pulse/historical-candles/backfill/step") {
+    const body = await readJsonBody(request);
+    const result = await historicalCandlesApi.backfillStep(body);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+
+  if (method === "GET" && pathname === "/api/v1/market-pulse/historical-candles/backfill/status") {
+    const result = await historicalCandlesApi.backfillStatus(url.searchParams);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+
+  if (method === "GET" && pathname === "/api/v1/market-pulse/historical-candles/manual-sync/plan") {
+    const result = await historicalCandlesApi.manualSyncPlan(url.searchParams);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+
+  if (method === "POST" && pathname === "/api/v1/market-pulse/historical-candles/manual-sync/step") {
+    const body = await readJsonBody(request);
+    const result = await historicalCandlesApi.manualSyncStep(body);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+
   if (method === "GET" && pathname === "/api/v1/market-pulse-simulation/status") {
     sendJson(response, 200, marketPulseSimulator.snapshot());
     return true;
@@ -13260,8 +13032,9 @@ async function handleApi(request, response, url) {
       ccyPairOptions: ccyPairOptions(),
       servicingLocations: servicingLocations(),
       accountingSystems: accountingSystems(),
-      executionSystems: executionSystems(),
-      executionContexts: executionContexts(),
+      originatingSystems: originatingSystems(),
+      tradePurposes: tradePurposeApi.list(),
+      tradeContexts: tradeContexts(),
       tradingCounterparties: tradingCounterparties(),
       users: users(),
       pricingRules: pricingRules(),
@@ -13271,14 +13044,14 @@ async function handleApi(request, response, url) {
         ...autoPricedHedgeDealPricingRules()
       ],
       hedgeQuickModeSettings: hedgeQuickModeSettings(),
-      fxBatchingSettings: fxBatchingSettings(),
-      fxAutoBatchingSettings: fxAutoBatchingSettings(),
-      autoHedgingAdmissionPolicy: autoHedgingAdmissionPolicy(),
-      fxAutoBatchingProcess: fxAutoBatchingProcess.status(),
-      clientFxDeals: clientFxDeals(),
-      hedgeFxDeals: hedgeFxDeals(),
-      fxPositions: fxPositions(),
-      fxBatches: fxBatches(),
+      batchingSettings: batchingSettings(),
+      autoBatchingSettings: autoBatchingSettings(),
+      autoModeEligibilityRules: autoModeEligibilityRules(),
+      autoBatchingProcess: autoBatchingProcess.status(),
+      clientDeals: clientDeals(),
+      hedgeDeals: hedgeDeals(),
+      positions: positions(),
+      batches: batches(),
       uiTableLayouts: Object.entries(UI_TABLE_LAYOUTS).map(([tableKey, tableLayout]) => ({
         tableKey,
         tableLabel: tableLayout.tableLabel,
@@ -13481,11 +13254,11 @@ async function handleApi(request, response, url) {
 
   if (pathname === "/api/v1/client-deal-generation/one" && method === "POST") {
     try {
-      const deal = generateOneClientFxDeal();
+      const deal = generateOneClientDeal();
       sendJson(response, 201, deal);
     } catch (error) {
       if (String(error?.code || "").startsWith("CLIENT_DEAL_GENERATION_")
-        || error?.code === "GENERATED_CLIENT_FX_DEAL_INVALID") {
+        || error?.code === "GENERATED_CLIENT_DEAL_INVALID") {
         apiError(response, 409, error.code, error.message);
       } else {
         handleDatabaseError(response, error);
@@ -13519,8 +13292,8 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/client-fx-deals" && method === "GET") {
-    sendJson(response, 200, clientFxDeals());
+  if (pathname === "/api/v1/client-deals" && method === "GET") {
+    sendJson(response, 200, clientDeals());
     return true;
   }
 
@@ -13536,37 +13309,38 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/fx-positions" && method === "GET") {
-    sendJson(response, 200, fxPositions());
+  if (pathname === "/api/v1/positions" && method === "GET") {
+    sendJson(response, 200, positions());
     return true;
   }
 
   if (
-    pathname === "/api/v1/fx-positions/send-to-auto-batching"
+    pathname === "/api/v1/positions/move-to-auto-management"
     && method === "POST"
   ) {
     const body = await readJsonBody(request);
 
     try {
-      const result = sendFxTradesToAutoPositionManagementUseCase.execute(body);
+      const result = moveTradesToAutoManagementUseCase.execute(body);
 
       if (result.transitionedCount > 0) {
-        fxAutoBatchingProcess.requestEvaluation();
+        autoBatchingProcess.requestEvaluation();
       }
 
       sendJson(response, 200, result);
     } catch (error) {
       if (
-        error?.code === "INVALID_FX_POSITION_MODE_TRANSITION_COMMAND"
-        || error?.code === "INVALID_FX_TRADE_IDENTITY"
+        error?.code === "INVALID_POSITION_MODE_TRANSITION_COMMAND"
+        || error?.code === "INVALID_TRADE_IDENTITY"
       ) {
         apiError(response, 400, error.code, error.message);
-      } else if (error?.code === "FX_POSITION_TRADE_NOT_FOUND") {
+      } else if (error?.code === "POSITION_TRADE_NOT_FOUND") {
         apiError(response, 404, error.code, error.message);
       } else if (
-        error?.code === "FX_POSITION_MODE_TRANSITION_REJECTED"
-        || error?.code === "FX_POSITION_MODE_TRANSITION_BLOCKED"
-        || error?.code === "FX_POSITION_MODE_TRANSITION_CONFLICT"
+        error?.code === "AUTO_MANAGEMENT_ADMISSION_REJECTED"
+        || error?.code === "POSITION_MODE_TRANSITION_REJECTED"
+        || error?.code === "POSITION_MODE_TRANSITION_BLOCKED"
+        || error?.code === "POSITION_MODE_TRANSITION_CONFLICT"
       ) {
         apiError(response, 409, error.code, error.message);
       } else {
@@ -13577,22 +13351,22 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/fx-batching-settings" && method === "GET") {
-    sendJson(response, 200, fxBatchingSettings());
+  if (pathname === "/api/v1/batching-settings" && method === "GET") {
+    sendJson(response, 200, batchingSettings());
     return true;
   }
 
-  if (pathname === "/api/v1/fx-batching-settings" && method === "PUT") {
+  if (pathname === "/api/v1/batching-settings" && method === "PUT") {
     const body = await readJsonBody(request);
-    const payload = validateFxBatchingSettingsPayload(body);
+    const payload = validateBatchingSettingsPayload(body);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_FX_BATCHING_SETTINGS", payload.error);
+      apiError(response, 400, "INVALID_BATCHING_SETTINGS", payload.error);
       return true;
     }
 
     try {
-      sendJson(response, 200, updateFxBatchingSettings(payload));
+      sendJson(response, 200, updateBatchingSettings(payload));
     } catch (error) {
       handleDatabaseError(response, error);
     }
@@ -13600,23 +13374,23 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/fx-auto-batching-settings" && method === "GET") {
-    sendJson(response, 200, fxAutoBatchingSettings());
+  if (pathname === "/api/v1/auto-batching-settings" && method === "GET") {
+    sendJson(response, 200, autoBatchingSettings());
     return true;
   }
 
-  if (pathname === "/api/v1/fx-auto-batching-settings" && method === "PUT") {
+  if (pathname === "/api/v1/auto-batching-settings" && method === "PUT") {
     const body = await readJsonBody(request);
-    const payload = validateFxAutoBatchingSettingsPayload(body);
+    const payload = validateAutoBatchingSettingsPayload(body);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_FX_AUTO_BATCHING_SETTINGS", payload.error);
+      apiError(response, 400, "INVALID_AUTO_BATCHING_SETTINGS", payload.error);
       return true;
     }
 
     try {
-      const previousSettings = fxAutoBatchingSettings();
-      const settings = updateFxAutoBatchingSettings(payload);
+      const previousSettings = autoBatchingSettings();
+      const settings = updateAutoBatchingSettings(payload);
 
       if (
         settings.maxIntervalSeconds !== previousSettings.maxIntervalSeconds
@@ -13627,7 +13401,7 @@ async function handleApi(request, response, url) {
         || settings.eligibleCcyPairCodes.join(",")
           !== previousSettings.eligibleCcyPairCodes.join(",")
       ) {
-        fxAutoBatchingProcess.reschedule();
+        autoBatchingProcess.reschedule();
       }
 
       sendJson(response, 200, settings);
@@ -13638,41 +13412,41 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/fx-auto-batching/process" && method === "GET") {
-    sendJson(response, 200, fxAutoBatchingProcess.status());
+  if (pathname === "/api/v1/auto-batching/process" && method === "GET") {
+    sendJson(response, 200, autoBatchingProcess.status());
     return true;
   }
 
-  if (pathname === "/api/v1/fx-auto-batching/process/start" && method === "POST") {
+  if (pathname === "/api/v1/auto-batching/process/start" && method === "POST") {
     try {
-      sendJson(response, 200, fxAutoBatchingProcess.start());
+      sendJson(response, 200, autoBatchingProcess.start());
     } catch (error) {
       handleDatabaseError(response, error);
     }
     return true;
   }
 
-  if (pathname === "/api/v1/fx-auto-batching/process/stop" && method === "POST") {
-    sendJson(response, 200, fxAutoBatchingProcess.stop());
+  if (pathname === "/api/v1/auto-batching/process/stop" && method === "POST") {
+    sendJson(response, 200, autoBatchingProcess.stop());
     return true;
   }
 
-  if (pathname === "/api/v1/fx-batches" && method === "GET") {
-    sendJson(response, 200, fxBatches());
+  if (pathname === "/api/v1/batches" && method === "GET") {
+    sendJson(response, 200, batches());
     return true;
   }
 
-  if (pathname === "/api/v1/fx-batch-formation-audit" && method === "GET") {
-    sendJson(response, 200, fxBatchFormationAudit());
+  if (pathname === "/api/v1/batch-formation-audit" && method === "GET") {
+    sendJson(response, 200, batchFormationAudit());
     return true;
   }
 
   if (pathname === "/api/v1/batching-positions" && method === "GET") {
-    sendJson(response, 200, fxBatchTrades());
+    sendJson(response, 200, batchTrades());
     return true;
   }
 
-  if (pathname === "/api/v1/fx-batches" && method === "POST") {
+  if (pathname === "/api/v1/batches" && method === "POST") {
     const body = await readJsonBody(request);
     const legacyMode = body.mode === undefined
       ? null
@@ -13683,17 +13457,17 @@ async function handleApi(request, response, url) {
         response,
         400,
         "INVALID_BATCH_COMMAND",
-        "Manual batching creates exactly one FX Batch; selection mode is not supported."
+        "Manual batching creates exactly one Batch; selection mode is not supported."
       );
       return true;
     }
 
     try {
-      const result = formFxBatchUseCase.execute({
+      const result = formBatchUseCase.execute({
         idempotencyKey: request.headers?.["idempotency-key"] ?? body.idempotencyKey,
         tradeIds: body.tradeIds
       });
-      fxAutoBatchingProcess.requestEvaluation();
+      autoBatchingProcess.requestEvaluation();
       sendJson(response, result.replayed ? 200 : 201, result);
     } catch (error) {
       if (
@@ -13714,23 +13488,23 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  const fxBatchRollbackMatch = /^\/api\/v1\/fx-batches\/(\d+)\/rollback$/.exec(pathname);
+  const batchRollbackMatch = /^\/api\/v1\/batches\/(\d+)\/rollback$/.exec(pathname);
 
-  if (fxBatchRollbackMatch && method === "POST") {
-    const batchId = Number(fxBatchRollbackMatch[1]);
+  if (batchRollbackMatch && method === "POST") {
+    const batchId = Number(batchRollbackMatch[1]);
 
     try {
-      const result = rollbackFxBatch(batchId);
-      fxAutoBatchingProcess.keepTradesUnderManualControl(
+      const result = rollbackBatch(batchId);
+      autoBatchingProcess.excludeTradesFromCurrentRun(
         result.returnedTradeIds
       );
       sendJson(response, 200, result);
     } catch (error) {
-      if (error?.code === "FX_BATCH_NOT_FOUND") {
+      if (error?.code === "BATCH_NOT_FOUND") {
         apiError(response, 404, error.code, error.message);
       } else if (
-        error?.code === "FX_BATCH_NOT_ROLLBACKABLE"
-        || error?.code === "FX_BATCH_ROLLBACK_CONFLICT"
+        error?.code === "BATCH_NOT_ROLLBACKABLE"
+        || error?.code === "BATCH_ROLLBACK_CONFLICT"
       ) {
         apiError(response, 409, error.code, error.message);
       } else {
@@ -13741,21 +13515,21 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  const fxBatchMatch = /^\/api\/v1\/fx-batches\/(\d+)$/.exec(pathname);
+  const batchMatch = /^\/api\/v1\/batches\/(\d+)$/.exec(pathname);
 
-  if (fxBatchMatch && method === "GET") {
-    const batchId = Number(fxBatchMatch[1]);
+  if (batchMatch && method === "GET") {
+    const batchId = Number(batchMatch[1]);
     const batch = database.prepare(`
       SELECT 1 AS present
-      FROM fx_batches
+      FROM batches
       WHERE batch_id = ?
         AND batch_status IN ('FORMED', 'ROLLED_BACK')
     `).get(batchId);
 
     if (!batch) {
-      apiError(response, 404, "FX_BATCH_NOT_FOUND", `FX Batch ${batchId} was not found.`);
+      apiError(response, 404, "BATCH_NOT_FOUND", `Batch ${batchId} was not found.`);
     } else {
-      sendJson(response, 200, fxBatchDetails(batchId));
+      sendJson(response, 200, batchDetails(batchId));
     }
 
     return true;
@@ -13780,8 +13554,8 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/hedge-fx-deals" && method === "GET") {
-    sendJson(response, 200, hedgeFxDeals());
+  if (pathname === "/api/v1/hedge-deals" && method === "GET") {
+    sendJson(response, 200, hedgeDeals());
     return true;
   }
 
@@ -13883,7 +13657,7 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/hedge-fx-deals/quick-mode" && method === "POST") {
+  if (pathname === "/api/v1/hedge-deals/quick-mode" && method === "POST") {
     const requestTimestamp = new Date().toISOString();
     const body = await readJsonBody(request);
     const payload = validateHedgeQuickModeDealPayload(body);
@@ -13915,12 +13689,12 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    if (!settings.counterpartyActive || !settings.executionSystemActive) {
+    if (!settings.counterpartyActive || !settings.originatingSystemActive) {
       apiError(
         response,
         409,
         "HEDGE_QUICK_MODE_REFERENCE_INACTIVE",
-        "The configured Hedge Counterparty and Execution System must be active."
+        "The configured Hedge Counterparty and Originating System must be active."
       );
       return true;
     }
@@ -13932,7 +13706,7 @@ async function handleApi(request, response, url) {
         side: payload.side,
         tenor: payload.tenor || settings.defaultTenor
       });
-      const referenceError = autoPricedHedgeFxDealReferenceError(instruction);
+      const referenceError = autoPricedHedgeDealReferenceError(instruction);
 
       if (referenceError) {
         apiError(
@@ -13944,16 +13718,16 @@ async function handleApi(request, response, url) {
         return true;
       }
 
-      const priced = autoPricedHedgeFxDealWithCalculatedTerms({
+      const priced = autoPricedHedgeDealWithCalculatedTerms({
         ...instruction,
         positionManagementMode: payload.positionManagementMode
       });
-      const tradeId = createHedgeFxDeal(
+      const tradeId = createHedgeDeal(
         priced.deal,
         priced.exposureAmounts,
         requestTimestamp
       );
-      sendJson(response, 201, hedgeFxDeal(tradeId));
+      sendJson(response, 201, hedgeDeal(tradeId));
     } catch (error) {
       if (error?.code === "AUTO_PRICED_HEDGE_MARKET_QUOTE_UNAVAILABLE") {
         apiError(response, 409, error.code, error.message);
@@ -13967,41 +13741,41 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/hedge-fx-deals/auto-priced" && method === "POST") {
+  if (pathname === "/api/v1/hedge-deals/auto-priced" && method === "POST") {
     const requestTimestamp = new Date().toISOString();
     const body = await readJsonBody(request);
-    const payload = validateAutoPricedHedgeFxDealPayload(body);
+    const payload = validateAutoPricedHedgeDealPayload(body);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_AUTO_PRICED_HEDGE_FX_DEAL", payload.error);
+      apiError(response, 400, "INVALID_AUTO_PRICED_HEDGE_DEAL", payload.error);
       return true;
     }
 
-    const referenceError = autoPricedHedgeFxDealReferenceError(payload);
+    const referenceError = autoPricedHedgeDealReferenceError(payload);
 
     if (referenceError) {
       apiError(
         response,
         400,
-        "INVALID_AUTO_PRICED_HEDGE_FX_DEAL_REFERENCE",
+        "INVALID_AUTO_PRICED_HEDGE_DEAL_REFERENCE",
         referenceError
       );
       return true;
     }
 
     try {
-      const priced = autoPricedHedgeFxDealWithCalculatedTerms(payload);
-      const tradeId = createHedgeFxDeal(
+      const priced = autoPricedHedgeDealWithCalculatedTerms(payload);
+      const tradeId = createHedgeDeal(
         priced.deal,
         priced.exposureAmounts,
         requestTimestamp
       );
-      sendJson(response, 201, hedgeFxDeal(tradeId));
+      sendJson(response, 201, hedgeDeal(tradeId));
     } catch (error) {
       if (error?.code === "AUTO_PRICED_HEDGE_MARKET_QUOTE_UNAVAILABLE") {
         apiError(response, 409, error.code, error.message);
       } else if (error instanceof TypeError || error instanceof RangeError) {
-        apiError(response, 400, "INVALID_AUTO_PRICED_HEDGE_FX_DEAL_AMOUNT", error.message);
+        apiError(response, 400, "INVALID_AUTO_PRICED_HEDGE_DEAL_AMOUNT", error.message);
       } else {
         handleDatabaseError(response, error);
       }
@@ -14010,34 +13784,34 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/hedge-fx-deals" && method === "POST") {
+  if (pathname === "/api/v1/hedge-deals" && method === "POST") {
     const requestTimestamp = new Date().toISOString();
     const body = await readJsonBody(request);
-    const payload = validateHedgeFxDealPayload(body);
+    const payload = validateHedgeDealPayload(body);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_HEDGE_FX_DEAL", payload.error);
+      apiError(response, 400, "INVALID_HEDGE_DEAL", payload.error);
       return true;
     }
 
-    const referenceError = hedgeFxDealReferenceError(payload);
+    const referenceError = hedgeDealReferenceError(payload);
 
     if (referenceError) {
-      apiError(response, 400, "INVALID_HEDGE_FX_DEAL_REFERENCE", referenceError);
+      apiError(response, 400, "INVALID_HEDGE_DEAL_REFERENCE", referenceError);
       return true;
     }
 
     try {
-      const exposureAmounts = fxTradeExposureAmounts(payload);
-      const tradeId = createHedgeFxDeal(
-        hedgeFxDealWithCalculatedTerms(payload, exposureAmounts),
+      const exposureAmounts = tradeExposureAmounts(payload);
+      const tradeId = createHedgeDeal(
+        hedgeDealWithCalculatedTerms(payload, exposureAmounts),
         exposureAmounts,
         requestTimestamp
       );
-      sendJson(response, 201, hedgeFxDeal(tradeId));
+      sendJson(response, 201, hedgeDeal(tradeId));
     } catch (error) {
       if (error instanceof TypeError || error instanceof RangeError) {
-        apiError(response, 400, "INVALID_HEDGE_FX_DEAL_AMOUNT", error.message);
+        apiError(response, 400, "INVALID_HEDGE_DEAL_AMOUNT", error.message);
       } else {
         handleDatabaseError(response, error);
       }
@@ -14046,44 +13820,44 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  const hedgeFxDealMatch = /^\/api\/v1\/hedge-fx-deals\/(\d+)$/.exec(pathname);
+  const hedgeDealMatch = /^\/api\/v1\/hedge-deals\/(\d+)$/.exec(pathname);
 
-  if (hedgeFxDealMatch && method === "DELETE") {
+  if (hedgeDealMatch && method === "DELETE") {
     apiError(
       response,
       405,
-      "HEDGE_FX_DEAL_IMMUTABLE",
-      "Hedge FX Deals cannot be changed or deleted."
+      "HEDGE_DEAL_IMMUTABLE",
+      "Hedge Deals cannot be changed or deleted."
     );
     return true;
   }
 
-  if (pathname === "/api/v1/client-fx-deals" && method === "POST") {
+  if (pathname === "/api/v1/client-deals" && method === "POST") {
     const body = await readJsonBody(request);
-    const payload = validateClientFxDealPayload(body);
+    const payload = validateClientDealPayload(body);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_CLIENT_FX_DEAL", payload.error);
+      apiError(response, 400, "INVALID_CLIENT_DEAL", payload.error);
       return true;
     }
 
-    const referenceError = clientFxDealReferenceError(payload);
+    const referenceError = clientDealReferenceError(payload);
 
     if (referenceError) {
-      apiError(response, 400, "INVALID_CLIENT_FX_DEAL_REFERENCE", referenceError);
+      apiError(response, 400, "INVALID_CLIENT_DEAL_REFERENCE", referenceError);
       return true;
     }
 
     try {
-      const exposureAmounts = fxTradeExposureAmounts(payload);
-      const tradeId = createClientFxDeal(
-        clientFxDealWithCalculatedEconomics(payload, exposureAmounts),
+      const exposureAmounts = tradeExposureAmounts(payload);
+      const tradeId = createClientDeal(
+        clientDealWithCalculatedEconomics(payload, exposureAmounts),
         exposureAmounts
       );
-      sendJson(response, 201, clientFxDeal(tradeId));
+      sendJson(response, 201, clientDeal(tradeId));
     } catch (error) {
       if (error instanceof TypeError || error instanceof RangeError) {
-        apiError(response, 400, "INVALID_CLIENT_FX_DEAL_AMOUNT", error.message);
+        apiError(response, 400, "INVALID_CLIENT_DEAL_AMOUNT", error.message);
       } else {
         handleDatabaseError(response, error);
       }
@@ -14092,13 +13866,13 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  const clientFxDealMatch = /^\/api\/v1\/client-fx-deals\/(\d+)$/.exec(pathname);
+  const clientDealMatch = /^\/api\/v1\/client-deals\/(\d+)$/.exec(pathname);
 
-  if (clientFxDealMatch && method === "GET") {
-    const deal = clientFxDeal(Number(clientFxDealMatch[1]));
+  if (clientDealMatch && method === "GET") {
+    const deal = clientDeal(Number(clientDealMatch[1]));
 
     if (!deal) {
-      apiError(response, 404, "CLIENT_FX_DEAL_NOT_FOUND", "Client FX Deal was not found.");
+      apiError(response, 404, "CLIENT_DEAL_NOT_FOUND", "Client Deal was not found.");
     } else {
       sendJson(response, 200, deal);
     }
@@ -14106,53 +13880,22 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (clientFxDealMatch && method === "PUT") {
+  if (clientDealMatch && (method === "PUT" || method === "PATCH")) {
     apiError(
       response,
       405,
-      "CLIENT_FX_DEAL_IMMUTABLE",
-      "Client FX Deal attributes are immutable. Only Comment can be changed."
+      "CLIENT_DEAL_IMMUTABLE",
+      "Client Deal attributes, including Comment, are immutable."
     );
     return true;
   }
 
-  if (clientFxDealMatch && method === "PATCH") {
-    const clientDealId = Number(clientFxDealMatch[1]);
-
-    if (!clientFxDeal(clientDealId)) {
-      apiError(response, 404, "CLIENT_FX_DEAL_NOT_FOUND", "Client FX Deal was not found.");
-      return true;
-    }
-
-    const body = await readJsonBody(request);
-    const payload = validateClientFxDealCommentPayload(body);
-
-    if (payload.error) {
-      apiError(response, 400, "INVALID_CLIENT_FX_DEAL_COMMENT", payload.error);
-      return true;
-    }
-
-    try {
-      const updated = updateClientFxDealComment(clientDealId, payload.comment);
-
-      if (!updated) {
-        apiError(response, 404, "CLIENT_FX_DEAL_NOT_FOUND", "Client FX Deal was not found.");
-      } else {
-        sendJson(response, 200, clientFxDeal(clientDealId));
-      }
-    } catch (error) {
-      handleDatabaseError(response, error);
-    }
-
-    return true;
-  }
-
-  if (clientFxDealMatch && method === "DELETE") {
+  if (clientDealMatch && method === "DELETE") {
     apiError(
       response,
       405,
-      "CLIENT_FX_DEAL_IMMUTABLE",
-      "Client FX Deals cannot be deleted. Only Comment can be changed."
+      "CLIENT_DEAL_IMMUTABLE",
+      "Client Deals cannot be deleted."
     );
     return true;
   }
@@ -14183,13 +13926,13 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    const assignmentError = pricingRuleExecutionContextAssignmentError(payload);
+    const assignmentError = pricingRuleTradeContextAssignmentError(payload);
 
     if (assignmentError) {
       apiError(
         response,
         409,
-        "PRICING_RULE_EXECUTION_CONTEXT_NOT_ATTACHED",
+        "PRICING_RULE_TRADE_CONTEXT_NOT_ATTACHED",
         assignmentError
       );
       return true;
@@ -14201,20 +13944,18 @@ async function handleApi(request, response, url) {
           INSERT INTO pricing_rules
             (
               counterparty_id,
-              execution_context_id,
+              trade_context_id,
               ccy_pair_code,
               margin_percent,
-              position_management_mode_override,
-              auto_hedging_admission_mode_override
+              auto_management_admission_mode_override
             )
-          VALUES (?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?)
         `).run(
           payload.counterpartyId,
-          payload.executionContextId,
+          payload.tradeContextId,
           payload.ccyPairCode,
           payload.marginPercent,
-          payload.positionManagementModeOverride,
-          payload.autoHedgingAdmissionModeOverride
+          payload.autoManagementAdmissionModeOverride
         );
         const createdPricingRuleId = Number(result.lastInsertRowid);
         ensureClientDealGenerationSettingsForPricingRule(createdPricingRuleId);
@@ -14246,7 +13987,7 @@ async function handleApi(request, response, url) {
         response,
         409,
         "PRICING_RULE_TERMS_IMMUTABLE",
-        "Counterparty, Ccy Pair and Execution Context cannot be changed. Create a new Pricing Rule for different terms; only Margin Percent, FX Position Mode Override and Auto Hedging Admission Mode Override can be edited."
+        "Counterparty, Ccy Pair and Trade Context cannot be changed. Create a new Pricing Rule for different terms; only Margin Percent and Initial Mode Assignment override can be edited."
       );
       return true;
     }
@@ -14262,13 +14003,11 @@ async function handleApi(request, response, url) {
       database.prepare(`
         UPDATE pricing_rules
         SET margin_percent = ?,
-            position_management_mode_override = ?,
-            auto_hedging_admission_mode_override = ?
+            auto_management_admission_mode_override = ?
         WHERE pricing_rule_id = ?
       `).run(
         payload.marginPercent,
-        payload.positionManagementModeOverride,
-        payload.autoHedgingAdmissionModeOverride,
+        payload.autoManagementAdmissionModeOverride,
         pricingRuleId
       );
       sendJson(response, 200, pricingRule(pricingRuleId));
@@ -14329,9 +14068,9 @@ async function handleApi(request, response, url) {
 
       runInImmediateTransaction(database, () => {
         const result = database.prepare(`
-          INSERT INTO trading_counterparties (counterparty_name, is_active)
-          VALUES (?, ?)
-        `).run(payload.counterpartyName, payload.active ? 1 : 0);
+          INSERT INTO trading_counterparties (counterparty_scope, counterparty_name, is_active)
+          VALUES (?, ?, ?)
+        `).run(payload.counterpartyScope, payload.counterpartyName, payload.active ? 1 : 0);
         counterpartyId = Number(result.lastInsertRowid);
         saveTradingCounterpartyProfile(database, counterpartyId, payload);
         synchronizeTradingCounterpartyRoles(database, counterpartyId, payload.counterpartyRoles);
@@ -14345,13 +14084,13 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  const tradingCounterpartyExecutionContextsMatch =
-    /^\/api\/v1\/trading-counterparties\/(\d+)\/execution-contexts$/.exec(pathname);
-  const tradingCounterpartyExecutionContextMatch =
-    /^\/api\/v1\/trading-counterparties\/(\d+)\/execution-contexts\/(\d+)$/.exec(pathname);
+  const tradingCounterpartyTradeContextsMatch =
+    /^\/api\/v1\/trading-counterparties\/(\d+)\/trade-contexts$/.exec(pathname);
+  const tradingCounterpartyTradeContextMatch =
+    /^\/api\/v1\/trading-counterparties\/(\d+)\/trade-contexts\/(\d+)$/.exec(pathname);
 
-  if (tradingCounterpartyExecutionContextsMatch && method === "GET") {
-    const counterpartyId = Number(tradingCounterpartyExecutionContextsMatch[1]);
+  if (tradingCounterpartyTradeContextsMatch && method === "GET") {
+    const counterpartyId = Number(tradingCounterpartyTradeContextsMatch[1]);
 
     if (!tradingCounterparty(counterpartyId)) {
       apiError(
@@ -14363,12 +14102,12 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    sendJson(response, 200, tradingCounterpartyExecutionContexts(counterpartyId));
+    sendJson(response, 200, tradingCounterpartyTradeContexts(counterpartyId));
     return true;
   }
 
-  if (tradingCounterpartyExecutionContextsMatch && method === "PUT") {
-    const counterpartyId = Number(tradingCounterpartyExecutionContextsMatch[1]);
+  if (tradingCounterpartyTradeContextsMatch && method === "PUT") {
+    const counterpartyId = Number(tradingCounterpartyTradeContextsMatch[1]);
 
     if (!tradingCounterparty(counterpartyId)) {
       apiError(
@@ -14381,22 +14120,22 @@ async function handleApi(request, response, url) {
     }
 
     const body = await readJsonBody(request);
-    const payload = validateTradingCounterpartyExecutionContextsPayload(body);
+    const payload = validateTradingCounterpartyTradeContextsPayload(body);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_EXECUTION_CONTEXT_ASSIGNMENTS", payload.error);
+      apiError(response, 400, "INVALID_TRADE_CONTEXT_ASSIGNMENTS", payload.error);
       return true;
     }
 
-    const missingExecutionContextId = payload.executionContextIds
-      .find(executionContextId => !executionContext(executionContextId));
+    const missingTradeContextId = payload.tradeContextIds
+      .find(tradeContextId => !tradeContext(tradeContextId));
 
-    if (missingExecutionContextId !== undefined) {
+    if (missingTradeContextId !== undefined) {
       apiError(
         response,
         404,
-        "EXECUTION_CONTEXT_NOT_FOUND",
-        `Execution Context ${missingExecutionContextId} was not found.`
+        "TRADE_CONTEXT_NOT_FOUND",
+        `Trade Context ${missingTradeContextId} was not found.`
       );
       return true;
     }
@@ -14404,16 +14143,16 @@ async function handleApi(request, response, url) {
     try {
       runInImmediateTransaction(database, () => {
         const attach = database.prepare(`
-          INSERT OR IGNORE INTO trading_counterparty_execution_contexts
-            (counterparty_id, execution_context_id)
+          INSERT OR IGNORE INTO trading_counterparty_trade_contexts
+            (counterparty_id, trade_context_id)
           VALUES (?, ?)
         `);
 
-        payload.executionContextIds.forEach(executionContextId => {
-          attach.run(counterpartyId, executionContextId);
+        payload.tradeContextIds.forEach(tradeContextId => {
+          attach.run(counterpartyId, tradeContextId);
         });
       });
-      sendJson(response, 200, tradingCounterpartyExecutionContexts(counterpartyId));
+      sendJson(response, 200, tradingCounterpartyTradeContexts(counterpartyId));
     } catch (error) {
       handleDatabaseError(response, error);
     }
@@ -14421,9 +14160,9 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (tradingCounterpartyExecutionContextMatch && method === "PUT") {
-    const counterpartyId = Number(tradingCounterpartyExecutionContextMatch[1]);
-    const executionContextId = Number(tradingCounterpartyExecutionContextMatch[2]);
+  if (tradingCounterpartyTradeContextMatch && method === "PUT") {
+    const counterpartyId = Number(tradingCounterpartyTradeContextMatch[1]);
+    const tradeContextId = Number(tradingCounterpartyTradeContextMatch[2]);
 
     if (!tradingCounterparty(counterpartyId)) {
       apiError(
@@ -14435,26 +14174,26 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    if (!executionContext(executionContextId)) {
+    if (!tradeContext(tradeContextId)) {
       apiError(
         response,
         404,
-        "EXECUTION_CONTEXT_NOT_FOUND",
-        `Execution Context ${executionContextId} was not found.`
+        "TRADE_CONTEXT_NOT_FOUND",
+        `Trade Context ${tradeContextId} was not found.`
       );
       return true;
     }
 
     try {
       database.prepare(`
-        INSERT OR IGNORE INTO trading_counterparty_execution_contexts
-          (counterparty_id, execution_context_id)
+        INSERT OR IGNORE INTO trading_counterparty_trade_contexts
+          (counterparty_id, trade_context_id)
         VALUES (?, ?)
-      `).run(counterpartyId, executionContextId);
+      `).run(counterpartyId, tradeContextId);
       sendJson(
         response,
         200,
-        tradingCounterpartyExecutionContext(counterpartyId, executionContextId)
+        tradingCounterpartyTradeContext(counterpartyId, tradeContextId)
       );
     } catch (error) {
       handleDatabaseError(response, error);
@@ -14463,9 +14202,9 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (tradingCounterpartyExecutionContextMatch && method === "DELETE") {
-    const counterpartyId = Number(tradingCounterpartyExecutionContextMatch[1]);
-    const executionContextId = Number(tradingCounterpartyExecutionContextMatch[2]);
+  if (tradingCounterpartyTradeContextMatch && method === "DELETE") {
+    const counterpartyId = Number(tradingCounterpartyTradeContextMatch[1]);
+    const tradeContextId = Number(tradingCounterpartyTradeContextMatch[2]);
 
     if (!tradingCounterparty(counterpartyId)) {
       apiError(
@@ -14477,12 +14216,12 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    if (!executionContext(executionContextId)) {
+    if (!tradeContext(tradeContextId)) {
       apiError(
         response,
         404,
-        "EXECUTION_CONTEXT_NOT_FOUND",
-        `Execution Context ${executionContextId} was not found.`
+        "TRADE_CONTEXT_NOT_FOUND",
+        `Trade Context ${tradeContextId} was not found.`
       );
       return true;
     }
@@ -14491,16 +14230,16 @@ async function handleApi(request, response, url) {
       let assignmentInUse = false;
 
       runInImmediateTransaction(database, () => {
-        assignmentInUse = tradingCounterpartyExecutionContextPricingRulesCount(
+        assignmentInUse = tradingCounterpartyTradeContextPricingRulesCount(
           counterpartyId,
-          executionContextId
+          tradeContextId
         ) > 0;
 
         if (!assignmentInUse) {
           database.prepare(`
-            DELETE FROM trading_counterparty_execution_contexts
-            WHERE counterparty_id = ? AND execution_context_id = ?
-          `).run(counterpartyId, executionContextId);
+            DELETE FROM trading_counterparty_trade_contexts
+            WHERE counterparty_id = ? AND trade_context_id = ?
+          `).run(counterpartyId, tradeContextId);
         }
       });
 
@@ -14508,8 +14247,8 @@ async function handleApi(request, response, url) {
         apiError(
           response,
           409,
-          "COUNTERPARTY_EXECUTION_CONTEXT_IN_USE",
-          `Execution Context ${executionContextId} cannot be detached from Trading Counterparty ${counterpartyId} while Pricing Rules use this assignment.`
+          "COUNTERPARTY_TRADE_CONTEXT_IN_USE",
+          `Trade Context ${tradeContextId} cannot be detached from Trading Counterparty ${counterpartyId} while Pricing Rules use this assignment.`
         );
         return true;
       }
@@ -14539,6 +14278,16 @@ async function handleApi(request, response, url) {
 
     if (payload.error) {
       apiError(response, 400, "INVALID_TRADING_COUNTERPARTY", payload.error);
+      return true;
+    }
+
+    if (payload.counterpartyScope !== current.counterpartyScope) {
+      apiError(
+        response,
+        409,
+        "TRADING_COUNTERPARTY_SCOPE_IMMUTABLE",
+        "Trading Counterparty Scope cannot be changed."
+      );
       return true;
     }
 
@@ -14726,12 +14475,12 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    if (payload.servicingLocationId !== currentId && current.executionContextCount > 0) {
+    if (payload.servicingLocationId !== currentId && current.tradeContextCount > 0) {
       apiError(
         response,
         409,
         "SERVICING_LOCATION_IN_USE",
-        `Servicing Location ${currentId} ID cannot be changed while it is used by Execution Context.`
+        `Servicing Location ${currentId} ID cannot be changed while it is used by Trade Context.`
       );
       return true;
     }
@@ -14766,12 +14515,12 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    if (current.executionContextCount > 0) {
+    if (current.tradeContextCount > 0) {
       apiError(
         response,
         409,
         "SERVICING_LOCATION_IN_USE",
-        `Servicing Location ${locationId} cannot be deleted while it is used by Execution Context.`
+        `Servicing Location ${locationId} cannot be deleted while it is used by Trade Context.`
       );
       return true;
     }
@@ -14833,12 +14582,12 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    if (payload.accountingSystemId !== currentId && current.executionContextCount > 0) {
+    if (payload.accountingSystemId !== currentId && current.tradeContextCount > 0) {
       apiError(
         response,
         409,
         "ACCOUNTING_SYSTEM_IN_USE",
-        `Accounting System ${currentId} ID cannot be changed while it is used by Execution Context.`
+        `Accounting System ${currentId} ID cannot be changed while it is used by Trade Context.`
       );
       return true;
     }
@@ -14871,12 +14620,12 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    if (current.executionContextCount > 0) {
+    if (current.tradeContextCount > 0) {
       apiError(
         response,
         409,
         "ACCOUNTING_SYSTEM_IN_USE",
-        `Accounting System ${accountingSystemId} cannot be deleted while it is used by Execution Context.`
+        `Accounting System ${accountingSystemId} cannot be deleted while it is used by Trade Context.`
       );
       return true;
     }
@@ -14887,32 +14636,63 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (pathname === "/api/v1/execution-systems" && method === "GET") {
-    sendJson(response, 200, executionSystems());
+  if (pathname === "/api/v1/trade-purposes" && method === "GET") {
+    sendJson(response, 200, tradePurposeApi.list());
     return true;
   }
 
-  if (pathname === "/api/v1/execution-systems" && method === "POST") {
+  const tradePurposeMatch = /^\/api\/v1\/trade-purposes\/([^/]+)$/.exec(pathname);
+  if ((pathname === "/api/v1/trade-purposes" && method === "POST")
+    || (tradePurposeMatch && ["PUT", "DELETE"].includes(method))) {
+    try {
+      let result;
+      if (method === "POST") {
+        result = tradePurposeApi.create(await readJsonBody(request));
+      } else if (method === "PUT") {
+        result = tradePurposeApi.replace(tradePurposeMatch[1], await readJsonBody(request));
+      } else {
+        result = tradePurposeApi.delete(tradePurposeMatch[1]);
+      }
+
+      if (result.statusCode === 204) {
+        response.writeHead(204);
+        response.end();
+      } else {
+        sendJson(response, result.statusCode, result.body);
+      }
+    } catch (error) {
+      if (error.statusCode) throw error;
+      handleDatabaseError(response, error);
+    }
+    return true;
+  }
+
+  if (pathname === "/api/v1/originating-systems" && method === "GET") {
+    sendJson(response, 200, originatingSystems());
+    return true;
+  }
+
+  if (pathname === "/api/v1/originating-systems" && method === "POST") {
     const body = await readJsonBody(request);
-    const payload = validateExecutionSystemPayload(body);
+    const payload = validateOriginatingSystemPayload(body);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_EXECUTION_SYSTEM", payload.error);
+      apiError(response, 400, "INVALID_ORIGINATING_SYSTEM", payload.error);
       return true;
     }
 
     try {
       database.prepare(`
-        INSERT INTO execution_systems
-          (execution_system_id, name, pricing_mode, is_active)
+        INSERT INTO originating_systems
+          (originating_system_id, name, pricing_mode, is_active)
         VALUES (?, ?, ?, ?)
       `).run(
-        payload.executionSystemId,
+        payload.originatingSystemId,
         payload.name,
         payload.pricingMode,
         payload.active ? 1 : 0
       );
-      sendJson(response, 201, executionSystem(payload.executionSystemId));
+      sendJson(response, 201, originatingSystem(payload.originatingSystemId));
     } catch (error) {
       handleDatabaseError(response, error);
     }
@@ -14920,41 +14700,41 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  const executionSystemMatch = /^\/api\/v1\/execution-systems\/([A-Za-z0-9_-]{2,30})$/.exec(pathname);
+  const originatingSystemMatch = /^\/api\/v1\/originating-systems\/([A-Za-z0-9_-]{2,30})$/.exec(pathname);
 
-  if (executionSystemMatch && method === "PUT") {
-    const currentId = normalizedExecutionSystemId(executionSystemMatch[1]);
-    const current = executionSystem(currentId);
+  if (originatingSystemMatch && method === "PUT") {
+    const currentId = normalizedOriginatingSystemId(originatingSystemMatch[1]);
+    const current = originatingSystem(currentId);
 
     if (!current) {
-      apiError(response, 404, "EXECUTION_SYSTEM_NOT_FOUND", `Execution System ${currentId} was not found.`);
+      apiError(response, 404, "ORIGINATING_SYSTEM_NOT_FOUND", `Originating System ${currentId} was not found.`);
       return true;
     }
 
     const body = await readJsonBody(request);
-    const payload = validateExecutionSystemPayload(body);
+    const payload = validateOriginatingSystemPayload(body);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_EXECUTION_SYSTEM", payload.error);
+      apiError(response, 400, "INVALID_ORIGINATING_SYSTEM", payload.error);
       return true;
     }
 
-    if (payload.executionSystemId !== currentId && current.executionContextCount > 0) {
+    if (payload.originatingSystemId !== currentId && current.tradeContextCount > 0) {
       apiError(
         response,
         409,
-        "EXECUTION_SYSTEM_IN_USE",
-        `Execution System ${currentId} ID cannot be changed while it is used by Execution Context.`
+        "ORIGINATING_SYSTEM_IN_USE",
+        `Originating System ${currentId} ID cannot be changed while it is used by Trade Context.`
       );
       return true;
     }
 
-    if (payload.pricingMode !== current.pricingMode && current.executionContextCount > 0) {
+    if (payload.pricingMode !== current.pricingMode && current.tradeContextCount > 0) {
       apiError(
         response,
         409,
-        "EXECUTION_SYSTEM_PRICING_MODE_IMMUTABLE",
-        `Execution System ${currentId} Pricing Mode cannot be changed while it is used by Execution Context.`
+        "ORIGINATING_SYSTEM_PRICING_MODE_IMMUTABLE",
+        `Originating System ${currentId} Pricing Mode cannot be changed while it is used by Trade Context.`
       );
       return true;
     }
@@ -14968,19 +14748,19 @@ async function handleApi(request, response, url) {
             (
               SELECT r.pricing_rule_id
               FROM pricing_rules r
-              INNER JOIN execution_contexts c
-                ON c.execution_context_id = r.execution_context_id
-              WHERE c.execution_system_id = ?
+              INNER JOIN trade_contexts c
+                ON c.trade_context_id = r.trade_context_id
+              WHERE c.originating_system_id = ?
             )
           `).run(currentId);
         }
 
         database.prepare(`
-          UPDATE execution_systems
-          SET execution_system_id = ?, name = ?, pricing_mode = ?, is_active = ?
-          WHERE execution_system_id = ?
+          UPDATE originating_systems
+          SET originating_system_id = ?, name = ?, pricing_mode = ?, is_active = ?
+          WHERE originating_system_id = ?
         `).run(
-          payload.executionSystemId,
+          payload.originatingSystemId,
           payload.name,
           payload.pricingMode,
           payload.active ? 1 : 0,
@@ -14988,7 +14768,7 @@ async function handleApi(request, response, url) {
         );
         synchronizeClientDealGenerationSettings(database);
       });
-      sendJson(response, 200, executionSystem(payload.executionSystemId));
+      sendJson(response, 200, originatingSystem(payload.originatingSystemId));
     } catch (error) {
       handleDatabaseError(response, error);
     }
@@ -14996,122 +14776,80 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (executionSystemMatch && method === "DELETE") {
-    const executionSystemId = normalizedExecutionSystemId(executionSystemMatch[1]);
-    const current = executionSystem(executionSystemId);
+  if (originatingSystemMatch && method === "DELETE") {
+    const originatingSystemId = normalizedOriginatingSystemId(originatingSystemMatch[1]);
+    const current = originatingSystem(originatingSystemId);
 
     if (!current) {
-      apiError(response, 404, "EXECUTION_SYSTEM_NOT_FOUND", `Execution System ${executionSystemId} was not found.`);
+      apiError(response, 404, "ORIGINATING_SYSTEM_NOT_FOUND", `Originating System ${originatingSystemId} was not found.`);
       return true;
     }
 
-    if (current.executionContextCount > 0) {
+    if (current.tradeContextCount > 0) {
       apiError(
         response,
         409,
-        "EXECUTION_SYSTEM_IN_USE",
-        `Execution System ${executionSystemId} cannot be deleted while it is used by Execution Context.`
+        "ORIGINATING_SYSTEM_IN_USE",
+        `Originating System ${originatingSystemId} cannot be deleted while it is used by Trade Context.`
       );
       return true;
     }
 
-    database.prepare("DELETE FROM execution_systems WHERE execution_system_id = ?").run(executionSystemId);
+    database.prepare("DELETE FROM originating_systems WHERE originating_system_id = ?").run(originatingSystemId);
     response.writeHead(204);
     response.end();
     return true;
   }
 
-  const executionContextTradingCounterpartiesMatch =
-    /^\/api\/v1\/execution-contexts\/(\d+)\/trading-counterparties$/.exec(pathname);
+  const tradeContextTradingCounterpartiesMatch =
+    /^\/api\/v1\/trade-contexts\/(\d+)\/trading-counterparties$/.exec(pathname);
 
-  if (executionContextTradingCounterpartiesMatch && method === "GET") {
-    const executionContextId = Number(executionContextTradingCounterpartiesMatch[1]);
+  if (tradeContextTradingCounterpartiesMatch && method === "GET") {
+    const tradeContextId = Number(tradeContextTradingCounterpartiesMatch[1]);
 
-    if (!executionContext(executionContextId)) {
+    if (!tradeContext(tradeContextId)) {
       apiError(
         response,
         404,
-        "EXECUTION_CONTEXT_NOT_FOUND",
-        `Execution Context ${executionContextId} was not found.`
+        "TRADE_CONTEXT_NOT_FOUND",
+        `Trade Context ${tradeContextId} was not found.`
       );
       return true;
     }
 
-    sendJson(response, 200, executionContextTradingCounterparties(executionContextId));
+    sendJson(response, 200, tradeContextTradingCounterparties(tradeContextId));
     return true;
   }
 
-  if (pathname === "/api/v1/auto-hedging-admission-policy" && method === "GET") {
-    sendJson(response, 200, autoHedgingAdmissionPolicy());
-    return true;
-  }
-
-  if (pathname === "/api/v1/auto-hedging-admission-policy" && method === "PUT") {
-    const body = await readJsonBody(request);
-    const payload = validateAutoHedgingAdmissionPolicyPayload(body);
-
-    if (payload.error) {
-      apiError(response, 400, "INVALID_AUTO_HEDGING_ADMISSION_POLICY", payload.error);
+  if (pathname === "/api/v1/auto-mode-eligibility-rules" && method === "GET") {
+    if (url.searchParams.get("scope") === "all") {
+      sendJson(response, 200, autoModeEligibilityRuleMatrix());
       return true;
     }
-
+    let tradeType;
     try {
-      sendJson(response, 200, saveAutoHedgingAdmissionPolicy(payload));
+      tradeType = normalizeAutoManagementAdmissionTradeType(
+        url.searchParams.get("tradeType") ?? "CLIENT_DEAL"
+      );
     } catch (error) {
-      if (error?.code === "AUTO_HEDGING_ADMISSION_POLICY_REVISION_CONFLICT") {
-        sendJson(response, 409, {
-          code: error.code,
-          message: error.message,
-          currentRevision: error.currentRevision
-        });
-      } else {
-        handleDatabaseError(response, error);
-      }
-    }
-
-    return true;
-  }
-
-  if (pathname === "/api/v1/execution-contexts" && method === "GET") {
-    sendJson(response, 200, executionContexts());
-    return true;
-  }
-
-  if (pathname === "/api/v1/execution-contexts" && method === "POST") {
-    const body = await readJsonBody(request);
-    const payload = validateExecutionContextPayload(body);
-
-    if (payload.error) {
-      apiError(response, 400, "INVALID_EXECUTION_CONTEXT", payload.error);
+      apiError(response, 400, "INVALID_AUTO_MODE_ELIGIBILITY_RULES", error.message);
       return true;
     }
+    sendJson(response, 200, autoModeEligibilityRules(tradeType));
+    return true;
+  }
 
-    const referenceError = executionContextReferenceError(payload);
+  if (pathname === "/api/v1/auto-mode-eligibility-rules" && method === "PUT") {
+    const body = await readJsonBody(request);
+    const payload = validateAutoModeEligibilityRulesPayload(body);
 
-    if (referenceError) {
-      apiError(response, 409, "EXECUTION_CONTEXT_REFERENCE_NOT_FOUND", referenceError);
+    if (payload.error) {
+      apiError(response, 400, "INVALID_AUTO_MODE_ELIGIBILITY_RULES", payload.error);
       return true;
     }
 
     try {
-      const result = database.prepare(`
-        INSERT INTO execution_contexts
-          (
-            servicing_location_id,
-            accounting_system_id,
-            execution_system_id,
-            default_position_management_mode,
-            auto_hedging_admission_mode
-          )
-        VALUES (?, ?, ?, ?, ?)
-      `).run(
-        payload.servicingLocationId,
-        payload.accountingSystemDatabaseId,
-        payload.executionSystemId,
-        payload.defaultPositionManagementMode,
-        payload.autoHedgingAdmissionMode
-      );
-      sendJson(response, 201, executionContext(Number(result.lastInsertRowid)));
+      sendJson(response, 200, saveAutoModeEligibilityRules(payload));
     } catch (error) {
       handleDatabaseError(response, error);
     }
@@ -15119,67 +14857,110 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  const executionContextMatch = /^\/api\/v1\/execution-contexts\/(\d+)$/.exec(pathname);
-  const currentExecutionContextId = executionContextMatch
-    ? normalizedExecutionContextId(executionContextMatch[1])
+  if (pathname === "/api/v1/trade-contexts" && method === "GET") {
+    sendJson(response, 200, tradeContexts());
+    return true;
+  }
+
+  if (pathname === "/api/v1/trade-contexts" && method === "POST") {
+    const body = await readJsonBody(request);
+    const payload = validateTradeContextPayload(body);
+
+    if (payload.error) {
+      apiError(response, 400, "INVALID_TRADE_CONTEXT", payload.error);
+      return true;
+    }
+
+    const referenceError = tradeContextReferenceError(payload);
+
+    if (referenceError) {
+      apiError(response, 409, "TRADE_CONTEXT_REFERENCE_NOT_FOUND", referenceError);
+      return true;
+    }
+
+    try {
+      const result = database.prepare(`
+        INSERT INTO trade_contexts
+          (
+            servicing_location_id,
+            accounting_system_id,
+            originating_system_id,
+            auto_management_admission_mode
+          )
+        VALUES (?, ?, ?, ?)
+      `).run(
+        payload.servicingLocationId,
+        payload.accountingSystemDatabaseId,
+        payload.originatingSystemId,
+        payload.autoManagementAdmissionMode
+      );
+      sendJson(response, 201, tradeContext(Number(result.lastInsertRowid)));
+    } catch (error) {
+      handleDatabaseError(response, error);
+    }
+
+    return true;
+  }
+
+  const tradeContextMatch = /^\/api\/v1\/trade-contexts\/(\d+)$/.exec(pathname);
+  const currentTradeContextId = tradeContextMatch
+    ? normalizedTradeContextId(tradeContextMatch[1])
     : null;
 
-  if (executionContextMatch && method === "PUT") {
-    const current = currentExecutionContextId ? executionContext(currentExecutionContextId) : null;
+  if (tradeContextMatch && method === "PUT") {
+    const current = currentTradeContextId ? tradeContext(currentTradeContextId) : null;
 
     if (!current) {
-      apiError(response, 404, "EXECUTION_CONTEXT_NOT_FOUND", "Execution Context was not found.");
+      apiError(response, 404, "TRADE_CONTEXT_NOT_FOUND", "Trade Context was not found.");
       return true;
     }
 
     const body = await readJsonBody(request);
-    const payload = validateExecutionContextPayload(body, current);
+    const payload = validateTradeContextPayload(body, current);
 
     if (payload.error) {
-      apiError(response, 400, "INVALID_EXECUTION_CONTEXT", payload.error);
+      apiError(response, 400, "INVALID_TRADE_CONTEXT", payload.error);
       return true;
     }
 
-    const referenceError = executionContextReferenceError(payload);
+    const referenceError = tradeContextReferenceError(payload);
 
     if (referenceError) {
-      apiError(response, 409, "EXECUTION_CONTEXT_REFERENCE_NOT_FOUND", referenceError);
+      apiError(response, 409, "TRADE_CONTEXT_REFERENCE_NOT_FOUND", referenceError);
       return true;
     }
 
     try {
       runInImmediateTransaction(database, () => {
-        if (executionSystem(payload.executionSystemId)?.pricingMode !== "AUTO_PRICED") {
+        if (originatingSystem(payload.originatingSystemId)?.pricingMode !== "AUTO_PRICED") {
           database.prepare(`
             DELETE FROM client_deal_generation_settings
             WHERE pricing_rule_id IN
             (
               SELECT pricing_rule_id
               FROM pricing_rules
-              WHERE execution_context_id = ?
+              WHERE trade_context_id = ?
             )
-          `).run(currentExecutionContextId);
+          `).run(currentTradeContextId);
         }
 
         database.prepare(`
-          UPDATE execution_contexts
+          UPDATE trade_contexts
           SET servicing_location_id = ?,
               accounting_system_id = ?,
-              execution_system_id = ?,
-              default_position_management_mode = ?,
-              auto_hedging_admission_mode = ?
-          WHERE execution_context_id = ?
+              originating_system_id = ?,
+              auto_management_admission_mode = ?
+          WHERE trade_context_id = ?
         `).run(
           payload.servicingLocationId,
           payload.accountingSystemDatabaseId,
-          payload.executionSystemId,
-          payload.defaultPositionManagementMode,
-          payload.autoHedgingAdmissionMode,
-          currentExecutionContextId
+          payload.originatingSystemId,
+          payload.autoManagementAdmissionMode,
+          currentTradeContextId
         );
         synchronizeClientDealGenerationSettings(database);
       });
-      sendJson(response, 200, executionContext(currentExecutionContextId));
+      sendJson(response, 200, tradeContext(currentTradeContextId));
     } catch (error) {
       handleDatabaseError(response, error);
     }
@@ -15187,11 +14968,11 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (executionContextMatch && method === "DELETE") {
-    const current = currentExecutionContextId ? executionContext(currentExecutionContextId) : null;
+  if (tradeContextMatch && method === "DELETE") {
+    const current = currentTradeContextId ? tradeContext(currentTradeContextId) : null;
 
     if (!current) {
-      apiError(response, 404, "EXECUTION_CONTEXT_NOT_FOUND", "Execution Context was not found.");
+      apiError(response, 404, "TRADE_CONTEXT_NOT_FOUND", "Trade Context was not found.");
       return true;
     }
 
@@ -15199,14 +14980,14 @@ async function handleApi(request, response, url) {
       apiError(
         response,
         409,
-        "EXECUTION_CONTEXT_IN_USE",
-        `Execution Context ${currentExecutionContextId} cannot be deleted while it is assigned to Trading Counterparties.`
+        "TRADE_CONTEXT_IN_USE",
+        `Trade Context ${currentTradeContextId} cannot be deleted while it is assigned to Trading Counterparties.`
       );
       return true;
     }
 
     try {
-      database.prepare("DELETE FROM execution_contexts WHERE execution_context_id = ?").run(currentExecutionContextId);
+      database.prepare("DELETE FROM trade_contexts WHERE trade_context_id = ?").run(currentTradeContextId);
       response.writeHead(204);
       response.end();
     } catch (error) {
@@ -15313,14 +15094,11 @@ async function handleApi(request, response, url) {
     }
 
     try {
-      const created = createCcyPairOptionWithAdmissionPolicy(payload);
+      const created = createCcyPairOptionWithEligibilityRules(payload);
       sendJson(response, 201, created);
     } catch (error) {
       if (String(error?.message || "").includes("FOREIGN KEY constraint failed")) {
         apiError(response, 409, "CCY_NOT_FOUND", "Base Ccy and Quote Ccy must exist in Ccy Options.");
-      } else if (error?.code
-        === "AUTO_HEDGING_ADMISSION_POLICY_PAIR_DEVIATIONS_INCOMPLETE") {
-        apiError(response, 409, error.code, error.message);
       } else {
         handleDatabaseError(response, error);
       }
@@ -15501,26 +15279,13 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    const admissionPolicyRevisionCount = Number(database.prepare(`
-      SELECT COUNT(*) AS revisionCount
-      FROM auto_hedging_admission_policy_pair_deviations
-      WHERE ccy_pair_code = ?
-    `).get(pairCode).revisionCount);
-
-    if (admissionPolicyRevisionCount > 0) {
-      const revisionLabel = admissionPolicyRevisionCount === 1
-        ? "revision"
-        : "revisions";
-      apiError(
-        response,
-        409,
-        "CCY_PAIR_IN_USE",
-        `Ccy Pair ${current.currencyPair} is retained by ${admissionPolicyRevisionCount} Auto Hedging Admission Policy ${revisionLabel}.`
-      );
-      return true;
-    }
-
-    database.prepare("DELETE FROM ccy_pair_options WHERE ccy_pair_code = ?").run(pairCode);
+    runInImmediateTransaction(database, () => {
+      database.prepare(`
+        DELETE FROM auto_mode_eligibility_rules
+        WHERE ccy_pair_code = ?
+      `).run(pairCode);
+      database.prepare("DELETE FROM ccy_pair_options WHERE ccy_pair_code = ?").run(pairCode);
+    });
     marketPulseSimulator.refresh();
     response.writeHead(204);
     response.end();
@@ -15613,7 +15378,7 @@ server.on("error", error => {
   }
 
   clientDealGenerationProcess.dispose();
-  fxAutoBatchingProcess.dispose();
+  autoBatchingProcess.dispose();
   marketPulseSimulator.dispose();
   removeServerRuntimeFile();
   database.close();
@@ -15630,7 +15395,7 @@ function closeServer() {
   shutdownStarted = true;
   server.close(() => {
     clientDealGenerationProcess.dispose();
-    fxAutoBatchingProcess.dispose();
+    autoBatchingProcess.dispose();
     marketPulseSimulator.dispose();
     removeServerRuntimeFile();
     database.close();
@@ -15649,7 +15414,7 @@ if (require.main === module) {
 
   if (process.argv.includes("--init-only")) {
     clientDealGenerationProcess.dispose();
-    fxAutoBatchingProcess.dispose();
+    autoBatchingProcess.dispose();
     database.close();
     console.log(`SQLite initialized: ${DATABASE_PATH}`);
   } else {
@@ -15671,11 +15436,11 @@ if (require.main === module) {
 
 module.exports = {
   handleApi,
-  autoHedgingAdmissionPolicy,
-  executionContextAdmissionMode,
+  autoModeEligibilityRules,
+  tradeContextAdmissionMode,
   closeDatabase: () => {
     clientDealGenerationProcess.dispose();
-    fxAutoBatchingProcess.dispose();
+    autoBatchingProcess.dispose();
     marketPulseSimulator.dispose();
     database.close();
   }

@@ -70,8 +70,8 @@
       setBatchingSettingsStatus("Saving General Batching settings...");
 
       try {
-        batchingSettings = normalizedFxBatchingSettings(
-          await demoApiRequest("/api/v1/fx-batching-settings", {
+        batchingSettings = normalizedBatchingSettings(
+          await demoApiRequest("/api/v1/batching-settings", {
             method: "PUT",
             body: JSON.stringify(payload)
           })
@@ -283,11 +283,11 @@
 
       try {
         const [generalSettingsResponse, autoSettingsResponse] = await Promise.all([
-          demoApiRequest("/api/v1/fx-batching-settings"),
-          demoApiRequest("/api/v1/fx-auto-batching-settings")
+          demoApiRequest("/api/v1/batching-settings"),
+          demoApiRequest("/api/v1/auto-batching-settings")
         ]);
-        batchingSettings = normalizedFxBatchingSettings(generalSettingsResponse);
-        autoBatchingSettings = normalizedFxAutoBatchingSettings(autoSettingsResponse);
+        batchingSettings = normalizedBatchingSettings(generalSettingsResponse);
+        autoBatchingSettings = normalizedAutoBatchingSettings(autoSettingsResponse);
         renderBatchingSettings();
         renderAutoBatchingSettings();
         setBatchingSettingsStatus();
@@ -314,14 +314,14 @@
       setBatchingSettingsStatus("Saving Auto Batching settings...");
 
       try {
-        autoBatchingSettings = normalizedFxAutoBatchingSettings(
-          await demoApiRequest("/api/v1/fx-auto-batching-settings", {
+        autoBatchingSettings = normalizedAutoBatchingSettings(
+          await demoApiRequest("/api/v1/auto-batching-settings", {
             method: "PUT",
             body: JSON.stringify(payload)
           })
         );
-        applyFxAutoBatchingProcessState(
-          await demoApiRequest("/api/v1/fx-auto-batching/process")
+        applyAutoBatchingProcessState(
+          await demoApiRequest("/api/v1/auto-batching/process")
         );
         renderAutoBatchingSettings();
         setBatchingSettingsStatus(
@@ -341,795 +341,6 @@
       setWorkbenchPageStatus(hedgeQuickModeSettingsStatus, message, tone);
     }
 
-    function setAutoHedgingAdmissionPolicyStatus(message = "", tone = "") {
-      setWorkbenchPageStatus(autoHedgingAdmissionPolicyStatus, message, tone);
-    }
-
-    function setAutoHedgingAdmissionDialogStatus(element, message = "", tone = "") {
-      setWorkbenchPageStatus(element, message, tone);
-    }
-
-    function setHedgingSettingsAutoGroupExpanded(expanded) {
-      const isExpanded = expanded === true;
-      hedgingSettingsAutoGroupToggle.setAttribute("aria-expanded", String(isExpanded));
-      hedgingSettingsAutoSubnav.hidden = !isExpanded;
-    }
-
-    function setHedgingSettingsSection(sectionName) {
-      const normalizedSection = sectionName === "initial" || sectionName === "manual-release"
-        ? sectionName
-        : "quick";
-
-      hedgingSettingsSectionLinks.forEach(link => {
-        const active = link.dataset.hedgingSettingsSection === normalizedSection;
-        link.classList.toggle("is-active", active);
-        if (active) {
-          link.setAttribute("aria-current", "page");
-        } else {
-          link.removeAttribute("aria-current");
-        }
-      });
-      hedgingSettingsSectionPanels.forEach(panel => {
-        panel.hidden = panel.dataset.hedgingSettingsSectionPanel !== normalizedSection;
-      });
-      hedgeQuickModeSettingsStatus.hidden = normalizedSection !== "quick";
-
-      setHedgingSettingsAutoGroupExpanded(normalizedSection !== "quick");
-      if (normalizedSection === "quick" && hedgeQuickModeSettingsGridReady) {
-        requestAnimationFrame(() => hedgeQuickModeSettingsGrid.redraw(true));
-      }
-    }
-
-    function setAutoHedgingSettingsSegmentExpanded(toggle, expanded) {
-      const panelId = toggle?.getAttribute("aria-controls");
-      const panel = panelId ? document.getElementById(panelId) : null;
-      const segment = toggle?.closest(".auto-hedging-trade-segment");
-
-      if (!toggle || !panel || !segment) {
-        return;
-      }
-
-      toggle.setAttribute("aria-expanded", String(expanded));
-      panel.hidden = !expanded;
-      segment.classList.toggle("is-expanded", expanded);
-    }
-
-    function toggleAutoHedgingSettingsSegment(toggle) {
-      const expand = toggle.getAttribute("aria-expanded") !== "true";
-      const segmentList = toggle.closest("[data-auto-hedging-settings-segments]");
-
-      if (expand && segmentList) {
-        segmentList.querySelectorAll("[data-auto-hedging-segment-toggle]")
-          .forEach(otherToggle => {
-            if (otherToggle !== toggle) {
-              setAutoHedgingSettingsSegmentExpanded(otherToggle, false);
-            }
-          });
-      }
-
-      setAutoHedgingSettingsSegmentExpanded(toggle, expand);
-    }
-
-    function setAutoHedgingAdmissionPolicyBusy(busy) {
-      const isBusy = busy === true;
-      autoHedgingAdmissionPolicyPanel.setAttribute("aria-busy", String(isBusy));
-      autoHedgingAdmissionPairDialogForm.setAttribute("aria-busy", String(isBusy));
-      [
-        autoHedgingAdmissionCcyPairEditButton,
-        autoHedgingAdmissionAmountLimitEditButton,
-        autoHedgingAdmissionDeviationEditButton
-      ].forEach(button => {
-        button.disabled = isBusy || !autoHedgingAdmissionPolicyLoaded;
-      });
-      autoHedgingAdmissionPairDialogClose.disabled = isBusy;
-      autoHedgingAdmissionPairDialogCancel.disabled = isBusy;
-      autoHedgingAdmissionPairDialogSave.disabled = true;
-      autoHedgingAdmissionPairSearch.disabled = isBusy;
-      autoHedgingAdmissionPairFilter.disabled = isBusy;
-      autoHedgingAdmissionPairRows
-        .querySelectorAll("[data-auto-hedging-admission-pair-enabled]")
-        .forEach(control => {
-          control.disabled = isBusy || !autoHedgingAdmissionPolicyLoaded;
-        });
-      autoHedgingAdmissionPairRows
-        .querySelectorAll("[data-auto-hedging-admission-pair-limit]")
-        .forEach(control => {
-          const row = control.closest("[data-auto-hedging-admission-pair-code]");
-          const enabledControl = row?.querySelector(
-            "[data-auto-hedging-admission-pair-enabled]"
-          );
-          control.disabled = isBusy
-            || !autoHedgingAdmissionPolicyLoaded
-            || !enabledControl?.checked;
-        });
-      autoHedgingAdmissionPairRows
-        .querySelectorAll("[data-auto-hedging-admission-deviation]")
-        .forEach(control => {
-          control.disabled = isBusy || !autoHedgingAdmissionPolicyLoaded;
-        });
-
-      if (!isBusy && autoHedgingAdmissionPolicyLoaded) {
-        updateAutoHedgingAdmissionDialogSaveAvailability();
-      }
-    }
-
-    function autoHedgingAdmissionPairRowMarkup(pair) {
-      const controlSuffix = pair.ccyPairCode.toLowerCase();
-      const switchId = `autoHedgingAdmissionEnabled_${controlSuffix}`;
-      const limitId = `autoHedgingAdmissionLimit_${controlSuffix}`;
-      const deviationId = `autoHedgingAdmissionDeviation_${controlSuffix}`;
-      const amountValue = pair.maxBaseCcyAmount === null
-        ? ""
-        : groupedDecimalText(pair.maxBaseCcyAmount);
-      const deviationValue = pair.maxTransferRateDeviationPercent === null
-        ? ""
-        : pair.maxTransferRateDeviationPercent;
-
-      return `
-        <tr
-          data-auto-hedging-admission-pair-code="${escapeHtml(pair.ccyPairCode)}"
-          data-auto-hedging-admission-pair-search="${escapeHtml(`${pair.currencyPair} ${pair.ccyPairCode} ${pair.baseCcyCode}`.toUpperCase())}"
-        >
-          <td>
-            <strong>${escapeHtml(pair.currencyPair)}</strong>
-          </td>
-          <td class="text-center" data-auto-hedging-admission-column="automatic-admission">
-            <div class="form-check form-switch auto-hedging-admission-pair-enabled">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                role="switch"
-                id="${escapeHtml(switchId)}"
-                aria-label="${escapeHtml(pair.currencyPair)} eligible for Auto Hedging"
-                data-auto-hedging-admission-pair-enabled
-                ${pair.enabled ? "checked" : ""}
-                ${autoHedgingAdmissionPolicyLoaded ? "" : "disabled"}
-              >
-            </div>
-          </td>
-          <td data-auto-hedging-admission-column="amount-limit">
-            <div class="input-group input-group-sm auto-hedging-admission-pair-limit">
-              <label class="visually-hidden" for="${escapeHtml(limitId)}">Maximum Trade Amount for ${escapeHtml(pair.currencyPair)} in ${escapeHtml(pair.baseCcyCode)}</label>
-              <input
-                class="form-control"
-                type="text"
-                id="${escapeHtml(limitId)}"
-                value="${escapeHtml(amountValue)}"
-                inputmode="decimal"
-                aria-label="Maximum Trade Amount for ${escapeHtml(pair.currencyPair)} in ${escapeHtml(pair.baseCcyCode)}"
-                data-auto-hedging-admission-pair-limit
-                ${pair.enabled && autoHedgingAdmissionPolicyLoaded ? "" : "disabled"}
-              >
-              <span class="input-group-text">${escapeHtml(pair.baseCcyCode)}</span>
-            </div>
-          </td>
-          <td data-auto-hedging-admission-column="transfer-rate-deviation">
-            <div class="input-group input-group-sm auto-hedging-admission-deviation-limit">
-              <label class="visually-hidden" for="${escapeHtml(deviationId)}">Maximum Transfer Rate Deviation for ${escapeHtml(pair.currencyPair)}</label>
-              <input
-                class="form-control"
-                type="text"
-                id="${escapeHtml(deviationId)}"
-                value="${escapeHtml(deviationValue)}"
-                inputmode="decimal"
-                aria-label="Maximum Transfer Rate Deviation for ${escapeHtml(pair.currencyPair)}"
-                data-auto-hedging-admission-deviation
-                required
-                ${autoHedgingAdmissionPolicyLoaded ? "" : "disabled"}
-              >
-              <span class="input-group-text" aria-hidden="true">%</span>
-            </div>
-          </td>
-        </tr>
-      `;
-    }
-
-    function filterAutoHedgingAdmissionPairs() {
-      const query = String(autoHedgingAdmissionPairSearch.value || "")
-        .trim()
-        .toUpperCase();
-      const statusFilter = String(autoHedgingAdmissionPairFilter.value || "ALL")
-        .trim()
-        .toUpperCase();
-      let visibleCount = 0;
-
-      autoHedgingAdmissionPairRows
-        .querySelectorAll("[data-auto-hedging-admission-pair-code]")
-        .forEach(row => {
-          const enabled = row.querySelector(
-            "[data-auto-hedging-admission-pair-enabled]"
-          )?.checked === true;
-          const matchesQuery = !query
-            || String(row.dataset.autoHedgingAdmissionPairSearch || "").includes(query);
-          const matchesStatus = statusFilter === "ALL"
-            || (statusFilter === "ENABLED" && enabled)
-            || (statusFilter === "DISABLED" && !enabled);
-          const visible = matchesQuery && matchesStatus;
-
-          row.hidden = !visible;
-          if (visible) {
-            visibleCount += 1;
-          }
-        });
-
-      autoHedgingAdmissionPairEmpty.textContent =
-        autoHedgingAdmissionPolicy.currencyPairs.length === 0
-          ? "No Currency Pairs are available in the policy."
-          : "No Currency Pairs match the current filters.";
-      autoHedgingAdmissionPairEmpty.hidden = visibleCount > 0;
-    }
-
-    function autoHedgingAdmissionPairControlSnapshot() {
-      return Array.from(
-        autoHedgingAdmissionPairRows.querySelectorAll(
-          "[data-auto-hedging-admission-pair-code]"
-        )
-      ).map(row => ({
-        ccyPairCode: row.dataset.autoHedgingAdmissionPairCode,
-        enabled: row.querySelector(
-          "[data-auto-hedging-admission-pair-enabled]"
-        )?.checked === true,
-        amount: row.querySelector(
-          "[data-auto-hedging-admission-pair-limit]"
-        )?.value || "",
-        deviation: row.querySelector(
-          "[data-auto-hedging-admission-deviation]"
-        )?.value || ""
-      }));
-    }
-
-    function restoreAutoHedgingAdmissionPairControlSnapshot(snapshot) {
-      const valuesByPair = new Map(
-        (Array.isArray(snapshot) ? snapshot : [])
-          .map(item => [item.ccyPairCode, item])
-      );
-
-      autoHedgingAdmissionPairRows
-        .querySelectorAll("[data-auto-hedging-admission-pair-code]")
-        .forEach(row => {
-          const saved = valuesByPair.get(row.dataset.autoHedgingAdmissionPairCode);
-          const enabledControl = row.querySelector(
-            "[data-auto-hedging-admission-pair-enabled]"
-          );
-          const amountControl = row.querySelector(
-            "[data-auto-hedging-admission-pair-limit]"
-          );
-          const deviationControl = row.querySelector(
-            "[data-auto-hedging-admission-deviation]"
-          );
-
-          if (!saved || !enabledControl || !amountControl || !deviationControl) {
-            return;
-          }
-
-          enabledControl.checked = saved.enabled;
-          amountControl.value = saved.amount;
-          deviationControl.value = saved.deviation;
-          amountControl.setCustomValidity("");
-          deviationControl.setCustomValidity("");
-          amountControl.disabled = autoHedgingAdmissionPolicySaving
-            || !autoHedgingAdmissionPolicyLoaded
-            || !saved.enabled;
-        });
-
-      filterAutoHedgingAdmissionPairs();
-      updateAutoHedgingAdmissionDialogSaveAvailability();
-    }
-
-    function normalizedAutoHedgingAdmissionFocus(value) {
-      return ["automatic-admission", "amount-limit", "transfer-rate-deviation"].includes(value)
-        ? value
-        : "automatic-admission";
-    }
-
-    function setAutoHedgingAdmissionDialogFocus(focusTarget) {
-      const target = normalizedAutoHedgingAdmissionFocus(focusTarget);
-      const table = autoHedgingAdmissionPairDialog.querySelector(
-        ".auto-hedging-admission-pair-table"
-      );
-      autoHedgingAdmissionPairDialogFocus = target;
-      autoHedgingAdmissionPairDialog.dataset.autoHedgingAdmissionFocus = target;
-      if (table) {
-        table.dataset.autoHedgingAdmissionFocus = target;
-      }
-      autoHedgingAdmissionPairDialog
-        .querySelectorAll("[data-auto-hedging-admission-column]")
-        .forEach(cell => {
-          cell.classList.toggle(
-            "is-auto-hedging-admission-column-focused",
-            cell.dataset.autoHedgingAdmissionColumn === target
-          );
-        });
-    }
-
-    function focusAutoHedgingAdmissionDialogColumn() {
-      const selectorByTarget = {
-        "automatic-admission": "[data-auto-hedging-admission-pair-enabled]:not(:disabled)",
-        "amount-limit": "[data-auto-hedging-admission-pair-limit]:not(:disabled)",
-        "transfer-rate-deviation": "[data-auto-hedging-admission-deviation]:not(:disabled)"
-      };
-      const control = autoHedgingAdmissionPairDialog.querySelector(
-        selectorByTarget[autoHedgingAdmissionPairDialogFocus]
-      ) || autoHedgingAdmissionPairSearch;
-      const targetHeader = autoHedgingAdmissionPairDialog.querySelector(
-        `thead [data-auto-hedging-admission-column="${autoHedgingAdmissionPairDialogFocus}"]`
-      );
-      const reducedMotion = window.matchMedia?.(
-        "(prefers-reduced-motion: reduce)"
-      ).matches === true;
-      targetHeader?.scrollIntoView({
-        behavior: reducedMotion ? "auto" : "smooth",
-        block: "nearest",
-        inline: "nearest"
-      });
-      control?.focus({ preventScroll: true });
-    }
-
-    function openAutoHedgingAdmissionPairDialog(event) {
-      if (!autoHedgingAdmissionPolicyLoaded || autoHedgingAdmissionPolicySaving) {
-        return;
-      }
-
-      const trigger = event?.currentTarget || null;
-      autoHedgingAdmissionPairDialogSnapshot =
-        autoHedgingAdmissionPairControlSnapshot();
-      autoHedgingAdmissionPairDialogReturnFocus = trigger;
-      autoHedgingAdmissionPairSearch.value = "";
-      autoHedgingAdmissionPairFilter.value = "ALL";
-      filterAutoHedgingAdmissionPairs();
-      const focusTarget = normalizedAutoHedgingAdmissionFocus(
-        trigger?.dataset.autoHedgingAdmissionFocus
-      );
-      setAutoHedgingAdmissionDialogStatus(autoHedgingAdmissionPairDialogStatus);
-      updateAutoHedgingAdmissionDialogSaveAvailability();
-      openDialogWithoutFieldFocus(autoHedgingAdmissionPairDialog);
-      if (autoHedgingAdmissionPairDialogFocusTimer !== null) {
-        window.clearTimeout(autoHedgingAdmissionPairDialogFocusTimer);
-      }
-      autoHedgingAdmissionPairDialogFocusTimer = window.setTimeout(() => {
-        autoHedgingAdmissionPairDialogFocusTimer = null;
-        if (!autoHedgingAdmissionPairDialog.open) {
-          return;
-        }
-        setAutoHedgingAdmissionDialogFocus(focusTarget);
-        focusAutoHedgingAdmissionDialogColumn();
-      }, 0);
-    }
-
-    function closeAutoHedgingAdmissionPairDialog({ restore = false } = {}) {
-      if (autoHedgingAdmissionPairDialogFocusTimer !== null) {
-        window.clearTimeout(autoHedgingAdmissionPairDialogFocusTimer);
-        autoHedgingAdmissionPairDialogFocusTimer = null;
-      }
-      if (restore) {
-        restoreAutoHedgingAdmissionPairControlSnapshot(
-          autoHedgingAdmissionPairDialogSnapshot
-        );
-      }
-      autoHedgingAdmissionPairDialogSnapshot = null;
-      setAutoHedgingAdmissionDialogStatus(autoHedgingAdmissionPairDialogStatus);
-
-      if (typeof autoHedgingAdmissionPairDialog.close === "function") {
-        autoHedgingAdmissionPairDialog.close();
-      } else {
-        autoHedgingAdmissionPairDialog.removeAttribute("open");
-      }
-
-      autoHedgingAdmissionPairDialog
-        .querySelectorAll(".is-auto-hedging-admission-column-focused")
-        .forEach(cell => cell.classList.remove(
-          "is-auto-hedging-admission-column-focused"
-        ));
-      const returnFocus = autoHedgingAdmissionPairDialogReturnFocus;
-      autoHedgingAdmissionPairDialogReturnFocus = null;
-      returnFocus?.focus();
-    }
-
-    function renderAutoHedgingAdmissionPolicy() {
-      const enabledPairCount = autoHedgingAdmissionPolicy.currencyPairs
-        .filter(pair => pair.enabled)
-        .length;
-      const configuredDeviationCount = autoHedgingAdmissionPolicy.currencyPairs
-        .filter(pair => pair.maxTransferRateDeviationPercent !== null)
-        .length;
-
-      autoHedgingAdmissionPolicyRevision.textContent =
-        `Revision ${autoHedgingAdmissionPolicy.revision}`;
-      autoHedgingManualReleaseSharedRevision.textContent =
-        `Revision ${autoHedgingAdmissionPolicy.revision}`;
-      autoHedgingManualReleaseSharedPairSummary.textContent =
-        `${enabledPairCount} of ${autoHedgingAdmissionPolicy.currencyPairs.length} enabled`;
-      autoHedgingManualReleaseSharedDeviation.textContent =
-        `${configuredDeviationCount} of ${autoHedgingAdmissionPolicy.currencyPairs.length} Ccy Pairs configured`;
-      autoHedgingAdmissionPairRows.innerHTML = autoHedgingAdmissionPolicy.currencyPairs
-        .map(autoHedgingAdmissionPairRowMarkup)
-        .join("");
-      filterAutoHedgingAdmissionPairs();
-      setAutoHedgingAdmissionPolicyBusy(autoHedgingAdmissionPolicySaving);
-      updateAutoHedgingAdmissionDialogSaveAvailability();
-    }
-
-    function decimalFractionDigitCount(value) {
-      const decimal = String(value || "").split(".")[1] || "";
-      return decimal.length;
-    }
-
-    function autoHedgingAdmissionPolicyDraft() {
-      let policyValid = true;
-      const currencyPairs = autoHedgingAdmissionPolicy.currencyPairs.map(pair => {
-        const row = autoHedgingAdmissionPairRows.querySelector(
-          `[data-auto-hedging-admission-pair-code="${pair.ccyPairCode}"]`
-        );
-        const enabled = row?.querySelector(
-          "[data-auto-hedging-admission-pair-enabled]"
-        )?.checked === true;
-        const amountInput = row?.querySelector(
-          "[data-auto-hedging-admission-pair-limit]"
-        );
-        const deviationInput = row?.querySelector(
-          "[data-auto-hedging-admission-deviation]"
-        );
-        const parsedMaxBaseCcyAmount = positiveDecimalInputText(amountInput?.value);
-        const maxBaseCcyAmount = enabled ? parsedMaxBaseCcyAmount : null;
-        const validAmount = !enabled || (
-          parsedMaxBaseCcyAmount !== null
-          && decimalFractionDigitCount(parsedMaxBaseCcyAmount)
-            <= pair.baseCcyFractionDigits
-        );
-        const deviation = normalizedDecimalInputText(deviationInput?.value);
-        let validDeviation = false;
-        try {
-          validDeviation = deviation !== null
-            && new Big(deviation).gte(0)
-            && new Big(deviation).lte(100);
-        } catch {}
-
-        if (amountInput) {
-          amountInput.setCustomValidity(
-            validAmount
-              ? ""
-              : `Enter a positive ${pair.baseCcyCode} amount with no more than ${pair.baseCcyFractionDigits} decimal places.`
-          );
-        }
-        if (deviationInput) {
-          deviationInput.setCustomValidity(
-            validDeviation
-              ? ""
-              : "Enter a percentage from 0 through 100."
-          );
-        }
-        policyValid = policyValid && validAmount && validDeviation;
-
-        return {
-          ccyPairCode: pair.ccyPairCode,
-          enabled,
-          maxBaseCcyAmount,
-          maxTransferRateDeviationPercent: deviation
-        };
-      });
-
-      if (!policyValid) {
-        return null;
-      }
-
-      return {
-        expectedRevision: autoHedgingAdmissionPolicy.revision,
-        currencyPairs
-      };
-    }
-
-    function sameAutoHedgingAdmissionPolicyDraft(draft) {
-      if (!draft) {
-        return false;
-      }
-
-      return draft.currencyPairs.every((draftPair, index) => {
-        const savedPair = autoHedgingAdmissionPolicy.currencyPairs[index];
-
-        if (
-          !savedPair
-          || draftPair.ccyPairCode !== savedPair.ccyPairCode
-          || draftPair.enabled !== savedPair.enabled
-        ) {
-          return false;
-        }
-
-        if (
-          draftPair.maxTransferRateDeviationPercent === null
-          || savedPair.maxTransferRateDeviationPercent === null
-        ) {
-          if (
-            draftPair.maxTransferRateDeviationPercent
-            !== savedPair.maxTransferRateDeviationPercent
-          ) {
-            return false;
-          }
-        } else {
-          try {
-            if (!new Big(draftPair.maxTransferRateDeviationPercent).eq(
-              savedPair.maxTransferRateDeviationPercent
-            )) {
-              return false;
-            }
-          } catch {
-            return false;
-          }
-        }
-
-        if (draftPair.maxBaseCcyAmount === null || savedPair.maxBaseCcyAmount === null) {
-          return draftPair.maxBaseCcyAmount === savedPair.maxBaseCcyAmount;
-        }
-
-        try {
-          return new Big(draftPair.maxBaseCcyAmount).eq(savedPair.maxBaseCcyAmount);
-        } catch {
-          return false;
-        }
-      });
-    }
-
-    function updateAutoHedgingAdmissionDialogSaveAvailability() {
-      if (
-        autoHedgingAdmissionPolicySaving
-        || !autoHedgingAdmissionPolicyLoaded
-      ) {
-        setSaveButtonAvailability(
-          autoHedgingAdmissionPairDialogSave,
-          false,
-          autoHedgingAdmissionPolicySaving ? "Saving Policy" : "Policy is not loaded"
-        );
-        return;
-      }
-
-      const draft = autoHedgingAdmissionPolicyDraft();
-      const canSave = Boolean(draft)
-        && !sameAutoHedgingAdmissionPolicyDraft(draft);
-      const unavailableReason = draft
-        ? "No changes to save"
-        : "Enter valid Ccy Pair admission criteria";
-      setSaveButtonAvailability(
-        autoHedgingAdmissionPairDialogSave,
-        canSave,
-        unavailableReason
-      );
-    }
-
-    function syncAutoHedgingAdmissionPairControl(row) {
-      const enabledControl = row?.querySelector(
-        "[data-auto-hedging-admission-pair-enabled]"
-      );
-      const limitControl = row?.querySelector(
-        "[data-auto-hedging-admission-pair-limit]"
-      );
-
-      if (!enabledControl || !limitControl) {
-        return;
-      }
-
-      limitControl.disabled = autoHedgingAdmissionPolicySaving
-        || !autoHedgingAdmissionPolicyLoaded
-        || !enabledControl.checked;
-      if (!enabledControl.checked) {
-        limitControl.setCustomValidity("");
-      }
-      filterAutoHedgingAdmissionPairs();
-      updateAutoHedgingAdmissionDialogSaveAvailability();
-    }
-
-    async function reloadAutoHedgingAdmissionPolicyFromApi() {
-      const response = await demoApiRequest(
-        "/api/v1/auto-hedging-admission-policy"
-      );
-      autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(response);
-      autoHedgingAdmissionPolicyLoaded = true;
-      renderAutoHedgingAdmissionPolicy();
-      return autoHedgingAdmissionPolicy;
-    }
-
-    async function loadAutoHedgingAdmissionPolicySettings() {
-      autoHedgingAdmissionPolicyLoaded = false;
-      setAutoHedgingAdmissionPolicyBusy(true);
-
-      if (!DEMO_API_ENABLED) {
-        renderAutoHedgingAdmissionPolicy();
-        setAutoHedgingAdmissionPolicyStatus(
-          "SQLite API is unavailable. Start the demo to configure the policy.",
-          "error"
-        );
-        return;
-      }
-
-      setAutoHedgingAdmissionPolicyStatus("Loading Auto Hedging Admission Policy...");
-
-      try {
-        await reloadAutoHedgingAdmissionPolicyFromApi();
-        setAutoHedgingAdmissionPolicyStatus();
-      } catch (error) {
-        autoHedgingAdmissionPolicyLoaded = false;
-        renderAutoHedgingAdmissionPolicy();
-        setAutoHedgingAdmissionPolicyStatus(
-          error.message || "Unable to load Auto Hedging Admission Policy.",
-          "error"
-        );
-      } finally {
-        setAutoHedgingAdmissionPolicyBusy(false);
-      }
-    }
-
-    async function persistAutoHedgingAdmissionPolicy(draft, dialogStatus) {
-      if (autoHedgingAdmissionPolicySaving) {
-        return false;
-      }
-
-      autoHedgingAdmissionPolicySaving = true;
-      setAutoHedgingAdmissionPolicyBusy(true);
-      setAutoHedgingAdmissionPolicyStatus("Saving Auto Hedging Admission Policy...");
-      setAutoHedgingAdmissionDialogStatus(dialogStatus, "Saving changes...");
-
-      try {
-        const response = await demoApiRequest(
-          "/api/v1/auto-hedging-admission-policy",
-          {
-            method: "PUT",
-            body: JSON.stringify(draft)
-          }
-        );
-        autoHedgingAdmissionPolicy = normalizedAutoHedgingAdmissionPolicy(response);
-        autoHedgingAdmissionPolicyLoaded = true;
-        renderAutoHedgingAdmissionPolicy();
-        setAutoHedgingAdmissionPolicyStatus(
-          "Auto Hedging Admission Policy was saved successfully.",
-          "success"
-        );
-        return true;
-      } catch (error) {
-        if (error.status === 409) {
-          try {
-            await reloadAutoHedgingAdmissionPolicyFromApi();
-            autoHedgingAdmissionPairDialogSnapshot =
-              autoHedgingAdmissionPairControlSnapshot();
-            const conflictMessage =
-              "The policy was updated elsewhere. The latest revision has been loaded; review it before saving again.";
-            setAutoHedgingAdmissionPolicyStatus(conflictMessage, "error");
-            setAutoHedgingAdmissionDialogStatus(
-              dialogStatus,
-              conflictMessage,
-              "error"
-            );
-          } catch (reloadError) {
-            autoHedgingAdmissionPolicyLoaded = false;
-            const reloadMessage = reloadError.message
-              || "The policy changed, but its latest revision could not be loaded.";
-            setAutoHedgingAdmissionPolicyStatus(reloadMessage, "error");
-            setAutoHedgingAdmissionDialogStatus(
-              dialogStatus,
-              reloadMessage,
-              "error"
-            );
-          }
-        } else {
-          const errorMessage = error.message
-            || "Unable to save Auto Hedging Admission Policy.";
-          setAutoHedgingAdmissionPolicyStatus(errorMessage, "error");
-          setAutoHedgingAdmissionDialogStatus(
-            dialogStatus,
-            errorMessage,
-            "error"
-          );
-        }
-        return false;
-      } finally {
-        autoHedgingAdmissionPolicySaving = false;
-        setAutoHedgingAdmissionPolicyBusy(false);
-        updateAutoHedgingAdmissionDialogSaveAvailability();
-      }
-    }
-
-    async function saveAutoHedgingAdmissionPairDialog() {
-      const draft = autoHedgingAdmissionPolicyDraft();
-      const invalidControl = autoHedgingAdmissionPairRows.querySelector(":invalid");
-
-      if (!draft || invalidControl) {
-        if (invalidControl) {
-          autoHedgingAdmissionPairSearch.value = "";
-          autoHedgingAdmissionPairFilter.value = "ALL";
-          filterAutoHedgingAdmissionPairs();
-          invalidControl.focus();
-          invalidControl.reportValidity();
-        } else {
-          setAutoHedgingAdmissionDialogStatus(
-            autoHedgingAdmissionPairDialogStatus,
-            "Enter valid Ccy Pair admission criteria.",
-            "error"
-          );
-        }
-        updateAutoHedgingAdmissionDialogSaveAvailability();
-        return;
-      }
-
-      if (sameAutoHedgingAdmissionPolicyDraft(draft)) {
-        closeAutoHedgingAdmissionPairDialog();
-        return;
-      }
-
-      if (await persistAutoHedgingAdmissionPolicy(
-        draft,
-        autoHedgingAdmissionPairDialogStatus
-      )) {
-        closeAutoHedgingAdmissionPairDialog();
-      }
-    }
-
-    function ensureAutoHedgingAdmissionPolicyEventBindings() {
-      if (autoHedgingAdmissionPolicyEventsBound) {
-        return;
-      }
-
-      autoHedgingAdmissionPolicyEventsBound = true;
-      [
-        autoHedgingAdmissionCcyPairEditButton,
-        autoHedgingAdmissionAmountLimitEditButton,
-        autoHedgingAdmissionDeviationEditButton
-      ].forEach(button => {
-        button.addEventListener("click", openAutoHedgingAdmissionPairDialog);
-      });
-      autoHedgingAdmissionPairDialogClose.addEventListener("click", () => {
-        closeAutoHedgingAdmissionPairDialog({ restore: true });
-      });
-      autoHedgingAdmissionPairDialogCancel.addEventListener("click", () => {
-        closeAutoHedgingAdmissionPairDialog({ restore: true });
-      });
-      autoHedgingAdmissionPairDialogForm.addEventListener("submit", event => {
-        event.preventDefault();
-        saveAutoHedgingAdmissionPairDialog();
-      });
-      autoHedgingAdmissionPairDialog.addEventListener("cancel", event => {
-        event.preventDefault();
-        if (!autoHedgingAdmissionPolicySaving) {
-          closeAutoHedgingAdmissionPairDialog({ restore: true });
-        }
-      });
-      autoHedgingAdmissionPairRows.addEventListener("change", event => {
-        if (!event.target.matches("[data-auto-hedging-admission-pair-enabled]")) {
-          return;
-        }
-        syncAutoHedgingAdmissionPairControl(
-          event.target.closest("[data-auto-hedging-admission-pair-code]")
-        );
-      });
-      autoHedgingAdmissionPairRows.addEventListener("input", event => {
-        if (event.target.matches(
-          "[data-auto-hedging-admission-pair-limit], "
-          + "[data-auto-hedging-admission-deviation]"
-        )) {
-          updateAutoHedgingAdmissionDialogSaveAvailability();
-        }
-      });
-      autoHedgingAdmissionPairSearch.addEventListener(
-        "input",
-        filterAutoHedgingAdmissionPairs
-      );
-      autoHedgingAdmissionPairSearch.addEventListener("keydown", event => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-        }
-      });
-      autoHedgingAdmissionPairFilter.addEventListener(
-        "change",
-        filterAutoHedgingAdmissionPairs
-      );
-      hedgingSettingsAutoGroupToggle.addEventListener("click", () => {
-        setHedgingSettingsAutoGroupExpanded(
-          hedgingSettingsAutoGroupToggle.getAttribute("aria-expanded") !== "true"
-        );
-      });
-      autoHedgingSettingsSegmentToggles.forEach(toggle => {
-        toggle.addEventListener("click", () => {
-          toggleAutoHedgingSettingsSegment(toggle);
-        });
-      });
-    }
-
     function hedgeQuickModeUnconfiguredPairs() {
       const configuredPairs = new Set(
         hedgeQuickModeSettings.map(setting => setting.currencyPair)
@@ -1144,7 +355,7 @@
           Number(rule.pricingRuleId) === Number(setting.pricingRuleId)
         ) || null;
         const context = pricingContextById(
-          setting.executionContextId || pricingRule?.pricingContextId
+          setting.tradeContextId || pricingRule?.pricingContextId
         );
 
         return {
@@ -1152,7 +363,7 @@
           context,
           contextPath: context
             ? pricingContextDisplayPath(context)
-            : "Missing Execution Context",
+            : "Missing Trade Context",
           presetsSummary: `${setting.baseCcyCode} ${setting.presets
             .map(preset => groupedDecimalText(preset.baseCcyAmount))
             .join(" / ")}`,
@@ -1169,12 +380,12 @@
       const setting = cell.getRow().getData();
 
       if (!setting.context) {
-        return '<span class="text-secondary">Missing Execution Context</span>';
+        return '<span class="text-secondary">Missing Trade Context</span>';
       }
 
       return `
         <span class="client-pricing-context-candidate-path">
-          ${pricingContextFacetsMarkup(setting.context, { executionSystemLabel: true })}
+          ${pricingContextFacetsMarkup(setting.context, { originatingSystemLabel: true })}
         </span>
       `;
     }
@@ -1262,7 +473,7 @@
             title: `
               <span class="hedge-quick-settings-column-title">
                 <span class="button-icon" aria-hidden="true">hub</span>
-                <span>Execution Context</span>
+                <span>Trade Context</span>
               </span>
             `,
             field: "contextPath",
@@ -1344,7 +555,9 @@
       hedgeQuickModeSettingsOverview.hidden = !overview;
       hedgeQuickModeSettingsEditor.hidden = overview;
       hedgeQuickModeSettingsHeader.hidden = overview;
-      hedgeQuickModeSettingsBackButton.hidden = overview;
+      document.getElementById("hedgeQuickModeSettingsEditorTitle").textContent =
+        currentHedgeQuickModeSetting() ? hedgeQuickModeSettingsPair() : "New Quick Hedge Setting";
+      renderWorkspacePageHeading();
       hedgeQuickModeSettingsActiveField.hidden = overview;
       hedgeQuickModeSettingsSaveButton.hidden = overview;
       hedgeQuickModeSettingsDeleteButton.hidden =
@@ -1774,42 +987,6 @@
       setHedgeQuickModeCounterpartyPickerExpanded(true);
     }
 
-    async function loadHedgingSettingsPage({ reload = true } = {}) {
-      setHedgingSettingsSection(hedgingSettingsSectionFromLocation());
-      if (!reload) {
-        return;
-      }
-
-      ensureAutoHedgingAdmissionPolicyEventBindings();
-      renderAutoHedgingAdmissionPolicy();
-      const autoHedgingAdmissionPolicyLoad =
-        loadAutoHedgingAdmissionPolicySettings();
-
-      hedgeQuickModeSettingsForm.reset();
-      hedgeQuickModeCounterpartyPickerExpanded = false;
-      hedgeQuickModePricingRulesExpanded = false;
-      setHedgeQuickModeSettingsView("overview");
-      renderHedgeQuickModeSettingsOverview();
-      hedgeQuickModeSettingsNewButton.disabled = true;
-      hedgeQuickModeSettingsSaveButton.disabled = true;
-      setHedgeQuickModeSettingsStatus("Loading Quick Hedge settings...");
-
-      try {
-        await reloadHedgeQuickModeSettingsFromApi();
-        showHedgeQuickModeSettingsOverview();
-      } catch (error) {
-        renderHedgeQuickModeSettingsOverview();
-        setHedgeQuickModeSettingsStatus(
-          error.message || "Unable to load Quick Hedge settings.",
-          "error"
-        );
-      } finally {
-        hedgeQuickModeSettingsSaveButton.disabled = false;
-      }
-
-      await autoHedgingAdmissionPolicyLoad;
-    }
-
     function validateHedgeQuickModeSettingsForm() {
       const counterparty = selectedHedgeQuickModeCounterparty();
       const rule = selectedHedgeQuickModePricingRule();
@@ -1903,7 +1080,7 @@
           `Quick Hedge settings for ${currencyPair} were saved successfully.`,
           "success"
         );
-        render(fxPositions);
+        render(positions);
       } catch (error) {
         setHedgeQuickModeSettingsStatus(
           error.message || "Unable to save Quick Hedge settings.",
@@ -1938,7 +1115,7 @@
           `Quick Hedge settings for ${setting.currencyPair} were deleted successfully.`,
           "success"
         );
-        render(fxPositions);
+        render(positions);
       } catch (error) {
         setHedgeQuickModeSettingsStatus(
           error.message || "Unable to delete Quick Hedge settings.",
@@ -2181,7 +1358,7 @@
       return addClientDealPricingRuleContentMarkup(
         rule,
         context,
-        { executionSystemLabel: true, showPricingModeIndicator: false }
+        { originatingSystemLabel: true, showPricingModeIndicator: false }
       );
     }
 
@@ -2279,7 +1456,7 @@
         return;
       }
 
-      const ourSide = oppositeFxSide(addHedgeDealForm.elements.side.value);
+      const ourSide = oppositeSide(addHedgeDealForm.elements.side.value);
       const marketRate = ourSide === "SELL"
         ? document.getElementById("addHedgeDealMarketBid").value
         : ourSide === "BUY"
@@ -2290,12 +1467,12 @@
 
       if (!marketRate) {
         tradeRateInput.setCustomValidity(
-          "A Market Pulse quote is required for an Auto Priced Hedge FX Deal."
+          "A Market Pulse quote is required for an Auto Priced Hedge Deal."
         );
       }
     }
 
-    function oppositeFxSide(side) {
+    function oppositeSide(side) {
       const normalizedSide = String(side || "").trim().toUpperCase();
 
       if (normalizedSide === "BUY") {
@@ -2313,7 +1490,7 @@
       const pairValue = normalizedPricingRuleCurrencyPair(addHedgeDealForm.elements.currencyPair.value);
       const currencies = currenciesFromPair(pairValue || "BASE/QUOTE");
       const positionSide = addHedgeDealForm.elements.side.value;
-      const ourSide = oppositeFxSide(positionSide);
+      const ourSide = oppositeSide(positionSide);
 
       addHedgeDealForm.querySelector("[data-add-hedge-deal-base-ccy]").textContent = currencies.base;
       addHedgeDealForm.querySelector("[data-add-hedge-deal-quote-ccy]").textContent = currencies.quote;
@@ -2354,7 +1531,7 @@
         return null;
       }
 
-      const amounts = exactFxAmountsFromDealt({
+      const amounts = exactAmountsFromDealt({
         dealtAmount: dealtInput.value,
         dealtCcyCode,
         baseCcyCode: currencies.base,
@@ -2568,7 +1745,7 @@
     async function createQuickHedgeDeal(ourSide, presetCode) {
       const normalizedOurSide = String(ourSide || "").trim().toUpperCase();
       const positionManagementMode = normalizedPositionManagementMode(
-        activeFxPositionMode
+        activePositionMode
       );
       const setting = hedgeQuickModeSettingForPair();
       const normalizedPresetCode = String(presetCode || "").trim().toUpperCase();
@@ -2598,11 +1775,11 @@
       );
 
       try {
-        const created = await demoApiRequest("/api/v1/hedge-fx-deals/quick-mode", {
+        const created = await demoApiRequest("/api/v1/hedge-deals/quick-mode", {
           method: "POST",
           body: JSON.stringify({
             ccyPairCode: setting.ccyPairCode,
-            side: oppositeFxSide(normalizedOurSide),
+            side: oppositeSide(normalizedOurSide),
             presetCode: preset.presetCode,
             positionManagementMode
           })
@@ -2611,14 +1788,14 @@
         await refreshHedgeDealViewsFromApi();
         selectedCurrencyPair = normalizedPricingRuleCurrencyPair(created.currencyPair);
         saveSelectedCurrencyPair();
-        render(fxPositions);
+        render(positions);
         setBatchStatus(
-          `Hedge FX Deal ${created.tradeId} was created successfully in Quick Mode.`,
+          `Hedge Deal ${created.tradeId} was created successfully in Quick Mode.`,
           "success"
         );
       } catch (error) {
         setBatchStatus(
-          error.message || "Unable to create the Quick Mode Hedge FX Deal.",
+          error.message || "Unable to create the Quick Mode Hedge Deal.",
           "error"
         );
       } finally {
@@ -2646,7 +1823,7 @@
 
       addHedgeDealQuickModeSelection = isQuickMode ? quickModeSelection : null;
       addHedgeDealPositionManagementMode = normalizedPositionManagementMode(
-        activeFxPositionMode
+        activePositionMode
       );
       addHedgeDealPricingModeLocked = isQuickMode;
       addHedgeDealSideLocked = validOurSide;
@@ -2664,7 +1841,7 @@
         addHedgeDealForm.elements.currencyPair.value =
           quickModeSelection.setting.currencyPair;
       }
-      addHedgeDealForm.elements.side.value = oppositeFxSide(normalizedOurSide);
+      addHedgeDealForm.elements.side.value = oppositeSide(normalizedOurSide);
       addHedgeDealForm.elements.tenor.value = isQuickMode
         ? quickModeSelection.setting.defaultTenor
         : "TOD";
@@ -2764,7 +1941,7 @@
             tenor: addHedgeDealForm.elements.tenor.value,
             positionManagementMode: addHedgeDealPositionManagementMode
           };
-          endpoint = "/api/v1/hedge-fx-deals/quick-mode";
+          endpoint = "/api/v1/hedge-deals/quick-mode";
         } else {
           const currencies = currenciesFromPair(rule.ccyPairCode.replace("_", "/"));
           requestBody = {
@@ -2782,8 +1959,8 @@
           }
 
           endpoint = autoPriced
-            ? "/api/v1/hedge-fx-deals/auto-priced"
-            : "/api/v1/hedge-fx-deals";
+            ? "/api/v1/hedge-deals/auto-priced"
+            : "/api/v1/hedge-deals";
         }
 
         const created = await demoApiRequest(endpoint, {
@@ -2795,13 +1972,13 @@
         selectedCurrencyPair = normalizedPricingRuleCurrencyPair(created.currencyPair);
         saveSelectedCurrencyPair();
         closeAddHedgeDealDialog();
-        render(fxPositions);
+        render(positions);
         setBatchStatus(
-          `Hedge FX Deal ${created.tradeId} was created successfully.`,
+          `Hedge Deal ${created.tradeId} was created successfully.`,
           "success"
         );
       } catch (error) {
-        setBatchStatus(error.message || "Unable to create the Hedge FX Deal.", "error");
+        setBatchStatus(error.message || "Unable to create the Hedge Deal.", "error");
       } finally {
         addHedgeDealSubmitButton.disabled = false;
       }

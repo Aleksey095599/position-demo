@@ -133,6 +133,12 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "isActive": true
     }
   ],
+  "tradePurposes": [
+    { "tradePurposeId": "CLIENT_CONVERSION", "name": "Client Account Conversion" },
+    { "tradePurposeId": "LOAN_REPAYMENT", "name": "Loan Repayment" },
+    { "tradePurposeId": "FEE_COLLECTION", "name": "Fee Collection" },
+    { "tradePurposeId": "POSITION_HEDGING", "name": "Position Hedging" }
+  ],
   "tradeCaptureChannels": [
     {
       "tradeCaptureChannelId": "CLICK_TRADE_EFX",
@@ -159,40 +165,40 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "servicingBranchCode": "002",
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "CLICK_TRADE_EFX",
-      "defaultPositionManagementMode": "AUTO",
-      "autoHedgingAdmissionMode": "AUTO_IF_ELIGIBLE"
+
+      "autoManagementAdmissionMode": "AUTO_IF_ELIGIBLE"
     },
     {
       "pricingContextId": 2,
       "servicingBranchCode": "002",
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "RFQ",
-      "defaultPositionManagementMode": "MANUAL",
-      "autoHedgingAdmissionMode": "MANUAL_ONLY"
+
+      "autoManagementAdmissionMode": "REVIEW_REQUIRED"
     },
     {
       "pricingContextId": 3,
       "servicingBranchCode": "002",
       "settlementSystemId": "CTF3",
       "tradeCaptureChannelId": "MANUAL_CLIENT_DEAL_ENTRY",
-      "defaultPositionManagementMode": "MANUAL",
-      "autoHedgingAdmissionMode": "MANUAL_ONLY"
+
+      "autoManagementAdmissionMode": "REVIEW_REQUIRED"
     },
     {
       "pricingContextId": 4,
       "servicingBranchCode": "1234",
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "RFQ",
-      "defaultPositionManagementMode": "MANUAL",
-      "autoHedgingAdmissionMode": "MANUAL_ONLY"
+
+      "autoManagementAdmissionMode": "REVIEW_REQUIRED"
     },
     {
       "pricingContextId": 5,
       "servicingBranchCode": "001",
       "settlementSystemId": "CTF3",
       "tradeCaptureChannelId": "CLICK_TRADE_EFX",
-      "defaultPositionManagementMode": "AUTO",
-      "autoHedgingAdmissionMode": "AUTO_IF_ELIGIBLE"
+
+      "autoManagementAdmissionMode": "AUTO_IF_ELIGIBLE"
     }
   ],
   "clientPricingRules": [
@@ -202,8 +208,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "currencyPair": "EUR/USD",
       "pricingContextId": 1,
       "marginPercent": 0.1,
-      "positionManagementModeOverride": null,
-      "autoHedgingAdmissionModeOverride": null
+
+      "autoManagementAdmissionModeOverride": null
     },
     {
       "pricingRuleId": 2,
@@ -211,8 +217,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "currencyPair": "EUR/USD",
       "pricingContextId": 2,
       "marginPercent": 0.12,
-      "positionManagementModeOverride": null,
-      "autoHedgingAdmissionModeOverride": null
+
+      "autoManagementAdmissionModeOverride": null
     },
     {
       "pricingRuleId": 3,
@@ -220,8 +226,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "currencyPair": "EUR/USD",
       "pricingContextId": 3,
       "marginPercent": 0.08,
-      "positionManagementModeOverride": null,
-      "autoHedgingAdmissionModeOverride": null
+
+      "autoManagementAdmissionModeOverride": null
     },
     {
       "pricingRuleId": 4,
@@ -229,8 +235,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "currencyPair": "EUR/USD",
       "pricingContextId": 4,
       "marginPercent": 0.05,
-      "positionManagementModeOverride": null,
-      "autoHedgingAdmissionModeOverride": null
+
+      "autoManagementAdmissionModeOverride": null
     },
     {
       "pricingRuleId": 5,
@@ -238,8 +244,8 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "currencyPair": "EUR/USD",
       "pricingContextId": 5,
       "marginPercent": 0.2,
-      "positionManagementModeOverride": null,
-      "autoHedgingAdmissionModeOverride": null
+
+      "autoManagementAdmissionModeOverride": null
     }
   ]
 };
@@ -312,24 +318,30 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       { settlementSystemId: "AFINA", settlementSystemName: "Afina Core Ledger", isActive: true },
       { settlementSystemId: "CTF3", settlementSystemName: "CTF3 Treasury Settlement", isActive: true }
     ],
+    tradePurposes: [
+      { tradePurposeId: "CLIENT_CONVERSION", name: "Client Account Conversion" },
+      { tradePurposeId: "LOAN_REPAYMENT", name: "Loan Repayment" },
+      { tradePurposeId: "FEE_COLLECTION", name: "Fee Collection" },
+      { tradePurposeId: "POSITION_HEDGING", name: "Position Hedging" }
+    ],
     tradeCaptureChannels: [
       { tradeCaptureChannelId: "CLICK_TRADE_EFX", tradeCaptureChannelName: "Click Trade eFX", pricingType: "AUTO_PRICED", isActive: true },
       { tradeCaptureChannelId: "RFQ", tradeCaptureChannelName: "Request for Quote", pricingType: "DEALER_APPROVED", isActive: true },
       { tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", tradeCaptureChannelName: "Manual Client Deal Entry", pricingType: "DEALER_PRICED", isActive: true }
     ],
     pricingContexts: [
-      { pricingContextId: 1, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "CLICK_TRADE_EFX", defaultPositionManagementMode: "AUTO", autoHedgingAdmissionMode: "AUTO_IF_ELIGIBLE" },
-      { pricingContextId: 2, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", defaultPositionManagementMode: "MANUAL", autoHedgingAdmissionMode: "MANUAL_ONLY" },
-      { pricingContextId: 3, servicingBranchCode: "002", settlementSystemId: "CTF3", tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", defaultPositionManagementMode: "MANUAL", autoHedgingAdmissionMode: "MANUAL_ONLY" },
-      { pricingContextId: 4, servicingBranchCode: "1234", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", defaultPositionManagementMode: "MANUAL", autoHedgingAdmissionMode: "MANUAL_ONLY" },
-      { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX", defaultPositionManagementMode: "AUTO", autoHedgingAdmissionMode: "AUTO_IF_ELIGIBLE" }
+      { pricingContextId: 1, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "CLICK_TRADE_EFX", autoManagementAdmissionMode: "AUTO_IF_ELIGIBLE" },
+      { pricingContextId: 2, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", autoManagementAdmissionMode: "REVIEW_REQUIRED" },
+      { pricingContextId: 3, servicingBranchCode: "002", settlementSystemId: "CTF3", tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", autoManagementAdmissionMode: "REVIEW_REQUIRED" },
+      { pricingContextId: 4, servicingBranchCode: "1234", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", autoManagementAdmissionMode: "REVIEW_REQUIRED" },
+      { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX", autoManagementAdmissionMode: "AUTO_IF_ELIGIBLE" }
     ],
     clientPricingRules: [
-      { pricingRuleId: 1, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 1, marginPercent: 0.10, positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: null },
-      { pricingRuleId: 2, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 2, marginPercent: 0.12, positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: null },
-      { pricingRuleId: 3, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 3, marginPercent: 0.08, positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: null },
-      { pricingRuleId: 4, inn: "7812345678", currencyPair: "EUR/USD", pricingContextId: 4, marginPercent: 0.05, positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: null },
-      { pricingRuleId: 5, inn: "5409876543", currencyPair: "EUR/USD", pricingContextId: 5, marginPercent: 0.20, positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: null }
+      { pricingRuleId: 1, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 1, marginPercent: 0.10, autoManagementAdmissionModeOverride: null },
+      { pricingRuleId: 2, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 2, marginPercent: 0.12, autoManagementAdmissionModeOverride: null },
+      { pricingRuleId: 3, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 3, marginPercent: 0.08, autoManagementAdmissionModeOverride: null },
+      { pricingRuleId: 4, inn: "7812345678", currencyPair: "EUR/USD", pricingContextId: 4, marginPercent: 0.05, autoManagementAdmissionModeOverride: null },
+      { pricingRuleId: 5, inn: "5409876543", currencyPair: "EUR/USD", pricingContextId: 5, marginPercent: 0.20, autoManagementAdmissionModeOverride: null }
     ]
   };
 
@@ -361,7 +373,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
     clientPricingRules: "batching-demo.client-pricing-rules.v1"
   };
   const LEGACY_SELECTED_CURRENCY_PAIR_KEY = "batching-demo.batching-currency-pair.v1";
-  const OBSOLETE_FX_STORAGE_KEYS = [
+  const OBSOLETE_STORAGE_KEYS = [
     "batching-demo.batch-settings.v1",
     "batching-demo.client-deal-generation-settings.v1",
     "batching-demo.fx-position-blotter.v2",
@@ -378,26 +390,25 @@ window.__DEMO_DB_STARTUP_DATA__ = {
     return mode === "AUTO" || mode === "MANUAL" ? mode : "MANUAL";
   }
 
-  function normalizedAutoHedgingAdmissionMode(value, defaultPositionManagementMode = "MANUAL") {
+  function normalizedAutoManagementAdmissionMode(value, legacyDefaultMode = "MANUAL") {
     const mode = String(value || "").trim().toUpperCase();
 
-    if (["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED", "MANUAL_ONLY"].includes(mode)) {
+    if (["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED"].includes(mode)) {
       return mode;
     }
 
-    return normalizedPositionManagementMode(defaultPositionManagementMode) === "AUTO"
+    if (mode === "MANUAL_ONLY") {
+      return "REVIEW_REQUIRED";
+    }
+
+    return normalizedPositionManagementMode(legacyDefaultMode) === "AUTO"
       ? "AUTO_IF_ELIGIBLE"
-      : "MANUAL_ONLY";
+      : "REVIEW_REQUIRED";
   }
 
-  function normalizedPositionManagementModeOverride(value) {
-    const mode = String(value || "").trim().toUpperCase();
-    return mode === "AUTO" || mode === "MANUAL" ? mode : null;
-  }
-
-  function normalizedAutoHedgingAdmissionModeOverride(value) {
-    return String(value || "").trim().toUpperCase() === "MANUAL_ONLY"
-      ? "MANUAL_ONLY"
+  function normalizedAutoManagementAdmissionModeOverride(value) {
+    return ["REVIEW_REQUIRED", "MANUAL_ONLY"].includes(String(value || "").trim().toUpperCase())
+      ? "REVIEW_REQUIRED"
       : null;
   }
 
@@ -454,28 +465,32 @@ window.__DEMO_DB_STARTUP_DATA__ = {
     }
 
     if (Array.isArray(normalized.pricingContexts)) {
-      normalized.pricingContexts = normalized.pricingContexts.map(context => ({
-        ...clone(context),
-        defaultPositionManagementMode: normalizedPositionManagementMode(
-          context?.defaultPositionManagementMode
-        ),
-        autoHedgingAdmissionMode: normalizedAutoHedgingAdmissionMode(
-          context?.autoHedgingAdmissionMode,
-          context?.defaultPositionManagementMode
-        )
-      }));
+      normalized.pricingContexts = normalized.pricingContexts.map(context => {
+        const { autoHedgingAdmissionMode: legacyMode, defaultPositionManagementMode: legacyDefault, ...current } = clone(context);
+        return {
+          ...current,
+          autoManagementAdmissionMode: normalizedAutoManagementAdmissionMode(
+            Object.prototype.hasOwnProperty.call(current, "autoManagementAdmissionMode")
+              ? current.autoManagementAdmissionMode
+              : legacyMode,
+            legacyDefault
+          )
+        };
+      });
     }
 
     if (Array.isArray(normalized.clientPricingRules)) {
-      normalized.clientPricingRules = normalized.clientPricingRules.map(rule => ({
-        ...clone(rule),
-        positionManagementModeOverride: normalizedPositionManagementModeOverride(
-          rule?.positionManagementModeOverride
-        ),
-        autoHedgingAdmissionModeOverride: normalizedAutoHedgingAdmissionModeOverride(
-          rule?.autoHedgingAdmissionModeOverride
-        )
-      }));
+      normalized.clientPricingRules = normalized.clientPricingRules.map(rule => {
+        const { autoHedgingAdmissionModeOverride: legacyOverride, positionManagementModeOverride: legacyPositionOverride, effectivePositionManagementMode, tradeContextDefaultPositionManagementMode, ...current } = clone(rule);
+        return {
+          ...current,
+          autoManagementAdmissionModeOverride: normalizedAutoManagementAdmissionModeOverride(
+            Object.prototype.hasOwnProperty.call(current, "autoManagementAdmissionModeOverride")
+              ? current.autoManagementAdmissionModeOverride
+              : legacyOverride
+          ) || (legacyPositionOverride === "MANUAL" ? "REVIEW_REQUIRED" : null)
+        };
+      });
     }
 
     normalized.schemaVersion = SCHEMA_VERSION;
@@ -507,7 +522,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       ...Object.values(LEGACY_JSON_KEYS),
       ...PREVIOUS_DATABASE_STORAGE_KEYS,
       LEGACY_SELECTED_CURRENCY_PAIR_KEY,
-      ...OBSOLETE_FX_STORAGE_KEYS
+      ...OBSOLETE_STORAGE_KEYS
     ];
 
     keys.forEach(key => {

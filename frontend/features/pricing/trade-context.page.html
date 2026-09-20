@@ -1,0 +1,108 @@
+  <main class="settings-shell profile-shell pricing-shell unified-bootstrap-workspace workbench-page" id="pricingPage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Trade context header">
+      <div class="settings-title-block">
+        <h1 class="settings-title">Trade Context</h1>
+        <p class="workbench-context-label" id="pricingContextPageContextLabel" hidden>Trade Contexts</p>
+      </div>
+      <div class="profile-status workbench-page-status" id="pricingContextStatus" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="profile-layout pricing-layout" aria-label="Pricing context editor">
+      <section class="profile-panel profile-table-panel table-panel table-panel--standalone" aria-label="Pricing contexts">
+        <div class="profile-panel-head table-panel__head">
+          <h2 class="table-panel__title">Trade Contexts</h2>
+          <div class="profile-panel-head-actions table-panel__tools" data-ui-table-layout-host="trade_contexts_grid">
+            <div class="ui-table-layout-actions">
+              <button type="button" class="btn btn-sm btn-primary with-icon" id="pricingContextNewButton">
+                <span class="button-icon" aria-hidden="true">add</span>
+                <span>New context</span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary ui-table-layout-button" id="pricingContextClearFiltersButton" aria-label="Clear Trade Context filters" disabled>
+                <span class="button-icon" aria-hidden="true">filter_alt_off</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="profile-table-wrap table-panel__body table-panel__viewport">
+          <table class="profile-table pricing-context-table unified-data-table" id="tradeContextsTable" data-ui-table-layout-key="trade_contexts_grid">
+            <colgroup>
+              <col class="pricing-context-id-col" data-ui-column-key="id">
+              <col class="pricing-context-location-col" data-ui-column-key="servicing_location">
+              <col class="pricing-context-accounting-col" data-ui-column-key="accounting_system">
+              <col class="pricing-context-originating-col" data-ui-column-key="originating_system">
+              <col class="pricing-context-admission-mode-col" data-ui-column-key="auto_management_admission_mode">
+              <col class="pricing-context-count-col" data-ui-column-key="counterparties_count">
+              <col class="pricing-context-actions-col" data-ui-column-key="actions" data-pricing-context-actions-column>
+            </colgroup>
+            <thead>
+              <tr>
+                <th id="pricingContextIdHeader" aria-sort="ascending">
+                  <div class="reference-column-head">
+                    <button type="button" class="reference-column-title reference-sort-control" id="pricingContextIdSort" aria-label="Sort trade contexts by ID ascending" aria-pressed="true">
+                      <span>ID</span>
+                      <span class="reference-sort-indicator" aria-hidden="true"></span>
+                    </button>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="pricingContextId" aria-label="Filter trade contexts by ID">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">location_on</span>
+                      <span>Servicing Location</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="servicingBranchCode" aria-label="Filter trade contexts by servicing location">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">account_balance</span>
+                      <span>Accounting System</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="settlementSystemId" aria-label="Filter trade contexts by accounting system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span class="button-icon" aria-hidden="true">web_asset</span>
+                      <span>Originating System</span>
+                    </span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="tradeCaptureChannelId" aria-label="Filter trade contexts by originating system">
+                  </div>
+                </th>
+                <th id="pricingContextAutoManagementAdmissionHeader" tabindex="-1" data-pricing-context-column="autoManagementAdmissionMode">
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">
+                      <span>Initial Mode Assignment</span>
+                    </span>
+                    <select class="reference-header-filter" data-pricing-context-header-filter="autoManagementAdmissionMode" aria-label="Filter trade contexts by Initial Mode Assignment">
+                      <option value="">All</option>
+                      <option value="AUTO_IF_ELIGIBLE">Auto Mode if Eligible</option>
+                      <option value="REVIEW_REQUIRED">Manual Mode</option>
+                    </select>
+                  </div>
+                </th>
+                <th data-column-kind="count">
+                  <div class="reference-column-head reference-column-head-static reference-column-head-centered">
+                    <span
+                      class="button-icon"
+                      role="img"
+                      tabindex="0"
+                      aria-label="Attached Counterparties"
+                      data-tooltip="Attached Counterparties"
+                    >
+                      badge
+                    </span>
+                  </div>
+                </th>
+                <th class="profile-actions-cell" data-pricing-context-actions-column>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pricingContextRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>

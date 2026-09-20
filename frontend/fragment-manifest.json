@@ -3,7 +3,7 @@
     {
       "kind": "page",
       "id": "marketPage",
-      "file": "features/market/market.page.html"
+      "file": "features/market-pulse/market.page.html"
     },
     {
       "kind": "page",
@@ -13,12 +13,12 @@
     {
       "kind": "page",
       "id": "mainPage",
-      "file": "features/fx-position/fx-position.page.html"
+      "file": "features/position/position.page.html"
     },
     {
       "kind": "page",
-      "id": "fxBatchesPage",
-      "file": "features/batching/fx-batches.page.html"
+      "id": "batchesPage",
+      "file": "features/batching/batches.page.html"
     },
     {
       "kind": "page",
@@ -27,8 +27,18 @@
     },
     {
       "kind": "page",
-      "id": "fxDealsPage",
+      "id": "dealsPage",
       "file": "features/trades/trades.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "tradeContractPage",
+      "file": "features/trade-intake/trade-contract.page.html"
+    },
+    {
+      "kind": "page",
+      "id": "tradeIntakeMessagesPage",
+      "file": "features/trade-intake/trade-intake-messages.page.html"
     },
     {
       "kind": "page",
@@ -43,7 +53,7 @@
     {
       "kind": "page",
       "id": "pricingPage",
-      "file": "features/pricing/execution-context.page.html"
+      "file": "features/pricing/trade-context.page.html"
     },
     {
       "kind": "page",
@@ -67,18 +77,18 @@
     },
     {
       "kind": "page",
-      "id": "hedgingSettingsPage",
-      "file": "features/hedging/hedging-settings.page.html"
+      "id": "positionManagementSettingsPage",
+      "file": "features/position/position-management-settings.page.html"
     },
     {
       "kind": "dialog",
       "id": "marketSimulationDialog",
-      "file": "features/market/components/market-simulation.dialog.html"
+      "file": "features/market-pulse/components/market-simulation.dialog.html"
     },
     {
       "kind": "dialog",
-      "id": "sendToAutoPositionModeDialog",
-      "file": "features/fx-position/components/send-to-auto-position-mode.dialog.html"
+      "id": "moveToAutoManagementDialog",
+      "file": "features/position/components/move-to-auto-management.dialog.html"
     },
     {
       "kind": "dialog",
@@ -117,11 +127,6 @@
     },
     {
       "kind": "dialog",
-      "id": "editDealDialog",
-      "file": "features/trades/components/edit-client-deal.dialog.html"
-    },
-    {
-      "kind": "dialog",
       "id": "clientDealGenerationDialog",
       "file": "features/trades/components/client-deal-generation.dialog.html"
     },
@@ -132,13 +137,8 @@
     },
     {
       "kind": "dialog",
-      "id": "autoHedgingAdmissionPairDialog",
-      "file": "features/hedging/components/auto-hedging-admission-pairs.dialog.html"
-    },
-    {
-      "kind": "dialog",
-      "id": "clientExecutionContextAttachDialog",
-      "file": "features/counterparties/components/execution-context-attach.dialog.html"
+      "id": "clientTradeContextAttachDialog",
+      "file": "features/counterparties/components/trade-context-attach.dialog.html"
     },
     {
       "kind": "dialog",

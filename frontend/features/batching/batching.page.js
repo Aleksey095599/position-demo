@@ -43,7 +43,7 @@
       rollbackBatchId = batch.batchId;
       batchRollbackSummary.textContent =
         `Batch #${batch.batchId} (${batch.ccyPairCode}) will be ROLLED_BACK. `
-        + "Its source trades and Batch Balance Trade, if present, will return to FX Position.";
+        + "Its source trades and Batch Balance Trade, if present, will return to Position.";
       batchRollbackStatus.textContent = "";
       batchRollbackStatus.hidden = true;
 
@@ -64,23 +64,23 @@
 
       try {
         await demoApiRequest(
-          `/api/v1/fx-batches/${encodeURIComponent(batchId)}/rollback`,
+          `/api/v1/batches/${encodeURIComponent(batchId)}/rollback`,
           { method: "POST" }
         );
         await Promise.all([
-          reloadFxBatchesFromApi(),
-          reloadFxPositionsFromApi()
+          reloadBatchesFromApi(),
+          reloadPositionsFromApi()
         ]);
         selectedTradeIds.clear();
-        render(fxPositions);
+        render(positions);
         closeBatchRollbackDialog();
         setBatchingHistoryStatus(
-          `FX Batch ${batchId} was rolled back successfully. Its source trades were returned to FX Position.`,
+          `Batch ${batchId} was rolled back successfully. Its source trades were returned to Position.`,
           "success"
         );
       } catch (error) {
         batchRollbackStatus.textContent =
-          error.message || `Unable to roll back FX Batch ${batchId}.`;
+          error.message || `Unable to roll back Batch ${batchId}.`;
         batchRollbackStatus.className = "alert alert-danger batch-rollback-status";
         batchRollbackStatus.hidden = false;
         batchRollbackConfirmButton.disabled = false;
@@ -88,23 +88,23 @@
       }
     }
 
-    function updateBatchingHistoryCount(filteredCount = fxBatchHistory.length) {
-      const total = fxBatchHistory.length;
+    function updateBatchingHistoryCount(filteredCount = batchHistory.length) {
+      const total = batchHistory.length;
       const label = total === 1 ? "batch" : "batches";
       batchingHistoryCountEl.textContent = filteredCount === total
         ? `${total} ${label}`
         : `${filteredCount} of ${total} batches`;
     }
 
-    function fxBatchesAuditViewEnabled() {
-      return fxBatchesViewMode === FX_BATCHES_VIEW_MODE_AUDIT;
+    function batchesAuditViewEnabled() {
+      return batchesViewMode === BATCHES_VIEW_MODE_AUDIT;
     }
 
-    function syncFxBatchesAuditToggle() {
-      fxBatchesAuditViewToggle.checked = fxBatchesAuditViewEnabled();
+    function syncBatchesAuditToggle() {
+      batchesAuditViewToggle.checked = batchesAuditViewEnabled();
     }
 
-    function applyFxBatchesViewMode() {
+    function applyBatchesViewMode() {
       const auditFields = [
         "batchingKey",
         "windowOpenedAt",
@@ -116,7 +116,7 @@
       auditFields.forEach(field => {
         const column = batchingHistoryGrid?.getColumn(field);
 
-        if (fxBatchesAuditViewEnabled()) {
+        if (batchesAuditViewEnabled()) {
           column?.show();
         } else {
           column?.hide();
@@ -124,14 +124,14 @@
       });
 
       batchingHistoryGrid?.redraw(true);
-      syncFxBatchesAuditToggle();
+      syncBatchesAuditToggle();
     }
 
-    function setFxBatchesViewMode(mode) {
-      fxBatchesViewMode = mode === FX_BATCHES_VIEW_MODE_AUDIT
-        ? FX_BATCHES_VIEW_MODE_AUDIT
-        : FX_BATCHES_VIEW_MODE_STANDARD;
-      applyFxBatchesViewMode();
+    function setBatchesViewMode(mode) {
+      batchesViewMode = mode === BATCHES_VIEW_MODE_AUDIT
+        ? BATCHES_VIEW_MODE_AUDIT
+        : BATCHES_VIEW_MODE_STANDARD;
+      applyBatchesViewMode();
     }
 
     function initializeBatchingHistoryGrid(data) {
@@ -142,7 +142,7 @@
         renderVertical: "virtual",
         renderVerticalBuffer: 240,
         maxHeight: "calc(100vh - var(--workspace-nav-height) - 170px)",
-        placeholder: "No FX Batches have been formed.",
+        placeholder: "No Batches have been formed.",
         movableColumns: false,
         resizableColumns: false,
         headerFilterLiveFilterDelay: 250,
@@ -168,10 +168,10 @@
             headerFilter: "input",
             formatter: cell => escapeHtml(String(cell.getValue() || "").replace("_", "/"))
           }),
-          tabulatorSizedColumn("executionContext", {
+          tabulatorSizedColumn("tradeContext", {
             title: "Batching Key",
             field: "batchingKey",
-            visible: fxBatchesAuditViewEnabled(),
+            visible: batchesAuditViewEnabled(),
             headerFilter: "input",
             headerFilterFunc: batchFormationAuditBatchingKeyFilter,
             formatter: batchFormationAuditBatchingKeyFormatter
@@ -179,21 +179,21 @@
           tabulatorSizedColumn("timestamp", {
             title: "Window Opened At",
             field: "windowOpenedAt",
-            visible: fxBatchesAuditViewEnabled(),
+            visible: batchesAuditViewEnabled(),
             headerFilter: "input",
             formatter: batchFormationAuditTimestampFormatter
           }),
           tabulatorSizedColumn("timestamp", {
             title: "Window Closed At",
             field: "windowClosedAt",
-            visible: fxBatchesAuditViewEnabled(),
+            visible: batchesAuditViewEnabled(),
             headerFilter: "input",
             formatter: batchFormationAuditTimestampFormatter
           }),
           tabulatorSizedColumn("amount", {
             title: "Duration",
             field: "windowDurationMs",
-            visible: fxBatchesAuditViewEnabled(),
+            visible: batchesAuditViewEnabled(),
             sorter: "number",
             headerFilter: "input",
             formatter: batchFormationAuditDurationFormatter,
@@ -223,7 +223,7 @@
           tabulatorSizedColumn("count", {
             title: "Source Trades",
             field: "sourceTradeCount",
-            visible: fxBatchesAuditViewEnabled(),
+            visible: batchesAuditViewEnabled(),
             sorter: "number",
             headerFilter: "input",
             hozAlign: "right",
@@ -263,14 +263,14 @@
       batchingHistoryGrid.on("tableBuilt", () => {
         batchingHistoryGridReady = true;
         updateBatchingHistoryCount(data.length);
-        applyFxBatchesViewMode();
+        applyBatchesViewMode();
       });
       batchingHistoryGrid.on("dataFiltered", (_filters, rows) => {
         updateBatchingHistoryCount(rows.length);
       });
     }
 
-    function renderBatchingHistory(source = fxBatchHistory) {
+    function renderBatchingHistory(source = batchHistory) {
       const data = Array.isArray(source) ? source : [];
       updateBatchingHistoryCount(data.length);
 
@@ -293,21 +293,21 @@
     async function loadBatchingHistoryPage() {
       if (!DEMO_API_ENABLED) {
         setBatchingHistoryStatus(
-          "Start the demo server to view FX Batches.",
+          "Start the demo server to view Batches.",
           "warning"
         );
         renderBatchingHistory([]);
         return;
       }
 
-      setBatchingHistoryStatus("Loading FX Batches...");
+      setBatchingHistoryStatus("Loading Batches...");
 
       try {
-        await reloadFxBatchesFromApi();
+        await reloadBatchesFromApi();
         setBatchingHistoryStatus();
       } catch (error) {
         setBatchingHistoryStatus(
-          error.message || "Unable to load FX Batches.",
+          error.message || "Unable to load Batches.",
           "error"
         );
       }
@@ -334,9 +334,9 @@
         : {};
       const pair = String(key.ccyPairCode || "").replace("_", "/") || "—";
       const tenor = String(key.tenor || "").trim() || "—";
-      const tradeDate = clientFxDealsDateLabel(key.tradeDate) || "—";
-      const baseValueDate = clientFxDealsDateLabel(key.baseCcyValueDate) || "—";
-      const quoteValueDate = clientFxDealsDateLabel(key.quoteCcyValueDate) || "—";
+      const tradeDate = clientDealsDateLabel(key.tradeDate) || "—";
+      const baseValueDate = clientDealsDateLabel(key.baseCcyValueDate) || "—";
+      const quoteValueDate = clientDealsDateLabel(key.quoteCcyValueDate) || "—";
       const basePrecision = Number.isInteger(key.baseCcyFractionDigits)
         ? key.baseCcyFractionDigits
         : "—";
@@ -418,7 +418,7 @@
 
     function batchStructureTradeTypeFormatter(cell) {
       const trade = cell.getRow().getData();
-      const presentation = fxPositionTradeTypePresentation(trade);
+      const presentation = positionTradeTypePresentation(trade);
       const originBatchId = Number(trade.createdByBatchId);
       const reusedTechnicalTrade = trade.memberRole === "TRADE"
         && ["BATCH_BALANCE_TRADE", "BATCH_POSITION_OUT"].includes(
@@ -615,7 +615,7 @@
         tabulatorSizedColumn("valueDate", {
           title: "Value Date",
           field: "valueDate",
-          formatter: clientFxDealsDateFormatter,
+          formatter: clientDealsDateFormatter,
           hozAlign: "center",
           headerHozAlign: "center"
         })
@@ -654,7 +654,7 @@
         }),
         tabulatorSizedColumn("type", {
           title: roleField === "memberRole" ? "Member Role" : "Output Role",
-          field: roleField,
+          field: "memberRole",
           headerSort: isMemberTable,
           ...memberTextFilter,
           formatter: batchDetailsRoleFormatter
@@ -676,12 +676,21 @@
           currencyField: "quoteCcyCode",
           isMemberTable
         }),
+        tabulatorSizedColumn("rate", {
+          title: "Trade Rate",
+          field: "tradeRate",
+          sorter: "number",
+          headerSort: isMemberTable,
+          formatter: clientDealsRateFormatter,
+          hozAlign: "right",
+          headerHozAlign: "right"
+        }),
         tabulatorSizedColumn("transferRate", {
           title: "Transfer Rate",
           field: "transferRate",
           sorter: "number",
           headerSort: isMemberTable,
-          formatter: clientFxDealsRateFormatter,
+          formatter: clientDealsRateFormatter,
           hozAlign: "right",
           headerHozAlign: "right"
         }),
@@ -705,7 +714,7 @@
           field: "baseCcyValueDate",
           headerSort: false,
           ...memberTextFilter,
-          formatter: clientFxDealsDateFormatter,
+          formatter: clientDealsDateFormatter,
           hozAlign: "center",
           headerHozAlign: "center"
         }),
@@ -714,13 +723,20 @@
           field: "quoteCcyValueDate",
           headerSort: false,
           ...memberTextFilter,
-          formatter: clientFxDealsDateFormatter,
+          formatter: clientDealsDateFormatter,
           hozAlign: "center",
           headerHozAlign: "center"
         })
       );
 
       return columns;
+    }
+
+    function batchStructureTradeRows(trades, roleField) {
+      return (Array.isArray(trades) ? trades : []).map(trade => ({
+        ...trade,
+        memberRole: trade?.[roleField] || ""
+      }));
     }
 
     function initializeBatchDetailsGrid(tableKey, element, data, columns, placeholder) {
@@ -832,8 +848,8 @@
           )
         : "Missing";
       batchNeutralityPositionStatus.textContent = positionNeutral
-        ? "FX Position Neutral"
-        : "FX Position Imbalance";
+        ? "Position Neutral"
+        : "Position Imbalance";
       batchNeutralityCashStatus.textContent = cashNeutral
         ? "Cash Balance Neutral"
         : "Cash Balance Imbalance";
@@ -845,16 +861,18 @@
     }
 
     function renderBatchDetailsGrids(details) {
+      const memberRows = batchStructureTradeRows(details.members, "memberRole");
+
       if (!batchDetailsMembersGrid) {
         batchDetailsMembersGrid = initializeBatchDetailsGrid(
           "batch_members_grid",
           batchDetailsMembersGridEl,
-          details.members,
+          memberRows,
           batchStructureTradeColumns("memberRole"),
-          "This FX Batch has no members."
+          "This Batch has no members."
         );
       } else {
-        batchDetailsMembersGrid.replaceData(details.members).then(() => {
+        batchDetailsMembersGrid.replaceData(memberRows).then(() => {
           batchDetailsMembersGrid.redraw(true);
         });
       }
@@ -870,7 +888,7 @@
           batchDetailsCashOutputGridEl,
           cashOutputs,
           batchStructureCashOutputColumns(),
-          "This FX Batch has no Cash Output."
+          "This batch has no quote cash outputs."
         );
       } else if (batchDetailsCashOutputGrid) {
         batchDetailsCashOutputGrid.replaceData(cashOutputs).then(() => {
@@ -881,19 +899,20 @@
       }
 
       const hasOutputs = details.outputs.length > 0;
+      const outputRows = batchStructureTradeRows(details.outputs, "outputRole");
       batchDetailsOutputsEmpty.hidden = hasOutputs;
       batchDetailsOutputsGridShell.hidden = !hasOutputs;
 
       if (hasOutputs && !batchDetailsOutputsGrid) {
         batchDetailsOutputsGrid = initializeBatchDetailsGrid(
-          "batch_position_output_grid",
+          "batch_members_grid",
           batchDetailsOutputsGridEl,
-          details.outputs,
+          outputRows,
           batchStructureTradeColumns("outputRole"),
-          "This FX Batch has no Net Position Output."
+          "This batch has no position outputs."
         );
       } else if (batchDetailsOutputsGrid) {
-        batchDetailsOutputsGrid.replaceData(details.outputs).then(() => {
+        batchDetailsOutputsGrid.replaceData(outputRows).then(() => {
           if (hasOutputs) {
             batchDetailsOutputsGrid.redraw(true);
           }
@@ -921,14 +940,14 @@
         ? batchDetailsTimestampLabel(details.rolledBackAt)
         : "—";
       batchDetailsTradeDate.textContent = batchingKey.tradeDate
-        ? clientFxDealsDateLabel(batchingKey.tradeDate)
+        ? clientDealsDateLabel(batchingKey.tradeDate)
         : "—";
       batchDetailsTenor.textContent = batchingKey.tenor || "—";
       batchDetailsBaseValueDate.textContent = batchingKey.baseCcyValueDate
-        ? clientFxDealsDateLabel(batchingKey.baseCcyValueDate)
+        ? clientDealsDateLabel(batchingKey.baseCcyValueDate)
         : "—";
       batchDetailsQuoteValueDate.textContent = batchingKey.quoteCcyValueDate
-        ? clientFxDealsDateLabel(batchingKey.quoteCcyValueDate)
+        ? clientDealsDateLabel(batchingKey.quoteCcyValueDate)
         : "—";
       batchDetailsMembersCount.textContent =
         `${details.members.length} ${details.members.length === 1 ? "trade" : "trades"}`;
@@ -947,13 +966,13 @@
     async function loadSelectedBatchDetails(batchId) {
       const requestSequence = ++batchDetailsRequestSequence;
       showBatchDetailsPrompt(
-        `Loading FX Batch #${batchId}`,
-        "Reading FX Trade Members and batch outputs..."
+        `Loading Batch #${batchId}`,
+        "Reading Batch Members and batch outputs..."
       );
-      setBatchDetailsStatus(`Loading FX Batch #${batchId}...`);
+      setBatchDetailsStatus(`Loading Batch #${batchId}...`);
 
       try {
-        const details = await loadFxBatchDetailsFromApi(batchId);
+        const details = await loadBatchDetailsFromApi(batchId);
 
         if (
           requestSequence !== batchDetailsRequestSequence
@@ -968,8 +987,8 @@
           return;
         }
 
-        const message = error.message || `Unable to load FX Batch ${batchId}.`;
-        showBatchDetailsPrompt(`FX Batch #${batchId} is unavailable`, message);
+        const message = error.message || `Unable to load Batch ${batchId}.`;
+        showBatchDetailsPrompt(`Batch #${batchId} is unavailable`, message);
         setBatchDetailsStatus(message, "error");
       }
     }
