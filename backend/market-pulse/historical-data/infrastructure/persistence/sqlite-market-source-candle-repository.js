@@ -168,29 +168,26 @@ function candleFromRow(row) {
   });
 }
 
-function loadRangeFromRow(row) {
-  return Object.freeze({
-    from: row.from_at,
-    till: row.till_at,
-    loadedAt: row.loaded_at
-  });
-}
-
 const DAY_MS = 86400000;
 const MOSCOW_OFFSET_MS = 10800000;
 function sourceTable(timeframe) {
   requireCandleTimeframe(timeframe);
   if (timeframe === "ONE_MINUTE") return "moex_iss_minute_candles";
-  if (timeframe === "ONE_DAY") return "moex_iss_daily_candles";
+  if (timeframe === "ONE_DAY") return "moex_iss_day_candles";
   throw repositoryError("Source candles must have a one-minute or one-day timeframe.");
 }
-function sourceCalendarDays(range) {
+function loadResultTable(timeframe) {
+  sourceTable(timeframe);
+  return timeframe === "ONE_MINUTE" ? "moex_iss_minute_candle_load_days" : "moex_iss_day_candle_load_result";
+}
+function sourceCalendarDays(range, requireComplete = true) {
   const from = Date.parse(range.from), till = Date.parse(range.till);
-  if ((from + MOSCOW_OFFSET_MS) % DAY_MS || (till + MOSCOW_OFFSET_MS) % DAY_MS) {
+  if (requireComplete && ((from + MOSCOW_OFFSET_MS) % DAY_MS || (till + MOSCOW_OFFSET_MS) % DAY_MS)) {
     throw repositoryError("Source candle day tracking requires complete Moscow calendar days.");
   }
   const days = [];
-  for (let time = from; time < till; time += DAY_MS) {
+  const first = Math.ceil((from + MOSCOW_OFFSET_MS) / DAY_MS) * DAY_MS - MOSCOW_OFFSET_MS;
+  for (let time = first; time + DAY_MS <= till; time += DAY_MS) {
     days.push(new Date(time + MOSCOW_OFFSET_MS).toISOString().slice(0,10));
   }
   return days;
@@ -218,35 +215,20 @@ class SqliteMarketSourceCandleRepository {
     const write = normalizedCandleWrite(command);
     const range = normalizedRange(command);
     requireCandlesWithinRange(write.candles, range);
-    const days = write.timeframe === "ONE_MINUTE" ? sourceCalendarDays(range) : null;
+    const days = sourceCalendarDays(range,write.timeframe === "ONE_MINUTE");
     const statement = this.candleStatement(write.timeframe);
     return inTransaction(this.database, () => {
       const count = upsertCandles(statement, write);
-      if (days) {
-        const insert = this.database.prepare(`INSERT INTO moex_iss_minute_candle_load_days
-          (instrument_id,load_date,completed_at,last_attempt_at,last_error) VALUES (?,?,?,?,NULL)
-          ON CONFLICT (instrument_id,load_date) DO UPDATE SET completed_at=excluded.completed_at,
-          last_attempt_at=excluded.last_attempt_at,last_error=NULL`);
-        for (const date of days) insert.run(write.instrumentId,date,write.loadedAt,write.loadedAt);
-      } else {
-        const existing = this.database.prepare(`SELECT from_at,till_at,loaded_at FROM moex_iss_daily_candle_load_ranges
-          WHERE instrument_id=? AND timeframe=?`).all(write.instrumentId,write.timeframe).map(loadRangeFromRow);
-        const ranges = mergedLoadRanges([...existing,{...range,loadedAt:write.loadedAt}]);
-        this.database.prepare("DELETE FROM moex_iss_daily_candle_load_ranges WHERE instrument_id=? AND timeframe=?").run(write.instrumentId,write.timeframe);
-        const insert = this.database.prepare("INSERT INTO moex_iss_daily_candle_load_ranges VALUES (?,?,?,?,?)");
-        for (const r of ranges) insert.run(write.instrumentId,write.timeframe,r.from,r.till,r.loadedAt);
-        this.database.prepare(`UPDATE moex_iss_daily_candle_load_attempts SET last_error=NULL
-          WHERE instrument_id=?
-          AND strftime('%Y-%m-%dT%H:%M:%fZ',load_date,'-3 hours')>=?
-          AND strftime('%Y-%m-%dT%H:%M:%fZ',load_date,'+1 day','-3 hours')<=?`)
-          .run(write.instrumentId,range.from,range.till);
-      }
+      const insert = this.database.prepare(`INSERT INTO ${loadResultTable(write.timeframe)}
+        (instrument_id,load_date,completed_at,last_attempt_at,last_error) VALUES (?,?,?,?,NULL)
+        ON CONFLICT (instrument_id,load_date) DO UPDATE SET completed_at=excluded.completed_at,
+        last_attempt_at=excluded.last_attempt_at,last_error=NULL`);
+      for (const date of days) insert.run(write.instrumentId,date,write.loadedAt,write.loadedAt);
       return count;
     });
   }
   recordDayAttempt({ instrumentId, timeframe = "ONE_MINUTE", from, till, attemptedAt, error = null }) {
-    sourceTable(timeframe);
-    const table = timeframe === "ONE_MINUTE" ? "moex_iss_minute_candle_load_days" : "moex_iss_daily_candle_load_attempts";
+    const table = loadResultTable(timeframe);
     const dates = sourceCalendarDays(normalizedRange({from,till}));
     const timestamp = normalizedTimestamp(attemptedAt,"Attempted At").value;
     const insert = this.database.prepare(`INSERT INTO ${table}
@@ -269,19 +251,13 @@ class SqliteMarketSourceCandleRepository {
   findLoadedRanges({ instrumentId, timeframe, from, till } = {}) {
     const range = normalizedRange({from,till});
     const instrument = normalizedInstrumentId(instrumentId);
-    sourceTable(timeframe);
-    if (timeframe === "ONE_MINUTE") {
-      const dates = this.database.prepare(`SELECT load_date,completed_at FROM moex_iss_minute_candle_load_days
-        WHERE instrument_id=? AND completed_at IS NOT NULL AND load_date>=? AND load_date<=? ORDER BY load_date`)
-        .all(instrument,new Date(Date.parse(range.from)+MOSCOW_OFFSET_MS).toISOString().slice(0,10),new Date(Date.parse(range.till)+MOSCOW_OFFSET_MS).toISOString().slice(0,10));
-      return Object.freeze(mergedLoadRanges(dates.map(row => {
-        const begin = Date.parse(`${row.load_date}T00:00:00+03:00`);
-        return {from:new Date(begin).toISOString(),till:new Date(begin+DAY_MS).toISOString(),loadedAt:row.completed_at};
-      })).filter(r => r.from < range.till && r.till > range.from));
-    }
-    return Object.freeze(this.database.prepare(`SELECT from_at,till_at,loaded_at FROM moex_iss_daily_candle_load_ranges
-      WHERE instrument_id=? AND timeframe=? AND from_at<? AND till_at>? ORDER BY from_at`)
-      .all(instrument,timeframe,range.till,range.from).map(loadRangeFromRow));
+    const dates = this.database.prepare(`SELECT load_date,completed_at FROM ${loadResultTable(timeframe)}
+      WHERE instrument_id=? AND completed_at IS NOT NULL AND load_date>=? AND load_date<=? ORDER BY load_date`)
+      .all(instrument,new Date(Date.parse(range.from)+MOSCOW_OFFSET_MS).toISOString().slice(0,10),new Date(Date.parse(range.till)+MOSCOW_OFFSET_MS).toISOString().slice(0,10));
+    return Object.freeze(mergedLoadRanges(dates.map(row => {
+      const begin = Date.parse(`${row.load_date}T00:00:00+03:00`);
+      return {from:new Date(begin).toISOString(),till:new Date(begin+DAY_MS).toISOString(),loadedAt:row.completed_at};
+    })).filter(r => r.from < range.till && r.till > range.from));
   }
   coversLoadedRange(query = {}) {
     const range = normalizedRange(query);
@@ -303,23 +279,10 @@ class SqliteMarketSourceCandleRepository {
       day.lastCandle = day.lastCandleAt === day.firstCandleAt ? day.firstCandle
         : candleFromRow(boundary.get(instrument,day.lastCandleAt));
     }
-    const minute = timeframe === "ONE_MINUTE";
-    const attemptsTable = minute ? "moex_iss_minute_candle_load_days" : "moex_iss_daily_candle_load_attempts";
-    for (const row of this.database.prepare(`SELECT load_date date,${minute ? "completed_at" : "NULL"} completedAt,
-      last_attempt_at lastAttemptAt,last_error lastError FROM ${attemptsTable}
+    for (const row of this.database.prepare(`SELECT load_date date,completed_at completedAt,
+      last_attempt_at lastAttemptAt,last_error lastError FROM ${loadResultTable(timeframe)}
       WHERE instrument_id=? AND load_date>=? AND load_date<=?`).all(instrument,fromDate,throughDate)) {
       byDate.set(row.date,{candleCount:0,...byDate.get(row.date),...row});
-    }
-    if (!minute) {
-      const ranges = this.findLoadedRanges({instrumentId,timeframe,from,till});
-      for (let time=Date.parse(from); time<Date.parse(till); time+=DAY_MS) {
-        const begin = new Date(time).toISOString();
-        const end = new Date(time+DAY_MS).toISOString();
-        const completed = ranges.find(range => range.from <= begin && range.till >= end);
-        if (!completed) continue;
-        const date = new Date(time+MOSCOW_OFFSET_MS).toISOString().slice(0,10);
-        byDate.set(date,{date,candleCount:0,...byDate.get(date),completedAt:completed.loadedAt});
-      }
     }
     return [...byDate.values()];
   }

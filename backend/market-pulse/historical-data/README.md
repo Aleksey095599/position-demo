@@ -5,7 +5,7 @@ This feature uses two native MOEX ISS anchor Timeframes:
 - `ONE_MINUTE` for the last complete Moscow calendar year;
 - `ONE_DAY` for the last ten complete Moscow calendar years.
 
-Externally loaded Candles are persisted in `moex_iss_minute_candles / moex_iss_daily_candles` together
+Externally loaded Candles are persisted in `moex_iss_minute_candles / moex_iss_day_candles` together
 with their data source and load timestamp. `FIVE_MINUTES`, `FIFTEEN_MINUTES`,
 `ONE_HOUR`, and `FOUR_HOURS` are currently derived from stored minutes on read;
 `ONE_WEEK` and `ONE_MONTH` are derived from stored days. The separate
@@ -46,7 +46,7 @@ are coverage too, so a resume does not request them again.
 
 `BackfillHistoricalCandlesUseCase` is the bounded coordinator. It processes one
 previously uncovered range by default (up to 50 only when explicitly requested)
-and safely resumes from `moex_iss_minute_candle_load_days / moex_iss_daily_candle_load_ranges`. It is deliberately not
+and safely resumes from `moex_iss_minute_candle_load_days / moex_iss_day_candle_load_result`. It is deliberately not
 connected to an automatic timer or startup hook.
 
 The server exposes two deliberately bounded operations:
@@ -144,11 +144,13 @@ all source pages were saved; it does not certify uninterrupted minute trading.
 No fixed 1,440-candle requirement or gap-quality inference is applied. A later
 failed attempt does not erase an earlier completed_at.
 
-Daily completion is read from the existing `moex_iss_daily_candle_load_ranges`;
-only fully covered Moscow days are confirmed. The additive
-`moex_iss_daily_candle_load_attempts` table stores last_attempt_at / last_error per
-instrument and date, not a second copy of successful coverage. Daily candles and
-coverage are saved in one transaction; successful loading clears the saved error.
+Daily candles are stored in `moex_iss_day_candles`. Their load outcome is stored in
+`moex_iss_day_candle_load_result`, one row per instrument_id and load_date, with
+completed_at, last_attempt_at and last_error, just like minute day tracking.
+Only fully covered Moscow days are confirmed. Candles and successful day outcomes
+are saved in one transaction; successful loading clears the saved error. Continuous
+coverage ranges used by application ports are computed from these day records,
+not stored separately.
 Both timeframes share the source request pacing and in-flight guard. Native daily
 candles are requested with MOEX ISS interval 24; no minute backfill or aggregation
 is triggered by selecting `1 day`.
@@ -199,6 +201,15 @@ can append another entry for the same issue. The UI reports mismatch and missing
 data counts after the batch. Failure to write
 the log is reported explicitly and stops the operation without deleting data.
 No schema changes or foreign keys are needed for this verification.
+
+The day-storage migration consolidates former `moex_iss_daily_candle_load_ranges`
+and `moex_iss_daily_candle_load_attempts` into `moex_iss_day_candle_load_result`,
+and copies `moex_iss_daily_candles` into `moex_iss_day_candles`. Only complete days
+from merged coverage become successful outcomes. Explicit attempts and errors
+are preserved; partial boundary coverage is retained in the archived originals.
+Original tables are renamed with a `legacy_` prefix for recovery. Conflicting
+candle keys or invalid data roll back the copy. The migration runs after schema
+creation during server startup and is a no-op after a successful conversion.
 
 Minute and daily source storage are separate and constrained to MOEX_ISS and
 their respective fixed timeframe. Aggregation storage keeps its target timeframe.

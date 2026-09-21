@@ -55,6 +55,7 @@ const {
 const {
   migrateMarketCandleStorage
 } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-market-candle-storage");
+const { migrateDayCandleStorage } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-day-candle-storage");
 const {
   calculateAnalyticalPnlMinor,
   calculateClientDealEconomics,
@@ -360,6 +361,7 @@ migrateTradePositionManagementState(database);
 ensurePositionManagementPolicyColumns(database);
 migrateAdmissionEnforcement(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
+migrateDayCandleStorage(database);
 migrateMarketCandleStorage(database);
 if (sqliteTableExists(database, "trading_counterparties")
   && !tableColumnNames(database, "trading_counterparties").has("counterparty_scope")) {

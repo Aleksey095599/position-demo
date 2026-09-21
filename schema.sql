@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS moex_iss_minute_candles
         )
 );
 
-CREATE TABLE IF NOT EXISTS moex_iss_daily_candles
+CREATE TABLE IF NOT EXISTS moex_iss_day_candles
 (
     instrument_id TEXT    NOT NULL,
     timeframe     TEXT    NOT NULL,
@@ -177,20 +177,20 @@ CREATE TABLE IF NOT EXISTS moex_iss_daily_candles
     data_source   TEXT    NOT NULL,
     loaded_at     TEXT    NOT NULL,
 
-    CONSTRAINT pk_moex_iss_daily_candles
+    CONSTRAINT pk_moex_iss_day_candles
         PRIMARY KEY (instrument_id, timeframe, begin_at),
-    CONSTRAINT chk_moex_iss_daily_candles_instrument
+    CONSTRAINT chk_moex_iss_day_candles_instrument
         CHECK (
             length(instrument_id) BETWEEN 1 AND 64
             AND instrument_id = trim(instrument_id)
             AND instrument_id = upper(instrument_id)
             AND instrument_id NOT GLOB '*[^A-Z0-9_.-]*'
         ),
-    CONSTRAINT chk_moex_iss_daily_candles_timeframe
+    CONSTRAINT chk_moex_iss_day_candles_timeframe
         CHECK (
             timeframe = 'ONE_DAY'
         ),
-    CONSTRAINT chk_moex_iss_daily_candles_period
+    CONSTRAINT chk_moex_iss_day_candles_period
         CHECK (
             length(begin_at) = 24
             AND begin_at GLOB '????-??-??T??:??:??.???Z'
@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS moex_iss_daily_candles
             AND strftime('%Y-%m-%dT%H:%M:%fZ', end_at) = end_at
             AND begin_at < end_at
         ),
-    CONSTRAINT chk_moex_iss_daily_candles_prices
+    CONSTRAINT chk_moex_iss_day_candles_prices
         CHECK (
             typeof(open_price) IN ('integer', 'real')
             AND typeof(high_price) IN ('integer', 'real')
@@ -211,14 +211,14 @@ CREATE TABLE IF NOT EXISTS moex_iss_daily_candles
             AND open_price BETWEEN low_price AND high_price
             AND close_price BETWEEN low_price AND high_price
         ),
-    CONSTRAINT chk_moex_iss_daily_candles_data_source
+    CONSTRAINT chk_moex_iss_day_candles_data_source
         CHECK (
             length(data_source) BETWEEN 1 AND 30
             AND data_source = trim(data_source)
             AND data_source = upper(data_source)
             AND data_source NOT GLOB '*[^A-Z0-9_]*'
         ),
-    CONSTRAINT chk_moex_iss_daily_candles_loaded_at
+    CONSTRAINT chk_moex_iss_day_candles_loaded_at
         CHECK (
             length(loaded_at) = 24
             AND loaded_at GLOB '????-??-??T??:??:??.???Z'
@@ -298,45 +298,6 @@ CREATE TABLE IF NOT EXISTS moex_iss_aggregated_candles
             length(calculated_at) = 24
             AND calculated_at GLOB '????-??-??T??:??:??.???Z'
             AND strftime('%Y-%m-%dT%H:%M:%fZ', calculated_at) = calculated_at
-        )
-);
-
-CREATE TABLE IF NOT EXISTS moex_iss_daily_candle_load_ranges
-(
-    instrument_id TEXT NOT NULL,
-    timeframe     TEXT NOT NULL,
-    from_at       TEXT NOT NULL,
-    till_at       TEXT NOT NULL,
-    loaded_at     TEXT NOT NULL,
-
-    CONSTRAINT pk_moex_iss_daily_candle_load_ranges
-        PRIMARY KEY (instrument_id, timeframe, from_at),
-    CONSTRAINT chk_moex_iss_daily_candle_load_ranges_instrument
-        CHECK (
-            length(instrument_id) BETWEEN 1 AND 64
-            AND instrument_id = trim(instrument_id)
-            AND instrument_id = upper(instrument_id)
-            AND instrument_id NOT GLOB '*[^A-Z0-9_.-]*'
-        ),
-    CONSTRAINT chk_moex_iss_daily_candle_load_ranges_timeframe
-        CHECK (
-            timeframe = 'ONE_DAY'
-        ),
-    CONSTRAINT chk_moex_iss_daily_candle_load_ranges_period
-        CHECK (
-            length(from_at) = 24
-            AND from_at GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', from_at) = from_at
-            AND length(till_at) = 24
-            AND till_at GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', till_at) = till_at
-            AND from_at < till_at
-        ),
-    CONSTRAINT chk_moex_iss_daily_candle_load_ranges_loaded_at
-        CHECK (
-            length(loaded_at) = 24
-            AND loaded_at GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', loaded_at) = loaded_at
         )
 );
 
@@ -3207,7 +3168,7 @@ BEGIN
     SELECT RAISE(ABORT, 'base currency precision used by hedge_quick_mode_settings cannot be changed');
 END;
 
-CREATE INDEX IF NOT EXISTS idx_moex_iss_daily_candles_begin_at ON moex_iss_daily_candles (begin_at);
+CREATE INDEX IF NOT EXISTS idx_moex_iss_day_candles_begin_at ON moex_iss_day_candles (begin_at);
 
 CREATE TABLE IF NOT EXISTS moex_iss_minute_candle_load_days (
     instrument_id TEXT NOT NULL CHECK (length(instrument_id) BETWEEN 1 AND 64 AND instrument_id = trim(instrument_id)),
@@ -3218,9 +3179,10 @@ CREATE TABLE IF NOT EXISTS moex_iss_minute_candle_load_days (
     PRIMARY KEY (instrument_id, load_date)
 );
 
-CREATE TABLE IF NOT EXISTS moex_iss_daily_candle_load_attempts (
+CREATE TABLE IF NOT EXISTS moex_iss_day_candle_load_result (
     instrument_id TEXT NOT NULL CHECK (length(instrument_id) BETWEEN 1 AND 64 AND instrument_id = trim(instrument_id)),
     load_date TEXT NOT NULL CHECK (length(load_date) = 10 AND load_date GLOB '????-??-??' AND date(load_date, '+0 days') IS NOT NULL AND date(load_date, '+0 days') = load_date),
+    completed_at TEXT,
     last_attempt_at TEXT NOT NULL,
     last_error TEXT,
     PRIMARY KEY (instrument_id, load_date)

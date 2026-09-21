@@ -166,7 +166,7 @@ test("a daily candle alone does not confirm coverage and a failed save rolls bac
   const {repository,loadDay,calendar,db} = setup(t,{async loadCandlePage(){return {candles:[dailyCandle],hasMore:false,nextStart:null};}});
   repository.upsertAll({instrumentId,timeframe:"ONE_DAY",candles:[{...dailyCandle,close:"12"}],dataSource:"MOEX_ISS",loadedAt:new Date(now()).toISOString()});
   assert.equal((await calendar.execute({instrumentId,timeframe:"ONE_DAY",month:"2026-09"})).days[14].status,"PARTIAL");
-  db.exec("CREATE TRIGGER fail_daily_coverage BEFORE INSERT ON moex_iss_daily_candle_load_ranges BEGIN SELECT RAISE(ABORT,'Test coverage failure'); END");
+  db.exec("CREATE TRIGGER fail_daily_coverage BEFORE INSERT ON moex_iss_day_candle_load_result WHEN NEW.completed_at IS NOT NULL BEGIN SELECT RAISE(ABORT,'Test coverage failure'); END");
   await assert.rejects(loadDay.execute({instrumentId,timeframe:"ONE_DAY",date:"2026-09-15"}),/Test coverage failure/);
   assert.equal(repository.findLatest({instrumentId,timeframe:"ONE_DAY"}).close,"12");
   assert.equal((await calendar.execute({instrumentId,timeframe:"ONE_DAY",month:"2026-09"})).days[14].status,"ERROR");

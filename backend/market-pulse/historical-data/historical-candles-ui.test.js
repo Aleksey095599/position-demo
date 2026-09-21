@@ -86,6 +86,9 @@ test("places Market Pulse Candle storage in a dedicated Database section", () =>
   assert.match(marketPulseSection[1], /"moex_iss_minute_candles"/);
   assert.match(marketPulseSection[1], /"moex_iss_aggregated_candles"/);
   assert.match(marketPulseSection[1], /"moex_iss_minute_candle_load_days"/);
+  assert.match(marketPulseSection[1], /"moex_iss_day_candles"/);
+  assert.match(marketPulseSection[1], /"moex_iss_day_candle_load_result"/);
+  assert.doesNotMatch(marketPulseSection[1], /moex_iss_daily_/);
   assert.ok(demoGenerationSection);
   assert.match(demoGenerationSection[1], /"market_quote_simulation_settings"/);
   assert.doesNotMatch(demoGenerationSection[1], /"market_(?:source|aggregated)_candles"/);
