@@ -126,6 +126,25 @@ class BackfillHistoricalCandleRangeUseCase {
   }
 
   async execute(query) {
+    const normalized = createHistoricalCandlesQuery(query);
+    const tracked = normalized.timeframe === CandleTimeframe.ONE_MINUTE
+      && typeof this.marketSourceCandleRepository.recordDayAttempt === "function";
+    if (!tracked || await this.marketSourceCandleRepository.coversLoadedRange(normalized)) {
+      return this.loadRange(normalized);
+    }
+    const attemptedAt = new Date(this.now()).toISOString();
+    await this.marketSourceCandleRepository.recordDayAttempt({...normalized,attemptedAt});
+    try {
+      return await this.loadRange(normalized);
+    } catch (error) {
+      await this.marketSourceCandleRepository.recordDayAttempt({
+        ...normalized,attemptedAt,error: error.code ? error.code + ": " + error.message : error.message
+      });
+      throw error;
+    }
+  }
+
+  async loadRange(query) {
     const normalizedQuery = createHistoricalCandlesQuery(query);
 
     if (!ANCHOR_TIMEFRAMES.has(normalizedQuery.timeframe)) {

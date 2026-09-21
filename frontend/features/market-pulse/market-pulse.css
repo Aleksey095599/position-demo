@@ -160,12 +160,8 @@
     }
 
     #marketPage .market-history-calendar {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-      gap: 12px;
-      max-height: 520px;
-      overflow: auto;
-      overscroll-behavior: contain;
+      margin: 14px 0;
+      width: 100%;
     }
 
     #marketPage .market-history-calendar-month {
@@ -203,8 +199,8 @@
 
     #marketPage .market-history-calendar-day {
       display: grid;
-      min-height: 44px;
-      padding: 5px 3px;
+      min-height: 96px;
+      padding: 10px;
       place-items: center;
       border: 1px solid var(--bs-border-color-translucent);
       border-radius: var(--bs-border-radius-sm);
@@ -230,7 +226,7 @@
     }
 
     #marketPage .market-history-calendar-day.is-loading .button-icon {
-      animation: market-history-sync-pulse 1s ease-in-out infinite;
+      animation: market-history-sync-spin 0.9s linear infinite;
     }
 
     #marketPage .market-history-calendar-day.is-completed {
@@ -260,11 +256,8 @@
       margin-bottom: 10px;
     }
 
-    @keyframes market-history-sync-pulse {
-      50% {
-        opacity: 0.35;
-        transform: scale(0.82);
-      }
+    @keyframes market-history-sync-spin {
+      to { transform: rotate(360deg); }
     }
 
     #marketPage .market-history-form {
@@ -390,4 +383,69 @@
       #marketPage .market-history-calendar-day.is-loading .button-icon {
         animation: none;
       }
+    }
+
+    #marketPage .market-source-calendar { margin-top: 24px; }
+    #marketPage .market-source-calendar-toolbar,
+    #marketPage .market-source-calendar-navigation { display: flex; align-items: center; gap: 12px; }
+    #marketPage .market-source-calendar-toolbar { justify-content: space-between; flex-wrap: wrap; margin-bottom: 8px; }
+    #marketPage .market-source-calendar-navigation .market-history-calendar-title { margin: 0; min-width: 150px; text-align: center; font-size: 16px; }
+    #marketPage .market-history-calendar-grid { gap: 8px; }
+    #marketPage .market-history-calendar-weekday { font-size: 11px; padding: 5px; }
+    #marketPage .market-history-calendar-day { grid-template-columns: 1fr auto; grid-template-rows: auto 1fr auto; gap: 6px; text-align: left; place-items: initial; line-height: 1.25; font-size: 13px; }
+    #marketPage .market-history-calendar-day .button-icon { justify-self: end; font-size: 18px; }
+    #marketPage .market-history-calendar-day[aria-pressed="true"] { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
+    #marketPage .market-history-calendar-day:focus-visible { outline: 3px solid var(--bs-primary); outline-offset: 2px; }
+    #marketPage .market-history-calendar-day:disabled { opacity: 0.5; }
+    #marketPage .market-calendar-candle-count { grid-column: 1 / -1; align-self: end; font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    #marketPage .market-calendar-candle-caption { grid-column: 1 / -1; font-size: 11px; }
+    #marketPage .market-history-calendar-day.is-partial { background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); border-color: var(--bs-warning-border-subtle); }
+    #marketPage .market-history-day-dot.is-partial { background: var(--bs-warning); }
+    #marketPage .market-calendar-detail { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-top: 1px solid var(--bs-border-color); padding-top: 16px; }
+    #marketPage .market-calendar-detail > div { min-width: 0; overflow-wrap: anywhere; }
+    #marketPage .market-calendar-detail > button { flex-shrink: 0; }
+    #marketPage .market-calendar-detail p { margin-top: 6px; }
+    #marketPage .market-history-sync-legend { font-size: 12px; }
+    #marketPage .is-loading > .button-icon { animation: market-history-sync-spin 0.9s linear infinite; }
+    @media (max-width: 620px) {
+      #marketPage .market-history-sync-card { padding: 10px; }
+      #marketPage .market-history-calendar-grid { gap: 3px; }
+      #marketPage .market-history-calendar-day { min-height: 78px; padding: 6px 3px; gap: 4px; font-size: 11px; }
+      #marketPage .market-history-calendar-day .button-icon { font-size: 13px; }
+      #marketPage .market-calendar-candle-count { font-size: 15px; }
+      #marketPage .market-calendar-candle-caption { font-size: 10px; }
+      #marketPage .market-calendar-detail { align-items: flex-start; flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #marketPage .is-loading > .button-icon,
+      #marketPage .market-history-calendar-day.is-loading .button-icon { animation: none; }
+    }
+    #marketPage.market-bootstrap.workbench-page .market-bootstrap-panel[data-market-panel="data-management"] {
+      width: min(1120px, calc(100vw - var(--workbench-page-inline-total)));
+    }
+    #marketPage .market-history-sync-form {
+      grid-template-columns: minmax(160px, 230px) minmax(240px, 1fr) auto;
+      align-items: center;
+    }
+    #marketPage .market-history-sync-button { margin-bottom: 0; }
+    #marketPage .market-calendar-selection { display: grid; gap: 5px; min-width: 0; }
+    #marketPage .market-calendar-selection-label { color: var(--bs-secondary-color); font-size: 12px; }
+    #marketPage .market-calendar-selection output { font-size: 14px; font-weight: 600; }
+    #marketPage .market-calendar-selection small { color: var(--bs-secondary-color); font-size: 11px; }
+    #marketPage .market-history-calendar-day[aria-pressed="true"] {
+      outline: none;
+      box-shadow: inset 0 -4px 0 var(--bs-primary);
+    }
+    #marketPage .market-history-calendar-day.is-range-start,
+    #marketPage .market-history-calendar-day.is-range-end { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
+    #marketPage .market-history-calendar-day.is-range-preview { box-shadow: inset 0 -3px 0 var(--bs-primary-border-subtle); }
+    #marketPage .market-history-calendar-day:disabled:not(.is-unavailable) { opacity: 1; }
+    #marketPage .market-history-calendar-day:focus-visible { outline: 3px solid var(--bs-primary); outline-offset: 2px; }
+    @media (max-width: 900px) {
+      #marketPage .market-history-sync-form { grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr); }
+      #marketPage .market-history-sync-button { grid-column: 1 / -1; justify-self: start; }
+    }
+    @media (max-width: 620px) {
+      #marketPage .market-history-sync-form { grid-template-columns: minmax(0, 1fr); }
+      #marketPage .market-history-sync-button { width: 100%; }
     }

@@ -54,3 +54,122 @@
       justify-content: flex-start;
       border-bottom: 0;
     }
+
+    .trade-message-contract-icon {
+      position: relative;
+      display: inline-block;
+      flex: 0 0 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .trade-message-contract-icon .trade-message-contract-icon__mail {
+      position: absolute;
+      inset: 0;
+      font-size: 20px;
+      /* Leave a clear gap around the gear on every menu background. */
+      mask-image: radial-gradient(circle at 15px 15px, transparent 7px, #000 7.5px);
+    }
+
+    .trade-message-contract-icon .trade-message-contract-icon__gear {
+      position: absolute;
+      right: -1px;
+      bottom: -1px;
+      width: 12px;
+      height: 12px;
+      font-size: 12px;
+    }
+
+    .trade-contract-term {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      vertical-align: baseline;
+      white-space: nowrap;
+      color: var(--bs-body-color);
+      text-decoration: none;
+    }
+
+    .trade-contract-term__label {
+      text-decoration: underline dotted;
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1px;
+    }
+
+    .trade-contract-term:hover,
+    .trade-contract-term:focus-visible {
+      color: var(--bs-emphasis-color);
+    }
+
+    .trade-contract-term:hover .trade-contract-term__label,
+    .trade-contract-term:focus-visible .trade-contract-term__label {
+      text-decoration-style: solid;
+    }
+
+    #tradeContractPage .trade-contract-fields-title {
+      margin: 0 0 12px;
+    }
+
+    #tradeContractPage .trade-contract-groups {
+      display: grid;
+      gap: 10px;
+    }
+
+    #tradeContractPage .trade-contract-group {
+      min-width: 0;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #tradeContractPage .trade-contract-group__heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-radius: inherit;
+      background: color-mix(in srgb, var(--palette-blue-100) 32%, var(--bs-tertiary-bg));
+      cursor: pointer;
+      list-style: none;
+    }
+
+    #tradeContractPage .trade-contract-group__heading::-webkit-details-marker {
+      display: none;
+    }
+
+    #tradeContractPage .trade-contract-group__heading h3 {
+      margin: 0;
+      font-size: inherit;
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #tradeContractPage .trade-contract-group__heading:hover {
+      background: color-mix(in srgb, var(--palette-blue-100) 48%, var(--bs-tertiary-bg));
+    }
+
+    #tradeContractPage .trade-contract-group__heading:focus-visible {
+      outline: 2px solid var(--bs-primary);
+      outline-offset: 2px;
+    }
+
+    #tradeContractPage .trade-contract-group[open] > .trade-contract-group__heading {
+      border-bottom: 1px solid var(--bs-border-color);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    #tradeContractPage .trade-contract-group[open] > summary .trade-contract-group__chevron {
+      transform: rotate(90deg);
+    }
+
+    #tradeContractPage .trade-contract-table td.trade-contract-empty {
+      width: auto;
+      padding: 18px 10px;
+      color: var(--bs-secondary-color);
+    }
+
+    /* The section heading provides the single separator above column headers. */
+    #tradeContractPage .trade-contract-table > thead,
+    #tradeContractPage .trade-contract-table > thead > tr {
+      border-top: 0;
+    }

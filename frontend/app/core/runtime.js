@@ -1457,9 +1457,11 @@
         label: "Market Pulse",
         icon: "monitoring",
         tables: [
-          "market_source_candles",
-          "market_aggregated_candles",
-          "market_candle_load_ranges"
+          "moex_iss_minute_candles",
+          "moex_iss_aggregated_candles",
+          "moex_iss_minute_candle_load_days",
+          "moex_iss_daily_candles",
+          "moex_iss_daily_candle_load_ranges"
         ]
       },
       {

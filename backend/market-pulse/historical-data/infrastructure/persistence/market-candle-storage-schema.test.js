@@ -31,7 +31,7 @@ function insertSourceCandle(database, overrides = {}) {
   };
 
   database.prepare(`
-    INSERT INTO market_source_candles
+    INSERT INTO moex_iss_minute_candles
       (
         instrument_id,
         timeframe,
@@ -76,7 +76,7 @@ function insertAggregatedCandle(database, overrides = {}) {
   };
 
   database.prepare(`
-    INSERT INTO market_aggregated_candles
+    INSERT INTO moex_iss_aggregated_candles
       (
         instrument_id,
         timeframe,
@@ -108,8 +108,8 @@ function insertAggregatedCandle(database, overrides = {}) {
 
 test("creates separate minimal Source and Aggregated Candle storage", () => {
   const database = openDatabase();
-  const sourceColumns = database.prepare("PRAGMA table_info(market_source_candles)").all();
-  const aggregatedColumns = database.prepare("PRAGMA table_info(market_aggregated_candles)").all();
+  const sourceColumns = database.prepare("PRAGMA table_info(moex_iss_minute_candles)").all();
+  const aggregatedColumns = database.prepare("PRAGMA table_info(moex_iss_aggregated_candles)").all();
 
   assert.deepEqual(
     sourceColumns.filter(column => column.pk > 0).map(column => column.name),
@@ -153,51 +153,26 @@ test("creates separate minimal Source and Aggregated Candle storage", () => {
   assert.ok(database.prepare(`
     SELECT 1
     FROM sqlite_master
-    WHERE type = 'index' AND name = 'idx_market_source_candles_begin_at'
+    WHERE type = 'index' AND name = 'idx_moex_iss_minute_candles_begin_at'
   `).get());
   assert.ok(database.prepare(`
     SELECT 1
     FROM sqlite_master
-    WHERE type = 'index' AND name = 'idx_market_aggregated_candles_begin_at'
+    WHERE type = 'index' AND name = 'idx_moex_iss_aggregated_candles_begin_at'
   `).get());
 
   database.close();
 });
 
-test("accepts any supported timeframe in Source Candle storage", () => {
-  const database = openDatabase();
-  const timeframes = [
-    "ONE_MINUTE",
-    "FIVE_MINUTES",
-    "FIFTEEN_MINUTES",
-    "ONE_HOUR",
-    "FOUR_HOURS",
-    "ONE_DAY",
-    "ONE_WEEK",
-    "ONE_MONTH"
-  ];
-
-  timeframes.forEach((timeframe, index) => {
-    const beginAt = new Date(Date.UTC(2026, 8, 15, 7, index)).toISOString();
-    const endAt = new Date(Date.parse(beginAt) + 59_000).toISOString();
-    insertSourceCandle(database, { timeframe, beginAt, endAt });
+test("minute source storage fixes the source and timeframe", () => {
+    const database=openDatabase();
+    insertSourceCandle(database);
+    for (const timeframe of ["FIVE_MINUTES","ONE_DAY","ONE_MONTH","TWO_MINUTES"]) {
+      assert.throws(()=>insertSourceCandle(database,{timeframe,beginAt:"2026-09-15T08:00:00.000Z",endAt:"2026-09-15T08:00:59.000Z"}),/CHECK constraint failed/);
+    }
+    assert.equal(database.prepare("SELECT count(*) n FROM moex_iss_minute_candles").get().n,1);
+    database.close();
   });
-
-  assert.equal(
-    database.prepare("SELECT COUNT(*) AS count FROM market_source_candles").get().count,
-    timeframes.length
-  );
-  assert.throws(
-    () => insertSourceCandle(database, {
-      timeframe: "TWO_MINUTES",
-      beginAt: "2026-09-15T08:00:00.000Z",
-      endAt: "2026-09-15T08:01:59.000Z"
-    }),
-    /CHECK constraint failed/
-  );
-
-  database.close();
-});
 
 test("enforces Aggregated Candle target and base timeframe pairs", () => {
   const database = openDatabase();

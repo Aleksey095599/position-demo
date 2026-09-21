@@ -19,7 +19,7 @@ function openDatabase(testContext) {
 function insertRange(database, overrides = {}) {
   const range = {
     instrumentId: "CNYRUB_TOM",
-    timeframe: "ONE_MINUTE",
+    timeframe: "ONE_DAY",
     from: "2026-09-15T07:00:00.000Z",
     till: "2026-09-15T08:00:00.000Z",
     loadedAt: "2026-09-16T09:00:00.000Z",
@@ -27,7 +27,7 @@ function insertRange(database, overrides = {}) {
   };
 
   database.prepare(`
-    INSERT INTO market_candle_load_ranges
+    INSERT INTO moex_iss_daily_candle_load_ranges
       (instrument_id, timeframe, from_at, till_at, loaded_at)
     VALUES (?, ?, ?, ?, ?)
   `).run(
@@ -42,7 +42,7 @@ function insertRange(database, overrides = {}) {
 test("creates canonical Market Candle Load Ranges", testContext => {
   const database = openDatabase(testContext);
   const columns = database.prepare(
-    "PRAGMA table_info(market_candle_load_ranges)"
+    "PRAGMA table_info(moex_iss_daily_candle_load_ranges)"
   ).all();
 
   assert.deepEqual(
@@ -57,7 +57,7 @@ test("creates canonical Market Candle Load Ranges", testContext => {
   insertRange(database);
   assert.equal(
     database.prepare(`
-      SELECT COUNT(*) AS count FROM market_candle_load_ranges
+      SELECT COUNT(*) AS count FROM moex_iss_daily_candle_load_ranges
     `).get().count,
     1
   );

@@ -74,8 +74,8 @@ test("backfills an anchor range once and derives stored five-minute Candles", as
     const range = {
       instrumentId: "CNYRUB_TOM",
       timeframe: CandleTimeframe.ONE_MINUTE,
-      from: "2026-09-15T07:00:00.000Z",
-      till: "2026-09-15T07:05:00.000Z"
+      from: "2026-09-14T21:00:00.000Z",
+      till: "2026-09-15T21:00:00.000Z"
     };
 
     const firstRun = await backfill.execute(range);
@@ -99,12 +99,12 @@ test("backfills an anchor range once and derives stored five-minute Candles", as
       close: "105"
     })]);
     assert.equal(
-      database.prepare("SELECT COUNT(*) AS count FROM market_source_candles").get().count,
+      database.prepare("SELECT COUNT(*) AS count FROM moex_iss_minute_candles").get().count,
       5
     );
     assert.equal(
       database.prepare(
-        "SELECT COUNT(*) AS count FROM market_candle_load_ranges"
+        "SELECT COUNT(*) AS count FROM moex_iss_minute_candle_load_days"
       ).get().count,
       1
     );

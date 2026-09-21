@@ -11174,6 +11174,125 @@
       justify-content: flex-start;
       border-bottom: 0;
     }
+
+    .trade-message-contract-icon {
+      position: relative;
+      display: inline-block;
+      flex: 0 0 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .trade-message-contract-icon .trade-message-contract-icon__mail {
+      position: absolute;
+      inset: 0;
+      font-size: 20px;
+      /* Leave a clear gap around the gear on every menu background. */
+      mask-image: radial-gradient(circle at 15px 15px, transparent 7px, #000 7.5px);
+    }
+
+    .trade-message-contract-icon .trade-message-contract-icon__gear {
+      position: absolute;
+      right: -1px;
+      bottom: -1px;
+      width: 12px;
+      height: 12px;
+      font-size: 12px;
+    }
+
+    .trade-contract-term {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      vertical-align: baseline;
+      white-space: nowrap;
+      color: var(--bs-body-color);
+      text-decoration: none;
+    }
+
+    .trade-contract-term__label {
+      text-decoration: underline dotted;
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1px;
+    }
+
+    .trade-contract-term:hover,
+    .trade-contract-term:focus-visible {
+      color: var(--bs-emphasis-color);
+    }
+
+    .trade-contract-term:hover .trade-contract-term__label,
+    .trade-contract-term:focus-visible .trade-contract-term__label {
+      text-decoration-style: solid;
+    }
+
+    #tradeContractPage .trade-contract-fields-title {
+      margin: 0 0 12px;
+    }
+
+    #tradeContractPage .trade-contract-groups {
+      display: grid;
+      gap: 10px;
+    }
+
+    #tradeContractPage .trade-contract-group {
+      min-width: 0;
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--workbench-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #tradeContractPage .trade-contract-group__heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-radius: inherit;
+      background: color-mix(in srgb, var(--palette-blue-100) 32%, var(--bs-tertiary-bg));
+      cursor: pointer;
+      list-style: none;
+    }
+
+    #tradeContractPage .trade-contract-group__heading::-webkit-details-marker {
+      display: none;
+    }
+
+    #tradeContractPage .trade-contract-group__heading h3 {
+      margin: 0;
+      font-size: inherit;
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #tradeContractPage .trade-contract-group__heading:hover {
+      background: color-mix(in srgb, var(--palette-blue-100) 48%, var(--bs-tertiary-bg));
+    }
+
+    #tradeContractPage .trade-contract-group__heading:focus-visible {
+      outline: 2px solid var(--bs-primary);
+      outline-offset: 2px;
+    }
+
+    #tradeContractPage .trade-contract-group[open] > .trade-contract-group__heading {
+      border-bottom: 1px solid var(--bs-border-color);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    #tradeContractPage .trade-contract-group[open] > summary .trade-contract-group__chevron {
+      transform: rotate(90deg);
+    }
+
+    #tradeContractPage .trade-contract-table td.trade-contract-empty {
+      width: auto;
+      padding: 18px 10px;
+      color: var(--bs-secondary-color);
+    }
+
+    /* The section heading provides the single separator above column headers. */
+    #tradeContractPage .trade-contract-table > thead,
+    #tradeContractPage .trade-contract-table > thead > tr {
+      border-top: 0;
+    }
     #marketPage .market-quote-panel {
       margin-top: 16px;
     }
@@ -11336,12 +11455,8 @@
     }
 
     #marketPage .market-history-calendar {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-      gap: 12px;
-      max-height: 520px;
-      overflow: auto;
-      overscroll-behavior: contain;
+      margin: 14px 0;
+      width: 100%;
     }
 
     #marketPage .market-history-calendar-month {
@@ -11379,8 +11494,8 @@
 
     #marketPage .market-history-calendar-day {
       display: grid;
-      min-height: 44px;
-      padding: 5px 3px;
+      min-height: 96px;
+      padding: 10px;
       place-items: center;
       border: 1px solid var(--bs-border-color-translucent);
       border-radius: var(--bs-border-radius-sm);
@@ -11406,7 +11521,7 @@
     }
 
     #marketPage .market-history-calendar-day.is-loading .button-icon {
-      animation: market-history-sync-pulse 1s ease-in-out infinite;
+      animation: market-history-sync-spin 0.9s linear infinite;
     }
 
     #marketPage .market-history-calendar-day.is-completed {
@@ -11436,11 +11551,8 @@
       margin-bottom: 10px;
     }
 
-    @keyframes market-history-sync-pulse {
-      50% {
-        opacity: 0.35;
-        transform: scale(0.82);
-      }
+    @keyframes market-history-sync-spin {
+      to { transform: rotate(360deg); }
     }
 
     #marketPage .market-history-form {
@@ -11566,6 +11678,71 @@
       #marketPage .market-history-calendar-day.is-loading .button-icon {
         animation: none;
       }
+    }
+
+    #marketPage .market-source-calendar { margin-top: 24px; }
+    #marketPage .market-source-calendar-toolbar,
+    #marketPage .market-source-calendar-navigation { display: flex; align-items: center; gap: 12px; }
+    #marketPage .market-source-calendar-toolbar { justify-content: space-between; flex-wrap: wrap; margin-bottom: 8px; }
+    #marketPage .market-source-calendar-navigation .market-history-calendar-title { margin: 0; min-width: 150px; text-align: center; font-size: 16px; }
+    #marketPage .market-history-calendar-grid { gap: 8px; }
+    #marketPage .market-history-calendar-weekday { font-size: 11px; padding: 5px; }
+    #marketPage .market-history-calendar-day { grid-template-columns: 1fr auto; grid-template-rows: auto 1fr auto; gap: 6px; text-align: left; place-items: initial; line-height: 1.25; font-size: 13px; }
+    #marketPage .market-history-calendar-day .button-icon { justify-self: end; font-size: 18px; }
+    #marketPage .market-history-calendar-day[aria-pressed="true"] { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
+    #marketPage .market-history-calendar-day:focus-visible { outline: 3px solid var(--bs-primary); outline-offset: 2px; }
+    #marketPage .market-history-calendar-day:disabled { opacity: 0.5; }
+    #marketPage .market-calendar-candle-count { grid-column: 1 / -1; align-self: end; font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    #marketPage .market-calendar-candle-caption { grid-column: 1 / -1; font-size: 11px; }
+    #marketPage .market-history-calendar-day.is-partial { background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); border-color: var(--bs-warning-border-subtle); }
+    #marketPage .market-history-day-dot.is-partial { background: var(--bs-warning); }
+    #marketPage .market-calendar-detail { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-top: 1px solid var(--bs-border-color); padding-top: 16px; }
+    #marketPage .market-calendar-detail > div { min-width: 0; overflow-wrap: anywhere; }
+    #marketPage .market-calendar-detail > button { flex-shrink: 0; }
+    #marketPage .market-calendar-detail p { margin-top: 6px; }
+    #marketPage .market-history-sync-legend { font-size: 12px; }
+    #marketPage .is-loading > .button-icon { animation: market-history-sync-spin 0.9s linear infinite; }
+    @media (max-width: 620px) {
+      #marketPage .market-history-sync-card { padding: 10px; }
+      #marketPage .market-history-calendar-grid { gap: 3px; }
+      #marketPage .market-history-calendar-day { min-height: 78px; padding: 6px 3px; gap: 4px; font-size: 11px; }
+      #marketPage .market-history-calendar-day .button-icon { font-size: 13px; }
+      #marketPage .market-calendar-candle-count { font-size: 15px; }
+      #marketPage .market-calendar-candle-caption { font-size: 10px; }
+      #marketPage .market-calendar-detail { align-items: flex-start; flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #marketPage .is-loading > .button-icon,
+      #marketPage .market-history-calendar-day.is-loading .button-icon { animation: none; }
+    }
+    #marketPage.market-bootstrap.workbench-page .market-bootstrap-panel[data-market-panel="data-management"] {
+      width: min(1120px, calc(100vw - var(--workbench-page-inline-total)));
+    }
+    #marketPage .market-history-sync-form {
+      grid-template-columns: minmax(160px, 230px) minmax(240px, 1fr) auto;
+      align-items: center;
+    }
+    #marketPage .market-history-sync-button { margin-bottom: 0; }
+    #marketPage .market-calendar-selection { display: grid; gap: 5px; min-width: 0; }
+    #marketPage .market-calendar-selection-label { color: var(--bs-secondary-color); font-size: 12px; }
+    #marketPage .market-calendar-selection output { font-size: 14px; font-weight: 600; }
+    #marketPage .market-calendar-selection small { color: var(--bs-secondary-color); font-size: 11px; }
+    #marketPage .market-history-calendar-day[aria-pressed="true"] {
+      outline: none;
+      box-shadow: inset 0 -4px 0 var(--bs-primary);
+    }
+    #marketPage .market-history-calendar-day.is-range-start,
+    #marketPage .market-history-calendar-day.is-range-end { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
+    #marketPage .market-history-calendar-day.is-range-preview { box-shadow: inset 0 -3px 0 var(--bs-primary-border-subtle); }
+    #marketPage .market-history-calendar-day:disabled:not(.is-unavailable) { opacity: 1; }
+    #marketPage .market-history-calendar-day:focus-visible { outline: 3px solid var(--bs-primary); outline-offset: 2px; }
+    @media (max-width: 900px) {
+      #marketPage .market-history-sync-form { grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr); }
+      #marketPage .market-history-sync-button { grid-column: 1 / -1; justify-self: start; }
+    }
+    @media (max-width: 620px) {
+      #marketPage .market-history-sync-form { grid-template-columns: minmax(0, 1fr); }
+      #marketPage .market-history-sync-button { width: 100%; }
     }
     /* Trade Context, Pricing Rules, and Reference Data tables use their natural column width on wide screens and scroll only when needed. */
     #pricingPage.unified-bootstrap-workspace.workbench-page .pricing-layout .profile-table-panel,

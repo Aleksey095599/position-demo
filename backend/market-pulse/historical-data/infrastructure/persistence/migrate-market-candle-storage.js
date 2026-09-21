@@ -1,87 +1,54 @@
 "use strict";
 
-const LEGACY_TABLE_NAME = "market_candles";
-const SOURCE_TABLE_NAME = "market_source_candles";
-const AGGREGATED_TABLE_NAME = "market_aggregated_candles";
-
-function tableExists(database, tableName) {
-  return Boolean(database.prepare(`
-    SELECT 1
-    FROM sqlite_master
-    WHERE type = 'table' AND name = ?
-  `).get(tableName));
+const DAY_MS = 86400000;
+const MOSCOW_OFFSET_MS = 10800000;
+function tableExists(db, name) {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name));
 }
-
-function countRows(database, tableName) {
-  return database.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count;
-}
-
-function migrateMarketCandleStorage(database) {
-  if (!tableExists(database, LEGACY_TABLE_NAME)) {
-    return false;
-  }
-
-  database.exec("BEGIN IMMEDIATE");
-
+// Copy before retiring the old names. Legacy tables remain intact for rollback.
+function migrateMarketCandleStorage(db) {
+  const oldNames = ["market_candles", "market_source_candles", "market_aggregated_candles", "market_candle_load_ranges"];
+  if (!oldNames.some(name => tableExists(db, name))) return false;
+  db.exec("BEGIN IMMEDIATE");
   try {
-    if (!tableExists(database, SOURCE_TABLE_NAME)
-        || !tableExists(database, AGGREGATED_TABLE_NAME)) {
-      throw new Error("Market Candle destination tables are missing.");
+    for (const name of ["market_candles", "market_source_candles"]) {
+      if (!tableExists(db, name)) continue;
+      const source = name === "market_candles" ? "source" : "data_source";
+      const invalid = db.prepare(`SELECT COUNT(*) n FROM ${name} WHERE timeframe NOT IN ('ONE_MINUTE','ONE_DAY') OR ${source} <> 'MOEX_ISS'`).get().n;
+      if (invalid) throw new Error("Cannot migrate non-MOEX or unsupported source candles.");
+      for (const [timeframe, target] of [["ONE_MINUTE", "moex_iss_minute_candles"], ["ONE_DAY", "moex_iss_daily_candles"]]) {
+        db.prepare(`INSERT INTO ${target} (instrument_id,timeframe,begin_at,end_at,open_price,high_price,low_price,close_price,data_source,loaded_at)
+          SELECT instrument_id,timeframe,begin_at,end_at,open_price,high_price,low_price,close_price,${source},loaded_at FROM ${name} WHERE timeframe=?`).run(timeframe);
+      }
+      db.exec(`ALTER TABLE ${name} RENAME TO legacy_${name}`);
     }
-
-    if (countRows(database, SOURCE_TABLE_NAME) !== 0
-        || countRows(database, AGGREGATED_TABLE_NAME) !== 0) {
-      throw new Error("Market Candle storage migration requires empty destination tables.");
+    if (tableExists(db, "market_aggregated_candles")) {
+      db.exec("INSERT INTO moex_iss_aggregated_candles SELECT * FROM market_aggregated_candles");
+      db.exec("ALTER TABLE market_aggregated_candles RENAME TO legacy_market_aggregated_candles");
     }
-
-    const legacyRowCount = countRows(database, LEGACY_TABLE_NAME);
-
-    database.exec(`
-      INSERT INTO ${SOURCE_TABLE_NAME}
-        (
-          instrument_id,
-          timeframe,
-          begin_at,
-          end_at,
-          open_price,
-          high_price,
-          low_price,
-          close_price,
-          data_source,
-          loaded_at
-        )
-      SELECT
-        instrument_id,
-        timeframe,
-        begin_at,
-        end_at,
-        open_price,
-        high_price,
-        low_price,
-        close_price,
-        source,
-        loaded_at
-      FROM ${LEGACY_TABLE_NAME}
-    `);
-
-    const copiedRowCount = countRows(database, SOURCE_TABLE_NAME);
-
-    if (copiedRowCount !== legacyRowCount) {
-      throw new Error(
-        `Market Candle storage migration copied ${copiedRowCount} of ${legacyRowCount} rows.`
-      );
+    if (tableExists(db, "market_candle_load_ranges")) {
+      const insert = db.prepare(`INSERT INTO moex_iss_minute_candle_load_days
+        (instrument_id,load_date,completed_at,last_attempt_at) VALUES (?,?,?,?)
+        ON CONFLICT (instrument_id,load_date) DO UPDATE SET
+        completed_at=MAX(completed_at,excluded.completed_at),last_attempt_at=MAX(last_attempt_at,excluded.last_attempt_at)`);
+      for (const row of db.prepare("SELECT * FROM market_candle_load_ranges").all()) {
+        if (row.timeframe === "ONE_DAY") {
+          db.prepare("INSERT INTO moex_iss_daily_candle_load_ranges VALUES (?,?,?,?,?)").run(row.instrument_id,row.timeframe,row.from_at,row.till_at,row.loaded_at);
+          continue;
+        }
+        if (row.timeframe !== "ONE_MINUTE") throw new Error("Unsupported legacy candle coverage timeframe.");
+        // Partial boundary days remain unconfirmed; original coverage is retained in the legacy table.
+        const from = Date.parse(row.from_at), till = Date.parse(row.till_at);
+        const firstDay = Math.ceil((from + MOSCOW_OFFSET_MS) / DAY_MS) * DAY_MS - MOSCOW_OFFSET_MS;
+        for (let t=firstDay; t+DAY_MS<=till; t+=DAY_MS) insert.run(row.instrument_id,new Date(t+MOSCOW_OFFSET_MS).toISOString().slice(0,10),row.loaded_at,row.loaded_at);
+      }
+      db.exec("ALTER TABLE market_candle_load_ranges RENAME TO legacy_market_candle_load_ranges");
     }
-
-    database.exec("DROP INDEX IF EXISTS idx_market_candles_begin_at");
-    database.exec(`DROP TABLE ${LEGACY_TABLE_NAME}`);
-    database.exec("COMMIT");
+    db.exec("COMMIT");
     return true;
   } catch (error) {
-    database.exec("ROLLBACK");
+    db.exec("ROLLBACK");
     throw error;
   }
 }
-
-module.exports = {
-  migrateMarketCandleStorage
-};
+module.exports = { migrateMarketCandleStorage };

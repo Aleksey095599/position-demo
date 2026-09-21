@@ -72,8 +72,6 @@
     });
     const marketHistorySyncForm = document.getElementById("marketHistorySyncForm");
     const marketHistorySyncInstrument = document.getElementById("marketHistorySyncInstrument");
-    const marketHistorySyncFromDate = document.getElementById("marketHistorySyncFromDate");
-    const marketHistorySyncThroughDate = document.getElementById("marketHistorySyncThroughDate");
     const marketHistorySyncButton = document.getElementById("marketHistorySyncButton");
     const marketHistorySyncButtonText = document.getElementById("marketHistorySyncButtonText");
     const marketHistorySyncProgress = document.getElementById("marketHistorySyncProgress");
@@ -81,14 +79,9 @@
     const marketHistorySyncCount = document.getElementById("marketHistorySyncCount");
     const marketHistorySyncProgressBar = document.getElementById("marketHistorySyncProgressBar");
     const marketHistorySyncCalendar = document.getElementById("marketHistorySyncCalendar");
-    const MARKET_HISTORY_SYNC_MAX_DAY_COUNT = 366;
     const MARKET_HISTORY_SYNC_WEEKDAYS = Object.freeze(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
     let marketHistorySyncRunning = false;
-    let marketHistorySyncPlan = null;
     let marketHistorySyncActiveDate = "";
-    let marketHistorySyncFailure = null;
-    const marketHistorySyncDayStates = new Map();
-    const marketHistorySyncDayDetails = new Map();
 
     function marketGridActionMarkup(action, icon, label, { danger = false, primary = false, disabled = false } = {}) {
       const variant = danger ? "btn-outline-danger" : primary ? "btn-primary" : "btn-outline-secondary";
@@ -1180,7 +1173,7 @@
             formatter: marketStreamRateFormatter
           }),
           tabulatorSizedColumn("actions", {
-            title: "Actions",
+            title: "Settings",
             field: "actions",
             cssClass: "market-grid-actions-cell",
             headerSort: false,
@@ -1289,428 +1282,15 @@
         : "";
     }
 
-    function marketHistorySyncDateStatus(status) {
-      const definitions = {
-        PENDING: { className: "pending", icon: "schedule", label: "Pending" },
-        LOADING: { className: "loading", icon: "downloading", label: "Loading" },
-        COMPLETED: { className: "completed", icon: "check", label: "Completed" },
-        ALREADY_LOADED: { className: "already-loaded", icon: "done_all", label: "Already loaded" },
-        ERROR: { className: "error", icon: "error", label: "Error" }
-      };
-
-      return definitions[status] || definitions.PENDING;
-    }
-
-    function normalizedMarketHistorySyncPlan(value) {
-      if (!value || typeof value !== "object" || !Array.isArray(value.days)) {
-        throw new Error("Historical source synchronization response is invalid.");
-      }
-
-      const instrumentId = String(value.instrumentId || "");
-      const fromDate = String(value.fromDate || "");
-      const throughDate = String(value.throughDate || "");
-      const fromTimestamp = marketHistorySyncDateTimestamp(fromDate);
-      const throughTimestamp = marketHistorySyncDateTimestamp(throughDate);
-      const seenDates = new Set();
-      let previousTimestamp = Number.NEGATIVE_INFINITY;
-      const days = value.days.map(day => {
-        const date = String(day?.date || "");
-        const timestamp = marketHistorySyncDateTimestamp(date);
-        const status = String(day?.status || "");
-
-        if (
-          !Number.isFinite(timestamp)
-          || timestamp < fromTimestamp
-          || timestamp > throughTimestamp
-          || timestamp <= previousTimestamp
-          || seenDates.has(date)
-          || !["PENDING", "COMPLETED"].includes(status)
-        ) {
-          throw new Error("Historical source synchronization response is invalid.");
-        }
-
-        previousTimestamp = timestamp;
-        seenDates.add(date);
-        return Object.freeze({ date, status });
-      });
-      const completedDayCount = days.filter(day => day.status === "COMPLETED").length;
-      const pendingDayCount = days.length - completedDayCount;
-
-      if (
-        !instrumentId
-        || !Number.isFinite(fromTimestamp)
-        || !Number.isFinite(throughTimestamp)
-        || fromTimestamp > throughTimestamp
-        || Number(value.totalDayCount) !== days.length
-        || Number(value.completedDayCount) !== completedDayCount
-        || Number(value.pendingDayCount) !== pendingDayCount
-        || Boolean(value.complete) !== (pendingDayCount === 0)
-      ) {
-        throw new Error("Historical source synchronization response is invalid.");
-      }
-
-      return Object.freeze({
-        instrumentId,
-        fromDate,
-        throughDate,
-        totalDayCount: days.length,
-        completedDayCount,
-        pendingDayCount,
-        complete: pendingDayCount === 0,
-        days: Object.freeze(days)
-      });
-    }
-
-    function initializeMarketHistorySyncBoundary() {
-      const throughDate = marketHistorySyncYesterday();
-      const throughTimestamp = marketHistorySyncDateTimestamp(throughDate);
-      const earliestDate = new Date(
-        throughTimestamp - (MARKET_HISTORY_SYNC_MAX_DAY_COUNT - 1) * 24 * 60 * 60 * 1000
-      ).toISOString().slice(0, 10);
-      marketHistorySyncFromDate.min = earliestDate;
-      marketHistorySyncFromDate.max = throughDate;
-      marketHistorySyncThroughDate.value = formatMarketHistorySyncDate(throughDate);
-      marketHistorySyncThroughDate.textContent = formatMarketHistorySyncDate(throughDate);
-      marketHistorySyncThroughDate.dataset.date = throughDate;
-
-      const fromTimestamp = marketHistorySyncDateTimestamp(marketHistorySyncFromDate.value);
-      marketHistorySyncFromDate.setCustomValidity(
-        Number.isFinite(fromTimestamp) && fromTimestamp < marketHistorySyncDateTimestamp(earliestDate)
-          ? `From date must be within the latest ${MARKET_HISTORY_SYNC_MAX_DAY_COUNT} closed Moscow calendar days.`
-          : Number.isFinite(fromTimestamp) && fromTimestamp > throughTimestamp
-            ? "From date must be no later than yesterday in Moscow time."
-            : ""
-      );
-    }
-
-    function applyMarketHistorySyncServerBoundary(throughDate) {
-      marketHistorySyncFromDate.max = throughDate;
-      marketHistorySyncThroughDate.value = formatMarketHistorySyncDate(throughDate);
-      marketHistorySyncThroughDate.textContent = formatMarketHistorySyncDate(throughDate);
-      marketHistorySyncThroughDate.dataset.date = throughDate;
-    }
-
     function setMarketHistorySyncRunning(running) {
       marketHistorySyncRunning = running;
       marketHistorySyncInstrument.disabled = running || marketHistoryLoading;
-      marketHistorySyncFromDate.disabled = running || marketHistoryLoading;
-      marketHistorySyncButton.disabled = running || marketHistoryLoading;
       marketHistoryLoadButton.disabled = running || marketHistoryLoading;
-      marketHistorySyncButtonText.textContent = running
-        ? "Synchronizing…"
-        : "Synchronize source candles";
+      marketHistorySyncButtonText.textContent = running ? "Loading…" : "Load selected days";
+      marketHistorySyncButton.classList.toggle("is-loading", running);
+      marketHistorySyncButton.querySelector(".button-icon").textContent = running ? "progress_activity" : "download";
       marketHistorySyncProgress.setAttribute("aria-busy", String(running));
-    }
-
-    function marketHistorySyncRenderedStatus(day) {
-      if (marketHistorySyncFailure?.date === day.date) {
-        return "ERROR";
-      }
-
-      if (marketHistorySyncActiveDate === day.date) {
-        return "LOADING";
-      }
-
-      return marketHistorySyncDayStates.get(day.date)
-        || (day.status === "COMPLETED" ? "COMPLETED" : "PENDING");
-    }
-
-    function marketHistorySyncDayTitle(day, statusDefinition) {
-      const detail = marketHistorySyncDayDetails.get(day.date);
-      return [
-        formatMarketHistorySyncDate(day.date),
-        statusDefinition.label,
-        detail
-      ].filter(Boolean).join(" — ");
-    }
-
-    function marketHistorySyncCalendarMonth(monthKey, days) {
-      const month = document.createElement("section");
-      month.className = "market-history-calendar-month";
-
-      const title = document.createElement("h3");
-      title.className = "market-history-calendar-title";
-      title.textContent = marketHistorySyncMonthFormatter.format(
-        new Date(`${monthKey}-01T12:00:00.000Z`)
-      );
-      month.append(title);
-
-      const grid = document.createElement("div");
-      grid.className = "market-history-calendar-grid";
-      grid.setAttribute("role", "list");
-
-      for (const weekday of MARKET_HISTORY_SYNC_WEEKDAYS) {
-        const label = document.createElement("span");
-        label.className = "market-history-calendar-weekday";
-        label.setAttribute("aria-hidden", "true");
-        label.textContent = weekday;
-        grid.append(label);
-      }
-
-      const firstTimestamp = marketHistorySyncDateTimestamp(days[0].date);
-      const leadingSpaceCount = (new Date(firstTimestamp).getUTCDay() + 6) % 7;
-
-      for (let index = 0; index < leadingSpaceCount; index += 1) {
-        const spacer = document.createElement("span");
-        spacer.className = "market-history-calendar-spacer";
-        spacer.setAttribute("aria-hidden", "true");
-        grid.append(spacer);
-      }
-
-      for (const day of days) {
-        const status = marketHistorySyncRenderedStatus(day);
-        const statusDefinition = marketHistorySyncDateStatus(status);
-        const cell = document.createElement("div");
-        cell.className = `market-history-calendar-day is-${statusDefinition.className}`;
-        cell.setAttribute("role", "listitem");
-        cell.dataset.marketHistorySyncDate = day.date;
-        cell.title = marketHistorySyncDayTitle(day, statusDefinition);
-
-        const date = document.createElement("time");
-        date.className = "market-history-calendar-day-number";
-        date.dateTime = day.date;
-        date.textContent = String(Number(day.date.slice(-2)));
-
-        const icon = document.createElement("span");
-        icon.className = "button-icon";
-        icon.setAttribute("aria-hidden", "true");
-        icon.textContent = statusDefinition.icon;
-
-        const accessibleStatus = document.createElement("span");
-        accessibleStatus.className = "visually-hidden";
-        accessibleStatus.textContent = `${formatMarketHistorySyncDate(day.date)}: ${statusDefinition.label}.`;
-        cell.append(date, icon, accessibleStatus);
-        grid.append(cell);
-      }
-
-      month.append(grid);
-      return month;
-    }
-
-    function renderMarketHistorySyncPlan() {
-      if (!marketHistorySyncPlan) {
-        marketHistorySyncProgress.hidden = true;
-        marketHistorySyncSummary.textContent = "";
-        marketHistorySyncCount.textContent = "";
-        marketHistorySyncProgressBar.style.width = "0%";
-        marketHistorySyncCalendar.replaceChildren();
-        return;
-      }
-
-      marketHistorySyncProgress.hidden = false;
-      const completedCount = marketHistorySyncPlan.completedDayCount;
-      const totalCount = marketHistorySyncPlan.totalDayCount;
-      const progressPercent = totalCount === 0
-        ? 100
-        : Math.round((completedCount / totalCount) * 100);
-      marketHistorySyncCount.textContent = `${completedCount} / ${totalCount} days`;
-      marketHistorySyncProgressBar.style.width = `${progressPercent}%`;
-      marketHistorySyncProgressBar.setAttribute("aria-valuenow", String(completedCount));
-      marketHistorySyncProgressBar.setAttribute("aria-valuemin", "0");
-      marketHistorySyncProgressBar.setAttribute("aria-valuemax", String(totalCount));
-
-      if (marketHistorySyncFailure) {
-        marketHistorySyncSummary.textContent = `Stopped on ${formatMarketHistorySyncDate(marketHistorySyncFailure.date)}. ${marketHistorySyncFailure.message}`;
-      } else if (marketHistorySyncActiveDate) {
-        marketHistorySyncSummary.textContent = `Synchronizing ${formatMarketHistorySyncDate(marketHistorySyncActiveDate)}…`;
-      } else if (marketHistorySyncPlan.complete) {
-        marketHistorySyncSummary.textContent = "All selected historical days are synchronized.";
-      } else {
-        marketHistorySyncSummary.textContent = `${marketHistorySyncPlan.pendingDayCount} days are ready for synchronization.`;
-      }
-
-      const months = new Map();
-
-      for (const day of marketHistorySyncPlan.days) {
-        const monthKey = day.date.slice(0, 7);
-
-        if (!months.has(monthKey)) {
-          months.set(monthKey, []);
-        }
-
-        months.get(monthKey).push(day);
-      }
-
-      const fragment = document.createDocumentFragment();
-
-      for (const [monthKey, days] of months) {
-        fragment.append(marketHistorySyncCalendarMonth(monthKey, days));
-      }
-
-      marketHistorySyncCalendar.replaceChildren(fragment);
-
-      if (marketHistorySyncActiveDate) {
-        marketHistorySyncCalendar
-          .querySelector(`[data-market-history-sync-date="${marketHistorySyncActiveDate}"]`)
-          ?.scrollIntoView({ block: "nearest", inline: "nearest" });
-      }
-    }
-
-    function resetMarketHistorySyncPlan() {
-      if (marketHistorySyncRunning) {
-        return;
-      }
-
-      marketHistorySyncPlan = null;
-      marketHistorySyncActiveDate = "";
-      marketHistorySyncFailure = null;
-      marketHistorySyncDayStates.clear();
-      marketHistorySyncDayDetails.clear();
-      initializeMarketHistorySyncBoundary();
-      renderMarketHistorySyncPlan();
-    }
-
-    function applyInitialMarketHistorySyncPlan(value) {
-      marketHistorySyncPlan = normalizedMarketHistorySyncPlan(value);
-      applyMarketHistorySyncServerBoundary(marketHistorySyncPlan.throughDate);
-      marketHistorySyncDayStates.clear();
-      marketHistorySyncDayDetails.clear();
-
-      for (const day of marketHistorySyncPlan.days) {
-        if (day.status === "COMPLETED") {
-          marketHistorySyncDayStates.set(day.date, "ALREADY_LOADED");
-          marketHistorySyncDayDetails.set(day.date, "This day was already covered before this run.");
-        }
-      }
-    }
-
-    function applyMarketHistorySyncStep(value) {
-      const processedDay = value?.processedDay;
-      const pendingDates = new Set(
-        marketHistorySyncPlan?.days
-          .filter(day => day.status === "PENDING")
-          .map(day => day.date)
-        || []
-      );
-      const plan = normalizedMarketHistorySyncPlan(value);
-
-      if (processedDay === null && plan.complete) {
-        marketHistorySyncPlan = plan;
-        applyMarketHistorySyncServerBoundary(plan.throughDate);
-        return;
-      }
-
-      const processedDate = String(processedDay?.date || "");
-      const completedDay = plan.days.find(day => day.date === processedDate);
-
-      if (
-        !processedDay
-        || !pendingDates.has(processedDate)
-        || processedDay.status !== "COMPLETED"
-        || completedDay?.status !== "COMPLETED"
-        || plan.completedDayCount <= marketHistorySyncPlan.completedDayCount
-      ) {
-        throw new Error("Historical source synchronization response is invalid.");
-      }
-
-      const pageCount = Number(processedDay.pageCount);
-      const fetchedCandleCount = Number(processedDay.fetchedCandleCount);
-      const storedCandleCount = Number(processedDay.storedCandleCount);
-
-      if (
-        !Number.isSafeInteger(pageCount)
-        || pageCount < 0
-        || !Number.isSafeInteger(fetchedCandleCount)
-        || fetchedCandleCount < 0
-        || !Number.isSafeInteger(storedCandleCount)
-        || storedCandleCount < 0
-      ) {
-        throw new Error("Historical source synchronization response is invalid.");
-      }
-
-      if (processedDay.skipped === true) {
-        marketHistorySyncDayStates.set(processedDate, "ALREADY_LOADED");
-        marketHistorySyncDayDetails.set(processedDate, "This day was already covered.");
-      } else {
-        marketHistorySyncDayStates.set(processedDate, "COMPLETED");
-        marketHistorySyncDayDetails.set(
-          processedDate,
-          fetchedCandleCount === 0
-            ? "Completed successfully; the source returned no minute candles."
-            : `${fetchedCandleCount} candles fetched; ${storedCandleCount} stored.`
-        );
-      }
-
-      marketHistorySyncPlan = plan;
-      applyMarketHistorySyncServerBoundary(plan.throughDate);
-    }
-
-    async function synchronizeMarketHistorySourceCandles(event) {
-      event.preventDefault();
-      initializeMarketHistorySyncBoundary();
-
-      if (
-        marketHistorySyncRunning
-        || marketHistoryLoading
-        || !marketHistorySyncForm.reportValidity()
-      ) {
-        return;
-      }
-
-      const command = {
-        instrumentId: marketHistorySyncInstrument.value,
-        fromDate: marketHistorySyncFromDate.value
-      };
-      const query = new URLSearchParams(command);
-      marketHistorySyncPlan = null;
-      marketHistorySyncFailure = null;
-      marketHistorySyncActiveDate = "";
-      marketHistorySyncDayStates.clear();
-      marketHistorySyncDayDetails.clear();
-      renderMarketHistorySyncPlan();
-      setMarketHistorySyncRunning(true);
-      setMarketStatus("Preparing historical source candle synchronization…");
-
-      try {
-        applyInitialMarketHistorySyncPlan(await demoApiRequest(
-          `/api/v1/market-pulse/historical-candles/manual-sync/plan?${query.toString()}`
-        ));
-        renderMarketHistorySyncPlan();
-
-        while (!marketHistorySyncPlan.complete) {
-          const nextDay = marketHistorySyncPlan.days.find(day => day.status === "PENDING");
-
-          if (!nextDay) {
-            throw new Error("Historical source synchronization response is invalid.");
-          }
-
-          marketHistorySyncActiveDate = nextDay.date;
-          renderMarketHistorySyncPlan();
-
-          try {
-            const result = await demoApiRequest(
-              "/api/v1/market-pulse/historical-candles/manual-sync/step",
-              {
-                method: "POST",
-                body: JSON.stringify(command)
-              }
-            );
-            applyMarketHistorySyncStep(result);
-            marketHistorySyncActiveDate = "";
-            renderMarketHistorySyncPlan();
-          } catch (error) {
-            marketHistorySyncActiveDate = "";
-            marketHistorySyncFailure = {
-              date: nextDay.date,
-              message: error.message
-            };
-            marketHistorySyncDayStates.set(nextDay.date, "ERROR");
-            renderMarketHistorySyncPlan();
-            throw error;
-          }
-        }
-
-        setMarketStatus("Historical source candles synchronized successfully.", "success");
-      } catch (error) {
-        if (!marketHistorySyncFailure) {
-          marketHistorySyncSummary.textContent = "Historical source synchronization could not be started.";
-          marketHistorySyncProgress.hidden = false;
-        }
-
-        setMarketStatus(error.message, "error");
-      } finally {
-        setMarketHistorySyncRunning(false);
-      }
+      renderMarketSourceCalendar();
     }
 
     function marketHistoryMoscowParts(timestamp) {
@@ -1903,8 +1483,7 @@
       marketHistoryLoading = loading;
       marketHistoryLoadButton.disabled = loading || marketHistorySyncRunning;
       marketHistorySyncInstrument.disabled = loading || marketHistorySyncRunning;
-      marketHistorySyncFromDate.disabled = loading || marketHistorySyncRunning;
-      marketHistorySyncButton.disabled = loading || marketHistorySyncRunning;
+      renderMarketCalendarSelection();
       marketHistoryLoadButton.textContent = loading ? "Loading…" : "Load candles";
     }
 
@@ -1997,7 +1576,7 @@
       renderMarketQuoteState();
 
       if (activeMarketKind() === "data-management") {
-        initializeMarketHistorySyncBoundary();
+        void loadMarketSourceCalendar();
       }
 
       if (activeMarketKind() === "charts") {
@@ -2058,7 +1637,3 @@
       tab.addEventListener("click", () => selectMarketQuoteTab(tab.dataset.marketQuoteTab));
       tab.addEventListener("keydown", handleMarketQuoteTabKeydown);
     });
-
-    marketHistorySyncForm.addEventListener("submit", synchronizeMarketHistorySourceCandles);
-    marketHistorySyncInstrument.addEventListener("change", resetMarketHistorySyncPlan);
-    marketHistorySyncFromDate.addEventListener("change", resetMarketHistorySyncPlan);

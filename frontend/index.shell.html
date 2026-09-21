@@ -30,7 +30,7 @@
         <span>Trades</span>
       </a>
       <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceTradeIntakeToggle" aria-haspopup="menu" aria-controls="workspaceTradeIntakeMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceTradeIntakeMenu" data-workspace-routes="trade-contract trade-intake-messages">
-        <span class="button-icon workspace-nav-icon" aria-hidden="true">move_to_inbox</span>
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">markunread_mailbox</span>
         <span>Trade Intake</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
@@ -85,12 +85,15 @@
   </div>
   <div class="workspace-nav-menu" id="workspaceTradeIntakeMenu" role="menu" aria-label="Trade Intake" data-workspace-nav-menu hidden>
     <a class="workspace-nav-menu-link" href="#trade-intake:contract" data-workspace-route="trade-contract" role="menuitem">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">description</span>
-      <span>Contract</span>
+      <span class="trade-message-contract-icon" aria-hidden="true">
+        <span class="button-icon trade-message-contract-icon__mail">mail</span>
+        <span class="button-icon trade-message-contract-icon__gear">settings</span>
+      </span>
+      <span>Message Contract</span>
     </a>
     <a class="workspace-nav-menu-link" href="#trade-intake:messages" data-workspace-route="trade-intake-messages" role="menuitem">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">move_to_inbox</span>
-      <span>Messages</span>
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">stacked_email</span>
+      <span>Message Registry</span>
     </a>
   </div>
   <div class="workspace-nav-menu" id="workspacePricingMenu" role="menu" aria-label="Pricing" data-workspace-nav-menu hidden>

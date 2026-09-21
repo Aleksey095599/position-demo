@@ -30,7 +30,7 @@
         <span>Trades</span>
       </a>
       <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceTradeIntakeToggle" aria-haspopup="menu" aria-controls="workspaceTradeIntakeMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceTradeIntakeMenu" data-workspace-routes="trade-contract trade-intake-messages">
-        <span class="button-icon workspace-nav-icon" aria-hidden="true">move_to_inbox</span>
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">markunread_mailbox</span>
         <span>Trade Intake</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
@@ -85,12 +85,15 @@
   </div>
   <div class="workspace-nav-menu" id="workspaceTradeIntakeMenu" role="menu" aria-label="Trade Intake" data-workspace-nav-menu hidden>
     <a class="workspace-nav-menu-link" href="#trade-intake:contract" data-workspace-route="trade-contract" role="menuitem">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">description</span>
-      <span>Contract</span>
+      <span class="trade-message-contract-icon" aria-hidden="true">
+        <span class="button-icon trade-message-contract-icon__mail">mail</span>
+        <span class="button-icon trade-message-contract-icon__gear">settings</span>
+      </span>
+      <span>Message Contract</span>
     </a>
     <a class="workspace-nav-menu-link" href="#trade-intake:messages" data-workspace-route="trade-intake-messages" role="menuitem">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">move_to_inbox</span>
-      <span>Messages</span>
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">stacked_email</span>
+      <span>Message Registry</span>
     </a>
   </div>
   <div class="workspace-nav-menu" id="workspacePricingMenu" role="menu" aria-label="Pricing" data-workspace-nav-menu hidden>
@@ -146,9 +149,9 @@
           <div class="market-history-sync-header">
             <span class="button-icon market-history-sync-header-icon" aria-hidden="true">calendar_month</span>
             <div>
-              <h2 class="market-history-section-title" id="marketHistorySyncTitle">Source candle synchronization</h2>
+              <h2 class="market-history-section-title" id="marketHistorySyncTitle">Source Candles</h2>
               <p class="market-history-section-description">
-                Load closed one-minute candles one Moscow calendar day at a time. Today is never included.
+                MOEX ISS · 1 minute · Moscow calendar days. Today is never included.
               </p>
             </div>
           </div>
@@ -159,22 +162,16 @@
               <select class="form-select form-select-sm" id="marketHistorySyncInstrument" name="instrumentId" required>
                 <option value="CNYRUB_TOM">CNY/RUB TOM</option>
               </select>
-              <small>MOEX ISS market</small>
+              <small>MOEX ISS · 1 minute</small>
             </label>
-            <label class="market-history-field" for="marketHistorySyncFromDate">
-              <span>From date</span>
-              <input class="form-control form-control-sm" id="marketHistorySyncFromDate" name="fromDate" type="date"
-                aria-describedby="marketHistorySyncFromHelp" required>
-              <small id="marketHistorySyncFromHelp">Up to 366 closed Moscow calendar days</small>
-            </label>
-            <div class="market-history-field market-history-sync-through">
-              <span>Through date</span>
-              <output class="market-history-sync-boundary" id="marketHistorySyncThroughDate" for="marketHistorySyncFromDate">—</output>
-              <small>Yesterday, Moscow time</small>
+            <div class="market-calendar-selection">
+              <span class="market-calendar-selection-label">Selected dates</span>
+              <output id="marketCalendarSelection" aria-live="polite">Select dates in the calendar.</output>
+              <small id="marketCalendarSelectionHelp">Click a start date, then an end date. Both dates are included.</small>
             </div>
-            <button class="btn btn-sm btn-primary market-history-sync-button" id="marketHistorySyncButton" type="submit">
-              <span class="button-icon" aria-hidden="true">sync</span>
-              <span id="marketHistorySyncButtonText">Synchronize source candles</span>
+            <button class="btn btn-sm btn-primary market-history-sync-button" id="marketHistorySyncButton" type="submit" disabled>
+              <span class="button-icon" aria-hidden="true">download</span>
+              <span id="marketHistorySyncButtonText">Load selected days</span>
             </button>
           </form>
 
@@ -187,15 +184,35 @@
               <div class="progress-bar" id="marketHistorySyncProgressBar" role="progressbar"
                 aria-label="Historical days synchronized" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"></div>
             </div>
-            <div class="market-history-sync-legend" aria-label="Synchronization statuses">
-              <span><i class="market-history-day-dot is-pending" aria-hidden="true"></i>Pending</span>
+          </div>
+          <section class="market-source-calendar" aria-label="Minute candle calendar">
+            <div class="market-source-calendar-toolbar">
+              <div class="market-source-calendar-navigation">
+                <button class="btn btn-sm btn-outline-secondary" id="marketCalendarPrevious" type="button" aria-label="Previous month"><span class="button-icon" aria-hidden="true">chevron_left</span></button>
+                <h3 id="marketCalendarMonth" class="market-history-calendar-title" aria-live="polite"></h3>
+                <button class="btn btn-sm btn-outline-secondary" id="marketCalendarNext" type="button" aria-label="Next month"><span class="button-icon" aria-hidden="true">chevron_right</span></button>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" id="marketCalendarRefresh" type="button">Refresh calendar</button>
+            </div>
+            <p id="marketCalendarMessage" class="market-history-section-description" role="status" aria-live="polite"></p>
+            <div class="market-history-calendar" id="marketHistorySyncCalendar" aria-label="Saved minute candles by day"></div>
+            <div class="market-history-sync-legend" aria-label="Day statuses">
+              <span><i class="market-history-day-dot is-pending" aria-hidden="true"></i>Not loaded</span>
+              <span><i class="market-history-day-dot is-partial" aria-hidden="true"></i>Unconfirmed</span>
               <span><i class="market-history-day-dot is-loading" aria-hidden="true"></i>Loading</span>
-              <span><i class="market-history-day-dot is-completed" aria-hidden="true"></i>Completed</span>
-              <span><i class="market-history-day-dot is-already-loaded" aria-hidden="true"></i>Already loaded</span>
+              <span><i class="market-history-day-dot is-completed" aria-hidden="true"></i>Loaded</span>
               <span><i class="market-history-day-dot is-error" aria-hidden="true"></i>Error</span>
             </div>
-            <div class="market-history-calendar" id="marketHistorySyncCalendar" aria-label="Historical candle synchronization by day"></div>
-          </div>
+            <div class="market-calendar-detail" id="marketCalendarDetail" hidden>
+              <div>
+                <h3 class="market-history-section-title" id="marketCalendarDayTitle"></h3>
+                <p id="marketCalendarDaySummary" class="market-history-section-description" aria-live="polite"></p>
+                <p id="marketCalendarDayTimes" class="market-history-section-description"></p>
+                <p id="marketCalendarDayError" class="text-danger mb-0" hidden></p>
+              </div>
+
+            </div>
+          </section>
         </section>
       </section>
 
@@ -998,20 +1015,82 @@
   </main>
 
   <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page" id="tradeContractPage" hidden>
-    <section class="settings-topbar workbench-page-header" aria-label="Trade Contract header">
-      <h1 class="settings-title">Trade Contract</h1>
+    <section class="settings-topbar workbench-page-header" aria-label="Trade Message Contract header">
+      <h1 class="settings-title">Trade Message Contract</h1>
       <span class="badge text-bg-light border">Draft</span>
     </section>
 
     <div class="trade-contract-content">
-      <p class="trade-contract-intro">Data supplied by originating systems when submitting concluded trades. This initial draft describes the Trade Context fields.</p>
+      <p class="trade-contract-intro">Defines the required fields supplied by the <a class="trade-contract-term" href="#reference-data:originating-systems"><span class="button-icon" aria-hidden="true">web_asset</span><span class="trade-contract-term__label">Originating System</span></a> where the trade was initially recorded.</p>
 
-      <section class="table-panel table-panel--standalone" aria-labelledby="tradeContractContextTitle">
-        <div class="table-panel__head">
-          <h2 class="table-panel__title" id="tradeContractContextTitle">Trade Context</h2>
-        </div>
-        <div class="table-panel__body table-panel__viewport">
-          <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractContextTitle">
+      <section aria-labelledby="tradeContractFieldsTitle">
+        <h2 class="table-panel__title trade-contract-fields-title" id="tradeContractFieldsTitle">Trade Message Contract Fields</h2>
+        <div class="trade-contract-groups">
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractDetailsTitle">Trade Details</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractDetailsTitle">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Execution Timestamp</td>
+                  <td>Date and time when the trade was executed.</td>
+                  <td>2026-09-20T10:15:30.000Z</td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractClientTitle">Client Details</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractClientTitle">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Business ID Type</td>
+                  <td>Type of business identifier used to identify the client.</td>
+                  <td>INN</td>
+                </tr>
+                <tr>
+                  <td>Business ID</td>
+                  <td>Client identifier of the specified Business ID Type.</td>
+                  <td>7701234567</td>
+                </tr>
+                <tr>
+                  <td>Client Name</td>
+                  <td>Name of the client.</td>
+                  <td>Romashka Company</td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractContextTitle">Trade Context</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractContextTitle">
             <thead>
               <tr>
                 <th scope="col">Field</th>
@@ -1042,13 +1121,75 @@
               </tr>
             </tbody>
           </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractEconomicsTitle">Trade Economics</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractEconomicsTitle">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="3" class="trade-contract-empty">Fields to be defined.</td></tr>
+              </tbody>
+            </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractValueDatesTitle">Value Date Details</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractValueDatesTitle">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="3" class="trade-contract-empty">Fields to be defined.</td></tr>
+              </tbody>
+            </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractPricingTitle">Pricing Details</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractPricingTitle">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="3" class="trade-contract-empty">Fields to be defined.</td></tr>
+              </tbody>
+            </table>
+            </div>
+          </details>
         </div>
       </section>
     </div>
   </main>
   <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page" id="tradeIntakeMessagesPage" hidden>
-    <section class="settings-topbar workbench-page-header" aria-label="Trade Intake Messages header">
-      <h1 class="settings-title">Trade Intake Messages</h1>
+    <section class="settings-topbar workbench-page-header" aria-label="Trade Message Registry header">
+      <h1 class="settings-title">Trade Message Registry</h1>
     </section>
     <p class="text-body-secondary">Incoming trade messages and their processing results will appear here. Message capture is not yet connected.</p>
   </main>

@@ -176,206 +176,123 @@ function loadRangeFromRow(row) {
   });
 }
 
+const DAY_MS = 86400000;
+const MOSCOW_OFFSET_MS = 10800000;
+function sourceTable(timeframe) {
+  requireCandleTimeframe(timeframe);
+  if (timeframe === "ONE_MINUTE") return "moex_iss_minute_candles";
+  if (timeframe === "ONE_DAY") return "moex_iss_daily_candles";
+  throw repositoryError("Source candles must have a one-minute or one-day timeframe.");
+}
+function minuteDays(range) {
+  const from = Date.parse(range.from), till = Date.parse(range.till);
+  if ((from + MOSCOW_OFFSET_MS) % DAY_MS || (till + MOSCOW_OFFSET_MS) % DAY_MS) {
+    throw repositoryError("Minute candle coverage requires complete Moscow calendar days.");
+  }
+  const days = [];
+  for (let time = from; time < till; time += DAY_MS) {
+    days.push(new Date(time + MOSCOW_OFFSET_MS).toISOString().slice(0,10));
+  }
+  return days;
+}
 class SqliteMarketSourceCandleRepository {
   constructor({ database } = {}) {
-    if (
-      database === null
-      || typeof database !== "object"
-      || typeof database.prepare !== "function"
-      || typeof database.exec !== "function"
-    ) {
-      throw configurationError(
-        "SQLite Market Source Candle Repository requires a database connection."
-      );
+    if (!database || typeof database.prepare !== "function" || typeof database.exec !== "function") {
+      throw configurationError("SQLite Market Source Candle Repository requires a database connection.");
     }
-
     this.database = database;
-    this.upsertStatement = database.prepare(`
-      INSERT INTO market_source_candles
-        (
-          instrument_id,
-          timeframe,
-          begin_at,
-          end_at,
-          open_price,
-          high_price,
-          low_price,
-          close_price,
-          data_source,
-          loaded_at
-        )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT (instrument_id, timeframe, begin_at)
-      DO UPDATE SET
-        end_at = excluded.end_at,
-        open_price = excluded.open_price,
-        high_price = excluded.high_price,
-        low_price = excluded.low_price,
-        close_price = excluded.close_price,
-        data_source = excluded.data_source,
-        loaded_at = excluded.loaded_at
-    `);
-    this.findByPeriodStatement = database.prepare(`
-      SELECT begin_at, end_at, open_price, high_price, low_price, close_price
-      FROM market_source_candles
-      WHERE instrument_id = ?
-        AND timeframe = ?
-        AND begin_at >= ?
-        AND begin_at < ?
-      ORDER BY begin_at ASC
-    `);
-    this.findLatestStatement = database.prepare(`
-      SELECT begin_at, end_at, open_price, high_price, low_price, close_price
-      FROM market_source_candles
-      WHERE instrument_id = ?
-        AND timeframe = ?
-      ORDER BY begin_at DESC
-      LIMIT 1
-    `);
-    this.findAllLoadedRangesStatement = database.prepare(`
-      SELECT from_at, till_at, loaded_at
-      FROM market_candle_load_ranges
-      WHERE instrument_id = ? AND timeframe = ?
-      ORDER BY from_at ASC
-    `);
-    this.deleteAllLoadedRangesStatement = database.prepare(`
-      DELETE FROM market_candle_load_ranges
-      WHERE instrument_id = ? AND timeframe = ?
-    `);
-    this.insertLoadedRangeStatement = database.prepare(`
-      INSERT INTO market_candle_load_ranges
-        (instrument_id, timeframe, from_at, till_at, loaded_at)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    this.findLoadedRangesStatement = database.prepare(`
-      SELECT from_at, till_at, loaded_at
-      FROM market_candle_load_ranges
-      WHERE instrument_id = ?
-        AND timeframe = ?
-        AND from_at < ?
-        AND till_at > ?
-      ORDER BY from_at ASC
-    `);
-    this.coversLoadedRangeStatement = database.prepare(`
-      SELECT 1
-      FROM market_candle_load_ranges
-      WHERE instrument_id = ?
-        AND timeframe = ?
-        AND from_at <= ?
-        AND till_at >= ?
-      LIMIT 1
-    `);
   }
-
+  candleStatement(timeframe) {
+    return this.database.prepare(`INSERT INTO ${sourceTable(timeframe)}
+      (instrument_id,timeframe,begin_at,end_at,open_price,high_price,low_price,close_price,data_source,loaded_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT (instrument_id,timeframe,begin_at) DO UPDATE SET
+      end_at=excluded.end_at,open_price=excluded.open_price,high_price=excluded.high_price,
+      low_price=excluded.low_price,close_price=excluded.close_price,loaded_at=excluded.loaded_at`);
+  }
   upsertAll(command = {}) {
     const write = normalizedCandleWrite(command);
-
-    if (write.candles.length === 0) {
-      return 0;
-    }
-
-    return inTransaction(
-      this.database,
-      () => upsertCandles(this.upsertStatement, write)
-    );
+    const statement = this.candleStatement(write.timeframe);
+    return inTransaction(this.database, () => upsertCandles(statement, write));
   }
-
   upsertLoadedRange(command = {}) {
     const write = normalizedCandleWrite(command);
     const range = normalizedRange(command);
     requireCandlesWithinRange(write.candles, range);
-
+    const days = write.timeframe === "ONE_MINUTE" ? minuteDays(range) : null;
+    const statement = this.candleStatement(write.timeframe);
     return inTransaction(this.database, () => {
-      const upsertedCandleCount = upsertCandles(
-        this.upsertStatement,
-        write
-      );
-      const existingRanges = this.findAllLoadedRangesStatement
-        .all(write.instrumentId, write.timeframe)
-        .map(loadRangeFromRow);
-      const ranges = mergedLoadRanges([
-        ...existingRanges,
-        { ...range, loadedAt: write.loadedAt }
-      ]);
-
-      this.deleteAllLoadedRangesStatement.run(
-        write.instrumentId,
-        write.timeframe
-      );
-
-      for (const loadedRange of ranges) {
-        this.insertLoadedRangeStatement.run(
-          write.instrumentId,
-          write.timeframe,
-          loadedRange.from,
-          loadedRange.till,
-          loadedRange.loadedAt
-        );
+      const count = upsertCandles(statement, write);
+      if (days) {
+        const insert = this.database.prepare(`INSERT INTO moex_iss_minute_candle_load_days
+          (instrument_id,load_date,completed_at,last_attempt_at,last_error) VALUES (?,?,?,?,NULL)
+          ON CONFLICT (instrument_id,load_date) DO UPDATE SET completed_at=excluded.completed_at,
+          last_attempt_at=excluded.last_attempt_at,last_error=NULL`);
+        for (const date of days) insert.run(write.instrumentId,date,write.loadedAt,write.loadedAt);
+      } else {
+        const existing = this.database.prepare(`SELECT from_at,till_at,loaded_at FROM moex_iss_daily_candle_load_ranges
+          WHERE instrument_id=? AND timeframe=?`).all(write.instrumentId,write.timeframe).map(loadRangeFromRow);
+        const ranges = mergedLoadRanges([...existing,{...range,loadedAt:write.loadedAt}]);
+        this.database.prepare("DELETE FROM moex_iss_daily_candle_load_ranges WHERE instrument_id=? AND timeframe=?").run(write.instrumentId,write.timeframe);
+        const insert = this.database.prepare("INSERT INTO moex_iss_daily_candle_load_ranges VALUES (?,?,?,?,?)");
+        for (const r of ranges) insert.run(write.instrumentId,write.timeframe,r.from,r.till,r.loadedAt);
       }
-
-      return upsertedCandleCount;
+      return count;
     });
   }
-
-  findByPeriod({ instrumentId, timeframe, from, till } = {}) {
-    const normalizedInstrument = normalizedInstrumentId(instrumentId);
-    const normalizedTimeframe = requireCandleTimeframe(timeframe);
-    const range = normalizedRange({ from, till });
-
-    return Object.freeze(
-      this.findByPeriodStatement
-        .all(
-          normalizedInstrument,
-          normalizedTimeframe,
-          range.from,
-          range.till
-        )
-        .map(candleFromRow)
-    );
+  recordDayAttempt({ instrumentId, from, till, attemptedAt, error = null }) {
+    const dates = minuteDays(normalizedRange({from,till}));
+    const timestamp = normalizedTimestamp(attemptedAt,"Attempted At").value;
+    const insert = this.database.prepare(`INSERT INTO moex_iss_minute_candle_load_days
+      (instrument_id,load_date,last_attempt_at,last_error) VALUES (?,?,?,?)
+      ON CONFLICT (instrument_id,load_date) DO UPDATE SET
+      last_attempt_at=excluded.last_attempt_at,last_error=excluded.last_error`);
+    for (const date of dates) insert.run(normalizedInstrumentId(instrumentId),date,timestamp,error === null ? null : String(error).slice(0,1000));
   }
-
+  findByPeriod({ instrumentId, timeframe, from, till } = {}) {
+    const range = normalizedRange({from,till});
+    return Object.freeze(this.database.prepare(`SELECT begin_at,end_at,open_price,high_price,low_price,close_price
+      FROM ${sourceTable(timeframe)} WHERE instrument_id=? AND begin_at>=? AND begin_at<? ORDER BY begin_at`)
+      .all(normalizedInstrumentId(instrumentId),range.from,range.till).map(candleFromRow));
+  }
   findLatest({ instrumentId, timeframe } = {}) {
-    const normalizedInstrument = normalizedInstrumentId(instrumentId);
-    const normalizedTimeframe = requireCandleTimeframe(timeframe);
-    const row = this.findLatestStatement.get(
-      normalizedInstrument,
-      normalizedTimeframe
-    );
-
+    const row = this.database.prepare(`SELECT begin_at,end_at,open_price,high_price,low_price,close_price
+      FROM ${sourceTable(timeframe)} WHERE instrument_id=? ORDER BY begin_at DESC LIMIT 1`).get(normalizedInstrumentId(instrumentId));
     return row ? candleFromRow(row) : null;
   }
-
   findLoadedRanges({ instrumentId, timeframe, from, till } = {}) {
-    const normalizedInstrument = normalizedInstrumentId(instrumentId);
-    const normalizedTimeframe = requireCandleTimeframe(timeframe);
-    const range = normalizedRange({ from, till });
-
-    return Object.freeze(
-      this.findLoadedRangesStatement
-        .all(
-          normalizedInstrument,
-          normalizedTimeframe,
-          range.till,
-          range.from
-        )
-        .map(loadRangeFromRow)
-    );
+    const range = normalizedRange({from,till});
+    const instrument = normalizedInstrumentId(instrumentId);
+    sourceTable(timeframe);
+    if (timeframe === "ONE_MINUTE") {
+      const dates = this.database.prepare(`SELECT load_date,completed_at FROM moex_iss_minute_candle_load_days
+        WHERE instrument_id=? AND completed_at IS NOT NULL AND load_date>=? AND load_date<=? ORDER BY load_date`)
+        .all(instrument,new Date(Date.parse(range.from)+MOSCOW_OFFSET_MS).toISOString().slice(0,10),new Date(Date.parse(range.till)+MOSCOW_OFFSET_MS).toISOString().slice(0,10));
+      return Object.freeze(mergedLoadRanges(dates.map(row => {
+        const begin = Date.parse(`${row.load_date}T00:00:00+03:00`);
+        return {from:new Date(begin).toISOString(),till:new Date(begin+DAY_MS).toISOString(),loadedAt:row.completed_at};
+      })).filter(r => r.from < range.till && r.till > range.from));
+    }
+    return Object.freeze(this.database.prepare(`SELECT from_at,till_at,loaded_at FROM moex_iss_daily_candle_load_ranges
+      WHERE instrument_id=? AND timeframe=? AND from_at<? AND till_at>? ORDER BY from_at`)
+      .all(instrument,timeframe,range.till,range.from).map(loadRangeFromRow));
   }
-
-  coversLoadedRange({ instrumentId, timeframe, from, till } = {}) {
-    const normalizedInstrument = normalizedInstrumentId(instrumentId);
-    const normalizedTimeframe = requireCandleTimeframe(timeframe);
-    const range = normalizedRange({ from, till });
-
-    return Boolean(this.coversLoadedRangeStatement.get(
-      normalizedInstrument,
-      normalizedTimeframe,
-      range.from,
-      range.till
-    ));
+  coversLoadedRange(query = {}) {
+    const range = normalizedRange(query);
+    return this.findLoadedRanges(query).some(r => r.from <= range.from && r.till >= range.till);
+  }
+  findMinuteDaySummaries({ instrumentId, fromDate, throughDate }) {
+    const instrument = normalizedInstrumentId(instrumentId);
+    const rows = this.database.prepare(`SELECT date(begin_at,'+3 hours') date,COUNT(*) candleCount,
+      MIN(begin_at) firstCandleAt,MAX(begin_at) lastCandleAt FROM moex_iss_minute_candles
+      WHERE instrument_id=? AND begin_at>=? AND begin_at<? GROUP BY date(begin_at,'+3 hours')`)
+      .all(instrument,new Date(`${fromDate}T00:00:00+03:00`).toISOString(),new Date(Date.parse(`${throughDate}T00:00:00+03:00`)+DAY_MS).toISOString());
+    const byDate = new Map(rows.map(row => [row.date,{...row}]));
+    for (const row of this.database.prepare(`SELECT load_date date,completed_at completedAt,
+      last_attempt_at lastAttemptAt,last_error lastError FROM moex_iss_minute_candle_load_days
+      WHERE instrument_id=? AND load_date>=? AND load_date<=?`).all(instrument,fromDate,throughDate)) {
+      byDate.set(row.date,{candleCount:0,...byDate.get(row.date),...row});
+    }
+    return [...byDate.values()];
   }
 }
-
-module.exports = {
-  SqliteMarketSourceCandleRepository
-};
+module.exports = { SqliteMarketSourceCandleRepository };

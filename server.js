@@ -11064,6 +11064,7 @@ function createHedgeDeal(
 const marketPulseSimulator = new MarketPulseSimulator({
   loadConfigurations: marketPulseSimulationConfigurations
 });
+const { GetMinuteCandleCalendarUseCase, LoadMinuteCandleDayUseCase } = require("./backend/market-pulse/historical-data/application/minute-candle-calendar");
 const historicalMarketDataSource = new MoexIssHistoricalMarketDataSource();
 const marketSourceCandleRepository = new SqliteMarketSourceCandleRepository({ database });
 const backfillHistoricalCandleRangeUseCase = new BackfillHistoricalCandleRangeUseCase({
@@ -11074,6 +11075,8 @@ const getManualHistoricalSourceCandleSyncPlanUseCase = new GetManualHistoricalSo
   marketSourceCandleRepository
 });
 const historicalCandlesApi = createHistoricalCandlesApi({
+  getMinuteCandleCalendarUseCase: new GetMinuteCandleCalendarUseCase({ marketSourceCandleRepository }),
+  loadMinuteCandleDayUseCase: new LoadMinuteCandleDayUseCase({ backfillRangeUseCase: backfillHistoricalCandleRangeUseCase }),
   getHistoricalCandlesUseCase: new GetHistoricalCandlesUseCase({
     historicalMarketDataSource
   }),
@@ -12957,6 +12960,16 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (method === "GET" && pathname === "/api/v1/market-pulse/historical-candles/calendar") {
+    const result = await historicalCandlesApi.calendar(url.searchParams);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+  if (method === "POST" && pathname === "/api/v1/market-pulse/historical-candles/calendar/load-day") {
+    const result = await historicalCandlesApi.loadDay(await readJsonBody(request));
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
   if (method === "GET" && pathname === "/api/v1/market-pulse/historical-candles") {
     const result = await historicalCandlesApi.load(url.searchParams);
     sendJson(response, result.statusCode, result.body);

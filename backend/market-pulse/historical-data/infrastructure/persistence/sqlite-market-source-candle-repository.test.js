@@ -60,8 +60,8 @@ function upsertLoadedRange(repository, overrides = {}) {
   return repository.upsertLoadedRange({
     instrumentId: INSTRUMENT_ID,
     timeframe: CandleTimeframe.ONE_MINUTE,
-    from: "2026-09-15T10:00:00+03:00",
-    till: "2026-09-15T10:02:00+03:00",
+    from: "2026-09-15T00:00:00+03:00",
+    till: "2026-09-16T00:00:00+03:00",
     candles: [candle(0), candle(1)],
     dataSource: "MOEX_ISS",
     loadedAt: LOADED_AT,
@@ -99,7 +99,7 @@ test("upserts one Candle batch with normalized persistence metadata", testContex
         begin_at,
         data_source,
         loaded_at
-      FROM market_source_candles
+      FROM moex_iss_minute_candles
       ORDER BY begin_at
     `).all().map(row => ({ ...row })),
     [
@@ -131,13 +131,13 @@ test("updates the complete stored Candle on a composite-key conflict", testConte
     low: "12.4",
     close: "12.75"
   })], {
-    dataSource: "MOEX_ISS_CORRECTED",
+    dataSource: "MOEX_ISS",
     loadedAt: "2026-09-16T13:30:00+03:00"
   });
 
   assert.equal(affected, 1);
   assert.deepEqual(
-    { ...database.prepare("SELECT * FROM market_source_candles").get() },
+    { ...database.prepare("SELECT * FROM moex_iss_minute_candles").get() },
     {
       instrument_id: INSTRUMENT_ID,
       timeframe: CandleTimeframe.ONE_MINUTE,
@@ -147,12 +147,12 @@ test("updates the complete stored Candle on a composite-key conflict", testConte
       high_price: 12.8,
       low_price: 12.4,
       close_price: 12.75,
-      data_source: "MOEX_ISS_CORRECTED",
+      data_source: "MOEX_ISS",
       loaded_at: "2026-09-16T10:30:00.000Z"
     }
   );
   assert.equal(
-    database.prepare("SELECT COUNT(*) AS count FROM market_source_candles").get().count,
+    database.prepare("SELECT COUNT(*) AS count FROM moex_iss_minute_candles").get().count,
     1
   );
 });
@@ -161,7 +161,7 @@ test("rolls back the complete upsert batch when one row fails", testContext => {
   const { database, repository } = openRepository(testContext);
   database.exec(`
     CREATE TRIGGER reject_second_market_source_candle
-    BEFORE INSERT ON market_source_candles
+    BEFORE INSERT ON moex_iss_minute_candles
     FOR EACH ROW
     WHEN NEW.begin_at = '2026-09-15T07:01:00.000Z'
     BEGIN
@@ -174,7 +174,7 @@ test("rolls back the complete upsert batch when one row fails", testContext => {
     /second Candle rejected/
   );
   assert.equal(
-    database.prepare("SELECT COUNT(*) AS count FROM market_source_candles").get().count,
+    database.prepare("SELECT COUNT(*) AS count FROM moex_iss_minute_candles").get().count,
     0
   );
 
@@ -189,7 +189,7 @@ test("finds a half-open Candle period in ascending order", testContext => {
     instrumentId: "USDRUB_TOM"
   });
   upsert(repository, [candle(1)], {
-    timeframe: CandleTimeframe.FIVE_MINUTES
+    timeframe: CandleTimeframe.ONE_DAY
   });
 
   const result = repository.findByPeriod({
@@ -248,7 +248,7 @@ test("atomically upserts Candles and records their loaded Range", testContext =>
 
   assert.equal(upsertLoadedRange(repository), 2);
   assert.equal(
-    database.prepare("SELECT COUNT(*) AS count FROM market_source_candles").get().count,
+    database.prepare("SELECT COUNT(*) AS count FROM moex_iss_minute_candles").get().count,
     2
   );
   assert.deepEqual(repository.findLoadedRanges({
@@ -257,8 +257,8 @@ test("atomically upserts Candles and records their loaded Range", testContext =>
     from: "2026-09-15T06:00:00.000Z",
     till: "2026-09-15T08:00:00.000Z"
   }), [{
-    from: "2026-09-15T07:00:00.000Z",
-    till: "2026-09-15T07:02:00.000Z",
+    from: "2026-09-14T21:00:00.000Z",
+    till: "2026-09-15T21:00:00.000Z",
     loadedAt: "2026-09-16T09:00:00.000Z"
   }]);
   assert.equal(repository.coversLoadedRange({
@@ -278,7 +278,7 @@ test("records a successfully loaded empty Range", testContext => {
     candles: []
   }), 0);
   assert.equal(
-    database.prepare("SELECT COUNT(*) AS count FROM market_source_candles").get().count,
+    database.prepare("SELECT COUNT(*) AS count FROM moex_iss_minute_candles").get().count,
     0
   );
   assert.equal(repository.coversLoadedRange({
@@ -289,70 +289,23 @@ test("records a successfully loaded empty Range", testContext => {
   }), true);
 });
 
-test("merges adjacent and overlapping loaded Ranges", testContext => {
-  const { repository } = openRepository(testContext);
-  const loadEmpty = (from, till, loadedAt) => upsertLoadedRange(repository, {
-    from,
-    till,
-    candles: [],
-    loadedAt
+test("derives continuous coverage from adjacent daily records", t => {
+    const {repository,database}=openRepository(t);
+    for(const date of ["2026-09-14","2026-09-15"]) {
+      const from=Date.parse(date+"T00:00:00+03:00");
+      upsertLoadedRange(repository,{from:new Date(from).toISOString(),till:new Date(from+86400000).toISOString(),candles:[]});
+    }
+    assert.equal(database.prepare("SELECT COUNT(*) n FROM moex_iss_minute_candle_load_days").get().n,2);
+    assert.equal(repository.coversLoadedRange({instrumentId:INSTRUMENT_ID,timeframe:"ONE_MINUTE",from:"2026-09-13T21:00:00Z",till:"2026-09-15T21:00:00Z"}),true);
+    assert.equal(repository.coversLoadedRange({instrumentId:INSTRUMENT_ID,timeframe:"ONE_MINUTE",from:"2026-09-13T21:00:00Z",till:"2026-09-16T21:00:00Z"}),false);
+    assert.throws(()=>upsertLoadedRange(repository,{from:"2026-09-15T10:00:00+03:00"}),/complete Moscow calendar days/);
   });
-
-  loadEmpty(
-    "2026-09-15T10:00:00+03:00",
-    "2026-09-15T10:02:00+03:00",
-    "2026-09-16T09:00:00.000Z"
-  );
-  loadEmpty(
-    "2026-09-15T10:04:00+03:00",
-    "2026-09-15T10:06:00+03:00",
-    "2026-09-16T09:01:00.000Z"
-  );
-  loadEmpty(
-    "2026-09-15T10:02:00+03:00",
-    "2026-09-15T10:05:00+03:00",
-    "2026-09-16T09:02:00.000Z"
-  );
-
-  const ranges = repository.findLoadedRanges({
-    instrumentId: INSTRUMENT_ID,
-    timeframe: CandleTimeframe.ONE_MINUTE,
-    from: "2026-09-15T06:00:00.000Z",
-    till: "2026-09-15T08:00:00.000Z"
-  });
-
-  assert.deepEqual(ranges, [{
-    from: "2026-09-15T07:00:00.000Z",
-    till: "2026-09-15T07:06:00.000Z",
-    loadedAt: "2026-09-16T09:02:00.000Z"
-  }]);
-  assert.equal(Object.isFrozen(ranges), true);
-  assert.equal(Object.isFrozen(ranges[0]), true);
-  assert.equal(repository.coversLoadedRange({
-    instrumentId: INSTRUMENT_ID,
-    timeframe: CandleTimeframe.ONE_MINUTE,
-    from: "2026-09-15T07:01:00.000Z",
-    till: "2026-09-15T07:06:00.000Z"
-  }), true);
-  assert.equal(repository.coversLoadedRange({
-    instrumentId: INSTRUMENT_ID,
-    timeframe: CandleTimeframe.ONE_MINUTE,
-    from: "2026-09-15T06:59:59.000Z",
-    till: "2026-09-15T07:06:00.000Z"
-  }), false);
-  assert.deepEqual(repository.findLoadedRanges({
-    instrumentId: INSTRUMENT_ID,
-    timeframe: CandleTimeframe.ONE_MINUTE,
-    from: "2026-09-15T07:06:00.000Z",
-    till: "2026-09-15T07:07:00.000Z"
-  }), []);
-});
 
 test("rolls back Candles when loaded Range persistence fails", testContext => {
   const { database, repository } = openRepository(testContext);
   database.exec(`
     CREATE TRIGGER reject_market_candle_load_range
-    BEFORE INSERT ON market_candle_load_ranges
+    BEFORE INSERT ON moex_iss_minute_candle_load_days
     BEGIN
       SELECT RAISE(ABORT, 'loaded Range rejected');
     END;
@@ -363,12 +316,12 @@ test("rolls back Candles when loaded Range persistence fails", testContext => {
     /loaded Range rejected/
   );
   assert.equal(
-    database.prepare("SELECT COUNT(*) AS count FROM market_source_candles").get().count,
+    database.prepare("SELECT COUNT(*) AS count FROM moex_iss_minute_candles").get().count,
     0
   );
   assert.equal(
     database.prepare(`
-      SELECT COUNT(*) AS count FROM market_candle_load_ranges
+      SELECT COUNT(*) AS count FROM moex_iss_minute_candle_load_days
     `).get().count,
     0
   );
@@ -387,12 +340,12 @@ test("rejects Candles outside the declared loaded Range", testContext => {
     error => error?.code === "INVALID_MARKET_SOURCE_CANDLE_REPOSITORY_ARGUMENT"
   );
   assert.equal(
-    database.prepare("SELECT COUNT(*) AS count FROM market_source_candles").get().count,
+    database.prepare("SELECT COUNT(*) AS count FROM moex_iss_minute_candles").get().count,
     0
   );
   assert.equal(
     database.prepare(`
-      SELECT COUNT(*) AS count FROM market_candle_load_ranges
+      SELECT COUNT(*) AS count FROM moex_iss_minute_candle_load_days
     `).get().count,
     0
   );

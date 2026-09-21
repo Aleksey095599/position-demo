@@ -274,6 +274,7 @@ function validateQuery(query, allowedInstruments, maxRangeMs) {
 }
 
 function mappedError(error) {
+  if (error?.code === "INVALID_MINUTE_CANDLE_CALENDAR_REQUEST") return errorResponse(400,error.code,error.message);
   if (error?.code === "INVALID_HISTORICAL_CANDLES_QUERY") {
     return errorResponse(400, error.code, error.message);
   }
@@ -326,6 +327,8 @@ function mappedError(error) {
 }
 
 function createHistoricalCandlesApi({
+  getMinuteCandleCalendarUseCase,
+  loadMinuteCandleDayUseCase,
   getHistoricalCandlesUseCase,
   syncOneMinuteCandlesUseCase,
   backfillHistoricalCandlesUseCase,
@@ -587,6 +590,28 @@ function createHistoricalCandlesApi({
 
         throw error;
       }
+    },
+
+    async calendar(searchParams) {
+      const keys = [...searchParams.keys()];
+      if (keys.length !== 2 || searchParams.getAll("instrumentId").length !== 1 || searchParams.getAll("month").length !== 1) {
+        return errorResponse(400,"INVALID_MINUTE_CANDLE_CALENDAR_REQUEST","Calendar requires exactly instrumentId and month.");
+      }
+      const command = {instrumentId:searchParams.get("instrumentId"),month:searchParams.get("month")};
+      const instrumentError = validateInstrument(command.instrumentId,allowedInstruments);
+      if (instrumentError) return instrumentError;
+      try { return response(200,await getMinuteCandleCalendarUseCase.execute(command)); }
+      catch (error) { const mapped = mappedError(error); if (mapped) return mapped; throw error; }
+    },
+
+    async loadDay(body) {
+      if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length !== 2
+          || !Object.hasOwn(body,"instrumentId") || !Object.hasOwn(body,"date")) {
+        return errorResponse(400,"INVALID_MINUTE_CANDLE_CALENDAR_REQUEST","Day loading requires exactly instrumentId and date.");
+      }
+      const instrumentError = validateInstrument(body.instrumentId,allowedInstruments);
+      if (instrumentError) return instrumentError;
+      return runManualSyncStep(async () => response(200,await loadMinuteCandleDayUseCase.execute(body)));
     },
 
     async manualSyncPlan(searchParams) {

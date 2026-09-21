@@ -1,18 +1,80 @@
   <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page" id="tradeContractPage" hidden>
-    <section class="settings-topbar workbench-page-header" aria-label="Trade Contract header">
-      <h1 class="settings-title">Trade Contract</h1>
+    <section class="settings-topbar workbench-page-header" aria-label="Trade Message Contract header">
+      <h1 class="settings-title">Trade Message Contract</h1>
       <span class="badge text-bg-light border">Draft</span>
     </section>
 
     <div class="trade-contract-content">
-      <p class="trade-contract-intro">Data supplied by originating systems when submitting concluded trades. This initial draft describes the Trade Context fields.</p>
+      <p class="trade-contract-intro">Defines the required fields supplied by the <a class="trade-contract-term" href="#reference-data:originating-systems"><span class="button-icon" aria-hidden="true">web_asset</span><span class="trade-contract-term__label">Originating System</span></a> where the trade was initially recorded.</p>
 
-      <section class="table-panel table-panel--standalone" aria-labelledby="tradeContractContextTitle">
-        <div class="table-panel__head">
-          <h2 class="table-panel__title" id="tradeContractContextTitle">Trade Context</h2>
-        </div>
-        <div class="table-panel__body table-panel__viewport">
-          <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractContextTitle">
+      <section aria-labelledby="tradeContractFieldsTitle">
+        <h2 class="table-panel__title trade-contract-fields-title" id="tradeContractFieldsTitle">Trade Message Contract Fields</h2>
+        <div class="trade-contract-groups">
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractDetailsTitle">Trade Details</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractDetailsTitle">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Execution Timestamp</td>
+                  <td>Date and time when the trade was executed.</td>
+                  <td>2026-09-20T10:15:30.000Z</td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractClientTitle">Client Details</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractClientTitle">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Business ID Type</td>
+                  <td>Type of business identifier used to identify the client.</td>
+                  <td>INN</td>
+                </tr>
+                <tr>
+                  <td>Business ID</td>
+                  <td>Client identifier of the specified Business ID Type.</td>
+                  <td>7701234567</td>
+                </tr>
+                <tr>
+                  <td>Client Name</td>
+                  <td>Name of the client.</td>
+                  <td>Romashka Company</td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractContextTitle">Trade Context</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractContextTitle">
             <thead>
               <tr>
                 <th scope="col">Field</th>
@@ -43,6 +105,68 @@
               </tr>
             </tbody>
           </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractEconomicsTitle">Trade Economics</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractEconomicsTitle">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="3" class="trade-contract-empty">Fields to be defined.</td></tr>
+              </tbody>
+            </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractValueDatesTitle">Value Date Details</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractValueDatesTitle">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="3" class="trade-contract-empty">Fields to be defined.</td></tr>
+              </tbody>
+            </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractPricingTitle">Pricing Details</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractPricingTitle">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="3" class="trade-contract-empty">Fields to be defined.</td></tr>
+              </tbody>
+            </table>
+            </div>
+          </details>
         </div>
       </section>
     </div>
