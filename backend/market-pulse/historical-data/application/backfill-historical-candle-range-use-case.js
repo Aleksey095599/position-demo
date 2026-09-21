@@ -125,17 +125,21 @@ class BackfillHistoricalCandleRangeUseCase {
     this.hasRequestedSource = true;
   }
 
-  async execute(query) {
+  async execute(query, { retryEmptyRange = false } = {}) {
     const normalized = createHistoricalCandlesQuery(query);
-    const tracked = normalized.timeframe === CandleTimeframe.ONE_MINUTE
+    const completeDays = [normalized.from, normalized.till].every(value => (Date.parse(value) + 10800000) % 86400000 === 0);
+    const reloadEmpty = retryEmptyRange && completeDays && Date.parse(normalized.till)-Date.parse(normalized.from) === 86400000
+      && (await this.marketSourceCandleRepository.findByPeriod(normalized)).length === 0;
+    const tracked = (normalized.timeframe === CandleTimeframe.ONE_MINUTE
+      || (normalized.timeframe === CandleTimeframe.ONE_DAY && completeDays))
       && typeof this.marketSourceCandleRepository.recordDayAttempt === "function";
-    if (!tracked || await this.marketSourceCandleRepository.coversLoadedRange(normalized)) {
-      return this.loadRange(normalized);
+    if (!tracked || (!reloadEmpty && await this.marketSourceCandleRepository.coversLoadedRange(normalized))) {
+      return this.loadRange(normalized,{reloadEmpty});
     }
     const attemptedAt = new Date(this.now()).toISOString();
     await this.marketSourceCandleRepository.recordDayAttempt({...normalized,attemptedAt});
     try {
-      return await this.loadRange(normalized);
+      return await this.loadRange(normalized,{reloadEmpty});
     } catch (error) {
       await this.marketSourceCandleRepository.recordDayAttempt({
         ...normalized,attemptedAt,error: error.code ? error.code + ": " + error.message : error.message
@@ -144,7 +148,7 @@ class BackfillHistoricalCandleRangeUseCase {
     }
   }
 
-  async loadRange(query) {
+  async loadRange(query, { reloadEmpty = false } = {}) {
     const normalizedQuery = createHistoricalCandlesQuery(query);
 
     if (!ANCHOR_TIMEFRAMES.has(normalizedQuery.timeframe)) {
@@ -158,7 +162,7 @@ class BackfillHistoricalCandleRangeUseCase {
       normalizedQuery
     );
 
-    if (covered) {
+    if (covered && !reloadEmpty) {
       return Object.freeze({
         ...normalizedQuery,
         skipped: true,

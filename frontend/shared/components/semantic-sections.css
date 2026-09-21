@@ -1,5 +1,6 @@
     /* One semantic card contract across pages and dialogs. */
     :is(
+      #marketPage.market-bootstrap.workbench-page,
       #clientProfilePage.unified-bootstrap-workspace.workbench-page,
       #batchDetailsPage,
       #analyticalPnlReportPage,
@@ -17,6 +18,7 @@
     }
 
     :is(
+      #marketPage.market-bootstrap.workbench-page,
       #clientProfilePage.unified-bootstrap-workspace.workbench-page,
       #batchDetailsPage,
       #analyticalPnlReportPage,

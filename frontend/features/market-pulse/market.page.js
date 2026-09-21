@@ -1286,7 +1286,7 @@
       marketHistorySyncRunning = running;
       marketHistorySyncInstrument.disabled = running || marketHistoryLoading;
       marketHistoryLoadButton.disabled = running || marketHistoryLoading;
-      marketHistorySyncButtonText.textContent = running ? "Loading…" : "Load selected days";
+      marketHistorySyncButtonText.textContent = running ? "Loading…" : "Load Candles";
       marketHistorySyncButton.classList.toggle("is-loading", running);
       marketHistorySyncButton.querySelector(".button-icon").textContent = running ? "progress_activity" : "download";
       marketHistorySyncProgress.setAttribute("aria-busy", String(running));

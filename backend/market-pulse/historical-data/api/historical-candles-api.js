@@ -274,7 +274,8 @@ function validateQuery(query, allowedInstruments, maxRangeMs) {
 }
 
 function mappedError(error) {
-  if (error?.code === "INVALID_MINUTE_CANDLE_CALENDAR_REQUEST") return errorResponse(400,error.code,error.message);
+  if (error?.code === "CANDLE_VERIFICATION_LOG_FAILED") return errorResponse(500,error.code,error.message);
+  if (error?.code === "INVALID_SOURCE_CANDLE_CALENDAR_REQUEST") return errorResponse(400,error.code,error.message);
   if (error?.code === "INVALID_HISTORICAL_CANDLES_QUERY") {
     return errorResponse(400, error.code, error.message);
   }
@@ -327,8 +328,8 @@ function mappedError(error) {
 }
 
 function createHistoricalCandlesApi({
-  getMinuteCandleCalendarUseCase,
-  loadMinuteCandleDayUseCase,
+  getSourceCandleCalendarUseCase,
+  loadSourceCandleDayUseCase,
   getHistoricalCandlesUseCase,
   syncOneMinuteCandlesUseCase,
   backfillHistoricalCandlesUseCase,
@@ -594,24 +595,29 @@ function createHistoricalCandlesApi({
 
     async calendar(searchParams) {
       const keys = [...searchParams.keys()];
-      if (keys.length !== 2 || searchParams.getAll("instrumentId").length !== 1 || searchParams.getAll("month").length !== 1) {
-        return errorResponse(400,"INVALID_MINUTE_CANDLE_CALENDAR_REQUEST","Calendar requires exactly instrumentId and month.");
+      if (keys.some(key => !["instrumentId","month","timeframe"].includes(key))
+          || searchParams.getAll("instrumentId").length !== 1 || searchParams.getAll("month").length !== 1
+          || searchParams.getAll("timeframe").length > 1) {
+        return errorResponse(400,"INVALID_SOURCE_CANDLE_CALENDAR_REQUEST","Calendar requires instrumentId, month and an optional source timeframe.");
       }
-      const command = {instrumentId:searchParams.get("instrumentId"),month:searchParams.get("month")};
+      const command = {instrumentId:searchParams.get("instrumentId"),month:searchParams.get("month"),timeframe:searchParams.get("timeframe") ?? "ONE_MINUTE"};
       const instrumentError = validateInstrument(command.instrumentId,allowedInstruments);
       if (instrumentError) return instrumentError;
-      try { return response(200,await getMinuteCandleCalendarUseCase.execute(command)); }
+      try { return response(200,await getSourceCandleCalendarUseCase.execute(command)); }
       catch (error) { const mapped = mappedError(error); if (mapped) return mapped; throw error; }
     },
 
     async loadDay(body) {
-      if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length !== 2
+      if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some(key => !["instrumentId","date","timeframe"].includes(key))
           || !Object.hasOwn(body,"instrumentId") || !Object.hasOwn(body,"date")) {
-        return errorResponse(400,"INVALID_MINUTE_CANDLE_CALENDAR_REQUEST","Day loading requires exactly instrumentId and date.");
+        return errorResponse(400,"INVALID_SOURCE_CANDLE_CALENDAR_REQUEST","Day loading requires instrumentId, date and an optional source timeframe.");
       }
       const instrumentError = validateInstrument(body.instrumentId,allowedInstruments);
       if (instrumentError) return instrumentError;
-      return runManualSyncStep(async () => response(200,await loadMinuteCandleDayUseCase.execute(body)));
+      if (Object.hasOwn(body,"timeframe") && !["ONE_MINUTE","ONE_DAY"].includes(body.timeframe)) {
+        return errorResponse(400,"INVALID_SOURCE_CANDLE_CALENDAR_REQUEST","Source timeframe must be ONE_MINUTE or ONE_DAY.");
+      }
+      return runManualSyncStep(async () => response(200,await loadSourceCandleDayUseCase.execute(body)));
     },
 
     async manualSyncPlan(searchParams) {

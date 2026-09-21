@@ -2,6 +2,7 @@
     const marketCalendarPrevious = document.getElementById("marketCalendarPrevious");
     const marketCalendarNext = document.getElementById("marketCalendarNext");
     const marketCalendarRefresh = document.getElementById("marketCalendarRefresh");
+    const marketCalendarClearSelection = document.getElementById("marketCalendarClearSelection");
     const marketCalendarMessage = document.getElementById("marketCalendarMessage");
     const marketCalendarDetail = document.getElementById("marketCalendarDetail");
     const marketCalendarDayTitle = document.getElementById("marketCalendarDayTitle");
@@ -9,7 +10,10 @@
     const marketCalendarDayTimes = document.getElementById("marketCalendarDayTimes");
     const marketCalendarDayError = document.getElementById("marketCalendarDayError");
     const marketCalendarSelection = document.getElementById("marketCalendarSelection");
-    const marketCalendarSelectionHelp = document.getElementById("marketCalendarSelectionHelp");
+    const marketHistorySourceTimeframe = document.getElementById("marketHistorySourceTimeframe");
+    const marketCalendarFromDate = document.getElementById("marketCalendarFromDate");
+    const marketCalendarToDate = document.getElementById("marketCalendarToDate");
+    let marketCalendarRangeError = "";
     let marketCalendarRange = null;
     let marketCalendarPreviewDate = "";
     let marketCalendarMonthKey = marketHistorySyncYesterday().slice(0,7);
@@ -18,6 +22,14 @@
     let marketCalendarRequest = 0;
     let marketCalendarPendingKey = "";
     let marketCalendarLoadedAt = 0;
+
+    function marketCalendarEarliestDate() {
+      if (marketCalendarData?.earliestDate) return marketCalendarData.earliestDate;
+      const today = new Date(Date.parse(marketHistorySyncYesterday()) + 86400000);
+      if (marketHistorySourceTimeframe.value === "ONE_DAY") today.setUTCFullYear(today.getUTCFullYear() - 10);
+      else today.setUTCDate(today.getUTCDate() - 366);
+      return today.toISOString().slice(0,10);
+    }
 
     function marketCalendarShiftMonth(delta) {
       const month = new Date(`${marketCalendarMonthKey}-01T12:00:00Z`);
@@ -36,6 +48,7 @@
       return {
         PENDING: {className:"pending",icon:"remove",label:"Not loaded"},
         PARTIAL: {className:"partial",icon:"contrast",label:"Unconfirmed"},
+        INTEGRITY_WARNING: {className:"integrity-warning",icon:"warning",label:"Integrity warning"},
         LOADING: {className:"loading",icon:"progress_activity",label:"Loading"},
         COMPLETED: {className:"completed",icon:"check",label:"Loaded"},
         ERROR: {className:"error",icon:"error",label:"Error"},
@@ -47,7 +60,9 @@
       renderMarketCalendarSelection();
       marketCalendarMonth.textContent = marketHistorySyncMonthFormatter.format(new Date(`${marketCalendarMonthKey}-01T12:00:00Z`));
       const matching = marketCalendarData?.month === marketCalendarMonthKey
-        && marketCalendarData?.instrumentId === marketHistorySyncInstrument.value;
+        && marketCalendarData?.instrumentId === marketHistorySyncInstrument.value
+        && marketCalendarData?.timeframe === marketHistorySourceTimeframe.value;
+      const daily = marketHistorySourceTimeframe.value === "ONE_DAY";
       marketCalendarDetail.hidden = true;
       marketCalendarPrevious.disabled = !marketCalendarData || marketCalendarMonthKey <= marketCalendarData.earliestDate.slice(0,7);
       marketCalendarNext.disabled = !marketCalendarData || marketCalendarMonthKey >= marketCalendarData.today.slice(0,7);
@@ -69,11 +84,11 @@
         const definition = marketCalendarStatusDefinition(status);
         const cell = document.createElement("button");
         cell.type = "button";
-        cell.className = `market-history-calendar-day is-${definition.className}`;
+        cell.className = `market-history-calendar-day is-${definition.className}${daily ? " is-daily" : ""}`;
         cell.dataset.marketHistorySyncDate = day.date;
         cell.disabled = !day.available || marketHistorySyncRunning;
         cell.setAttribute("aria-pressed", "false");
-        cell.setAttribute("aria-label",`${formatMarketHistorySyncDate(day.date)}: ${definition.label}, ${day.candleCount} candles stored`);
+        cell.setAttribute("aria-label",`${formatMarketHistorySyncDate(day.date)}: ${definition.label}${daily ? "" : `, ${day.candleCount} candles stored`}`);
         const date = document.createElement("time");
         date.className = "market-history-calendar-day-number";
         date.dateTime = day.date;
@@ -82,16 +97,20 @@
         icon.className = "button-icon";
         icon.setAttribute("aria-hidden","true");
         icon.textContent = definition.icon;
-        const count = document.createElement("span");
-        count.className = "market-calendar-candle-count";
-        count.textContent = day.available || day.candleCount ? day.candleCount.toLocaleString("en-GB") : "—";
-        const caption = document.createElement("span");
-        caption.className = "market-calendar-candle-caption";
-        caption.textContent = "candles";
-        cell.append(date,icon,count,caption);
+        cell.append(date,icon);
+        if (!daily) {
+          const count = document.createElement("span");
+          count.className = "market-calendar-candle-count";
+          count.textContent = day.available || day.candleCount ? day.candleCount.toLocaleString("en-GB") : "—";
+          const caption = document.createElement("span");
+          caption.className = "market-calendar-candle-caption";
+          caption.textContent = "candles";
+          cell.append(count,caption);
+        }
         cell.addEventListener("click", () => {
           if (marketHistorySyncRunning || !day.available) return;
           marketCalendarRange = selectMarketCalendarRange(marketCalendarRange, day.date);
+          syncMarketCalendarDateInputs();
           marketCalendarSelectedDate = day.date;
           marketCalendarPreviewDate = "";
           marketHistorySyncProgress.hidden = true;
@@ -114,13 +133,16 @@
       if (!day) return;
       const status = marketCalendarStatus(day);
       marketCalendarDayTitle.textContent = formatMarketHistorySyncDate(day.date);
-      const description = day.completedAt
+      const integrityMessage = day.integrity?.status === "MISMATCH" || day.integrity?.affectedTimeframe === marketHistorySourceTimeframe.value
+        ? day.integrity.message : "";
+      const description = integrityMessage || (day.completedAt
         ? day.candleCount ? "All source pages saved." : "Source checked; no candles returned."
-        : day.candleCount ? "Full-day coverage has not been confirmed." : "No confirmed full-day load.";
-      marketCalendarDaySummary.textContent = `${marketCalendarStatusDefinition(status).label} · ${day.candleCount} candles stored. ${description}`;
+        : day.candleCount ? "Full-day coverage has not been confirmed." : "No confirmed full-day load.");
+      const daily = marketHistorySourceTimeframe.value === "ONE_DAY";
+      marketCalendarDaySummary.textContent = `${marketCalendarStatusDefinition(status).label}${daily ? "." : ` · ${day.candleCount} candles stored.`} ${description}`;
       const formatTime = value => value ? marketHistoryTimeFormatter.format(new Date(value)) : "";
       marketCalendarDayTimes.textContent = [
-        day.firstCandleAt ? `First / last candle: ${formatTime(day.firstCandleAt)} / ${formatTime(day.lastCandleAt)} (Moscow)` : "",
+        !daily && day.firstCandleAt ? `First / last candle: ${formatTime(day.firstCandleAt)} / ${formatTime(day.lastCandleAt)} (Moscow)` : "",
         day.completedAt ? `Completed: ${formatTime(day.completedAt)}` : "",
         day.lastAttemptAt ? `Last attempt: ${formatTime(day.lastAttemptAt)}` : ""
       ].filter(Boolean).join(" · ");
@@ -131,24 +153,25 @@
     async function loadMarketSourceCalendar(force = false) {
       const month = marketCalendarMonthKey;
       const instrumentId = marketHistorySyncInstrument.value;
-      const key = `${instrumentId}:${month}`;
+      const timeframe = marketHistorySourceTimeframe.value;
+      const key = `${instrumentId}:${timeframe}:${month}`;
       if (marketCalendarPendingKey === key && !force) return;
-      if (!force && marketCalendarData?.month === month && marketCalendarData?.instrumentId === instrumentId && Date.now()-marketCalendarLoadedAt < 5000) return;
+      if (!force && marketCalendarData?.month === month && marketCalendarData?.instrumentId === instrumentId
+          && marketCalendarData?.timeframe === timeframe && Date.now()-marketCalendarLoadedAt < 5000) return;
       const request = ++marketCalendarRequest;
       marketCalendarPendingKey = key;
       marketCalendarMessage.textContent = "Reading saved candles…";
       renderMarketSourceCalendar();
       try {
-        const value = await demoApiRequest(`/api/v1/market-pulse/historical-candles/calendar?${new URLSearchParams({instrumentId,month})}`);
+        const value = await demoApiRequest(`/api/v1/market-pulse/historical-candles/calendar?${new URLSearchParams({instrumentId,timeframe,month})}`);
         if (request !== marketCalendarRequest) return;
-        if (!value || value.month !== month || value.instrumentId !== instrumentId || !Array.isArray(value.days)
+        if (!value || value.month !== month || value.instrumentId !== instrumentId || value.timeframe !== timeframe || !Array.isArray(value.days)
             || value.days.some(day => !marketCalendarStatusDefinition(day.status) || !Number.isSafeInteger(day.candleCount) || day.candleCount < 0)) {
-          throw new Error("Minute candle calendar response is invalid.");
+          throw new Error("Source candle calendar response is invalid.");
         }
         marketCalendarData = value;
         marketCalendarLoadedAt = Date.now();
-        const loaded = value.days.filter(day => day.completedAt).length;
-        marketCalendarMessage.textContent = `${loaded} days loaded · ${value.days.reduce((sum,day)=>sum+day.candleCount,0).toLocaleString("en-GB")} candles stored · Moscow time`;
+        marketCalendarMessage.textContent = "";
         renderMarketSourceCalendar();
       } catch (error) {
         if (request !== marketCalendarRequest) return;
@@ -165,18 +188,79 @@
       renderMarketCalendarSelection();
     }
 
+    function syncMarketCalendarDateInputs() {
+      marketCalendarRangeError = "";
+      marketCalendarFromDate.value = marketCalendarRange?.start || "";
+      marketCalendarToDate.value = marketCalendarRange?.end || "";
+      marketCalendarFromDate.setCustomValidity("");
+      marketCalendarToDate.setCustomValidity("");
+    }
+
+    function updateMarketCalendarRangeFromInputs() {
+      if (marketHistorySyncRunning || marketHistoryLoading) return;
+      marketCalendarRange = null;
+      marketCalendarRangeError = "";
+      marketCalendarPreviewDate = "";
+      marketCalendarSelectedDate = "";
+      marketCalendarDetail.hidden = true;
+      marketHistorySyncProgress.hidden = true;
+      marketCalendarToDate.setCustomValidity("");
+      try {
+        marketCalendarRange = marketCalendarRangeFromDates(
+          marketCalendarFromDate.value, marketCalendarToDate.value,
+          marketCalendarEarliestDate(), marketHistorySyncYesterday()
+        );
+      } catch (error) {
+        marketCalendarRangeError = error.message;
+        marketCalendarToDate.setCustomValidity(error.message);
+      }
+      renderMarketCalendarSelection();
+    }
+
+    function revealMarketCalendarInputMonth(event) {
+      if (!marketCalendarRange || marketCalendarRangeError) return;
+      const month = event.currentTarget.value.slice(0, 7);
+      if (month && month !== marketCalendarMonthKey) {
+        marketCalendarMonthKey = month;
+        void loadMarketSourceCalendar();
+      }
+    }
+
+    function clearMarketCalendarSelection() {
+      if (marketHistorySyncRunning || marketHistoryLoading) return;
+      marketCalendarRange = null;
+      marketCalendarPreviewDate = "";
+      marketCalendarSelectedDate = "";
+      syncMarketCalendarDateInputs();
+      marketCalendarDetail.hidden = true;
+      marketHistorySyncProgress.hidden = true;
+      renderMarketCalendarSelection();
+    }
+
     function renderMarketCalendarSelection() {
-      const dates = marketCalendarRangeDates(marketCalendarRange);
-      marketHistorySyncButton.disabled = !dates.length || marketHistorySyncRunning || marketHistoryLoading;
-      marketCalendarSelection.textContent = !dates.length
-        ? "Select dates in the calendar."
-        : dates.length === 1
-          ? formatMarketHistorySyncDate(dates[0]) + " · 1 day"
-          : formatMarketHistorySyncDate(dates[0]) + " — " + formatMarketHistorySyncDate(dates.at(-1)) + " · " + dates.length + " days";
-      marketCalendarSelectionHelp.textContent = marketCalendarRange?.choosingEnd
-        ? "Select an end date, or load this single day. Both dates are included."
-        : dates.length ? "Both dates included. Click a date to start a new selection."
-          : "Click a start date, then an end date. Both dates are included.";
+      let dates = [];
+      try {
+        if (marketCalendarRange) {
+          marketCalendarRangeError = "";
+          marketCalendarRangeFromDates(marketCalendarRange.start, marketCalendarRange.end,
+            marketCalendarEarliestDate(), marketHistorySyncYesterday());
+        }
+        dates = marketCalendarRangeDates(marketCalendarRange);
+      } catch (error) {
+        marketCalendarRangeError = error.message;
+      }
+      for (const input of [marketCalendarFromDate, marketCalendarToDate]) {
+        input.min = marketCalendarEarliestDate();
+        input.max = marketHistorySyncYesterday();
+        input.disabled = marketHistorySyncRunning || marketHistoryLoading;
+      }
+      marketHistorySyncInstrument.disabled = marketHistorySyncRunning || marketHistoryLoading;
+      marketHistorySourceTimeframe.disabled = marketHistorySyncRunning || marketHistoryLoading;
+      marketCalendarClearSelection.disabled = marketHistorySyncRunning || marketHistoryLoading
+        || !(marketCalendarRange || marketCalendarFromDate.value || marketCalendarToDate.value
+          || marketCalendarFromDate.validity?.badInput || marketCalendarToDate.validity?.badInput);
+      marketHistorySyncButton.disabled = !dates.length || Boolean(marketCalendarRangeError) || marketHistorySyncRunning || marketHistoryLoading;
+      marketCalendarSelection.textContent = marketCalendarRangeError || `${dates.length} ${dates.length === 1 ? "day" : "days"} selected`;
       const preview = marketCalendarRange?.choosingEnd && marketCalendarPreviewDate
         ? selectMarketCalendarRange(marketCalendarRange, marketCalendarPreviewDate) : null;
       for (const cell of marketHistorySyncCalendar.querySelectorAll("button")) {
@@ -191,9 +275,11 @@
 
     async function loadSelectedMarketCalendarRange(event) {
       event.preventDefault();
-      if (!marketCalendarRange || marketHistorySyncRunning || marketHistoryLoading) return;
+      if (!marketCalendarRange || marketCalendarRangeError || marketHistorySyncRunning || marketHistoryLoading
+          || !marketHistorySyncForm.reportValidity()) return;
       const selection = { ...marketCalendarRange };
       const instrumentId = marketHistorySyncInstrument.value;
+      const timeframe = marketHistorySourceTimeframe.value;
       marketCalendarRange.choosingEnd = false;
       marketCalendarPreviewDate = "";
       setMarketHistorySyncRunning(true);
@@ -206,6 +292,7 @@
       try {
         const result = await loadMarketCalendarRange({
           instrumentId,
+          timeframe,
           selection,
           readMonth: command => demoApiRequest("/api/v1/market-pulse/historical-candles/calendar?" + new URLSearchParams(command)),
           loadDay: command => demoApiRequest("/api/v1/market-pulse/historical-candles/calendar/load-day", {
@@ -227,6 +314,11 @@
           ? result.loaded + " days loaded; " + result.skipped + " already loaded."
           : "All selected days were already loaded.";
         setMarketStatus("Selected source candle days are loaded.", "success");
+        if (result.mismatches || result.missingData) {
+          const verificationMessage = `${result.mismatches} Open/Close mismatches; ${result.missingData} missing-data errors. See the calendar and candle load log.`;
+          marketHistorySyncSummary.textContent += " " + verificationMessage;
+          setMarketStatus(verificationMessage,"warning");
+        }
       } catch (error) {
         marketHistorySyncSummary.textContent = error.date
           ? "Stopped on " + formatMarketHistorySyncDate(error.date) + ". " + error.message
@@ -239,13 +331,26 @@
       }
     }
 
+    for (const input of [marketCalendarFromDate, marketCalendarToDate]) {
+      input.addEventListener("input", updateMarketCalendarRangeFromInputs);
+      input.addEventListener("change", event => {
+        updateMarketCalendarRangeFromInputs();
+        revealMarketCalendarInputMonth(event);
+      });
+    }
     marketCalendarPrevious.addEventListener("click",() => marketCalendarShiftMonth(-1));
     marketCalendarNext.addEventListener("click",() => marketCalendarShiftMonth(1));
     marketCalendarRefresh.addEventListener("click",() => { void loadMarketSourceCalendar(true); });
+    marketCalendarClearSelection.addEventListener("click", clearMarketCalendarSelection);
     marketHistorySyncForm.addEventListener("submit", loadSelectedMarketCalendarRange);
-    marketHistorySyncInstrument.addEventListener("change", () => {
+    function changeMarketSourceCalendarContext() {
       marketCalendarData = null;
       marketCalendarSelectedDate = "";
+      marketCalendarPreviewDate = "";
       marketHistorySyncProgress.hidden = true;
+      const earliestMonth = marketCalendarEarliestDate().slice(0,7);
+      if (marketCalendarMonthKey < earliestMonth) marketCalendarMonthKey = earliestMonth;
       void loadMarketSourceCalendar(true);
-    });
+    }
+    marketHistorySyncInstrument.addEventListener("change", changeMarketSourceCalendarContext);
+    marketHistorySourceTimeframe.addEventListener("change", changeMarketSourceCalendarContext);

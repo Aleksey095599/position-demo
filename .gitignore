@@ -14,6 +14,7 @@ data/*.sqlite-journal
 !.env.example
 
 # Logs
+logs/**/*.txt
 *.log
 npm-debug.log*
 

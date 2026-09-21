@@ -11064,7 +11064,8 @@ function createHedgeDeal(
 const marketPulseSimulator = new MarketPulseSimulator({
   loadConfigurations: marketPulseSimulationConfigurations
 });
-const { GetMinuteCandleCalendarUseCase, LoadMinuteCandleDayUseCase } = require("./backend/market-pulse/historical-data/application/minute-candle-calendar");
+const { GetSourceCandleCalendarUseCase, LoadSourceCandleDayUseCase } = require("./backend/market-pulse/historical-data/application/source-candle-calendar");
+const { FileCandleVerificationLogger } = require("./backend/market-pulse/historical-data/infrastructure/file-candle-verification-logger");
 const historicalMarketDataSource = new MoexIssHistoricalMarketDataSource();
 const marketSourceCandleRepository = new SqliteMarketSourceCandleRepository({ database });
 const backfillHistoricalCandleRangeUseCase = new BackfillHistoricalCandleRangeUseCase({
@@ -11075,8 +11076,12 @@ const getManualHistoricalSourceCandleSyncPlanUseCase = new GetManualHistoricalSo
   marketSourceCandleRepository
 });
 const historicalCandlesApi = createHistoricalCandlesApi({
-  getMinuteCandleCalendarUseCase: new GetMinuteCandleCalendarUseCase({ marketSourceCandleRepository }),
-  loadMinuteCandleDayUseCase: new LoadMinuteCandleDayUseCase({ backfillRangeUseCase: backfillHistoricalCandleRangeUseCase }),
+  getSourceCandleCalendarUseCase: new GetSourceCandleCalendarUseCase({ marketSourceCandleRepository }),
+  loadSourceCandleDayUseCase: new LoadSourceCandleDayUseCase({
+    backfillRangeUseCase: backfillHistoricalCandleRangeUseCase,
+    marketSourceCandleRepository,
+    verificationLogger: new FileCandleVerificationLogger({directory:path.join(ROOT_DIR,"logs","candle_load")})
+  }),
   getHistoricalCandlesUseCase: new GetHistoricalCandlesUseCase({
     historicalMarketDataSource
   }),

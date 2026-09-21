@@ -3217,3 +3217,11 @@ CREATE TABLE IF NOT EXISTS moex_iss_minute_candle_load_days (
     last_error TEXT,
     PRIMARY KEY (instrument_id, load_date)
 );
+
+CREATE TABLE IF NOT EXISTS moex_iss_daily_candle_load_attempts (
+    instrument_id TEXT NOT NULL CHECK (length(instrument_id) BETWEEN 1 AND 64 AND instrument_id = trim(instrument_id)),
+    load_date TEXT NOT NULL CHECK (length(load_date) = 10 AND load_date GLOB '????-??-??' AND date(load_date, '+0 days') IS NOT NULL AND date(load_date, '+0 days') = load_date),
+    last_attempt_at TEXT NOT NULL,
+    last_error TEXT,
+    PRIMARY KEY (instrument_id, load_date)
+);

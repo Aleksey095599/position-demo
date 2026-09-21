@@ -7,76 +7,105 @@
     </section>
 
     <section class="market-bootstrap-content" aria-label="Market Pulse data">
-      <section class="market-bootstrap-panel market-history-panel" data-market-panel="data-management" aria-label="Market data management" hidden>
-        <section class="market-history-sync-card" aria-labelledby="marketHistorySyncTitle">
-          <div class="market-history-sync-header">
-            <span class="button-icon market-history-sync-header-icon" aria-hidden="true">calendar_month</span>
-            <div>
-              <h2 class="market-history-section-title" id="marketHistorySyncTitle">Source Candles</h2>
-              <p class="market-history-section-description">
-                MOEX ISS · 1 minute · Moscow calendar days. Today is never included.
-              </p>
+      <section class="market-bootstrap-panel market-data-management" data-market-panel="data-management" aria-label="Market data management" hidden>
+        <div class="market-data-layout">
+          <aside class="market-data-sidebar">
+            <nav class="market-data-sources" aria-label="Market data sources">
+              <a class="market-data-source is-active" href="#market-pulse:data-management" aria-current="page">MOEX ISS</a>
+            </nav>
+          </aside>
+          <div class="market-data-content">
+            <div class="nav nav-tabs workbench-section-tabs market-data-tabs" role="tablist" aria-label="Market data periods">
+              <button type="button" class="nav-link active" id="marketHistoricalDataTab" role="tab"
+                data-market-data-tab="historical" aria-controls="marketHistoricalDataPanel" aria-selected="true">Historical Data</button>
+              <button type="button" class="nav-link" id="marketCurrentDayTab" role="tab"
+                data-market-data-tab="current-day" aria-controls="marketCurrentDayPanel" aria-selected="false" tabindex="-1">Current Day</button>
             </div>
+            <section id="marketHistoricalDataPanel" role="tabpanel" data-market-data-panel="historical"
+              aria-labelledby="marketHistoricalDataTab" tabindex="0">
+              <section class="market-history-sync-card market-source-calendar semantic-section" aria-labelledby="marketCandleCalendarTitle">
+                <div class="market-history-sync-header semantic-section-head">
+                  <span class="button-icon market-history-sync-header-icon" aria-hidden="true">calendar_month</span>
+                  <h2 class="market-history-section-title" id="marketCandleCalendarTitle">Source Candle Loading</h2>
+                </div>
+                <div class="market-source-calendar-body">
+                <form class="market-history-sync-form" id="marketHistorySyncForm">
+                <label class="market-history-field" for="marketHistorySyncInstrument">
+                  <span>Instrument</span>
+                  <select class="form-select form-select-sm" id="marketHistorySyncInstrument" name="instrumentId" required>
+                    <option value="CNYRUB_TOM">CNY/RUB TOM</option>
+                  </select>
+                </label>
+                <label class="market-history-field" for="marketHistorySourceTimeframe">
+                  <span>Source Bar Timeframe</span>
+                  <select class="form-select form-select-sm" id="marketHistorySourceTimeframe" name="sourceTimeframe">
+                    <option value="ONE_MINUTE" selected>1 min</option>
+                    <option value="ONE_DAY">1 day</option>
+                  </select>
+                </label>
+                  <label class="market-history-field" for="marketCalendarFromDate">
+                    <span>From date</span>
+                    <input class="form-control form-control-sm" id="marketCalendarFromDate" name="fromDate" type="date" required>
+                  </label>
+                  <label class="market-history-field" for="marketCalendarToDate">
+                    <span>To date</span>
+                    <input class="form-control form-control-sm" id="marketCalendarToDate" name="toDate" type="date" required>
+                  </label>
+                  <div class="market-calendar-selection">
+                    <output id="marketCalendarSelection" aria-label="Selected days" aria-live="polite">0 days selected</output>
+                  </div>
+                </form>
+
+                <div class="market-history-sync-progress" id="marketHistorySyncProgress" hidden>
+                  <div class="market-history-sync-progress-heading">
+                    <p class="market-history-sync-summary" id="marketHistorySyncSummary" role="status" aria-live="polite"></p>
+                    <span class="market-history-sync-count" id="marketHistorySyncCount"></span>
+                  </div>
+                  <div class="progress market-history-sync-progress-bar">
+                    <div class="progress-bar" id="marketHistorySyncProgressBar" role="progressbar"
+                      aria-label="Historical days synchronized" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"></div>
+                  </div>
+                </div>
+                  <div class="market-source-calendar-toolbar">
+                    <div class="market-source-calendar-navigation">
+                      <button class="btn btn-sm btn-outline-secondary" id="marketCalendarPrevious" type="button" aria-label="Previous month"><span class="button-icon" aria-hidden="true">chevron_left</span></button>
+                      <h3 id="marketCalendarMonth" class="market-history-calendar-title" aria-live="polite"></h3>
+                      <button class="btn btn-sm btn-outline-secondary" id="marketCalendarNext" type="button" aria-label="Next month"><span class="button-icon" aria-hidden="true">chevron_right</span></button>
+                    </div>
+                    <div class="market-source-calendar-actions">
+                      <button class="btn btn-sm btn-primary market-history-sync-button" id="marketHistorySyncButton" type="submit" form="marketHistorySyncForm" disabled>
+                        <span class="button-icon" aria-hidden="true">download</span>
+                        <span id="marketHistorySyncButtonText">Load Candles</span>
+                      </button>
+                      <button class="btn btn-sm btn-outline-secondary" id="marketCalendarClearSelection" type="button" disabled>Clear selection</button>
+                      <button class="btn btn-sm btn-outline-secondary" id="marketCalendarRefresh" type="button">Refresh calendar</button>
+                    </div>
+                  </div>
+                  <p id="marketCalendarMessage" class="market-history-section-description" role="status" aria-live="polite"></p>
+                  <div class="market-history-calendar" id="marketHistorySyncCalendar" aria-label="Saved source candles by day"></div>
+                  <div class="market-history-sync-legend" aria-label="Day statuses">
+                    <span><i class="market-history-day-dot is-pending" aria-hidden="true"></i>Not loaded</span>
+                    <span><i class="market-history-day-dot is-partial" aria-hidden="true"></i>Unconfirmed</span>
+                    <span><i class="market-history-day-dot is-integrity-warning" aria-hidden="true"></i>Integrity warning</span>
+                    <span><i class="market-history-day-dot is-completed" aria-hidden="true"></i>Loaded</span>
+                    <span><i class="market-history-day-dot is-error" aria-hidden="true"></i>Error</span>
+                  </div>
+                  <div class="market-calendar-detail" id="marketCalendarDetail" hidden>
+                    <div>
+                      <h3 class="market-history-section-title" id="marketCalendarDayTitle"></h3>
+                      <p id="marketCalendarDaySummary" class="market-history-section-description" aria-live="polite"></p>
+                      <p id="marketCalendarDayTimes" class="market-history-section-description"></p>
+                      <p id="marketCalendarDayError" class="text-danger mb-0" hidden></p>
+                    </div>
+
+                  </div>
+                </div>
+              </section>
+            </section>
+            <section id="marketCurrentDayPanel" role="tabpanel" data-market-data-panel="current-day"
+              aria-labelledby="marketCurrentDayTab" tabindex="0" hidden></section>
           </div>
-
-          <form class="market-history-sync-form" id="marketHistorySyncForm">
-            <label class="market-history-field" for="marketHistorySyncInstrument">
-              <span>Instrument</span>
-              <select class="form-select form-select-sm" id="marketHistorySyncInstrument" name="instrumentId" required>
-                <option value="CNYRUB_TOM">CNY/RUB TOM</option>
-              </select>
-              <small>MOEX ISS · 1 minute</small>
-            </label>
-            <div class="market-calendar-selection">
-              <span class="market-calendar-selection-label">Selected dates</span>
-              <output id="marketCalendarSelection" aria-live="polite">Select dates in the calendar.</output>
-              <small id="marketCalendarSelectionHelp">Click a start date, then an end date. Both dates are included.</small>
-            </div>
-            <button class="btn btn-sm btn-primary market-history-sync-button" id="marketHistorySyncButton" type="submit" disabled>
-              <span class="button-icon" aria-hidden="true">download</span>
-              <span id="marketHistorySyncButtonText">Load selected days</span>
-            </button>
-          </form>
-
-          <div class="market-history-sync-progress" id="marketHistorySyncProgress" hidden>
-            <div class="market-history-sync-progress-heading">
-              <p class="market-history-sync-summary" id="marketHistorySyncSummary" role="status" aria-live="polite"></p>
-              <span class="market-history-sync-count" id="marketHistorySyncCount"></span>
-            </div>
-            <div class="progress market-history-sync-progress-bar">
-              <div class="progress-bar" id="marketHistorySyncProgressBar" role="progressbar"
-                aria-label="Historical days synchronized" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"></div>
-            </div>
-          </div>
-          <section class="market-source-calendar" aria-label="Minute candle calendar">
-            <div class="market-source-calendar-toolbar">
-              <div class="market-source-calendar-navigation">
-                <button class="btn btn-sm btn-outline-secondary" id="marketCalendarPrevious" type="button" aria-label="Previous month"><span class="button-icon" aria-hidden="true">chevron_left</span></button>
-                <h3 id="marketCalendarMonth" class="market-history-calendar-title" aria-live="polite"></h3>
-                <button class="btn btn-sm btn-outline-secondary" id="marketCalendarNext" type="button" aria-label="Next month"><span class="button-icon" aria-hidden="true">chevron_right</span></button>
-              </div>
-              <button class="btn btn-sm btn-outline-secondary" id="marketCalendarRefresh" type="button">Refresh calendar</button>
-            </div>
-            <p id="marketCalendarMessage" class="market-history-section-description" role="status" aria-live="polite"></p>
-            <div class="market-history-calendar" id="marketHistorySyncCalendar" aria-label="Saved minute candles by day"></div>
-            <div class="market-history-sync-legend" aria-label="Day statuses">
-              <span><i class="market-history-day-dot is-pending" aria-hidden="true"></i>Not loaded</span>
-              <span><i class="market-history-day-dot is-partial" aria-hidden="true"></i>Unconfirmed</span>
-              <span><i class="market-history-day-dot is-loading" aria-hidden="true"></i>Loading</span>
-              <span><i class="market-history-day-dot is-completed" aria-hidden="true"></i>Loaded</span>
-              <span><i class="market-history-day-dot is-error" aria-hidden="true"></i>Error</span>
-            </div>
-            <div class="market-calendar-detail" id="marketCalendarDetail" hidden>
-              <div>
-                <h3 class="market-history-section-title" id="marketCalendarDayTitle"></h3>
-                <p id="marketCalendarDaySummary" class="market-history-section-description" aria-live="polite"></p>
-                <p id="marketCalendarDayTimes" class="market-history-section-description"></p>
-                <p id="marketCalendarDayError" class="text-danger mb-0" hidden></p>
-              </div>
-
-            </div>
-          </section>
-        </section>
+        </div>
       </section>
 
       <section class="market-bootstrap-panel market-history-panel" data-market-panel="charts" aria-label="Market charts" hidden>
