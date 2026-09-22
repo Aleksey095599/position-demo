@@ -8,7 +8,6 @@ const {
 
 function repository(overrides = {}) {
   return {
-    upsertAll() {},
     findByPeriod() {},
     findLatest() {},
     ...overrides
@@ -22,7 +21,7 @@ test("accepts a Market Source Candle Repository port implementation", () => {
 });
 
 test("requires every Market Source Candle Repository operation", () => {
-  for (const method of ["upsertAll", "findByPeriod", "findLatest"]) {
+  for (const method of ["findByPeriod", "findLatest"]) {
     assert.throws(
       () => requireMarketSourceCandleRepository(repository({ [method]: undefined })),
       error => error?.code === "INVALID_MARKET_SOURCE_CANDLE_REPOSITORY"

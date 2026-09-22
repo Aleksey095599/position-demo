@@ -1459,7 +1459,7 @@
         tables: [
           "moex_iss_minute_candles",
           "moex_iss_aggregated_candles",
-          "moex_iss_minute_candle_load_days",
+          "moex_iss_minute_candle_load_result",
           "moex_iss_day_candles",
           "moex_iss_day_candle_load_result"
         ]

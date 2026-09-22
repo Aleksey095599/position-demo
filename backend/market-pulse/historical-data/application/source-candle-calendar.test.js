@@ -18,14 +18,20 @@ function setup(t,source = {async loadCandlePage(){return {candles:[],hasMore:fal
   const calendar = new GetSourceCandleCalendarUseCase({marketSourceCandleRepository:repository,now});
   const logEntries = [];
   const loadDay = new LoadSourceCandleDayUseCase({backfillRangeUseCase:loader,marketSourceCandleRepository:repository,verificationLogger:{async writeEvent(entry){logEntries.push(entry);}},now});
-  const api = createHistoricalCandlesApi({getHistoricalCandlesUseCase:{execute:async()=>[]},getSourceCandleCalendarUseCase:calendar,loadSourceCandleDayUseCase:loadDay,now,minRequestIntervalMs:0});
+  const api = createHistoricalCandlesApi({getSourceCandleCalendarUseCase:calendar,loadSourceCandleDayUseCase:loadDay,now,minRequestIntervalMs:0});
   return {db,repository,calendar,loadDay,api,logEntries};
 }
 function candle(at="2026-09-15T07:00:00.000Z") {
   return {begin:at,end:new Date(Date.parse(at)+59000).toISOString(),open:"12",high:"13",low:"11",close:"12.5"};
 }
+// Seed historical/inconsistent records directly; production has no untracked writer.
+function seedUntracked(repository, {instrumentId,timeframe,candles,dataSource,loadedAt}) {
+  const table = timeframe === "ONE_DAY" ? "moex_iss_day_candles" : "moex_iss_minute_candles";
+  const insert = repository.database.prepare("INSERT INTO " + table + " VALUES (?,?,?,?,?,?,?,?,?,?)");
+  for (const c of candles) insert.run(instrumentId,timeframe,c.begin,c.end,c.open,c.high,c.low,c.close,dataSource,loadedAt);
+}
 function write(repository,candles) {
-  return repository.upsertAll({instrumentId,timeframe:"ONE_MINUTE",candles,dataSource:"MOEX_ISS",loadedAt:new Date(now()).toISOString()});
+  return seedUntracked(repository,{instrumentId,timeframe:"ONE_MINUTE",candles,dataSource:"MOEX_ISS",loadedAt:new Date(now()).toISOString()});
 }
 function month(calendar,month="2026-09") {return calendar.execute({instrumentId,month});}
 test("calendar reads are local, count stored candles, and do not mark partial data complete",async t=>{
@@ -34,7 +40,7 @@ test("calendar reads are local, count stored candles, and do not mark partial da
   const result=await month(calendar);
   assert.equal(result.days.length,30);
   const day=result.days.find(d=>d.date==="2026-09-15");
-  assert.equal(day.candleCount,2);assert.equal(day.status,"PARTIAL");
+  assert.equal(day.candleCount,2);assert.equal(day.status,"PENDING");
   assert.equal(result.days.find(d=>d.date==="2026-09-14").candleCount,0);
   assert.equal(result.days.find(d=>d.date==="2026-09-20").available,false);
 });
@@ -91,7 +97,7 @@ test("a second load cannot run concurrently, while calendar reads remain availab
 });
 test("day schema rejects invalid dates and keeps one row per instrument and date",t=>{
   const {db}=setup(t);
-  const insert=db.prepare("INSERT INTO moex_iss_minute_candle_load_days (instrument_id,load_date,last_attempt_at) VALUES (?,?,?)");
+  const insert=db.prepare("INSERT INTO moex_iss_minute_candle_load_result (instrument_id,load_date,last_attempt_at) VALUES (?,?,?)");
   for(const date of ['2026-02-30','2026-13-01','not-a-date']) assert.throws(()=>insert.run(instrumentId,date,new Date(now()).toISOString()),/CHECK/);
   insert.run(instrumentId,'2026-09-15',new Date(now()).toISOString());
   assert.throws(()=>insert.run(instrumentId,'2026-09-15',new Date(now()).toISOString()),/UNIQUE/);
@@ -118,7 +124,7 @@ test("daily calendar loads native MOEX daily candles, independently from minute 
   assert.equal(saved.length,1);
   assert.equal(saved[0].begin,"2020-09-14T21:00:00.000Z");
   assert.equal(db.prepare("SELECT COUNT(*) n FROM moex_iss_minute_candles").get().n,0);
-  assert.equal(db.prepare("SELECT COUNT(*) n FROM moex_iss_minute_candle_load_days").get().n,0);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM moex_iss_minute_candle_load_result").get().n,0);
   const result = await calendar.execute({instrumentId,timeframe:"ONE_DAY",month:"2020-09"});
   assert.equal(result.timeframe,"ONE_DAY");
   assert.equal(result.days[14].status,"COMPLETED");
@@ -151,21 +157,11 @@ test("daily empty days are completed and failures persist until a successful ret
   assert.equal(completed.lastError,null);
 });
 
-test("existing daily coverage confirms only fully covered days without contacting MOEX", async t => {
-  const {repository,calendar} = setup(t,{loadCandlePage(){assert.fail("Unexpected source request");}});
-  repository.upsertLoadedRange({instrumentId,timeframe:"ONE_DAY",candles:[],dataSource:"MOEX_ISS",
-    from:"2020-09-14T22:00:00Z",till:"2020-09-17T20:00:00Z",loadedAt:new Date(now()).toISOString()});
-  const days = (await calendar.execute({instrumentId,timeframe:"ONE_DAY",month:"2020-09"})).days;
-  assert.equal(days[14].status,"PENDING");
-  assert.equal(days[15].status,"COMPLETED");
-  assert.equal(days[16].status,"PENDING");
-});
-
 test("a daily candle alone does not confirm coverage and a failed save rolls back the entire day", async t => {
   const dailyCandle = {...candle("2026-09-14T21:00:00.000Z"),end:"2026-09-15T20:59:59.000Z"};
   const {repository,loadDay,calendar,db} = setup(t,{async loadCandlePage(){return {candles:[dailyCandle],hasMore:false,nextStart:null};}});
-  repository.upsertAll({instrumentId,timeframe:"ONE_DAY",candles:[{...dailyCandle,close:"12"}],dataSource:"MOEX_ISS",loadedAt:new Date(now()).toISOString()});
-  assert.equal((await calendar.execute({instrumentId,timeframe:"ONE_DAY",month:"2026-09"})).days[14].status,"PARTIAL");
+  seedUntracked(repository,{instrumentId,timeframe:"ONE_DAY",candles:[{...dailyCandle,close:"12"}],dataSource:"MOEX_ISS",loadedAt:new Date(now()).toISOString()});
+  assert.equal((await calendar.execute({instrumentId,timeframe:"ONE_DAY",month:"2026-09"})).days[14].status,"PENDING");
   db.exec("CREATE TRIGGER fail_daily_coverage BEFORE INSERT ON moex_iss_day_candle_load_result WHEN NEW.completed_at IS NOT NULL BEGIN SELECT RAISE(ABORT,'Test coverage failure'); END");
   await assert.rejects(loadDay.execute({instrumentId,timeframe:"ONE_DAY",date:"2026-09-15"}),/Test coverage failure/);
   assert.equal(repository.findLatest({instrumentId,timeframe:"ONE_DAY"}).close,"12");
@@ -212,7 +208,7 @@ test("an existing daily candle is reused and a price mismatch is logged without 
   const {loadDay,repository,logEntries}=setup(t,{async loadCandlePage(query){
     requests.push(query.timeframe);return {candles:[candle()],hasMore:false,nextStart:null};
   }});
-  repository.upsertAll({instrumentId,timeframe:"ONE_DAY",candles:[dailyCandle("12.6")],dataSource:"MOEX_ISS",loadedAt:new Date(now()).toISOString()});
+  seedUntracked(repository,{instrumentId,timeframe:"ONE_DAY",candles:[dailyCandle("12.6")],dataSource:"MOEX_ISS",loadedAt:new Date(now()).toISOString()});
   const result=await loadDay.execute({instrumentId,date:"2026-09-15"});
   assert.deepEqual(requests,["ONE_MINUTE"]);
   assert.equal(result.verification.status,"MISMATCH");
@@ -295,7 +291,7 @@ test("daily data alone is loaded, not an error; partial minutes are not compared
   assert.equal(result.verification.status,"NOT_CHECKED");
   assert.deepEqual(await statuses(calendar),["PENDING","COMPLETED"]);
   write(repository,[candle()]);
-  assert.deepEqual(await statuses(calendar),["PARTIAL","COMPLETED"]);
+  assert.deepEqual(await statuses(calendar),["PENDING","COMPLETED"]);
   assert.equal(logEntries.length,0);
 });
 test("empty minute data with a daily candle is an error only in minutes and can be retried",async t=>{
@@ -356,4 +352,18 @@ test("a failed daily request leaves the minute calendar loaded and the daily cal
   assert.deepEqual(await statuses(calendar),["COMPLETED","ERROR"]);
   assert.equal(logEntries.length,1);
   assert.equal(logEntries[0].eventType,"LOAD_ERROR");
+});
+
+
+test("successful source day loading retains the attempt start separately from completion",async t=>{
+  const {db,repository}=setup(t);
+  let clock=Date.parse("2026-09-20T12:00:00Z");
+  const loader=new BackfillHistoricalCandleRangeUseCase({marketSourceCandleRepository:repository,now:()=>clock,minimumRequestIntervalMs:0,
+    historicalMarketDataSource:{async loadCandlePage(){clock+=5000;return {candles:[],hasMore:false,nextStart:null};}}});
+  const query=sourceDayQuery({instrumentId,date:"2026-09-15"},now());
+  await loader.execute(query);
+  const row=db.prepare("SELECT * FROM moex_iss_minute_candle_load_result").get();
+  assert.equal(row.last_attempt_at,"2026-09-20T12:00:00.000Z");assert.equal(row.completed_at,"2026-09-20T12:00:05.000Z");
+  clock+=10000;await loader.execute(query);
+  assert.deepEqual(db.prepare("SELECT * FROM moex_iss_minute_candle_load_result").get(),row);
 });

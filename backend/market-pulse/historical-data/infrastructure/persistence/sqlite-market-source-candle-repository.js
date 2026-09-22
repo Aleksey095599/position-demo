@@ -178,7 +178,7 @@ function sourceTable(timeframe) {
 }
 function loadResultTable(timeframe) {
   sourceTable(timeframe);
-  return timeframe === "ONE_MINUTE" ? "moex_iss_minute_candle_load_days" : "moex_iss_day_candle_load_result";
+  return timeframe === "ONE_MINUTE" ? "moex_iss_minute_candle_load_result" : "moex_iss_day_candle_load_result";
 }
 function sourceCalendarDays(range, requireComplete = true) {
   const from = Date.parse(range.from), till = Date.parse(range.till);
@@ -206,16 +206,12 @@ class SqliteMarketSourceCandleRepository {
       end_at=excluded.end_at,open_price=excluded.open_price,high_price=excluded.high_price,
       low_price=excluded.low_price,close_price=excluded.close_price,loaded_at=excluded.loaded_at`);
   }
-  upsertAll(command = {}) {
-    const write = normalizedCandleWrite(command);
-    const statement = this.candleStatement(write.timeframe);
-    return inTransaction(this.database, () => upsertCandles(statement, write));
-  }
   upsertLoadedRange(command = {}) {
     const write = normalizedCandleWrite(command);
     const range = normalizedRange(command);
     requireCandlesWithinRange(write.candles, range);
-    const days = sourceCalendarDays(range,write.timeframe === "ONE_MINUTE");
+    const days = sourceCalendarDays(range);
+    const attemptedAt = command.attemptedAt === undefined ? write.loadedAt : normalizedTimestamp(command.attemptedAt,"Attempted At").value;
     const statement = this.candleStatement(write.timeframe);
     return inTransaction(this.database, () => {
       const count = upsertCandles(statement, write);
@@ -223,7 +219,7 @@ class SqliteMarketSourceCandleRepository {
         (instrument_id,load_date,completed_at,last_attempt_at,last_error) VALUES (?,?,?,?,NULL)
         ON CONFLICT (instrument_id,load_date) DO UPDATE SET completed_at=excluded.completed_at,
         last_attempt_at=excluded.last_attempt_at,last_error=NULL`);
-      for (const date of days) insert.run(write.instrumentId,date,write.loadedAt,write.loadedAt);
+      for (const date of days) insert.run(write.instrumentId,date,write.loadedAt,attemptedAt);
       return count;
     });
   }

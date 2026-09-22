@@ -17,7 +17,7 @@
     let marketCalendarRange = null;
     let marketCalendarPreviewDate = "";
     let marketCalendarMonthKey = marketHistorySyncYesterday().slice(0,7);
-    let marketCalendarSelectedDate = "";
+
     let marketCalendarData = null;
     let marketCalendarRequest = 0;
     let marketCalendarPendingKey = "";
@@ -36,6 +36,7 @@
       month.setUTCMonth(month.getUTCMonth()+delta);
       marketCalendarMonthKey = month.toISOString().slice(0,7);
       marketCalendarPreviewDate = "";
+      closeMarketCalendarDay(false);
       void loadMarketSourceCalendar(true);
     }
 
@@ -47,7 +48,6 @@
     function marketCalendarStatusDefinition(status) {
       return {
         PENDING: {className:"pending",icon:"remove",label:"Not loaded"},
-        PARTIAL: {className:"partial",icon:"contrast",label:"Unconfirmed"},
         INTEGRITY_WARNING: {className:"integrity-warning",icon:"warning",label:"Integrity warning"},
         LOADING: {className:"loading",icon:"progress_activity",label:"Loading"},
         COMPLETED: {className:"completed",icon:"check",label:"Loaded"},
@@ -63,10 +63,9 @@
         && marketCalendarData?.instrumentId === marketHistorySyncInstrument.value
         && marketCalendarData?.timeframe === marketHistorySourceTimeframe.value;
       const daily = marketHistorySourceTimeframe.value === "ONE_DAY";
-      marketCalendarDetail.hidden = true;
       marketCalendarPrevious.disabled = !marketCalendarData || marketCalendarMonthKey <= marketCalendarData.earliestDate.slice(0,7);
       marketCalendarNext.disabled = !marketCalendarData || marketCalendarMonthKey >= marketCalendarData.today.slice(0,7);
-      if (!matching) { marketHistorySyncCalendar.replaceChildren(); return; }
+      if (!matching) { closeMarketCalendarDay(false); marketHistorySyncCalendar.replaceChildren(); return; }
       const grid = document.createElement("div");
       grid.className = "market-history-calendar-grid";
       for (const weekday of MARKET_HISTORY_SYNC_WEEKDAYS) {
@@ -97,7 +96,28 @@
         icon.className = "button-icon";
         icon.setAttribute("aria-hidden","true");
         icon.textContent = definition.icon;
-        cell.append(date,icon);
+        const wrapper = document.createElement("div");
+        wrapper.className = "market-calendar-day-cell";
+        cell.append(date);
+        wrapper.append(cell);
+        if (day.available) {
+          const info = document.createElement("button");
+          info.type = "button";
+          info.className = "market-calendar-day-info is-" + definition.className;
+          info.dataset.marketCalendarInfoDate = day.date;
+          info.setAttribute("aria-label",formatMarketHistorySyncDate(day.date) + ": " + definition.label + ". Day details");
+          info.setAttribute("aria-haspopup","dialog");
+          info.setAttribute("aria-controls","marketCalendarDetail");
+          info.setAttribute("aria-expanded",String(marketCalendarDetailDate === day.date));
+          const hint = document.createElement("span");
+          hint.className = "market-calendar-info-hint";
+          hint.setAttribute("aria-hidden","true");
+          hint.textContent = "Day details";
+          info.append(hint);
+          info.append(icon);
+          info.addEventListener("click", () => openMarketCalendarDay(day.date));
+          wrapper.append(info);
+        }
         if (!daily) {
           const count = document.createElement("span");
           count.className = "market-calendar-candle-count";
@@ -111,43 +131,19 @@
           if (marketHistorySyncRunning || !day.available) return;
           marketCalendarRange = selectMarketCalendarRange(marketCalendarRange, day.date);
           syncMarketCalendarDateInputs();
-          marketCalendarSelectedDate = day.date;
+          closeMarketCalendarDay(false);
           marketCalendarPreviewDate = "";
           marketHistorySyncProgress.hidden = true;
           renderMarketCalendarSelection();
-          renderMarketCalendarDay();
         });
         cell.addEventListener("mouseenter", () => previewMarketCalendarDate(day));
         cell.addEventListener("focus", () => previewMarketCalendarDate(day));
-        grid.append(cell);
+        grid.append(wrapper);
       }
       grid.addEventListener("mouseleave", () => { marketCalendarPreviewDate = ""; renderMarketCalendarSelection(); });
       marketHistorySyncCalendar.replaceChildren(grid);
       renderMarketCalendarSelection();
       renderMarketCalendarDay();
-    }
-
-    function renderMarketCalendarDay() {
-      const day = marketCalendarData?.days.find(day => day.date === marketCalendarSelectedDate);
-      marketCalendarDetail.hidden = !day;
-      if (!day) return;
-      const status = marketCalendarStatus(day);
-      marketCalendarDayTitle.textContent = formatMarketHistorySyncDate(day.date);
-      const integrityMessage = day.integrity?.status === "MISMATCH" || day.integrity?.affectedTimeframe === marketHistorySourceTimeframe.value
-        ? day.integrity.message : "";
-      const description = integrityMessage || (day.completedAt
-        ? day.candleCount ? "All source pages saved." : "Source checked; no candles returned."
-        : day.candleCount ? "Full-day coverage has not been confirmed." : "No confirmed full-day load.");
-      const daily = marketHistorySourceTimeframe.value === "ONE_DAY";
-      marketCalendarDaySummary.textContent = `${marketCalendarStatusDefinition(status).label}${daily ? "." : ` · ${day.candleCount} candles stored.`} ${description}`;
-      const formatTime = value => value ? marketHistoryTimeFormatter.format(new Date(value)) : "";
-      marketCalendarDayTimes.textContent = [
-        !daily && day.firstCandleAt ? `First / last candle: ${formatTime(day.firstCandleAt)} / ${formatTime(day.lastCandleAt)} (Moscow)` : "",
-        day.completedAt ? `Completed: ${formatTime(day.completedAt)}` : "",
-        day.lastAttemptAt ? `Last attempt: ${formatTime(day.lastAttemptAt)}` : ""
-      ].filter(Boolean).join(" · ");
-      marketCalendarDayError.hidden = !day.lastError;
-      marketCalendarDayError.textContent = day.lastError ? `Last attempt: ${day.lastError}` : "";
     }
 
     async function loadMarketSourceCalendar(force = false) {
@@ -201,8 +197,7 @@
       marketCalendarRange = null;
       marketCalendarRangeError = "";
       marketCalendarPreviewDate = "";
-      marketCalendarSelectedDate = "";
-      marketCalendarDetail.hidden = true;
+      closeMarketCalendarDay(false);
       marketHistorySyncProgress.hidden = true;
       marketCalendarToDate.setCustomValidity("");
       try {
@@ -230,9 +225,8 @@
       if (marketHistorySyncRunning || marketHistoryLoading) return;
       marketCalendarRange = null;
       marketCalendarPreviewDate = "";
-      marketCalendarSelectedDate = "";
+      closeMarketCalendarDay(false);
       syncMarketCalendarDateInputs();
-      marketCalendarDetail.hidden = true;
       marketHistorySyncProgress.hidden = true;
       renderMarketCalendarSelection();
     }
@@ -263,7 +257,7 @@
       marketCalendarSelection.textContent = marketCalendarRangeError || `${dates.length} ${dates.length === 1 ? "day" : "days"} selected`;
       const preview = marketCalendarRange?.choosingEnd && marketCalendarPreviewDate
         ? selectMarketCalendarRange(marketCalendarRange, marketCalendarPreviewDate) : null;
-      for (const cell of marketHistorySyncCalendar.querySelectorAll("button")) {
+      for (const cell of marketHistorySyncCalendar.querySelectorAll("[data-market-history-sync-date]")) {
         const date = cell.dataset.marketHistorySyncDate;
         const selected = Boolean(marketCalendarRange && date >= marketCalendarRange.start && date <= marketCalendarRange.end);
         cell.setAttribute("aria-pressed", String(selected));
@@ -345,7 +339,7 @@
     marketHistorySyncForm.addEventListener("submit", loadSelectedMarketCalendarRange);
     function changeMarketSourceCalendarContext() {
       marketCalendarData = null;
-      marketCalendarSelectedDate = "";
+      closeMarketCalendarDay(false);
       marketCalendarPreviewDate = "";
       marketHistorySyncProgress.hidden = true;
       const earliestMonth = marketCalendarEarliestDate().slice(0,7);

@@ -28,9 +28,6 @@ function minuteCandle(minute, overrides = {}) {
 
 function repository(overrides = {}) {
   return {
-    upsertAll() {
-      return 0;
-    },
     findByPeriod() {
       return [];
     },
@@ -53,16 +50,16 @@ function repository(overrides = {}) {
 const QUERY = Object.freeze({
   instrumentId: " CNYRUB_TOM ",
   timeframe: CandleTimeframe.ONE_MINUTE,
-  from: "2026-09-15T07:00:00.000Z",
-  till: "2026-09-15T08:00:00.000Z"
+  from: "2026-09-14T21:00:00.000Z",
+  till: "2026-09-15T21:00:00.000Z"
 });
 
 test("loads one anchor range page by page, paces requests and stores it atomically", async () => {
   const first = minuteCandle(0);
   const second = minuteCandle(1);
   const tillBoundary = minuteCandle(2, {
-    begin: "2026-09-15T08:00:00.000Z",
-    end: "2026-09-15T08:00:59.000Z"
+    begin: "2026-09-15T21:00:00.000Z",
+    end: "2026-09-15T21:00:59.000Z"
   });
   const requests = [];
   const waits = [];
@@ -100,8 +97,8 @@ test("loads one anchor range page by page, paces requests and stores it atomical
   assert.deepEqual(storedCommand, {
     instrumentId: "CNYRUB_TOM",
     timeframe: CandleTimeframe.ONE_MINUTE,
-    from: "2026-09-15T07:00:00.000Z",
-    till: "2026-09-15T08:00:00.000Z",
+    from: "2026-09-14T21:00:00.000Z",
+    till: "2026-09-15T21:00:00.000Z",
     candles: [first, second],
     dataSource: "MOEX_ISS",
     loadedAt: "2026-09-17T09:00:00.000Z"
@@ -109,8 +106,8 @@ test("loads one anchor range page by page, paces requests and stores it atomical
   assert.deepEqual(result, {
     instrumentId: "CNYRUB_TOM",
     timeframe: CandleTimeframe.ONE_MINUTE,
-    from: "2026-09-15T07:00:00.000Z",
-    till: "2026-09-15T08:00:00.000Z",
+    from: "2026-09-14T21:00:00.000Z",
+    till: "2026-09-15T21:00:00.000Z",
     skipped: false,
     pageCount: 2,
     fetchedCandleCount: 2,
@@ -273,7 +270,6 @@ test("validates paged source, repository capabilities and request interval", () 
     () => new BackfillHistoricalCandleRangeUseCase({
       historicalMarketDataSource: { async loadCandlePage() {} },
       marketSourceCandleRepository: {
-        upsertAll() {},
         findByPeriod() {},
         findLatest() {}
       }
@@ -296,4 +292,18 @@ test("validates paged source, repository capabilities and request interval", () 
     }),
     error => error?.code === "INVALID_HISTORICAL_CANDLE_BACKFILL_CONFIGURATION"
   );
+});
+
+
+test("rejects intraday loads for both source timeframes before reading the source or writing", async () => {
+  const useCase = new BackfillHistoricalCandleRangeUseCase({
+    historicalMarketDataSource:{loadCandlePage(){assert.fail("Intraday source request");}},
+    marketSourceCandleRepository:repository({upsertLoadedRange(){assert.fail("Intraday write");}})
+  });
+  for (const timeframe of [CandleTimeframe.ONE_MINUTE,CandleTimeframe.ONE_DAY]) {
+    for (const bounds of [
+      {from:"2026-09-15T07:00:00.000Z",till:"2026-09-15T08:00:00.000Z"},
+      {from:"2026-09-15T00:00:00.000Z",till:"2026-09-16T00:00:00.000Z"}
+    ]) await assert.rejects(useCase.execute({...QUERY,...bounds,timeframe}),error=>error.code==="INVALID_SOURCE_CANDLE_CALENDAR_REQUEST");
+  }
 });

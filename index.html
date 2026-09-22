@@ -89,11 +89,11 @@
         <span class="button-icon trade-message-contract-icon__mail">mail</span>
         <span class="button-icon trade-message-contract-icon__gear">settings</span>
       </span>
-      <span>Message Contract</span>
+      <span>Notification Contract</span>
     </a>
     <a class="workspace-nav-menu-link" href="#trade-intake:messages" data-workspace-route="trade-intake-messages" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">stacked_email</span>
-      <span>Message Registry</span>
+      <span>Notification Registry</span>
     </a>
   </div>
   <div class="workspace-nav-menu" id="workspacePricingMenu" role="menu" aria-label="Pricing" data-workspace-nav-menu hidden>
@@ -222,19 +222,24 @@
                   <div class="market-history-calendar" id="marketHistorySyncCalendar" aria-label="Saved source candles by day"></div>
                   <div class="market-history-sync-legend" aria-label="Day statuses">
                     <span><i class="market-history-day-dot is-pending" aria-hidden="true"></i>Not loaded</span>
-                    <span><i class="market-history-day-dot is-partial" aria-hidden="true"></i>Unconfirmed</span>
                     <span><i class="market-history-day-dot is-integrity-warning" aria-hidden="true"></i>Integrity warning</span>
                     <span><i class="market-history-day-dot is-completed" aria-hidden="true"></i>Loaded</span>
                     <span><i class="market-history-day-dot is-error" aria-hidden="true"></i>Error</span>
                   </div>
-                  <div class="market-calendar-detail" id="marketCalendarDetail" hidden>
-                    <div>
-                      <h3 class="market-history-section-title" id="marketCalendarDayTitle"></h3>
-                      <p id="marketCalendarDaySummary" class="market-history-section-description" aria-live="polite"></p>
-                      <p id="marketCalendarDayTimes" class="market-history-section-description"></p>
-                      <p id="marketCalendarDayError" class="text-danger mb-0" hidden></p>
+                  <div class="market-calendar-detail" id="marketCalendarDetail" popover="auto" role="dialog" aria-labelledby="marketCalendarDayTitle" aria-describedby="marketCalendarDayContext">
+                    <div class="market-calendar-detail-heading">
+                      <h3 id="marketCalendarDayTitle" tabindex="-1"></h3>
+                      <button type="button" id="marketCalendarDetailClose" class="market-calendar-detail-close" aria-label="Close day details"><span class="button-icon" aria-hidden="true">close</span></button>
                     </div>
-
+                    <p id="marketCalendarDayContext" class="market-calendar-detail-context"></p>
+                    <span id="marketCalendarDayStatus" class="market-calendar-detail-status"></span>
+                    <p id="marketCalendarDaySummary"></p>
+                    <dl id="marketCalendarDayTimes"></dl>
+                    <details id="marketCalendarDayErrorDetails" hidden>
+                      <summary>Technical details</summary>
+                      <p id="marketCalendarDayError"></p>
+                    </details>
+                    <p class="market-calendar-detail-timezone">All times: Moscow (UTC+3)</p>
                   </div>
                 </div>
               </section>
@@ -248,7 +253,7 @@
       <section class="market-bootstrap-panel market-history-panel" data-market-panel="charts" aria-label="Market charts" hidden>
         <div class="market-history-preview-heading">
           <h2 class="market-history-section-title">Candlestick preview</h2>
-          <p class="market-history-section-description">Load a short interval to inspect the stored market data on the chart.</p>
+          <p class="market-history-section-description">Historical data is loaded in Data Management.</p>
         </div>
         <form class="market-history-form" id="marketHistoryForm">
           <label class="market-history-field" for="marketHistoryInstrument">
@@ -272,12 +277,12 @@
             <span>Till (Moscow time)</span>
             <input class="form-control form-control-sm" id="marketHistoryTill" name="till" type="datetime-local" step="300" required>
           </label>
-          <button class="btn btn-sm btn-primary market-history-load" id="marketHistoryLoadButton" type="submit">
+          <button class="btn btn-sm btn-primary market-history-load" id="marketHistoryLoadButton" type="submit" disabled aria-describedby="marketHistorySummary">
             Load candles
           </button>
         </form>
 
-        <div class="market-history-summary" id="marketHistorySummary">Select a period up to six hours and load the candles.</div>
+        <div class="market-history-summary" id="marketHistorySummary">Chart preview is temporarily unavailable. Load historical candles in Data Management.</div>
         <div class="market-history-chart-frame">
           <div class="market-history-chart" id="marketHistoryChart" role="img" aria-label="CNY/RUB Candlestick chart"></div>
           <p class="market-history-empty" id="marketHistoryEmpty">No candles loaded yet.</p>
@@ -1044,8 +1049,8 @@
   </main>
 
   <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page" id="tradeContractPage" hidden>
-    <section class="settings-topbar workbench-page-header" aria-label="Trade Message Contract header">
-      <h1 class="settings-title">Trade Message Contract</h1>
+    <section class="settings-topbar workbench-page-header" aria-label="Trade Notification Contract header">
+      <h1 class="settings-title">Trade Notification Contract</h1>
       <span class="badge text-bg-light border">Draft</span>
     </section>
 
@@ -1053,7 +1058,7 @@
       <p class="trade-contract-intro">Defines the required fields supplied by the <a class="trade-contract-term" href="#reference-data:originating-systems"><span class="button-icon" aria-hidden="true">web_asset</span><span class="trade-contract-term__label">Originating System</span></a> where the trade was initially recorded.</p>
 
       <section aria-labelledby="tradeContractFieldsTitle">
-        <h2 class="table-panel__title trade-contract-fields-title" id="tradeContractFieldsTitle">Trade Message Contract Fields</h2>
+        <h2 class="table-panel__title trade-contract-fields-title" id="tradeContractFieldsTitle">Trade Notification Contract Fields</h2>
         <div class="trade-contract-groups">
           <details class="trade-contract-group">
             <summary class="trade-contract-group__heading">
@@ -1217,10 +1222,10 @@
     </div>
   </main>
   <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page" id="tradeIntakeMessagesPage" hidden>
-    <section class="settings-topbar workbench-page-header" aria-label="Trade Message Registry header">
-      <h1 class="settings-title">Trade Message Registry</h1>
+    <section class="settings-topbar workbench-page-header" aria-label="Trade Notification Registry header">
+      <h1 class="settings-title">Trade Notification Registry</h1>
     </section>
-    <p class="text-body-secondary">Incoming trade messages and their processing results will appear here. Message capture is not yet connected.</p>
+    <p class="text-body-secondary">Incoming trade notifications and their processing results will appear here. Notification intake is not yet connected.</p>
   </main>
 
   <main class="shell blotter-shell client-deals-bootstrap unified-bootstrap-workspace workbench-page" id="analyticalPnlReportPage" hidden>

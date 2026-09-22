@@ -23,26 +23,8 @@ const {
   MarketPulseSimulator
 } = require("./backend/market-pulse/simulation/market-pulse-simulator");
 const {
-  GetHistoricalCandlesUseCase
-} = require("./backend/market-pulse/historical-data/application/get-historical-candles-use-case");
-const {
   BackfillHistoricalCandleRangeUseCase
 } = require("./backend/market-pulse/historical-data/application/backfill-historical-candle-range-use-case");
-const {
-  BackfillHistoricalCandlesUseCase
-} = require("./backend/market-pulse/historical-data/application/backfill-historical-candles-use-case");
-const {
-  GetHistoricalCandleBackfillStatusUseCase
-} = require("./backend/market-pulse/historical-data/application/get-historical-candle-backfill-status-use-case");
-const {
-  SyncOneMinuteCandlesUseCase
-} = require("./backend/market-pulse/historical-data/application/sync-one-minute-candles-use-case");
-const {
-  GetManualHistoricalSourceCandleSyncPlanUseCase
-} = require("./backend/market-pulse/historical-data/application/get-manual-historical-source-candle-sync-plan-use-case");
-const {
-  SyncNextManualHistoricalSourceCandleDayUseCase
-} = require("./backend/market-pulse/historical-data/application/sync-next-manual-historical-source-candle-day-use-case");
 const {
   createHistoricalCandlesApi
 } = require("./backend/market-pulse/historical-data/api/historical-candles-api");
@@ -56,6 +38,7 @@ const {
   migrateMarketCandleStorage
 } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-market-candle-storage");
 const { migrateDayCandleStorage } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-day-candle-storage");
+const { migrateMinuteCandleLoadResult } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-minute-candle-load-result");
 const {
   calculateAnalyticalPnlMinor,
   calculateClientDealEconomics,
@@ -360,6 +343,7 @@ migrateTradePositionManagementState(database);
 // reference their current names on an already initialized SQLite database.
 ensurePositionManagementPolicyColumns(database);
 migrateAdmissionEnforcement(database);
+migrateMinuteCandleLoadResult(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 migrateDayCandleStorage(database);
 migrateMarketCandleStorage(database);
@@ -11074,33 +11058,12 @@ const backfillHistoricalCandleRangeUseCase = new BackfillHistoricalCandleRangeUs
   historicalMarketDataSource,
   marketSourceCandleRepository
 });
-const getManualHistoricalSourceCandleSyncPlanUseCase = new GetManualHistoricalSourceCandleSyncPlanUseCase({
-  marketSourceCandleRepository
-});
 const historicalCandlesApi = createHistoricalCandlesApi({
   getSourceCandleCalendarUseCase: new GetSourceCandleCalendarUseCase({ marketSourceCandleRepository }),
   loadSourceCandleDayUseCase: new LoadSourceCandleDayUseCase({
     backfillRangeUseCase: backfillHistoricalCandleRangeUseCase,
     marketSourceCandleRepository,
     verificationLogger: new FileCandleVerificationLogger({directory:path.join(ROOT_DIR,"logs","candle_load")})
-  }),
-  getHistoricalCandlesUseCase: new GetHistoricalCandlesUseCase({
-    historicalMarketDataSource
-  }),
-  syncOneMinuteCandlesUseCase: new SyncOneMinuteCandlesUseCase({
-    historicalMarketDataSource,
-    marketSourceCandleRepository
-  }),
-  backfillHistoricalCandlesUseCase: new BackfillHistoricalCandlesUseCase({
-    backfillRangeUseCase: backfillHistoricalCandleRangeUseCase
-  }),
-  getHistoricalCandleBackfillStatusUseCase: new GetHistoricalCandleBackfillStatusUseCase({
-    marketSourceCandleRepository
-  }),
-  getManualHistoricalSourceCandleSyncPlanUseCase,
-  syncNextManualHistoricalSourceCandleDayUseCase: new SyncNextManualHistoricalSourceCandleDayUseCase({
-    getPlanUseCase: getManualHistoricalSourceCandleSyncPlanUseCase,
-    backfillRangeUseCase: backfillHistoricalCandleRangeUseCase
   })
 });
 
@@ -12977,45 +12940,6 @@ async function handleApi(request, response, url) {
     sendJson(response, result.statusCode, result.body);
     return true;
   }
-  if (method === "GET" && pathname === "/api/v1/market-pulse/historical-candles") {
-    const result = await historicalCandlesApi.load(url.searchParams);
-    sendJson(response, result.statusCode, result.body);
-    return true;
-  }
-
-  if (method === "POST" && pathname === "/api/v1/market-pulse/historical-candles/sync") {
-    const body = await readJsonBody(request);
-    const result = await historicalCandlesApi.sync(body);
-    sendJson(response, result.statusCode, result.body);
-    return true;
-  }
-
-  if (method === "POST" && pathname === "/api/v1/market-pulse/historical-candles/backfill/step") {
-    const body = await readJsonBody(request);
-    const result = await historicalCandlesApi.backfillStep(body);
-    sendJson(response, result.statusCode, result.body);
-    return true;
-  }
-
-  if (method === "GET" && pathname === "/api/v1/market-pulse/historical-candles/backfill/status") {
-    const result = await historicalCandlesApi.backfillStatus(url.searchParams);
-    sendJson(response, result.statusCode, result.body);
-    return true;
-  }
-
-  if (method === "GET" && pathname === "/api/v1/market-pulse/historical-candles/manual-sync/plan") {
-    const result = await historicalCandlesApi.manualSyncPlan(url.searchParams);
-    sendJson(response, result.statusCode, result.body);
-    return true;
-  }
-
-  if (method === "POST" && pathname === "/api/v1/market-pulse/historical-candles/manual-sync/step") {
-    const body = await readJsonBody(request);
-    const result = await historicalCandlesApi.manualSyncStep(body);
-    sendJson(response, result.statusCode, result.body);
-    return true;
-  }
-
   if (method === "GET" && pathname === "/api/v1/market-pulse-simulation/status") {
     sendJson(response, 200, marketPulseSimulator.snapshot());
     return true;

@@ -46,7 +46,9 @@ function openRepository(testContext) {
 }
 
 function upsert(repository, candles, overrides = {}) {
-  return repository.upsertAll({
+  return repository.upsertLoadedRange({
+    from: "2026-09-14T21:00:00.000Z",
+    till: "2026-09-15T21:00:00.000Z",
     instrumentId: INSTRUMENT_ID,
     timeframe: CandleTimeframe.ONE_MINUTE,
     candles,
@@ -82,7 +84,9 @@ test("requires a SQLite database connection", () => {
 test("upserts one Candle batch with normalized persistence metadata", testContext => {
   const { database, repository } = openRepository(testContext);
 
-  const affected = repository.upsertAll({
+  const affected = repository.upsertLoadedRange({
+    from: "2026-09-14T21:00:00.000Z",
+    till: "2026-09-15T21:00:00.000Z",
     instrumentId: `  ${INSTRUMENT_ID}  `,
     timeframe: CandleTimeframe.ONE_MINUTE,
     candles: [candle(0), candle(1)],
@@ -295,7 +299,7 @@ test("derives continuous coverage from adjacent daily records", t => {
       const from=Date.parse(date+"T00:00:00+03:00");
       upsertLoadedRange(repository,{from:new Date(from).toISOString(),till:new Date(from+86400000).toISOString(),candles:[]});
     }
-    assert.equal(database.prepare("SELECT COUNT(*) n FROM moex_iss_minute_candle_load_days").get().n,2);
+    assert.equal(database.prepare("SELECT COUNT(*) n FROM moex_iss_minute_candle_load_result").get().n,2);
     assert.equal(repository.coversLoadedRange({instrumentId:INSTRUMENT_ID,timeframe:"ONE_MINUTE",from:"2026-09-13T21:00:00Z",till:"2026-09-15T21:00:00Z"}),true);
     assert.equal(repository.coversLoadedRange({instrumentId:INSTRUMENT_ID,timeframe:"ONE_MINUTE",from:"2026-09-13T21:00:00Z",till:"2026-09-16T21:00:00Z"}),false);
     assert.throws(()=>upsertLoadedRange(repository,{from:"2026-09-15T10:00:00+03:00"}),/complete Moscow calendar days/);
@@ -305,7 +309,7 @@ test("rolls back Candles when loaded Range persistence fails", testContext => {
   const { database, repository } = openRepository(testContext);
   database.exec(`
     CREATE TRIGGER reject_market_candle_load_range
-    BEFORE INSERT ON moex_iss_minute_candle_load_days
+    BEFORE INSERT ON moex_iss_minute_candle_load_result
     BEGIN
       SELECT RAISE(ABORT, 'loaded Range rejected');
     END;
@@ -321,7 +325,7 @@ test("rolls back Candles when loaded Range persistence fails", testContext => {
   );
   assert.equal(
     database.prepare(`
-      SELECT COUNT(*) AS count FROM moex_iss_minute_candle_load_days
+      SELECT COUNT(*) AS count FROM moex_iss_minute_candle_load_result
     `).get().count,
     0
   );
@@ -345,8 +349,19 @@ test("rejects Candles outside the declared loaded Range", testContext => {
   );
   assert.equal(
     database.prepare(`
-      SELECT COUNT(*) AS count FROM moex_iss_minute_candle_load_days
+      SELECT COUNT(*) AS count FROM moex_iss_minute_candle_load_result
     `).get().count,
     0
   );
+});
+
+
+test("source writes require whole Moscow days and cannot bypass completion tracking", t => {
+  const {repository,database}=openRepository(t);
+  assert.equal(typeof repository.upsertAll,"undefined");
+  for (const timeframe of [CandleTimeframe.ONE_MINUTE,CandleTimeframe.ONE_DAY]) {
+    assert.throws(()=>upsertLoadedRange(repository,{timeframe,from:"2026-09-15T07:00:00Z",till:"2026-09-15T08:00:00Z"}),/complete Moscow calendar days/);
+  }
+  assert.equal(database.prepare("SELECT COUNT(*) n FROM moex_iss_minute_candles").get().n,0);
+  assert.equal(database.prepare("SELECT COUNT(*) n FROM moex_iss_day_candles").get().n,0);
 });

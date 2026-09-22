@@ -3,9 +3,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
-  GetHistoricalCandlesUseCase
-} = require("../application/get-historical-candles-use-case");
-const {
   CandleTimeframe
 } = require("../domain/candle-timeframe");
 const {
@@ -14,7 +11,7 @@ const {
 
 const QUERY = Object.freeze({
   instrumentId: "CNYRUB_TOM",
-  timeframe: CandleTimeframe.FIVE_MINUTES,
+  timeframe: CandleTimeframe.ONE_MINUTE,
   from: "2026-09-15T10:00:00+03:00",
   till: "2026-09-15T10:10:00+03:00"
 });
@@ -72,49 +69,6 @@ function successfulResponse(data = moexCandleRows()) {
   };
 }
 
-test("loads one MOEX ISS page and aggregates one-minute rows into five-minute Candles", async () => {
-  const requests = [];
-  const dataSource = new MoexIssHistoricalMarketDataSource({
-    fetchImpl: async (url, options) => {
-      requests.push({ url, options });
-      return successfulResponse();
-    }
-  });
-  const useCase = new GetHistoricalCandlesUseCase({
-    historicalMarketDataSource: dataSource
-  });
-
-  const candles = await useCase.execute(QUERY);
-
-  assert.equal(requests.length, 1);
-  assert.equal(requests[0].options.method, "GET");
-  assert.equal(requests[0].options.headers.accept, "application/json");
-  assert.equal(requests[0].url.pathname,
-    "/iss/engines/currency/markets/selt/boards/CETS/securities/CNYRUB_TOM/candles.json");
-  assert.equal(requests[0].url.searchParams.get("interval"), "1");
-  assert.equal(requests[0].url.searchParams.get("from"), "2026-09-15 10:00:00");
-  assert.equal(requests[0].url.searchParams.get("till"), "2026-09-15 10:10:00");
-  assert.equal(requests[0].url.searchParams.get("start"), "0");
-  assert.deepEqual(candles, [
-    {
-      begin: "2026-09-15T07:00:00.000Z",
-      end: "2026-09-15T07:04:59.000Z",
-      open: "10",
-      high: "10.5",
-      low: "9.9",
-      close: "10.45"
-    },
-    {
-      begin: "2026-09-15T07:05:00.000Z",
-      end: "2026-09-15T07:09:59.000Z",
-      open: "10.5",
-      high: "11",
-      low: "10.4",
-      close: "10.95"
-    }
-  ]);
-});
-
 test("returns one-minute Candles from the same single MOEX ISS request", async () => {
   let requestCount = 0;
   const dataSource = new MoexIssHistoricalMarketDataSource({
@@ -124,7 +78,7 @@ test("returns one-minute Candles from the same single MOEX ISS request", async (
     }
   });
 
-  const candles = await dataSource.loadCandles({
+  const { candles } = await dataSource.loadCandlePage({
     ...QUERY,
     timeframe: CandleTimeframe.ONE_MINUTE,
     till: "2026-09-15T10:02:00+03:00"
@@ -160,7 +114,7 @@ test("loads native one-day Candles with MOEX ISS interval 24", async () => {
     }
   });
 
-  const candles = await dataSource.loadCandles({
+  const { candles } = await dataSource.loadCandlePage({
     ...QUERY,
     timeframe: CandleTimeframe.ONE_DAY,
     from: "2024-01-01T00:00:00+03:00",
@@ -247,45 +201,6 @@ test("rejects an invalid Candle page start before making a request", async () =>
   assert.equal(requestCount, 0);
 });
 
-test("aggregates one-minute rows into fifteen-minute Candles without extra requests", async () => {
-  let requestCount = 0;
-  const dataSource = new MoexIssHistoricalMarketDataSource({
-    fetchImpl: async () => {
-      requestCount += 1;
-      return successfulResponse(moexCandleRows(30));
-    }
-  });
-  const useCase = new GetHistoricalCandlesUseCase({
-    historicalMarketDataSource: dataSource
-  });
-
-  const candles = await useCase.execute({
-    ...QUERY,
-    timeframe: CandleTimeframe.FIFTEEN_MINUTES,
-    till: "2026-09-15T10:30:00+03:00"
-  });
-
-  assert.equal(requestCount, 1);
-  assert.deepEqual(candles, [
-    {
-      begin: "2026-09-15T07:00:00.000Z",
-      end: "2026-09-15T07:14:59.000Z",
-      open: "10",
-      high: "11.5",
-      low: "9.9",
-      close: "11.45"
-    },
-    {
-      begin: "2026-09-15T07:15:00.000Z",
-      end: "2026-09-15T07:29:59.000Z",
-      open: "11.5",
-      high: "13",
-      low: "11.4",
-      close: "12.95"
-    }
-  ]);
-});
-
 test("rejects unsupported Timeframes before making a request", async () => {
   let requestCount = 0;
   const dataSource = new MoexIssHistoricalMarketDataSource({
@@ -296,26 +211,10 @@ test("rejects unsupported Timeframes before making a request", async () => {
   });
 
   await assert.rejects(
-    dataSource.loadCandles({ ...QUERY, timeframe: CandleTimeframe.ONE_HOUR }),
+    dataSource.loadCandlePage({ ...QUERY, timeframe: CandleTimeframe.ONE_HOUR }),
     error => error?.code === "MOEX_ISS_UNSUPPORTED_CANDLE_TIMEFRAME"
   );
   assert.equal(requestCount, 0);
-});
-
-test("does not paginate automatically when MOEX ISS returns its row limit", async () => {
-  let requestCount = 0;
-  const dataSource = new MoexIssHistoricalMarketDataSource({
-    fetchImpl: async () => {
-      requestCount += 1;
-      return successfulResponse(Array.from({ length: 500 }, () => []));
-    }
-  });
-
-  await assert.rejects(
-    dataSource.loadCandles(QUERY),
-    error => error?.code === "MOEX_ISS_RESULT_LIMIT_REACHED"
-  );
-  assert.equal(requestCount, 1);
 });
 
 test("reports HTTP and network failures", async () => {
@@ -329,11 +228,11 @@ test("reports HTTP and network failures", async () => {
   });
 
   await assert.rejects(
-    httpFailure.loadCandles(QUERY),
+    httpFailure.loadCandlePage(QUERY),
     error => error?.code === "MOEX_ISS_REQUEST_FAILED"
   );
   await assert.rejects(
-    networkFailure.loadCandles(QUERY),
+    networkFailure.loadCandlePage(QUERY),
     error => error?.code === "MOEX_ISS_REQUEST_FAILED"
   );
 });
@@ -350,7 +249,16 @@ test("rejects an invalid MOEX ISS response", async () => {
   });
 
   await assert.rejects(
-    dataSource.loadCandles(QUERY),
+    dataSource.loadCandlePage(QUERY),
     error => error?.code === "MOEX_ISS_INVALID_RESPONSE"
   );
+});
+
+
+test("has only paged native loading and rejects derived source requests", async () => {
+  const source=new MoexIssHistoricalMarketDataSource({fetchImpl(){assert.fail("Derived source request");}});
+  assert.equal(typeof source.loadCandles,"undefined");
+  for (const timeframe of [CandleTimeframe.FIVE_MINUTES,CandleTimeframe.FIFTEEN_MINUTES]) {
+    await assert.rejects(source.loadCandlePage({...QUERY,timeframe}),error=>error.code==="MOEX_ISS_UNSUPPORTED_CANDLE_TIMEFRAME");
+  }
 });

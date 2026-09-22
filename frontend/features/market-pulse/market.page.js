@@ -1285,7 +1285,7 @@
     function setMarketHistorySyncRunning(running) {
       marketHistorySyncRunning = running;
       marketHistorySyncInstrument.disabled = running || marketHistoryLoading;
-      marketHistoryLoadButton.disabled = running || marketHistoryLoading;
+      marketHistoryLoadButton.disabled = true;
       marketHistorySyncButtonText.textContent = running ? "Loading…" : "Load Candles";
       marketHistorySyncButton.classList.toggle("is-loading", running);
       marketHistorySyncButton.querySelector(".button-icon").textContent = running ? "progress_activity" : "download";
@@ -1479,94 +1479,9 @@
       }).sort((left, right) => left.time - right.time);
     }
 
-    function setMarketHistoryLoading(loading) {
-      marketHistoryLoading = loading;
-      marketHistoryLoadButton.disabled = loading || marketHistorySyncRunning;
-      marketHistorySyncInstrument.disabled = loading || marketHistorySyncRunning;
-      renderMarketCalendarSelection();
-      marketHistoryLoadButton.textContent = loading ? "Loading…" : "Load candles";
-    }
-
-    async function loadMarketHistoryCandles(event) {
+    function loadMarketHistoryCandles(event) {
       event.preventDefault();
-
-      if (marketHistoryLoading || !marketHistoryForm.reportValidity()) {
-        return;
-      }
-
-      const fromTimestamp = marketHistoryMoscowTimestamp(marketHistoryFrom.value);
-      const tillTimestamp = marketHistoryMoscowTimestamp(marketHistoryTill.value);
-      const rangeMs = tillTimestamp - fromTimestamp;
-
-      if (!Number.isFinite(rangeMs) || rangeMs <= 0) {
-        setMarketStatus("From must be earlier than Till.", "warning");
-        return;
-      }
-
-      if (rangeMs > 6 * 60 * 60 * 1000) {
-        setMarketStatus("Historical data range must not exceed six hours.", "warning");
-        return;
-      }
-
-      const payload = {
-        instrumentId: marketHistoryInstrument.value,
-        timeframe: marketHistoryTimeframe.value,
-        from: new Date(fromTimestamp).toISOString(),
-        till: new Date(tillTimestamp).toISOString()
-      };
-
-      setMarketHistoryLoading(true);
-      marketHistorySummary.textContent = "Loading historical candles…";
-      setMarketStatus("Requesting one historical data window from MOEX ISS…");
-
-      try {
-        const result = await demoApiRequest(
-          "/api/v1/market-pulse/historical-candles/sync",
-          {
-            method: "POST",
-            body: JSON.stringify(payload)
-          }
-        );
-        const candles = normalizedMarketHistoryCandles(result?.candles);
-        const storedMinuteCandleCount = Number(result?.storedMinuteCandleCount);
-
-        if (!Number.isInteger(storedMinuteCandleCount) || storedMinuteCandleCount < 0) {
-          throw new Error("Historical market data response is invalid.");
-        }
-
-        const timeframeLabel = result?.timeframe === "FIFTEEN_MINUTES"
-          ? "15-minute"
-          : "5-minute";
-        ensureMarketHistoryChart();
-        marketHistorySeries.setData(candles);
-        marketHistoryChart.timeScale().fitContent();
-        marketHistoryChartEl.setAttribute(
-          "aria-label",
-          `CNY/RUB ${timeframeLabel} Candlestick chart`
-        );
-        marketHistoryEmpty.hidden = candles.length > 0;
-        marketHistoryEmpty.textContent = candles.length > 0
-          ? ""
-          : "MOEX ISS returned no candles for this period.";
-        const candleSummary = candles.length === 1
-          ? `1 ${timeframeLabel} candle loaded. Time is shown in Moscow time.`
-          : `${candles.length} ${timeframeLabel} candles loaded. Time is shown in Moscow time.`;
-        const storageSummary = storedMinuteCandleCount === 1
-          ? "1 closed one-minute candle stored."
-          : `${storedMinuteCandleCount} closed one-minute candles stored.`;
-        marketHistorySummary.textContent = `${candleSummary} ${storageSummary}`;
-        setMarketStatus(
-          candles.length > 0
-            ? "Historical market data loaded and stored successfully."
-            : "No complete display candles were available for the selected period.",
-          candles.length > 0 ? "success" : "warning"
-        );
-      } catch (error) {
-        marketHistorySummary.textContent = "Historical candles could not be loaded.";
-        setMarketStatus(error.message, "error");
-      } finally {
-        setMarketHistoryLoading(false);
-      }
+      marketHistorySummary.textContent = "Chart preview is temporarily unavailable. Load historical candles in Data Management.";
     }
 
     function renderMarketPage() {

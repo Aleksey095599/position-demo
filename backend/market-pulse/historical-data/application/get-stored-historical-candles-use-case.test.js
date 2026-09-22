@@ -14,7 +14,6 @@ const {
 
 function repositoryReturning(candles, onFind = () => {}, coverageComplete = true) {
   return {
-    upsertAll() {},
     findByPeriod(query) {
       onFind(query);
       return candles;

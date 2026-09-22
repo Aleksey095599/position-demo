@@ -1459,7 +1459,7 @@
         tables: [
           "moex_iss_minute_candles",
           "moex_iss_aggregated_candles",
-          "moex_iss_minute_candle_load_days",
+          "moex_iss_minute_candle_load_result",
           "moex_iss_day_candles",
           "moex_iss_day_candle_load_result"
         ]
@@ -16044,7 +16044,7 @@
     function setMarketHistorySyncRunning(running) {
       marketHistorySyncRunning = running;
       marketHistorySyncInstrument.disabled = running || marketHistoryLoading;
-      marketHistoryLoadButton.disabled = running || marketHistoryLoading;
+      marketHistoryLoadButton.disabled = true;
       marketHistorySyncButtonText.textContent = running ? "Loading…" : "Load Candles";
       marketHistorySyncButton.classList.toggle("is-loading", running);
       marketHistorySyncButton.querySelector(".button-icon").textContent = running ? "progress_activity" : "download";
@@ -16238,94 +16238,9 @@
       }).sort((left, right) => left.time - right.time);
     }
 
-    function setMarketHistoryLoading(loading) {
-      marketHistoryLoading = loading;
-      marketHistoryLoadButton.disabled = loading || marketHistorySyncRunning;
-      marketHistorySyncInstrument.disabled = loading || marketHistorySyncRunning;
-      renderMarketCalendarSelection();
-      marketHistoryLoadButton.textContent = loading ? "Loading…" : "Load candles";
-    }
-
-    async function loadMarketHistoryCandles(event) {
+    function loadMarketHistoryCandles(event) {
       event.preventDefault();
-
-      if (marketHistoryLoading || !marketHistoryForm.reportValidity()) {
-        return;
-      }
-
-      const fromTimestamp = marketHistoryMoscowTimestamp(marketHistoryFrom.value);
-      const tillTimestamp = marketHistoryMoscowTimestamp(marketHistoryTill.value);
-      const rangeMs = tillTimestamp - fromTimestamp;
-
-      if (!Number.isFinite(rangeMs) || rangeMs <= 0) {
-        setMarketStatus("From must be earlier than Till.", "warning");
-        return;
-      }
-
-      if (rangeMs > 6 * 60 * 60 * 1000) {
-        setMarketStatus("Historical data range must not exceed six hours.", "warning");
-        return;
-      }
-
-      const payload = {
-        instrumentId: marketHistoryInstrument.value,
-        timeframe: marketHistoryTimeframe.value,
-        from: new Date(fromTimestamp).toISOString(),
-        till: new Date(tillTimestamp).toISOString()
-      };
-
-      setMarketHistoryLoading(true);
-      marketHistorySummary.textContent = "Loading historical candles…";
-      setMarketStatus("Requesting one historical data window from MOEX ISS…");
-
-      try {
-        const result = await demoApiRequest(
-          "/api/v1/market-pulse/historical-candles/sync",
-          {
-            method: "POST",
-            body: JSON.stringify(payload)
-          }
-        );
-        const candles = normalizedMarketHistoryCandles(result?.candles);
-        const storedMinuteCandleCount = Number(result?.storedMinuteCandleCount);
-
-        if (!Number.isInteger(storedMinuteCandleCount) || storedMinuteCandleCount < 0) {
-          throw new Error("Historical market data response is invalid.");
-        }
-
-        const timeframeLabel = result?.timeframe === "FIFTEEN_MINUTES"
-          ? "15-minute"
-          : "5-minute";
-        ensureMarketHistoryChart();
-        marketHistorySeries.setData(candles);
-        marketHistoryChart.timeScale().fitContent();
-        marketHistoryChartEl.setAttribute(
-          "aria-label",
-          `CNY/RUB ${timeframeLabel} Candlestick chart`
-        );
-        marketHistoryEmpty.hidden = candles.length > 0;
-        marketHistoryEmpty.textContent = candles.length > 0
-          ? ""
-          : "MOEX ISS returned no candles for this period.";
-        const candleSummary = candles.length === 1
-          ? `1 ${timeframeLabel} candle loaded. Time is shown in Moscow time.`
-          : `${candles.length} ${timeframeLabel} candles loaded. Time is shown in Moscow time.`;
-        const storageSummary = storedMinuteCandleCount === 1
-          ? "1 closed one-minute candle stored."
-          : `${storedMinuteCandleCount} closed one-minute candles stored.`;
-        marketHistorySummary.textContent = `${candleSummary} ${storageSummary}`;
-        setMarketStatus(
-          candles.length > 0
-            ? "Historical market data loaded and stored successfully."
-            : "No complete display candles were available for the selected period.",
-          candles.length > 0 ? "success" : "warning"
-        );
-      } catch (error) {
-        marketHistorySummary.textContent = "Historical candles could not be loaded.";
-        setMarketStatus(error.message, "error");
-      } finally {
-        setMarketHistoryLoading(false);
-      }
+      marketHistorySummary.textContent = "Chart preview is temporarily unavailable. Load historical candles in Data Management.";
     }
 
     function renderMarketPage() {
@@ -16533,7 +16448,7 @@
     let marketCalendarRange = null;
     let marketCalendarPreviewDate = "";
     let marketCalendarMonthKey = marketHistorySyncYesterday().slice(0,7);
-    let marketCalendarSelectedDate = "";
+
     let marketCalendarData = null;
     let marketCalendarRequest = 0;
     let marketCalendarPendingKey = "";
@@ -16552,6 +16467,7 @@
       month.setUTCMonth(month.getUTCMonth()+delta);
       marketCalendarMonthKey = month.toISOString().slice(0,7);
       marketCalendarPreviewDate = "";
+      closeMarketCalendarDay(false);
       void loadMarketSourceCalendar(true);
     }
 
@@ -16563,7 +16479,6 @@
     function marketCalendarStatusDefinition(status) {
       return {
         PENDING: {className:"pending",icon:"remove",label:"Not loaded"},
-        PARTIAL: {className:"partial",icon:"contrast",label:"Unconfirmed"},
         INTEGRITY_WARNING: {className:"integrity-warning",icon:"warning",label:"Integrity warning"},
         LOADING: {className:"loading",icon:"progress_activity",label:"Loading"},
         COMPLETED: {className:"completed",icon:"check",label:"Loaded"},
@@ -16579,10 +16494,9 @@
         && marketCalendarData?.instrumentId === marketHistorySyncInstrument.value
         && marketCalendarData?.timeframe === marketHistorySourceTimeframe.value;
       const daily = marketHistorySourceTimeframe.value === "ONE_DAY";
-      marketCalendarDetail.hidden = true;
       marketCalendarPrevious.disabled = !marketCalendarData || marketCalendarMonthKey <= marketCalendarData.earliestDate.slice(0,7);
       marketCalendarNext.disabled = !marketCalendarData || marketCalendarMonthKey >= marketCalendarData.today.slice(0,7);
-      if (!matching) { marketHistorySyncCalendar.replaceChildren(); return; }
+      if (!matching) { closeMarketCalendarDay(false); marketHistorySyncCalendar.replaceChildren(); return; }
       const grid = document.createElement("div");
       grid.className = "market-history-calendar-grid";
       for (const weekday of MARKET_HISTORY_SYNC_WEEKDAYS) {
@@ -16613,7 +16527,28 @@
         icon.className = "button-icon";
         icon.setAttribute("aria-hidden","true");
         icon.textContent = definition.icon;
-        cell.append(date,icon);
+        const wrapper = document.createElement("div");
+        wrapper.className = "market-calendar-day-cell";
+        cell.append(date);
+        wrapper.append(cell);
+        if (day.available) {
+          const info = document.createElement("button");
+          info.type = "button";
+          info.className = "market-calendar-day-info is-" + definition.className;
+          info.dataset.marketCalendarInfoDate = day.date;
+          info.setAttribute("aria-label",formatMarketHistorySyncDate(day.date) + ": " + definition.label + ". Day details");
+          info.setAttribute("aria-haspopup","dialog");
+          info.setAttribute("aria-controls","marketCalendarDetail");
+          info.setAttribute("aria-expanded",String(marketCalendarDetailDate === day.date));
+          const hint = document.createElement("span");
+          hint.className = "market-calendar-info-hint";
+          hint.setAttribute("aria-hidden","true");
+          hint.textContent = "Day details";
+          info.append(hint);
+          info.append(icon);
+          info.addEventListener("click", () => openMarketCalendarDay(day.date));
+          wrapper.append(info);
+        }
         if (!daily) {
           const count = document.createElement("span");
           count.className = "market-calendar-candle-count";
@@ -16627,43 +16562,19 @@
           if (marketHistorySyncRunning || !day.available) return;
           marketCalendarRange = selectMarketCalendarRange(marketCalendarRange, day.date);
           syncMarketCalendarDateInputs();
-          marketCalendarSelectedDate = day.date;
+          closeMarketCalendarDay(false);
           marketCalendarPreviewDate = "";
           marketHistorySyncProgress.hidden = true;
           renderMarketCalendarSelection();
-          renderMarketCalendarDay();
         });
         cell.addEventListener("mouseenter", () => previewMarketCalendarDate(day));
         cell.addEventListener("focus", () => previewMarketCalendarDate(day));
-        grid.append(cell);
+        grid.append(wrapper);
       }
       grid.addEventListener("mouseleave", () => { marketCalendarPreviewDate = ""; renderMarketCalendarSelection(); });
       marketHistorySyncCalendar.replaceChildren(grid);
       renderMarketCalendarSelection();
       renderMarketCalendarDay();
-    }
-
-    function renderMarketCalendarDay() {
-      const day = marketCalendarData?.days.find(day => day.date === marketCalendarSelectedDate);
-      marketCalendarDetail.hidden = !day;
-      if (!day) return;
-      const status = marketCalendarStatus(day);
-      marketCalendarDayTitle.textContent = formatMarketHistorySyncDate(day.date);
-      const integrityMessage = day.integrity?.status === "MISMATCH" || day.integrity?.affectedTimeframe === marketHistorySourceTimeframe.value
-        ? day.integrity.message : "";
-      const description = integrityMessage || (day.completedAt
-        ? day.candleCount ? "All source pages saved." : "Source checked; no candles returned."
-        : day.candleCount ? "Full-day coverage has not been confirmed." : "No confirmed full-day load.");
-      const daily = marketHistorySourceTimeframe.value === "ONE_DAY";
-      marketCalendarDaySummary.textContent = `${marketCalendarStatusDefinition(status).label}${daily ? "." : ` · ${day.candleCount} candles stored.`} ${description}`;
-      const formatTime = value => value ? marketHistoryTimeFormatter.format(new Date(value)) : "";
-      marketCalendarDayTimes.textContent = [
-        !daily && day.firstCandleAt ? `First / last candle: ${formatTime(day.firstCandleAt)} / ${formatTime(day.lastCandleAt)} (Moscow)` : "",
-        day.completedAt ? `Completed: ${formatTime(day.completedAt)}` : "",
-        day.lastAttemptAt ? `Last attempt: ${formatTime(day.lastAttemptAt)}` : ""
-      ].filter(Boolean).join(" · ");
-      marketCalendarDayError.hidden = !day.lastError;
-      marketCalendarDayError.textContent = day.lastError ? `Last attempt: ${day.lastError}` : "";
     }
 
     async function loadMarketSourceCalendar(force = false) {
@@ -16717,8 +16628,7 @@
       marketCalendarRange = null;
       marketCalendarRangeError = "";
       marketCalendarPreviewDate = "";
-      marketCalendarSelectedDate = "";
-      marketCalendarDetail.hidden = true;
+      closeMarketCalendarDay(false);
       marketHistorySyncProgress.hidden = true;
       marketCalendarToDate.setCustomValidity("");
       try {
@@ -16746,9 +16656,8 @@
       if (marketHistorySyncRunning || marketHistoryLoading) return;
       marketCalendarRange = null;
       marketCalendarPreviewDate = "";
-      marketCalendarSelectedDate = "";
+      closeMarketCalendarDay(false);
       syncMarketCalendarDateInputs();
-      marketCalendarDetail.hidden = true;
       marketHistorySyncProgress.hidden = true;
       renderMarketCalendarSelection();
     }
@@ -16779,7 +16688,7 @@
       marketCalendarSelection.textContent = marketCalendarRangeError || `${dates.length} ${dates.length === 1 ? "day" : "days"} selected`;
       const preview = marketCalendarRange?.choosingEnd && marketCalendarPreviewDate
         ? selectMarketCalendarRange(marketCalendarRange, marketCalendarPreviewDate) : null;
-      for (const cell of marketHistorySyncCalendar.querySelectorAll("button")) {
+      for (const cell of marketHistorySyncCalendar.querySelectorAll("[data-market-history-sync-date]")) {
         const date = cell.dataset.marketHistorySyncDate;
         const selected = Boolean(marketCalendarRange && date >= marketCalendarRange.start && date <= marketCalendarRange.end);
         cell.setAttribute("aria-pressed", String(selected));
@@ -16861,7 +16770,7 @@
     marketHistorySyncForm.addEventListener("submit", loadSelectedMarketCalendarRange);
     function changeMarketSourceCalendarContext() {
       marketCalendarData = null;
-      marketCalendarSelectedDate = "";
+      closeMarketCalendarDay(false);
       marketCalendarPreviewDate = "";
       marketHistorySyncProgress.hidden = true;
       const earliestMonth = marketCalendarEarliestDate().slice(0,7);
@@ -16870,6 +16779,155 @@
     }
     marketHistorySyncInstrument.addEventListener("change", changeMarketSourceCalendarContext);
     marketHistorySourceTimeframe.addEventListener("change", changeMarketSourceCalendarContext);
+    function marketCalendarDayDetails(day, timeframe, status) {
+      const daily = timeframe === "ONE_DAY";
+      const integrity = day.integrity || {};
+      const rows = [];
+      const stamp = value => new Intl.DateTimeFormat("en-GB", {timeZone:"Europe/Moscow",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(value));
+      const time = value => new Intl.DateTimeFormat("en-GB", {timeZone:"Europe/Moscow",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(value));
+      let message = "";
+      if (status === "LOADING") message = "Loading this day from MOEX ISS…";
+      else if (integrity.status === "MISMATCH") {
+        message = "Minute and daily Open/Close values do not match.";
+        if (integrity.dailyOpen !== undefined) {
+          rows.push(["Daily Open / Close",integrity.dailyOpen + " / " + integrity.dailyClose]);
+          rows.push(["Minute Open / Close",integrity.firstMinuteOpen + " / " + integrity.lastMinuteClose]);
+        } else message = integrity.message || message;
+      } else if (integrity.affectedTimeframe === timeframe) {
+        message = integrity.status === "MISSING_DAILY"
+          ? "MOEX ISS returned no daily candle, although minute candles exist."
+          : "MOEX ISS returned no minute candles, although a daily candle exists.";
+      } else if (day.lastError && status === "ERROR") {
+        message = "Could not load this day. Select it in the calendar to retry.";
+        if (day.lastError.startsWith("MOEX_ISS_REQUEST_FAILED")) message = "Could not retrieve data from MOEX ISS. Check your connection and retry this day.";
+        if (day.lastError.startsWith("MOEX_ISS_INVALID_RESPONSE")) message = "MOEX ISS returned an invalid response. Retry this day later.";
+      } else if (day.lastError && day.completedAt) message = "Saved data is available, but the last loading attempt failed.";
+      else if (day.completedAt && !day.candleCount) message = "MOEX ISS returned no candles for this day.";
+      else if (!day.completedAt) message = day.candleCount
+        ? "Stored candles exist, but this day has not been fully loaded. Select it in the calendar to load it."
+        : "This day has not been loaded. Select it in the calendar to load it.";
+      if (!daily && day.firstCandleAt) {
+        rows.push(["First candle starts",time(day.firstCandleAt)]);
+        rows.push(["Last candle starts",time(day.lastCandleAt)]);
+      }
+      if (day.completedAt) rows.push(["Loaded at",stamp(day.completedAt)]);
+      // A successful load needs no second timestamp. Failed attempts retain their start time.
+      if (day.lastAttemptAt && (day.lastError || !day.completedAt)) rows.push(["Last attempt",stamp(day.lastAttemptAt)]);
+      return {message,rows,technicalError:day.lastError || ""};
+    }
+
+    const marketCalendarDetailClose = document.getElementById("marketCalendarDetailClose");
+    const marketCalendarDayContext = document.getElementById("marketCalendarDayContext");
+    const marketCalendarDayStatus = document.getElementById("marketCalendarDayStatus");
+    const marketCalendarDayErrorDetails = document.getElementById("marketCalendarDayErrorDetails");
+    let marketCalendarDetailDate = "";
+
+    function marketCalendarDetailAnchor() {
+      return marketHistorySyncCalendar.querySelector('[data-market-calendar-info-date="' + marketCalendarDetailDate + '"]');
+    }
+
+    function closeMarketCalendarDay(restoreFocus = true) {
+      const anchor = marketCalendarDetailDate ? marketCalendarDetailAnchor() : null;
+      marketCalendarDetailDate = "";
+      if (marketCalendarDetail.matches(":popover-open")) marketCalendarDetail.hidePopover();
+      anchor?.setAttribute("aria-expanded","false");
+      if (restoreFocus && anchor) window.requestAnimationFrame(() => {
+        if (!marketCalendarDetailDate && anchor.isConnected) anchor.focus({preventScroll:true});
+      });
+    }
+
+    function openMarketCalendarDay(date) {
+      if (marketCalendarDetailDate === date && marketCalendarDetail.matches(":popover-open")) {
+        closeMarketCalendarDay();
+        return;
+      }
+      closeMarketCalendarDay(false);
+      marketCalendarDetailDate = date;
+      marketCalendarPreviewDate = "";
+      renderMarketCalendarSelection();
+      marketCalendarDayErrorDetails.open = false;
+      renderMarketCalendarDay();
+      const anchor = marketCalendarDetailAnchor();
+      if (!anchor) return;
+      if (typeof hideAppTooltip === "function") hideAppTooltip();
+      marketCalendarDetail.showPopover();
+      positionMarketCalendarDay();
+      marketCalendarDayTitle.focus({preventScroll:true});
+    }
+
+    function renderMarketCalendarDay() {
+      if (!marketCalendarDetailDate) return;
+      const day = marketCalendarData?.days.find(day => day.date === marketCalendarDetailDate);
+      const anchor = marketCalendarDetailAnchor();
+      if (!day || !anchor) { closeMarketCalendarDay(false); return; }
+      const status = marketCalendarStatus(day);
+      const definition = marketCalendarStatusDefinition(status);
+      const content = marketCalendarDayDetails(day, marketHistorySourceTimeframe.value, status);
+      marketCalendarDayTitle.textContent = formatMarketHistorySyncDate(day.date);
+      marketCalendarDayContext.textContent = marketHistorySyncInstrument.selectedOptions[0].textContent + " · "
+        + (marketHistorySourceTimeframe.value === "ONE_DAY" ? "1 day" : "1 min") + " · MOEX ISS";
+      marketCalendarDayStatus.textContent = definition.label;
+      marketCalendarDayStatus.className = "market-calendar-detail-status is-" + definition.className;
+      marketCalendarDaySummary.textContent = content.message;
+      marketCalendarDaySummary.hidden = !content.message;
+      marketCalendarDayTimes.replaceChildren();
+      for (const [label,value] of content.rows) {
+        const term = document.createElement("dt"), description = document.createElement("dd");
+        term.textContent = label; description.textContent = value;
+        marketCalendarDayTimes.append(term,description);
+      }
+      marketCalendarDayTimes.hidden = !content.rows.length;
+      marketCalendarDayErrorDetails.hidden = !content.technicalError;
+      marketCalendarDayError.textContent = content.technicalError;
+      anchor.setAttribute("aria-expanded","true");
+      if (marketCalendarDetail.matches(":popover-open")) positionMarketCalendarDay();
+    }
+
+    function positionMarketCalendarDay() {
+      if (!marketCalendarDetail.matches(":popover-open")) return;
+      const anchor = marketCalendarDetailAnchor();
+      if (!anchor) { closeMarketCalendarDay(false); return; }
+      const rect = anchor.getBoundingClientRect();
+      const view = window.visualViewport;
+      const left = view?.offsetLeft || 0, top = view?.offsetTop || 0;
+      const width = view?.width || window.innerWidth, height = view?.height || window.innerHeight;
+      const pad = 12, gap = 8;
+      if (rect.bottom < top || rect.top > top+height) { closeMarketCalendarDay(false); return; }
+      marketCalendarDetail.style.width = Math.min(360,width-2*pad) + "px";
+      marketCalendarDetail.style.maxHeight = Math.max(80,height-2*pad) + "px";
+      const box = marketCalendarDetail.getBoundingClientRect();
+      let x = rect.right+gap, y = rect.top;
+      if (x+box.width > left+width-pad) {
+        x = rect.left-box.width-gap;
+        if (x < left+pad) { x = rect.right-box.width; y = rect.bottom+gap; }
+      }
+      x = Math.max(left+pad,Math.min(x,left+width-pad-box.width));
+      y = Math.max(top+pad,Math.min(y,top+height-pad-box.height));
+      marketCalendarDetail.style.left = x + "px";
+      marketCalendarDetail.style.top = y + "px";
+    }
+
+    marketCalendarDetailClose.addEventListener("click", () => closeMarketCalendarDay());
+    marketCalendarDetail.addEventListener("toggle", event => {
+      if (event.newState === "closed" && !marketCalendarDetail.matches(":popover-open")) closeMarketCalendarDay(false);
+    });
+    marketCalendarDayErrorDetails.addEventListener("toggle", positionMarketCalendarDay);
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && marketCalendarDetail.matches(":popover-open")) {
+        event.preventDefault(); closeMarketCalendarDay();
+      }
+    });
+    document.addEventListener("focusin", event => {
+      if (marketCalendarDetail.matches(":popover-open") && !marketCalendarDetail.contains(event.target)
+          && event.target !== marketCalendarDetailAnchor()) closeMarketCalendarDay(false);
+    });
+    window.addEventListener("hashchange", () => closeMarketCalendarDay(false));
+    window.addEventListener("resize", positionMarketCalendarDay);
+    window.addEventListener("scroll", event => {
+      if (!marketCalendarDetail.contains(event.target)) positionMarketCalendarDay();
+    }, true);
+    window.visualViewport?.addEventListener("resize",positionMarketCalendarDay);
+    window.visualViewport?.addEventListener("scroll",positionMarketCalendarDay);
     function databaseTableSection(tableName) {
       const sectionId = DATABASE_TABLE_SECTION_ID_BY_TABLE.get(tableName) || "other";
       return DATABASE_TABLE_SECTION_BY_ID.get(sectionId);
@@ -21536,10 +21594,10 @@
       const currentHash = String(hash || "").trim();
       const heading = (selector, text) => ({ selector, text });
       if (currentHash === "#trade-intake:messages") {
-        return heading("#tradeIntakeMessagesPage h1", "Trade Message Registry");
+        return heading("#tradeIntakeMessagesPage h1", "Trade Notification Registry");
       }
       if (/^#trade-intake(?::contract)?$/.test(currentHash)) {
-        return heading("#tradeContractPage h1", "Trade Message Contract");
+        return heading("#tradeContractPage h1", "Trade Notification Contract");
       }
       if (isPositionManagementSettingsRoute(currentHash)) {
         return heading("#positionManagementSettingsPage h1", "Position Management Settings");

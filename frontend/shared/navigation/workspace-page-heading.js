@@ -2,10 +2,10 @@
       const currentHash = String(hash || "").trim();
       const heading = (selector, text) => ({ selector, text });
       if (currentHash === "#trade-intake:messages") {
-        return heading("#tradeIntakeMessagesPage h1", "Trade Message Registry");
+        return heading("#tradeIntakeMessagesPage h1", "Trade Notification Registry");
       }
       if (/^#trade-intake(?::contract)?$/.test(currentHash)) {
-        return heading("#tradeContractPage h1", "Trade Message Contract");
+        return heading("#tradeContractPage h1", "Trade Notification Contract");
       }
       if (isPositionManagementSettingsRoute(currentHash)) {
         return heading("#positionManagementSettingsPage h1", "Position Management Settings");

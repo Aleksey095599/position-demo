@@ -1,7 +1,6 @@
 "use strict";
 
 const REQUIRED_METHODS = Object.freeze([
-  "upsertAll",
   "findByPeriod",
   "findLatest"
 ]);

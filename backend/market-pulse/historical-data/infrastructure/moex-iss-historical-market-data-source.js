@@ -6,20 +6,11 @@ const {
 const {
   createCandle
 } = require("../domain/candle");
-const {
-  aggregateCandles
-} = require("../domain/aggregate-candles");
 
 const DEFAULT_BASE_URL = "https://iss.moex.com";
 const DEFAULT_REQUEST_TIMEOUT_MS = 10000;
 const MOEX_ISS_PAGE_SIZE = 500;
 const MOEX_TIME_ZONE = "Europe/Moscow";
-const BOUNDED_TIMEFRAMES = new Set([
-  CandleTimeframe.ONE_MINUTE,
-  CandleTimeframe.FIVE_MINUTES,
-  CandleTimeframe.FIFTEEN_MINUTES,
-  CandleTimeframe.ONE_DAY
-]);
 const NATIVE_INTERVAL_BY_TIMEFRAME = new Map([
   [CandleTimeframe.ONE_MINUTE, "1"],
   [CandleTimeframe.ONE_DAY, "24"]
@@ -320,35 +311,6 @@ class MoexIssHistoricalMarketDataSource {
     });
   }
 
-  async loadCandles(query) {
-    if (!BOUNDED_TIMEFRAMES.has(query.timeframe)) {
-      throw sourceError(
-        "MOEX_ISS_UNSUPPORTED_CANDLE_TIMEFRAME",
-        "MOEX ISS data source currently supports one-, five-, fifteen-minute, and one-day Candles."
-      );
-    }
-
-    const interval = NATIVE_INTERVAL_BY_TIMEFRAME.get(query.timeframe) || "1";
-    const page = await this.#requestCandlePage(query, { interval, start: 0 });
-
-    if (page.rowCount >= MOEX_ISS_PAGE_SIZE) {
-      throw sourceError(
-        "MOEX_ISS_RESULT_LIMIT_REACHED",
-        "MOEX ISS returned 500 source Candles. Narrow the requested period."
-      );
-    }
-
-    if (query.timeframe === CandleTimeframe.ONE_DAY) {
-      return Object.freeze(sourceCandles(page.responseBody));
-    }
-
-    return aggregateCandles({
-      candles: sourceCandles(page.responseBody),
-      timeframe: query.timeframe,
-      from: query.from,
-      till: query.till
-    });
-  }
 }
 
 module.exports = {

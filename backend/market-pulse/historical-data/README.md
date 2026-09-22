@@ -37,60 +37,12 @@ range in one Source Candle Loading panel. The shared selection controls both
 loading and the calendar; loading, clearing, and refreshing actions sit next
 to the calendar navigation.
 
-`createHistoricalCandleBackfillPlan(...)` splits minute history into Moscow
-calendar days and daily history into one-year ranges. A
-`BackfillHistoricalCandleRangeUseCase` loads one range page by page and keeps at
-least two seconds between MOEX requests by default. Candles and successful
-half-open coverage `[from, till)` are persisted atomically. Empty trading days
-are coverage too, so a resume does not request them again.
-
-`BackfillHistoricalCandlesUseCase` is the bounded coordinator. It processes one
-previously uncovered range by default (up to 50 only when explicitly requested)
-and safely resumes from `moex_iss_minute_candle_load_days / moex_iss_day_candle_load_result`. It is deliberately not
-connected to an automatic timer or startup hook.
-
-The server exposes two deliberately bounded operations:
-
-- `POST /api/v1/market-pulse/historical-candles/backfill/step` with the exact
-  body `{ "instrumentId": "CNYRUB_TOM" }` loads at most one uncovered range;
-- `GET /api/v1/market-pulse/historical-candles/backfill/status?instrumentId=CNYRUB_TOM`
-  reads progress from SQLite without calling MOEX ISS.
-
-The step operation shares the existing in-flight and cooldown guard with the
-bounded Historical Data requests. It cannot run in parallel with them, and the
-cooldown is extended from request completion. There is no automatic loop.
-
-## Manual minute-candle synchronization
-
-The legacy manual synchronization API supports an explicit workflow for the
-`ONE_MINUTE` source anchor. The operator selects only `fromDate`; the server
-owns the upper boundary and always stops at the start of the current Moscow
-calendar day. The current trading day is therefore outside this historical
-workflow. A command is bounded to 366 closed days so an accidental ancient date
-cannot create an unbounded request queue.
-
-The workflow uses two endpoints:
-
-- `GET /api/v1/market-pulse/historical-candles/manual-sync/plan` with exactly
-  `instrumentId` and `fromDate=YYYY-MM-DD` reads persisted coverage and returns
-  one calendar entry for every day through yesterday;
-- `POST /api/v1/market-pulse/historical-candles/manual-sync/step` with the exact
-  body `{ "instrumentId": "CNYRUB_TOM", "fromDate": "YYYY-MM-DD" }` processes
-  at most the oldest uncovered day and returns the updated plan.
-
-Clients of this legacy API call the step endpoint sequentially. It never starts the next day
-before the previous day completes and stops on the first error. A day is loaded
-from MOEX ISS in paged batches, with the existing two-second source pacing.
-Only after every page succeeds are the sorted source Candles and their coverage
-range persisted atomically. An empty day is recorded as successfully checked,
-which prevents weekends and exchange holidays from being requested again.
-The range loader also stops after ten source pages, rather than continuing an
-unexpectedly non-terminating upstream pagination sequence.
-
-The calendar is a progress view, not a second source of truth. Grey, blue,
-green, muted-green, and red cells represent pending, active, newly completed,
-previously covered, and failed days respectively. Re-running the same command
-continues from the first day that has no persisted coverage.
+Source loading is available only through the Data Management calendar API.
+The shared paged loader retrieves all pages of a complete Moscow day, keeping
+at least two seconds between source requests and stopping after ten pages.
+Candles and the successful day result are committed atomically; empty days
+are successful loads too. Errors preserve previously stored data and record
+the failed attempt separately.
 
 ## Reads
 
@@ -101,9 +53,10 @@ Monday; months start on the first day. Missing trading periods do not produce
 synthetic Candles. Every result also carries `coverageComplete`, so an unloaded
 gap cannot silently look like a market closure.
 
-The current UI still uses the bounded explicit
-`POST /api/v1/market-pulse/historical-candles/sync` flow for five- and
-fifteen-minute display. It does not poll and does not start the bulk backfill.
+Charts retains its form for a later redesign. Its loading button is disabled;
+it makes no source requests and does not write candles. The old direct-load,
+sync, backfill and manual-sync APIs and their coordinators have been removed.
+Stored-candle reads and aggregation remain available as application/domain code.
 
 ## Source Candles calendar
 
@@ -130,7 +83,6 @@ previously saved minutes can be checked and missing daily data can be retried.
 The server skips confirmed source ranges; days run sequentially and a source
 request error stops the batch without reverting previously saved candles.
 From date / To date inputs stay synchronized with the calendar selection.
-The legacy manual-sync endpoints remain available but are not used by this UI.
 Loading uses a rotating Material Symbols indicator; reduced-motion preferences
 disable rotation while retaining the loading icon and text.
 
@@ -138,7 +90,9 @@ The minute day table has one row per instrument_id and load_date, with completed
 last_attempt_at, and last_error. Candle counts and first/last timestamps are
 computed from source rows rather than duplicated. All pages of a day and its
 successful completion are saved atomically; failures persist without committing
-a partial page batch. Source reads from Charts can still create unconfirmed days.
+a partial page batch. There is no PARTIAL / Unconfirmed calendar status.
+Existing candles without a completed day result remain Not loaded and can be
+loaded through the calendar; counts alone never confirm successful loading.
 A successful empty response is a completed day with zero candles. COMPLETED means
 all source pages were saved; it does not certify uninterrupted minute trading.
 No fixed 1,440-candle requirement or gap-quality inference is applied. A later
@@ -219,3 +173,21 @@ legacy_market_candle_load_ranges (or legacy_market_candles for older databases).
 Only fully covered Moscow days become completed day records; partial boundary
 coverage remains archived and is not treated as a confirmed day. Unsupported
 source data or conflicting destination rows abort the copy without losing data.
+
+Minute load results use `moex_iss_minute_candle_load_result`, matching the day
+load-result naming. Startup renames the previous `moex_iss_minute_candle_load_days`
+table before applying the schema, preserving all stored results and constraints.
+
+## Day details
+
+Calendar dates select the loading range. A separate status button opens a
+non-modal day-details popover without changing that selection. The card stays
+inside the viewport, closes on Escape, outside interaction, or context changes,
+and returns keyboard focus to its status button when explicitly closed.
+Successful loads show candle start times and Loaded at; errors show a readable
+explanation and Last attempt, with the raw error available under Technical details.
+Integrity warnings show daily and minute Open/Close values side by side.
+Counts remain in minute cells; there is no persistent details block below the grid.
+For new tracked loads, last_attempt_at records the start of the source loading
+attempt on both success and failure; completed_at records successful completion.
+Existing timestamps are preserved, and skipped loads do not change either field.

@@ -128,6 +128,9 @@ class BackfillHistoricalCandleRangeUseCase {
   async execute(query, { retryEmptyRange = false } = {}) {
     const normalized = createHistoricalCandlesQuery(query);
     const completeDays = [normalized.from, normalized.till].every(value => (Date.parse(value) + 10800000) % 86400000 === 0);
+    if (!completeDays) {
+      throw useCaseError("INVALID_SOURCE_CANDLE_CALENDAR_REQUEST", "Source loading requires complete Moscow calendar days.");
+    }
     const reloadEmpty = retryEmptyRange && completeDays && Date.parse(normalized.till)-Date.parse(normalized.from) === 86400000
       && (await this.marketSourceCandleRepository.findByPeriod(normalized)).length === 0;
     const tracked = (normalized.timeframe === CandleTimeframe.ONE_MINUTE
@@ -139,7 +142,7 @@ class BackfillHistoricalCandleRangeUseCase {
     const attemptedAt = new Date(this.now()).toISOString();
     await this.marketSourceCandleRepository.recordDayAttempt({...normalized,attemptedAt});
     try {
-      return await this.loadRange(normalized,{reloadEmpty});
+      return await this.loadRange(normalized,{reloadEmpty,attemptedAt});
     } catch (error) {
       await this.marketSourceCandleRepository.recordDayAttempt({
         ...normalized,attemptedAt,error: error.code ? error.code + ": " + error.message : error.message
@@ -148,7 +151,7 @@ class BackfillHistoricalCandleRangeUseCase {
     }
   }
 
-  async loadRange(query, { reloadEmpty = false } = {}) {
+  async loadRange(query, { reloadEmpty = false, attemptedAt } = {}) {
     const normalizedQuery = createHistoricalCandlesQuery(query);
 
     if (!ANCHOR_TIMEFRAMES.has(normalizedQuery.timeframe)) {
@@ -228,7 +231,8 @@ class BackfillHistoricalCandleRangeUseCase {
       ...normalizedQuery,
       candles,
       dataSource: "MOEX_ISS",
-      loadedAt: new Date(loadedAtTimestamp).toISOString()
+      loadedAt: new Date(loadedAtTimestamp).toISOString(),
+      ...(attemptedAt ? { attemptedAt } : {})
     });
 
     return Object.freeze({

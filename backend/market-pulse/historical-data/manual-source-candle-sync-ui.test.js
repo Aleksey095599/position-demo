@@ -39,7 +39,7 @@ test("manual inputs update calendar selection and clearing a date prevents stale
     return elements.get(id);
   };
   const context = vm.createContext({
-    Date,
+    Date, closeMarketCalendarDay() {},
     document: { getElementById: element },
     marketHistorySyncYesterday: () => "2026-09-19",
     marketHistorySyncRunning: false,
@@ -207,20 +207,28 @@ test("daily range loading uses daily coverage and preserves the timeframe on eve
 
 function calendarUi() {
   class Element {
-    constructor() { this.value=""; this.children=[]; this.handlers={}; this.dataset={}; this.className=""; this.attributes={}; this.classList={toggle(){}}; }
+    constructor() { this.textContent=""; this.style={}; this.selectedOptions=[{textContent:"CNY/RUB TOM"}]; this.value=""; this.children=[]; this.handlers={}; this.dataset={}; this.className=""; this.attributes={}; this.classList={toggle(){}}; }
     addEventListener(type,handler) { this.handlers[type]=handler; }
     setCustomValidity(message) { this.validationMessage=message; }
     setAttribute(name,value) { this.attributes[name]=value; }
     append(...children) { this.children.push(...children); }
     replaceChildren(...children) { this.children=children; }
-    querySelectorAll() { return this.children.flatMap(child=>[child,...child.querySelectorAll()]); }
+    querySelectorAll(selector) { const all=this.children.flatMap(child=>[child,...child.querySelectorAll()]); return selector === "[data-market-history-sync-date]" ? all.filter(x=>x.dataset.marketHistorySyncDate) : all; }
+    querySelector(selector) { return this.querySelectorAll().find(x=>x.dataset.marketCalendarInfoDate===selector.split('"')[1]); }
+    matches() { return Boolean(this.open); }
+    showPopover() { this.open=true; }
+    hidePopover() { this.open=false; }
+    contains() { return false; }
+    focus() {}
+    getBoundingClientRect() { return {top:100,bottom:130,left:100,right:130,width:360,height:250}; }
   }
   const elements = new Map();
   const element = id => { if(!elements.has(id)) elements.set(id,new Element()); return elements.get(id); };
   element("instrument").value=instrumentId;
   element("marketHistorySourceTimeframe").value="ONE_MINUTE";
   const context = vm.createContext({Date,URLSearchParams,
-    document:{getElementById:element,createElement:()=>new Element()},
+    document:{getElementById:element,createElement:()=>new Element(),addEventListener(){}},
+    window:{addEventListener(){},requestAnimationFrame(callback){callback();},innerWidth:1440,innerHeight:900},
     marketHistorySyncYesterday:()=>"2026-09-19",marketHistorySyncRunning:false,marketHistoryLoading:false,marketHistorySyncActiveDate:"",
     marketHistorySyncButton:element("load"),marketHistorySyncCalendar:element("calendar"),marketHistorySyncProgress:element("progress"),
     marketHistorySyncForm:element("form"),marketHistorySyncInstrument:element("instrument"),MARKET_HISTORY_SYNC_WEEKDAYS:["MON","TUE","WED","THU","FRI","SAT","SUN"],
@@ -229,6 +237,7 @@ function calendarUi() {
   });
   vm.runInContext(script,context);
   vm.runInContext(fs.readFileSync(path.join(root,"frontend/features/market-pulse/market-source-calendar.js"),"utf8"),context);
+  vm.runInContext(fs.readFileSync(path.join(root,"frontend/features/market-pulse/market-calendar-day-details.js"),"utf8"),context);
   return {context,element};
 }
 function calendarResponse(timeframe, instrument=instrumentId) {
@@ -315,7 +324,7 @@ test("integrity warnings render in both timeframe calendars and explain mismatch
     const cell=element("calendar").querySelectorAll().find(node=>node.dataset.marketHistorySyncDate);
     assert.match(cell.className,/is-integrity-warning/);
     assert.match(cell.attributes["aria-label"],/Integrity warning/);
-    cell.handlers.click();
+    element("calendar").querySelectorAll().find(node=>node.dataset.marketCalendarInfoDate).handlers.click();
     assert.match(element("marketCalendarDaySummary").textContent,/daily 12 \/ 13; minutes 12 \/ 12.9/);
   }
 });
@@ -330,6 +339,6 @@ test("missing source data renders an error and a specific explanation",async()=>
   await context.loadMarketSourceCalendar();
   const cell=element("calendar").querySelectorAll().find(node=>node.dataset.marketHistorySyncDate);
   assert.match(cell.className,/is-error/);
-  cell.handlers.click();
-  assert.match(element("marketCalendarDaySummary").textContent,/no candle while minute candles exist/);
+  element("calendar").querySelectorAll().find(node=>node.dataset.marketCalendarInfoDate).handlers.click();
+  assert.match(element("marketCalendarDaySummary").textContent,/no daily candle, although minute candles exist/);
 });

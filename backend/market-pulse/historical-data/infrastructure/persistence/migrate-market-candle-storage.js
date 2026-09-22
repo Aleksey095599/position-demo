@@ -29,7 +29,7 @@ function migrateMarketCandleStorage(db) {
       db.exec("ALTER TABLE market_aggregated_candles RENAME TO legacy_market_aggregated_candles");
     }
     if (tableExists(db, "market_candle_load_ranges")) {
-      const insert = db.prepare(`INSERT INTO moex_iss_minute_candle_load_days
+      const insert = db.prepare(`INSERT INTO moex_iss_minute_candle_load_result
         (instrument_id,load_date,completed_at,last_attempt_at) VALUES (?,?,?,?)
         ON CONFLICT (instrument_id,load_date) DO UPDATE SET
         completed_at=MAX(completed_at,excluded.completed_at),last_attempt_at=MAX(last_attempt_at,excluded.last_attempt_at)`);

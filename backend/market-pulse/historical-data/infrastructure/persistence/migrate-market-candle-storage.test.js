@@ -24,14 +24,14 @@ test("copies minutes and days separately, retains legacy rows, and is idempotent
   for(const name of ['moex_iss_minute_candles','moex_iss_day_candles']) assert.equal(db.prepare(`SELECT COUNT(*) n FROM ${name}`).get().n,1);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM moex_iss_day_candle_load_result").get().n,364);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM legacy_market_source_candles").get().n,2);
-  assert.deepEqual(db.prepare("SELECT load_date FROM moex_iss_minute_candle_load_days ORDER BY load_date").all().map(x=>x.load_date),['2026-09-14','2026-09-15']);
+  assert.deepEqual(db.prepare("SELECT load_date FROM moex_iss_minute_candle_load_result ORDER BY load_date").all().map(x=>x.load_date),['2026-09-14','2026-09-15']);
   assert.equal(migrateMarketCandleStorage(db),false);
 });
 test("migration leaves partial boundary days unconfirmed and preserves original coverage",t=>{
   const db=setup(t);
   db.exec("INSERT INTO market_candle_load_ranges VALUES ('CNYRUB_TOM','ONE_MINUTE','2026-09-13T22:00:00.000Z','2026-09-16T20:00:00.000Z','2026-09-17T09:00:00.000Z')");
   migrateMarketCandleStorage(db);
-  assert.deepEqual(db.prepare("SELECT load_date FROM moex_iss_minute_candle_load_days").all().map(x=>x.load_date),['2026-09-15']);
+  assert.deepEqual(db.prepare("SELECT load_date FROM moex_iss_minute_candle_load_result").all().map(x=>x.load_date),['2026-09-15']);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM legacy_market_candle_load_ranges").get().n,1);
 });
 test("unsupported source data rolls back without removing any legacy data",t=>{

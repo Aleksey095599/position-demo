@@ -85,37 +85,13 @@ test("places Market Pulse Candle storage in a dedicated Database section", () =>
   assert.match(marketPulseSection[0], /icon: "monitoring"/);
   assert.match(marketPulseSection[1], /"moex_iss_minute_candles"/);
   assert.match(marketPulseSection[1], /"moex_iss_aggregated_candles"/);
-  assert.match(marketPulseSection[1], /"moex_iss_minute_candle_load_days"/);
+  assert.match(marketPulseSection[1], /"moex_iss_minute_candle_load_result"/);
   assert.match(marketPulseSection[1], /"moex_iss_day_candles"/);
   assert.match(marketPulseSection[1], /"moex_iss_day_candle_load_result"/);
   assert.doesNotMatch(marketPulseSection[1], /moex_iss_daily_/);
   assert.ok(demoGenerationSection);
   assert.match(demoGenerationSection[1], /"market_quote_simulation_settings"/);
   assert.doesNotMatch(demoGenerationSection[1], /"market_(?:source|aggregated)_candles"/);
-});
-
-test("loads Historical Candles only from an explicit form submission", () => {
-  const renderSource = topLevelFunctionSource("renderMarketPage", marketPageScript);
-  const loadSource = topLevelFunctionSource("loadMarketHistoryCandles", marketPageScript);
-
-  assert.match(appScript, /marketHistoryForm\.addEventListener\("submit", loadMarketHistoryCandles\)/);
-  assert.doesNotMatch(renderSource, /demoApiRequest|fetch\(/);
-  assert.match(loadSource, /demoApiRequest\(/);
-  assert.equal((loadSource.match(/demoApiRequest\(/g) || []).length, 1);
-  assert.match(loadSource, /"\/api\/v1\/market-pulse\/historical-candles\/sync"/);
-  assert.match(loadSource, /method: "POST"/);
-  assert.match(
-    loadSource,
-    /const payload = \{\s*instrumentId: marketHistoryInstrument\.value,\s*timeframe: marketHistoryTimeframe\.value,\s*from: new Date\(fromTimestamp\)\.toISOString\(\),\s*till: new Date\(tillTimestamp\)\.toISOString\(\)\s*};/
-  );
-  assert.match(loadSource, /body: JSON\.stringify\(payload\)/);
-  assert.match(loadSource, /marketHistoryMoscowTimestamp\(marketHistoryFrom\.value\)/);
-  assert.match(loadSource, /marketHistoryMoscowTimestamp\(marketHistoryTill\.value\)/);
-  assert.doesNotMatch(loadSource, /new Date\(marketHistory(?:From|Till)\.value\)/);
-  assert.match(loadSource, /Number\(result\?\.storedMinuteCandleCount\)/);
-  assert.match(loadSource, /closed one-minute candles stored/);
-  assert.doesNotMatch(loadSource, /URLSearchParams|historical-candles\?/);
-  assert.doesNotMatch(loadSource, /setInterval|setTimeout/);
 });
 
 test("interprets Historical data form values in Moscow time", () => {
@@ -151,57 +127,6 @@ test("interprets Historical data form values in Moscow time", () => {
   );
 });
 
-test("wires one MOEX source to the read and storing Historical Candles paths", () => {
-  assert.equal(
-    (serverSource.match(/new MoexIssHistoricalMarketDataSource\(/g) || []).length,
-    1
-  );
-  assert.equal(
-    (serverSource.match(/new SqliteMarketSourceCandleRepository\(\{ database \}\)/g) || []).length,
-    1
-  );
-  assert.match(serverSource, /new SyncOneMinuteCandlesUseCase\(\{[\s\S]*?historicalMarketDataSource,[\s\S]*?marketSourceCandleRepository/);
-  assert.match(serverSource, /new BackfillHistoricalCandleRangeUseCase\(\{[\s\S]*?historicalMarketDataSource,[\s\S]*?marketSourceCandleRepository/);
-  assert.match(
-    serverSource,
-    /method === "POST" && pathname === "\/api\/v1\/market-pulse\/historical-candles\/sync"[\s\S]*?readJsonBody\(request\)[\s\S]*?historicalCandlesApi\.sync\(body\)/
-  );
-  assert.match(
-    serverSource,
-    /method === "POST" && pathname === "\/api\/v1\/market-pulse\/historical-candles\/backfill\/step"[\s\S]*?historicalCandlesApi\.backfillStep\(body\)/
-  );
-  assert.match(
-    serverSource,
-    /method === "GET" && pathname === "\/api\/v1\/market-pulse\/historical-candles\/backfill\/status"[\s\S]*?historicalCandlesApi\.backfillStatus\(url\.searchParams\)/
-  );
-  assert.match(
-    serverSource,
-    /new GetManualHistoricalSourceCandleSyncPlanUseCase\(\{[\s\S]*?marketSourceCandleRepository[\s\S]*?\}\)/
-  );
-  assert.match(
-    serverSource,
-    /new SyncNextManualHistoricalSourceCandleDayUseCase\(\{[\s\S]*?getPlanUseCase: getManualHistoricalSourceCandleSyncPlanUseCase,[\s\S]*?backfillRangeUseCase: backfillHistoricalCandleRangeUseCase/
-  );
-  assert.match(
-    serverSource,
-    /method === "GET" && pathname === "\/api\/v1\/market-pulse\/historical-candles\/manual-sync\/plan"[\s\S]*?historicalCandlesApi\.manualSyncPlan\(url\.searchParams\)/
-  );
-  assert.match(
-    serverSource,
-    /method === "POST" && pathname === "\/api\/v1\/market-pulse\/historical-candles\/manual-sync\/step"[\s\S]*?readJsonBody\(request\)[\s\S]*?historicalCandlesApi\.manualSyncStep\(body\)/
-  );
-});
-
-test("renders remote Candle values without injecting HTML", () => {
-  const loadSource = topLevelFunctionSource("loadMarketHistoryCandles", marketPageScript);
-  const normalizeSource = topLevelFunctionSource("normalizedMarketHistoryCandles", marketPageScript);
-
-  assert.match(normalizeSource, /Number\(candle\?\.open\)/);
-  assert.match(normalizeSource, /every\(Number\.isFinite\)/);
-  assert.doesNotMatch(`${loadSource}\n${normalizeSource}`, /innerHTML|outerHTML|insertAdjacentHTML|eval\(/);
-  assert.match(loadSource, /marketHistorySummary\.textContent/);
-});
-
 test("uses a local licensed Candlestick chart build with attribution", () => {
   assert.match(
     documentHtml,
@@ -211,4 +136,41 @@ test("uses a local licensed Candlestick chart build with attribution", () => {
   assert.match(documentHtml, /Charting by[\s\S]*?https:\/\/www\.tradingview\.com\//);
   assert.match(documentHtml, /rel="noopener noreferrer"/);
   assert.match(appScript, /attributionLogo: true/);
+});
+
+test("Charts keeps its fields but cannot load source candles", () => {
+  assert.match(documentHtml, /id="marketHistoryLoadButton"[^>]*disabled/);
+  assert.match(documentHtml, /id="marketHistoryFrom"/);
+  assert.match(documentHtml, /id="marketHistoryTill"/);
+  const handler = topLevelFunctionSource("loadMarketHistoryCandles", marketPageScript);
+  const context = {marketHistorySummary:{textContent:""},demoApiRequest(){assert.fail("Charts must not request data");}};
+  vm.runInNewContext(handler,context);
+  let prevented = false;
+  context.loadMarketHistoryCandles({preventDefault(){prevented=true;}});
+  assert.equal(prevented,true);
+  assert.match(context.marketHistorySummary.textContent,/Data Management/);
+  assert.doesNotMatch(handler,/demoApiRequest|fetch\(/);
+  assert.doesNotMatch(documentHtml,/Unconfirmed/);
+});
+
+test("only calendar source loading is connected to the server", () => {
+  assert.equal((serverSource.match(/new MoexIssHistoricalMarketDataSource\(/g) || []).length,1);
+  assert.match(serverSource,/new LoadSourceCandleDayUseCase/);
+  assert.doesNotMatch(serverSource,/SyncOneMinuteCandlesUseCase|GetHistoricalCandlesUseCase|SyncNextManualHistoricalSourceCandleDayUseCase|BackfillHistoricalCandlesUseCase/);
+  assert.doesNotMatch(serverSource,/historicalCandlesApi\.(load|sync|backfillStep|backfillStatus|manualSyncPlan|manualSyncStep)\(/);
+});
+
+
+test("Market Pulse still renders Charts and loads only the local calendar on Data Management navigation", () => {
+  let kind="charts",calendarReads=0,chartRenders=0;
+  const context={
+    activeMarketKind:()=>kind,
+    updateMarketVisibility(){},renderMarketCcyOptionRows(){},renderMarketPairOptionRows(){},renderMarketQuoteState(){},
+    initializeMarketHistoryPeriod(){},ensureMarketHistoryChart(){chartRenders++;},
+    loadMarketSourceCalendar(){calendarReads++;},window:{requestAnimationFrame(callback){callback();}},
+    demoApiRequest(){assert.fail("Navigation must not load source candles");}
+  };
+  vm.runInNewContext(topLevelFunctionSource("renderMarketPage",marketPageScript),context);
+  context.renderMarketPage();assert.equal(chartRenders,1);assert.equal(calendarReads,0);
+  kind="data-management";context.renderMarketPage();assert.equal(calendarReads,1);
 });

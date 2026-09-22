@@ -3170,7 +3170,7 @@ END;
 
 CREATE INDEX IF NOT EXISTS idx_moex_iss_day_candles_begin_at ON moex_iss_day_candles (begin_at);
 
-CREATE TABLE IF NOT EXISTS moex_iss_minute_candle_load_days (
+CREATE TABLE IF NOT EXISTS moex_iss_minute_candle_load_result (
     instrument_id TEXT NOT NULL CHECK (length(instrument_id) BETWEEN 1 AND 64 AND instrument_id = trim(instrument_id)),
     load_date TEXT NOT NULL CHECK (length(load_date) = 10 AND load_date GLOB '????-??-??' AND date(load_date, '+0 days') IS NOT NULL AND date(load_date, '+0 days') = load_date),
     completed_at TEXT,
