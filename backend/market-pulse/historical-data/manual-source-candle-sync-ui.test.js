@@ -43,6 +43,7 @@ test("manual inputs update calendar selection and clearing a date prevents stale
     document: { getElementById: element },
     marketHistorySyncYesterday: () => "2026-09-19",
     marketHistorySyncRunning: false,
+    marketHistorySyncActiveDate: "",
     marketHistoryLoading: false,
     marketHistorySyncButton: element("load"),
     marketHistorySyncCalendar: element("calendar"),
@@ -210,6 +211,7 @@ function calendarUi() {
     constructor() { this.textContent=""; this.style={}; this.selectedOptions=[{textContent:"CNY/RUB TOM"}]; this.value=""; this.children=[]; this.handlers={}; this.dataset={}; this.className=""; this.attributes={}; this.classList={toggle(){}}; }
     addEventListener(type,handler) { this.handlers[type]=handler; }
     setCustomValidity(message) { this.validationMessage=message; }
+    reportValidity() { return true; }
     setAttribute(name,value) { this.attributes[name]=value; }
     append(...children) { this.children.push(...children); }
     replaceChildren(...children) { this.children=children; }
@@ -231,6 +233,8 @@ function calendarUi() {
     window:{addEventListener(){},requestAnimationFrame(callback){callback();},innerWidth:1440,innerHeight:900},
     marketHistorySyncYesterday:()=>"2026-09-19",marketHistorySyncRunning:false,marketHistoryLoading:false,marketHistorySyncActiveDate:"",
     marketHistorySyncButton:element("load"),marketHistorySyncCalendar:element("calendar"),marketHistorySyncProgress:element("progress"),
+    marketHistorySyncSummary:element("summary"),marketHistorySyncCount:element("count"),marketHistorySyncProgressBar:element("progressBar"),
+    setMarketStatus() {},
     marketHistorySyncForm:element("form"),marketHistorySyncInstrument:element("instrument"),MARKET_HISTORY_SYNC_WEEKDAYS:["MON","TUE","WED","THU","FRI","SAT","SUN"],
     marketHistorySyncMonthFormatter:{format:date=>date.toISOString().slice(0,7)},formatMarketHistorySyncDate:date=>date,
     marketHistoryTimeFormatter:{format:date=>date.toISOString()}
@@ -238,13 +242,137 @@ function calendarUi() {
   vm.runInContext(script,context);
   vm.runInContext(fs.readFileSync(path.join(root,"frontend/features/market-pulse/market-source-calendar.js"),"utf8"),context);
   vm.runInContext(fs.readFileSync(path.join(root,"frontend/features/market-pulse/market-calendar-day-details.js"),"utf8"),context);
+  context.setMarketHistorySyncRunning = running => {
+    context.marketHistorySyncRunning = running;
+    context.renderMarketSourceCalendar();
+  };
   return {context,element};
 }
+
+function calendarLoadUi(timeframe = "ONE_MINUTE") {
+  const ui = calendarUi();
+  ui.element("marketHistorySourceTimeframe").value = timeframe;
+  const response = calendarResponse(timeframe);
+  response.days = ["2026-09-15","2026-09-16","2026-09-17"].map(date => ({
+    date,available:true,status:"PENDING",completedAt:null,candleCount:0
+  }));
+  vm.runInContext('marketCalendarRange = {start:"2026-09-15",end:"2026-09-17",choosingEnd:false}; syncMarketCalendarDateInputs();',ui.context);
+  return {...ui,response};
+}
+
+test("starting a load replaces selection with a queue and only the active day spins", async () => {
+  const {context,element,response} = calendarLoadUi();
+  const loaded = [];
+  context.demoApiRequest = async (url, options) => {
+    if (!options) return response;
+    const {date} = JSON.parse(options.body);
+    loaded.push(date);
+    assert.equal(vm.runInContext("marketCalendarRange",context),null);
+    assert.equal(element("marketCalendarFromDate").value,"");
+    const cells = element("calendar").querySelectorAll("[data-market-history-sync-date]");
+    assert.equal(cells.filter(cell => cell.className.includes("is-loading")).length,1);
+    for (const cell of cells) {
+      assert.equal(cell.attributes["aria-pressed"],"false");
+      assert.equal(cell.children[1].textContent,cell.dataset.marketHistorySyncDate === date ? "progress_activity"
+        : cell.dataset.marketHistorySyncDate > date ? "schedule" : "check");
+    }
+    Object.assign(response.days.find(day => day.date === date),{status:"COMPLETED",completedAt:"2026-09-20T12:00:00Z",candleCount:600});
+    return {};
+  };
+  await context.loadMarketSourceCalendar();
+  await context.loadSelectedMarketCalendarRange({preventDefault(){}});
+  assert.deepEqual(loaded,response.days.map(day => day.date));
+  assert.equal(vm.runInContext("marketCalendarQueuedDates.size",context),0);
+  assert.equal(vm.runInContext("marketCalendarRange",context),null);
+  assert.equal(context.marketHistorySyncRunning,false);
+});
+
+test("a failed load restores the failed and remaining dates for retry and clears the queue", async () => {
+  const {context,element,response} = calendarLoadUi();
+  const requested = [];
+  context.demoApiRequest = async (url,options) => {
+    if (!options) return response;
+    const {date} = JSON.parse(options.body);
+    requested.push(date);
+    if (date === "2026-09-16") throw new Error("Source unavailable");
+    return {};
+  };
+  await context.loadSelectedMarketCalendarRange({preventDefault(){}});
+  assert.deepEqual(requested,["2026-09-15","2026-09-16"]);
+  assert.equal(element("marketCalendarFromDate").value,"2026-09-16");
+  assert.equal(element("marketCalendarToDate").value,"2026-09-17");
+  assert.equal(vm.runInContext("marketCalendarQueuedDates.size",context),0);
+  assert.equal(context.marketHistorySyncActiveDate,"");
+  assert.equal(element("load").disabled,false);
+});
+
+test("planning failure restores the entire selection before any day is loaded", async () => {
+  const {context,element} = calendarLoadUi();
+  context.demoApiRequest = async () => { throw new Error("Calendar unavailable"); };
+  await context.loadSelectedMarketCalendarRange({preventDefault(){}});
+  assert.equal(element("marketCalendarFromDate").value,"2026-09-15");
+  assert.equal(element("marketCalendarToDate").value,"2026-09-17");
+  assert.equal(vm.runInContext("marketCalendarQueuedDates.size",context),0);
+  assert.equal(context.marketHistorySyncRunning,false);
+});
+
+test("already loaded daily candles leave the queue without source requests", async () => {
+  const {context,response} = calendarLoadUi("ONE_DAY");
+  response.days.forEach(day => Object.assign(day,{status:"COMPLETED",completedAt:"2026-09-20T12:00:00Z",candleCount:1}));
+  context.demoApiRequest = async (url,options) => {
+    assert.equal(options,undefined);
+    return response;
+  };
+  await context.loadSelectedMarketCalendarRange({preventDefault(){}});
+  assert.equal(vm.runInContext("marketCalendarQueuedDates.size",context),0);
+  assert.equal(vm.runInContext("marketCalendarRange",context),null);
+});
 function calendarResponse(timeframe, instrument=instrumentId) {
   return {instrumentId:instrument,timeframe,month:"2026-09",today:"2026-09-20",throughDate:"2026-09-19",
     earliestDate:timeframe==="ONE_DAY"?"2016-09-20":"2025-09-19",
     days:[{date:"2026-09-15",available:true,status:"COMPLETED",completedAt:"2026-09-20T12:00:00Z",candleCount:timeframe==="ONE_DAY"?1:597}]};
 }
+
+test("a separate info icon opens details without selecting dates or showing a hover hint", async () => {
+  const {context,element} = calendarUi();
+  context.demoApiRequest = async () => calendarResponse("ONE_MINUTE");
+  await context.loadMarketSourceCalendar();
+  const nodes = element("calendar").querySelectorAll();
+  const cell = nodes.find(node => node.dataset.marketHistorySyncDate);
+  const info = nodes.find(node => node.dataset.marketCalendarInfoDate);
+  assert.equal(cell.children[1].textContent,"check");
+  assert.equal(cell.children[1].className,"button-icon");
+  assert.equal(info.children.length,1);
+  assert.equal(info.children[0].textContent,"info");
+  assert.equal(info.attributes.title,undefined);
+  assert.equal(cell.children.includes(info),false);
+  info.handlers.click();
+  assert.equal(element("marketCalendarDetail").open,true);
+  assert.equal(vm.runInContext("marketCalendarRange",context),null);
+  cell.handlers.click();
+  assert.equal(element("marketCalendarDetail").open,false);
+  assert.equal(element("marketCalendarFromDate").value,"2026-09-15");
+});
+
+test("unavailable calendar days offer details but cannot be selected", async () => {
+  const {context,element} = calendarUi();
+  context.demoApiRequest = async () => {
+    const response = calendarResponse("ONE_MINUTE");
+    response.days = [{date:"2026-09-20",available:false,status:"UNAVAILABLE",candleCount:0}];
+    return response;
+  };
+  element("marketHistorySourceTimeframe").value = "ONE_MINUTE";
+  await context.loadMarketSourceCalendar();
+  const nodes = element("calendar").querySelectorAll();
+  assert.equal(nodes.some(node => node.className === "market-calendar-candle-count"),false);
+  assert.equal(nodes.some(node => node.className === "market-calendar-candle-caption"),false);
+  assert.doesNotMatch(nodes.find(node => node.dataset.marketHistorySyncDate).attributes["aria-label"],/candles stored/);
+  assert.equal(nodes.find(node => node.dataset.marketHistorySyncDate).disabled,true);
+  nodes.find(node => node.dataset.marketCalendarInfoDate).handlers.click();
+  assert.equal(element("marketCalendarDetail").open,true);
+  assert.match(element("marketCalendarDaySummary").textContent,/outside the available historical loading range/);
+  assert.equal(vm.runInContext("marketCalendarRange",context),null);
+});
 test("daily calendar hides counts and timeframe changes invalidate the cached minute calendar", async () => {
   const {context,element} = calendarUi();
   const requests = [];
@@ -268,6 +396,138 @@ test("daily calendar hides counts and timeframe changes invalidate the cached mi
   assert.equal(element("marketCalendarFromDate").value,"2026-09-15");
   assert.equal(element("marketCalendarToDate").value,"2026-09-15");
 });
+test("refresh keeps the grid and selection intact and avoids duplicate clicks and unchanged redraws", async () => {
+  const {context,element} = calendarUi();
+  context.demoApiRequest = async () => calendarResponse("ONE_MINUTE");
+  await context.loadMarketSourceCalendar();
+  const grid = element("calendar").children[0];
+  grid.querySelectorAll("[data-market-history-sync-date]")[0].handlers.click();
+  const selection = vm.runInContext("JSON.stringify(marketCalendarRange)",context);
+  let release, requests = 0;
+  context.demoApiRequest = () => { requests++; return new Promise(resolve => { release = resolve; }); };
+  const pending = context.loadMarketSourceCalendar(true);
+  assert.equal(element("calendar").children[0],grid);
+  assert.equal(element("marketCalendarMessage").textContent,"");
+  assert.equal(element("marketCalendarRefresh").disabled,true);
+  assert.equal(element("calendar").attributes["aria-busy"],"true");
+  element("marketCalendarRefresh").handlers.click();
+  assert.equal(requests,1);
+  release(calendarResponse("ONE_MINUTE"));
+  await pending;
+  assert.equal(element("calendar").children[0],grid);
+  assert.equal(vm.runInContext("JSON.stringify(marketCalendarRange)",context),selection);
+  assert.equal(element("marketCalendarRefresh").disabled,false);
+  assert.equal(element("calendar").attributes["aria-busy"],"false");
+});
+
+test("refresh applies changed data only after the response arrives", async () => {
+  const {context,element} = calendarUi();
+  context.demoApiRequest = async () => calendarResponse("ONE_MINUTE");
+  await context.loadMarketSourceCalendar();
+  const grid = element("calendar").children[0];
+  let release;
+  context.demoApiRequest = () => new Promise(resolve => { release = resolve; });
+  const pending = context.loadMarketSourceCalendar(true);
+  assert.equal(element("calendar").children[0],grid);
+  const next = calendarResponse("ONE_MINUTE");
+  next.days[0].candleCount = 600;
+  release(next);
+  await pending;
+  assert.notEqual(element("calendar").children[0],grid);
+  assert.equal(element("calendar").querySelectorAll().find(node => node.className === "market-calendar-candle-count").textContent,"600");
+});
+
+test("failed refresh retains the calendar and restores the refresh button", async () => {
+  const {context,element} = calendarUi();
+  context.demoApiRequest = async () => calendarResponse("ONE_MINUTE");
+  await context.loadMarketSourceCalendar();
+  const grid = element("calendar").children[0];
+  context.demoApiRequest = async () => { throw new Error("Connection unavailable"); };
+  await context.loadMarketSourceCalendar(true);
+  assert.equal(element("calendar").children[0],grid);
+  assert.match(element("marketCalendarMessage").textContent,/Connection unavailable/);
+  assert.equal(element("marketCalendarRefresh").disabled,false);
+  assert.equal(element("calendar").attributes["aria-busy"],"false");
+});
+
+test("an obsolete refresh cannot stop the indicator of the newer request", async () => {
+  const {context,element} = calendarUi();
+  const releases = [];
+  context.demoApiRequest = () => new Promise(resolve => { releases.push(resolve); });
+  const old = context.loadMarketSourceCalendar(true);
+  element("marketHistorySourceTimeframe").value = "ONE_DAY";
+  const current = context.loadMarketSourceCalendar(true);
+  releases[0](calendarResponse("ONE_MINUTE"));
+  await old;
+  assert.equal(element("marketCalendarRefresh").disabled,true);
+  assert.equal(element("calendar").attributes["aria-busy"],"true");
+  releases[1](calendarResponse("ONE_DAY"));
+  await current;
+  assert.equal(element("marketCalendarRefresh").disabled,false);
+  assert.equal(element("calendar").attributes["aria-busy"],"false");
+});
+
+test("month navigation retains calendar space while the new month loads", async () => {
+  const {context,element} = calendarUi();
+  context.demoApiRequest = async () => calendarResponse("ONE_MINUTE");
+  await context.loadMarketSourceCalendar();
+  const grid = element("calendar").children[0];
+  let release;
+  context.demoApiRequest = () => new Promise(resolve => { release = resolve; });
+  vm.runInContext('marketCalendarMonthKey="2026-08"',context);
+  const pending = context.loadMarketSourceCalendar(true);
+  assert.equal(element("calendar").children[0],grid);
+  assert.equal(element("calendar").style.visibility,"hidden");
+  assert.equal(element("calendar").inert,true);
+  assert.equal(element("marketCalendarMonth").textContent,"2026-08");
+  const response = calendarResponse("ONE_MINUTE");
+  response.month = "2026-08";
+  response.days[0].date = "2026-08-15";
+  release(response);
+  await pending;
+  assert.equal(element("calendar").style.visibility,"");
+  assert.equal(element("calendar").inert,false);
+  assert.equal(element("calendar").querySelectorAll("[data-market-history-sync-date]")[0].dataset.marketHistorySyncDate,"2026-08-15");
+});
+
+test("four, five and six week months reserve the same 42 day slots", async () => {
+  const {context,element} = calendarUi();
+  for (const timeframe of ["ONE_MINUTE","ONE_DAY"]) {
+    element("marketHistorySourceTimeframe").value = timeframe;
+    for (const month of ["2021-02","2026-09","2026-08"]) {
+      vm.runInContext(`marketCalendarMonthKey="${month}"`,context);
+      const response = calendarResponse(timeframe);
+      response.month = month;
+      const [year,number] = month.split("-").map(Number);
+      const count = new Date(Date.UTC(year,number,0)).getUTCDate();
+      response.days = Array.from({length:count},(_,i) => ({...response.days[0],date:month+"-"+String(i+1).padStart(2,"0")}));
+      context.demoApiRequest = async () => response;
+      await context.loadMarketSourceCalendar(true);
+      assert.equal(element("calendar").children[0].children.length,7+42);
+      assert.equal(element("calendar").querySelectorAll("[data-market-history-sync-date]").length,count);
+    }
+  }
+});
+
+test("returning to the cached month restores its grid even if the response is unchanged", async () => {
+  const {context,element} = calendarUi();
+  context.demoApiRequest = async () => calendarResponse("ONE_MINUTE");
+  await context.loadMarketSourceCalendar();
+  let reject;
+  context.demoApiRequest = () => new Promise((resolve,rejectRequest) => { reject = rejectRequest; });
+  vm.runInContext('marketCalendarMonthKey="2026-08"',context);
+  const old = context.loadMarketSourceCalendar(true);
+  vm.runInContext('marketCalendarMonthKey="2026-09"',context);
+  context.demoApiRequest = async () => calendarResponse("ONE_MINUTE");
+  await context.loadMarketSourceCalendar(true);
+  reject(new Error("Obsolete request failed"));
+  await old;
+  assert.equal(element("calendar").style.visibility,"");
+  assert.equal(element("calendar").inert,false);
+  assert.equal(element("marketCalendarMonth").textContent,"2026-09");
+  assert.equal(element("marketCalendarMessage").textContent,"");
+});
+
 test("late responses cannot replace a different instrument or timeframe calendar", async () => {
   const {context,element} = calendarUi();
   let release;
@@ -323,6 +583,8 @@ test("integrity warnings render in both timeframe calendars and explain mismatch
     await context.loadMarketSourceCalendar(true);
     const cell=element("calendar").querySelectorAll().find(node=>node.dataset.marketHistorySyncDate);
     assert.match(cell.className,/is-integrity-warning/);
+    assert.equal(cell.children[1].textContent,"compare_arrows");
+    assert.equal(cell.children[1].className,"button-icon");
     assert.match(cell.attributes["aria-label"],/Integrity warning/);
     element("calendar").querySelectorAll().find(node=>node.dataset.marketCalendarInfoDate).handlers.click();
     assert.match(element("marketCalendarDaySummary").textContent,/daily 12 \/ 13; minutes 12 \/ 12.9/);
@@ -339,6 +601,41 @@ test("missing source data renders an error and a specific explanation",async()=>
   await context.loadMarketSourceCalendar();
   const cell=element("calendar").querySelectorAll().find(node=>node.dataset.marketHistorySyncDate);
   assert.match(cell.className,/is-error/);
+  assert.equal(cell.children[1].textContent,"priority_high");
+  assert.equal(cell.children[1].className,"button-icon");
   element("calendar").querySelectorAll().find(node=>node.dataset.marketCalendarInfoDate).handlers.click();
   assert.match(element("marketCalendarDaySummary").textContent,/no daily candle, although minute candles exist/);
+});
+
+test("September 21 displays its stored status without a simulated warning in both calendars", async () => {
+  const {context,element} = calendarUi();
+  for (const timeframe of ["ONE_MINUTE","ONE_DAY"]) {
+    element("marketHistorySourceTimeframe").value = timeframe;
+    const response = calendarResponse(timeframe);
+    response.today = "2026-09-22";
+    response.throughDate = "2026-09-21";
+    response.days[0].date = "2026-09-21";
+    const before = JSON.stringify(response);
+    context.demoApiRequest = async (url,options) => {
+      assert.equal(options,undefined);
+      return response;
+    };
+    await context.loadMarketSourceCalendar(true);
+    const cell = element("calendar").querySelectorAll().find(node => node.dataset.marketHistorySyncDate);
+    assert.match(cell.className,/is-completed/);
+    assert.equal(cell.children[1].textContent,"check");
+    assert.doesNotMatch(cell.attributes["aria-label"],/preview/i);
+    element("calendar").querySelectorAll().find(node => node.dataset.marketCalendarInfoDate).handlers.click();
+    assert.equal(element("marketCalendarDayStatus").textContent,"Loaded");
+    assert.doesNotMatch(element("marketCalendarDaySummary").textContent,/preview|simulated/i);
+    assert.equal(JSON.stringify(response),before);
+    vm.runInContext('marketCalendarQueuedDates.add("2026-09-21")',context);
+    assert.equal(context.marketCalendarStatus(response.days[0]),"QUEUED");
+    context.marketHistorySyncActiveDate = "2026-09-21";
+    assert.equal(context.marketCalendarStatus(response.days[0]),"LOADING");
+    context.marketHistorySyncActiveDate = "";
+    vm.runInContext('marketCalendarQueuedDates.clear()',context);
+    assert.equal(context.marketCalendarStatus({...response.days[0],date:"2026-10-21"}),"COMPLETED");
+    assert.equal(context.marketCalendarStatus({...response.days[0],available:false,status:"UNAVAILABLE"}),"UNAVAILABLE");
+  }
 });

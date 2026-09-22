@@ -59,7 +59,7 @@
       let mismatches = 0;
       let notChecked = 0;
       let missingData = 0;
-      await onProgress({ phase: "ready", completed, total: dates.length, skipped, date: "" });
+      await onProgress({ phase: "ready", completed, total: dates.length, skipped, date: "", pendingDates: [...pending] });
       for (const date of pending) {
         await onProgress({ phase: "loading", completed, total: dates.length, skipped, date });
         try {

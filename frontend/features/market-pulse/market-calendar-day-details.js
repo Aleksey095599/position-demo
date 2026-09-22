@@ -5,7 +5,9 @@
       const stamp = value => new Intl.DateTimeFormat("en-GB", {timeZone:"Europe/Moscow",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(value));
       const time = value => new Intl.DateTimeFormat("en-GB", {timeZone:"Europe/Moscow",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(value));
       let message = "";
-      if (status === "LOADING") message = "Loading this day from MOEX ISS…";
+      if (status === "UNAVAILABLE") message = "This day is outside the available historical loading range.";
+      else if (status === "QUEUED") message = "This day is waiting for its turn to be processed.";
+      else if (status === "LOADING") message = "Loading this day from MOEX ISS…";
       else if (integrity.status === "MISMATCH") {
         message = "Minute and daily Open/Close values do not match.";
         if (integrity.dailyOpen !== undefined) {
