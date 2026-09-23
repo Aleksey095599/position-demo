@@ -975,7 +975,6 @@
       return {
         toggle,
         menu,
-        links: Array.from(menu.querySelectorAll("[data-workspace-route]")),
         routes: toggle.dataset.workspaceRoutes.split(/\s+/).filter(Boolean)
       };
     });
@@ -1459,6 +1458,7 @@
         tables: [
           "moex_iss_minute_candles",
           "moex_iss_aggregated_candles",
+          "moex_iss_candle_aggregation_result",
           "moex_iss_minute_candle_load_result",
           "moex_iss_day_candles",
           "moex_iss_day_candle_load_result"

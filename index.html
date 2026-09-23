@@ -20,7 +20,7 @@
         <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
         <span>Batches</span>
       </a>
-      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceMarketPulseToggle" aria-haspopup="menu" aria-controls="workspaceMarketPulseMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceMarketPulseMenu" data-workspace-routes="market-quote-stream market-charts market-data-management">
+      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceMarketPulseToggle" aria-haspopup="menu" aria-controls="workspaceMarketPulseMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceMarketPulseMenu" data-workspace-routes="market-quote-stream market-charts market-source-data market-candle-aggregation">
         <span class="button-icon workspace-nav-icon market-pulse-icon" aria-hidden="true">monitoring</span>
         <span>Market Pulse</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
@@ -78,10 +78,23 @@
       <span class="button-icon workspace-nav-icon" aria-hidden="true">candlestick_chart</span>
       <span>Charts</span>
     </a>
-    <a class="workspace-nav-menu-link" href="#market-pulse:data-management" data-workspace-route="market-data-management" role="menuitem">
+    <button type="button" class="workspace-nav-menu-link workspace-nav-subgroup-toggle" id="workspaceMarketDataToggle"
+      role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="workspaceMarketDataGroup"
+      data-workspace-nav-subgroup-toggle="workspaceMarketDataGroup" data-workspace-routes="market-source-data market-candle-aggregation">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">cloud_sync</span>
       <span>Data Management</span>
-    </a>
+      <span class="button-icon workspace-nav-subgroup-chevron" aria-hidden="true">chevron_right</span>
+    </button>
+    <div class="workspace-nav-subgroup" id="workspaceMarketDataGroup" role="menu" aria-labelledby="workspaceMarketDataToggle" hidden>
+      <a class="workspace-nav-menu-link" href="#market-pulse:source-data" data-workspace-route="market-source-data" role="menuitem">
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">download</span>
+        <span>Source Data</span>
+      </a>
+      <a class="workspace-nav-menu-link" href="#market-pulse:candle-aggregation" data-workspace-route="market-candle-aggregation" role="menuitem">
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">functions</span>
+        <span>Candle Aggregation</span>
+      </a>
+    </div>
   </div>
   <div class="workspace-nav-menu" id="workspaceTradeIntakeMenu" role="menu" aria-label="Trade Intake" data-workspace-nav-menu hidden>
     <a class="workspace-nav-menu-link" href="#trade-intake:contract" data-workspace-route="trade-contract" role="menuitem">
@@ -144,11 +157,11 @@
     </section>
 
     <section class="market-bootstrap-content" aria-label="Market Pulse data">
-      <section class="market-bootstrap-panel market-data-management" data-market-panel="data-management" aria-label="Market data management" hidden>
+      <section class="market-bootstrap-panel market-source-data" data-market-panel="source-data" aria-label="Source data" hidden>
         <div class="market-data-layout">
           <aside class="market-data-sidebar">
             <nav class="market-data-sources" aria-label="Market data sources">
-              <a class="market-data-source is-active" href="#market-pulse:data-management" aria-current="page">MOEX ISS</a>
+              <a class="market-data-source is-active" href="#market-pulse:source-data" aria-current="page">MOEX ISS</a>
             </nav>
           </aside>
           <div class="market-data-content">
@@ -167,13 +180,13 @@
                 </div>
                 <div class="market-source-calendar-body">
                 <form class="market-history-sync-form" id="marketHistorySyncForm">
-                <label class="market-history-field" for="marketHistorySyncInstrument">
+                <label class="market-history-field is-instrument" for="marketHistorySyncInstrument">
                   <span>Instrument</span>
                   <select class="form-select form-select-sm" id="marketHistorySyncInstrument" name="instrumentId" required>
                     <option value="CNYRUB_TOM">CNY/RUB TOM</option>
                   </select>
                 </label>
-                <label class="market-history-field" for="marketHistorySourceTimeframe">
+                <label class="market-history-field is-source-timeframe" for="marketHistorySourceTimeframe">
                   <span>Source Bar Timeframe</span>
                   <select class="form-select form-select-sm" id="marketHistorySourceTimeframe" name="sourceTimeframe">
                     <option value="ONE_MINUTE" selected>1 min</option>
@@ -218,11 +231,12 @@
                       <button class="btn btn-sm btn-outline-secondary with-icon" id="marketCalendarRefresh" type="button"><span class="button-icon" aria-hidden="true">refresh</span><span>Refresh calendar</span></button>
                     </div>
                   </div>
-                  <p id="marketCalendarMessage" class="market-history-section-description" role="status" aria-live="polite"></p>
+                  <p id="marketCalendarMessage" class="market-history-section-description market-calendar-message" role="status" aria-live="polite"></p>
                   <span id="marketCalendarRefreshStatus" class="visually-hidden" role="status" aria-live="polite"></span>
                   <div class="market-history-calendar" id="marketHistorySyncCalendar" aria-label="Saved source candles by day"></div>
                   <div class="market-history-sync-legend" aria-label="Day statuses">
                     <span><span class="button-icon market-history-legend-icon is-pending" aria-hidden="true">remove</span>Not loaded</span>
+                    <span><span class="button-icon market-history-legend-icon is-no-data" aria-hidden="true">block</span>No data</span>
                     <span><span class="button-icon market-history-legend-icon is-integrity-warning" aria-hidden="true">compare_arrows</span>Integrity warning</span>
                     <span><span class="button-icon market-history-legend-icon is-completed" aria-hidden="true">check</span>Loaded</span>
                     <span><span class="button-icon market-history-legend-icon is-error" aria-hidden="true">priority_high</span>Error</span>
@@ -251,10 +265,78 @@
         </div>
       </section>
 
+      <section class="market-bootstrap-panel market-history-panel" data-market-panel="candle-aggregation" aria-label="Candle aggregation" hidden>
+        <div class="market-data-layout">
+          <aside class="market-data-sidebar">
+            <nav class="market-data-sources" aria-label="Candle aggregation data sources">
+              <a class="market-data-source is-active" href="#market-pulse:candle-aggregation" aria-current="page">MOEX ISS</a>
+            </nav>
+          </aside>
+          <div class="market-data-content">
+        <section class="market-history-sync-card semantic-section" id="marketAggregationCalendar" aria-labelledby="marketAggregationTitle">
+          <div class="market-history-sync-header semantic-section-head">
+            <span class="button-icon market-history-sync-header-icon" aria-hidden="true">functions</span>
+            <h2 class="market-history-section-title" id="marketAggregationTitle">Calculate Aggregated Candles</h2>
+          </div>
+          <div class="market-source-calendar-body">
+            <form class="market-history-sync-form" id="marketAggregationForm">
+              <label class="market-history-field is-instrument"><span>Instrument</span><select class="form-select form-select-sm" name="instrumentId"><option value="CNYRUB_TOM">CNY/RUB TOM</option></select></label>
+              <label class="market-history-field"><span>Calculation Timeframe</span><select class="form-select form-select-sm" name="timeframe"><option value="ONE_HOUR">1 hour</option></select></label>
+              <div class="market-history-field is-source-timeframe" role="group" aria-labelledby="marketAggregationSourceTimeframeLabel">
+                <span id="marketAggregationSourceTimeframeLabel">Source Candle Timeframe</span>
+                <span class="market-history-field-value">1 min</span>
+              </div>
+              <label class="market-history-field"><span>From date</span><input class="form-control form-control-sm" name="fromDate" type="date" required></label>
+              <label class="market-history-field"><span>To date</span><input class="form-control form-control-sm" name="toDate" type="date" required></label>
+              <div class="market-calendar-selection"><output data-aggregation-selection aria-live="polite">0 days selected</output></div>
+            </form>
+            <div class="market-source-calendar-toolbar">
+              <div class="market-source-calendar-navigation">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-aggregation-previous aria-label="Previous aggregation month"><span class="button-icon" aria-hidden="true">chevron_left</span></button>
+                <h3 class="market-history-calendar-title" data-aggregation-month aria-live="polite"></h3>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-aggregation-next aria-label="Next aggregation month"><span class="button-icon" aria-hidden="true">chevron_right</span></button>
+              </div>
+              <div class="market-source-calendar-actions">
+                <button class="btn btn-sm btn-primary market-history-sync-button" type="submit" form="marketAggregationForm" data-aggregation-calculate disabled><span class="button-icon" aria-hidden="true">functions</span><span>Calculate Candles</span></button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-aggregation-clear disabled>Clear selection</button>
+                <button class="btn btn-sm btn-outline-secondary with-icon" type="button" data-aggregation-refresh><span class="button-icon" aria-hidden="true">refresh</span><span>Refresh calendar</span></button>
+              </div>
+            </div>
+            <p class="market-history-section-description market-calendar-message" data-aggregation-message role="status" aria-live="polite"></p>
+            <span class="visually-hidden" data-aggregation-refresh-status role="status" aria-live="polite"></span>
+            <div class="market-history-calendar" data-aggregation-grid aria-label="Calculated hourly candles by day"></div>
+            <div class="market-aggregation-legend" aria-label="Aggregation day statuses">
+              <div class="market-history-sync-legend">
+                <span class="market-aggregation-legend-label">Day status</span>
+                <span><span class="button-icon market-history-legend-icon is-pending" aria-hidden="true">remove</span>Not calculated</span>
+                <span><span class="button-icon market-history-legend-icon is-completed" aria-hidden="true">check</span>Calculated</span>
+                <span><span class="button-icon market-history-legend-icon is-no-data" aria-hidden="true">block</span>No data</span>
+                <span><span class="button-icon market-history-legend-icon is-error" aria-hidden="true">priority_high</span>Error</span>
+              </div>
+              <div class="market-history-sync-legend">
+                <span class="market-aggregation-legend-label">Coverage</span>
+                <span><span class="market-aggregation-coverage-dot is-completed" aria-hidden="true"></span>Complete coverage</span>
+                <span><span class="market-aggregation-coverage-dot is-partial" aria-hidden="true"></span>Partial coverage · 50–100%</span>
+                <span><span class="market-aggregation-coverage-dot is-insufficient" aria-hidden="true"></span>Insufficient coverage · &lt;50% · skipped</span>
+              </div>
+            </div>
+          </div>
+        </section>
+          </div>
+        </div>
+                <dialog class="market-aggregation-details" id="marketAggregationDetails" aria-labelledby="marketAggregationDetailsTitle">
+          <div class="market-calendar-detail-heading">
+            <h3 id="marketAggregationDetailsTitle" tabindex="-1">Hourly candles</h3>
+            <form method="dialog"><button class="market-calendar-detail-close" aria-label="Close aggregation details"><span class="button-icon" aria-hidden="true">close</span></button></form>
+          </div>
+          <div data-aggregation-details-body aria-live="polite"></div>
+        </dialog>
+      </section>
+
       <section class="market-bootstrap-panel market-history-panel" data-market-panel="charts" aria-label="Market charts" hidden>
         <div class="market-history-preview-heading">
           <h2 class="market-history-section-title">Candlestick preview</h2>
-          <p class="market-history-section-description">Historical data is loaded in Data Management.</p>
+          <p class="market-history-section-description">Historical data is loaded in Data Management / Source Data.</p>
         </div>
         <form class="market-history-form" id="marketHistoryForm">
           <label class="market-history-field" for="marketHistoryInstrument">
@@ -283,7 +365,7 @@
           </button>
         </form>
 
-        <div class="market-history-summary" id="marketHistorySummary">Chart preview is temporarily unavailable. Load historical candles in Data Management.</div>
+        <div class="market-history-summary" id="marketHistorySummary">Chart preview is temporarily unavailable. Load historical candles in Data Management / Source Data.</div>
         <div class="market-history-chart-frame">
           <div class="market-history-chart" id="marketHistoryChart" role="img" aria-label="CNY/RUB Candlestick chart"></div>
           <p class="market-history-empty" id="marketHistoryEmpty">No candles loaded yet.</p>

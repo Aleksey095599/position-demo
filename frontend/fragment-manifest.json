@@ -82,6 +82,11 @@
     },
     {
       "kind": "dialog",
+      "id": "marketAggregationDetails",
+      "file": "features/market-pulse/components/market-aggregation-details.dialog.html"
+    },
+    {
+      "kind": "dialog",
       "id": "marketSimulationDialog",
       "file": "features/market-pulse/components/market-simulation.dialog.html"
     },

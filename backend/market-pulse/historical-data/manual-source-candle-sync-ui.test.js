@@ -333,6 +333,31 @@ function calendarResponse(timeframe, instrument=instrumentId) {
     days:[{date:"2026-09-15",available:true,status:"COMPLETED",completedAt:"2026-09-20T12:00:00Z",candleCount:timeframe==="ONE_DAY"?1:597}]};
 }
 
+test("No data is accepted in both source calendars and is distinct from Not loaded", async () => {
+  assert.ok(html.includes('market-history-legend-icon is-no-data" aria-hidden="true">block</span>No data'));
+  for (const timeframe of ["ONE_MINUTE", "ONE_DAY"]) {
+    const {context,element} = calendarUi();
+    element("marketHistorySourceTimeframe").value = timeframe;
+    context.demoApiRequest = async () => {
+      const response = calendarResponse(timeframe);
+      Object.assign(response.days[0], {status:"NO_DATA",candleCount:0});
+      return response;
+    };
+    await context.loadMarketSourceCalendar();
+    const nodes = element("calendar").querySelectorAll();
+    const cell = nodes.find(node => node.dataset.marketHistorySyncDate);
+    assert.match(cell.className, /is-no-data/);
+    assert.match(cell.attributes["aria-label"], /No data/);
+    assert.equal(cell.children[1].textContent, "block");
+    assert.notEqual(context.marketCalendarStatusDefinition("PENDING").icon, cell.children[1].textContent);
+    const count = nodes.find(node => node.className === "market-calendar-candle-count");
+    if (timeframe === "ONE_MINUTE") assert.equal(count.textContent, "0");
+    else assert.equal(count, undefined);
+    const info = nodes.find(node => node.dataset.marketCalendarInfoDate);
+    assert.match(info.attributes["aria-label"], /No data/);
+  }
+});
+
 test("a separate info icon opens details without selecting dates or showing a hover hint", async () => {
   const {context,element} = calendarUi();
   context.demoApiRequest = async () => calendarResponse("ONE_MINUTE");

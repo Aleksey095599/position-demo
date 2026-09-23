@@ -349,6 +349,7 @@
 
       entry.menu.style.left = `${left}px`;
       entry.menu.style.top = `${toggleBounds.bottom + 4}px`;
+      positionWorkspaceNavSubgroups(entry);
     }
 
     function setWorkspaceNavMenuOpen(entry, open, focusFirstItem = false) {
@@ -359,6 +360,7 @@
           if (otherEntry !== entry) {
             otherEntry.toggle.setAttribute("aria-expanded", "false");
             otherEntry.menu.hidden = true;
+            closeWorkspaceNavSubgroups(otherEntry);
           }
         });
       }
@@ -367,13 +369,14 @@
       entry.menu.hidden = !nextOpen;
 
       if (!nextOpen) {
+        closeWorkspaceNavSubgroups(entry);
         return;
       }
 
       positionWorkspaceNavMenu(entry);
 
       if (focusFirstItem) {
-        entry.links[0]?.focus();
+        workspaceNavMenuItems(entry)[0]?.focus();
       }
     }
 
@@ -401,6 +404,7 @@
       workspaceNavMenuEntries.forEach(entry => {
         entry.toggle.classList.toggle("is-active", entry.routes.includes(activeRoute));
       });
+      syncWorkspaceNavSubgroups(activeRoute);
       renderWorkspacePageHeading();
     }
 

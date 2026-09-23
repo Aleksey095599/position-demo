@@ -62,7 +62,7 @@ class GetSourceCandleCalendarUseCase {
       const loadError = day.lastError && (!day.completedAt || day.candleCount === 0);
       const status = !available ? "UNAVAILABLE" : loadError || integrity.affectedTimeframe === timeframe ? "ERROR"
         : integrity.status === "MISMATCH" ? "INTEGRITY_WARNING"
-        : day.completedAt ? "COMPLETED" : day.lastError ? "ERROR" : "PENDING";
+        : day.completedAt ? (day.candleCount === 0 ? "NO_DATA" : "COMPLETED") : day.lastError ? "ERROR" : "PENDING";
       const {firstCandle,lastCandle,...view} = day;
       days.push({...view,available,status,integrity});
     }

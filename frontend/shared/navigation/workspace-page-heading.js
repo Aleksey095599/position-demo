@@ -69,14 +69,16 @@
       if (currentHash === manualBatchFormationProcessRoute()) return heading("#processesPage h1", "Manual Batching");
       if (currentHash === batchingSettingsRoute()) return heading("#batchingSettingsPage h1", "Batching Settings");
       if (currentHash === databaseRoute()) return heading("#databasePage h1", "Database");
-      const market = /^#(?:market|market-pulse)(?::(quote-stream|charts|data-management|history|streams))?$/.exec(currentHash);
+      const market = /^#(?:market|market-pulse)(?::(quote-stream|charts|source-data|candle-aggregation|data-management|history|streams))?$/.exec(currentHash);
       if (market) {
         const section = market[1];
         const title = section === "charts"
           ? "Charts"
-          : section === "data-management" || section === "history"
-            ? "Data Management"
-            : "Quote Stream";
+          : section === "source-data" || section === "data-management" || section === "history"
+            ? "Source Data"
+            : section === "candle-aggregation"
+              ? "Candle Aggregation"
+              : "Quote Stream";
         return heading("#marketPageTitle", title);
       }
       if (currentHash === analyticalPnlReportRoute()) return heading("#analyticalPnlReportPage h1", "Analytical PnL Report");

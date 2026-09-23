@@ -301,6 +301,18 @@ CREATE TABLE IF NOT EXISTS moex_iss_aggregated_candles
         )
 );
 
+CREATE TABLE IF NOT EXISTS moex_iss_candle_aggregation_result
+(
+    instrument_id    TEXT NOT NULL,
+    timeframe        TEXT NOT NULL CHECK (timeframe = 'ONE_HOUR'),
+    calculation_date TEXT NOT NULL CHECK (calculation_date GLOB '????-??-??' AND date(calculation_date) = calculation_date),
+    calculated_at    TEXT,
+    source_loaded_at TEXT,
+    last_attempt_at  TEXT NOT NULL,
+    last_error       TEXT,
+    PRIMARY KEY (instrument_id, timeframe, calculation_date)
+);
+
 CREATE TABLE IF NOT EXISTS servicing_locations
 (
     servicing_location_id TEXT    PRIMARY KEY,

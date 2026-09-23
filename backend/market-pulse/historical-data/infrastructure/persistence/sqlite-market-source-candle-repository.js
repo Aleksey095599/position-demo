@@ -264,6 +264,7 @@ class SqliteMarketSourceCandleRepository {
     const from = new Date(`${fromDate}T00:00:00+03:00`).toISOString();
     const till = new Date(Date.parse(`${throughDate}T00:00:00+03:00`)+DAY_MS).toISOString();
     const rows = this.database.prepare(`SELECT date(begin_at,'+3 hours') date,COUNT(*) candleCount,
+      COUNT(DISTINCT strftime('%Y-%m-%dT%H',begin_at,'+3 hours')) hourCount,
       MIN(begin_at) firstCandleAt,MAX(begin_at) lastCandleAt FROM ${sourceTable(timeframe)}
       WHERE instrument_id=? AND begin_at>=? AND begin_at<? GROUP BY date(begin_at,'+3 hours')`)
       .all(instrument,from,till);

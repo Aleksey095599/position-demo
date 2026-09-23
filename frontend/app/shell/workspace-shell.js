@@ -285,14 +285,18 @@
         const marketKind = activeMarketKind();
         const marketRouteKey = marketKind === "charts"
           ? "market-charts"
-          : marketKind === "data-management"
-            ? "market-data-management"
-            : "market-quote-stream";
+          : marketKind === "source-data"
+            ? "market-source-data"
+            : marketKind === "candle-aggregation"
+              ? "market-candle-aggregation"
+              : "market-quote-stream";
         const marketTitle = marketKind === "charts"
           ? "Charts"
-          : marketKind === "data-management"
-            ? "Data Management"
-            : "Quote Stream";
+          : marketKind === "source-data"
+            ? "Source Data"
+            : marketKind === "candle-aggregation"
+              ? "Candle Aggregation"
+              : "Quote Stream";
         syncMarketSettingsRouteView();
         setWorkspaceRoute(marketRouteKey);
         mainPage.hidden = true;
@@ -407,30 +411,10 @@
         }
       });
       entry.menu.addEventListener("click", event => {
-        if (event.target.closest("[data-workspace-route]")) {
-          setWorkspaceNavMenuOpen(entry, false);
-        }
+        handleWorkspaceNavMenuClick(entry, event);
       });
       entry.menu.addEventListener("keydown", event => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          setWorkspaceNavMenuOpen(entry, false);
-          entry.toggle.focus();
-          return;
-        }
-
-        if (!["ArrowDown", "ArrowUp"].includes(event.key)) {
-          return;
-        }
-
-        event.preventDefault();
-        const currentIndex = entry.links.indexOf(document.activeElement);
-        const direction = event.key === "ArrowDown" ? 1 : -1;
-        const nextIndex = currentIndex < 0
-          ? 0
-          : (currentIndex + direction + entry.links.length) % entry.links.length;
-
-        entry.links[nextIndex]?.focus();
+        handleWorkspaceNavMenuKeydown(entry, event);
       });
     });
     document.addEventListener("click", event => {

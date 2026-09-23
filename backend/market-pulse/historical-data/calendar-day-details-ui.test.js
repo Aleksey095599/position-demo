@@ -12,7 +12,9 @@ test("loaded details contain candle start times and one loading timestamp withou
 });
 test("pending, empty and loading states have distinct explanations",()=>{
  assert.match(details({candleCount:0},"ONE_MINUTE","PENDING").message,/not been loaded/);
- assert.match(details({...loaded,candleCount:0},"ONE_MINUTE","COMPLETED").message,/returned no candles/);
+ for (const timeframe of ["ONE_MINUTE","ONE_DAY"]) {
+   assert.match(details({...loaded,candleCount:0},timeframe,"NO_DATA").message,/returned no candles/);
+ }
  assert.match(details({},"ONE_MINUTE","LOADING").message,/Loading/);
 });
 test("source failures show a readable explanation while preserving the technical error",()=>{

@@ -6021,8 +6021,12 @@
         return "quote-stream";
       }
 
-      if (routeKind === "history" || routeKind === "data-management") {
-        return "data-management";
+      if (routeKind === "history" || routeKind === "data-management" || routeKind === "source-data") {
+        return "source-data";
+      }
+
+      if (routeKind === "candle-aggregation") {
+        return "candle-aggregation";
       }
 
       if (routeKind === "charts") {
@@ -6109,9 +6113,11 @@
           ? "Currency Pair Settings"
           : activeKind === "charts"
             ? "Charts"
-            : activeKind === "data-management"
-              ? "Data Management"
-              : "Quote Stream";
+            : activeKind === "source-data"
+              ? "Source Data"
+              : activeKind === "candle-aggregation"
+                ? "Candle Aggregation"
+                : "Quote Stream";
 
       marketPageTitle.textContent = pageTitle;
       marketPageHeader.setAttribute("aria-label", `${pageTitle} header`);

@@ -1481,7 +1481,7 @@
 
     function loadMarketHistoryCandles(event) {
       event.preventDefault();
-      marketHistorySummary.textContent = "Chart preview is temporarily unavailable. Load historical candles in Data Management.";
+      marketHistorySummary.textContent = "Chart preview is temporarily unavailable. Load historical candles in Data Management / Source Data.";
     }
 
     function renderMarketPage() {
@@ -1490,8 +1490,12 @@
       renderMarketPairOptionRows();
       renderMarketQuoteState();
 
-      if (activeMarketKind() === "data-management") {
+      if (activeMarketKind() === "source-data") {
         void loadMarketSourceCalendar();
+      }
+
+      if (activeMarketKind() === "candle-aggregation") {
+        void loadMarketAggregationCalendar();
       }
 
       if (activeMarketKind() === "charts") {

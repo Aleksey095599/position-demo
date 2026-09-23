@@ -321,7 +321,7 @@
     }
 
     function isMarketRoute() {
-      return /^#(?:market-pulse|market)(?::(?:quote-stream|charts|data-management|history|streams))?$/.test(
+      return /^#(?:market-pulse|market)(?::(?:quote-stream|charts|source-data|candle-aggregation|data-management|history|streams))?$/.test(
         location.hash
       );
     }

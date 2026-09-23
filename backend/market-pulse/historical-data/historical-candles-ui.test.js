@@ -33,16 +33,20 @@ function topLevelFunctionSource(name, source = appScript) {
   return source.slice(start, end);
 }
 
-test("provides separate Quote Stream, Charts, and Data Management views", () => {
-  assert.match(documentHtml, /id="workspaceMarketPulseToggle"[^>]*data-workspace-routes="market-quote-stream market-charts market-data-management"/);
+test("groups Source Data and Candle Aggregation under Data Management", () => {
+  assert.match(documentHtml, /id="workspaceMarketPulseToggle"[^>]*data-workspace-routes="market-quote-stream market-charts market-source-data market-candle-aggregation"/);
   assert.match(documentHtml, /href="#market-pulse:quote-stream"[\s\S]*?>finance_mode<\/span>[\s\S]*?>Quote Stream<\/span>/);
   assert.match(documentHtml, /href="#market-pulse:charts"[\s\S]*?>candlestick_chart<\/span>[\s\S]*?>Charts<\/span>/);
-  assert.match(documentHtml, /href="#market-pulse:data-management"[\s\S]*?>cloud_sync<\/span>[\s\S]*?>Data Management<\/span>/);
+  assert.match(documentHtml, /id="workspaceMarketDataToggle"[\s\S]*?aria-controls="workspaceMarketDataGroup"[\s\S]*?>Data Management<\/span>/);
+  assert.match(documentHtml, /id="workspaceMarketDataGroup"[^>]*role="menu"[\s\S]*?href="#market-pulse:source-data"[\s\S]*?>Source Data<\/span>[\s\S]*?href="#market-pulse:candle-aggregation"[\s\S]*?>Candle Aggregation<\/span>/);
   assert.match(documentHtml, /data-market-panel="quote-stream"/);
   assert.match(documentHtml, /data-market-panel="charts"/);
-  assert.match(documentHtml, /data-market-panel="data-management"/);
+  assert.match(documentHtml, /data-market-panel="source-data"/);
+  assert.match(documentHtml, /data-market-panel="candle-aggregation"/);
+  assert.doesNotMatch(documentHtml, /data-market-panel="data-management"|data-workspace-route="market-data-management"/);
   assert.doesNotMatch(documentHtml, /id="marketTabs"|data-market-tab=/);
-  assert.match(documentHtml, /data-market-panel="data-management"[\s\S]*?id="marketHistorySyncForm"/);
+  assert.match(documentHtml, /data-market-panel="source-data"[\s\S]*?>MOEX ISS<\/a>[\s\S]*?>Historical Data<\/button>[\s\S]*?>Current Day<\/button>[\s\S]*?id="marketHistorySyncForm"/);
+  assert.equal((documentHtml.match(/id="marketHistorySyncForm"/g) || []).length, 1);
   assert.match(documentHtml, /data-market-panel="charts"[\s\S]*?id="marketHistoryChart"/);
   assert.match(documentHtml, /id="marketHistoryChart"/);
   assert.match(documentHtml, /<option value="FIVE_MINUTES">5 minutes<\/option>/);
@@ -66,9 +70,13 @@ test("routes each Market Pulse section and keeps the previous bookmarks compatib
     ["#market-pulse", "quote-stream"],
     ["#market-pulse:quote-stream", "quote-stream"],
     ["#market-pulse:charts", "charts"],
-    ["#market-pulse:data-management", "data-management"],
+    ["#market-pulse:source-data", "source-data"],
+    ["#market-pulse:candle-aggregation", "candle-aggregation"],
+    ["#market-pulse:data-management", "source-data"],
     ["#market-pulse:streams", "quote-stream"],
-    ["#market-pulse:history", "data-management"]
+    ["#market-pulse:history", "source-data"],
+    ["#market:history", "source-data"],
+    ["#market:data-management", "source-data"]
   ]) {
     context.location.hash = route;
     assert.equal(context.isMarketRoute(), true, route);
@@ -161,16 +169,20 @@ test("only calendar source loading is connected to the server", () => {
 });
 
 
-test("Market Pulse still renders Charts and loads only the local calendar on Data Management navigation", () => {
-  let kind="charts",calendarReads=0,chartRenders=0;
+test("Source Data and Candle Aggregation navigation read their own local calendars", () => {
+  let kind="charts",calendarReads=0,chartRenders=0,aggregationReads=0;
   const context={
     activeMarketKind:()=>kind,
     updateMarketVisibility(){},renderMarketCcyOptionRows(){},renderMarketPairOptionRows(){},renderMarketQuoteState(){},
     initializeMarketHistoryPeriod(){},ensureMarketHistoryChart(){chartRenders++;},
     loadMarketSourceCalendar(){calendarReads++;},window:{requestAnimationFrame(callback){callback();}},
+    loadMarketAggregationCalendar(){aggregationReads++;},
     demoApiRequest(){assert.fail("Navigation must not load source candles");}
   };
   vm.runInNewContext(topLevelFunctionSource("renderMarketPage",marketPageScript),context);
   context.renderMarketPage();assert.equal(chartRenders,1);assert.equal(calendarReads,0);
-  kind="data-management";context.renderMarketPage();assert.equal(calendarReads,1);
+  kind="source-data";context.renderMarketPage();assert.equal(calendarReads,1);
+  kind="candle-aggregation";context.renderMarketPage();
+  assert.equal(calendarReads,1);assert.equal(chartRenders,1);
+  assert.equal(aggregationReads,1);
 });

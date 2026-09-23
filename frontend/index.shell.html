@@ -20,7 +20,7 @@
         <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
         <span>Batches</span>
       </a>
-      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceMarketPulseToggle" aria-haspopup="menu" aria-controls="workspaceMarketPulseMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceMarketPulseMenu" data-workspace-routes="market-quote-stream market-charts market-data-management">
+      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceMarketPulseToggle" aria-haspopup="menu" aria-controls="workspaceMarketPulseMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceMarketPulseMenu" data-workspace-routes="market-quote-stream market-charts market-source-data market-candle-aggregation">
         <span class="button-icon workspace-nav-icon market-pulse-icon" aria-hidden="true">monitoring</span>
         <span>Market Pulse</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
@@ -78,10 +78,23 @@
       <span class="button-icon workspace-nav-icon" aria-hidden="true">candlestick_chart</span>
       <span>Charts</span>
     </a>
-    <a class="workspace-nav-menu-link" href="#market-pulse:data-management" data-workspace-route="market-data-management" role="menuitem">
+    <button type="button" class="workspace-nav-menu-link workspace-nav-subgroup-toggle" id="workspaceMarketDataToggle"
+      role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="workspaceMarketDataGroup"
+      data-workspace-nav-subgroup-toggle="workspaceMarketDataGroup" data-workspace-routes="market-source-data market-candle-aggregation">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">cloud_sync</span>
       <span>Data Management</span>
-    </a>
+      <span class="button-icon workspace-nav-subgroup-chevron" aria-hidden="true">chevron_right</span>
+    </button>
+    <div class="workspace-nav-subgroup" id="workspaceMarketDataGroup" role="menu" aria-labelledby="workspaceMarketDataToggle" hidden>
+      <a class="workspace-nav-menu-link" href="#market-pulse:source-data" data-workspace-route="market-source-data" role="menuitem">
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">download</span>
+        <span>Source Data</span>
+      </a>
+      <a class="workspace-nav-menu-link" href="#market-pulse:candle-aggregation" data-workspace-route="market-candle-aggregation" role="menuitem">
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">functions</span>
+        <span>Candle Aggregation</span>
+      </a>
+    </div>
   </div>
   <div class="workspace-nav-menu" id="workspaceTradeIntakeMenu" role="menu" aria-label="Trade Intake" data-workspace-nav-menu hidden>
     <a class="workspace-nav-menu-link" href="#trade-intake:contract" data-workspace-route="trade-contract" role="menuitem">

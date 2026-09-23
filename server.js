@@ -39,6 +39,7 @@ const {
 } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-market-candle-storage");
 const { migrateDayCandleStorage } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-day-candle-storage");
 const { migrateMinuteCandleLoadResult } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-minute-candle-load-result");
+const { createCandleAggregationModule } = require("./backend/market-pulse/candle-aggregation/config/candle-aggregation-module");
 const {
   calculateAnalyticalPnlMinor,
   calculateClientDealEconomics,
@@ -11054,6 +11055,7 @@ const { GetSourceCandleCalendarUseCase, LoadSourceCandleDayUseCase } = require("
 const { FileCandleVerificationLogger } = require("./backend/market-pulse/historical-data/infrastructure/file-candle-verification-logger");
 const historicalMarketDataSource = new MoexIssHistoricalMarketDataSource();
 const marketSourceCandleRepository = new SqliteMarketSourceCandleRepository({ database });
+const candleAggregationApi = createCandleAggregationModule({ database, sourceRepository: marketSourceCandleRepository });
 const backfillHistoricalCandleRangeUseCase = new BackfillHistoricalCandleRangeUseCase({
   historicalMarketDataSource,
   marketSourceCandleRepository
@@ -12930,6 +12932,21 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (method === "GET" && pathname === "/api/v1/market-pulse/candle-aggregation/calendar") {
+    const result = await candleAggregationApi.calendar(url.searchParams);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+  if (method === "GET" && pathname === "/api/v1/market-pulse/candle-aggregation/day") {
+    const result = await candleAggregationApi.day(url.searchParams);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+  if (method === "POST" && pathname === "/api/v1/market-pulse/candle-aggregation/calculate-day") {
+    const result = await candleAggregationApi.calculateDay(await readJsonBody(request));
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
   if (method === "GET" && pathname === "/api/v1/market-pulse/historical-candles/calendar") {
     const result = await historicalCandlesApi.calendar(url.searchParams);
     sendJson(response, result.statusCode, result.body);

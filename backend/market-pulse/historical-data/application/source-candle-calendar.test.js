@@ -49,7 +49,7 @@ test("empty source day is successfully completed and skipped on retry",async t=>
   await loadDay.execute({instrumentId,date:"2026-09-19"});
   const result=await loadDay.execute({instrumentId,date:"2026-09-19"});
   assert.equal(result.skipped,true);assert.equal(calls,2);
-  const day=(await month(calendar)).days[18];assert.equal(day.status,"COMPLETED");assert.equal(day.candleCount,0);
+  const day=(await month(calendar)).days[18];assert.equal(day.status,"NO_DATA");assert.equal(day.candleCount,0);
 });
 test("failure after the first page preserves old candles and persists an error without confirming the day",async t=>{
   let calls=0;
@@ -152,7 +152,7 @@ test("daily empty days are completed and failures persist until a successful ret
   assert.equal((await loadDay.execute(command)).skipped,true);
   assert.equal(calls,2);
   const completed = (await reopened.execute({instrumentId,timeframe:"ONE_DAY",month:"2026-09"})).days[18];
-  assert.equal(completed.status,"COMPLETED");
+  assert.equal(completed.status,"NO_DATA");
   assert.equal(completed.candleCount,0);
   assert.equal(completed.lastError,null);
 });
@@ -333,16 +333,25 @@ test("missing daily data stays red through a failed retry and recovers without f
   assert.deepEqual(await statuses(calendar),["COMPLETED","COMPLETED"]);
   assert.deepEqual(requests,["ONE_DAY","ONE_DAY","ONE_DAY"]);
 });
-test("both confirmed empty datasets are loaded without warnings, logs or repeat source requests",async t=>{
+test("both confirmed empty datasets show No data without warnings, logs or repeat source requests",async t=>{
   let calls=0;
   const {loadDay,calendar,logEntries}=setup(t,{async loadCandlePage(){calls++;return {candles:[],hasMore:false,nextStart:null};}});
   const command={instrumentId,date:"2026-09-15"};
   assert.equal((await loadDay.execute(command)).verification.status,"EMPTY");
   assert.equal((await loadDay.execute(command)).verification.status,"EMPTY");
-  assert.deepEqual(await statuses(calendar),["COMPLETED","COMPLETED"]);
+  assert.deepEqual(await statuses(calendar),["NO_DATA","NO_DATA"]);
   assert.equal(logEntries.length,0);
   assert.equal(calls,2);
 });
+test("failed attempts take priority over No data in both source calendars",async t=>{
+  const {repository,calendar}=setup(t);
+  for (const timeframe of ["ONE_MINUTE","ONE_DAY"]) {
+    saveDay(repository,timeframe,[]);
+    repository.recordDayAttempt({...sourceDayQuery({instrumentId,timeframe,date:"2026-09-15"},now()),attemptedAt:new Date(now()).toISOString(),error:"Source unavailable"});
+  }
+  assert.deepEqual(await statuses(calendar),["ERROR","ERROR"]);
+});
+
 test("a failed daily request leaves the minute calendar loaded and the daily calendar red",async t=>{
   const {loadDay,calendar,logEntries}=setup(t,{async loadCandlePage(query){
     if(query.timeframe==="ONE_DAY") throw new Error("Daily unavailable");

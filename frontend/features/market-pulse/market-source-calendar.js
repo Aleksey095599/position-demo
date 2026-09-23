@@ -55,6 +55,7 @@
         INTEGRITY_WARNING: {className:"integrity-warning",icon:"compare_arrows",label:"Integrity warning"},
         LOADING: {className:"loading",icon:"progress_activity",label:"Loading"},
         COMPLETED: {className:"completed",icon:"check",label:"Loaded"},
+        NO_DATA: {className:"no-data",icon:"block",label:"No data"},
         ERROR: {className:"error",icon:"priority_high",label:"Error"},
         UNAVAILABLE: {className:"unavailable",icon:"",label:"Unavailable"}
       }[status];
