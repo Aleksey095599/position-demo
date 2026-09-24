@@ -1,6 +1,7 @@
 "use strict";
 
-const { aggregateHourlyCandles, MINIMUM_HOURLY_COMPONENTS } = require("../domain/aggregate-hourly-candles");
+const { aggregateCandlesFromMinutes } = require("../domain/aggregate-candles-from-minutes");
+const { aggregationTimeframe, candleCoverage } = require("../domain/aggregation-timeframe");
 const { calendarBounds, sourceDayQuery } = require("../../historical-data/application/source-candle-calendar");
 const { readSourceDayIntegrity } = require("../../historical-data/application/source-candle-integrity");
 
@@ -8,19 +9,17 @@ function aggregationError(code, message) {
   return Object.assign(new Error(message), { code });
 }
 
-function requiresRecalculation(result, source) {
+function requiresRecalculation(result, source, timeframe) {
+  const sourceIntervalCount = timeframe === "ONE_DAY" ? Number(Boolean(source?.candleCount))
+    : (timeframe === "FOUR_HOURS" ? source?.fourHourCount : source?.hourCount) || 0;
+  // Старые расчёты исключали интервалы с низким покрытием; они должны быть восстановлены из минут.
   return Boolean(result?.calculatedAt && (result.sourceLoadedAt !== source?.completedAt
-    || result.minimumComponentCount < MINIMUM_HOURLY_COMPONENTS));
+    || (result.candleCount || 0) !== sourceIntervalCount));
 }
 
-function insufficientCount(result, source) {
-  // После расчёта каждому непустому исходному часу соответствует сохранённая свеча либо исключение по покрытию.
-  return Math.max(0, (source?.hourCount || 0) - (result?.candleCount || 0));
-}
-
-function dayStatus(result, source) {
+function dayStatus(result, source, timeframe) {
   if (result?.lastError) return "ERROR";
-  if (!result?.calculatedAt || !source?.completedAt || requiresRecalculation(result, source)) return "PENDING";
+  if (!result?.calculatedAt || !source?.completedAt || requiresRecalculation(result, source, timeframe)) return "PENDING";
   return source.candleCount ? "CALCULATED" : "NO_DATA";
 }
 
@@ -32,6 +31,7 @@ class CandleAggregationService {
   }
 
   async calendar({ instrumentId, month, timeframe }) {
+    aggregationTimeframe(timeframe);
     const bounds = calendarBounds(this.now());
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month < bounds.earliestDate.slice(0, 7)
         || month > bounds.today.slice(0, 7)) {
@@ -49,17 +49,19 @@ class CandleAggregationService {
       const source = sources.get(date);
       const result = results.get(date);
       days.push({ date, available, candleCount: result?.candleCount || 0, partialCount: result?.partialCount || 0,
-        completeCount: (result?.candleCount || 0) - (result?.partialCount || 0),
-        insufficientCount: result?.calculatedAt && !requiresRecalculation(result, source) ? insufficientCount(result, source) : 0,
-        requiresRecalculation: requiresRecalculation(result, source),
+        completeCount: timeframe === "ONE_DAY" ? 0 : (result?.candleCount || 0) - (result?.partialCount || 0) - (result?.insufficientCount || 0),
+        sufficientCount: timeframe === "ONE_DAY" ? (result?.candleCount || 0) - (result?.insufficientCount || 0) : 0,
+        insufficientCount: result?.insufficientCount || 0,
+        requiresRecalculation: requiresRecalculation(result, source, timeframe),
         calculatedAt: result?.calculatedAt || null, lastError: result?.lastError || null,
         sourceLoaded: Boolean(source?.completedAt), sourceCandleCount: source?.candleCount || 0,
-        status: available ? dayStatus(result, source) : "UNAVAILABLE" });
+        status: available ? dayStatus(result, source, timeframe) : "UNAVAILABLE" });
     }
     return { instrumentId, timeframe, baseTimeframe: "ONE_MINUTE", month, ...bounds, days };
   }
 
   async sourceDay(command) {
+    aggregationTimeframe(command.timeframe);
     const query = sourceDayQuery({ ...command, timeframe: "ONE_MINUTE" }, this.now());
     const [source] = await this.source.findSourceDaySummaries({ instrumentId: command.instrumentId,
       timeframe: "ONE_MINUTE", fromDate: command.date, throughDate: command.date });
@@ -68,42 +70,45 @@ class CandleAggregationService {
 
   async calculateDay(command) {
     const { query, source } = await this.sourceDay(command);
-    const attempt = { ...command, attemptedAt: new Date(this.now()).toISOString() };
     try {
       if (!source?.completedAt) {
         throw aggregationError("AGGREGATION_SOURCE_DAY_NOT_LOADED", "Load the complete minute source day before calculating candles.");
       }
-      const { candles, skippedHours } = aggregateHourlyCandles({ ...query, candles: await this.source.findByPeriod(query) });
+      const { candles } = aggregateCandlesFromMinutes({ ...query, timeframe: command.timeframe, candles: await this.source.findByPeriod(query) });
       const calculatedAt = new Date(this.now()).toISOString();
       await this.repository.replaceDay({ ...query, ...command, candles, calculatedAt, sourceLoadedAt: source.completedAt });
       return { ...command, candleCount: candles.length, partialCount: candles.filter(c => c.coverage === "PARTIAL").length,
         completeCount: candles.filter(c => c.coverage === "COMPLETE").length,
-        insufficientCount: skippedHours.length, requiresRecalculation: false,
-        status: candles.length || skippedHours.length ? "CALCULATED" : "NO_DATA", calculatedAt };
+        sufficientCount: candles.filter(c => c.coverage === "SUFFICIENT").length,
+        insufficientCount: candles.filter(c => c.coverage === "INSUFFICIENT").length, requiresRecalculation: false,
+        status: candles.length ? "CALCULATED" : "NO_DATA", calculatedAt };
     } catch (error) {
-      await this.repository.recordFailure({ ...attempt, error: error.message });
+      await this.repository.recordFailure({ ...command, error: error.message });
       throw error;
     }
   }
 
   async dayDetails(command) {
+    const { timeframe } = command;
+    const { expectedMinutes, minimumMinutes } = aggregationTimeframe(timeframe);
     const { query, source } = await this.sourceDay(command);
     const [result] = await this.repository.findDaySummaries({ ...command, fromDate: command.date, throughDate: command.date });
     const stored = await this.repository.findByPeriod({ ...query, timeframe: command.timeframe });
-    const current = aggregateHourlyCandles({ ...query, candles: await this.source.findByPeriod(query) });
-    const byBegin = new Map([...current.candles, ...current.skippedHours].map(c => [c.begin, c]));
-    const stale = requiresRecalculation(result, source);
+    const current = aggregateCandlesFromMinutes({ ...query, timeframe: command.timeframe, candles: await this.source.findByPeriod(query) });
+    const byBegin = new Map(current.candles.map(c => [c.begin, c]));
+    const stale = requiresRecalculation(result, source, timeframe);
     const sourceIntegrity = await readSourceDayIntegrity(this.source, command.instrumentId, command.date);
-    const hourCoverage = result?.calculatedAt && !stale ? Array.from({ length: 24 }, (_, hour) => {
+    const intervalCoverage = expectedMinutes !== null && result?.calculatedAt && !stale ? Array.from({ length: 1440 / expectedMinutes }, (_, index) => {
+      const hour = index * expectedMinutes / 60;
       const begin = new Date(Date.parse(query.from) + hour * 3600000).toISOString();
       const covered = byBegin.get(begin);
       return { hour, coverage: covered?.coverage || "NO_DATA", componentCount: covered?.componentCount || 0 };
     }) : null;
-    return { ...command, status: dayStatus(result, source), calculatedAt: result?.calculatedAt || null,
+    return { ...command, status: dayStatus(result, source, timeframe), calculatedAt: result?.calculatedAt || null,
       lastError: result?.lastError || null, sourceLoaded: Boolean(source?.completedAt), sourceIntegrity,
-      stale, hourCoverage,
-      skippedHours: result?.calculatedAt && !stale ? current.skippedHours : [],
-      hours: stored.map(candle => ({ ...candle,
+      stale, intervalCoverage, expectedMinutes, minimumMinutes,
+      candles: stored.map(candle => ({ ...candle,
+        coverage: candleCoverage(timeframe, candle.componentCount),
         firstSourceBegin: byBegin.get(candle.begin)?.firstSourceBegin || null,
         lastSourceBegin: byBegin.get(candle.begin)?.lastSourceBegin || null,
         missingMinutes: byBegin.get(candle.begin)?.missingMinutes || [] })) };

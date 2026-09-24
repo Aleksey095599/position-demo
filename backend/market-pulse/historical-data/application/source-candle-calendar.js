@@ -55,7 +55,7 @@ class GetSourceCandleCalendarUseCase {
     const days = [];
     for (let t=first.getTime(); t<next.getTime(); t+=DAY_MS) {
       const date = new Date(t).toISOString().slice(0,10);
-      const day = {date,candleCount:0,completedAt:null,lastAttemptAt:null,lastError:null,firstCandleAt:null,lastCandleAt:null,...summaries.get(date)};
+      const day = {date,candleCount:0,completedAt:null,lastError:null,firstCandleAt:null,lastCandleAt:null,...summaries.get(date)};
       const integrity = timeframe === "ONE_MINUTE" ? checkDaySummaries(day,otherSummaries.get(date))
         : checkDaySummaries(otherSummaries.get(date),day);
       const available = date >= bounds.earliestDate && date <= bounds.throughDate;

@@ -86,7 +86,8 @@ test("Data Management opens a side menu and a child link closes the outer menu",
   assert.equal(h.toggle.getAttribute("aria-expanded"), "true");
   assert.equal(h.entry.menu.hidden, false);
   assert.equal(h.repositioned(), 1);
-  assert.equal(h.group.style.left, "404px");
+  assert.equal(h.group.style.left, "402px");
+  assert.equal(h.group.style.top, "120px");
   assert.equal(h.group.classList.contains("is-inline"), false);
   h.context.handleWorkspaceNavMenuClick(h.entry, { target: h.toggle });
   assert.equal(h.group.hidden, true);
@@ -170,7 +171,7 @@ test("flyout opens left near the right edge and stays within viewport height", (
   const result = h.context.workspaceNavSubgroupPlacement({ left: 750, right: 970 }, 740, 220, 100, 1000, 800);
   assert.equal(result.inline, false);
   assert.equal(result.opensLeft, true);
-  assert.equal(result.left, 526);
+  assert.equal(result.left, 528);
   assert.equal(result.top, 692);
 });
 

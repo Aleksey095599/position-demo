@@ -33,7 +33,6 @@
       }
       if (day.completedAt) rows.push(["Loaded at",stamp(day.completedAt)]);
       // A successful load needs no second timestamp. Failed attempts retain their start time.
-      if (day.lastAttemptAt && (day.lastError || !day.completedAt)) rows.push(["Last attempt",stamp(day.lastAttemptAt)]);
       return {message,rows,technicalError:day.lastError || ""};
     }
 

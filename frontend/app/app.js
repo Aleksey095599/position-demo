@@ -16450,6 +16450,7 @@
       PENDING: { className: "pending", icon: "remove", label: "Not calculated" },
       CALCULATED: { className: "completed", icon: "check", label: "Calculated" },
       COMPLETE: { className: "completed", icon: "check", label: "Complete coverage" },
+      SUFFICIENT: { className: "completed", icon: "check", label: "Sufficient coverage" },
       PARTIAL: { className: "partial", icon: "donut_large", label: "Partial coverage" },
       INSUFFICIENT: { className: "insufficient", icon: "filter_alt_off", label: "Insufficient coverage" },
       NO_DATA: { className: "no-data", icon: "block", label: "No data" },
@@ -16514,6 +16515,7 @@
         return node;
       };
       const query = () => ({ instrumentId: fields.instrumentId.value, timeframe: fields.timeframe.value });
+      const isDaily = () => fields.timeframe.value === "ONE_DAY";
       const matches = () => data?.month === month && data?.instrumentId === fields.instrumentId.value && data?.timeframe === fields.timeframe.value;
       const earliestDate = () => data?.earliestDate || new Date(Date.parse(marketHistorySyncYesterday()) - 365 * 86400000).toISOString().slice(0, 10);
       function status(day) {
@@ -16555,6 +16557,19 @@
         fields.toDate.setCustomValidity("");
       }
       function render() {
+        const legend = find("[data-aggregation-coverage-legend]");
+        legend.replaceChildren(element("span", "market-aggregation-legend-label", "Coverage"));
+        const entries = isDaily()
+          ? [["SUFFICIENT", " · ≥240 min"], ["INSUFFICIENT", " · <240 min"]]
+          : [["COMPLETE", ""], ["PARTIAL", " · 50–100%"], ["INSUFFICIENT", " · <50%"]];
+        for (const [key, criterion] of entries) {
+          const definition = MARKET_AGGREGATION_STATUSES[key];
+          const entry = element("span", "");
+          const square = element("span", `market-aggregation-coverage-dot is-${definition.className}`);
+          square.setAttribute("aria-hidden", "true");
+          entry.append(square, element("span", "", definition.label + criterion));
+          legend.append(entry);
+        }
         monthLabel.textContent = marketHistorySyncMonthFormatter.format(new Date(`${month}-01T12:00:00Z`));
         updateControls();
         grid.style.visibility = matches() ? "" : "hidden";
@@ -16571,30 +16586,33 @@
           const cell = element("button", `market-history-calendar-day is-${definition.className}`);
           cell.type = "button"; cell.disabled = !day.available || running;
           cell.dataset.aggregationDate = day.date;
-          cell.setAttribute("aria-label", `${formatMarketHistorySyncDate(day.date)}: ${definition.label}${day.available ? `, ${day.candleCount} hourly candles` : ""}`);
+          cell.setAttribute("aria-label", `${formatMarketHistorySyncDate(day.date)}: ${definition.label}${day.available ? `, ${day.candleCount} calculated candles` : ""}`);
           const date = element("time", "market-history-calendar-day-number"); date.dateTime = day.date;
           const outline = element("span", "market-calendar-date-outline"); outline.setAttribute("aria-hidden", "true");
           date.append(outline, element("span", "market-calendar-date-value", String(Number(day.date.slice(-2)))));
           cell.append(date, icon(definition.icon));
           const hasCurrentResult = definition === MARKET_AGGREGATION_STATUSES.CALCULATED && !day.requiresRecalculation;
-          const completeCount = day.completeCount ?? day.candleCount - day.partialCount;
+          const completeCount = day.completeCount ?? day.candleCount - day.partialCount - day.insufficientCount;
+          const coverageCounts = isDaily()
+            ? [["SUFFICIENT", day.sufficientCount], ["INSUFFICIENT", day.insufficientCount]]
+            : [["COMPLETE", completeCount], ["PARTIAL", day.partialCount], ["INSUFFICIENT", day.insufficientCount]];
           const hasCoverageCounts = day.available && hasCurrentResult
-            && [completeCount, day.partialCount, day.insufficientCount].every(value => Number.isSafeInteger(value) && value >= 0);
+            && coverageCounts.every(([, value]) => Number.isSafeInteger(value) && value >= 0);
           if (day.available && !hasCoverageCounts) {
             cell.append(element("span", "market-calendar-candle-count", String(day.candleCount)));
           }
           if (hasCoverageCounts) {
             const counts = element("span", "market-aggregation-coverage-counts");
             const labels = [];
-            for (const [key, count] of [["COMPLETE", completeCount], ["PARTIAL", day.partialCount], ["INSUFFICIENT", day.insufficientCount]]) {
+            for (const [key, count] of coverageCounts) {
+              if (isDaily() && count === 0) continue;
               const coverage = MARKET_AGGREGATION_STATUSES[key];
-              labels.push(`${coverage.label}: ${count} ${count === 1 ? "interval" : "intervals"}`);
-              const badge = element("span", `market-aggregation-coverage-count is-${coverage.className}`, String(count));
+              labels.push(isDaily() ? coverage.label : `${coverage.label}: ${count} ${count === 1 ? "interval" : "intervals"}`);
+              const badge = element("span", `market-aggregation-coverage-count is-${coverage.className}`, isDaily() ? "" : String(count));
               badge.setAttribute("aria-hidden", "true");
-              if (counts.children.length) counts.append(element("span", "market-aggregation-coverage-plus", "+"));
               counts.append(badge);
             }
-            cell.setAttribute("aria-label", `${formatMarketHistorySyncDate(day.date)}: Calculated, ${day.candleCount} candles saved, ${day.insufficientCount} ${day.insufficientCount === 1 ? "interval" : "intervals"} skipped. ${labels.join(". ")}`);
+            cell.setAttribute("aria-label", `${formatMarketHistorySyncDate(day.date)}: Calculated, ${day.candleCount} candles saved. ${labels.join(". ")}`);
             counts.setAttribute("aria-hidden", "true");
             cell.append(counts);
           }
@@ -16652,20 +16670,24 @@
       }
       async function openDetails(day) {
         const id = ++detailRequestId;
-        detailTitle.textContent = `${formatMarketHistorySyncDate(day.date)} · 1 hour`;
+        const fourHours = fields.timeframe.value === "FOUR_HOURS";
+        const daily = isDaily();
+        const expectedMinutes = fourHours ? 240 : 60;
+        const durationMs = expectedMinutes * 60000;
+        detailTitle.textContent = `${formatMarketHistorySyncDate(day.date)} · ${daily ? "1 day" : fourHours ? "4 hours" : "1 hour"}`;
         detailBody.replaceChildren(element("p", "", "Reading stored candles…"));
         dialog.showModal(); detailTitle.focus();
         try {
           const value = await api.day({ ...query(), date: day.date });
           if (id !== detailRequestId || !dialog.open) return;
           const text = !value.sourceLoaded ? "The minute source day has not been fully loaded."
-            : value.stale ? "Source data or coverage rules changed. Recalculate this day; previous saved candles are shown below."
+            : value.stale ? "Source data changed or some nonempty intervals were not saved. Recalculate this day; previous saved candles are shown below."
               : value.status === "PENDING" ? "This day has not been calculated."
                 : value.status === "NO_DATA" ? "The loaded source day contains no minute candles."
-                  : value.status === "CALCULATED" ? "Calculation completed. Hourly coverage is shown below; hours below 50% were skipped."
-                  : value.status === "COMPLETE" ? "Every stored hourly candle contains all 60 minutes."
-                    : value.status === "PARTIAL" ? "Some calculated hours contain 30–59 of 60 minutes (50–<100% coverage)."
-                      : value.status === "INSUFFICIENT" ? "Hours with fewer than 30 of 60 minutes (<50% coverage) were skipped. Eligible hourly candles were saved."
+                  : value.status === "CALCULATED" ? "Calculation completed. All nonempty candles are saved; coverage is shown below."
+                  : value.status === "COMPLETE" ? `Every stored candle contains all ${expectedMinutes} minutes.`
+                    : value.status === "PARTIAL" ? "Some calculated candles have partial coverage (50–<100%)."
+                      : value.status === "INSUFFICIENT" ? "Candles with less than 50% coverage are saved and marked Insufficient coverage."
                       : "The last calculation failed. Select this day to retry.";
           detailBody.replaceChildren(element("p", "", text));
           if (value.lastError || localErrors.get(day.date)) detailBody.append(element("p", "text-danger", value.lastError || localErrors.get(day.date)));
@@ -16674,17 +16696,18 @@
           }
           if (value.calculatedAt) detailBody.append(element("p", "text-body-secondary", "Calculated: " + new Date(value.calculatedAt).toLocaleString("en-GB", { timeZone: "Europe/Moscow" }) + " (Moscow)"));
           const time = stamp => stamp ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(stamp)) : "—";
-          if (value.hourCoverage && !value.stale) {
-            detailBody.append(element("h4", "market-aggregation-coverage-title", "Hourly coverage · Moscow time"));
+          if (value.intervalCoverage && !value.stale && !daily) {
+            detailBody.append(element("h4", "market-aggregation-coverage-title", "Interval coverage · Moscow time"));
             const strip = element("div", "market-aggregation-hour-strip");
+            if (fourHours) strip.classList.add("is-four-hours");
             strip.setAttribute("role", "list");
-            strip.setAttribute("aria-label", "Coverage of 24 calendar hours");
-            for (const hour of value.hourCoverage) {
+            strip.setAttribute("aria-label", `Coverage of ${1440 / expectedMinutes} calendar intervals`);
+            for (const hour of value.intervalCoverage) {
               const definition = MARKET_AGGREGATION_STATUSES[hour.coverage];
               const label = String(hour.hour).padStart(2, "0");
               const slot = element("div", `market-aggregation-hour-slot is-${definition.className}`);
               slot.setAttribute("role", "listitem");
-              slot.setAttribute("aria-label", `${label}:00–${String(hour.hour + 1).padStart(2, "0")}:00: ${definition.label}, ${hour.componentCount}/60 minutes`);
+              slot.setAttribute("aria-label", `${label}:00–${String(hour.hour + expectedMinutes / 60).padStart(2, "0")}:00: ${definition.label}, ${hour.componentCount}/${expectedMinutes} minutes`);
               const square = element("span", "market-aggregation-hour-square");
               square.setAttribute("aria-hidden", "true");
               const number = element("span", "", label);
@@ -16703,28 +16726,22 @@
             }
             detailBody.append(legend);
           }
-          for (const hour of value.hours) {
+          for (const hour of value.candles) {
             const section = element("section", "market-aggregation-hour");
-            const end = new Date(Date.parse(hour.begin) + 3600000).toISOString();
-            section.append(element("h4", "", `${time(hour.begin)}–${time(end)} · ${hour.componentCount}/60 minutes`));
+            const end = new Date(Date.parse(hour.begin) + durationMs).toISOString();
+            section.append(element("h4", "", daily ? `${hour.componentCount} minute candles`
+              : `${time(hour.begin)}–${time(end)} · ${hour.componentCount}/${expectedMinutes} minutes`));
+            if (daily) {
+              const coverage = MARKET_AGGREGATION_STATUSES[hour.coverage];
+              section.append(element("p", hour.coverage === "INSUFFICIENT" ? "text-warning-emphasis" : "text-body-secondary",
+                `${coverage.label} · ${hour.coverage === "INSUFFICIENT" ? "<" : "≥"}${value.minimumMinutes} minute candles. Candle saved.`));
+            } else if (hour.coverage === "INSUFFICIENT") section.append(element("p", "text-warning-emphasis", "Insufficient coverage · <50%. Candle saved."));
             section.append(element("p", "", `Open ${hour.open} · High ${hour.high} · Low ${hour.low} · Close ${hour.close}`));
             if (!value.stale) {
               section.append(element("p", "text-body-secondary", `First: ${time(hour.firstSourceBegin)} · Last: ${time(hour.lastSourceBegin)}`));
-              if (hour.missingMinutes.length) section.append(element("p", "text-warning-emphasis", "Minutes without candles: " + hour.missingMinutes.map(time).join(", ")));
+              if (!daily && hour.missingMinutes.length) section.append(element("p", "text-warning-emphasis", "Minutes without candles: " + hour.missingMinutes.map(time).join(", ")));
             }
             detailBody.append(section);
-          }
-          if (value.skippedHours?.length) {
-            detailBody.append(element("h4", "", "Skipped hours · Insufficient coverage (<50%)"));
-            for (const hour of value.skippedHours) {
-              const section = element("section", "market-aggregation-hour");
-              const end = new Date(Date.parse(hour.begin) + 3600000).toISOString();
-              section.append(element("h4", "", `${time(hour.begin)}–${time(end)} · ${hour.componentCount}/60 minutes`));
-              section.append(element("p", "", "No hourly candle created: at least 30 minutes are required."));
-              section.append(element("p", "text-body-secondary", `First: ${time(hour.firstSourceBegin)} · Last: ${time(hour.lastSourceBegin)}`));
-              section.append(element("p", "text-body-secondary", "Minutes without candles: " + hour.missingMinutes.map(time).join(", ")));
-              detailBody.append(section);
-            }
           }
         } catch (error) { if (id === detailRequestId && dialog.open) detailBody.replaceChildren(element("p", "text-danger", error.message)); }
       }
@@ -17224,7 +17241,6 @@
       }
       if (day.completedAt) rows.push(["Loaded at",stamp(day.completedAt)]);
       // A successful load needs no second timestamp. Failed attempts retain their start time.
-      if (day.lastAttemptAt && (day.lastError || !day.completedAt)) rows.push(["Last attempt",stamp(day.lastAttemptAt)]);
       return {message,rows,technicalError:day.lastError || ""};
     }
 
@@ -22105,8 +22121,9 @@
     }
 
     function workspaceNavSubgroupPlacement(menuBounds, top, width, height, viewportWidth, viewportHeight) {
-      const right = menuBounds.right + 4;
-      const left = menuBounds.left - width - 4;
+      const gap = 2;
+      const right = menuBounds.right + gap;
+      const left = menuBounds.left - width - gap;
       const opensLeft = right + width > viewportWidth - 8;
       return {
         inline: viewportWidth <= 600 || (opensLeft && left < 8),

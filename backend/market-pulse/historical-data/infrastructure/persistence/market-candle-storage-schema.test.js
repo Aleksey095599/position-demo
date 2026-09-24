@@ -185,14 +185,21 @@ test("enforces Aggregated Candle target and base timeframe pairs", () => {
     baseTimeframe: "ONE_DAY",
     componentCount: 21
   });
-  assert.throws(
+  assert.doesNotThrow(
     () => insertAggregatedCandle(database, {
       timeframe: "ONE_DAY",
       beginAt: "2026-09-16T00:00:00.000Z",
       endAt: "2026-09-16T23:59:59.000Z",
       baseTimeframe: "ONE_MINUTE"
-    }),
-    /CHECK constraint failed/
+    })
+  );
+  assert.throws(
+    () => insertAggregatedCandle(database, {
+      timeframe: "ONE_DAY",
+      beginAt: "2026-09-17T00:00:00.000Z",
+      endAt: "2026-09-17T23:59:59.000Z",
+      baseTimeframe: "ONE_DAY"
+    }), /CHECK constraint failed/
   );
   assert.throws(
     () => insertAggregatedCandle(database, {

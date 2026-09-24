@@ -17,7 +17,7 @@ function setup(t) {
 function sourceCandle(db) {
   db.exec("INSERT INTO moex_iss_daily_candles VALUES ('CNYRUB_TOM','ONE_DAY','2026-09-14T21:00:00.000Z','2026-09-15T20:59:59.000Z',12,13,11,12.5,'MOEX_ISS','2026-09-20T12:00:00.000Z')");
 }
-test("copies day candles, expands coverage and preserves attempts, errors and empty completed days",t=>{
+test("copies day candles, expands coverage and preserves errors and empty completed days",t=>{
   const db=setup(t); sourceCandle(db);
   db.exec(`INSERT INTO moex_iss_daily_candle_load_ranges VALUES
     ('CNYRUB_TOM','ONE_DAY','2026-09-14T21:00:00.000Z','2026-09-16T21:00:00.000Z','2026-09-20T12:00:00.000Z');
@@ -28,7 +28,7 @@ test("copies day candles, expands coverage and preserves attempts, errors and em
   assert.equal(migrateDayCandleStorage(db),true);
   const results=db.prepare("SELECT * FROM moex_iss_day_candle_load_result ORDER BY load_date").all();
   assert.deepEqual(results.map(row=>row.load_date),["2026-09-15","2026-09-16","2026-09-17"]);
-  assert.equal(results[0].last_attempt_at,"2026-09-19T12:00:00.000Z");
+  assert.equal(Object.hasOwn(results[0],"last_attempt_at"),false);
   assert.equal(results[1].completed_at,"2026-09-20T12:00:00.000Z");
   assert.equal(results[1].last_error,"Retry failed");
   assert.equal(results[2].completed_at,null);

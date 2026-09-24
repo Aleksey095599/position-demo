@@ -17,10 +17,9 @@ function copyDayLoadRanges(db,rows) {
     byInstrument.get(row.instrument_id).push({from,till,loadedAt:row.loaded_at});
   }
   const insert=db.prepare(`INSERT INTO moex_iss_day_candle_load_result
-    (instrument_id,load_date,completed_at,last_attempt_at) VALUES (?,?,?,?)
+    (instrument_id,load_date,completed_at) VALUES (?,?,?)
     ON CONFLICT (instrument_id,load_date) DO UPDATE SET
-    completed_at=MAX(COALESCE(completed_at,excluded.completed_at),excluded.completed_at),
-    last_attempt_at=MAX(last_attempt_at,excluded.last_attempt_at)`);
+    completed_at=MAX(COALESCE(completed_at,excluded.completed_at),excluded.completed_at)`);
   for (const [instrumentId,ranges] of byInstrument) {
     const merged=[];
     for (const range of ranges.sort((a,b)=>a.from-b.from)) {
@@ -35,7 +34,7 @@ function copyDayLoadRanges(db,rows) {
       const first=Math.ceil((range.from+MOSCOW_OFFSET_MS)/DAY_MS)*DAY_MS-MOSCOW_OFFSET_MS;
       for(let time=first;time+DAY_MS<=range.till;time+=DAY_MS) {
         const date=new Date(time+MOSCOW_OFFSET_MS).toISOString().slice(0,10);
-        insert.run(instrumentId,date,range.loadedAt,range.loadedAt);
+        insert.run(instrumentId,date,range.loadedAt);
       }
     }
   }
@@ -57,11 +56,11 @@ function migrateDayCandleStorage(db) {
     }
     if (tableExists(db,"moex_iss_daily_candle_load_attempts")) {
       const insert=db.prepare(`INSERT INTO moex_iss_day_candle_load_result
-        (instrument_id,load_date,last_attempt_at,last_error) VALUES (?,?,?,?)
+        (instrument_id,load_date,last_error) VALUES (?,?,?)
         ON CONFLICT (instrument_id,load_date) DO UPDATE SET
-        last_attempt_at=excluded.last_attempt_at,last_error=excluded.last_error`);
+        last_error=excluded.last_error`);
       for (const row of db.prepare("SELECT * FROM moex_iss_daily_candle_load_attempts").all()) {
-        insert.run(row.instrument_id,row.load_date,row.last_attempt_at,row.last_error);
+        insert.run(row.instrument_id,row.load_date,row.last_error);
       }
     }
     // Исходные таблицы сохраняются как архив; при конфликте вся миграция откатывается.

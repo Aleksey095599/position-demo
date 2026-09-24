@@ -86,8 +86,8 @@ From date / To date inputs stay synchronized with the calendar selection.
 Loading uses a rotating Material Symbols indicator; reduced-motion preferences
 disable rotation while retaining the loading icon and text.
 
-The minute day table has one row per instrument_id and load_date, with completed_at,
-last_attempt_at, and last_error. Candle counts and first/last timestamps are
+The minute day table has one row per instrument_id and load_date, with completed_at
+and last_error. Candle counts and first/last timestamps are
 computed from source rows rather than duplicated. All pages of a day and its
 successful completion are saved atomically; failures persist without committing
 a partial page batch. There is no PARTIAL / Unconfirmed calendar status.
@@ -100,7 +100,7 @@ failed attempt does not erase an earlier completed_at.
 
 Daily candles are stored in `moex_iss_day_candles`. Their load outcome is stored in
 `moex_iss_day_candle_load_result`, one row per instrument_id and load_date, with
-completed_at, last_attempt_at and last_error, just like minute day tracking.
+completed_at and last_error, just like minute day tracking.
 Only fully covered Moscow days are confirmed. Candles and successful day outcomes
 are saved in one transaction; successful loading clears the saved error. Continuous
 coverage ranges used by application ports are computed from these day records,
@@ -185,9 +185,9 @@ non-modal day-details popover without changing that selection. The card stays
 inside the viewport, closes on Escape, outside interaction, or context changes,
 and returns keyboard focus to its status button when explicitly closed.
 Successful loads show candle start times and Loaded at; errors show a readable
-explanation and Last attempt, with the raw error available under Technical details.
+explanation, with the raw error available under Technical details.
 Integrity warnings show daily and minute Open/Close values side by side.
 Counts remain in minute cells; there is no persistent details block below the grid.
-For new tracked loads, last_attempt_at records the start of the source loading
-attempt on both success and failure; completed_at records successful completion.
-Existing timestamps are preserved, and skipped loads do not change either field.
+The completed_at timestamp records successful completion; failures retain the
+previous completion timestamp and update last_error. Skipped loads do not change
+the stored outcome. Attempt history and timing belong to a separate audit module.

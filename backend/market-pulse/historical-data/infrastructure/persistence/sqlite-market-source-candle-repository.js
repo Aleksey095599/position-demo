@@ -211,27 +211,25 @@ class SqliteMarketSourceCandleRepository {
     const range = normalizedRange(command);
     requireCandlesWithinRange(write.candles, range);
     const days = sourceCalendarDays(range);
-    const attemptedAt = command.attemptedAt === undefined ? write.loadedAt : normalizedTimestamp(command.attemptedAt,"Attempted At").value;
     const statement = this.candleStatement(write.timeframe);
     return inTransaction(this.database, () => {
       const count = upsertCandles(statement, write);
       const insert = this.database.prepare(`INSERT INTO ${loadResultTable(write.timeframe)}
-        (instrument_id,load_date,completed_at,last_attempt_at,last_error) VALUES (?,?,?,?,NULL)
+        (instrument_id,load_date,completed_at,last_error) VALUES (?,?,?,NULL)
         ON CONFLICT (instrument_id,load_date) DO UPDATE SET completed_at=excluded.completed_at,
-        last_attempt_at=excluded.last_attempt_at,last_error=NULL`);
-      for (const date of days) insert.run(write.instrumentId,date,write.loadedAt,attemptedAt);
+        last_error=NULL`);
+      for (const date of days) insert.run(write.instrumentId,date,write.loadedAt);
       return count;
     });
   }
-  recordDayAttempt({ instrumentId, timeframe = "ONE_MINUTE", from, till, attemptedAt, error = null }) {
+  recordDayFailure({ instrumentId, timeframe = "ONE_MINUTE", from, till, error }) {
     const table = loadResultTable(timeframe);
     const dates = sourceCalendarDays(normalizedRange({from,till}));
-    const timestamp = normalizedTimestamp(attemptedAt,"Attempted At").value;
     const insert = this.database.prepare(`INSERT INTO ${table}
-      (instrument_id,load_date,last_attempt_at,last_error) VALUES (?,?,?,?)
+      (instrument_id,load_date,last_error) VALUES (?,?,?)
       ON CONFLICT (instrument_id,load_date) DO UPDATE SET
-      last_attempt_at=excluded.last_attempt_at,last_error=excluded.last_error`);
-    for (const date of dates) insert.run(normalizedInstrumentId(instrumentId),date,timestamp,error === null ? null : String(error).slice(0,1000));
+      last_error=excluded.last_error`);
+    for (const date of dates) insert.run(normalizedInstrumentId(instrumentId),date,String(error).slice(0,1000));
   }
   findByPeriod({ instrumentId, timeframe, from, till } = {}) {
     const range = normalizedRange({from,till});
@@ -265,6 +263,7 @@ class SqliteMarketSourceCandleRepository {
     const till = new Date(Date.parse(`${throughDate}T00:00:00+03:00`)+DAY_MS).toISOString();
     const rows = this.database.prepare(`SELECT date(begin_at,'+3 hours') date,COUNT(*) candleCount,
       COUNT(DISTINCT strftime('%Y-%m-%dT%H',begin_at,'+3 hours')) hourCount,
+      COUNT(DISTINCT CAST(strftime('%H',begin_at,'+3 hours') AS INTEGER) / 4) fourHourCount,
       MIN(begin_at) firstCandleAt,MAX(begin_at) lastCandleAt FROM ${sourceTable(timeframe)}
       WHERE instrument_id=? AND begin_at>=? AND begin_at<? GROUP BY date(begin_at,'+3 hours')`)
       .all(instrument,from,till);
@@ -277,7 +276,7 @@ class SqliteMarketSourceCandleRepository {
         : candleFromRow(boundary.get(instrument,day.lastCandleAt));
     }
     for (const row of this.database.prepare(`SELECT load_date date,completed_at completedAt,
-      last_attempt_at lastAttemptAt,last_error lastError FROM ${loadResultTable(timeframe)}
+      last_error lastError FROM ${loadResultTable(timeframe)}
       WHERE instrument_id=? AND load_date>=? AND load_date<=?`).all(instrument,fromDate,throughDate)) {
       byDate.set(row.date,{candleCount:0,...byDate.get(row.date),...row});
     }

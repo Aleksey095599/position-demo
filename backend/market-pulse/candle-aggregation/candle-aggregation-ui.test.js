@@ -19,6 +19,7 @@ test("aggregation calendar has separate controls, details, and coverage statuses
   assert.match(html, /class="market-history-field-value">1 min<\/span>/);
   assert.doesNotMatch(html, /name="baseTimeframe"/);
   assert.match(html, /Calculate Candles/);
+  assert.match(html, /value="FOUR_HOURS">4 hours/);
   assert.match(html, /Complete coverage/); assert.match(html, /Partial coverage/); assert.match(html, /No data/);
   assert.match(html, /Complete coverage<\/span>/);
   assert.match(html, /Partial coverage · 50–100%/);
@@ -54,7 +55,7 @@ test("first failed day stops the queue and identifies the retry boundary", async
 test("insufficient coverage is a successful calculation and does not stop the remaining days", async () => {
   const calls=[];
   const result=await context.calculateMarketAggregationRange({selection,instrumentId:"CNYRUB_TOM",timeframe:"ONE_HOUR",
-    calculateDay:async command=>{calls.push(command.date);return {...command,status:"CALCULATED",candleCount:0,insufficientCount:1};},onProgress(){}});
+    calculateDay:async command=>{calls.push(command.date);return {...command,status:"CALCULATED",candleCount:1,insufficientCount:1};},onProgress(){}});
   assert.equal(result.completed,3);
   assert.equal(calls.length,3);
 });
@@ -115,8 +116,9 @@ function calendarHarness(apiOverrides = {}) {
     submit: () => get("#marketAggregationForm").handlers.submit({ preventDefault() {} }) };
 }
 
-test("day details explain skipped hours without displaying fictitious OHLC", async () => {
-  const h=calendarHarness({day:async()=>({sourceLoaded:true,status:"INSUFFICIENT",hours:[],skippedHours:[{
+test("day details display saved insufficient candles with their OHLC and coverage", async () => {
+  const h=calendarHarness({day:async()=>({sourceLoaded:true,status:"CALCULATED",candles:[{
+    open:"12",high:"12",low:"12",close:"12",coverage:"INSUFFICIENT",
     begin:"2026-09-15T05:00:00.000Z",componentCount:1,firstSourceBegin:"2026-09-15T05:59:00.000Z",
     lastSourceBegin:"2026-09-15T05:59:00.000Z",missingMinutes:["2026-09-15T05:00:00.000Z"]
   }]})});
@@ -128,34 +130,116 @@ test("day details explain skipped hours without displaying fictitious OHLC", asy
   const text=content(h.get("[data-aggregation-details-body]"));
   assert.match(text,/Insufficient coverage/);
   assert.match(text,/08:00–09:00 · 1\/60 minutes/);
-  assert.match(text,/No hourly candle created/);
-  assert.doesNotMatch(text,/Open |undefined/);
+  assert.match(text,/Candle saved/);
+  assert.match(text,/Open 12/);
+  assert.doesNotMatch(text,/skipped|No candle created|undefined/i);
 });
 
-test("calculated mixed days replace the total with three coverage counters joined by plus signs", async () => {
+test("daily calendar shows one unnumbered coverage square and switches back to the hourly legend", async () => {
+  const h = calendarHarness({ calendar: async query => ({ ...h.response(query), days: [
+    { date: "2026-09-18", available: true, status: "CALCULATED", candleCount: 1,
+      completeCount: 0, partialCount: 0, sufficientCount: 1, insufficientCount: 0 },
+    { date: "2026-09-19", available: true, status: "CALCULATED", candleCount: 1,
+      completeCount: 0, partialCount: 0, sufficientCount: 0, insufficientCount: 1 },
+    { date: "2026-09-20", available: true, status: "NO_DATA", candleCount: 0,
+      completeCount: 0, partialCount: 0, sufficientCount: 0, insufficientCount: 0 }
+  ] }) });
+  const text = node => [node.textContent, ...node.children.map(text)].join(" ");
+  h.fields.timeframe.value = "ONE_DAY";
+  await h.calendar.load();
+  const cell = h.grid.querySelectorAll()[0];
+  const counts = cell.children.find(node => node.className === "market-aggregation-coverage-counts");
+  assert.deepEqual(Array.from(counts.children, node => node.textContent), [""]);
+  assert.match(counts.children[0].className, /is-completed/);
+  assert.match(cell.getAttribute("aria-label"), /Sufficient coverage/);
+  assert.doesNotMatch(cell.getAttribute("aria-label"), /Insufficient coverage/);
+  const insufficient = h.grid.querySelectorAll()[1];
+  const insufficientCounts = insufficient.children.find(node => node.className === "market-aggregation-coverage-counts");
+  assert.deepEqual(Array.from(insufficientCounts.children, node => node.textContent), [""]);
+  assert.match(insufficientCounts.children[0].className, /is-insufficient/);
+  assert.match(insufficient.getAttribute("aria-label"), /Insufficient coverage/);
+  assert.match(insufficient.className, /is-completed/);
+  assert.equal(h.grid.querySelectorAll()[2].children.some(node => node.className === "market-aggregation-coverage-counts"), false);
+  const legend = h.get("[data-aggregation-coverage-legend]");
+  assert.match(text(legend), /Sufficient coverage · ≥240 min/);
+  assert.match(text(legend), /Insufficient coverage · <240 min/);
+  assert.doesNotMatch(text(legend), /Partial|Complete|%/);
+  h.fields.timeframe.value = "ONE_HOUR";
+  h.fields.timeframe.handlers.change();
+  await new Promise(setImmediate);
+  assert.match(text(legend), /Partial coverage/);
+  assert.doesNotMatch(text(legend), /240 min|Sufficient coverage/);
+});
+
+test("daily details show actual minute count and sufficient threshold without overnight gaps or hourly ratios", async () => {
+  for (const [componentCount, coverage] of [[239,"INSUFFICIENT"],[240,"SUFFICIENT"]]) {
+    const h = calendarHarness({ day: async () => ({ sourceLoaded: true, status: "CALCULATED",
+      minimumMinutes: 240, expectedMinutes: null, intervalCoverage: null, candles: [{
+        begin: "2026-09-17T21:00:00.000Z", end: "2026-09-18T20:59:59.000Z",
+        open: "12", high: "13", low: "11", close: "12.5", componentCount, coverage,
+        firstSourceBegin: "2026-09-18T07:00:00.000Z", lastSourceBegin: "2026-09-18T15:59:00.000Z", missingMinutes: []
+      }] }) });
+    h.fields.timeframe.value = "ONE_DAY";
+    await h.calendar.load();
+    const wrapper = h.grid.children[0].children.find(node => node.children.some(child => child.dataset.aggregationDate));
+    wrapper.children[1].handlers.click();
+    await new Promise(setImmediate);
+    const text = node => [node.textContent, ...node.children.map(text)].join(" ");
+    assert.match(h.get("marketAggregationDetailsTitle").textContent, /1 day/);
+    const body = text(h.get("[data-aggregation-details-body]"));
+    assert.match(body, new RegExp(`${componentCount} minute candles`));
+    assert.match(body, /240 minute candles. Candle saved/);
+    assert.match(body, /Open 12 · High 13 · Low 11 · Close 12.5/);
+    assert.match(body, /First: 10:00 · Last: 18:59/);
+    assert.doesNotMatch(body, /Partial|Complete coverage|\/1440|\/60|Minutes without candles|Interval coverage|undefined/);
+  }
+});
+
+test("switching to daily calendar ignores a late four-hour response", async () => {
+  let release;
+  const queries = [];
+  const h = calendarHarness({ calendar: query => {
+    queries.push(query.timeframe);
+    if (query.timeframe === "FOUR_HOURS") return new Promise(resolve => { release = () => resolve(h.response(query)); });
+    return Promise.resolve(h.response(query));
+  } });
+  h.fields.timeframe.value = "FOUR_HOURS";
+  const pending = h.calendar.load(true);
+  h.fields.timeframe.value = "ONE_DAY";
+  h.fields.timeframe.handlers.change();
+  await new Promise(setImmediate);
+  const replacements = h.grid.replacements;
+  release(); await pending;
+  assert.deepEqual(queries, ["FOUR_HOURS", "ONE_DAY"]);
+  assert.equal(h.grid.replacements, replacements);
+  assert.equal(h.grid.inert, false);
+});
+
+test("calculated mixed days replace the total with three coverage counters without separators", async () => {
   const h=calendarHarness();
   await h.calendar.load();
   const response=h.response({instrumentId:"CNYRUB_TOM",timeframe:"ONE_HOUR",month:"2026-09"});
-  Object.assign(response.days[17],{status:"CALCULATED",candleCount:10,completeCount:9,partialCount:1,insufficientCount:1});
+  Object.assign(response.days[17],{status:"CALCULATED",candleCount:11,completeCount:9,partialCount:1,insufficientCount:1});
   const mixed=calendarHarness({calendar:async()=>response});
   await mixed.calendar.load();
   const cell=mixed.grid.querySelectorAll().find(node=>node.dataset.aggregationDate==="2026-09-18");
   assert.match(cell.className,/is-completed/);
   assert.equal(cell.children.some(node=>node.className==="market-calendar-candle-count"),false);
   const counts=cell.children.find(node=>node.className==="market-aggregation-coverage-counts");
-  assert.deepEqual(Array.from(counts.children,node=>node.textContent),["9","+","1","+","1"]);
+  assert.deepEqual(Array.from(counts.children,node=>node.textContent),["9","1","1"]);
   const caption=cell.children.find(node=>node.className==="market-calendar-candle-caption");
   assert.equal(caption.textContent,"");
   assert.equal(caption.classList.contains("is-empty"),true);
   assert.equal(caption.getAttribute("aria-hidden"),"true");
-  assert.match(cell.getAttribute("aria-label"),/Calculated, 10 candles saved, 1 interval skipped/);
+  assert.match(cell.getAttribute("aria-label"),/Calculated, 11 candles saved/);
+  assert.doesNotMatch(cell.getAttribute("aria-label"),/skipped/);
   assert.match(cell.getAttribute("aria-label"),/Insufficient coverage: 1 interval/);
 });
 
 test("hour coverage strip contains all 24 labeled Moscow hours and a separate color legend", async () => {
-  const hourCoverage=Array.from({length:24},(_,hour)=>({hour,coverage:hour===8?"INSUFFICIENT":hour===9?"COMPLETE":hour===18?"PARTIAL":"NO_DATA",
+  const intervalCoverage=Array.from({length:24},(_,hour)=>({hour,coverage:hour===8?"INSUFFICIENT":hour===9?"COMPLETE":hour===18?"PARTIAL":"NO_DATA",
     componentCount:hour===8?1:hour===9?60:hour===18?58:0}));
-  const h=calendarHarness({day:async()=>({sourceLoaded:true,status:"CALCULATED",hours:[],skippedHours:[],hourCoverage})});
+  const h=calendarHarness({day:async()=>({sourceLoaded:true,status:"CALCULATED",candles:[],intervalCoverage})});
   await h.calendar.load();
   const wrapper=h.grid.children[0].children.find(node=>node.children.some(child=>child.dataset.aggregationDate));
   wrapper.children[1].handlers.click(); await new Promise(setImmediate);
@@ -216,4 +300,46 @@ test("unchanged refresh preserves the calendar DOM and old responses cannot repl
   assert.equal(h.get("[data-aggregation-month]").textContent, "2026-08");
   assert.equal(h.grid.querySelectorAll()[0].dataset.aggregationDate, "2026-08-01");
   assert.equal(h.get("[data-aggregation-refresh]").disabled, false);
+});
+
+test("switching timeframe requests a separate calendar and ignores a late hourly response", async () => {
+  let oldResponse;
+  const calls = [];
+  const h = calendarHarness({ calendar: query => {
+    calls.push(query.timeframe);
+    if (calls.length === 2) return new Promise(resolve => { oldResponse = () => resolve(h.response(query)); });
+    const response = h.response(query);
+    if (query.timeframe === "FOUR_HOURS") Object.assign(response.days[14],
+      { status: "CALCULATED", candleCount: 3, completeCount: 1, partialCount: 1, insufficientCount: 1 });
+    return Promise.resolve(response);
+  } });
+  await h.calendar.load();
+  const pending = h.calendar.load(true);
+  h.fields.timeframe.value = "FOUR_HOURS";
+  h.fields.timeframe.handlers.change();
+  await new Promise(setImmediate);
+  oldResponse(); await pending;
+  assert.deepEqual(calls, ["ONE_HOUR", "ONE_HOUR", "FOUR_HOURS"]);
+  const cell = h.grid.querySelectorAll().find(node => node.dataset.aggregationDate === "2026-09-15");
+  assert.match(cell.getAttribute("aria-label"), /Calculated, 3 candles saved/);
+});
+
+test("four-hour details show six intervals and 240-minute coverage", async () => {
+  const h = calendarHarness({ day: async () => ({ sourceLoaded: true, status: "CALCULATED",
+    intervalCoverage: Array.from({ length: 6 }, (_, i) => ({ hour: i * 4, coverage: "NO_DATA", componentCount: 0 })),
+    candles: [{ begin: "2026-09-15T05:00:00.000Z", componentCount: 119, missingMinutes: [],
+      open:"12",high:"12",low:"12",close:"12",coverage:"INSUFFICIENT" }] }) });
+  h.fields.timeframe.value = "FOUR_HOURS";
+  await h.calendar.load();
+  const wrapper = h.grid.children[0].children.find(node => node.children.some(child => child.dataset.aggregationDate));
+  wrapper.children[1].handlers.click(); await new Promise(setImmediate);
+  assert.match(h.get("marketAggregationDetailsTitle").textContent, /4 hours/);
+  const body = h.get("[data-aggregation-details-body]");
+  const strip = body.children.find(node => node.className === "market-aggregation-hour-strip");
+  assert.equal(strip.children.length, 6);
+  assert.equal(strip.classList.contains("is-four-hours"), true);
+  assert.match(strip.children[5].getAttribute("aria-label"), /20:00–24:00: No data, 0\/240 minutes/);
+  const content = node => [node.textContent, ...node.children.map(content)].join(" ");
+  assert.match(content(body), /08:00–12:00 · 119\/240 minutes/);
+  assert.match(content(body), /Insufficient coverage · <50%. Candle saved/);
 });

@@ -39,6 +39,9 @@ const {
 } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-market-candle-storage");
 const { migrateDayCandleStorage } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-day-candle-storage");
 const { migrateMinuteCandleLoadResult } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-minute-candle-load-result");
+const { migrateAggregationTimeframes } = require("./backend/market-pulse/candle-aggregation/infrastructure/persistence/migrate-aggregation-timeframes");
+const { migrateDailyAggregation } = require("./backend/market-pulse/candle-aggregation/infrastructure/persistence/migrate-daily-aggregation");
+const { migrateCandleResultAttemptTimestamps } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-candle-result-attempt-timestamps");
 const { createCandleAggregationModule } = require("./backend/market-pulse/candle-aggregation/config/candle-aggregation-module");
 const {
   calculateAnalyticalPnlMinor,
@@ -345,6 +348,9 @@ migrateTradePositionManagementState(database);
 ensurePositionManagementPolicyColumns(database);
 migrateAdmissionEnforcement(database);
 migrateMinuteCandleLoadResult(database);
+migrateCandleResultAttemptTimestamps(database);
+migrateAggregationTimeframes(database);
+migrateDailyAggregation(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 migrateDayCandleStorage(database);
 migrateMarketCandleStorage(database);

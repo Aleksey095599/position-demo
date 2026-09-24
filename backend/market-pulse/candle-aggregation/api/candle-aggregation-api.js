@@ -8,8 +8,8 @@ function createCandleAggregationApi(service) {
     if (!input || typeof input !== "object" || Array.isArray(input)
         || Object.keys(input).length !== keys.length || keys.some(key => typeof input[key] !== "string")
         || Object.keys(input).some(key => !keys.includes(key))
-        || input.instrumentId !== "CNYRUB_TOM" || input.timeframe !== "ONE_HOUR") {
-      return failure(400, "INVALID_CANDLE_AGGREGATION_REQUEST", "Choose CNYRUB_TOM, ONE_HOUR and a valid historical date or month.");
+        || input.instrumentId !== "CNYRUB_TOM" || !["ONE_HOUR", "FOUR_HOURS", "ONE_DAY"].includes(input.timeframe)) {
+      return failure(400, "INVALID_CANDLE_AGGREGATION_REQUEST", "Choose CNYRUB_TOM, ONE_HOUR, FOUR_HOURS or ONE_DAY and a valid historical date or month.");
     }
     if (action === "calculateDay" && calculating) return failure(409, "CANDLE_AGGREGATION_BUSY", "Wait for the current calculation to finish.");
     if (action === "calculateDay") calculating = true;

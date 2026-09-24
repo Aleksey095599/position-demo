@@ -27,7 +27,8 @@ const SUPPORTED_TARGETS_BY_BASE = Object.freeze({
     CandleTimeframe.FIVE_MINUTES,
     CandleTimeframe.FIFTEEN_MINUTES,
     CandleTimeframe.ONE_HOUR,
-    CandleTimeframe.FOUR_HOURS
+    CandleTimeframe.FOUR_HOURS,
+    CandleTimeframe.ONE_DAY
   ]),
   [CandleTimeframe.ONE_DAY]: new Set([
     CandleTimeframe.ONE_WEEK,
@@ -135,6 +136,12 @@ function intradayBucket(timestamp, timeframe) {
   };
 }
 
+function dayBucket(timestamp) {
+  const beginParts = { ...moscowParts(timestamp), hour: 0, minute: 0, second: 0 };
+  return { begin: moscowTimestamp(beginParts),
+    end: moscowTimestamp(shiftedLocalParts(beginParts, DAY_MS)) };
+}
+
 function weekBucket(timestamp) {
   const parts = moscowParts(timestamp);
   const localDate = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
@@ -176,6 +183,7 @@ function monthBucket(timestamp) {
 }
 
 function bucketFor(timestamp, timeframe) {
+  if (timeframe === CandleTimeframe.ONE_DAY) return dayBucket(timestamp);
   if (INTRADAY_DURATION_MS[timeframe]) {
     return intradayBucket(timestamp, timeframe);
   }

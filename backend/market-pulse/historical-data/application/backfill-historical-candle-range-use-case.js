@@ -135,23 +135,21 @@ class BackfillHistoricalCandleRangeUseCase {
       && (await this.marketSourceCandleRepository.findByPeriod(normalized)).length === 0;
     const tracked = (normalized.timeframe === CandleTimeframe.ONE_MINUTE
       || (normalized.timeframe === CandleTimeframe.ONE_DAY && completeDays))
-      && typeof this.marketSourceCandleRepository.recordDayAttempt === "function";
+      && typeof this.marketSourceCandleRepository.recordDayFailure === "function";
     if (!tracked || (!reloadEmpty && await this.marketSourceCandleRepository.coversLoadedRange(normalized))) {
       return this.loadRange(normalized,{reloadEmpty});
     }
-    const attemptedAt = new Date(this.now()).toISOString();
-    await this.marketSourceCandleRepository.recordDayAttempt({...normalized,attemptedAt});
     try {
-      return await this.loadRange(normalized,{reloadEmpty,attemptedAt});
+      return await this.loadRange(normalized,{reloadEmpty});
     } catch (error) {
-      await this.marketSourceCandleRepository.recordDayAttempt({
-        ...normalized,attemptedAt,error: error.code ? error.code + ": " + error.message : error.message
+      await this.marketSourceCandleRepository.recordDayFailure({
+        ...normalized,error: error.code ? error.code + ": " + error.message : error.message
       });
       throw error;
     }
   }
 
-  async loadRange(query, { reloadEmpty = false, attemptedAt } = {}) {
+  async loadRange(query, { reloadEmpty = false } = {}) {
     const normalizedQuery = createHistoricalCandlesQuery(query);
 
     if (!ANCHOR_TIMEFRAMES.has(normalizedQuery.timeframe)) {
@@ -231,8 +229,7 @@ class BackfillHistoricalCandleRangeUseCase {
       ...normalizedQuery,
       candles,
       dataSource: "MOEX_ISS",
-      loadedAt: new Date(loadedAtTimestamp).toISOString(),
-      ...(attemptedAt ? { attemptedAt } : {})
+      loadedAt: new Date(loadedAtTimestamp).toISOString()
     });
 
     return Object.freeze({

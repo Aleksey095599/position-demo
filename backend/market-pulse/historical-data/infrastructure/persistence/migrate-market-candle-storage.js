@@ -30,9 +30,9 @@ function migrateMarketCandleStorage(db) {
     }
     if (tableExists(db, "market_candle_load_ranges")) {
       const insert = db.prepare(`INSERT INTO moex_iss_minute_candle_load_result
-        (instrument_id,load_date,completed_at,last_attempt_at) VALUES (?,?,?,?)
+        (instrument_id,load_date,completed_at) VALUES (?,?,?)
         ON CONFLICT (instrument_id,load_date) DO UPDATE SET
-        completed_at=MAX(completed_at,excluded.completed_at),last_attempt_at=MAX(last_attempt_at,excluded.last_attempt_at)`);
+        completed_at=MAX(completed_at,excluded.completed_at)`);
       const rows = db.prepare("SELECT * FROM market_candle_load_ranges").all();
       copyDayLoadRanges(db,rows.filter(row=>row.timeframe === "ONE_DAY"));
       for (const row of rows) {
@@ -43,7 +43,7 @@ function migrateMarketCandleStorage(db) {
         // Partial boundary days remain unconfirmed; original coverage is retained in the legacy table.
         const from = Date.parse(row.from_at), till = Date.parse(row.till_at);
         const firstDay = Math.ceil((from + MOSCOW_OFFSET_MS) / DAY_MS) * DAY_MS - MOSCOW_OFFSET_MS;
-        for (let t=firstDay; t+DAY_MS<=till; t+=DAY_MS) insert.run(row.instrument_id,new Date(t+MOSCOW_OFFSET_MS).toISOString().slice(0,10),row.loaded_at,row.loaded_at);
+        for (let t=firstDay; t+DAY_MS<=till; t+=DAY_MS) insert.run(row.instrument_id,new Date(t+MOSCOW_OFFSET_MS).toISOString().slice(0,10),row.loaded_at);
       }
       db.exec("ALTER TABLE market_candle_load_ranges RENAME TO legacy_market_candle_load_ranges");
     }

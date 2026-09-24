@@ -256,13 +256,14 @@ CREATE TABLE IF NOT EXISTS moex_iss_aggregated_candles
                 'FIFTEEN_MINUTES',
                 'ONE_HOUR',
                 'FOUR_HOURS',
+                'ONE_DAY',
                 'ONE_WEEK',
                 'ONE_MONTH'
             )
         ),
     CONSTRAINT chk_moex_iss_aggregated_candles_base_timeframe
         CHECK (
-            (timeframe IN ('FIVE_MINUTES', 'FIFTEEN_MINUTES', 'ONE_HOUR', 'FOUR_HOURS')
+            (timeframe IN ('FIVE_MINUTES', 'FIFTEEN_MINUTES', 'ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY')
                 AND base_timeframe = 'ONE_MINUTE')
             OR (timeframe IN ('ONE_WEEK', 'ONE_MONTH')
                 AND base_timeframe = 'ONE_DAY')
@@ -304,11 +305,10 @@ CREATE TABLE IF NOT EXISTS moex_iss_aggregated_candles
 CREATE TABLE IF NOT EXISTS moex_iss_candle_aggregation_result
 (
     instrument_id    TEXT NOT NULL,
-    timeframe        TEXT NOT NULL CHECK (timeframe = 'ONE_HOUR'),
+    timeframe        TEXT NOT NULL CHECK (timeframe IN ('ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY')),
     calculation_date TEXT NOT NULL CHECK (calculation_date GLOB '????-??-??' AND date(calculation_date) = calculation_date),
     calculated_at    TEXT,
     source_loaded_at TEXT,
-    last_attempt_at  TEXT NOT NULL,
     last_error       TEXT,
     PRIMARY KEY (instrument_id, timeframe, calculation_date)
 );
@@ -3186,7 +3186,6 @@ CREATE TABLE IF NOT EXISTS moex_iss_minute_candle_load_result (
     instrument_id TEXT NOT NULL CHECK (length(instrument_id) BETWEEN 1 AND 64 AND instrument_id = trim(instrument_id)),
     load_date TEXT NOT NULL CHECK (length(load_date) = 10 AND load_date GLOB '????-??-??' AND date(load_date, '+0 days') IS NOT NULL AND date(load_date, '+0 days') = load_date),
     completed_at TEXT,
-    last_attempt_at TEXT NOT NULL,
     last_error TEXT,
     PRIMARY KEY (instrument_id, load_date)
 );
@@ -3195,7 +3194,6 @@ CREATE TABLE IF NOT EXISTS moex_iss_day_candle_load_result (
     instrument_id TEXT NOT NULL CHECK (length(instrument_id) BETWEEN 1 AND 64 AND instrument_id = trim(instrument_id)),
     load_date TEXT NOT NULL CHECK (length(load_date) = 10 AND load_date GLOB '????-??-??' AND date(load_date, '+0 days') IS NOT NULL AND date(load_date, '+0 days') = load_date),
     completed_at TEXT,
-    last_attempt_at TEXT NOT NULL,
     last_error TEXT,
     PRIMARY KEY (instrument_id, load_date)
 );

@@ -2,6 +2,7 @@
       PENDING: { className: "pending", icon: "remove", label: "Not calculated" },
       CALCULATED: { className: "completed", icon: "check", label: "Calculated" },
       COMPLETE: { className: "completed", icon: "check", label: "Complete coverage" },
+      SUFFICIENT: { className: "completed", icon: "check", label: "Sufficient coverage" },
       PARTIAL: { className: "partial", icon: "donut_large", label: "Partial coverage" },
       INSUFFICIENT: { className: "insufficient", icon: "filter_alt_off", label: "Insufficient coverage" },
       NO_DATA: { className: "no-data", icon: "block", label: "No data" },

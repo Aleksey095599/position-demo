@@ -4,8 +4,9 @@
     }
 
     function workspaceNavSubgroupPlacement(menuBounds, top, width, height, viewportWidth, viewportHeight) {
-      const right = menuBounds.right + 4;
-      const left = menuBounds.left - width - 4;
+      const gap = 2;
+      const right = menuBounds.right + gap;
+      const left = menuBounds.left - width - gap;
       const opensLeft = right + width > viewportWidth - 8;
       return {
         inline: viewportWidth <= 600 || (opensLeft && left < 8),

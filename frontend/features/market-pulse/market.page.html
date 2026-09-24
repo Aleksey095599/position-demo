@@ -131,7 +131,7 @@
           <div class="market-source-calendar-body">
             <form class="market-history-sync-form" id="marketAggregationForm">
               <label class="market-history-field is-instrument"><span>Instrument</span><select class="form-select form-select-sm" name="instrumentId"><option value="CNYRUB_TOM">CNY/RUB TOM</option></select></label>
-              <label class="market-history-field"><span>Calculation Timeframe</span><select class="form-select form-select-sm" name="timeframe"><option value="ONE_HOUR">1 hour</option></select></label>
+              <label class="market-history-field"><span>Calculation Timeframe</span><select class="form-select form-select-sm" name="timeframe"><option value="ONE_HOUR">1 hour</option><option value="FOUR_HOURS">4 hours</option><option value="ONE_DAY">1 day</option></select></label>
               <div class="market-history-field is-source-timeframe" role="group" aria-labelledby="marketAggregationSourceTimeframeLabel">
                 <span id="marketAggregationSourceTimeframeLabel">Source Candle Timeframe</span>
                 <span class="market-history-field-value">1 min</span>
@@ -154,7 +154,7 @@
             </div>
             <p class="market-history-section-description market-calendar-message" data-aggregation-message role="status" aria-live="polite"></p>
             <span class="visually-hidden" data-aggregation-refresh-status role="status" aria-live="polite"></span>
-            <div class="market-history-calendar" data-aggregation-grid aria-label="Calculated hourly candles by day"></div>
+            <div class="market-history-calendar" data-aggregation-grid aria-label="Calculated candles by day"></div>
             <div class="market-aggregation-legend" aria-label="Aggregation day statuses">
               <div class="market-history-sync-legend">
                 <span class="market-aggregation-legend-label">Day status</span>
@@ -163,11 +163,11 @@
                 <span><span class="button-icon market-history-legend-icon is-no-data" aria-hidden="true">block</span>No data</span>
                 <span><span class="button-icon market-history-legend-icon is-error" aria-hidden="true">priority_high</span>Error</span>
               </div>
-              <div class="market-history-sync-legend">
+              <div class="market-history-sync-legend" data-aggregation-coverage-legend>
                 <span class="market-aggregation-legend-label">Coverage</span>
                 <span><span class="market-aggregation-coverage-dot is-completed" aria-hidden="true"></span>Complete coverage</span>
                 <span><span class="market-aggregation-coverage-dot is-partial" aria-hidden="true"></span>Partial coverage · 50–100%</span>
-                <span><span class="market-aggregation-coverage-dot is-insufficient" aria-hidden="true"></span>Insufficient coverage · &lt;50% · skipped</span>
+                <span><span class="market-aggregation-coverage-dot is-insufficient" aria-hidden="true"></span>Insufficient coverage · &lt;50%</span>
               </div>
             </div>
           </div>

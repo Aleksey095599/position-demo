@@ -66,7 +66,7 @@ test("retry clears the saved error and atomically completes the day",async t=>{
   await assert.rejects(loadDay.execute({instrumentId,date:"2026-09-15"}));fail=false;
   await loadDay.execute({instrumentId,date:"2026-09-15"});
   const day=(await month(calendar)).days[14];assert.equal(day.status,"COMPLETED");assert.equal(day.candleCount,1);assert.equal(day.lastError,null);
-  repository.recordDayAttempt({...sourceDayQuery({instrumentId,date:"2026-09-15"},now()),attemptedAt:new Date(now()).toISOString(),error:"Later error"});
+  repository.recordDayFailure({...sourceDayQuery({instrumentId,date:"2026-09-15"},now()),error:"Later error"});
   const after=(await month(calendar)).days[14];assert.equal(after.status,"COMPLETED");assert.equal(after.lastError,"Later error");
 });
 test("calendar respects Moscow midnight, month length, and the 366-day bound",async t=>{
@@ -97,10 +97,10 @@ test("a second load cannot run concurrently, while calendar reads remain availab
 });
 test("day schema rejects invalid dates and keeps one row per instrument and date",t=>{
   const {db}=setup(t);
-  const insert=db.prepare("INSERT INTO moex_iss_minute_candle_load_result (instrument_id,load_date,last_attempt_at) VALUES (?,?,?)");
-  for(const date of ['2026-02-30','2026-13-01','not-a-date']) assert.throws(()=>insert.run(instrumentId,date,new Date(now()).toISOString()),/CHECK/);
-  insert.run(instrumentId,'2026-09-15',new Date(now()).toISOString());
-  assert.throws(()=>insert.run(instrumentId,'2026-09-15',new Date(now()).toISOString()),/UNIQUE/);
+  const insert=db.prepare("INSERT INTO moex_iss_minute_candle_load_result (instrument_id,load_date) VALUES (?,?)");
+  for(const date of ['2026-02-30','2026-13-01','not-a-date']) assert.throws(()=>insert.run(instrumentId,date),/CHECK/);
+  insert.run(instrumentId,'2026-09-15');
+  assert.throws(()=>insert.run(instrumentId,'2026-09-15'),/UNIQUE/);
 });
 
 test("daily calendar loads native MOEX daily candles, independently from minute data", async t => {
@@ -347,7 +347,7 @@ test("failed attempts take priority over No data in both source calendars",async
   const {repository,calendar}=setup(t);
   for (const timeframe of ["ONE_MINUTE","ONE_DAY"]) {
     saveDay(repository,timeframe,[]);
-    repository.recordDayAttempt({...sourceDayQuery({instrumentId,timeframe,date:"2026-09-15"},now()),attemptedAt:new Date(now()).toISOString(),error:"Source unavailable"});
+    repository.recordDayFailure({...sourceDayQuery({instrumentId,timeframe,date:"2026-09-15"},now()),error:"Source unavailable"});
   }
   assert.deepEqual(await statuses(calendar),["ERROR","ERROR"]);
 });
@@ -364,7 +364,7 @@ test("a failed daily request leaves the minute calendar loaded and the daily cal
 });
 
 
-test("successful source day loading retains the attempt start separately from completion",async t=>{
+test("successful source day loading retains only completion time and skipped loads do not change it",async t=>{
   const {db,repository}=setup(t);
   let clock=Date.parse("2026-09-20T12:00:00Z");
   const loader=new BackfillHistoricalCandleRangeUseCase({marketSourceCandleRepository:repository,now:()=>clock,minimumRequestIntervalMs:0,
@@ -372,7 +372,7 @@ test("successful source day loading retains the attempt start separately from co
   const query=sourceDayQuery({instrumentId,date:"2026-09-15"},now());
   await loader.execute(query);
   const row=db.prepare("SELECT * FROM moex_iss_minute_candle_load_result").get();
-  assert.equal(row.last_attempt_at,"2026-09-20T12:00:00.000Z");assert.equal(row.completed_at,"2026-09-20T12:00:05.000Z");
+  assert.equal(Object.hasOwn(row,"last_attempt_at"),false);assert.equal(row.completed_at,"2026-09-20T12:00:05.000Z");
   clock+=10000;await loader.execute(query);
   assert.deepEqual(db.prepare("SELECT * FROM moex_iss_minute_candle_load_result").get(),row);
 });
