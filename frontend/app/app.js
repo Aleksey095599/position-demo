@@ -1394,15 +1394,6 @@
     const generationDialogClose = document.getElementById("generationDialogClose");
     const generationCancelButton = document.getElementById("generationCancelButton");
     const marketPanels = Array.from(document.querySelectorAll("[data-market-panel]"));
-    const marketHistoryForm = document.getElementById("marketHistoryForm");
-    const marketHistoryInstrument = document.getElementById("marketHistoryInstrument");
-    const marketHistoryTimeframe = document.getElementById("marketHistoryTimeframe");
-    const marketHistoryFrom = document.getElementById("marketHistoryFrom");
-    const marketHistoryTill = document.getElementById("marketHistoryTill");
-    const marketHistoryLoadButton = document.getElementById("marketHistoryLoadButton");
-    const marketHistorySummary = document.getElementById("marketHistorySummary");
-    const marketHistoryChartEl = document.getElementById("marketHistoryChart");
-    const marketHistoryEmpty = document.getElementById("marketHistoryEmpty");
     const marketCcyOptionRowsEl = document.getElementById("marketCcyOptionRows");
     const marketCcyOptionNewButton = document.getElementById("marketCcyOptionNewButton");
     const marketPairOptionRowsEl = document.getElementById("marketPairOptionRows");
@@ -1603,9 +1594,6 @@
     let marketStreamRunning = false;
     let marketStreamConnected = false;
     let marketStreamEventSource = null;
-    let marketHistoryChart = null;
-    let marketHistorySeries = null;
-    let marketHistoryResizeObserver = null;
     let marketHistoryLoading = false;
     let selectedDatabaseTable = "";
     let databaseTables = [];
@@ -1804,6 +1792,10 @@
     }
 
     function hideAppTooltip() {
+      if (activeTooltipTarget?.dataset.tooltipTrigger === "click") {
+        activeTooltipTarget.setAttribute("aria-expanded", "false");
+        activeTooltipTarget.removeAttribute("aria-describedby");
+      }
       activeTooltipTarget = null;
       appTooltipEl.classList.remove("is-visible");
       appTooltipEl.setAttribute("aria-hidden", "true");
@@ -1824,7 +1816,13 @@
         return;
       }
 
+      if (activeTooltipTarget !== target) hideAppTooltip();
       activeTooltipTarget = target;
+      if (target.dataset.tooltipTrigger === "click") {
+        target.setAttribute("aria-expanded", "true");
+        target.setAttribute("aria-describedby", appTooltipEl.id);
+      }
+      appTooltipEl.classList.toggle("is-click-help", target.dataset.tooltipTrigger === "click");
       const supportsPopover = typeof appTooltipEl.showPopover === "function";
 
       if (supportsPopover) {
@@ -1871,10 +1869,12 @@
     }
 
     function handleAppTooltipEnter(event) {
+      if (activeTooltipTarget?.dataset.tooltipTrigger === "click") return;
       showAppTooltip(event.currentTarget);
     }
 
     function handleAppTooltipLeave(event) {
+      if (activeTooltipTarget !== event.currentTarget) return;
       if (event.currentTarget.contains(document.activeElement)) {
         return;
       }
@@ -1883,10 +1883,12 @@
     }
 
     function handleAppTooltipFocus(event) {
+      if (activeTooltipTarget?.dataset.tooltipTrigger === "click") return;
       showAppTooltip(event.currentTarget);
     }
 
     function handleAppTooltipBlur(event) {
+      if (activeTooltipTarget !== event.currentTarget) return;
       if (event.currentTarget.matches(":hover")) {
         return;
       }
@@ -1900,6 +1902,17 @@
       }
 
       element.dataset.tooltipBound = "true";
+      if (element.dataset.tooltipTrigger === "click") {
+        element.setAttribute("aria-expanded", "false");
+        element.addEventListener("click", () => {
+          if (activeTooltipTarget === element) hideAppTooltip();
+          else showAppTooltip(element);
+        });
+        element.addEventListener("blur", () => {
+          if (activeTooltipTarget === element) hideAppTooltip();
+        });
+        return;
+      }
       element.addEventListener("mouseenter", handleAppTooltipEnter);
       element.addEventListener("mouseleave", handleAppTooltipLeave);
       element.addEventListener("focus", handleAppTooltipFocus);
@@ -16050,7 +16063,6 @@
     function setMarketHistorySyncRunning(running) {
       marketHistorySyncRunning = running;
       marketHistorySyncInstrument.disabled = running || marketHistoryLoading;
-      marketHistoryLoadButton.disabled = true;
       marketHistorySyncButtonText.textContent = running ? "Loading…" : "Load Candles";
       marketHistorySyncButton.classList.toggle("is-loading", running);
       marketHistorySyncButton.querySelector(".button-icon").textContent = running ? "progress_activity" : "download";
@@ -16109,145 +16121,6 @@
         : Number.NaN;
     }
 
-    function initializeMarketHistoryPeriod() {
-      if (marketHistoryFrom.value || marketHistoryTill.value) {
-        return;
-      }
-
-      const moscowToday = marketHistoryMoscowParts(Date.now());
-      const previousBusinessDay = new Date(Date.UTC(
-        Number(moscowToday.year),
-        Number(moscowToday.month) - 1,
-        Number(moscowToday.day)
-      ));
-      previousBusinessDay.setUTCDate(previousBusinessDay.getUTCDate() - 1);
-
-      while ([0, 6].includes(previousBusinessDay.getUTCDay())) {
-        previousBusinessDay.setUTCDate(previousBusinessDay.getUTCDate() - 1);
-      }
-
-      const pad = value => String(value).padStart(2, "0");
-      const businessDate = [
-        previousBusinessDay.getUTCFullYear(),
-        pad(previousBusinessDay.getUTCMonth() + 1),
-        pad(previousBusinessDay.getUTCDate())
-      ].join("-");
-      marketHistoryFrom.value = `${businessDate}T10:00`;
-      marketHistoryTill.value = `${businessDate}T14:00`;
-    }
-
-    function marketHistoryTimestamp(value) {
-      if (typeof value === "number") {
-        return value * 1000;
-      }
-
-      if (value && typeof value === "object") {
-        return Date.UTC(value.year, value.month - 1, value.day);
-      }
-
-      return Number.NaN;
-    }
-
-    function formatMarketHistoryTime(value) {
-      const timestamp = marketHistoryTimestamp(value);
-
-      if (!Number.isFinite(timestamp)) {
-        return "";
-      }
-
-      return marketHistoryTimeFormatter.format(new Date(timestamp));
-    }
-
-    function ensureMarketHistoryChart() {
-      if (marketHistoryChart) {
-        return;
-      }
-
-      const charts = window.LightweightCharts;
-
-      if (!charts?.createChart || !charts?.CandlestickSeries) {
-        throw new Error("Candlestick chart library is unavailable.");
-      }
-
-      const rootStyle = getComputedStyle(document.documentElement);
-      const color = name => rootStyle.getPropertyValue(name).trim();
-      marketHistoryChart = charts.createChart(marketHistoryChartEl, {
-        width: Math.max(320, marketHistoryChartEl.clientWidth),
-        height: 420,
-        layout: {
-          attributionLogo: true,
-          background: {
-            type: charts.ColorType.Solid,
-            color: color("--bs-body-bg") || "#ffffff"
-          },
-          textColor: color("--bs-secondary-color") || "#6c757d"
-        },
-        grid: {
-          vertLines: { color: color("--bs-border-color-translucent") || "#e9ecef" },
-          horzLines: { color: color("--bs-border-color-translucent") || "#e9ecef" }
-        },
-        rightPriceScale: {
-          borderColor: color("--bs-border-color") || "#dee2e6"
-        },
-        timeScale: {
-          borderColor: color("--bs-border-color") || "#dee2e6",
-          timeVisible: true,
-          secondsVisible: false,
-          tickMarkFormatter: formatMarketHistoryTime
-        },
-        localization: {
-          timeFormatter: formatMarketHistoryTime
-        }
-      });
-      marketHistorySeries = marketHistoryChart.addSeries(charts.CandlestickSeries, {
-        upColor: "#198754",
-        downColor: "#dc3545",
-        borderUpColor: "#198754",
-        borderDownColor: "#dc3545",
-        wickUpColor: "#198754",
-        wickDownColor: "#dc3545"
-      });
-
-      if (typeof ResizeObserver === "function") {
-        marketHistoryResizeObserver = new ResizeObserver(entries => {
-          const width = Math.floor(entries[0]?.contentRect?.width || 0);
-
-          if (width > 0) {
-            marketHistoryChart.applyOptions({ width });
-          }
-        });
-        marketHistoryResizeObserver.observe(marketHistoryChartEl);
-      }
-    }
-
-    function normalizedMarketHistoryCandles(candles) {
-      if (!Array.isArray(candles)) {
-        throw new Error("Historical market data response is invalid.");
-      }
-
-      return candles.map(candle => {
-        const time = Math.floor(Date.parse(candle?.begin) / 1000);
-        const open = Number(candle?.open);
-        const high = Number(candle?.high);
-        const low = Number(candle?.low);
-        const close = Number(candle?.close);
-
-        if (
-          ![time, open, high, low, close].every(Number.isFinite)
-          || high < Math.max(open, close)
-          || low > Math.min(open, close)
-        ) {
-          throw new Error("Historical market data response is invalid.");
-        }
-
-        return { time, open, high, low, close };
-      }).sort((left, right) => left.time - right.time);
-    }
-
-    function loadMarketHistoryCandles(event) {
-      event.preventDefault();
-      marketHistorySummary.textContent = "Chart preview is temporarily unavailable. Load historical candles in Data Management / Source Data.";
-    }
 
     function renderMarketPage() {
       updateMarketVisibility();
@@ -16264,16 +16137,8 @@
       }
 
       if (activeMarketKind() === "charts") {
-        initializeMarketHistoryPeriod();
-        window.requestAnimationFrame(() => {
-          try {
-            ensureMarketHistoryChart();
-          } catch (error) {
-            marketHistorySummary.textContent = "Candlestick chart is unavailable.";
-            setMarketStatus(error.message, "error");
-          }
-        });
-      }
+        window.requestAnimationFrame(openMarketChartWorkspace);
+      } else marketChartWorkspace?.deactivate();
     }
 
     async function startMarketStream() {
@@ -16321,6 +16186,196 @@
       tab.addEventListener("click", () => selectMarketQuoteTab(tab.dataset.marketQuoteTab));
       tab.addEventListener("keydown", handleMarketQuoteTabKeydown);
     });
+    const MARKET_CHART_LABELS = Object.freeze({ ONE_MINUTE: "M1", FIVE_MINUTES: "M5", FIFTEEN_MINUTES: "M15", ONE_HOUR: "H1", FOUR_HOURS: "H4", ONE_DAY: "D1" });
+
+    function createMarketChartApi(request) {
+      return {
+        catalog: () => request("/api/v1/market-pulse/charts/catalog"),
+        candles: (query, signal) => request("/api/v1/market-pulse/charts/candles?" + new URLSearchParams(query), { signal })
+      };
+    }
+
+    function marketChartPoints(candles, timeframe) {
+      let previous = -Infinity;
+      return candles.map(candle => {
+        const stamp = Date.parse(candle.begin);
+        const point = { time: timeframe === "ONE_DAY" ? new Date(stamp + 10800000).toISOString().slice(0, 10) : Math.floor(stamp / 1000),
+          open: Number(candle.open), high: Number(candle.high), low: Number(candle.low), close: Number(candle.close) };
+        if (!Number.isFinite(stamp) || stamp <= previous || ![point.open, point.high, point.low, point.close].every(Number.isFinite)
+          || point.low > Math.min(point.open, point.close) || point.high < Math.max(point.open, point.close)) {
+          throw new Error("Stored chart candles are invalid or out of order.");
+        }
+        previous = stamp;
+        return point;
+      });
+    }
+
+    function restoreMarketChartSelection(catalog, saved) {
+      const source = catalog.sources.find(item => item.id === saved?.source) || catalog.sources[0];
+      const instrument = source?.instruments.find(item => item.id === saved?.instrumentId) || source?.instruments[0];
+      if (!instrument) throw new Error("No chart instruments are configured.");
+      return { source: source.id, instrumentId: instrument.id,
+        timeframe: instrument.timeframes.includes(saved?.timeframe) ? saved.timeframe : instrument.timeframes.includes("ONE_HOUR") ? "ONE_HOUR" : instrument.timeframes[0] };
+    }
+    function createMarketChartWorkspace(root, api) {
+      const source = root.querySelector("[data-chart-source]");
+      const instrument = root.querySelector("[data-chart-instrument]");
+      const timeframe = root.querySelector("[data-chart-timeframe]");
+      const status = root.querySelector("[data-chart-status]");
+      const notice = root.querySelector("[data-chart-notice]");
+      const empty = root.querySelector("[data-chart-empty]");
+      const canvas = root.querySelector("[data-chart-canvas]");
+      const retry = root.querySelector("[data-chart-refresh]");
+      const latest = root.querySelector("[data-chart-latest]");
+      const storageKey = "market-chart-selection-v1";
+      let catalog, selection, chart, series, observer, rows = [], points = [], hasMore = false;
+      let generation = 0, controller, loading = false, initializing = false, active = false, applying = false;
+      let retryOlder = false;
+      const context = () => ({ source: source.value, instrumentId: instrument.value, timeframe: timeframe.value });
+      const option = (value, label) => { const el = document.createElement("option"); el.value = value; el.textContent = label; return el; };
+      const fail = message => { notice.textContent = message; notice.hidden = false; };
+      function configure(saved) {
+        selection = restoreMarketChartSelection(catalog, saved);
+        source.replaceChildren(...catalog.sources.map(item => option(item.id, item.label)));
+        source.value = selection.source;
+        const instruments = catalog.sources.find(item => item.id === selection.source).instruments;
+        instrument.replaceChildren(...instruments.map(item => option(item.id, item.label)));
+        instrument.value = selection.instrumentId;
+        const item = instruments.find(item => item.id === selection.instrumentId);
+        timeframe.replaceChildren(...item.timeframes.map(value => option(value, MARKET_CHART_LABELS[value])));
+        timeframe.value = selection.timeframe;
+        for (const field of [source, instrument, timeframe]) field.disabled = false;
+      }
+      function displayTime(time) {
+        if (typeof time === "string") return time;
+        if (typeof time === "object") return `${time.year}-${String(time.month).padStart(2, "0")}-${String(time.day).padStart(2, "0")}`;
+        return new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(time * 1000));
+      }
+      function ensureChart() {
+        if (chart) return;
+        const library = window.LightweightCharts;
+        if (!library?.CandlestickSeries) throw new Error("The chart library is unavailable.");
+        const style = getComputedStyle(document.documentElement);
+        const color = name => style.getPropertyValue(name).trim();
+        chart = library.createChart(canvas, {
+          width: canvas.clientWidth, height: 480,
+          crosshair: { mode: library.CrosshairMode.Normal },
+          layout: { attributionLogo: true, background: { type: library.ColorType.Solid, color: color("--bs-body-bg") }, textColor: color("--bs-secondary-color") },
+          grid: { vertLines: { color: color("--bs-border-color-translucent") }, horzLines: { color: color("--bs-border-color-translucent") } },
+          rightPriceScale: { borderColor: color("--bs-border-color") },
+          timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 3 },
+          localization: { timeFormatter: displayTime }
+        });
+        const candleOutline = color("--palette-gray-700");
+        series = chart.addSeries(library.CandlestickSeries, {
+          upColor: "#FFFFFF", downColor: color("--palette-gray-600"),
+          borderVisible: true, borderUpColor: candleOutline, borderDownColor: candleOutline,
+          wickUpColor: candleOutline, wickDownColor: candleOutline, priceLineColor: candleOutline
+        });
+        chart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+          if (active && !applying && !loading && !retryOlder && hasMore && range && range.from < 30) void load(true);
+        });
+        observer = new ResizeObserver(() => {
+          if (canvas.clientWidth > 0) chart.applyOptions({ width: canvas.clientWidth });
+        });
+        observer.observe(canvas);
+      }
+      function setLatestRange(resetZoom = false) {
+        if (!points.length) return;
+        const scale = chart.timeScale();
+        const visible = scale.getVisibleLogicalRange();
+        const span = !resetZoom && visible && visible.to > visible.from
+          ? visible.to - visible.from : Math.max(30, Math.floor(canvas.clientWidth / 8));
+        const to = points.length + 1;
+        scale.setVisibleLogicalRange({ from: to - span, to });
+      }
+      function showLatest() { setLatestRange(); }
+      async function load(older = false) {
+        if (!catalog || older && (loading || !hasMore || !rows.length)) return;
+        if (!older) { generation++; controller?.abort(); }
+        const token = generation, requested = context();
+        controller = new AbortController(); loading = true; retryOlder = false; notice.hidden = true;
+        status.textContent = older ? "Loading earlier candles…" : "Loading stored candles…";
+        canvas.setAttribute("aria-busy", "true");
+        try {
+          ensureChart();
+          if (!older) {
+            rows = []; points = []; hasMore = false; applying = true; series.setData([]); applying = false;
+            empty.hidden = false; empty.textContent = "Loading…";
+          }
+          const response = await api.candles({ ...requested, limit: "500", ...(older ? { before: rows[0].begin } : {}) }, controller.signal);
+          if (token !== generation) return;
+          if (response.source !== requested.source || response.instrumentId !== requested.instrumentId || response.timeframe !== requested.timeframe
+              || !Array.isArray(response.candles) || typeof response.hasMore !== "boolean" || response.hasMore && !response.candles.length) throw new Error("Chart response does not match the selected instrument and timeframe.");
+          const nextRows = older ? [...response.candles, ...rows] : response.candles;
+          const nextPoints = marketChartPoints(nextRows, requested.timeframe);
+          const visible = chart.timeScale().getVisibleLogicalRange();
+          const added = nextRows.length - rows.length;
+          rows = nextRows; points = nextPoints; hasMore = response.hasMore;
+          applying = true;
+          series.applyOptions({ priceFormat: { type: "price", precision: response.precision, minMove: response.minMove } });
+          chart.applyOptions({ timeScale: { timeVisible: requested.timeframe !== "ONE_DAY",
+            tickMarkFormatter: time => requested.timeframe === "ONE_DAY" ? displayTime(time) : new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(time * 1000)) } });
+          series.setData(points);
+          if (older && visible) chart.timeScale().setVisibleLogicalRange({ from: visible.from + added, to: visible.to + added });
+          else setLatestRange(true);
+          applying = false;
+          empty.hidden = rows.length > 0;
+          empty.textContent = "No stored candles for this selection.";
+          status.textContent = rows.length ? "Chart updated." : "No data. Use Source Data or Candle Aggregation to prepare candles.";
+        } catch (error) {
+          if (token !== generation || error.name === "AbortError") return;
+          retryOlder = older;
+          status.textContent = older ? "Earlier candles could not be loaded. The current chart is unchanged." : "Chart data could not be loaded.";
+          fail(error.status === 404 ? "Charts API is unavailable. Restart the backend and retry." : error.message);
+          if (!rows.length) { empty.hidden = false; empty.textContent = "Unable to load candles. Use Refresh to retry."; }
+        } finally {
+          if (token === generation) { applying = false; loading = false; canvas.setAttribute("aria-busy", "false"); }
+        }
+      }
+      async function activate() {
+        if (active) return;
+        active = true;
+        if (initializing) return;
+        if (catalog) { void load(); return; }
+        initializing = true;
+        try {
+          catalog = await api.catalog();
+          let saved;
+          try { saved = JSON.parse(window.localStorage.getItem(storageKey)); } catch {}
+          configure(saved);
+          if (active) await load();
+        } catch (error) {
+          catalog = null; active = false;
+          status.textContent = "Chart data could not be loaded.";
+          fail(error.status === 404 ? "Charts API is unavailable. Restart the backend and retry." : error.message);
+          empty.textContent = "Unable to open the chart. Use Refresh to retry.";
+        } finally { initializing = false; }
+      }
+      function changed(event) {
+        const saved = context();
+        if (event.target === source) { saved.instrumentId = ""; saved.timeframe = timeframe.value; }
+        configure(saved);
+        try { window.localStorage.setItem(storageKey, JSON.stringify(selection)); } catch {}
+        void load();
+      }
+      for (const field of [source, instrument, timeframe]) field.addEventListener("change", changed);
+      const refresh = () => { if (!catalog) void activate(); else void load(retryOlder); };
+      retry.addEventListener("click", refresh);
+      latest.addEventListener("click", showLatest);
+      return { activate, deactivate() { if (active) { active = false; generation++; controller?.abort(); loading = false; } },
+        destroy() {
+          active = false; generation++; controller?.abort(); observer?.disconnect(); chart?.remove();
+          for (const field of [source, instrument, timeframe]) field.removeEventListener("change", changed);
+          retry.removeEventListener("click", refresh); latest.removeEventListener("click", showLatest);
+        } };
+    }
+
+    let marketChartWorkspace;
+    function openMarketChartWorkspace() {
+      marketChartWorkspace ??= createMarketChartWorkspace(document.querySelector('[data-market-panel="charts"]'), createMarketChartApi(demoApiRequest));
+      void marketChartWorkspace.activate();
+    }
     const marketDataTabs = Array.from(document.querySelectorAll("[data-market-data-tab]"));
     const marketDataPanels = Array.from(document.querySelectorAll("[data-market-data-panel]"));
 
@@ -16440,6 +16495,7 @@
       return { total: dates.length, loaded: dates.length-skipped, skipped, mismatches, notChecked, missingData };
     }
     const marketAggregationApi = Object.freeze({
+      batchPlan: query => demoApiRequest("/api/v1/market-pulse/candle-aggregation/batch-plan?" + new URLSearchParams(query)),
       calendar: query => demoApiRequest("/api/v1/market-pulse/candle-aggregation/calendar?" + new URLSearchParams(query)),
       day: query => demoApiRequest("/api/v1/market-pulse/candle-aggregation/day?" + new URLSearchParams(query)),
       calculateDay: command => demoApiRequest("/api/v1/market-pulse/candle-aggregation/calculate-day", {
@@ -16482,6 +16538,125 @@
       }
       return { completed };
     }
+    const MARKET_AGGREGATION_TIMEFRAME_LABELS = Object.freeze({
+      FIVE_MINUTES: "M5", FIFTEEN_MINUTES: "M15", ONE_HOUR: "H1", FOUR_HOURS: "H4", ONE_DAY: "D1"
+    });
+
+    async function runMarketAggregationBatch({ commands, calculateDay, shouldStop, onProgress }) {
+      let completed = 0;
+      for (const command of commands) {
+        if (shouldStop()) break;
+        await onProgress({ command, completed, total: commands.length, phase: "calculating" });
+        try {
+          const result = await calculateDay(command);
+          if (result?.instrumentId !== command.instrumentId || result?.timeframe !== command.timeframe || result?.date !== command.date
+              || !["CALCULATED", "NO_DATA"].includes(result.status) || !Number.isSafeInteger(result.candleCount) || result.candleCount < 0) {
+            throw new Error("Candle aggregation response is invalid.");
+          }
+          completed++;
+          await onProgress({ command, result, completed, total: commands.length, phase: "completed" });
+        } catch (error) {
+          error.command = command;
+          error.completed = completed;
+          throw error;
+        }
+      }
+      return { completed, total: commands.length, stopped: completed < commands.length };
+    }
+
+    function createMarketAggregationBatch(root, api, { context, onBusy, onStart, onProgress, onFinished }) {
+      const find = selector => root.querySelector(selector);
+      const launch = find("[data-aggregation-batch]");
+      const panel = find("[data-aggregation-batch-progress]");
+      const status = find("[data-aggregation-batch-status]");
+      const progress = find("[data-aggregation-batch-meter]");
+      const stop = find("[data-aggregation-batch-stop]");
+      const dialog = find("[data-aggregation-batch-dialog]");
+      const summary = find("[data-aggregation-batch-summary]");
+      const sourceContext = find("[data-aggregation-batch-context]");
+      const pendingSummary = find("[data-aggregation-batch-pending]");
+      const start = find("[data-aggregation-batch-start]");
+      const cancel = find("[data-aggregation-batch-cancel]");
+      let plan = null, busy = false, executing = false, stopRequested = false, externalBusy = false;
+      const updateLaunch = () => { launch.disabled = busy || externalBusy; };
+      function release() { busy = false; onBusy(false); updateLaunch(); }
+      launch.addEventListener("click", async () => {
+        if (busy || externalBusy) return;
+        busy = true; plan = null; onBusy(true); updateLaunch();
+        panel.hidden = false; progress.hidden = true; stop.hidden = true;
+        panel.classList.remove("is-warning");
+        status.textContent = "Checking days with loaded M1 candles…";
+        try {
+          const selected = context();
+          const value = await api.batchPlan({ instrumentId: selected.instrumentId });
+          const keys = Object.keys(MARKET_AGGREGATION_TIMEFRAME_LABELS);
+          if (value?.instrumentId !== selected.instrumentId || value.source !== "MOEX_ISS"
+              || !Array.isArray(value.commands) || value.calculationCount !== value.commands.length
+              || ![value.eligibleDayCount, value.pendingDayCount, value.upToDateCount].every(n => Number.isSafeInteger(n) && n >= 0)
+              || value.commands.some(c => c.instrumentId !== selected.instrumentId || !keys.includes(c.timeframe) || !/^\d{4}-\d{2}-\d{2}$/.test(c.date))
+              || new Set(value.commands.map(c => `${c.timeframe}:${c.date}`)).size !== value.commands.length) {
+            throw new Error("Batch calculation plan is invalid.");
+          }
+          if (!value.commands.length) {
+            status.textContent = value.eligibleDayCount ? "All days with loaded M1 candles are up to date for all timeframes." : "No days with completed, nonempty M1 data are available.";
+            release(); return;
+          }
+          plan = value;
+          sourceContext.textContent = `${selected.instrumentLabel} · MOEX ISS`;
+          summary.textContent = `M1 candles are available for ${value.eligibleDayCount} ${value.eligibleDayCount === 1 ? "day" : "days"} between ${value.fromDate} and ${value.throughDate}.`;
+          pendingSummary.textContent = `${value.pendingDayCount} ${value.pendingDayCount === 1 ? "day requires" : "days require"} calculation or an update.`;
+          status.textContent = "Ready to calculate. Confirm the batch to start.";
+          dialog.showModal(); cancel.focus();
+        } catch (error) {
+          panel.classList.add("is-warning");
+          status.textContent = `Could not prepare calculations. ${error.message}`;
+          release();
+        }
+      });
+      cancel.addEventListener("click", () => dialog.close());
+      dialog.addEventListener("close", () => {
+        if (!executing && busy) { plan = null; status.textContent = "Calculation cancelled."; release(); }
+        launch.focus();
+      });
+      start.addEventListener("click", async () => {
+        if (!plan || executing) return;
+        const snapshot = plan;
+        executing = true; stopRequested = false; dialog.close();
+        progress.hidden = false; progress.value = 0; progress.max = snapshot.calculationCount;
+        stop.hidden = false; stop.disabled = false;
+        onStart(snapshot.commands);
+        try {
+          const result = await runMarketAggregationBatch({ commands: snapshot.commands, calculateDay: api.calculateDay,
+            shouldStop: () => stopRequested,
+            onProgress: event => {
+              progress.value = event.completed;
+              status.textContent = `${event.completed}/${event.total} calculations completed · ${formatMarketHistorySyncDate(event.command.date)} · `
+                + MARKET_AGGREGATION_TIMEFRAME_LABELS[event.command.timeframe]
+                + (stopRequested ? " · Stopping after the current calculation…" : "");
+              onProgress(event);
+            } });
+          status.textContent = `${result.stopped ? "Stopped" : "Completed"}: ${result.completed}/${result.total} calculations. `
+            + (result.stopped ? "Run again to calculate the remaining results." : `${snapshot.upToDateCount} already up to date.`);
+        } catch (error) {
+          panel.classList.add("is-warning");
+          status.textContent = `Stopped after ${error.completed || 0}/${snapshot.calculationCount} calculations`
+            + (error.command ? ` · ${error.command.date} · ${MARKET_AGGREGATION_TIMEFRAME_LABELS[error.command.timeframe]}` : "")
+            + `. ${error.message} Run again to retry remaining results.`;
+          if (error.command) onProgress({ command: error.command, error, phase: "failed" });
+        } finally {
+          executing = false; plan = null; stop.hidden = true;
+          release(); await onFinished();
+        }
+      });
+      stop.addEventListener("click", () => {
+        stopRequested = true; stop.disabled = true;
+        status.textContent += " · Stopping after the current calculation…";
+      });
+      window.addEventListener("beforeunload", event => {
+        if (executing) { event.preventDefault(); event.returnValue = ""; }
+      });
+      return { setDisabled(value) { externalBusy = value; updateLaunch(); } };
+    }
     function createMarketAggregationCalendar(root, api) {
       const find = selector => root.querySelector(selector);
       const form = find("#marketAggregationForm");
@@ -16502,6 +16677,7 @@
       let month = marketHistorySyncYesterday().slice(0, 7);
       let data = null, selection = null, previewDate = "", activeDate = "";
       let running = false, refreshing = false, requestId = 0, detailRequestId = 0, loadedAt = 0;
+      let batchRunning = false;
       const queued = new Set(), localErrors = new Map();
       const element = (tag, className, text) => {
         const node = document.createElement(tag);
@@ -16516,6 +16692,10 @@
       };
       const query = () => ({ instrumentId: fields.instrumentId.value, timeframe: fields.timeframe.value });
       const isDaily = () => fields.timeframe.value === "ONE_DAY";
+      function setMessage(text, warning = false) {
+        message.textContent = text;
+        message.classList.toggle("market-aggregation-warning", warning);
+      }
       const matches = () => data?.month === month && data?.instrumentId === fields.instrumentId.value && data?.timeframe === fields.timeframe.value;
       const earliestDate = () => data?.earliestDate || new Date(Date.parse(marketHistorySyncYesterday()) - 365 * 86400000).toISOString().slice(0, 10);
       function status(day) {
@@ -16530,16 +16710,18 @@
         let dates = [], error = "";
         try { dates = marketCalendarRangeDates(readSelection()); } catch (reason) { error = reason.message; }
         fields.toDate.setCustomValidity(error);
+        selectionLabel.classList.toggle("market-aggregation-warning", Boolean(error));
         for (const field of [fields.fromDate, fields.toDate]) {
           field.min = earliestDate(); field.max = marketHistorySyncYesterday();
         }
         for (const field of Array.from(fields)) field.disabled = running;
+        batch.setDisabled(running || refreshing);
         calculate.disabled = running || !dates.length || Boolean(error) || !data;
         clear.disabled = running || !(fields.fromDate.value || fields.toDate.value || fields.fromDate.validity.badInput || fields.toDate.validity.badInput);
         refresh.disabled = refreshing || running;
         previous.disabled = !data || running || month <= earliestDate().slice(0, 7);
         next.disabled = !data || running || month >= data.today.slice(0, 7);
-        selectionLabel.textContent = running ? `${queued.size - Number(queued.has(activeDate))} days queued`
+        selectionLabel.textContent = running && !batchRunning ? `${queued.size - Number(queued.has(activeDate))} days queued`
           : error || `${dates.length} ${dates.length === 1 ? "day" : "days"} selected`;
         const preview = selection?.choosingEnd && previewDate ? selectMarketCalendarRange(selection, previewDate) : null;
         for (const cell of grid.querySelectorAll("[data-aggregation-date]")) {
@@ -16557,8 +16739,18 @@
         fields.toDate.setCustomValidity("");
       }
       function render() {
+        const coverageHelp = element("button", "form-label-help");
+        coverageHelp.type = "button";
+        coverageHelp.setAttribute("aria-label", "About coverage in Charts");
+        coverageHelp.dataset.tooltipTrigger = "click";
+        coverageHelp.dataset.tooltip = isDaily()
+          ? "Only Sufficient coverage candles are used in Charts. Insufficient coverage candles remain stored but are excluded."
+          : "Only Complete and Partial coverage candles are used in Charts. Insufficient coverage candles remain stored but are excluded.";
+        coverageHelp.append(icon("info"));
+        const coverageLabel = element("span", "market-aggregation-legend-label", "Coverage");
+        coverageLabel.append(coverageHelp);
         const legend = find("[data-aggregation-coverage-legend]");
-        legend.replaceChildren(element("span", "market-aggregation-legend-label", "Coverage"));
+        legend.replaceChildren(coverageLabel);
         const entries = isDaily()
           ? [["SUFFICIENT", " · ≥240 min"], ["INSUFFICIENT", " · <240 min"]]
           : [["COMPLETE", ""], ["PARTIAL", " · 50–100%"], ["INSUFFICIENT", " · <50%"]];
@@ -16656,11 +16848,11 @@
                 || !Number.isSafeInteger(day.candleCount) || day.candleCount < 0)) throw new Error("Aggregation calendar response is invalid.");
           const changed = JSON.stringify(data) !== JSON.stringify(value);
           data = value; loadedAt = Date.now();
-          if (message.textContent.startsWith("Calendar could not be refreshed.")) message.textContent = "";
+          if (message.textContent.startsWith("Calendar could not be refreshed.")) setMessage("");
           if (changed || grid.inert) render();
           refreshStatus.textContent = "Calendar refreshed.";
         } catch (error) {
-          if (id === requestId) { message.textContent = `Calendar could not be refreshed. ${error.message}`; loadedAt = 0; }
+          if (id === requestId) { setMessage(`Calendar could not be refreshed. ${error.message}`, true); loadedAt = 0; }
         } finally {
           if (id === requestId) {
             refreshing = false; refresh.classList.remove("is-refreshing"); refresh.setAttribute("aria-busy", "false");
@@ -16671,28 +16863,30 @@
       async function openDetails(day) {
         const id = ++detailRequestId;
         const fourHours = fields.timeframe.value === "FOUR_HOURS";
+        const quarterHour = fields.timeframe.value === "FIFTEEN_MINUTES";
+        const fiveMinutes = fields.timeframe.value === "FIVE_MINUTES";
         const daily = isDaily();
-        const expectedMinutes = fourHours ? 240 : 60;
+        const expectedMinutes = fiveMinutes ? 5 : quarterHour ? 15 : fourHours ? 240 : 60;
         const durationMs = expectedMinutes * 60000;
-        detailTitle.textContent = `${formatMarketHistorySyncDate(day.date)} · ${daily ? "1 day" : fourHours ? "4 hours" : "1 hour"}`;
+        detailTitle.textContent = `${formatMarketHistorySyncDate(day.date)} · ${MARKET_AGGREGATION_TIMEFRAME_LABELS[fields.timeframe.value]}`;
         detailBody.replaceChildren(element("p", "", "Reading stored candles…"));
         dialog.showModal(); detailTitle.focus();
         try {
           const value = await api.day({ ...query(), date: day.date });
           if (id !== detailRequestId || !dialog.open) return;
-          const text = !value.sourceLoaded ? "The minute source day has not been fully loaded."
+          const text = !value.sourceLoaded ? "The source M1 candles for this day have not been fully loaded."
             : value.stale ? "Source data changed or some nonempty intervals were not saved. Recalculate this day; previous saved candles are shown below."
               : value.status === "PENDING" ? "This day has not been calculated."
-                : value.status === "NO_DATA" ? "The loaded source day contains no minute candles."
+                : value.status === "NO_DATA" ? "The loaded source day contains no M1 candles."
                   : value.status === "CALCULATED" ? "Calculation completed. All nonempty candles are saved; coverage is shown below."
                   : value.status === "COMPLETE" ? `Every stored candle contains all ${expectedMinutes} minutes.`
                     : value.status === "PARTIAL" ? "Some calculated candles have partial coverage (50–<100%)."
                       : value.status === "INSUFFICIENT" ? "Candles with less than 50% coverage are saved and marked Insufficient coverage."
                       : "The last calculation failed. Select this day to retry.";
-          detailBody.replaceChildren(element("p", "", text));
-          if (value.lastError || localErrors.get(day.date)) detailBody.append(element("p", "text-danger", value.lastError || localErrors.get(day.date)));
+          detailBody.replaceChildren(element("p", value.status === "ERROR" && !value.lastError && !localErrors.get(day.date) ? "market-aggregation-warning" : "", text));
+          if (value.lastError || localErrors.get(day.date)) detailBody.append(element("p", "market-aggregation-warning", value.lastError || localErrors.get(day.date)));
           if (["MISMATCH", "MISSING_DAILY", "MISSING_MINUTES"].includes(value.sourceIntegrity?.status)) {
-            detailBody.append(element("p", "text-warning-emphasis", "Source data has an integrity warning. See Source Data for details."));
+            detailBody.append(element("p", "market-aggregation-warning", "Source data has an integrity warning. See Source Data for details."));
           }
           if (value.calculatedAt) detailBody.append(element("p", "text-body-secondary", "Calculated: " + new Date(value.calculatedAt).toLocaleString("en-GB", { timeZone: "Europe/Moscow" }) + " (Moscow)"));
           const time = stamp => stamp ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(stamp)) : "—";
@@ -16700,19 +16894,19 @@
             detailBody.append(element("h4", "market-aggregation-coverage-title", "Interval coverage · Moscow time"));
             const strip = element("div", "market-aggregation-hour-strip");
             if (fourHours) strip.classList.add("is-four-hours");
+            if (quarterHour) strip.classList.add("is-quarter-hour");
             strip.setAttribute("role", "list");
             strip.setAttribute("aria-label", `Coverage of ${1440 / expectedMinutes} calendar intervals`);
             for (const hour of value.intervalCoverage) {
               const definition = MARKET_AGGREGATION_STATUSES[hour.coverage];
-              const label = String(hour.hour).padStart(2, "0");
+              const startMinute = hour.minuteOfDay ?? hour.hour * 60;
+              const intervalTime = minute => `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
               const slot = element("div", `market-aggregation-hour-slot is-${definition.className}`);
               slot.setAttribute("role", "listitem");
-              slot.setAttribute("aria-label", `${label}:00–${String(hour.hour + expectedMinutes / 60).padStart(2, "0")}:00: ${definition.label}, ${hour.componentCount}/${expectedMinutes} minutes`);
-              const square = element("span", "market-aggregation-hour-square");
+              slot.setAttribute("aria-label", `${intervalTime(startMinute)}–${intervalTime(startMinute + expectedMinutes)}: ${definition.label}, ${hour.componentCount}/${expectedMinutes} minutes`);
+              const square = element("span", "market-aggregation-hour-square", intervalTime(startMinute));
               square.setAttribute("aria-hidden", "true");
-              const number = element("span", "", label);
-              number.setAttribute("aria-hidden", "true");
-              slot.append(square, number); strip.append(slot);
+              slot.append(square); strip.append(slot);
             }
             detailBody.append(strip);
             const legend = element("div", "market-history-sync-legend market-aggregation-strip-legend");
@@ -16721,7 +16915,7 @@
               const entry = element("span", "");
               const square = element("span", `market-aggregation-coverage-dot is-${definition.className}`);
               square.setAttribute("aria-hidden", "true");
-              entry.append(square, element("span", "", key === "NO_DATA" ? "No minute data" : definition.label));
+              entry.append(square, element("span", "", key === "NO_DATA" ? "No M1 data" : definition.label));
               legend.append(entry);
             }
             detailBody.append(legend);
@@ -16729,12 +16923,12 @@
           for (const hour of value.candles) {
             const section = element("section", "market-aggregation-hour");
             const end = new Date(Date.parse(hour.begin) + durationMs).toISOString();
-            section.append(element("h4", "", daily ? `${hour.componentCount} minute candles`
+            section.append(element("h4", "", daily ? `${hour.componentCount} M1 candles`
               : `${time(hour.begin)}–${time(end)} · ${hour.componentCount}/${expectedMinutes} minutes`));
             if (daily) {
               const coverage = MARKET_AGGREGATION_STATUSES[hour.coverage];
               section.append(element("p", hour.coverage === "INSUFFICIENT" ? "text-warning-emphasis" : "text-body-secondary",
-                `${coverage.label} · ${hour.coverage === "INSUFFICIENT" ? "<" : "≥"}${value.minimumMinutes} minute candles. Candle saved.`));
+                `${coverage.label} · ${hour.coverage === "INSUFFICIENT" ? "<" : "≥"}${value.minimumMinutes} M1 candles. Candle saved.`));
             } else if (hour.coverage === "INSUFFICIENT") section.append(element("p", "text-warning-emphasis", "Insufficient coverage · <50%. Candle saved."));
             section.append(element("p", "", `Open ${hour.open} · High ${hour.high} · Low ${hour.low} · Close ${hour.close}`));
             if (!value.stale) {
@@ -16743,13 +16937,38 @@
             }
             detailBody.append(section);
           }
-        } catch (error) { if (id === detailRequestId && dialog.open) detailBody.replaceChildren(element("p", "text-danger", error.message)); }
+        } catch (error) { if (id === detailRequestId && dialog.open) detailBody.replaceChildren(element("p", "market-aggregation-warning", error.message)); }
       }
+      const batch = createMarketAggregationBatch(root, api, {
+        context: () => ({ instrumentId: fields.instrumentId.value,
+          instrumentLabel: fields.instrumentId.selectedOptions?.[0]?.textContent || fields.instrumentId.value }),
+        onBusy: value => { running = value; batchRunning = value; updateControls(); },
+        onStart: commands => {
+          setMessage("");
+          selection = null; previewDate = ""; syncInputs();
+          for (const command of commands) {
+            if (command.timeframe === fields.timeframe.value) { queued.add(command.date); localErrors.delete(command.date); }
+          }
+          render();
+        },
+        onProgress: event => {
+          const visible = event.command.timeframe === fields.timeframe.value;
+          activeDate = visible && event.phase === "calculating" ? event.command.date : "";
+          if (visible && event.result) {
+            queued.delete(event.command.date);
+            const day = data?.days.find(day => day.date === event.command.date);
+            if (day) Object.assign(day, event.result);
+          }
+          if (visible && event.error) localErrors.set(event.command.date, event.error.message);
+          if (visible) render();
+        },
+        onFinished: async () => { activeDate = ""; queued.clear(); render(); await load(true); }
+      });
       form.addEventListener("submit", async event => {
         event.preventDefault();
         if (running || !form.reportValidity()) return;
         let snapshot;
-        try { snapshot = readSelection(); } catch (error) { message.textContent = error.message; return; }
+        try { snapshot = readSelection(); } catch (error) { setMessage(error.message, true); return; }
         if (!snapshot) return;
         const context = query();
         for (const date of marketCalendarRangeDates(snapshot)) { queued.add(date); localErrors.delete(date); }
@@ -16763,17 +16982,17 @@
                 const day = data?.days.find(day => day.date === progress.date);
                 if (day) Object.assign(day, progress.result);
               }
-              message.textContent = progress.phase === "calculating" ? `Calculating ${formatMarketHistorySyncDate(progress.date)}… (${progress.completed}/${progress.total})`
-                : `${progress.completed}/${progress.total} days calculated.`;
+              setMessage(progress.phase === "calculating" ? `Calculating ${formatMarketHistorySyncDate(progress.date)}… (${progress.completed}/${progress.total})`
+                : `${progress.completed}/${progress.total} days calculated.`);
               render();
             }
           });
-          message.textContent = `${result.completed} days calculated.`;
+          setMessage(`${result.completed} days calculated.`);
         } catch (error) {
           if (error.date) localErrors.set(error.date, error.message);
           const remaining = [...queued];
           if (remaining.length) selection = { start: remaining[0], end: remaining.at(-1), choosingEnd: false };
-          syncInputs(); message.textContent = `Stopped${error.date ? " on " + formatMarketHistorySyncDate(error.date) : ""}. ${error.message}`;
+          syncInputs(); setMessage(`Stopped${error.date ? " on " + formatMarketHistorySyncDate(error.date) : ""}. ${error.message}`, true);
         } finally {
           activeDate = ""; queued.clear(); running = false; render(); await load(true);
         }
@@ -16799,7 +17018,7 @@
       clear.addEventListener("click", () => { selection = null; previewDate = ""; syncInputs(); updateControls(); });
       grid.addEventListener("mouseleave", () => { previewDate = ""; updateControls(); });
       for (const field of [fields.instrumentId, fields.timeframe]) field.addEventListener("change", () => {
-        selection = null; data = null; localErrors.clear(); syncInputs(); void load(true);
+        selection = null; data = null; localErrors.clear(); setMessage(""); syncInputs(); void load(true);
       });
       dialog.addEventListener("close", () => { detailRequestId++; });
       window.addEventListener("hashchange", () => { if (dialog.open) dialog.close(); });
@@ -17217,15 +17436,15 @@
       else if (status === "QUEUED") message = "This day is waiting for its turn to be processed.";
       else if (status === "LOADING") message = "Loading this day from MOEX ISS…";
       else if (integrity.status === "MISMATCH") {
-        message = "Minute and daily Open/Close values do not match.";
+        message = "M1 and D1 Open/Close values do not match.";
         if (integrity.dailyOpen !== undefined) {
-          rows.push(["Daily Open / Close",integrity.dailyOpen + " / " + integrity.dailyClose]);
-          rows.push(["Minute Open / Close",integrity.firstMinuteOpen + " / " + integrity.lastMinuteClose]);
+          rows.push(["D1 Open / Close",integrity.dailyOpen + " / " + integrity.dailyClose]);
+          rows.push(["M1 Open / Close",integrity.firstMinuteOpen + " / " + integrity.lastMinuteClose]);
         } else message = integrity.message || message;
       } else if (integrity.affectedTimeframe === timeframe) {
         message = integrity.status === "MISSING_DAILY"
-          ? "MOEX ISS returned no daily candle, although minute candles exist."
-          : "MOEX ISS returned no minute candles, although a daily candle exists.";
+          ? "MOEX ISS returned no D1 candle, although M1 candles exist."
+          : "MOEX ISS returned no M1 candles, although a D1 candle exists.";
       } else if (day.lastError && status === "ERROR") {
         message = "Could not load this day. Select it in the calendar to retry.";
         if (day.lastError.startsWith("MOEX_ISS_REQUEST_FAILED")) message = "Could not retrieve data from MOEX ISS. Check your connection and retry this day.";
@@ -17293,7 +17512,7 @@
       const content = marketCalendarDayDetails(day, marketHistorySourceTimeframe.value, status);
       marketCalendarDayTitle.textContent = formatMarketHistorySyncDate(day.date);
       marketCalendarDayContext.textContent = marketHistorySyncInstrument.selectedOptions[0].textContent + " · "
-        + (marketHistorySourceTimeframe.value === "ONE_DAY" ? "1 day" : "1 min") + " · MOEX ISS";
+        + (marketHistorySourceTimeframe.value === "ONE_DAY" ? "D1" : "M1") + " · MOEX ISS";
       marketCalendarDayStatus.textContent = definition.label;
       marketCalendarDayStatus.className = "market-calendar-detail-status is-" + definition.className;
       marketCalendarDaySummary.textContent = content.message;
@@ -27712,7 +27931,6 @@
     marketSimulationDialog.addEventListener("close", () => {
       editingMarketSimulationCurrencyPair = null;
     });
-    marketHistoryForm.addEventListener("submit", loadMarketHistoryCandles);
     marketStreamToggleButton.addEventListener("click", toggleMarketStream);
     databaseRefreshButton.addEventListener("click", () => loadDatabaseExplorer());
     databaseTableSearchEl.addEventListener("input", () => {
@@ -28965,6 +29183,19 @@
     window.addEventListener("resize", scheduleHedgeQuickModeQuoteAlignment);
     window.addEventListener("resize", schedulePositionGridFillHeight);
     window.addEventListener("scroll", repositionAppTooltip, true);
+    document.addEventListener("pointerdown", event => {
+      if (activeTooltipTarget?.dataset.tooltipTrigger === "click"
+        && !activeTooltipTarget.contains(event.target)
+        && !appTooltipEl.contains(event.target)) hideAppTooltip();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && activeTooltipTarget?.dataset.tooltipTrigger === "click") {
+        event.preventDefault();
+        event.stopPropagation();
+        hideAppTooltip();
+      }
+    }, true);
+    document.addEventListener("close", () => hideAppTooltip(), true);
 
     if (positionGridFrame && typeof ResizeObserver === "function") {
       const positionLayoutObserver = new ResizeObserver(() => {

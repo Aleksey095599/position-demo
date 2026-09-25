@@ -793,7 +793,6 @@
     marketSimulationDialog.addEventListener("close", () => {
       editingMarketSimulationCurrencyPair = null;
     });
-    marketHistoryForm.addEventListener("submit", loadMarketHistoryCandles);
     marketStreamToggleButton.addEventListener("click", toggleMarketStream);
     databaseRefreshButton.addEventListener("click", () => loadDatabaseExplorer());
     databaseTableSearchEl.addEventListener("input", () => {
@@ -2046,6 +2045,19 @@
     window.addEventListener("resize", scheduleHedgeQuickModeQuoteAlignment);
     window.addEventListener("resize", schedulePositionGridFillHeight);
     window.addEventListener("scroll", repositionAppTooltip, true);
+    document.addEventListener("pointerdown", event => {
+      if (activeTooltipTarget?.dataset.tooltipTrigger === "click"
+        && !activeTooltipTarget.contains(event.target)
+        && !appTooltipEl.contains(event.target)) hideAppTooltip();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && activeTooltipTarget?.dataset.tooltipTrigger === "click") {
+        event.preventDefault();
+        event.stopPropagation();
+        hideAppTooltip();
+      }
+    }, true);
+    document.addEventListener("close", () => hideAppTooltip(), true);
 
     if (positionGridFrame && typeof ResizeObserver === "function") {
       const positionLayoutObserver = new ResizeObserver(() => {

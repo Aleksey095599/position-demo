@@ -95,20 +95,20 @@
               </div>
               <div class="auto-batching-close-trigger-grid">
                 <div class="auto-batching-close-trigger">
-                  <label class="form-label form-label-with-help" for="autoBatchingMaxIntervalSeconds">
-                    <span>Maximum Batching Interval</span>
-                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Each open Batching Window closes no later than this maximum interval." data-tooltip="Each open Batching Window closes no later than this maximum interval.">info</span>
-                  </label>
+                  <div class="form-label form-label-with-help">
+                    <label for="autoBatchingMaxIntervalSeconds">Maximum Batching Interval</label>
+                    <button type="button" class="form-label-help" aria-label="About Maximum Batching Interval" data-tooltip-trigger="click" data-tooltip="Each open Batching Window closes no later than this maximum interval."><span class="button-icon" aria-hidden="true">info</span></button>
+                  </div>
                   <div class="input-group">
                     <input class="form-control" type="number" id="autoBatchingMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" inputmode="numeric" required>
                     <span class="input-group-text">sec</span>
                   </div>
                 </div>
                 <div class="auto-batching-close-trigger">
-                  <label class="form-label form-label-with-help" for="autoBatchingMaxTransferRateSpreadPercent">
-                    <span>Default Transfer Rate Corridor</span>
-                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Maximum full Transfer Rate spread allowed within one Batching Window." data-tooltip="Maximum full Transfer Rate spread allowed within one Batching Window.">info</span>
-                  </label>
+                  <div class="form-label form-label-with-help">
+                    <label for="autoBatchingMaxTransferRateSpreadPercent">Default Transfer Rate Corridor</label>
+                    <button type="button" class="form-label-help" aria-label="About Default Transfer Rate Corridor" data-tooltip-trigger="click" data-tooltip="Maximum full Transfer Rate spread allowed within one Batching Window."><span class="button-icon" aria-hidden="true">info</span></button>
+                  </div>
                   <div class="input-group">
                     <input class="form-control" type="number" id="autoBatchingMaxTransferRateSpreadPercent" name="maxTransferRateSpreadPercent" min="0.0001" max="100" step="0.0001" inputmode="decimal" required>
                     <span class="input-group-text">%</span>

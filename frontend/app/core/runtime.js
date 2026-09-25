@@ -1394,15 +1394,6 @@
     const generationDialogClose = document.getElementById("generationDialogClose");
     const generationCancelButton = document.getElementById("generationCancelButton");
     const marketPanels = Array.from(document.querySelectorAll("[data-market-panel]"));
-    const marketHistoryForm = document.getElementById("marketHistoryForm");
-    const marketHistoryInstrument = document.getElementById("marketHistoryInstrument");
-    const marketHistoryTimeframe = document.getElementById("marketHistoryTimeframe");
-    const marketHistoryFrom = document.getElementById("marketHistoryFrom");
-    const marketHistoryTill = document.getElementById("marketHistoryTill");
-    const marketHistoryLoadButton = document.getElementById("marketHistoryLoadButton");
-    const marketHistorySummary = document.getElementById("marketHistorySummary");
-    const marketHistoryChartEl = document.getElementById("marketHistoryChart");
-    const marketHistoryEmpty = document.getElementById("marketHistoryEmpty");
     const marketCcyOptionRowsEl = document.getElementById("marketCcyOptionRows");
     const marketCcyOptionNewButton = document.getElementById("marketCcyOptionNewButton");
     const marketPairOptionRowsEl = document.getElementById("marketPairOptionRows");
@@ -1603,9 +1594,6 @@
     let marketStreamRunning = false;
     let marketStreamConnected = false;
     let marketStreamEventSource = null;
-    let marketHistoryChart = null;
-    let marketHistorySeries = null;
-    let marketHistoryResizeObserver = null;
     let marketHistoryLoading = false;
     let selectedDatabaseTable = "";
     let databaseTables = [];
@@ -1804,6 +1792,10 @@
     }
 
     function hideAppTooltip() {
+      if (activeTooltipTarget?.dataset.tooltipTrigger === "click") {
+        activeTooltipTarget.setAttribute("aria-expanded", "false");
+        activeTooltipTarget.removeAttribute("aria-describedby");
+      }
       activeTooltipTarget = null;
       appTooltipEl.classList.remove("is-visible");
       appTooltipEl.setAttribute("aria-hidden", "true");
@@ -1824,7 +1816,13 @@
         return;
       }
 
+      if (activeTooltipTarget !== target) hideAppTooltip();
       activeTooltipTarget = target;
+      if (target.dataset.tooltipTrigger === "click") {
+        target.setAttribute("aria-expanded", "true");
+        target.setAttribute("aria-describedby", appTooltipEl.id);
+      }
+      appTooltipEl.classList.toggle("is-click-help", target.dataset.tooltipTrigger === "click");
       const supportsPopover = typeof appTooltipEl.showPopover === "function";
 
       if (supportsPopover) {
@@ -1871,10 +1869,12 @@
     }
 
     function handleAppTooltipEnter(event) {
+      if (activeTooltipTarget?.dataset.tooltipTrigger === "click") return;
       showAppTooltip(event.currentTarget);
     }
 
     function handleAppTooltipLeave(event) {
+      if (activeTooltipTarget !== event.currentTarget) return;
       if (event.currentTarget.contains(document.activeElement)) {
         return;
       }
@@ -1883,10 +1883,12 @@
     }
 
     function handleAppTooltipFocus(event) {
+      if (activeTooltipTarget?.dataset.tooltipTrigger === "click") return;
       showAppTooltip(event.currentTarget);
     }
 
     function handleAppTooltipBlur(event) {
+      if (activeTooltipTarget !== event.currentTarget) return;
       if (event.currentTarget.matches(":hover")) {
         return;
       }
@@ -1900,6 +1902,17 @@
       }
 
       element.dataset.tooltipBound = "true";
+      if (element.dataset.tooltipTrigger === "click") {
+        element.setAttribute("aria-expanded", "false");
+        element.addEventListener("click", () => {
+          if (activeTooltipTarget === element) hideAppTooltip();
+          else showAppTooltip(element);
+        });
+        element.addEventListener("blur", () => {
+          if (activeTooltipTarget === element) hideAppTooltip();
+        });
+        return;
+      }
       element.addEventListener("mouseenter", handleAppTooltipEnter);
       element.addEventListener("mouseleave", handleAppTooltipLeave);
       element.addEventListener("focus", handleAppTooltipFocus);

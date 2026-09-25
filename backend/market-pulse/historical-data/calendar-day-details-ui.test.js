@@ -27,5 +27,5 @@ test("integrity warnings present both sets of prices and missing data explains t
  const integrity={status:"MISMATCH",dailyOpen:"12",dailyClose:"13",firstMinuteOpen:"12.1",lastMinuteClose:"12.9"};
  const result=details({...loaded,integrity},"ONE_MINUTE","INTEGRITY_WARNING");
  assert.equal(result.rows[0][1],"12 / 13");assert.equal(result.rows[1][1],"12.1 / 12.9");
- assert.match(details({integrity:{status:"MISSING_DAILY",affectedTimeframe:"ONE_DAY"}},"ONE_DAY","ERROR").message,/no daily candle/);
+ assert.match(details({integrity:{status:"MISSING_DAILY",affectedTimeframe:"ONE_DAY"}},"ONE_DAY","ERROR").message,/no D1 candle/);
 });

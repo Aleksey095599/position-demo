@@ -1,15 +1,15 @@
 "use strict";
 
-const TIMEFRAMES = Object.freeze({ ONE_HOUR: 60, FOUR_HOURS: 240, ONE_DAY: 1440 });
+const TIMEFRAMES = Object.freeze({ FIVE_MINUTES: 5, FIFTEEN_MINUTES: 15, ONE_HOUR: 60, FOUR_HOURS: 240, ONE_DAY: 1440 });
 
 function aggregationTimeframe(timeframe) {
   const expectedMinutes = TIMEFRAMES[timeframe];
   if (!expectedMinutes) {
-    throw Object.assign(new RangeError("Choose ONE_HOUR, FOUR_HOURS or ONE_DAY for candle calculation."),
+    throw Object.assign(new RangeError("Choose FIVE_MINUTES, FIFTEEN_MINUTES, ONE_HOUR, FOUR_HOURS or ONE_DAY for candle calculation."),
       { code: "INVALID_CANDLE_AGGREGATION_REQUEST" });
   }
   return { expectedMinutes: timeframe === "ONE_DAY" ? null : expectedMinutes,
-    minimumMinutes: timeframe === "ONE_DAY" ? 240 : expectedMinutes / 2,
+    minimumMinutes: timeframe === "ONE_DAY" ? 240 : Math.ceil(expectedMinutes / 2),
     durationMs: expectedMinutes * 60000 };
 }
 
@@ -22,4 +22,4 @@ function candleCoverage(timeframe, componentCount) {
   return componentCount < expectedMinutes ? "PARTIAL" : "COMPLETE";
 }
 
-module.exports = { aggregationTimeframe, candleCoverage };
+module.exports = { aggregationTimeframe, candleCoverage, AGGREGATION_TIMEFRAMES: Object.freeze(Object.keys(TIMEFRAMES)) };

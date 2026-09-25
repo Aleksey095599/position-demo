@@ -49,10 +49,9 @@ test("groups Source Data and Candle Aggregation under Data Management", () => {
   assert.equal((documentHtml.match(/id="marketHistorySyncForm"/g) || []).length, 1);
   assert.match(documentHtml, /data-market-panel="charts"[\s\S]*?id="marketHistoryChart"/);
   assert.match(documentHtml, /id="marketHistoryChart"/);
-  assert.match(documentHtml, /<option value="FIVE_MINUTES">5 minutes<\/option>/);
-  assert.match(documentHtml, /<option value="FIFTEEN_MINUTES">15 minutes<\/option>/);
-  assert.match(documentHtml, /From \(Moscow time\)/);
-  assert.match(documentHtml, /Till \(Moscow time\)/);
+  assert.match(documentHtml, /<option value="FIVE_MINUTES">M5<\/option>/);
+  assert.match(documentHtml, /<option value="FIFTEEN_MINUTES">M15<\/option>/);
+  assert.match(documentHtml, /data-chart-source/);
 });
 
 test("routes each Market Pulse section and keeps the previous bookmarks compatible", () => {
@@ -146,19 +145,14 @@ test("uses a local licensed Candlestick chart build with attribution", () => {
   assert.match(appScript, /attributionLogo: true/);
 });
 
-test("Charts keeps its fields but cannot load source candles", () => {
-  assert.match(documentHtml, /id="marketHistoryLoadButton"[^>]*disabled/);
-  assert.match(documentHtml, /id="marketHistoryFrom"/);
-  assert.match(documentHtml, /id="marketHistoryTill"/);
-  const handler = topLevelFunctionSource("loadMarketHistoryCandles", marketPageScript);
-  const context = {marketHistorySummary:{textContent:""},demoApiRequest(){assert.fail("Charts must not request data");}};
-  vm.runInNewContext(handler,context);
-  let prevented = false;
-  context.loadMarketHistoryCandles({preventDefault(){prevented=true;}});
-  assert.equal(prevented,true);
-  assert.match(context.marketHistorySummary.textContent,/Data Management/);
-  assert.doesNotMatch(handler,/demoApiRequest|fetch\(/);
-  assert.doesNotMatch(documentHtml,/Unconfirmed/);
+test("Charts reads stored candles without date forms or source-loading actions", () => {
+  assert.match(documentHtml, /data-chart-source/);
+  assert.match(documentHtml, /data-chart-instrument/);
+  assert.match(documentHtml, /data-chart-timeframe/);
+  assert.doesNotMatch(documentHtml, /id="marketHistoryLoadButton"|id="marketHistoryFrom"|id="marketHistoryTill"/);
+  const chartSource = fs.readFileSync(path.join(ROOT, "frontend/features/market-pulse/charts/chart-data.js"), "utf8");
+  assert.ok(chartSource.includes("charts/candles"));
+  assert.doesNotMatch(chartSource, /load-day|calculate-day|method: "POST"/);
 });
 
 test("only calendar source loading is connected to the server", () => {
@@ -174,7 +168,7 @@ test("Source Data and Candle Aggregation navigation read their own local calenda
   const context={
     activeMarketKind:()=>kind,
     updateMarketVisibility(){},renderMarketCcyOptionRows(){},renderMarketPairOptionRows(){},renderMarketQuoteState(){},
-    initializeMarketHistoryPeriod(){},ensureMarketHistoryChart(){chartRenders++;},
+    openMarketChartWorkspace(){chartRenders++;},marketChartWorkspace:null,
     loadMarketSourceCalendar(){calendarReads++;},window:{requestAnimationFrame(callback){callback();}},
     loadMarketAggregationCalendar(){aggregationReads++;},
     demoApiRequest(){assert.fail("Navigation must not load source candles");}

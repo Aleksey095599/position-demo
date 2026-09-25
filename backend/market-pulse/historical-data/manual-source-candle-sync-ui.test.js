@@ -186,7 +186,7 @@ test("Data Management provides calendar selection and a single load action", () 
   assert.match(html, /id="marketCalendarSelection"/);
   assert.match(html, /Load Candles/);
   assert.doesNotMatch(html, /id="marketHistorySync(?:FromDate|ThroughDate)"|id="marketCalendarLoadDay"/);
-  assert.match(html, /<option value="ONE_DAY">1 day<\/option>/);
+  assert.match(html, /<option value="ONE_DAY">D1<\/option>/);
 });
 
 test("daily range loading uses daily coverage and preserves the timeframe on every command", async () => {
@@ -629,7 +629,7 @@ test("missing source data renders an error and a specific explanation",async()=>
   assert.equal(cell.children[1].textContent,"priority_high");
   assert.equal(cell.children[1].className,"button-icon");
   element("calendar").querySelectorAll().find(node=>node.dataset.marketCalendarInfoDate).handlers.click();
-  assert.match(element("marketCalendarDaySummary").textContent,/no daily candle, although minute candles exist/);
+  assert.match(element("marketCalendarDaySummary").textContent,/no D1 candle, although M1 candles exist/);
 });
 
 test("September 21 displays its stored status without a simulated warning in both calendars", async () => {

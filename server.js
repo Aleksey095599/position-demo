@@ -41,6 +41,7 @@ const { migrateDayCandleStorage } = require("./backend/market-pulse/historical-d
 const { migrateMinuteCandleLoadResult } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-minute-candle-load-result");
 const { migrateAggregationTimeframes } = require("./backend/market-pulse/candle-aggregation/infrastructure/persistence/migrate-aggregation-timeframes");
 const { migrateDailyAggregation } = require("./backend/market-pulse/candle-aggregation/infrastructure/persistence/migrate-daily-aggregation");
+const { migrateSubhourAggregation } = require("./backend/market-pulse/candle-aggregation/infrastructure/persistence/migrate-subhour-aggregation");
 const { migrateCandleResultAttemptTimestamps } = require("./backend/market-pulse/historical-data/infrastructure/persistence/migrate-candle-result-attempt-timestamps");
 const { createCandleAggregationModule } = require("./backend/market-pulse/candle-aggregation/config/candle-aggregation-module");
 const {
@@ -351,6 +352,7 @@ migrateMinuteCandleLoadResult(database);
 migrateCandleResultAttemptTimestamps(database);
 migrateAggregationTimeframes(database);
 migrateDailyAggregation(database);
+migrateSubhourAggregation(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 migrateDayCandleStorage(database);
 migrateMarketCandleStorage(database);
@@ -11061,6 +11063,7 @@ const { GetSourceCandleCalendarUseCase, LoadSourceCandleDayUseCase } = require("
 const { FileCandleVerificationLogger } = require("./backend/market-pulse/historical-data/infrastructure/file-candle-verification-logger");
 const historicalMarketDataSource = new MoexIssHistoricalMarketDataSource();
 const marketSourceCandleRepository = new SqliteMarketSourceCandleRepository({ database });
+const chartCandlesApi = require("./backend/market-pulse/charts/config/charts-module").createChartsModule(database);
 const candleAggregationApi = createCandleAggregationModule({ database, sourceRepository: marketSourceCandleRepository });
 const backfillHistoricalCandleRangeUseCase = new BackfillHistoricalCandleRangeUseCase({
   historicalMarketDataSource,
@@ -12948,6 +12951,11 @@ async function handleApi(request, response, url) {
     sendJson(response, result.statusCode, result.body);
     return true;
   }
+  if (method === "GET" && pathname === "/api/v1/market-pulse/candle-aggregation/batch-plan") {
+    const result = await candleAggregationApi.batchPlan(url.searchParams);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
   if (method === "POST" && pathname === "/api/v1/market-pulse/candle-aggregation/calculate-day") {
     const result = await candleAggregationApi.calculateDay(await readJsonBody(request));
     sendJson(response, result.statusCode, result.body);
@@ -12955,6 +12963,16 @@ async function handleApi(request, response, url) {
   }
   if (method === "GET" && pathname === "/api/v1/market-pulse/historical-candles/calendar") {
     const result = await historicalCandlesApi.calendar(url.searchParams);
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+  if (method === "GET" && pathname === "/api/v1/market-pulse/charts/catalog") {
+    const result = chartCandlesApi.catalog();
+    sendJson(response, result.statusCode, result.body);
+    return true;
+  }
+  if (method === "GET" && pathname === "/api/v1/market-pulse/charts/candles") {
+    const result = chartCandlesApi.candles(url.searchParams);
     sendJson(response, result.statusCode, result.body);
     return true;
   }

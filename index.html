@@ -186,13 +186,16 @@
                     <option value="CNYRUB_TOM">CNY/RUB TOM</option>
                   </select>
                 </label>
-                <label class="market-history-field is-source-timeframe" for="marketHistorySourceTimeframe">
-                  <span>Source Bar Timeframe</span>
+                <div class="market-history-field is-source-timeframe">
+                  <div class="form-label-with-help">
+                    <label for="marketHistorySourceTimeframe">Timeframe</label>
+                    <button type="button" class="form-label-help" aria-label="About source candle timeframes" data-tooltip-trigger="click" data-tooltip="This application uses M1 and D1 candles from MOEX ISS as source candles."><span class="button-icon" aria-hidden="true">info</span></button>
+                  </div>
                   <select class="form-select form-select-sm" id="marketHistorySourceTimeframe" name="sourceTimeframe">
-                    <option value="ONE_MINUTE" selected>1 min</option>
-                    <option value="ONE_DAY">1 day</option>
+                    <option value="ONE_MINUTE" selected>M1</option>
+                    <option value="ONE_DAY">D1</option>
                   </select>
-                </label>
+                </div>
                   <label class="market-history-field" for="marketCalendarFromDate">
                     <span>From date</span>
                     <input class="form-control form-control-sm" id="marketCalendarFromDate" name="fromDate" type="date" required>
@@ -277,19 +280,51 @@
           <div class="market-history-sync-header semantic-section-head">
             <span class="button-icon market-history-sync-header-icon" aria-hidden="true">functions</span>
             <h2 class="market-history-section-title" id="marketAggregationTitle">Calculate Aggregated Candles</h2>
+            <button class="btn btn-sm btn-outline-primary with-icon market-aggregation-batch-button" type="button" data-aggregation-batch><span class="button-icon" aria-hidden="true">playlist_play</span><span>Calculate All Timeframes</span></button>
           </div>
           <div class="market-source-calendar-body">
             <form class="market-history-sync-form" id="marketAggregationForm">
               <label class="market-history-field is-instrument"><span>Instrument</span><select class="form-select form-select-sm" name="instrumentId"><option value="CNYRUB_TOM">CNY/RUB TOM</option></select></label>
-              <label class="market-history-field"><span>Calculation Timeframe</span><select class="form-select form-select-sm" name="timeframe"><option value="ONE_HOUR">1 hour</option><option value="FOUR_HOURS">4 hours</option><option value="ONE_DAY">1 day</option></select></label>
+              <div class="market-history-field">
+                <label for="marketAggregationTimeframe">Timeframe</label>
+                <select class="form-select form-select-sm" id="marketAggregationTimeframe" name="timeframe"><option value="FIVE_MINUTES">M5</option><option value="FIFTEEN_MINUTES">M15</option><option value="ONE_HOUR" selected>H1</option><option value="FOUR_HOURS">H4</option><option value="ONE_DAY">D1</option></select>
+              </div>
               <div class="market-history-field is-source-timeframe" role="group" aria-labelledby="marketAggregationSourceTimeframeLabel">
-                <span id="marketAggregationSourceTimeframeLabel">Source Candle Timeframe</span>
-                <span class="market-history-field-value">1 min</span>
+                <span id="marketAggregationSourceTimeframeLabel">Source Timeframe</span>
+                <span class="market-history-field-value">M1</span>
               </div>
               <label class="market-history-field"><span>From date</span><input class="form-control form-control-sm" name="fromDate" type="date" required></label>
               <label class="market-history-field"><span>To date</span><input class="form-control form-control-sm" name="toDate" type="date" required></label>
               <div class="market-calendar-selection"><output data-aggregation-selection aria-live="polite">0 days selected</output></div>
             </form>
+            <div class="market-aggregation-batch-progress" data-aggregation-batch-progress hidden>
+              <p data-aggregation-batch-status role="status" aria-live="polite"></p>
+              <div class="market-aggregation-batch-progress-controls">
+                <progress data-aggregation-batch-meter aria-label="Batch calculation progress" hidden></progress>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-aggregation-batch-stop hidden>Stop after current calculation</button>
+              </div>
+            </div>
+            <dialog class="market-aggregation-details" data-aggregation-batch-dialog aria-labelledby="marketAggregationBatchTitle">
+              <h3 id="marketAggregationBatchTitle">Calculate All Timeframes</h3>
+              <div class="market-aggregation-batch-confirmation">
+                <p data-aggregation-batch-context></p>
+                <section aria-labelledby="marketAggregationBatchSourceTitle">
+                  <h4 id="marketAggregationBatchSourceTitle">Source data</h4>
+                  <p data-aggregation-batch-summary></p>
+                </section>
+                <section aria-labelledby="marketAggregationBatchCalculationTitle">
+                  <h4 id="marketAggregationBatchCalculationTitle">Calculation</h4>
+                  <p>Timeframes: M5 · M15 · H1 · H4 · D1</p>
+                  <p data-aggregation-batch-pending></p>
+                  <p>Existing up-to-date results will remain unchanged.</p>
+                </section>
+                <p class="text-body-secondary">Keep this page open until calculation finishes.</p>
+                <div class="market-source-calendar-actions">
+                  <button class="btn btn-sm btn-outline-secondary" type="button" data-aggregation-batch-cancel>Cancel</button>
+                  <button class="btn btn-sm btn-primary" type="button" data-aggregation-batch-start>Start calculation</button>
+                </div>
+              </div>
+            </dialog>
             <div class="market-source-calendar-toolbar">
               <div class="market-source-calendar-navigation">
                 <button class="btn btn-sm btn-outline-secondary" type="button" data-aggregation-previous aria-label="Previous aggregation month"><span class="button-icon" aria-hidden="true">chevron_left</span></button>
@@ -314,7 +349,7 @@
                 <span><span class="button-icon market-history-legend-icon is-error" aria-hidden="true">priority_high</span>Error</span>
               </div>
               <div class="market-history-sync-legend" data-aggregation-coverage-legend>
-                <span class="market-aggregation-legend-label">Coverage</span>
+                <span class="market-aggregation-legend-label">Coverage<button type="button" class="form-label-help" aria-label="About coverage in Charts" data-tooltip-trigger="click" data-tooltip="Only Complete and Partial coverage candles are used in Charts. Insufficient coverage candles remain stored but are excluded."><span class="button-icon" aria-hidden="true">info</span></button></span>
                 <span><span class="market-aggregation-coverage-dot is-completed" aria-hidden="true"></span>Complete coverage</span>
                 <span><span class="market-aggregation-coverage-dot is-partial" aria-hidden="true"></span>Partial coverage · 50–100%</span>
                 <span><span class="market-aggregation-coverage-dot is-insufficient" aria-hidden="true"></span>Insufficient coverage · &lt;50%</span>
@@ -334,42 +369,20 @@
       </section>
 
       <section class="market-bootstrap-panel market-history-panel" data-market-panel="charts" aria-label="Market charts" hidden>
-        <div class="market-history-preview-heading">
-          <h2 class="market-history-section-title">Candlestick preview</h2>
-          <p class="market-history-section-description">Historical data is loaded in Data Management / Source Data.</p>
+        <div class="market-charts-toolbar">
+          <label class="market-history-field"><span>Source</span><select class="form-select form-select-sm" data-chart-source disabled><option>MOEX ISS</option></select></label>
+          <label class="market-history-field"><span>Instrument</span><select class="form-select form-select-sm" data-chart-instrument disabled><option>CNY/RUB TOM</option></select></label>
+          <label class="market-history-field"><span>Timeframe</span><select class="form-select form-select-sm" data-chart-timeframe disabled><option>H1</option></select></label>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-chart-latest>Latest candles</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-chart-refresh>Refresh</button>
         </div>
-        <form class="market-history-form" id="marketHistoryForm">
-          <label class="market-history-field" for="marketHistoryInstrument">
-            <span>Instrument</span>
-            <select class="form-select form-select-sm" id="marketHistoryInstrument" name="instrumentId" required>
-              <option value="CNYRUB_TOM">CNY/RUB TOM</option>
-            </select>
-          </label>
-          <label class="market-history-field" for="marketHistoryTimeframe">
-            <span>Timeframe</span>
-            <select class="form-select form-select-sm" id="marketHistoryTimeframe" name="timeframe" required>
-              <option value="FIVE_MINUTES">5 minutes</option>
-              <option value="FIFTEEN_MINUTES">15 minutes</option>
-            </select>
-          </label>
-          <label class="market-history-field" for="marketHistoryFrom">
-            <span>From (Moscow time)</span>
-            <input class="form-control form-control-sm" id="marketHistoryFrom" name="from" type="datetime-local" step="300" required>
-          </label>
-          <label class="market-history-field" for="marketHistoryTill">
-            <span>Till (Moscow time)</span>
-            <input class="form-control form-control-sm" id="marketHistoryTill" name="till" type="datetime-local" step="300" required>
-          </label>
-          <button class="btn btn-sm btn-primary market-history-load" id="marketHistoryLoadButton" type="submit" disabled aria-describedby="marketHistorySummary">
-            Load candles
-          </button>
-        </form>
-
-        <div class="market-history-summary" id="marketHistorySummary">Chart preview is temporarily unavailable. Load historical candles in Data Management / Source Data.</div>
+        <p class="visually-hidden" data-chart-status role="status">Opening stored candles…</p>
+        <p class="market-chart-warning" data-chart-notice role="alert" hidden></p>
         <div class="market-history-chart-frame">
-          <div class="market-history-chart" id="marketHistoryChart" role="img" aria-label="CNY/RUB Candlestick chart"></div>
-          <p class="market-history-empty" id="marketHistoryEmpty">No candles loaded yet.</p>
+          <div class="market-history-chart" id="marketHistoryChart" data-chart-canvas role="img" aria-label="Historical candlestick chart"></div>
+          <p class="market-history-empty" data-chart-empty>Opening chart…</p>
         </div>
+        <div class="market-chart-data-links"><a href="#market-pulse:source-data">Source Data</a><a href="#market-pulse:candle-aggregation">Candle Aggregation</a></div>
         <p class="market-history-attribution">
           Market data: MOEX ISS. Charting by
           <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>.
@@ -2380,10 +2393,10 @@
                 <select class="form-select" id="addClientDealCurrencyPair" name="currencyPair" required></select>
               </div>
               <div class="client-deal-pricing-mode-field">
-                <label class="form-label form-label-with-help" for="addClientDealPricingMode">
-                  <span>Pricing Mode</span>
-                  <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Only DEALER_PRICED Originating Systems are available for manual Client Deal adding." data-tooltip="Only DEALER_PRICED Originating Systems are available for manual Client Deal adding.">info</span>
-                </label>
+                <div class="form-label form-label-with-help">
+                  <label for="addClientDealPricingMode">Pricing Mode</label>
+                  <button type="button" class="form-label-help" aria-label="About manual Client Deal pricing mode" data-tooltip-trigger="click" data-tooltip="Only DEALER_PRICED Originating Systems are available for manual Client Deal adding."><span class="button-icon" aria-hidden="true">info</span></button>
+                </div>
                 <div class="input-group client-deal-pricing-mode-filter">
                   <span class="input-group-text pricing-mode-indicator client-deal-pricing-mode-icon is-dealer-priced" role="img" aria-label="Dealer Priced">
                     <span class="button-icon" aria-hidden="true">contact_phone</span>
@@ -2805,7 +2818,7 @@
                   <th scope="col" data-column-kind="type">
                     <span class="form-label-with-help">
                       <span>Pricing Mode</span>
-                      <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Only Auto Priced Originating Systems are available for Client Deal generation." data-tooltip="Only Auto Priced Originating Systems are available for Client Deal generation.">info</span>
+                      <button type="button" class="form-label-help" aria-label="About Client Deal generation pricing mode" data-tooltip-trigger="click" data-tooltip="Only Auto Priced Originating Systems are available for Client Deal generation."><span class="button-icon" aria-hidden="true">info</span></button>
                     </span>
                   </th>
                   <th scope="col" class="text-end" data-column-kind="amount">Min Base Ccy Amount</th>
@@ -2926,20 +2939,20 @@
               </div>
               <div class="auto-batching-close-trigger-grid">
                 <div class="auto-batching-close-trigger">
-                  <label class="form-label form-label-with-help" for="autoBatchingMaxIntervalSeconds">
-                    <span>Maximum Batching Interval</span>
-                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Each open Batching Window closes no later than this maximum interval." data-tooltip="Each open Batching Window closes no later than this maximum interval.">info</span>
-                  </label>
+                  <div class="form-label form-label-with-help">
+                    <label for="autoBatchingMaxIntervalSeconds">Maximum Batching Interval</label>
+                    <button type="button" class="form-label-help" aria-label="About Maximum Batching Interval" data-tooltip-trigger="click" data-tooltip="Each open Batching Window closes no later than this maximum interval."><span class="button-icon" aria-hidden="true">info</span></button>
+                  </div>
                   <div class="input-group">
                     <input class="form-control" type="number" id="autoBatchingMaxIntervalSeconds" name="maxIntervalSeconds" min="1" max="3600" step="1" inputmode="numeric" required>
                     <span class="input-group-text">sec</span>
                   </div>
                 </div>
                 <div class="auto-batching-close-trigger">
-                  <label class="form-label form-label-with-help" for="autoBatchingMaxTransferRateSpreadPercent">
-                    <span>Default Transfer Rate Corridor</span>
-                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Maximum full Transfer Rate spread allowed within one Batching Window." data-tooltip="Maximum full Transfer Rate spread allowed within one Batching Window.">info</span>
-                  </label>
+                  <div class="form-label form-label-with-help">
+                    <label for="autoBatchingMaxTransferRateSpreadPercent">Default Transfer Rate Corridor</label>
+                    <button type="button" class="form-label-help" aria-label="About Default Transfer Rate Corridor" data-tooltip-trigger="click" data-tooltip="Maximum full Transfer Rate spread allowed within one Batching Window."><span class="button-icon" aria-hidden="true">info</span></button>
+                  </div>
                   <div class="input-group">
                     <input class="form-control" type="number" id="autoBatchingMaxTransferRateSpreadPercent" name="maxTransferRateSpreadPercent" min="0.0001" max="100" step="0.0001" inputmode="decimal" required>
                     <span class="input-group-text">%</span>
@@ -3598,10 +3611,10 @@
                   <select class="form-select" id="hedgeQuickModeSettingsCurrencyPair" name="currencyPair" required></select>
                 </div>
                 <div class="client-deal-pricing-mode-field">
-                  <label class="form-label form-label-with-help" for="hedgeQuickModePricingMode">
-                    <span>Pricing Mode</span>
-                    <span class="button-icon form-label-help" role="img" tabindex="0" aria-label="Only Auto Priced Originating Systems are available for Quick Hedging." data-tooltip="Only Auto Priced Originating Systems are available for Quick Hedging.">info</span>
-                  </label>
+                  <div class="form-label form-label-with-help">
+                    <label for="hedgeQuickModePricingMode">Pricing Mode</label>
+                    <button type="button" class="form-label-help" aria-label="About Quick Hedging pricing mode" data-tooltip-trigger="click" data-tooltip="Only Auto Priced Originating Systems are available for Quick Hedging."><span class="button-icon" aria-hidden="true">info</span></button>
+                  </div>
                   <div class="input-group client-deal-pricing-mode-filter">
                     <span class="input-group-text pricing-mode-indicator client-deal-pricing-mode-icon is-auto-priced" aria-hidden="true">
                       <span class="button-icon" aria-hidden="true">flash_auto</span>

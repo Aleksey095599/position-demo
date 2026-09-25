@@ -9,6 +9,7 @@ const { aggregateHourlyCandles } = require("./domain/aggregate-hourly-candles");
 const { aggregateCandlesFromMinutes } = require("./domain/aggregate-candles-from-minutes");
 const { migrateAggregationTimeframes } = require("./infrastructure/persistence/migrate-aggregation-timeframes");
 const { migrateDailyAggregation } = require("./infrastructure/persistence/migrate-daily-aggregation");
+const { migrateSubhourAggregation } = require("./infrastructure/persistence/migrate-subhour-aggregation");
 const { CandleAggregationService } = require("./application/candle-aggregation-service");
 const { createCandleAggregationApi } = require("./api/candle-aggregation-api");
 const { SqliteCandleAggregationRepository } = require("./infrastructure/persistence/sqlite-candle-aggregation-repository");
@@ -40,6 +41,53 @@ function setup(t) {
   }
   return { database, source, repository, service, api, load, day };
 }
+
+test("batch plan is read-only, includes all stored nonempty completed days and skips current results", async t => {
+  const f = setup(t);
+  function loadDate(date, count = 1) {
+    const dayFrom = Date.parse(`${date}T00:00:00+03:00`);
+    const candles = minutes(Array.from({length:count},(_,i)=>i)).map(c => ({ ...c,
+      begin: new Date(dayFrom+10*3600000+(Date.parse(c.begin)-minuteStart)).toISOString(),
+      end: new Date(dayFrom+10*3600000+(Date.parse(c.end)-minuteStart)).toISOString() }));
+    f.source.upsertLoadedRange({instrumentId:command.instrumentId,timeframe:"ONE_MINUTE",
+      from:new Date(dayFrom).toISOString(),till:new Date(dayFrom+86400000).toISOString(),candles,
+      dataSource:"MOEX_ISS",loadedAt:"2026-09-20T12:00:00.000Z"});
+  }
+  loadDate(date); loadDate("2026-08-01"); loadDate("2024-01-15");
+  loadDate("2026-09-16",0); loadDate("2026-09-17"); loadDate("2026-09-23");
+  f.database.exec("DELETE FROM moex_iss_minute_candle_load_result WHERE load_date='2026-09-17'");
+  await f.service.calculateDay(command);
+  f.repository.recordFailure({...command,timeframe:"FOUR_HOURS",error:"Retry required"});
+  // A source verification warning or a failed later retry must not erase usable loaded minutes.
+  f.database.exec("UPDATE moex_iss_minute_candle_load_result SET last_error='Later retry failed' WHERE load_date='2026-09-15'");
+  const before = f.database.prepare("SELECT * FROM moex_iss_aggregated_candles").all();
+  const result = await f.api.batchPlan(new URLSearchParams({instrumentId:command.instrumentId}));
+  assert.equal(result.statusCode,200);
+  const plan=result.body;
+  assert.equal(plan.eligibleDayCount,3); assert.equal(plan.pendingDayCount,3);
+  assert.equal(plan.upToDateCount,1); assert.equal(plan.calculationCount,14);
+  assert.equal(plan.fromDate,"2024-01-15"); assert.equal(plan.throughDate,date);
+  assert.deepEqual([...new Set(plan.commands.map(c=>c.date))],["2024-01-15","2026-08-01",date]);
+  assert.equal(plan.commands.some(c=>c.date===date&&c.timeframe==="ONE_HOUR"),false);
+  assert.deepEqual(f.database.prepare("SELECT * FROM moex_iss_aggregated_candles").all(),before);
+  const olderCalendar = await f.service.calendar({instrumentId:command.instrumentId,timeframe:"ONE_HOUR",month:"2024-01"});
+  assert.equal(olderCalendar.earliestDate,"2024-01-15");
+  for(const item of plan.commands) await f.service.calculateDay(item);
+  const done = await f.service.batchPlan({instrumentId:command.instrumentId});
+  assert.equal(done.calculationCount,0); assert.equal(done.upToDateCount,15);
+  f.database.exec("UPDATE moex_iss_minute_candle_load_result SET completed_at='2026-09-23T11:00:00.000Z' WHERE load_date='2026-09-15'");
+  assert.equal((await f.service.batchPlan({instrumentId:command.instrumentId})).calculationCount,5);
+});
+
+test("batch plan handles empty history and rejects date, timeframe, source and duplicate overrides", async t => {
+  const f = setup(t);
+  assert.equal((await f.service.batchPlan({instrumentId:command.instrumentId})).calculationCount,0);
+  for(const query of ["instrumentId=UNKNOWN", "instrumentId=CNYRUB_TOM&timeframe=ONE_HOUR",
+    "instrumentId=CNYRUB_TOM&instrumentId=CNYRUB_TOM", "instrumentId=CNYRUB_TOM&month=2026-09",
+    "instrumentId=CNYRUB_TOM&source=OTHER"]) {
+    assert.equal((await f.api.batchPlan(new URLSearchParams(query))).statusCode,400);
+  }
+});
 
 test("complete coverage requires all unique minute slots and preserves OHLC order", () => {
   const { candles: [hour] } = aggregateHourlyCandles({ candles: minutes().reverse(), from, till });
@@ -239,6 +287,193 @@ function fourHourMinutes(count, startHour = 8) {
     end: new Date(Date.parse(c.end) + shift).toISOString() }));
 }
 
+test("five-minute coverage retains all candles and classifies the 2/3-minute threshold", () => {
+  for (const [count, coverage] of [[1,"INSUFFICIENT"],[2,"INSUFFICIENT"],[3,"PARTIAL"],[4,"PARTIAL"],[5,"COMPLETE"]]) {
+    const { candles } = aggregateCandlesFromMinutes({ candles: minutes(Array.from({ length: count }, (_, i) => i)).reverse(),
+      from, till, timeframe: "FIVE_MINUTES" });
+    assert.equal(candles.length, 1);
+    const c = candles[0];
+    assert.equal(c.componentCount, count); assert.equal(c.coverage, coverage);
+    assert.equal(c.missingMinutes.length, 5 - count);
+    assert.equal(c.open, "10"); assert.equal(c.close, String(10 + count));
+    assert.equal(c.high, String(11 + count)); assert.equal(c.low, "9");
+    assert.equal(c.end, "2026-09-15T07:04:59.000Z");
+  }
+  const calculate = candles => aggregateCandlesFromMinutes({ candles, from, till, timeframe: "FIVE_MINUTES" });
+  const sparse = calculate(minutes([1,2,3])).candles[0];
+  assert.equal(sparse.coverage, "PARTIAL");
+  assert.deepEqual(sparse.missingMinutes, minutes([0,4]).map(c => c.begin));
+  assert.deepEqual(calculate([]), { candles: [] });
+  assert.throws(() => calculate(minutes([0,0])), /unique/);
+  assert.throws(() => calculate([{ ...minutes([0])[0], begin: "2026-09-15T07:00:01.000Z" }]), /minute-aligned/);
+  assert.throws(() => calculate(fourHourMinutes(1,24)), /inside the selected day/);
+  const fullDay = fourHourMinutes(1440,0);
+  const result = calculate(fullDay).candles;
+  assert.equal(result.length, 288);
+  assert.equal(result[0].begin, from);
+  assert.equal(Date.parse(result.at(-1).end) + 1000, Date.parse(till));
+  result.forEach((c,i) => { assert.equal(c.componentCount,5); assert.equal(c.begin,fullDay[i*5].begin); });
+});
+
+test("five-minute API keeps independent calendars, restores missing intervals and invalidates reloaded sources", async t => {
+  const f = setup(t), five = { ...command, timeframe: "FIVE_MINUTES" };
+  f.load(minutes([0,1,2,3,4,5,6,7,59]));
+  for (const timeframe of ["FIFTEEN_MINUTES","ONE_HOUR","FOUR_HOURS","ONE_DAY"]) await f.service.calculateDay({ ...command,timeframe });
+  const others = () => f.database.prepare("SELECT * FROM moex_iss_aggregated_candles WHERE timeframe<>'FIVE_MINUTES' ORDER BY 1,2,3").all();
+  const before = others();
+  const calendar = async () => (await f.api.calendar(new URLSearchParams({ instrumentId: five.instrumentId,
+    timeframe: five.timeframe,month:"2026-09" }))).body.days[14];
+  assert.equal((await calendar()).status,"PENDING");
+  for (let i=0;i<2;i++) {
+    const response = await f.api.calculateDay(five);
+    assert.equal(response.statusCode,200);
+    assert.equal(response.body.candleCount,3);
+    const day = await calendar();
+    assert.deepEqual([day.completeCount,day.partialCount,day.insufficientCount],[1,1,1]);
+    assert.equal(day.requiresRecalculation,false);
+  }
+  assert.deepEqual(others(),before);
+  const details = (await f.api.day(new URLSearchParams(five))).body;
+  assert.equal(details.expectedMinutes,5); assert.equal(details.minimumMinutes,3);
+  assert.equal(details.intervalCoverage.length,288);
+  assert.deepEqual(details.intervalCoverage.filter(c=>c.componentCount).map(c=>[c.minuteOfDay,c.coverage]),
+    [[600,"COMPLETE"],[605,"PARTIAL"],[655,"INSUFFICIENT"]]);
+  assert.equal(details.intervalCoverage.at(-1).minuteOfDay,1435);
+  assert.deepEqual(details.candles.map(c=>c.componentCount),[5,3,1]);
+  f.database.exec("DELETE FROM moex_iss_aggregated_candles WHERE timeframe='FIVE_MINUTES' AND component_count=1");
+  assert.equal((await calendar()).requiresRecalculation,true);
+  await f.service.calculateDay(five);
+  assert.equal((await calendar()).requiresRecalculation,false);
+  f.load(minutes([0]),"2026-09-23T13:00:00.000Z");
+  assert.equal((await calendar()).requiresRecalculation,true);
+});
+
+test("five-minute missing source, No data and insufficient-only days remain distinct", async t => {
+  const f=setup(t), five={ ...command,timeframe:"FIVE_MINUTES" };
+  assert.equal((await f.api.calculateDay(five)).statusCode,409);
+  f.load([]);
+  assert.equal((await f.api.calculateDay(five)).body.status,"NO_DATA");
+  f.load(minutes([0]));
+  const result=(await f.api.calculateDay(five)).body;
+  assert.equal(result.status,"CALCULATED"); assert.equal(result.insufficientCount,1);
+  assert.equal(result.candleCount,1);
+});
+
+test("five-minute migration upgrades an already quarter-hour capable database and rolls back failed upgrades", t => {
+  const db=new DatabaseSync(":memory:"); t.after(()=>db.close());
+  db.exec(fs.readFileSync(path.resolve(__dirname,"../../../schema.sql"),"utf8")
+    .replace("CHECK (timeframe IN ('FIVE_MINUTES', 'FIFTEEN_MINUTES', 'ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY'))",
+      "CHECK (timeframe IN ('FIFTEEN_MINUTES', 'ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY'))"));
+  db.exec("INSERT INTO moex_iss_candle_aggregation_result VALUES ('CNYRUB_TOM','FIFTEEN_MINUTES','2026-09-15','done','source',NULL)");
+  const before=db.prepare("SELECT * FROM moex_iss_candle_aggregation_result").all();
+  db.exec("CREATE TABLE moex_iss_candle_aggregation_result_subhour_upgrade (blocked TEXT)");
+  assert.throws(()=>migrateSubhourAggregation(db),/already exists/);
+  assert.deepEqual(db.prepare("SELECT * FROM moex_iss_candle_aggregation_result").all(),before);
+  db.exec("DROP TABLE moex_iss_candle_aggregation_result_subhour_upgrade");
+  assert.equal(migrateSubhourAggregation(db),true);
+  assert.deepEqual(db.prepare("SELECT * FROM moex_iss_candle_aggregation_result").all(),before);
+  assert.equal(migrateSubhourAggregation(db),false);
+  db.exec("INSERT INTO moex_iss_candle_aggregation_result VALUES ('CNYRUB_TOM','FIVE_MINUTES','2026-09-15','done','source',NULL)");
+  assert.equal(db.prepare("PRAGMA integrity_check").get().integrity_check,"ok");
+});
+
+test("quarter-hour coverage retains 1–7 insufficient, 8–14 partial and 15 complete minutes with ordered OHLC", () => {
+  for (const [count, coverage] of [[1,"INSUFFICIENT"],[7,"INSUFFICIENT"],[8,"PARTIAL"],[14,"PARTIAL"],[15,"COMPLETE"]]) {
+    const { candles } = aggregateCandlesFromMinutes({ candles: minutes(Array.from({ length: count }, (_, i) => i)).reverse(),
+      from, till, timeframe: "FIFTEEN_MINUTES" });
+    assert.equal(candles.length, 1);
+    const candle = candles[0];
+    assert.equal(candle.componentCount, count); assert.equal(candle.coverage, coverage);
+    assert.equal(candle.missingMinutes.length, 15 - count);
+    assert.equal(candle.open, "10"); assert.equal(candle.close, String(10 + count));
+    assert.equal(candle.high, String(11 + count)); assert.equal(candle.low, "9");
+    assert.equal(candle.end, "2026-09-15T07:14:59.000Z");
+  }
+  const sparse = aggregateCandlesFromMinutes({ candles: minutes([1,2,4,5,8,9,11,13]), from, till, timeframe: "FIFTEEN_MINUTES" }).candles[0];
+  assert.equal(sparse.coverage, "PARTIAL");
+  assert.equal(sparse.open, "11"); assert.equal(sparse.close, "24");
+  assert.deepEqual(sparse.missingMinutes, minutes([0,3,6,7,10,12,14]).map(c => c.begin));
+  assert.throws(() => aggregateCandlesFromMinutes({ candles: minutes([0,0]), from, till, timeframe: "FIFTEEN_MINUTES" }), /unique/);
+});
+
+test("quarter-hour buckets partition the Moscow day into 96 intervals including midnight edges", () => {
+  const source = fourHourMinutes(1440, 0);
+  const { candles } = aggregateCandlesFromMinutes({ candles: source, from, till, timeframe: "FIFTEEN_MINUTES" });
+  assert.equal(candles.length, 96);
+  assert.equal(candles[0].begin, from);
+  assert.equal(Date.parse(candles.at(-1).end) + 1000, Date.parse(till));
+  candles.forEach((c, i) => {
+    assert.equal(c.componentCount, 15);
+    assert.equal(c.begin, source[i * 15].begin);
+    assert.equal(c.close, source[i * 15 + 14].close);
+  });
+});
+
+test("quarter-hour API, stored summaries and details stay isolated and detect source reload or missing targets", async t => {
+  const f = setup(t), quarter = { ...command, timeframe: "FIFTEEN_MINUTES" };
+  f.load(minutes([...Array.from({ length: 15 }, (_, i) => i), ...Array.from({ length: 8 }, (_, i) => i + 15), 59]));
+  for (const timeframe of ["ONE_HOUR", "FOUR_HOURS", "ONE_DAY"]) await f.service.calculateDay({ ...command, timeframe });
+  const others = () => f.database.prepare("SELECT * FROM moex_iss_aggregated_candles WHERE timeframe<>'FIFTEEN_MINUTES' ORDER BY 1,2,3").all();
+  const before = others();
+  const calendar = async () => (await f.api.calendar(new URLSearchParams({ instrumentId: command.instrumentId,
+    timeframe: quarter.timeframe, month: "2026-09" }))).body.days[14];
+  assert.equal((await calendar()).status, "PENDING");
+  for (let i = 0; i < 2; i++) {
+    const result = await f.api.calculateDay(quarter);
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.body.candleCount, 3);
+    const day = await calendar();
+    assert.equal(day.requiresRecalculation, false);
+    assert.deepEqual([day.completeCount, day.partialCount, day.insufficientCount], [1,1,1]);
+  }
+  assert.deepEqual(others(), before);
+  const details = (await f.api.day(new URLSearchParams(quarter))).body;
+  assert.equal(details.expectedMinutes, 15); assert.equal(details.minimumMinutes, 8);
+  assert.equal(details.intervalCoverage.length, 96);
+  assert.deepEqual(details.intervalCoverage.filter(c => c.componentCount).map(c => [c.minuteOfDay,c.coverage]),
+    [[600,"COMPLETE"],[615,"PARTIAL"],[645,"INSUFFICIENT"]]);
+  assert.deepEqual(details.candles.map(c => c.componentCount), [15,8,1]);
+  assert.equal(details.intervalCoverage.at(-1).minuteOfDay, 1425);
+  f.database.prepare("DELETE FROM moex_iss_aggregated_candles WHERE timeframe='FIFTEEN_MINUTES' AND component_count=1").run();
+  assert.equal((await calendar()).requiresRecalculation, true);
+  await f.service.calculateDay(quarter);
+  assert.equal((await calendar()).requiresRecalculation, false);
+  f.load(minutes([0]), "2026-09-23T13:00:00.000Z");
+  assert.equal((await calendar()).requiresRecalculation, true);
+});
+
+test("quarter-hour missing source, empty source and insufficient-only days are distinct", async t => {
+  const f = setup(t), quarter = { ...command, timeframe: "FIFTEEN_MINUTES" };
+  assert.equal((await f.api.calculateDay(quarter)).statusCode, 409);
+  f.load([]);
+  assert.equal((await f.api.calculateDay(quarter)).body.status, "NO_DATA");
+  f.load(minutes([0]));
+  const result = (await f.api.calculateDay(quarter)).body;
+  assert.equal(result.status, "CALCULATED");
+  assert.equal(result.insufficientCount, 1); assert.equal(result.candleCount, 1);
+});
+
+test("quarter-hour migration preserves results, errors, indexes and triggers and is idempotent", t => {
+  const db = new DatabaseSync(":memory:"); t.after(() => db.close());
+  db.exec(fs.readFileSync(path.resolve(__dirname, "../../../schema.sql"), "utf8")
+    .replace("CHECK (timeframe IN ('FIVE_MINUTES', 'FIFTEEN_MINUTES', 'ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY'))", "CHECK (timeframe IN ('ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY'))"));
+  db.exec(`INSERT INTO moex_iss_candle_aggregation_result VALUES
+    ('CNYRUB_TOM','ONE_HOUR','2026-09-15','done','source',NULL),
+    ('CNYRUB_TOM','FOUR_HOURS','2026-09-15',NULL,NULL,'failure'),
+    ('CNYRUB_TOM','ONE_DAY','2026-09-15','done','source',NULL);
+    CREATE INDEX test_result_date ON moex_iss_candle_aggregation_result(calculation_date);
+    CREATE TRIGGER test_result_instrument BEFORE INSERT ON moex_iss_candle_aggregation_result
+      WHEN NEW.instrument_id='REJECT' BEGIN SELECT RAISE(ABORT,'Rejected instrument'); END;`);
+  const before = db.prepare("SELECT * FROM moex_iss_candle_aggregation_result ORDER BY 1,2,3").all();
+  assert.equal(migrateSubhourAggregation(db), true);
+  assert.deepEqual(db.prepare("SELECT * FROM moex_iss_candle_aggregation_result ORDER BY 1,2,3").all(), before);
+  assert.equal(migrateSubhourAggregation(db), false);
+  assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='test_result_date'").get());
+  db.exec("INSERT INTO moex_iss_candle_aggregation_result (instrument_id,timeframe,calculation_date) VALUES ('CNYRUB_TOM','FIFTEEN_MINUTES','2026-09-15')");
+  assert.throws(() => db.exec("INSERT INTO moex_iss_candle_aggregation_result (instrument_id,timeframe,calculation_date) VALUES ('REJECT','FIFTEEN_MINUTES','2026-09-15')"), /Rejected instrument/);
+  assert.equal(db.prepare("PRAGMA integrity_check").get().integrity_check, "ok");
+});
+
 test("daily coverage uses 240 actual minute candles, retains sparse days and never produces partial coverage", () => {
   for (const [count, coverage] of [[1,"INSUFFICIENT"],[239,"INSUFFICIENT"],[240,"SUFFICIENT"],[600,"SUFFICIENT"]]) {
     const source = minutes(Array.from({ length: count }, (_, i) => i));
@@ -413,7 +648,7 @@ test("four-hour empty days, failed loads and insufficient-only days stay distinc
 test("aggregation timeframe migration preserves successful, empty and failed day records and is idempotent", t => {
   const database = new DatabaseSync(":memory:"); t.after(() => database.close());
   const schema = fs.readFileSync(path.resolve(__dirname, "../../../schema.sql"), "utf8")
-    .replace("timeframe IN ('ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY')", "timeframe = 'ONE_HOUR'");
+    .replace("CHECK (timeframe IN ('FIVE_MINUTES', 'FIFTEEN_MINUTES', 'ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY'))", "CHECK (timeframe = 'ONE_HOUR')");
   database.exec(schema);
   database.exec(`INSERT INTO moex_iss_candle_aggregation_result VALUES
     ('CNYRUB_TOM','ONE_HOUR','2026-09-15','done','source',NULL),

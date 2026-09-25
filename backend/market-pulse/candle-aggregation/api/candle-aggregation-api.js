@@ -4,12 +4,12 @@ function createCandleAggregationApi(service) {
   let calculating = false;
   const failure = (statusCode, code, message) => ({ statusCode, body: { code, message } });
   async function execute(action, input, field) {
-    const keys = ["instrumentId", "timeframe", field];
+    const keys = action === "batchPlan" ? ["instrumentId"] : ["instrumentId", "timeframe", field];
     if (!input || typeof input !== "object" || Array.isArray(input)
         || Object.keys(input).length !== keys.length || keys.some(key => typeof input[key] !== "string")
         || Object.keys(input).some(key => !keys.includes(key))
-        || input.instrumentId !== "CNYRUB_TOM" || !["ONE_HOUR", "FOUR_HOURS", "ONE_DAY"].includes(input.timeframe)) {
-      return failure(400, "INVALID_CANDLE_AGGREGATION_REQUEST", "Choose CNYRUB_TOM, ONE_HOUR, FOUR_HOURS or ONE_DAY and a valid historical date or month.");
+        || input.instrumentId !== "CNYRUB_TOM" || action !== "batchPlan" && !["FIVE_MINUTES", "FIFTEEN_MINUTES", "ONE_HOUR", "FOUR_HOURS", "ONE_DAY"].includes(input.timeframe)) {
+      return failure(400, "INVALID_CANDLE_AGGREGATION_REQUEST", "Choose CNYRUB_TOM, FIVE_MINUTES, FIFTEEN_MINUTES, ONE_HOUR, FOUR_HOURS or ONE_DAY and a valid historical date or month.");
     }
     if (action === "calculateDay" && calculating) return failure(409, "CANDLE_AGGREGATION_BUSY", "Wait for the current calculation to finish.");
     if (action === "calculateDay") calculating = true;
@@ -29,6 +29,7 @@ function createCandleAggregationApi(service) {
     return Object.fromEntries(params);
   }
   return {
+    batchPlan: params => execute("batchPlan", query(params)),
     calendar: params => execute("calendar", query(params), "month"),
     day: params => execute("dayDetails", query(params), "date"),
     calculateDay: body => execute("calculateDay", body, "date")

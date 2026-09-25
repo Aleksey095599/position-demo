@@ -14,16 +14,22 @@ const selection = { start: "2026-09-15", end: "2026-09-17" };
 test("aggregation calendar has separate controls, details, and coverage statuses", () => {
   const html = read("market.page.html");
   assert.match(html, /id="marketAggregationForm"/);
-  assert.match(html, /Source Candle Timeframe/); assert.match(html, /Calculation Timeframe/);
+  assert.match(html, /Source Timeframe/);
+  assert.match(html, /<label for="marketAggregationTimeframe">Timeframe<\/label>/);
+  assert.doesNotMatch(html, /About candle aggregation timeframes/);
   assert.match(html, /id="marketAggregationTitle">Calculate Aggregated Candles<\/h2>/);
-  assert.match(html, /class="market-history-field-value">1 min<\/span>/);
+  assert.match(html, /class="market-history-field-value">M1<\/span>/);
   assert.doesNotMatch(html, /name="baseTimeframe"/);
   assert.match(html, /Calculate Candles/);
-  assert.match(html, /value="FOUR_HOURS">4 hours/);
+  assert.match(html, /value="FOUR_HOURS">H4/);
+  assert.match(html, /value="FIFTEEN_MINUTES">M15/);
+  assert.match(html, /value="FIVE_MINUTES">M5/);
   assert.match(html, /Complete coverage/); assert.match(html, /Partial coverage/); assert.match(html, /No data/);
   assert.match(html, /Complete coverage<\/span>/);
   assert.match(html, /Partial coverage · 50–100%/);
   assert.match(html, /Insufficient coverage · &lt;50%/);
+  assert.match(html, /aria-label="About coverage in Charts" data-tooltip-trigger="click"/);
+  assert.doesNotMatch(html, /data-aggregation-coverage-note/);
   assert.match(read("components/market-aggregation-details.dialog.html"), /id="marketAggregationDetails"/);
   assert.doesNotMatch(read("market-aggregation-api.js"), /load-day|moex\.com|historical-candles/);
 });
@@ -83,7 +89,7 @@ function calendarHarness(apiOverrides = {}) {
       },
       setCustomValidity(message) { this.validationMessage = message; },
       reportValidity() { return true; }, focus() {},
-      showModal() { this.open = true; }, close() { this.open = false; }
+      showModal() { this.open = true; }, close() { this.open = false; this.handlers.close?.(); }
     };
   }
   const get = key => { if (!nodes.has(key)) nodes.set(key, node()); return nodes.get(key); };
@@ -105,7 +111,7 @@ function calendarHarness(apiOverrides = {}) {
     formatMarketHistorySyncDate: date => date,
     MARKET_HISTORY_SYNC_WEEKDAYS: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
   });
-  vm.runInContext(read("market-calendar-range.js") + read("market-aggregation-range.js")
+  vm.runInContext(read("market-calendar-range.js") + read("market-aggregation-range.js") + read("market-aggregation-batch.js")
     + read("market-aggregation-calendar.js").split("    const marketAggregationCalendar =")[0], environment);
   const calendar = environment.createMarketAggregationCalendar({ querySelector: get }, api);
   function inputRange(start, end) {
@@ -115,6 +121,155 @@ function calendarHarness(apiOverrides = {}) {
   return { calendar, get, fields, response, inputRange, grid: get("[data-aggregation-grid]"),
     submit: () => get("#marketAggregationForm").handlers.submit({ preventDefault() {} }) };
 }
+
+test("batch requires confirmation, calculates only its plan, stops after current work and preserves timeframe isolation", async () => {
+  const commands=[{instrumentId:"CNYRUB_TOM",timeframe:"ONE_DAY",date:"2026-08-15"},
+    {instrumentId:"CNYRUB_TOM",timeframe:"ONE_HOUR",date:"2026-09-15"}];
+  let finish; const calculated=[], plans=[];
+  const h=calendarHarness({batchPlan:async query=>{
+    plans.push(query);
+    return {instrumentId:"CNYRUB_TOM",source:"MOEX_ISS",eligibleDayCount:2,pendingDayCount:2,
+      calculationCount:2,upToDateCount:8,fromDate:"2026-08-15",throughDate:"2026-09-15",commands};
+  },calculateDay:async command=>{
+    calculated.push(command);
+    return new Promise(resolve=>{finish=()=>resolve({...command,status:"CALCULATED",candleCount:1});});
+  }});
+  await h.calendar.load(); h.inputRange("2026-09-20","2026-09-21");
+  await h.get("[data-aggregation-batch]").handlers.click();
+  assert.equal(calculated.length,0);
+  assert.equal(Object.keys(plans[0]).join(","),"instrumentId");
+  assert.equal(h.get("[data-aggregation-batch-dialog]").open,true);
+  assert.equal(h.fields.timeframe.disabled,true);
+  const pending=h.get("[data-aggregation-batch-start]").handlers.click();
+  await new Promise(setImmediate);
+  assert.equal(calculated[0].date,"2026-08-15");
+  assert.equal(h.fields.fromDate.value,"");
+  h.get("[data-aggregation-batch-stop]").handlers.click();
+  finish(); await pending;
+  assert.equal(calculated.length,1);
+  assert.equal(h.fields.timeframe.disabled,false);
+  assert.match(h.get("[data-aggregation-batch-status]").textContent,/Stopped: 1\/2/);
+});
+
+test("batch confirmation explains source data and pending days without operation counters", async () => {
+  const html = read("market.page.html");
+  assert.match(html, /id="marketAggregationBatchSourceTitle">Source data/);
+  assert.match(html, /id="marketAggregationBatchCalculationTitle">Calculation/);
+  assert.match(html, /Existing up-to-date results will remain unchanged\./);
+  assert.match(html, /Keep this page open until calculation finishes\./);
+  for (const count of [1, 20]) {
+    const commands = Array.from({ length: count }, (_, index) => ({
+      instrumentId: "CNYRUB_TOM", timeframe: "ONE_HOUR", date: `2026-09-${String(index + 1).padStart(2, "0")}`
+    }));
+    const h = calendarHarness({ batchPlan: async () => ({
+      instrumentId: "CNYRUB_TOM", source: "MOEX_ISS", eligibleDayCount: 102, pendingDayCount: count,
+      calculationCount: count, upToDateCount: 510 - count, fromDate: "2026-05-04", throughDate: "2026-09-23", commands
+    }) });
+    await h.calendar.load();
+    await h.get("[data-aggregation-batch]").handlers.click();
+    assert.match(h.get("[data-aggregation-batch-context]").textContent, /MOEX ISS/);
+    assert.equal(h.get("[data-aggregation-batch-summary]").textContent,
+      "M1 candles are available for 102 days between 2026-05-04 and 2026-09-23.");
+    assert.equal(h.get("[data-aggregation-batch-pending]").textContent,
+      count === 1 ? "1 day requires calculation or an update." : "20 days require calculation or an update.");
+  }
+});
+
+test("batch cancellation and an up-to-date plan never calculate candles", async () => {
+  let calls=0;
+  const h=calendarHarness({batchPlan:async()=>({instrumentId:"CNYRUB_TOM",source:"MOEX_ISS",
+    eligibleDayCount:1,pendingDayCount:1,upToDateCount:4,calculationCount:1,commands:[{instrumentId:"CNYRUB_TOM",timeframe:"ONE_HOUR",date:"2026-09-15"}]}),
+    calculateDay:async()=>{calls++;}});
+  await h.calendar.load();
+  await h.get("[data-aggregation-batch]").handlers.click();
+  h.get("[data-aggregation-batch-cancel]").handlers.click();
+  assert.equal(calls,0); assert.equal(h.fields.instrumentId.disabled,false);
+  const empty=calendarHarness({batchPlan:async()=>({instrumentId:"CNYRUB_TOM",source:"MOEX_ISS",
+    eligibleDayCount:1,pendingDayCount:0,upToDateCount:5,calculationCount:0,commands:[]})});
+  await empty.calendar.load(); await empty.get("[data-aggregation-batch]").handlers.click();
+  assert.match(empty.get("[data-aggregation-batch-status]").textContent,/up to date/);
+  assert.equal(empty.get("[data-aggregation-batch-dialog]").open,undefined);
+});
+
+test("batch preparation and execution errors are highlighted and retry resets the warning", async () => {
+  let attempt = 0;
+  const h = calendarHarness({batchPlan: async () => {
+    if (++attempt === 1) throw new Error("API endpoint was not found.");
+    return {instrumentId:"CNYRUB_TOM",source:"MOEX_ISS",eligibleDayCount:1,pendingDayCount:1,
+      calculationCount:1,upToDateCount:4,commands:[{instrumentId:"CNYRUB_TOM",timeframe:"ONE_HOUR",date:"2026-09-15"}]};
+  },calculateDay: async () => { throw new Error("Calculation failed."); }});
+  await h.calendar.load();
+  const panel = h.get("[data-aggregation-batch-progress]");
+  await h.get("[data-aggregation-batch]").handlers.click();
+  assert.equal(panel.classList.contains("is-warning"),true);
+  assert.match(h.get("[data-aggregation-batch-status]").textContent,/API endpoint was not found/);
+  await h.get("[data-aggregation-batch]").handlers.click();
+  assert.equal(panel.classList.contains("is-warning"),false);
+  await h.get("[data-aggregation-batch-start]").handlers.click();
+  assert.equal(panel.classList.contains("is-warning"),true);
+  assert.match(h.get("[data-aggregation-batch-status]").textContent,/Calculation failed/);
+});
+
+test("batch execution is sequential and stops on failed or mismatched results", async () => {
+  const env=vm.createContext({}); vm.runInContext(read("market-aggregation-batch.js"),env);
+  const commands=["ONE_HOUR","FOUR_HOURS","ONE_DAY"].map(timeframe=>({instrumentId:"CNYRUB_TOM",timeframe,date:"2026-09-15"}));
+  const calls=[];
+  await assert.rejects(()=>env.runMarketAggregationBatch({commands,shouldStop:()=>false,onProgress:()=>{},
+    calculateDay:async command=>{calls.push(command.timeframe); if(calls.length===2)throw new Error("Failed");return {...command,status:"CALCULATED",candleCount:1};}}),
+    error=>error.completed===1&&error.command.timeframe==="FOUR_HOURS");
+  assert.deepEqual(calls,["ONE_HOUR","FOUR_HOURS"]);
+  await assert.rejects(()=>env.runMarketAggregationBatch({commands,shouldStop:()=>false,onProgress:()=>{},
+    calculateDay:async command=>({...command,date:"2026-09-16",status:"CALCULATED",candleCount:1})}),/response is invalid/);
+});
+
+test("calendar refresh errors use the shared warning style and clear after successful refresh", async () => {
+  let fail=true;
+  const h=calendarHarness({calendar:async query=>{if(fail)throw new Error("Calendar offline");return h.response(query);}});
+  await h.calendar.load();
+  const message=h.get("[data-aggregation-message]");
+  assert.equal(message.classList.contains("market-aggregation-warning"),true);
+  assert.match(message.textContent,/Calendar offline/);
+  fail=false; await h.calendar.load(true);
+  assert.equal(message.classList.contains("market-aggregation-warning"),false);
+  assert.equal(message.textContent,"");
+});
+
+test("range validation and calculation errors use the shared style without styling successful progress", async () => {
+  let fail=true;
+  const h=calendarHarness({calculateDay:async command=>{
+    if(fail)throw new Error("Calculation offline");
+    return {...command,status:"CALCULATED",candleCount:1};
+  }});
+  await h.calendar.load();
+  h.inputRange("2026-09-18","2026-09-15");
+  assert.equal(h.get("[data-aggregation-selection]").classList.contains("market-aggregation-warning"),true);
+  h.inputRange("2026-09-15","2026-09-15");
+  assert.equal(h.get("[data-aggregation-selection]").classList.contains("market-aggregation-warning"),false);
+  await h.submit();
+  const message=h.get("[data-aggregation-message]");
+  assert.match(message.textContent,/Calculation offline/);
+  assert.equal(message.classList.contains("market-aggregation-warning"),true);
+  fail=false; await h.submit();
+  assert.equal(message.classList.contains("market-aggregation-warning"),false);
+  assert.match(message.textContent,/1 days calculated/);
+});
+
+test("detail request failures, stored errors and source integrity warnings share the same banner", async () => {
+  for(const kind of ["request","stored","generic","integrity"]) {
+    const h=calendarHarness({day:async()=>{
+      if(kind==="request")throw new Error("Details offline");
+      return {sourceLoaded:true,status:kind==="integrity"?"CALCULATED":"ERROR",candles:[],
+        lastError:kind==="stored"?"Stored failure":null,
+        sourceIntegrity:kind==="integrity"?{status:"MISMATCH"}:null};
+    }});
+    await h.calendar.load();
+    const wrapper=h.grid.children[0].children.find(node=>node.children.some(child=>child.dataset.aggregationDate));
+    wrapper.children[1].handlers.click(); await new Promise(setImmediate);
+    const warnings=h.get("[data-aggregation-details-body]").children.filter(node=>node.className==="market-aggregation-warning");
+    assert.equal(warnings.length,1,kind);
+    assert.ok(warnings[0].textContent.length>0);
+  }
+});
 
 test("day details display saved insufficient candles with their OHLC and coverage", async () => {
   const h=calendarHarness({day:async()=>({sourceLoaded:true,status:"CALCULATED",candles:[{
@@ -164,11 +319,18 @@ test("daily calendar shows one unnumbered coverage square and switches back to t
   assert.match(text(legend), /Sufficient coverage · ≥240 min/);
   assert.match(text(legend), /Insufficient coverage · <240 min/);
   assert.doesNotMatch(text(legend), /Partial|Complete|%/);
+  const coverageHelp = () => legend.children[0].children[0];
+  assert.equal(coverageHelp().type, "button");
+  assert.equal(coverageHelp().dataset.tooltipTrigger, "click");
+  assert.equal(coverageHelp().getAttribute("aria-label"), "About coverage in Charts");
+  assert.equal(coverageHelp().dataset.tooltip, "Only Sufficient coverage candles are used in Charts. Insufficient coverage candles remain stored but are excluded.");
   h.fields.timeframe.value = "ONE_HOUR";
   h.fields.timeframe.handlers.change();
   await new Promise(setImmediate);
   assert.match(text(legend), /Partial coverage/);
   assert.doesNotMatch(text(legend), /240 min|Sufficient coverage/);
+  assert.equal(coverageHelp().dataset.tooltipTrigger, "click");
+  assert.equal(coverageHelp().dataset.tooltip, "Only Complete and Partial coverage candles are used in Charts. Insufficient coverage candles remain stored but are excluded.");
 });
 
 test("daily details show actual minute count and sufficient threshold without overnight gaps or hourly ratios", async () => {
@@ -185,10 +347,10 @@ test("daily details show actual minute count and sufficient threshold without ov
     wrapper.children[1].handlers.click();
     await new Promise(setImmediate);
     const text = node => [node.textContent, ...node.children.map(text)].join(" ");
-    assert.match(h.get("marketAggregationDetailsTitle").textContent, /1 day/);
+    assert.match(h.get("marketAggregationDetailsTitle").textContent, /D1/);
     const body = text(h.get("[data-aggregation-details-body]"));
-    assert.match(body, new RegExp(`${componentCount} minute candles`));
-    assert.match(body, /240 minute candles. Candle saved/);
+    assert.match(body, new RegExp(`${componentCount} M1 candles`));
+    assert.match(body, /240 M1 candles. Candle saved/);
     assert.match(body, /Open 12 · High 13 · Low 11 · Close 12.5/);
     assert.match(body, /First: 10:00 · Last: 18:59/);
     assert.doesNotMatch(body, /Partial|Complete coverage|\/1440|\/60|Minutes without candles|Interval coverage|undefined/);
@@ -246,6 +408,9 @@ test("hour coverage strip contains all 24 labeled Moscow hours and a separate co
   const body=h.get("[data-aggregation-details-body]");
   const strip=body.children.find(node=>node.className==="market-aggregation-hour-strip");
   assert.equal(strip.children.length,24);
+  assert.ok(strip.children.every(slot => slot.children.length === 1));
+  assert.equal(strip.children[8].children[0].textContent, "08:00");
+  assert.equal(strip.children[8].children[0].className, "market-aggregation-hour-square");
   assert.match(strip.children[8].className,/is-insufficient/);
   assert.match(strip.children[9].className,/is-completed/);
   assert.match(strip.children[18].className,/is-partial/);
@@ -324,6 +489,93 @@ test("switching timeframe requests a separate calendar and ignores a late hourly
   assert.match(cell.getAttribute("aria-label"), /Calculated, 3 candles saved/);
 });
 
+test("five-minute calendar ignores late responses and displays 288 opening times inside the colored blocks", async () => {
+  let release;
+  const calls=[];
+  const h=calendarHarness({calendar:query=>{
+    calls.push(query.timeframe);
+    if(query.timeframe==="ONE_HOUR") return new Promise(resolve=>{ release=()=>resolve(h.response(query)); });
+    const response=h.response(query);
+    Object.assign(response.days[14],{status:"CALCULATED",candleCount:3,completeCount:1,partialCount:1,insufficientCount:1});
+    return Promise.resolve(response);
+  },day:async query=>{
+    assert.equal(query.timeframe,"FIVE_MINUTES");
+    return {sourceLoaded:true,status:"CALCULATED",intervalCoverage:Array.from({length:288},(_,i)=>({
+      hour:Math.floor(i/12),minuteOfDay:i*5,coverage:"NO_DATA",componentCount:0})),
+      candles:[{begin:"2026-09-15T07:05:00.000Z",componentCount:2,missingMinutes:[],
+        open:"12",high:"12",low:"12",close:"12",coverage:"INSUFFICIENT"}]};
+  }});
+  const pending=h.calendar.load();
+  h.fields.timeframe.value="FIVE_MINUTES";
+  h.fields.timeframe.handlers.change(); await new Promise(setImmediate);
+  release(); await pending;
+  assert.deepEqual(calls,["ONE_HOUR","FIVE_MINUTES"]);
+  const cell=h.grid.querySelectorAll().find(node=>node.dataset.aggregationDate==="2026-09-15");
+  const counts=cell.children.find(node=>node.className==="market-aggregation-coverage-counts");
+  assert.deepEqual(Array.from(counts.children,node=>node.textContent),["1","1","1"]);
+  const wrapper=h.grid.children[0].children.find(node=>node.children.includes(cell));
+  wrapper.children[1].handlers.click(); await new Promise(setImmediate);
+  assert.match(h.get("marketAggregationDetailsTitle").textContent,/M5/);
+  const body=h.get("[data-aggregation-details-body]");
+  const strip=body.children.find(node=>node.className==="market-aggregation-hour-strip");
+  assert.equal(strip.children.length,288);
+  assert.ok(strip.children.every(slot=>slot.children.length===1));
+  assert.equal(strip.children[1].children[0].textContent,"00:05");
+  assert.equal(strip.children[287].children[0].textContent,"23:55");
+  assert.match(strip.children[287].getAttribute("aria-label"),/23:55–24:00: No data, 0\/5 minutes/);
+  const content=node=>[node.textContent,...node.children.map(content)].join(" ");
+  assert.match(content(body),/10:05–10:10 · 2\/5 minutes/);
+  assert.match(content(h.get("[data-aggregation-coverage-legend]")),/Partial coverage · 50–100%/);
+  assert.doesNotMatch(content(body),/undefined|NaN/);
+});
+
+test("quarter-hour details show 96 precisely labeled intervals and 15-minute coverage", async () => {
+  const h = calendarHarness({ day: async () => ({ sourceLoaded: true, status: "CALCULATED",
+    intervalCoverage: Array.from({ length: 96 }, (_, i) => ({ hour: Math.floor(i / 4), minuteOfDay: i * 15,
+      coverage: "NO_DATA", componentCount: 0 })),
+    candles: [{ begin: "2026-09-15T07:15:00.000Z", componentCount: 7, missingMinutes: [],
+      open:"12",high:"12",low:"12",close:"12",coverage:"INSUFFICIENT" }] }) });
+  h.fields.timeframe.value = "FIFTEEN_MINUTES";
+  await h.calendar.load();
+  const wrapper = h.grid.children[0].children.find(node => node.children.some(child => child.dataset.aggregationDate));
+  wrapper.children[1].handlers.click(); await new Promise(setImmediate);
+  assert.match(h.get("marketAggregationDetailsTitle").textContent, /M15/);
+  const body = h.get("[data-aggregation-details-body]");
+  const strip = body.children.find(node => node.className === "market-aggregation-hour-strip");
+  assert.equal(strip.children.length, 96);
+  assert.ok(strip.children.every(slot => slot.children.length === 1));
+  assert.equal(strip.children[1].children[0].textContent, "00:15");
+  assert.equal(strip.children[95].children[0].textContent, "23:45");
+  assert.equal(strip.classList.contains("is-quarter-hour"), true);
+  assert.match(strip.children[1].getAttribute("aria-label"), /00:15–00:30: No data, 0\/15 minutes/);
+  assert.match(strip.children[95].getAttribute("aria-label"), /23:45–24:00: No data, 0\/15 minutes/);
+  const content = node => [node.textContent, ...node.children.map(content)].join(" ");
+  assert.match(content(body), /10:15–10:30 · 7\/15 minutes/);
+  assert.doesNotMatch(content(body), /undefined|0\.25/);
+});
+
+test("quarter-hour calendar rejects late hourly responses and keeps three coverage counters", async () => {
+  let release;
+  const calls = [];
+  const h = calendarHarness({ calendar: query => {
+    calls.push(query.timeframe);
+    if (query.timeframe === "ONE_HOUR") return new Promise(resolve => { release = () => resolve(h.response(query)); });
+    const response = h.response(query);
+    Object.assign(response.days[14], { status: "CALCULATED", candleCount: 3, completeCount: 1, partialCount: 1, insufficientCount: 1 });
+    return Promise.resolve(response);
+  } });
+  const pending = h.calendar.load();
+  h.fields.timeframe.value = "FIFTEEN_MINUTES";
+  h.fields.timeframe.handlers.change(); await new Promise(setImmediate);
+  release(); await pending;
+  assert.deepEqual(calls, ["ONE_HOUR", "FIFTEEN_MINUTES"]);
+  const cell = h.grid.querySelectorAll().find(node => node.dataset.aggregationDate === "2026-09-15");
+  const counters = cell.children.find(node => node.className === "market-aggregation-coverage-counts");
+  assert.deepEqual(Array.from(counters.children, node => node.textContent), ["1","1","1"]);
+  const content = node => [node.textContent, ...node.children.map(content)].join(" ");
+  assert.match(content(h.get("[data-aggregation-coverage-legend]")), /Partial coverage · 50–100%/);
+});
+
 test("four-hour details show six intervals and 240-minute coverage", async () => {
   const h = calendarHarness({ day: async () => ({ sourceLoaded: true, status: "CALCULATED",
     intervalCoverage: Array.from({ length: 6 }, (_, i) => ({ hour: i * 4, coverage: "NO_DATA", componentCount: 0 })),
@@ -333,10 +585,12 @@ test("four-hour details show six intervals and 240-minute coverage", async () =>
   await h.calendar.load();
   const wrapper = h.grid.children[0].children.find(node => node.children.some(child => child.dataset.aggregationDate));
   wrapper.children[1].handlers.click(); await new Promise(setImmediate);
-  assert.match(h.get("marketAggregationDetailsTitle").textContent, /4 hours/);
+  assert.match(h.get("marketAggregationDetailsTitle").textContent, /H4/);
   const body = h.get("[data-aggregation-details-body]");
   const strip = body.children.find(node => node.className === "market-aggregation-hour-strip");
   assert.equal(strip.children.length, 6);
+  assert.ok(strip.children.every(slot => slot.children.length === 1));
+  assert.equal(strip.children[5].children[0].textContent, "20:00");
   assert.equal(strip.classList.contains("is-four-hours"), true);
   assert.match(strip.children[5].getAttribute("aria-label"), /20:00–24:00: No data, 0\/240 minutes/);
   const content = node => [node.textContent, ...node.children.map(content)].join(" ");

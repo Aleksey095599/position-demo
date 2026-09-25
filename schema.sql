@@ -305,7 +305,7 @@ CREATE TABLE IF NOT EXISTS moex_iss_aggregated_candles
 CREATE TABLE IF NOT EXISTS moex_iss_candle_aggregation_result
 (
     instrument_id    TEXT NOT NULL,
-    timeframe        TEXT NOT NULL CHECK (timeframe IN ('ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY')),
+    timeframe        TEXT NOT NULL CHECK (timeframe IN ('FIVE_MINUTES', 'FIFTEEN_MINUTES', 'ONE_HOUR', 'FOUR_HOURS', 'ONE_DAY')),
     calculation_date TEXT NOT NULL CHECK (calculation_date GLOB '????-??-??' AND date(calculation_date) = calculation_date),
     calculated_at    TEXT,
     source_loaded_at TEXT,

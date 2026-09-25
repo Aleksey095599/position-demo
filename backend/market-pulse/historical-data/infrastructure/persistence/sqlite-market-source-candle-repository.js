@@ -257,12 +257,22 @@ class SqliteMarketSourceCandleRepository {
     const range = normalizedRange(query);
     return this.findLoadedRanges(query).some(r => r.from <= range.from && r.till >= range.till);
   }
+  findMinuteHistoryStart({ instrumentId }) {
+    const row = this.database.prepare("SELECT MIN(begin_at) begin FROM moex_iss_minute_candles WHERE instrument_id=?")
+      .get(normalizedInstrumentId(instrumentId));
+    return row?.begin ? new Date(Date.parse(row.begin) + 10800000).toISOString().slice(0, 10) : null;
+  }
+
   findSourceDaySummaries({ instrumentId, timeframe, fromDate, throughDate }) {
     const instrument = normalizedInstrumentId(instrumentId);
     const from = new Date(`${fromDate}T00:00:00+03:00`).toISOString();
     const till = new Date(Date.parse(`${throughDate}T00:00:00+03:00`)+DAY_MS).toISOString();
     const rows = this.database.prepare(`SELECT date(begin_at,'+3 hours') date,COUNT(*) candleCount,
       COUNT(DISTINCT strftime('%Y-%m-%dT%H',begin_at,'+3 hours')) hourCount,
+      COUNT(DISTINCT (CAST(strftime('%H',begin_at,'+3 hours') AS INTEGER) * 60
+        + CAST(strftime('%M',begin_at) AS INTEGER)) / 5) fiveMinuteCount,
+      COUNT(DISTINCT (CAST(strftime('%H',begin_at,'+3 hours') AS INTEGER) * 60
+        + CAST(strftime('%M',begin_at) AS INTEGER)) / 15) quarterHourCount,
       COUNT(DISTINCT CAST(strftime('%H',begin_at,'+3 hours') AS INTEGER) / 4) fourHourCount,
       MIN(begin_at) firstCandleAt,MAX(begin_at) lastCandleAt FROM ${sourceTable(timeframe)}
       WHERE instrument_id=? AND begin_at>=? AND begin_at<? GROUP BY date(begin_at,'+3 hours')`)

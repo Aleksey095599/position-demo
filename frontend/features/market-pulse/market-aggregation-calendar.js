@@ -18,6 +18,7 @@
       let month = marketHistorySyncYesterday().slice(0, 7);
       let data = null, selection = null, previewDate = "", activeDate = "";
       let running = false, refreshing = false, requestId = 0, detailRequestId = 0, loadedAt = 0;
+      let batchRunning = false;
       const queued = new Set(), localErrors = new Map();
       const element = (tag, className, text) => {
         const node = document.createElement(tag);
@@ -32,6 +33,10 @@
       };
       const query = () => ({ instrumentId: fields.instrumentId.value, timeframe: fields.timeframe.value });
       const isDaily = () => fields.timeframe.value === "ONE_DAY";
+      function setMessage(text, warning = false) {
+        message.textContent = text;
+        message.classList.toggle("market-aggregation-warning", warning);
+      }
       const matches = () => data?.month === month && data?.instrumentId === fields.instrumentId.value && data?.timeframe === fields.timeframe.value;
       const earliestDate = () => data?.earliestDate || new Date(Date.parse(marketHistorySyncYesterday()) - 365 * 86400000).toISOString().slice(0, 10);
       function status(day) {
@@ -46,16 +51,18 @@
         let dates = [], error = "";
         try { dates = marketCalendarRangeDates(readSelection()); } catch (reason) { error = reason.message; }
         fields.toDate.setCustomValidity(error);
+        selectionLabel.classList.toggle("market-aggregation-warning", Boolean(error));
         for (const field of [fields.fromDate, fields.toDate]) {
           field.min = earliestDate(); field.max = marketHistorySyncYesterday();
         }
         for (const field of Array.from(fields)) field.disabled = running;
+        batch.setDisabled(running || refreshing);
         calculate.disabled = running || !dates.length || Boolean(error) || !data;
         clear.disabled = running || !(fields.fromDate.value || fields.toDate.value || fields.fromDate.validity.badInput || fields.toDate.validity.badInput);
         refresh.disabled = refreshing || running;
         previous.disabled = !data || running || month <= earliestDate().slice(0, 7);
         next.disabled = !data || running || month >= data.today.slice(0, 7);
-        selectionLabel.textContent = running ? `${queued.size - Number(queued.has(activeDate))} days queued`
+        selectionLabel.textContent = running && !batchRunning ? `${queued.size - Number(queued.has(activeDate))} days queued`
           : error || `${dates.length} ${dates.length === 1 ? "day" : "days"} selected`;
         const preview = selection?.choosingEnd && previewDate ? selectMarketCalendarRange(selection, previewDate) : null;
         for (const cell of grid.querySelectorAll("[data-aggregation-date]")) {
@@ -73,8 +80,18 @@
         fields.toDate.setCustomValidity("");
       }
       function render() {
+        const coverageHelp = element("button", "form-label-help");
+        coverageHelp.type = "button";
+        coverageHelp.setAttribute("aria-label", "About coverage in Charts");
+        coverageHelp.dataset.tooltipTrigger = "click";
+        coverageHelp.dataset.tooltip = isDaily()
+          ? "Only Sufficient coverage candles are used in Charts. Insufficient coverage candles remain stored but are excluded."
+          : "Only Complete and Partial coverage candles are used in Charts. Insufficient coverage candles remain stored but are excluded.";
+        coverageHelp.append(icon("info"));
+        const coverageLabel = element("span", "market-aggregation-legend-label", "Coverage");
+        coverageLabel.append(coverageHelp);
         const legend = find("[data-aggregation-coverage-legend]");
-        legend.replaceChildren(element("span", "market-aggregation-legend-label", "Coverage"));
+        legend.replaceChildren(coverageLabel);
         const entries = isDaily()
           ? [["SUFFICIENT", " · ≥240 min"], ["INSUFFICIENT", " · <240 min"]]
           : [["COMPLETE", ""], ["PARTIAL", " · 50–100%"], ["INSUFFICIENT", " · <50%"]];
@@ -172,11 +189,11 @@
                 || !Number.isSafeInteger(day.candleCount) || day.candleCount < 0)) throw new Error("Aggregation calendar response is invalid.");
           const changed = JSON.stringify(data) !== JSON.stringify(value);
           data = value; loadedAt = Date.now();
-          if (message.textContent.startsWith("Calendar could not be refreshed.")) message.textContent = "";
+          if (message.textContent.startsWith("Calendar could not be refreshed.")) setMessage("");
           if (changed || grid.inert) render();
           refreshStatus.textContent = "Calendar refreshed.";
         } catch (error) {
-          if (id === requestId) { message.textContent = `Calendar could not be refreshed. ${error.message}`; loadedAt = 0; }
+          if (id === requestId) { setMessage(`Calendar could not be refreshed. ${error.message}`, true); loadedAt = 0; }
         } finally {
           if (id === requestId) {
             refreshing = false; refresh.classList.remove("is-refreshing"); refresh.setAttribute("aria-busy", "false");
@@ -187,28 +204,30 @@
       async function openDetails(day) {
         const id = ++detailRequestId;
         const fourHours = fields.timeframe.value === "FOUR_HOURS";
+        const quarterHour = fields.timeframe.value === "FIFTEEN_MINUTES";
+        const fiveMinutes = fields.timeframe.value === "FIVE_MINUTES";
         const daily = isDaily();
-        const expectedMinutes = fourHours ? 240 : 60;
+        const expectedMinutes = fiveMinutes ? 5 : quarterHour ? 15 : fourHours ? 240 : 60;
         const durationMs = expectedMinutes * 60000;
-        detailTitle.textContent = `${formatMarketHistorySyncDate(day.date)} · ${daily ? "1 day" : fourHours ? "4 hours" : "1 hour"}`;
+        detailTitle.textContent = `${formatMarketHistorySyncDate(day.date)} · ${MARKET_AGGREGATION_TIMEFRAME_LABELS[fields.timeframe.value]}`;
         detailBody.replaceChildren(element("p", "", "Reading stored candles…"));
         dialog.showModal(); detailTitle.focus();
         try {
           const value = await api.day({ ...query(), date: day.date });
           if (id !== detailRequestId || !dialog.open) return;
-          const text = !value.sourceLoaded ? "The minute source day has not been fully loaded."
+          const text = !value.sourceLoaded ? "The source M1 candles for this day have not been fully loaded."
             : value.stale ? "Source data changed or some nonempty intervals were not saved. Recalculate this day; previous saved candles are shown below."
               : value.status === "PENDING" ? "This day has not been calculated."
-                : value.status === "NO_DATA" ? "The loaded source day contains no minute candles."
+                : value.status === "NO_DATA" ? "The loaded source day contains no M1 candles."
                   : value.status === "CALCULATED" ? "Calculation completed. All nonempty candles are saved; coverage is shown below."
                   : value.status === "COMPLETE" ? `Every stored candle contains all ${expectedMinutes} minutes.`
                     : value.status === "PARTIAL" ? "Some calculated candles have partial coverage (50–<100%)."
                       : value.status === "INSUFFICIENT" ? "Candles with less than 50% coverage are saved and marked Insufficient coverage."
                       : "The last calculation failed. Select this day to retry.";
-          detailBody.replaceChildren(element("p", "", text));
-          if (value.lastError || localErrors.get(day.date)) detailBody.append(element("p", "text-danger", value.lastError || localErrors.get(day.date)));
+          detailBody.replaceChildren(element("p", value.status === "ERROR" && !value.lastError && !localErrors.get(day.date) ? "market-aggregation-warning" : "", text));
+          if (value.lastError || localErrors.get(day.date)) detailBody.append(element("p", "market-aggregation-warning", value.lastError || localErrors.get(day.date)));
           if (["MISMATCH", "MISSING_DAILY", "MISSING_MINUTES"].includes(value.sourceIntegrity?.status)) {
-            detailBody.append(element("p", "text-warning-emphasis", "Source data has an integrity warning. See Source Data for details."));
+            detailBody.append(element("p", "market-aggregation-warning", "Source data has an integrity warning. See Source Data for details."));
           }
           if (value.calculatedAt) detailBody.append(element("p", "text-body-secondary", "Calculated: " + new Date(value.calculatedAt).toLocaleString("en-GB", { timeZone: "Europe/Moscow" }) + " (Moscow)"));
           const time = stamp => stamp ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(stamp)) : "—";
@@ -216,19 +235,19 @@
             detailBody.append(element("h4", "market-aggregation-coverage-title", "Interval coverage · Moscow time"));
             const strip = element("div", "market-aggregation-hour-strip");
             if (fourHours) strip.classList.add("is-four-hours");
+            if (quarterHour) strip.classList.add("is-quarter-hour");
             strip.setAttribute("role", "list");
             strip.setAttribute("aria-label", `Coverage of ${1440 / expectedMinutes} calendar intervals`);
             for (const hour of value.intervalCoverage) {
               const definition = MARKET_AGGREGATION_STATUSES[hour.coverage];
-              const label = String(hour.hour).padStart(2, "0");
+              const startMinute = hour.minuteOfDay ?? hour.hour * 60;
+              const intervalTime = minute => `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
               const slot = element("div", `market-aggregation-hour-slot is-${definition.className}`);
               slot.setAttribute("role", "listitem");
-              slot.setAttribute("aria-label", `${label}:00–${String(hour.hour + expectedMinutes / 60).padStart(2, "0")}:00: ${definition.label}, ${hour.componentCount}/${expectedMinutes} minutes`);
-              const square = element("span", "market-aggregation-hour-square");
+              slot.setAttribute("aria-label", `${intervalTime(startMinute)}–${intervalTime(startMinute + expectedMinutes)}: ${definition.label}, ${hour.componentCount}/${expectedMinutes} minutes`);
+              const square = element("span", "market-aggregation-hour-square", intervalTime(startMinute));
               square.setAttribute("aria-hidden", "true");
-              const number = element("span", "", label);
-              number.setAttribute("aria-hidden", "true");
-              slot.append(square, number); strip.append(slot);
+              slot.append(square); strip.append(slot);
             }
             detailBody.append(strip);
             const legend = element("div", "market-history-sync-legend market-aggregation-strip-legend");
@@ -237,7 +256,7 @@
               const entry = element("span", "");
               const square = element("span", `market-aggregation-coverage-dot is-${definition.className}`);
               square.setAttribute("aria-hidden", "true");
-              entry.append(square, element("span", "", key === "NO_DATA" ? "No minute data" : definition.label));
+              entry.append(square, element("span", "", key === "NO_DATA" ? "No M1 data" : definition.label));
               legend.append(entry);
             }
             detailBody.append(legend);
@@ -245,12 +264,12 @@
           for (const hour of value.candles) {
             const section = element("section", "market-aggregation-hour");
             const end = new Date(Date.parse(hour.begin) + durationMs).toISOString();
-            section.append(element("h4", "", daily ? `${hour.componentCount} minute candles`
+            section.append(element("h4", "", daily ? `${hour.componentCount} M1 candles`
               : `${time(hour.begin)}–${time(end)} · ${hour.componentCount}/${expectedMinutes} minutes`));
             if (daily) {
               const coverage = MARKET_AGGREGATION_STATUSES[hour.coverage];
               section.append(element("p", hour.coverage === "INSUFFICIENT" ? "text-warning-emphasis" : "text-body-secondary",
-                `${coverage.label} · ${hour.coverage === "INSUFFICIENT" ? "<" : "≥"}${value.minimumMinutes} minute candles. Candle saved.`));
+                `${coverage.label} · ${hour.coverage === "INSUFFICIENT" ? "<" : "≥"}${value.minimumMinutes} M1 candles. Candle saved.`));
             } else if (hour.coverage === "INSUFFICIENT") section.append(element("p", "text-warning-emphasis", "Insufficient coverage · <50%. Candle saved."));
             section.append(element("p", "", `Open ${hour.open} · High ${hour.high} · Low ${hour.low} · Close ${hour.close}`));
             if (!value.stale) {
@@ -259,13 +278,38 @@
             }
             detailBody.append(section);
           }
-        } catch (error) { if (id === detailRequestId && dialog.open) detailBody.replaceChildren(element("p", "text-danger", error.message)); }
+        } catch (error) { if (id === detailRequestId && dialog.open) detailBody.replaceChildren(element("p", "market-aggregation-warning", error.message)); }
       }
+      const batch = createMarketAggregationBatch(root, api, {
+        context: () => ({ instrumentId: fields.instrumentId.value,
+          instrumentLabel: fields.instrumentId.selectedOptions?.[0]?.textContent || fields.instrumentId.value }),
+        onBusy: value => { running = value; batchRunning = value; updateControls(); },
+        onStart: commands => {
+          setMessage("");
+          selection = null; previewDate = ""; syncInputs();
+          for (const command of commands) {
+            if (command.timeframe === fields.timeframe.value) { queued.add(command.date); localErrors.delete(command.date); }
+          }
+          render();
+        },
+        onProgress: event => {
+          const visible = event.command.timeframe === fields.timeframe.value;
+          activeDate = visible && event.phase === "calculating" ? event.command.date : "";
+          if (visible && event.result) {
+            queued.delete(event.command.date);
+            const day = data?.days.find(day => day.date === event.command.date);
+            if (day) Object.assign(day, event.result);
+          }
+          if (visible && event.error) localErrors.set(event.command.date, event.error.message);
+          if (visible) render();
+        },
+        onFinished: async () => { activeDate = ""; queued.clear(); render(); await load(true); }
+      });
       form.addEventListener("submit", async event => {
         event.preventDefault();
         if (running || !form.reportValidity()) return;
         let snapshot;
-        try { snapshot = readSelection(); } catch (error) { message.textContent = error.message; return; }
+        try { snapshot = readSelection(); } catch (error) { setMessage(error.message, true); return; }
         if (!snapshot) return;
         const context = query();
         for (const date of marketCalendarRangeDates(snapshot)) { queued.add(date); localErrors.delete(date); }
@@ -279,17 +323,17 @@
                 const day = data?.days.find(day => day.date === progress.date);
                 if (day) Object.assign(day, progress.result);
               }
-              message.textContent = progress.phase === "calculating" ? `Calculating ${formatMarketHistorySyncDate(progress.date)}… (${progress.completed}/${progress.total})`
-                : `${progress.completed}/${progress.total} days calculated.`;
+              setMessage(progress.phase === "calculating" ? `Calculating ${formatMarketHistorySyncDate(progress.date)}… (${progress.completed}/${progress.total})`
+                : `${progress.completed}/${progress.total} days calculated.`);
               render();
             }
           });
-          message.textContent = `${result.completed} days calculated.`;
+          setMessage(`${result.completed} days calculated.`);
         } catch (error) {
           if (error.date) localErrors.set(error.date, error.message);
           const remaining = [...queued];
           if (remaining.length) selection = { start: remaining[0], end: remaining.at(-1), choosingEnd: false };
-          syncInputs(); message.textContent = `Stopped${error.date ? " on " + formatMarketHistorySyncDate(error.date) : ""}. ${error.message}`;
+          syncInputs(); setMessage(`Stopped${error.date ? " on " + formatMarketHistorySyncDate(error.date) : ""}. ${error.message}`, true);
         } finally {
           activeDate = ""; queued.clear(); running = false; render(); await load(true);
         }
@@ -315,7 +359,7 @@
       clear.addEventListener("click", () => { selection = null; previewDate = ""; syncInputs(); updateControls(); });
       grid.addEventListener("mouseleave", () => { previewDate = ""; updateControls(); });
       for (const field of [fields.instrumentId, fields.timeframe]) field.addEventListener("change", () => {
-        selection = null; data = null; localErrors.clear(); syncInputs(); void load(true);
+        selection = null; data = null; localErrors.clear(); setMessage(""); syncInputs(); void load(true);
       });
       dialog.addEventListener("close", () => { detailRequestId++; });
       window.addEventListener("hashchange", () => { if (dialog.open) dialog.close(); });

@@ -9,15 +9,15 @@
       else if (status === "QUEUED") message = "This day is waiting for its turn to be processed.";
       else if (status === "LOADING") message = "Loading this day from MOEX ISS…";
       else if (integrity.status === "MISMATCH") {
-        message = "Minute and daily Open/Close values do not match.";
+        message = "M1 and D1 Open/Close values do not match.";
         if (integrity.dailyOpen !== undefined) {
-          rows.push(["Daily Open / Close",integrity.dailyOpen + " / " + integrity.dailyClose]);
-          rows.push(["Minute Open / Close",integrity.firstMinuteOpen + " / " + integrity.lastMinuteClose]);
+          rows.push(["D1 Open / Close",integrity.dailyOpen + " / " + integrity.dailyClose]);
+          rows.push(["M1 Open / Close",integrity.firstMinuteOpen + " / " + integrity.lastMinuteClose]);
         } else message = integrity.message || message;
       } else if (integrity.affectedTimeframe === timeframe) {
         message = integrity.status === "MISSING_DAILY"
-          ? "MOEX ISS returned no daily candle, although minute candles exist."
-          : "MOEX ISS returned no minute candles, although a daily candle exists.";
+          ? "MOEX ISS returned no D1 candle, although M1 candles exist."
+          : "MOEX ISS returned no M1 candles, although a D1 candle exists.";
       } else if (day.lastError && status === "ERROR") {
         message = "Could not load this day. Select it in the calendar to retry.";
         if (day.lastError.startsWith("MOEX_ISS_REQUEST_FAILED")) message = "Could not retrieve data from MOEX ISS. Check your connection and retry this day.";
@@ -85,7 +85,7 @@
       const content = marketCalendarDayDetails(day, marketHistorySourceTimeframe.value, status);
       marketCalendarDayTitle.textContent = formatMarketHistorySyncDate(day.date);
       marketCalendarDayContext.textContent = marketHistorySyncInstrument.selectedOptions[0].textContent + " · "
-        + (marketHistorySourceTimeframe.value === "ONE_DAY" ? "1 day" : "1 min") + " · MOEX ISS";
+        + (marketHistorySourceTimeframe.value === "ONE_DAY" ? "D1" : "M1") + " · MOEX ISS";
       marketCalendarDayStatus.textContent = definition.label;
       marketCalendarDayStatus.className = "market-calendar-detail-status is-" + definition.className;
       marketCalendarDaySummary.textContent = content.message;

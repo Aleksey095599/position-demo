@@ -3146,6 +3146,35 @@
       line-height: 1;
     }
 
+    .form-label-with-help {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .form-label-help {
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--bs-secondary-color);
+      cursor: pointer;
+    }
+
+    .form-label-help .button-icon { font-size: 16px; line-height: 1; }
+    .form-label-help:hover, .form-label-help[aria-expanded="true"] {
+      background: color-mix(in srgb, currentColor 12%, transparent);
+    }
+    .form-label-help:focus-visible {
+      outline: 2px solid var(--bs-primary);
+      outline-offset: 1px;
+    }
+
     .app-tooltip {
       position: fixed;
       top: 0;
@@ -3170,3 +3199,5 @@
     .app-tooltip.is-visible {
       visibility: visible;
     }
+
+    .app-tooltip.is-click-help { pointer-events: auto; white-space: pre-line; }

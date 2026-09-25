@@ -3009,19 +3009,6 @@
       font-weight: 500;
     }
 
-    .form-label-with-help {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .form-label-help {
-      color: var(--bs-secondary-color);
-      cursor: default;
-      font-size: 16px;
-      line-height: 1;
-    }
-
     .hedge-quick-settings-grid {
       width: 100%;
       min-width: 0;

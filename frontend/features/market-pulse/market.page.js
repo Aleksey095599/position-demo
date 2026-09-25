@@ -1285,7 +1285,6 @@
     function setMarketHistorySyncRunning(running) {
       marketHistorySyncRunning = running;
       marketHistorySyncInstrument.disabled = running || marketHistoryLoading;
-      marketHistoryLoadButton.disabled = true;
       marketHistorySyncButtonText.textContent = running ? "Loading…" : "Load Candles";
       marketHistorySyncButton.classList.toggle("is-loading", running);
       marketHistorySyncButton.querySelector(".button-icon").textContent = running ? "progress_activity" : "download";
@@ -1344,145 +1343,6 @@
         : Number.NaN;
     }
 
-    function initializeMarketHistoryPeriod() {
-      if (marketHistoryFrom.value || marketHistoryTill.value) {
-        return;
-      }
-
-      const moscowToday = marketHistoryMoscowParts(Date.now());
-      const previousBusinessDay = new Date(Date.UTC(
-        Number(moscowToday.year),
-        Number(moscowToday.month) - 1,
-        Number(moscowToday.day)
-      ));
-      previousBusinessDay.setUTCDate(previousBusinessDay.getUTCDate() - 1);
-
-      while ([0, 6].includes(previousBusinessDay.getUTCDay())) {
-        previousBusinessDay.setUTCDate(previousBusinessDay.getUTCDate() - 1);
-      }
-
-      const pad = value => String(value).padStart(2, "0");
-      const businessDate = [
-        previousBusinessDay.getUTCFullYear(),
-        pad(previousBusinessDay.getUTCMonth() + 1),
-        pad(previousBusinessDay.getUTCDate())
-      ].join("-");
-      marketHistoryFrom.value = `${businessDate}T10:00`;
-      marketHistoryTill.value = `${businessDate}T14:00`;
-    }
-
-    function marketHistoryTimestamp(value) {
-      if (typeof value === "number") {
-        return value * 1000;
-      }
-
-      if (value && typeof value === "object") {
-        return Date.UTC(value.year, value.month - 1, value.day);
-      }
-
-      return Number.NaN;
-    }
-
-    function formatMarketHistoryTime(value) {
-      const timestamp = marketHistoryTimestamp(value);
-
-      if (!Number.isFinite(timestamp)) {
-        return "";
-      }
-
-      return marketHistoryTimeFormatter.format(new Date(timestamp));
-    }
-
-    function ensureMarketHistoryChart() {
-      if (marketHistoryChart) {
-        return;
-      }
-
-      const charts = window.LightweightCharts;
-
-      if (!charts?.createChart || !charts?.CandlestickSeries) {
-        throw new Error("Candlestick chart library is unavailable.");
-      }
-
-      const rootStyle = getComputedStyle(document.documentElement);
-      const color = name => rootStyle.getPropertyValue(name).trim();
-      marketHistoryChart = charts.createChart(marketHistoryChartEl, {
-        width: Math.max(320, marketHistoryChartEl.clientWidth),
-        height: 420,
-        layout: {
-          attributionLogo: true,
-          background: {
-            type: charts.ColorType.Solid,
-            color: color("--bs-body-bg") || "#ffffff"
-          },
-          textColor: color("--bs-secondary-color") || "#6c757d"
-        },
-        grid: {
-          vertLines: { color: color("--bs-border-color-translucent") || "#e9ecef" },
-          horzLines: { color: color("--bs-border-color-translucent") || "#e9ecef" }
-        },
-        rightPriceScale: {
-          borderColor: color("--bs-border-color") || "#dee2e6"
-        },
-        timeScale: {
-          borderColor: color("--bs-border-color") || "#dee2e6",
-          timeVisible: true,
-          secondsVisible: false,
-          tickMarkFormatter: formatMarketHistoryTime
-        },
-        localization: {
-          timeFormatter: formatMarketHistoryTime
-        }
-      });
-      marketHistorySeries = marketHistoryChart.addSeries(charts.CandlestickSeries, {
-        upColor: "#198754",
-        downColor: "#dc3545",
-        borderUpColor: "#198754",
-        borderDownColor: "#dc3545",
-        wickUpColor: "#198754",
-        wickDownColor: "#dc3545"
-      });
-
-      if (typeof ResizeObserver === "function") {
-        marketHistoryResizeObserver = new ResizeObserver(entries => {
-          const width = Math.floor(entries[0]?.contentRect?.width || 0);
-
-          if (width > 0) {
-            marketHistoryChart.applyOptions({ width });
-          }
-        });
-        marketHistoryResizeObserver.observe(marketHistoryChartEl);
-      }
-    }
-
-    function normalizedMarketHistoryCandles(candles) {
-      if (!Array.isArray(candles)) {
-        throw new Error("Historical market data response is invalid.");
-      }
-
-      return candles.map(candle => {
-        const time = Math.floor(Date.parse(candle?.begin) / 1000);
-        const open = Number(candle?.open);
-        const high = Number(candle?.high);
-        const low = Number(candle?.low);
-        const close = Number(candle?.close);
-
-        if (
-          ![time, open, high, low, close].every(Number.isFinite)
-          || high < Math.max(open, close)
-          || low > Math.min(open, close)
-        ) {
-          throw new Error("Historical market data response is invalid.");
-        }
-
-        return { time, open, high, low, close };
-      }).sort((left, right) => left.time - right.time);
-    }
-
-    function loadMarketHistoryCandles(event) {
-      event.preventDefault();
-      marketHistorySummary.textContent = "Chart preview is temporarily unavailable. Load historical candles in Data Management / Source Data.";
-    }
 
     function renderMarketPage() {
       updateMarketVisibility();
@@ -1499,16 +1359,8 @@
       }
 
       if (activeMarketKind() === "charts") {
-        initializeMarketHistoryPeriod();
-        window.requestAnimationFrame(() => {
-          try {
-            ensureMarketHistoryChart();
-          } catch (error) {
-            marketHistorySummary.textContent = "Candlestick chart is unavailable.";
-            setMarketStatus(error.message, "error");
-          }
-        });
-      }
+        window.requestAnimationFrame(openMarketChartWorkspace);
+      } else marketChartWorkspace?.deactivate();
     }
 
     async function startMarketStream() {
