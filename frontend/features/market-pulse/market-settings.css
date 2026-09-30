@@ -1,0 +1,132 @@
+    #marketPulseSettingsPage.workbench-page {
+      padding: 12px var(--workbench-page-padding-x) var(--workbench-page-padding-bottom);
+      font-size: var(--workbench-body-size);
+    }
+
+    #marketPulseSettingsPage .settings-topbar {
+      min-height: 42px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: var(--bs-body-bg);
+    }
+
+    #marketPulseSettingsPage .settings-title {
+      margin: 0;
+      color: var(--bs-emphasis-color);
+      font-size: var(--workbench-title-size);
+      font-weight: var(--workbench-title-weight);
+      line-height: 1.2;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
+      align-items: start;
+      gap: 20px;
+      width: min(1150px, calc(100vw - var(--workbench-page-inline-total)));
+      max-width: 100%;
+      margin-top: 12px;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-sidebar {
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-navigation {
+      display: grid;
+      gap: 4px;
+      padding: 8px;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-navigation-link {
+      display: flex;
+      align-items: center;
+      min-height: 42px;
+      padding: 9px 10px;
+      border: 1px solid var(--selection-accent);
+      border-radius: var(--bs-border-radius);
+      background: var(--control-soft-bg);
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-control);
+      font-weight: 600;
+      line-height: 1.25;
+      text-decoration: none;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-navigation-link:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--bs-primary) 22%, transparent);
+      outline-offset: 1px;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-content { min-width: 0; }
+    #marketPulseSettingsPage .market-pulse-settings-tabs { margin: 0 0 16px; }
+
+    #marketPulseSettingsPage .market-pulse-settings-card {
+      overflow: hidden;
+      border: 1px solid var(--semantic-card-border);
+      border-radius: var(--bs-border-radius-lg);
+      background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--semantic-card-head-bg);
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-card-header h2 {
+      margin: 0;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-card-header .button-icon { font-size: 20px; }
+    #marketPulseSettingsPage .market-pulse-settings-fields { min-width: 0; margin: 0; padding: 0 20px; border: 0; }
+    #marketPulseSettingsPage .market-pulse-settings-field { padding: 20px 0; }
+    #marketPulseSettingsPage .market-pulse-settings-field + .market-pulse-settings-field { border-top: 1px solid var(--bs-border-color); }
+
+    #marketPulseSettingsPage .market-pulse-settings-field :is(.form-label, .form-check-label) {
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-interval { width: 172px; max-width: 100%; }
+    #marketPulseSettingsPage .market-pulse-settings-help {
+      margin: 7px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      line-height: 1.5;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-status {
+      flex: 1 1 240px;
+      min-width: 0;
+      margin: 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      overflow-wrap: anywhere;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-status.is-error { color: var(--bs-danger-text-emphasis); }
+    #marketPulseSettingsPage .market-pulse-settings-status.is-success { color: var(--bs-success-text-emphasis); }
+
+    @media (max-width: 900px) {
+      #marketPulseSettingsPage .market-pulse-settings-layout { grid-template-columns: 1fr; gap: 14px; }
+    }

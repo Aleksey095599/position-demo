@@ -11078,6 +11078,25 @@ const historicalCandlesApi = createHistoricalCandlesApi({
   })
 });
 
+const currentDayLoading = require("./backend/market-pulse/current-day/config/current-day-module").createCurrentDayModule({
+  database,
+  sourceRepository: marketSourceCandleRepository,
+  marketDataSource: historicalMarketDataSource,
+  calculateDay: async command => {
+    const result = await candleAggregationApi.calculateDay(command);
+    if (result.statusCode !== 200) throw Object.assign(new Error(result.body.message), { code: result.body.code });
+    return result.body;
+  }
+});
+
+function disposeCurrentDayAndCloseDatabase() {
+  const inFlight = currentDayLoading.process.status().inFlight;
+  const disposed = currentDayLoading.process.dispose();
+  if (inFlight) return disposed.then(() => database.close());
+  database.close();
+  return Promise.resolve();
+}
+
 function clientDealGenerationError(code, message) {
   const error = new Error(message);
   error.code = code;
@@ -12938,6 +12957,45 @@ async function handleApi(request, response, url) {
 
   if (method === "GET" && pathname === "/api/health") {
     sendJson(response, 200, { status: "UP", database: "data/demo.sqlite" });
+    return true;
+  }
+
+  if (pathname.startsWith("/api/v1/market-pulse/current-day/")) {
+    const action = pathname.slice("/api/v1/market-pulse/current-day/".length);
+    if (!["status", "settings", "start", "stop"].includes(action)) return false;
+    const allowedMethod = action === "settings" ? ["GET", "PUT"] : action === "status" ? ["GET"] : ["POST"];
+    if (!allowedMethod.includes(method)) {
+      apiError(response, 405, "METHOD_NOT_ALLOWED", "This method is not supported for Current Day Loading.");
+      return true;
+    }
+    try {
+      if (action === "settings") {
+        if ([...url.searchParams].length) {
+          apiError(response, 400, "INVALID_CURRENT_DAY_LOADING_REQUEST", "Settings do not accept query parameters.");
+          return true;
+        }
+        sendJson(response, 200, method === "GET" ? currentDayLoading.settings.get()
+          : currentDayLoading.settings.update(await readJsonBody(request)));
+      } else {
+        if (method !== "GET" && [...url.searchParams].length) {
+          apiError(response, 400, "INVALID_CURRENT_DAY_LOADING_REQUEST", "Use the request body for loading commands.");
+          return true;
+        }
+        const command = method === "GET" ? Object.fromEntries(url.searchParams) : await readJsonBody(request);
+        if (!command || typeof command !== "object" || Array.isArray(command)
+            || Object.keys(command).some(key => key !== "instrumentId")
+            || Object.hasOwn(command, "instrumentId") && command.instrumentId !== "CNYRUB_TOM"
+            || url.searchParams.getAll("instrumentId").length > 1) {
+          apiError(response, 400, "INVALID_CURRENT_DAY_LOADING_REQUEST", "Current Day Loading supports CNYRUB_TOM only.");
+          return true;
+        }
+        sendJson(response, 200, currentDayLoading.process[action](command));
+      }
+    } catch (error) {
+      if (error.code === "INVALID_CURRENT_DAY_LOADING_REQUEST") apiError(response, 400, error.code, error.message);
+      else if (error.code === "CURRENT_DAY_LOADING_BUSY") apiError(response, 409, error.code, error.message);
+      else throw error;
+    }
     return true;
   }
 
@@ -15355,7 +15413,7 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.on("error", error => {
+server.on("error", async error => {
   if (error?.code === "EADDRINUSE") {
     console.error(`Port ${PORT} is already in use. Open http://${HOST}:${PORT} if the demo is already running.`);
   } else {
@@ -15366,7 +15424,7 @@ server.on("error", error => {
   autoBatchingProcess.dispose();
   marketPulseSimulator.dispose();
   removeServerRuntimeFile();
-  database.close();
+  await disposeCurrentDayAndCloseDatabase();
   process.exitCode = 1;
 });
 
@@ -15378,12 +15436,13 @@ function closeServer() {
   }
 
   shutdownStarted = true;
-  server.close(() => {
+  currentDayLoading.process.stop();
+  server.close(async () => {
     clientDealGenerationProcess.dispose();
     autoBatchingProcess.dispose();
     marketPulseSimulator.dispose();
     removeServerRuntimeFile();
-    database.close();
+    await disposeCurrentDayAndCloseDatabase();
     process.exit(0);
   });
 
@@ -15400,7 +15459,7 @@ if (require.main === module) {
   if (process.argv.includes("--init-only")) {
     clientDealGenerationProcess.dispose();
     autoBatchingProcess.dispose();
-    database.close();
+    void disposeCurrentDayAndCloseDatabase();
     console.log(`SQLite initialized: ${DATABASE_PATH}`);
   } else {
     server.listen(PORT, HOST, () => {
@@ -15412,6 +15471,7 @@ if (require.main === module) {
         return;
       }
 
+      currentDayLoading.process.bootstrap();
       console.log(`Demo application: http://${HOST}:${PORT}`);
       console.log(`SQLite database: ${DATABASE_PATH}`);
       console.log("Press Ctrl+C to stop.");
@@ -15427,6 +15487,6 @@ module.exports = {
     clientDealGenerationProcess.dispose();
     autoBatchingProcess.dispose();
     marketPulseSimulator.dispose();
-    database.close();
+    return disposeCurrentDayAndCloseDatabase();
   }
 };

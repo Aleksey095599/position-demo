@@ -12,6 +12,7 @@ function harness() {
   const elements = new Map();
   const context = vm.createContext({
     location: { hash: "#users" }, URLSearchParams,
+    isMarketPulseSettingsRoute: hash => hash === "#market-pulse-settings",
     clientProfiles: [{ counterpartyId: 42, name: "Example Counterparty" }],
     users: [{ userId: 7, firstName: "Alex", lastName: "Smith" }],
     document: {
@@ -42,6 +43,7 @@ test("page headings retain their current labels when navigating without breadcru
   for (const [route, selector, title] of [
     ["#settings:currencies", "#marketPageTitle", "Currency Settings"],
     ["#settings:currency-pairs?currency=USD", "#marketPageTitle", "Currency Pair Settings"],
+    ["#market-pulse-settings", "#marketPulseSettingsPage h1", "Market Pulse Settings"],
     ["#market-pulse", "#marketPageTitle", "Quote Stream"],
     ["#market-pulse:quote-stream", "#marketPageTitle", "Quote Stream"],
     ["#market-pulse:charts", "#marketPageTitle", "Charts"],

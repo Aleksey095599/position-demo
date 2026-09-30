@@ -4,6 +4,7 @@
     "features/counterparties/counterparties.page.js",
     "features/batching/batching.page.js",
     "features/market-pulse/market.page.js",
+    "features/market-pulse/market-settings.page.js",
     "features/market-pulse/charts/chart-data.js",
     "features/market-pulse/charts/chart-workspace.js",
     "features/market-pulse/market-data-management.js",

@@ -91,6 +91,7 @@
       analyticalPnlReportPage.hidden = true;
       batchingSettingsPage.hidden = true;
       positionManagementSettingsPage.hidden = true;
+      marketPulseSettingsPage.hidden = true;
       databasePage.hidden = true;
       processesPage.hidden = true;
       batchesPage.hidden = true;
@@ -220,6 +221,20 @@
         batchingSettingsPage.hidden = false;
         document.title = "Batching Settings";
         loadBatchingSettingsPage();
+        return;
+      }
+
+      if (isMarketPulseSettingsRoute()) {
+        setWorkspaceRoute("market-pulse-settings");
+        marketPage.hidden = true;
+        mainPage.hidden = true;
+        clientProfilePage.hidden = true;
+        pricingPage.hidden = true;
+        referenceDataPage.hidden = true;
+        pricingRulesPage.hidden = true;
+        marketPulseSettingsPage.hidden = false;
+        document.title = "Market Pulse Settings";
+        loadMarketPulseSettingsPage();
         return;
       }
 

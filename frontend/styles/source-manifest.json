@@ -5,6 +5,7 @@
     "features/pricing/pricing-workflows.css",
     "features/trade-intake/trade-contract.css",
     "features/market-pulse/market-pulse.css",
+    "features/market-pulse/market-settings.css",
     "shared/components/reference-tables.css",
     "shared/components/workbench-tabs.css",
     "features/position/position-management-settings.css",

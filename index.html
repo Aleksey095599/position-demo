@@ -52,7 +52,7 @@
         <span>Reports</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
-      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceSettingsToggle" aria-haspopup="menu" aria-controls="workspaceSettingsMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceSettingsMenu" data-workspace-routes="settings-currencies settings-currency-pairs batching-settings position-management-settings">
+      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceSettingsToggle" aria-haspopup="menu" aria-controls="workspaceSettingsMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceSettingsMenu" data-workspace-routes="settings-currencies settings-currency-pairs batching-settings position-management-settings market-pulse-settings">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">settings</span>
         <span>Settings</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
@@ -141,6 +141,10 @@
     <a class="workspace-nav-menu-link" href="#batching-settings" data-workspace-route="batching-settings" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
       <span>Batching</span>
+    </a>
+    <a class="workspace-nav-menu-link" href="#market-pulse-settings" data-workspace-route="market-pulse-settings" role="menuitem">
+      <span class="button-icon workspace-nav-icon market-pulse-icon" aria-hidden="true">monitoring</span>
+      <span>Market Pulse</span>
     </a>
     <a class="workspace-nav-menu-link" href="#position-management-settings" data-workspace-route="position-management-settings" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">table_chart</span>
@@ -263,7 +267,63 @@
               </section>
             </section>
             <section id="marketCurrentDayPanel" role="tabpanel" data-market-data-panel="current-day"
-              aria-labelledby="marketCurrentDayTab" tabindex="0" hidden></section>
+              aria-labelledby="marketCurrentDayTab" tabindex="0" hidden>
+              <section class="market-history-sync-card semantic-section" aria-labelledby="marketCurrentDayTitle">
+                <div class="market-history-sync-header semantic-section-head">
+                  <span class="button-icon market-history-sync-header-icon" aria-hidden="true">schedule</span>
+                  <h2 class="market-history-section-title" id="marketCurrentDayTitle">Source Candle Loading</h2>
+                </div>
+                <div class="market-source-calendar-body">
+                  <div class="market-current-day-toolbar">
+                    <label class="market-history-field" for="marketCurrentDayInstrument">
+                      <span>Instrument</span>
+                      <select class="form-select form-select-sm" id="marketCurrentDayInstrument">
+                        <option value="CNYRUB_TOM">CNY/RUB TOM</option>
+                      </select>
+                    </label>
+                    <div class="market-history-field is-source-timeframe" role="group" aria-labelledby="marketCurrentDayTimeframeLabel">
+                      <span id="marketCurrentDayTimeframeLabel">Timeframe</span>
+                      <span class="market-history-field-value" id="marketCurrentDayTimeframe">M1</span>
+                    </div>
+                    <div class="market-current-day-context">
+                      <h3 class="market-history-section-title">
+                        <time class="market-current-day-date" id="marketCurrentDayDate">
+                          <span class="market-history-calendar-day-number"><span class="market-calendar-date-outline" aria-hidden="true"></span><span class="market-calendar-date-value" id="marketCurrentDayNumber"></span></span>
+                          <span id="marketCurrentDayMonth"></span>
+                        </time>
+                      </h3>
+                      <p class="market-history-section-description">Moscow time (UTC+3)</p>
+                    </div>
+                  </div>
+                  <div class="market-current-day-controls">
+                    <p class="market-current-day-process" role="status" aria-live="polite"><span class="button-icon" id="marketCurrentDaySpinner" aria-hidden="true" hidden>sync</span><span id="marketCurrentDayProcessState">Stopped</span></p>
+                    <div class="market-current-day-actions">
+                      <button class="btn btn-sm btn-primary with-icon" id="marketCurrentDayStart" type="button"><span class="button-icon" aria-hidden="true">play_arrow</span><span>Start Loading</span></button>
+                      <button class="btn btn-sm btn-outline-secondary with-icon" id="marketCurrentDayStop" type="button" disabled><span class="button-icon" aria-hidden="true">stop</span><span>Stop</span></button>
+                      <a class="btn btn-sm btn-outline-secondary with-icon" href="#market-pulse-settings"><span class="button-icon" aria-hidden="true">settings</span><span>Settings</span></a>
+                    </div>
+                  </div>
+                  <dl class="market-current-day-metrics">
+                    <div><dt>Loaded candles</dt><dd id="marketCurrentDayCount">0</dd></div>
+                    <div><dt>Latest candle</dt><dd id="marketCurrentDayLatest">—</dd></div>
+                    <div><dt>Last successful check</dt><dd id="marketCurrentDayLastCheck">—</dd></div>
+                    <div><dt>Next check</dt><dd id="marketCurrentDayNextCheck">—</dd></div>
+                  </dl>
+                  <p class="market-history-section-description market-current-day-notice" id="marketCurrentDayNotice" role="status" aria-live="polite">Start loading to receive today's available minute candles.</p>
+                  <details class="market-current-day-error" id="marketCurrentDayError" hidden><summary>Load error details</summary><p id="marketCurrentDayErrorText"></p></details>
+                  <p class="market-current-day-finalization" id="marketCurrentDayFinalization" role="status" hidden></p>
+                  <div class="market-current-day-scroll" tabindex="0" role="region" aria-label="Minute candles by hour; scroll horizontally on smaller screens" aria-describedby="marketCurrentDayNotice">
+                    <div class="market-current-day-grid" id="marketCurrentDayGrid" role="table" aria-label="Today's M1 candle availability, Moscow time" aria-rowcount="25" aria-colcount="61"></div>
+                  </div>
+                  <div class="market-history-sync-legend market-current-day-legend" aria-label="Minute candle statuses">
+                    <span><span class="market-current-minute is-not-loaded" aria-hidden="true"></span>Not loaded</span>
+                    <span><span class="market-current-minute is-loaded" aria-hidden="true"></span>Loaded</span>
+                    <span><span class="market-current-minute is-no-data" aria-hidden="true"></span>No data</span>
+                    <span><span class="market-current-minute is-error" aria-hidden="true"></span>Error</span>
+                  </div>
+                </div>
+              </section>
+            </section>
           </div>
         </div>
       </section>
@@ -452,6 +512,70 @@
           </div>
         </section>
       </section>
+    </section>
+  </main>
+
+  <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page market-pulse-settings-page" id="marketPulseSettingsPage" hidden>
+    <section class="settings-topbar workbench-page-header" aria-label="Market Pulse Settings header">
+      <div class="settings-title-block workbench-detail-title-block">
+        <h1 class="settings-title">Market Pulse Settings</h1>
+      </div>
+    </section>
+
+    <section class="market-pulse-settings-layout" aria-label="Market Pulse Settings">
+      <aside class="market-pulse-settings-sidebar">
+        <nav class="market-pulse-settings-navigation" aria-label="Market Pulse Settings sections">
+          <a class="market-pulse-settings-navigation-link is-active" href="#market-pulse-settings" aria-current="page">Source Data</a>
+        </nav>
+      </aside>
+      <div class="market-pulse-settings-content">
+        <nav class="nav nav-tabs workbench-section-tabs market-pulse-settings-tabs" role="tablist" aria-label="Source Data settings">
+          <button type="button" class="nav-link active" id="marketPulseCurrentDaySettingsTab" role="tab" aria-controls="marketPulseCurrentDaySettingsPanel" aria-selected="true">Current Day</button>
+        </nav>
+        <section id="marketPulseCurrentDaySettingsPanel" role="tabpanel" aria-labelledby="marketPulseCurrentDaySettingsTab">
+          <form id="marketPulseCurrentDaySettingsForm" autocomplete="off">
+            <section class="market-pulse-settings-card semantic-section" aria-labelledby="marketPulseCurrentDaySettingsTitle">
+              <div class="market-pulse-settings-card-header semantic-section-head">
+                <span class="button-icon" aria-hidden="true">cloud_sync</span>
+                <h2 id="marketPulseCurrentDaySettingsTitle">Current Day Source Candle Loading</h2>
+              </div>
+              <fieldset class="market-pulse-settings-fields" id="marketPulseCurrentDaySettingsFields" disabled>
+                <legend class="visually-hidden">Current Day Loading settings</legend>
+                <div class="market-pulse-settings-field">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="marketPulseCurrentDayAutoStart" name="autoStart" aria-describedby="marketPulseCurrentDayAutoStartHelp">
+                    <label class="form-check-label" for="marketPulseCurrentDayAutoStart">Start Current Day Loading on Application Startup</label>
+                  </div>
+                  <p class="market-pulse-settings-help" id="marketPulseCurrentDayAutoStartHelp">Applies when the application service next starts. Opening or refreshing a browser tab does not restart loading.</p>
+                </div>
+                <div class="market-pulse-settings-field">
+                  <label class="form-label" for="marketPulseCurrentDayPollInterval">Update Interval</label>
+                  <div class="input-group input-group-sm market-pulse-settings-interval">
+                    <input class="form-control" type="number" id="marketPulseCurrentDayPollInterval" name="pollIntervalMinutes" min="1" max="60" step="1" value="1" required aria-describedby="marketPulseCurrentDayPollIntervalHelp marketPulseCurrentDayIntervalUnit">
+                    <span class="input-group-text" id="marketPulseCurrentDayIntervalUnit">minutes</span>
+                  </div>
+                  <p class="market-pulse-settings-help" id="marketPulseCurrentDayPollIntervalHelp">Check for new M1 candles every 1–60 minutes. Changes apply to the next loading cycle.</p>
+                </div>
+                <div class="market-pulse-settings-field">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="marketPulseCurrentDayReloadAfterDayEnd" name="reloadAfterDayEnd" aria-describedby="marketPulseCurrentDayReloadAfterDayEndHelp">
+                    <label class="form-check-label" for="marketPulseCurrentDayReloadAfterDayEnd">Reload and Recalculate After Day End</label>
+                  </div>
+                  <p class="market-pulse-settings-help" id="marketPulseCurrentDayReloadAfterDayEndHelp">After midnight (Moscow), reload and replace the completed day’s M1 candles and recalculate M5, M15, H1, H4 and D1. Loading must be running; pending days resume when it restarts.</p>
+                </div>
+              </fieldset>
+            </section>
+            <div class="market-pulse-settings-actions">
+              <p class="market-pulse-settings-status" id="marketPulseCurrentDaySettingsStatus" role="status" aria-live="polite"></p>
+              <button class="btn btn-sm btn-outline-secondary" type="button" id="marketPulseCurrentDaySettingsRetry" hidden>Retry</button>
+              <button class="btn btn-primary btn-sm" type="submit" id="marketPulseCurrentDaySettingsSave" disabled>
+                <span class="button-icon" aria-hidden="true">save</span>
+                <span>Save Settings</span>
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
     </section>
   </main>
 

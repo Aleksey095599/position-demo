@@ -29,7 +29,7 @@ test("route pages and dialog components are owned by feature fragments", () => {
   const pageFragments = manifest.fragments.filter(fragment => fragment.kind === "page");
   const dialogFragments = manifest.fragments.filter(fragment => fragment.kind === "dialog");
 
-  assert.equal(pageFragments.length, 16);
+  assert.equal(pageFragments.length, 17);
   assert.equal(dialogFragments.length, 14);
   assert.ok(pageFragments.every(fragment => fragment.file.startsWith("features/")));
   assert.ok(dialogFragments.every(fragment =>
@@ -58,7 +58,7 @@ test("every Bootstrap tab list uses the shared workbench tab contract", () => {
     /<nav\b[^>]*class="([^"]*\bnav-tabs\b[^"]*)"[^>]*>/g
   )];
 
-  assert.equal(tabLists.length, 5);
+  assert.equal(tabLists.length, 6);
   for (const [, classNames] of tabLists) {
     assert.match(classNames, /\bworkbench-section-tabs\b/);
   }

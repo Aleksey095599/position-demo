@@ -113,7 +113,63 @@
               </section>
             </section>
             <section id="marketCurrentDayPanel" role="tabpanel" data-market-data-panel="current-day"
-              aria-labelledby="marketCurrentDayTab" tabindex="0" hidden></section>
+              aria-labelledby="marketCurrentDayTab" tabindex="0" hidden>
+              <section class="market-history-sync-card semantic-section" aria-labelledby="marketCurrentDayTitle">
+                <div class="market-history-sync-header semantic-section-head">
+                  <span class="button-icon market-history-sync-header-icon" aria-hidden="true">schedule</span>
+                  <h2 class="market-history-section-title" id="marketCurrentDayTitle">Source Candle Loading</h2>
+                </div>
+                <div class="market-source-calendar-body">
+                  <div class="market-current-day-toolbar">
+                    <label class="market-history-field" for="marketCurrentDayInstrument">
+                      <span>Instrument</span>
+                      <select class="form-select form-select-sm" id="marketCurrentDayInstrument">
+                        <option value="CNYRUB_TOM">CNY/RUB TOM</option>
+                      </select>
+                    </label>
+                    <div class="market-history-field is-source-timeframe" role="group" aria-labelledby="marketCurrentDayTimeframeLabel">
+                      <span id="marketCurrentDayTimeframeLabel">Timeframe</span>
+                      <span class="market-history-field-value" id="marketCurrentDayTimeframe">M1</span>
+                    </div>
+                    <div class="market-current-day-context">
+                      <h3 class="market-history-section-title">
+                        <time class="market-current-day-date" id="marketCurrentDayDate">
+                          <span class="market-history-calendar-day-number"><span class="market-calendar-date-outline" aria-hidden="true"></span><span class="market-calendar-date-value" id="marketCurrentDayNumber"></span></span>
+                          <span id="marketCurrentDayMonth"></span>
+                        </time>
+                      </h3>
+                      <p class="market-history-section-description">Moscow time (UTC+3)</p>
+                    </div>
+                  </div>
+                  <div class="market-current-day-controls">
+                    <p class="market-current-day-process" role="status" aria-live="polite"><span class="button-icon" id="marketCurrentDaySpinner" aria-hidden="true" hidden>sync</span><span id="marketCurrentDayProcessState">Stopped</span></p>
+                    <div class="market-current-day-actions">
+                      <button class="btn btn-sm btn-primary with-icon" id="marketCurrentDayStart" type="button"><span class="button-icon" aria-hidden="true">play_arrow</span><span>Start Loading</span></button>
+                      <button class="btn btn-sm btn-outline-secondary with-icon" id="marketCurrentDayStop" type="button" disabled><span class="button-icon" aria-hidden="true">stop</span><span>Stop</span></button>
+                      <a class="btn btn-sm btn-outline-secondary with-icon" href="#market-pulse-settings"><span class="button-icon" aria-hidden="true">settings</span><span>Settings</span></a>
+                    </div>
+                  </div>
+                  <dl class="market-current-day-metrics">
+                    <div><dt>Loaded candles</dt><dd id="marketCurrentDayCount">0</dd></div>
+                    <div><dt>Latest candle</dt><dd id="marketCurrentDayLatest">—</dd></div>
+                    <div><dt>Last successful check</dt><dd id="marketCurrentDayLastCheck">—</dd></div>
+                    <div><dt>Next check</dt><dd id="marketCurrentDayNextCheck">—</dd></div>
+                  </dl>
+                  <p class="market-history-section-description market-current-day-notice" id="marketCurrentDayNotice" role="status" aria-live="polite">Start loading to receive today's available minute candles.</p>
+                  <details class="market-current-day-error" id="marketCurrentDayError" hidden><summary>Load error details</summary><p id="marketCurrentDayErrorText"></p></details>
+                  <p class="market-current-day-finalization" id="marketCurrentDayFinalization" role="status" hidden></p>
+                  <div class="market-current-day-scroll" tabindex="0" role="region" aria-label="Minute candles by hour; scroll horizontally on smaller screens" aria-describedby="marketCurrentDayNotice">
+                    <div class="market-current-day-grid" id="marketCurrentDayGrid" role="table" aria-label="Today's M1 candle availability, Moscow time" aria-rowcount="25" aria-colcount="61"></div>
+                  </div>
+                  <div class="market-history-sync-legend market-current-day-legend" aria-label="Minute candle statuses">
+                    <span><span class="market-current-minute is-not-loaded" aria-hidden="true"></span>Not loaded</span>
+                    <span><span class="market-current-minute is-loaded" aria-hidden="true"></span>Loaded</span>
+                    <span><span class="market-current-minute is-no-data" aria-hidden="true"></span>No data</span>
+                    <span><span class="market-current-minute is-error" aria-hidden="true"></span>Error</span>
+                  </div>
+                </div>
+              </section>
+            </section>
           </div>
         </div>
       </section>

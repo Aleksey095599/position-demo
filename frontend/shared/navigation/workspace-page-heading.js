@@ -7,6 +7,9 @@
       if (/^#trade-intake(?::contract)?$/.test(currentHash)) {
         return heading("#tradeContractPage h1", "Trade Notification Contract");
       }
+      if (isMarketPulseSettingsRoute(currentHash)) {
+        return heading("#marketPulseSettingsPage h1", "Market Pulse Settings");
+      }
       if (isPositionManagementSettingsRoute(currentHash)) {
         return heading("#positionManagementSettingsPage h1", "Position Management Settings");
       }

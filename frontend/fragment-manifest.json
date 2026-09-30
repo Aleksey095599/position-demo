@@ -7,6 +7,11 @@
     },
     {
       "kind": "page",
+      "id": "marketPulseSettingsPage",
+      "file": "features/market-pulse/market-settings.page.html"
+    },
+    {
+      "kind": "page",
       "id": "databasePage",
       "file": "features/database/database.page.html"
     },

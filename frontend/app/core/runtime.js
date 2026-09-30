@@ -1452,7 +1452,9 @@
           "moex_iss_candle_aggregation_result",
           "moex_iss_minute_candle_load_result",
           "moex_iss_day_candles",
-          "moex_iss_day_candle_load_result"
+          "moex_iss_day_candle_load_result",
+          "market_current_day_loading_settings",
+          "moex_iss_current_day_load_result"
         ]
       },
       {

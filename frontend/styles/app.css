@@ -11530,6 +11530,8 @@
     #marketPage .market-aggregation-batch-progress { margin-block: 12px; padding: 12px; border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); }
     #marketPage .market-aggregation-warning,
     #marketPage .market-calendar-selection output.market-aggregation-warning,
+    #marketPage .market-current-day-notice.is-error,
+    #marketPage .market-current-day-finalization.is-error:not([hidden]),
     #marketPage .market-aggregation-batch-progress.is-warning { display: block; margin-block: 12px; padding: 16px; border: 1px solid var(--palette-orange-400); border-radius: var(--bs-border-radius); color: var(--palette-orange-700); background: var(--palette-orange-100); text-align: center; font-size: 13px; overflow-wrap: anywhere; }
     #marketPage .market-aggregation-batch-progress p { margin: 0; font-size: 13px; }
     #marketPage .market-aggregation-batch-progress-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
@@ -12052,6 +12054,175 @@
       #marketPage .market-calendar-day-info .button-icon { font-size: 14px; }
       #marketPage .market-history-calendar-day { padding-bottom: 26px; }
       #marketPage .market-calendar-candle-caption { padding-left: 0; }
+    }
+
+    #marketPage .market-current-day-toolbar { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--bs-border-color); }
+    #marketPage .market-current-day-toolbar .market-history-field { flex: 0 0 150px; max-width: 100%; }
+    #marketPage .market-current-day-context { margin-left: auto; text-align: right; }
+    #marketPage .market-current-day-date { display: flex; align-items: center; justify-content: flex-end; gap: 8px; white-space: nowrap; }
+    #marketPage .market-current-day-notice { margin: 16px 0 12px; }
+    #marketPage .market-current-day-scroll { max-width: 100%; overflow-x: auto; padding-bottom: 6px; }
+    #marketPage .market-current-day-scroll:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+    #marketPage .market-current-day-grid { display: grid; gap: 5px; min-width: 768px; font-variant-numeric: tabular-nums; }
+    #marketPage .market-current-day-row { display: grid; grid-template-columns: 48px repeat(60, minmax(10px, 1fr)); align-items: center; gap: 2px; }
+    #marketPage .market-current-day-axis { color: var(--bs-secondary-color); text-align: center; font-size: 10px; line-height: 1.4; }
+    #marketPage .market-current-day-axis:first-child { position: sticky; left: 0; z-index: 1; background: var(--bs-tertiary-bg); text-align: left; font-size: 11px; font-weight: 500; }
+    #marketPage .market-current-day-minutes { margin-bottom: 3px; }
+    #marketPage .market-current-day-minutes .market-current-day-axis:not(:first-child) { font-size: 9px; }
+    #marketPage .market-current-minute { display: block; min-width: 0; aspect-ratio: 1; border: 1px solid var(--palette-gray-400); border-radius: 3px; background: var(--bs-body-bg); }
+    #marketPage .market-current-minute.is-no-data { background: var(--palette-gray-300); }
+    #marketPage .market-current-minute.is-loaded { background: var(--palette-green-200); border-color: var(--palette-green-600); }
+    #marketPage .market-current-minute.is-error { background: var(--palette-red-200); border-color: var(--palette-red-600); }
+    #marketPage .market-current-day-grid .market-current-minute:hover { outline: 1px solid var(--bs-secondary-color); outline-offset: 1px; }
+    #marketPage .market-current-day-legend { margin: 14px 0 0; }
+    #marketPage .market-current-day-legend .market-current-minute { width: 14px; height: 14px; flex-shrink: 0; }
+
+    #marketPage .market-current-day-controls, #marketPage .market-current-day-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    #marketPage .market-current-day-controls { justify-content: space-between; margin-block: 16px; }
+    #marketPage .market-current-day-process { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; }
+    #marketPage #marketCurrentDaySpinner:not([hidden]) { animation: market-history-sync-spin 0.9s linear infinite; }
+    #marketPage .market-current-day-metrics { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: 0; font-size: 12px; }
+    #marketPage .market-current-day-metrics dt { font-weight: 400; color: var(--bs-secondary-color); }
+    #marketPage .market-current-day-metrics dd { margin: 4px 0 0; font-variant-numeric: tabular-nums; }
+    #marketPage .market-current-day-finalization { margin: 0 0 12px; font-size: 12px; color: var(--bs-secondary-color); }
+    #marketPage .market-history-calendar-day.is-no-data:not([aria-pressed="true"]):not(.is-range-preview) { background: var(--palette-gray-300); }
+    #marketPage .market-history-legend-icon.is-pending { background: var(--bs-body-bg); border: 1px solid var(--palette-gray-400); }
+    #marketPage .market-history-legend-icon.is-no-data { background: var(--palette-gray-300); }
+    @media (prefers-reduced-motion: reduce) { #marketPage #marketCurrentDaySpinner:not([hidden]) { animation: none; } }
+
+    #marketPage .market-current-day-error { margin-bottom: 12px; font-size: 12px; color: var(--bs-danger-text-emphasis); }
+    #marketPage .market-current-day-error p { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    #marketPulseSettingsPage.workbench-page {
+      padding: 12px var(--workbench-page-padding-x) var(--workbench-page-padding-bottom);
+      font-size: var(--workbench-body-size);
+    }
+
+    #marketPulseSettingsPage .settings-topbar {
+      min-height: 42px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: var(--bs-body-bg);
+    }
+
+    #marketPulseSettingsPage .settings-title {
+      margin: 0;
+      color: var(--bs-emphasis-color);
+      font-size: var(--workbench-title-size);
+      font-weight: var(--workbench-title-weight);
+      line-height: 1.2;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
+      align-items: start;
+      gap: 20px;
+      width: min(1150px, calc(100vw - var(--workbench-page-inline-total)));
+      max-width: 100%;
+      margin-top: 12px;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-sidebar {
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-border-radius);
+      background: var(--bs-body-bg);
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-navigation {
+      display: grid;
+      gap: 4px;
+      padding: 8px;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-navigation-link {
+      display: flex;
+      align-items: center;
+      min-height: 42px;
+      padding: 9px 10px;
+      border: 1px solid var(--selection-accent);
+      border-radius: var(--bs-border-radius);
+      background: var(--control-soft-bg);
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-control);
+      font-weight: 600;
+      line-height: 1.25;
+      text-decoration: none;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-navigation-link:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--bs-primary) 22%, transparent);
+      outline-offset: 1px;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-content { min-width: 0; }
+    #marketPulseSettingsPage .market-pulse-settings-tabs { margin: 0 0 16px; }
+
+    #marketPulseSettingsPage .market-pulse-settings-card {
+      overflow: hidden;
+      border: 1px solid var(--semantic-card-border);
+      border-radius: var(--bs-border-radius-lg);
+      background: var(--bs-body-bg);
+      box-shadow: var(--bs-box-shadow-sm);
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--semantic-card-head-bg);
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-card-header h2 {
+      margin: 0;
+      font-size: var(--app-font-size-section-title);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-card-header .button-icon { font-size: 20px; }
+    #marketPulseSettingsPage .market-pulse-settings-fields { min-width: 0; margin: 0; padding: 0 20px; border: 0; }
+    #marketPulseSettingsPage .market-pulse-settings-field { padding: 20px 0; }
+    #marketPulseSettingsPage .market-pulse-settings-field + .market-pulse-settings-field { border-top: 1px solid var(--bs-border-color); }
+
+    #marketPulseSettingsPage .market-pulse-settings-field :is(.form-label, .form-check-label) {
+      color: var(--bs-body-color);
+      font-size: var(--app-font-size-control);
+      font-weight: var(--app-font-weight-semibold);
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-interval { width: 172px; max-width: 100%; }
+    #marketPulseSettingsPage .market-pulse-settings-help {
+      margin: 7px 0 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      line-height: 1.5;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-status {
+      flex: 1 1 240px;
+      min-width: 0;
+      margin: 0;
+      color: var(--bs-secondary-color);
+      font-size: var(--app-font-size-caption);
+      overflow-wrap: anywhere;
+    }
+
+    #marketPulseSettingsPage .market-pulse-settings-status.is-error { color: var(--bs-danger-text-emphasis); }
+    #marketPulseSettingsPage .market-pulse-settings-status.is-success { color: var(--bs-success-text-emphasis); }
+
+    @media (max-width: 900px) {
+      #marketPulseSettingsPage .market-pulse-settings-layout { grid-template-columns: 1fr; gap: 14px; }
     }
     /* Trade Context, Pricing Rules, and Reference Data tables use their natural column width on wide screens and scroll only when needed. */
     #pricingPage.unified-bootstrap-workspace.workbench-page .pricing-layout .profile-table-panel,

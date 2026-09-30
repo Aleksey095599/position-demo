@@ -52,7 +52,7 @@
         <span>Reports</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
-      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceSettingsToggle" aria-haspopup="menu" aria-controls="workspaceSettingsMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceSettingsMenu" data-workspace-routes="settings-currencies settings-currency-pairs batching-settings position-management-settings">
+      <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceSettingsToggle" aria-haspopup="menu" aria-controls="workspaceSettingsMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceSettingsMenu" data-workspace-routes="settings-currencies settings-currency-pairs batching-settings position-management-settings market-pulse-settings">
         <span class="button-icon workspace-nav-icon" aria-hidden="true">settings</span>
         <span>Settings</span>
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
@@ -142,6 +142,10 @@
       <span class="button-icon workspace-nav-icon" aria-hidden="true">stacks</span>
       <span>Batching</span>
     </a>
+    <a class="workspace-nav-menu-link" href="#market-pulse-settings" data-workspace-route="market-pulse-settings" role="menuitem">
+      <span class="button-icon workspace-nav-icon market-pulse-icon" aria-hidden="true">monitoring</span>
+      <span>Market Pulse</span>
+    </a>
     <a class="workspace-nav-menu-link" href="#position-management-settings" data-workspace-route="position-management-settings" role="menuitem">
       <span class="button-icon workspace-nav-icon" aria-hidden="true">table_chart</span>
       <span>Position Management</span>
@@ -149,6 +153,8 @@
   </div>
 
 <!-- @include:features/market-pulse/market.page.html -->
+
+<!-- @include:features/market-pulse/market-settings.page.html -->
 
 <!-- @include:features/market-pulse/components/market-simulation.dialog.html -->
 

@@ -3197,3 +3197,26 @@ CREATE TABLE IF NOT EXISTS moex_iss_day_candle_load_result (
     last_error TEXT,
     PRIMARY KEY (instrument_id, load_date)
 );
+
+-- Current Day Loading settings and durable attempt/finalization state.
+
+      CREATE TABLE IF NOT EXISTS market_current_day_loading_settings (
+        id INTEGER PRIMARY KEY CHECK(id=1),
+        auto_start INTEGER NOT NULL DEFAULT 0 CHECK(auto_start IN (0,1)),
+        poll_interval_minutes INTEGER NOT NULL DEFAULT 1 CHECK(poll_interval_minutes BETWEEN 1 AND 60),
+        reload_after_day_end INTEGER NOT NULL DEFAULT 0 CHECK(reload_after_day_end IN (0,1))
+      );
+      INSERT OR IGNORE INTO market_current_day_loading_settings(id) VALUES(1);
+      CREATE TABLE IF NOT EXISTS moex_iss_current_day_load_result (
+        instrument_id TEXT NOT NULL,
+        load_date TEXT NOT NULL,
+        last_attempt_at TEXT,
+        last_success_at TEXT,
+        last_error TEXT,
+        checked_ranges TEXT NOT NULL DEFAULT '[]',
+        error_range TEXT,
+        reload_requested INTEGER NOT NULL DEFAULT 0 CHECK(reload_requested IN (0,1)),
+        finalized_at TEXT,
+        finalization_error TEXT,
+        PRIMARY KEY(instrument_id,load_date)
+      );
