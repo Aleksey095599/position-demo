@@ -8,20 +8,28 @@ const { DatabaseSync } = require("node:sqlite");
 const { migrateAdmissionEnforcement } = require("./migrate-admission-enforcement");
 const root = path.resolve(__dirname, "../../../..");
 
+function legacySettings(sql) {
+  return sql.replace(/CREATE TABLE IF NOT EXISTS (?:trade_contexts|pricing_rules)\b[\s\S]*?\n\);/g, block => block.replaceAll("position_management_mode", "auto_management_admission_mode").replaceAll("'MANUAL'", "'REVIEW_REQUIRED'"))
+    .replace(/CREATE TRIGGER IF NOT EXISTS trg_trade_contexts_position_management_mode_[\s\S]*?\nEND;/g, block => block.replaceAll("position_management_mode", "auto_management_admission_mode"))
+    .replace(/INSERT INTO trade_contexts[\s\S]*?;/g, block => block.replaceAll("position_management_mode", "auto_management_admission_mode").replaceAll("'MANUAL'", "'REVIEW_REQUIRED'"))
+    .replaceAll("seed.position_management_mode_override", "seed.auto_management_admission_mode_override")
+    .replace(/^(\s*)position_management_mode_override$/gm, "$1auto_management_admission_mode_override")
+    .replaceAll("'trade_contexts_grid', 'position_management_mode'", "'trade_contexts_grid', 'auto_management_admission_mode'");
+}
+
 function legacyDatabase() {
   const database = new DatabaseSync(":memory:");
   database.exec("PRAGMA foreign_keys = ON");
-  database.exec(fs.readFileSync(path.join(root, "schema.sql"), "utf8")
+  database.exec(legacySettings(fs.readFileSync(path.join(root, "schema.sql"), "utf8"))
     .replace(/(auto_management_admission_mode\s+TEXT)/, "default_position_management_mode TEXT NOT NULL DEFAULT 'MANUAL' CHECK(default_position_management_mode IN ('MANUAL', 'AUTO')),\n    $1")
     .replace(/(auto_management_admission_mode_override\s+TEXT)/, "position_management_mode_override TEXT CHECK(position_management_mode_override IN ('MANUAL', 'AUTO')),\n    $1")
     .replace("chk_auto_management_admission_decisions_enforcement", "chk_auto_management_admission_decisions_shadow_only")
     .replace("typeof(is_enforced) = 'integer' AND is_enforced IN (0, 1)", "typeof(is_enforced) = 'integer' AND is_enforced = 0")
     .replace("CHECK (trade_type IN ('CLIENT_DEAL', 'HEDGE_DEAL')),\n    CONSTRAINT chk_auto_management", "CHECK (trade_type = 'CLIENT_DEAL'),\n    CONSTRAINT chk_auto_management"));
-  database.exec(fs.readFileSync(path.join(root, "seed.sql"), "utf8"));
+  database.exec(legacySettings(fs.readFileSync(path.join(root, "seed.sql"), "utf8")));
   database.exec(`
     UPDATE pricing_rules SET position_management_mode_override = 'MANUAL' WHERE pricing_rule_id = 1;
     UPDATE pricing_rules SET position_management_mode_override = 'AUTO' WHERE pricing_rule_id = 2;
-    UPDATE trade_position_management SET initial_position_management_mode = 'AUTO', current_position_management_mode = 'AUTO' WHERE trade_id = 1;
     INSERT INTO auto_management_admission_decisions
       (trade_id, trade_type, admission_state, releasable, reason_codes_json, checks_json, is_enforced)
       SELECT trade_id, trade_type, 'HELD', 1, '["REVIEW_REQUIRED"]', '[]', 0

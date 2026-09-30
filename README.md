@@ -12,7 +12,7 @@ Database collection names follow the same terminology: `client_deals`,
 `hedge_deals`, `batches`, `batch_members`, `batch_balance_trades`,
 `batch_position_outputs`, `batch_quote_cash_outputs`, `trade_exposures` and
 `trade_market_snapshots`. `trade_position_management` names the management
-state; `trade_position_management_transitions` stores its history.
+mode, assigned once at creation and protected against updates and replacement.
 
 Startup migrates old names before inspecting initialization state. The migration
 preserves rows, identities, constraints, audit history and saved column widths
@@ -55,52 +55,43 @@ Auto Management is the common scope for automated position-management processes.
 names a review activity. Excluding a trade from one process does not change its
 Position Management Mode.
 
-The UI action is **Move to Auto Management**. Initial and current API fields are
-`initialPositionManagementMode` and `currentPositionManagementMode`.
+Existing Trades cannot be moved between management modes through the UI or API.
+The API exposes one `positionManagementMode` field (`MANUAL` or `AUTO`).
+Client and Hedge Audit views show one Position Management Mode column.
+Migration preserves each existing Trade's current mode without re-evaluating
+settings, removes the transition history, and retains the saved current-mode
+column width. Auto Batching uses the Trade receipt time and the normal run boundary.
 The canonical endpoints are:
 
-- `POST /api/v1/positions/move-to-auto-management`
 - `GET /api/v1/auto-mode-eligibility-rules?tradeType=CLIENT_DEAL|HEDGE_DEAL`
 - `PUT /api/v1/auto-mode-eligibility-rules` (body includes `tradeType`)
 
-Position Management Settings opens at `#position-management-settings` and defaults
-to `#position-management-settings/position-management-mode/client-deals`.
-Position Management Mode is organized by Client Deals, Hedge Deals and
-Technical Trades (`client-deals`, `hedge-deals` and `technical-trades` in the URL).
-Client and Hedge settings each separate **Auto Mode Eligibility**
-from **Initial Mode Assignment**. Eligibility is stored as current rules by Trade Type
-and Ccy Pair; omitting `tradeType` in the rules API selects `CLIENT_DEAL`.
-The eligibility table is nested under its trade type at `/eligibility-settings`;
-`focus=automatic-admission|amount-limit|transfer-rate-deviation` selects its column.
-Breadcrumbs show the parent hierarchy, independently of browsing history.
-Previous colon-based settings URLs and `#auto-management-admission-criteria` links
-remain supported and are normalized without adding a browser-history entry.
-Quick Hedge settings are available at `#position-management-settings/quick-hedge`.
-The admission feature and persisted objects use `auto-management-admission` /
-`auto_management_admission`. Startup migrates legacy schema names transactionally,
-preserving trades, current eligibility rules, decision evidence and table-column widths.
-Browser-only settings normalize legacy admission field names when loaded.
-Legacy names are retained in migration/compatibility code and its tests.
+Position Management Settings has three peer sections: **Quick Hedge**,
+**Auto Mode Eligibility** and **Position Management Mode**. It opens at
+`#position-management-settings/auto-mode-eligibility`; mode settings are at
+`#position-management-settings/position-management-mode`.
+Old settings URLs remain supported and normalize to the current sections.
 
-Admission Criteria check currency-pair eligibility, maximum trade amount and
-transfer-rate deviation against the current Market Pulse. They apply to both
-initial and operator-requested admission for the selected trade type.
-Initial Admission uses the Trade Context value: AUTO_IF_ELIGIBLE admits a
-new trade only when the criteria pass; REVIEW_REQUIRED starts in Manual Management.
-A Pricing Rule inherits this value or overrides it to REVIEW_REQUIRED.
-Missing data or configuration also holds initial automatic admission.
-Decisions and initial trade state are saved atomically. Operator release checks
-the latest criteria and transition constraints without reapplying initial routing.
-There is no separate Manual Release policy.
-Hedges explicitly created within a management mode and batch technical trades
-retain their existing mode inheritance. Direct release of technical trades is
-not supported. Admission does not start Auto Batching or Auto Hedging processes.
-Startup removes the retired context default and pricing-rule mode override,
-preserving existing trade states and historical audit decisions. Legacy MANUAL
-rule overrides and retired MANUAL_ONLY configuration values become REVIEW_REQUIRED;
-AUTO overrides cannot bypass admission checks. Historical decisions retain their
-original values. Existing shared criteria initialize both Client and Hedge policies;
-later edits affect only the selected type. Existing trade modes are not reassigned.
+Trade Context exposes `positionManagementMode` (database: `position_management_mode`):
+`MANUAL` or `AUTO_IF_ELIGIBLE`. Pricing Rule exposes nullable
+`positionManagementModeOverride` (database: `position_management_mode_override`):
+`null` inherits the context, and `MANUAL` is the only override.
+The conditional setting differs from a Trade's actual mode, which is always
+`MANUAL` or `AUTO` and is fixed when the Trade is created.
+Changing configuration affects only new Trades.
+
+Auto Mode Eligibility checks Ccy Pair, Amount Limit and Transfer Rate Deviation
+against Market Pulse. A new Trade receives Auto Mode only when the effective setting
+is AUTO_IF_ELIGIBLE and all requirements pass. Otherwise it receives Manual Mode.
+Decisions and Trade mode are saved atomically. Hedges explicitly created within a
+management mode and batch technical Trades retain their existing mode inheritance.
+Assigning Auto Mode does not start Auto Batching or Auto Hedging.
+
+Startup migrates old admission setting columns and REVIEW_REQUIRED values to the
+current names and MANUAL value, preserving configuration, Trade modes, decision
+evidence and table-column widths. Browser settings migrate the same legacy fields.
+Old terminology remains only where required for database/browser upgrades or
+historical admission decisions. Existing Trades are never reassigned.
 
 ## Run with SQLite persistence
 

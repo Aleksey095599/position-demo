@@ -56,8 +56,8 @@ function pricingRulesRouteHelpers() {
   )();
 }
 
-test("Initial Mode Assignment links open the shared Trade Context and Pricing Rules settings", () => {
-  const suffix = "?focus=auto-management-admission&amp;return=%23position-management-settings%2Finitial-mode-assignment";
+test("Position Management Mode links open the shared Trade Context and Pricing Rules settings", () => {
+  const suffix = "?focus=position-management-mode&amp;return=%23position-management-settings%2Fposition-management-mode";
   assert.ok(hedgingSettingsMarkup.includes('href="#trade-context' + suffix + '"'));
   assert.ok(hedgingSettingsMarkup.includes('href="#pricing-rules:external-counterparties' + suffix + '"'));
   assert.doesNotMatch(hedgingSettingsMarkup, /Manual only|Manual Release/);
@@ -65,14 +65,14 @@ test("Initial Mode Assignment links open the shared Trade Context and Pricing Ru
 
 test("Pricing Rule Admission navigation preserves focus, scope and a safe return route", () => {
   const helpers = pricingRulesRouteHelpers();
-  const initialAdmissionHash = "#position-management-settings/initial-mode-assignment";
+  const initialAdmissionHash = "#position-management-settings/position-management-mode";
   const externalRoute = helpers.autoManagementAdmissionPricingRulesRoute(
     initialAdmissionHash
   );
 
   assert.equal(
     externalRoute,
-    "#pricing-rules:external-counterparties?focus=auto-management-admission&return=%23position-management-settings%2Finitial-mode-assignment"
+    "#pricing-rules:external-counterparties?focus=position-management-mode&return=%23position-management-settings%2Fposition-management-mode"
   );
   assert.deepEqual(helpers.pricingRulesRouteStateFromLocation(externalRoute), {
     matches: true,
@@ -80,7 +80,7 @@ test("Pricing Rule Admission navigation preserves focus, scope and a safe return
     scope: "EXTERNAL",
     pairCode: "",
     currencyPair: "",
-    focus: "auto-management-admission",
+    focus: "position-management-mode",
     returnHash: initialAdmissionHash
   });
 
@@ -99,7 +99,7 @@ test("Pricing Rule Admission navigation preserves focus, scope and a safe return
   );
   assert.equal(
     helpers.pricingRulesRouteStateFromLocation(
-      "#pricing-rules:external-counterparties?focus=auto-management-admission&return=%23database"
+      "#pricing-rules:external-counterparties?focus=position-management-mode&return=%23database"
     ).returnHash,
     initialAdmissionHash
   );
@@ -118,7 +118,7 @@ test("focused Pricing Rules route preserves its context and briefly emphasizes t
 
   assert.match(
     pricingRulesMarkup,
-    /id="pricingRuleAutoManagementAdmissionHeader"[^>]*tabindex="-1"[^>]*data-pricing-rule-column="autoManagementAdmissionModeOverride"/
+    /id="pricingRuleAutoManagementAdmissionHeader"[^>]*tabindex="-1"[^>]*data-pricing-rule-column="positionManagementModeOverride"/
   );
   const assignmentHeader = pricingRulesMarkup.match(
     /<th id="pricingRuleAutoManagementAdmissionHeader"[\s\S]*?<\/th>/
@@ -126,7 +126,7 @@ test("focused Pricing Rules route preserves its context and briefly emphasizes t
   assert.doesNotMatch(assignmentHeader, /\stitle=|data-tooltip=/);
   assert.match(syncSource, /pricingRulesContextLabel\.hidden = !focusedAdmissionView/);
   assert.doesNotMatch(syncSource, /pricingRulesReturnLink/);
-  assert.match(syncSource, /Pricing Rules — Initial Mode Assignment/);
+  assert.match(syncSource, /Pricing Rules — Position Management Mode/);
   assert.match(syncSource, /highlightPricingRuleAutoManagementAdmissionColumn\(focusedAdmissionView\)/);
   assert.match(scopePresentationSource, /autoManagementAdmissionPricingRulesRoute/);
   assert.match(highlightSource, /is-auto-management-admission-focused/);
@@ -136,6 +136,6 @@ test("focused Pricing Rules route preserves its context and briefly emphasizes t
   assert.match(highlightSource, /2600/);
   assert.match(
     referenceTableStyles,
-    /#pricingRulesTable\.is-auto-management-admission-focused \[data-pricing-rule-column="autoManagementAdmissionModeOverride"\]/
+    /#pricingRulesTable\.is-auto-management-admission-focused \[data-pricing-rule-column="positionManagementModeOverride"\]/
   );
 });

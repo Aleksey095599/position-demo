@@ -2,9 +2,9 @@
 
 const Big = require("big.js");
 const {
-  AUTO_MANAGEMENT_ADMISSION_MODE,
-  normalizeAutoManagementAdmissionMode
-} = require("./auto-management-admission-mode");
+  POSITION_MANAGEMENT_MODE_SETTING,
+  normalizePositionManagementModeSetting
+} = require("./position-management-mode-setting");
 
 const Decimal = Big();
 Decimal.strict = true;
@@ -29,9 +29,9 @@ const AUTO_MANAGEMENT_ELIGIBILITY_CHECK_STATUS = Object.freeze({
 
 const AUTO_MANAGEMENT_ADMISSION_REASON = Object.freeze({
   ELIGIBLE: "ELIGIBLE",
-  TRADE_CONTEXT_ADMISSION_MODE_REQUIRED:
-    "TRADE_CONTEXT_ADMISSION_MODE_REQUIRED",
-  REVIEW_REQUIRED: "REVIEW_REQUIRED",
+  TRADE_CONTEXT_POSITION_MANAGEMENT_MODE_REQUIRED:
+    "TRADE_CONTEXT_POSITION_MANAGEMENT_MODE_REQUIRED",
+  MANUAL: "MANUAL",
   CCY_PAIR_NOT_ENABLED: "CCY_PAIR_NOT_ENABLED",
   TRADE_AMOUNT_LIMIT_NOT_CONFIGURED: "TRADE_AMOUNT_LIMIT_NOT_CONFIGURED",
   TRADE_AMOUNT_UNAVAILABLE: "TRADE_AMOUNT_UNAVAILABLE",
@@ -267,17 +267,17 @@ function determineInitialAdmissionState(source = {}) {
     || String(source.admissionMode).trim() === "") {
     return heldDecision(
       null,
-      AUTO_MANAGEMENT_ADMISSION_REASON.TRADE_CONTEXT_ADMISSION_MODE_REQUIRED,
+      AUTO_MANAGEMENT_ADMISSION_REASON.TRADE_CONTEXT_POSITION_MANAGEMENT_MODE_REQUIRED,
       true
     );
   }
 
-  const admissionMode = normalizeAutoManagementAdmissionMode(source.admissionMode);
+  const admissionMode = normalizePositionManagementModeSetting(source.admissionMode);
 
-  if (admissionMode === AUTO_MANAGEMENT_ADMISSION_MODE.REVIEW_REQUIRED) {
+  if (admissionMode === POSITION_MANAGEMENT_MODE_SETTING.MANUAL) {
     return heldDecision(
       admissionMode,
-      AUTO_MANAGEMENT_ADMISSION_REASON.REVIEW_REQUIRED,
+      AUTO_MANAGEMENT_ADMISSION_REASON.MANUAL,
       true
     );
   }
@@ -285,15 +285,10 @@ function determineInitialAdmissionState(source = {}) {
   return eligibilityDecision(source, admissionMode);
 }
 
-function decideReleaseToAutoManagement(source = {}) {
-  return eligibilityDecision(source, null);
-}
-
 module.exports = {
   AUTO_MANAGEMENT_ADMISSION_REASON,
   AUTO_MANAGEMENT_ADMISSION_STATE,
   AUTO_MANAGEMENT_ELIGIBILITY_CHECK,
   AUTO_MANAGEMENT_ELIGIBILITY_CHECK_STATUS,
-  decideReleaseToAutoManagement,
   determineInitialAdmissionState
 };

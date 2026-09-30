@@ -15,7 +15,7 @@ const headingSource = fs.readFileSync(path.join(root, "frontend/shared/navigatio
 
 const settingsRoot = "#position-management-settings";
 const eligibilityRoute = `${settingsRoot}/auto-mode-eligibility`;
-const initialRoute = `${settingsRoot}/initial-mode-assignment`;
+const initialRoute = `${settingsRoot}/position-management-mode`;
 const quickRoute = `${settingsRoot}/quick-hedge`;
 
 function routeHarness() {
@@ -49,7 +49,7 @@ test("Position Management settings has three canonical peer routes", () => {
   const helpers = routeHarness();
   for (const [section, route] of [
     ["eligibility", eligibilityRoute],
-    ["initial", initialRoute],
+    ["mode", initialRoute],
     ["quick", quickRoute]
   ]) {
     assert.equal(helpers.positionManagementSettingsRoute(section), route);
@@ -63,7 +63,6 @@ test("Position Management settings has three canonical peer routes", () => {
 test("legacy Position Management Mode and eligibility routes normalize to Auto Mode Eligibility", () => {
   const helpers = routeHarness();
   for (const route of [
-    `${settingsRoot}/position-management-mode`,
     `${settingsRoot}/position-management-mode/client-deals`,
     `${settingsRoot}/position-management-mode/hedge-deals/eligibility-settings?focus=amount-limit`,
     `${settingsRoot}/position-management-mode/technical-trades`,
@@ -75,8 +74,10 @@ test("legacy Position Management Mode and eligibility routes normalize to Auto M
     assert.equal(helpers.isPositionManagementSettingsRoute(route), true, route);
     assert.equal(helpers.positionManagementSettingsSectionFromLocation(route), "eligibility", route);
   }
-  assert.equal(helpers.positionManagementSettingsSectionFromLocation(`${settingsRoot}:initial-admission`), "initial");
-  assert.equal(helpers.positionManagementSettingsSectionFromLocation(`${settingsRoot}:manual-release`), "initial");
+  assert.equal(helpers.isPositionManagementSettingsRoute(`${settingsRoot}/initial-mode-assignment`), true);
+  assert.equal(helpers.positionManagementSettingsSectionFromLocation(`${settingsRoot}/initial-mode-assignment`), "mode");
+  assert.equal(helpers.positionManagementSettingsSectionFromLocation(`${settingsRoot}:initial-admission`), "mode");
+  assert.equal(helpers.positionManagementSettingsSectionFromLocation(`${settingsRoot}:manual-release`), "mode");
 });
 
 test("navigation hierarchy names the page and selected section without trade categories", () => {
@@ -85,9 +86,9 @@ test("navigation hierarchy names the page and selected section without trade cat
     { label: "Position Management Settings", href: settingsRoot },
     { label: "Auto Mode Eligibility", href: eligibilityRoute }
   ]);
-  assert.deepEqual(helpers.positionManagementSettingsNavigationItems("initial"), [
+  assert.deepEqual(helpers.positionManagementSettingsNavigationItems("mode"), [
     { label: "Position Management Settings", href: settingsRoot },
-    { label: "Initial Mode Assignment", href: initialRoute }
+    { label: "Position Management Mode", href: initialRoute }
   ]);
   assert.doesNotMatch(routeSource, /label: "Client Deals"|label: "Hedge Deals"|label: "Technical Trades"/);
 });

@@ -9,9 +9,10 @@
       internal_units_grid: Object.freeze({ status: "active" }),
       users_grid: Object.freeze({ status: "active" }),
       trade_contexts_grid: Object.freeze({
-        auto_hedging_admission_mode: "auto_management_admission_mode",
-        auto_hedging_admission_policy: "auto_management_admission_mode",
-        auto_management_admission_policy: "auto_management_admission_mode"
+        auto_hedging_admission_mode: "position_management_mode",
+        auto_hedging_admission_policy: "position_management_mode",
+        auto_management_admission_policy: "position_management_mode",
+        auto_management_admission_mode: "position_management_mode"
       }),
       auto_management_admission_criteria_grid: Object.freeze({
         eligible_for_auto_management: "eligible_for_auto_mode"
@@ -21,10 +22,10 @@
         created_at: "formed_at"
       }),
       pricing_rules_grid: Object.freeze({
-        position_management_mode: "auto_management_admission"
+        auto_management_admission: "position_management_mode"
       }),
       internal_pricing_rules_grid: Object.freeze({
-        position_management_mode: "auto_management_admission"
+        auto_management_admission: "position_management_mode"
       })
     });
     const UI_TABLE_LAYOUT_BOOTSTRAP = Array.isArray(DEMO_API_BOOTSTRAP?.uiTableLayouts)
@@ -113,10 +114,10 @@
       MANUAL: "Manual Management",
       AUTO: "Auto Management"
     });
-    const AUTO_MANAGEMENT_ADMISSION_MODES = Object.freeze(["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED"]);
-    const AUTO_MANAGEMENT_ADMISSION_MODE_LABELS = Object.freeze({
+    const POSITION_MANAGEMENT_MODE_SETTINGS = Object.freeze(["AUTO_IF_ELIGIBLE", "MANUAL"]);
+    const POSITION_MANAGEMENT_MODE_SETTING_LABELS = Object.freeze({
       AUTO_IF_ELIGIBLE: "Auto Mode if Eligible",
-      REVIEW_REQUIRED: "Manual Mode"
+      MANUAL: "Manual Mode"
     });
     const AUTO_MODE_ELIGIBILITY_TRADE_TYPES = Object.freeze([
       "CLIENT_DEAL",
@@ -256,8 +257,6 @@
     let autoBatchingToggleInFlight = false;
     let positionsRequestSequence = 0;
     let oneBatchInFlight = false;
-    let moveToAutoManagementInFlight = false;
-    let pendingSendToAutoTrades = [];
     let pendingOneBatchRequest = null;
     let pendingOneBatchTenorSelection = null;
     const positions = [];
@@ -1211,13 +1210,6 @@
     const runClientDealGenerationIcon = document.getElementById("runClientDealGenerationIcon");
     const runClientDealGenerationLabel = document.getElementById("runClientDealGenerationLabel");
     const clientDealSettingsButton = document.getElementById("clientDealSettingsButton");
-    const moveToAutoManagementButton = document.getElementById("moveToAutoManagementButton");
-    const moveToAutoManagementDialog = document.getElementById("moveToAutoManagementDialog");
-    const moveToAutoManagementDialogClose = document.getElementById("moveToAutoManagementDialogClose");
-    const moveToAutoManagementSummary = document.getElementById("moveToAutoManagementSummary");
-    const moveToAutoManagementStatus = document.getElementById("moveToAutoManagementStatus");
-    const moveToAutoManagementCancelButton = document.getElementById("moveToAutoManagementCancelButton");
-    const moveToAutoManagementConfirmButton = document.getElementById("moveToAutoManagementConfirmButton");
     const selectedTradesCount = document.getElementById("selectedTradesCount");
     const oneBatchButton = document.getElementById("oneBatchButton");
     const oneBatchTenorDialog = document.getElementById("oneBatchTenorDialog");
@@ -1531,7 +1523,6 @@
         label: "Audit",
         icon: "policy",
         tables: [
-          "trade_position_management_transitions",
           "trade_market_snapshots",
           "auto_management_admission_decisions",
           "v_batch_formation_audit"
@@ -2991,38 +2982,34 @@
       return POSITION_MANAGEMENT_MODE_LABELS[normalizedPositionManagementMode(value)];
     }
 
-    function normalizedAutoManagementAdmissionMode(value) {
+    function normalizedPositionManagementModeSetting(value) {
       const mode = normalizedReferenceCode(value);
 
-      if (AUTO_MANAGEMENT_ADMISSION_MODES.includes(mode)) {
+      if (POSITION_MANAGEMENT_MODE_SETTINGS.includes(mode)) {
         return mode;
       }
 
-      return "REVIEW_REQUIRED";
+      return "MANUAL";
     }
 
-    function autoManagementAdmissionModeLabel(value) {
-      return AUTO_MANAGEMENT_ADMISSION_MODE_LABELS[normalizedAutoManagementAdmissionMode(value)];
-    }
-
-    function initialModeAssignmentLabel(value) {
-      return normalizedAutoManagementAdmissionMode(value) === "AUTO_IF_ELIGIBLE"
+function positionManagementModeSettingLabel(value) {
+      return normalizedPositionManagementModeSetting(value) === "AUTO_IF_ELIGIBLE"
         ? "Auto Mode if Eligible"
         : "Manual Mode";
     }
 
-    function initialModeAssignmentIcon(value) {
-      return normalizedAutoManagementAdmissionMode(value) === "AUTO_IF_ELIGIBLE"
+    function positionManagementModeSettingIcon(value) {
+      return normalizedPositionManagementModeSetting(value) === "AUTO_IF_ELIGIBLE"
         ? "smart_toy"
         : "touch_app";
     }
 
-    function initialModeAssignmentMarkup(value) {
-      return `<span class="d-inline-flex align-items-center gap-2"><span class="button-icon" aria-hidden="true">${initialModeAssignmentIcon(value)}</span><span>${escapeHtml(initialModeAssignmentLabel(value))}</span></span>`;
+    function positionManagementModeSettingMarkup(value) {
+      return `<span class="d-inline-flex align-items-center gap-2"><span class="button-icon" aria-hidden="true">${positionManagementModeSettingIcon(value)}</span><span>${escapeHtml(positionManagementModeSettingLabel(value))}</span></span>`;
     }
 
-    function autoManagementAdmissionModeBadgeMarkup(value, label = autoManagementAdmissionModeLabel(value)) {
-      const mode = normalizedAutoManagementAdmissionMode(value);
+    function positionManagementModeSettingBadgeMarkup(value, label = positionManagementModeSettingLabel(value)) {
+      const mode = normalizedPositionManagementModeSetting(value);
       const toneClass = mode === "AUTO_IF_ELIGIBLE"
         ? " is-auto"
         : " is-review-required";
@@ -3030,24 +3017,24 @@
       return `<span class="position-management-mode-badge auto-management-admission-mode-badge${toneClass}">${escapeHtml(label)}</span>`;
     }
 
-    function normalizedPricingRuleAutoManagementAdmissionModeOverride(value) {
-      return ["REVIEW_REQUIRED", "MANUAL_ONLY"].includes(normalizedReferenceCode(value))
-        ? "REVIEW_REQUIRED"
+    function normalizedPricingRulePositionManagementModeSettingOverride(value) {
+      return ["MANUAL", "MANUAL_ONLY"].includes(normalizedReferenceCode(value))
+        ? "MANUAL"
         : null;
     }
 
-    function pricingRuleAutoManagementAdmissionModeOverrideFromControl(control) {
+    function pricingRulePositionManagementModeSettingOverrideFromControl(control) {
       if (!control) {
         return undefined;
       }
 
       const value = control.type === "checkbox"
-        ? control.checked ? "REVIEW_REQUIRED" : ""
+        ? control.checked ? "MANUAL" : ""
         : normalizedReferenceCode(control.value);
-      const valid = value === "" || value === "REVIEW_REQUIRED";
+      const valid = value === "" || value === "MANUAL";
 
       control.setCustomValidity?.(
-        valid ? "" : "Select an Initial Mode Assignment value."
+        valid ? "" : "Select a Position Management Mode value."
       );
 
       if (!valid) {
@@ -3057,10 +3044,10 @@
       return value || null;
     }
 
-    function pricingRuleInitialModeAssignmentLabel(overrideValue, effectiveMode) {
+    function pricingRulePositionManagementModeSettingLabel(overrideValue, effectiveMode) {
       if (
-        normalizedPricingRuleAutoManagementAdmissionModeOverride(overrideValue)
-          === "REVIEW_REQUIRED"
+        normalizedPricingRulePositionManagementModeSettingOverride(overrideValue)
+          === "MANUAL"
       ) {
         return "Manual Mode by Pricing Rule Override";
       }
@@ -3074,21 +3061,21 @@
       selectedValue = null,
       tradeContextMode = null
     ) {
-      const selected = normalizedPricingRuleAutoManagementAdmissionModeOverride(selectedValue);
-      const tradeContextLabel = pricingRuleInitialModeAssignmentLabel(
+      const selected = normalizedPricingRulePositionManagementModeSettingOverride(selectedValue);
+      const tradeContextLabel = pricingRulePositionManagementModeSettingLabel(
         null,
         tradeContextMode
       );
 
       return `
         <option value=""${selected === null ? " selected" : ""}>${tradeContextLabel}</option>
-        <option value="REVIEW_REQUIRED"${selected === "REVIEW_REQUIRED" ? " selected" : ""}>Manual Mode by Pricing Rule Override</option>
+        <option value="MANUAL"${selected === "MANUAL" ? " selected" : ""}>Manual Mode by Pricing Rule Override</option>
       `;
     }
 
-    function effectiveAutoManagementAdmissionModeForRule(rule, context = null) {
-      const override = normalizedPricingRuleAutoManagementAdmissionModeOverride(
-        rule?.autoManagementAdmissionModeOverride
+    function effectivePositionManagementModeForRule(rule, context = null) {
+      const override = normalizedPricingRulePositionManagementModeSettingOverride(
+        rule?.positionManagementModeOverride
       );
 
       if (override) {
@@ -3096,32 +3083,32 @@
       }
 
       const effectiveMode = normalizedReferenceCode(
-        rule?.effectiveAutoManagementAdmissionMode
+        rule?.effectivePositionManagementMode
       );
 
-      if (AUTO_MANAGEMENT_ADMISSION_MODES.includes(effectiveMode)) {
+      if (POSITION_MANAGEMENT_MODE_SETTINGS.includes(effectiveMode)) {
         return effectiveMode;
       }
 
       const resolvedContext = pricingContextById(rule?.pricingContextId) || context;
       const tradeContextMode = normalizedReferenceCode(
-        rule?.tradeContextAdmissionMode ?? resolvedContext?.autoManagementAdmissionMode
+        rule?.tradeContextPositionManagementMode ?? resolvedContext?.positionManagementMode
       );
 
-      return AUTO_MANAGEMENT_ADMISSION_MODES.includes(tradeContextMode)
+      return POSITION_MANAGEMENT_MODE_SETTINGS.includes(tradeContextMode)
         ? tradeContextMode
-        : normalizedAutoManagementAdmissionMode(
-            resolvedContext?.autoManagementAdmissionMode
+        : normalizedPositionManagementModeSetting(
+            resolvedContext?.positionManagementMode
           );
     }
 
     function pricingRuleAutoManagementAdmissionMarkup(rule) {
-      const effectiveMode = effectiveAutoManagementAdmissionModeForRule(rule);
-      const label = pricingRuleInitialModeAssignmentLabel(
-        rule?.autoManagementAdmissionModeOverride,
+      const effectiveMode = effectivePositionManagementModeForRule(rule);
+      const label = pricingRulePositionManagementModeSettingLabel(
+        rule?.positionManagementModeOverride,
         effectiveMode
       );
-      const icon = initialModeAssignmentIcon(effectiveMode);
+      const icon = positionManagementModeSettingIcon(effectiveMode);
 
       return `
         <span class="position-management-mode-value pricing-rule-admission-policy-source d-inline-flex align-items-center gap-2" data-smart-width-content>
@@ -3132,9 +3119,9 @@
     }
 
     function clientPricingRuleAutoManagementAdmissionMarkup(rule) {
-      const label = pricingRuleInitialModeAssignmentLabel(
-        rule?.autoManagementAdmissionModeOverride,
-        effectiveAutoManagementAdmissionModeForRule(rule)
+      const label = pricingRulePositionManagementModeSettingLabel(
+        rule?.positionManagementModeOverride,
+        effectivePositionManagementModeForRule(rule)
       );
 
       return `
@@ -3564,9 +3551,9 @@
             item?.trade_capture_channel_id ??
             MANUAL_CLIENT_DEAL_ENTRY_CHANNEL_ID
           );
-          const autoManagementAdmissionMode = normalizedAutoManagementAdmissionMode(
-            item?.autoManagementAdmissionMode ??
-            item?.auto_management_admission_mode
+          const positionManagementMode = normalizedPositionManagementModeSetting(
+            item?.positionManagementMode ??
+            item?.position_management_mode
           );
           let pricingContextIdValue = normalizedIntegerId(
             item?.tradeContextId ?? item?.trade_context_id ?? item?.pricingContextId ?? item?.pricing_context_id
@@ -3601,7 +3588,7 @@
             servicingBranchCode,
             settlementSystemId,
             tradeCaptureChannelId,
-            autoManagementAdmissionMode,
+            positionManagementMode,
             assignedCounterpartyCount,
             pricingRulesCount
           };
@@ -3700,21 +3687,21 @@
           const marginPercent = Number(item?.marginPercent ?? item?.margin_percent);
           const sourcePricingMode = item?.pricingMode ?? item?.pricing_mode;
           const resolvedPricingContext = pricingContextById(pricingContextIdValue);
-          const autoManagementAdmissionModeOverride =
-            normalizedPricingRuleAutoManagementAdmissionModeOverride(
-              item?.autoManagementAdmissionModeOverride ??
-              item?.auto_management_admission_mode_override
+          const positionManagementModeOverride =
+            normalizedPricingRulePositionManagementModeSettingOverride(
+              item?.positionManagementModeOverride ??
+              item?.position_management_mode_override
             );
-          const tradeContextAdmissionMode = normalizedAutoManagementAdmissionMode(
-            item?.tradeContextAdmissionMode ??
+          const tradeContextPositionManagementMode = normalizedPositionManagementModeSetting(
+            item?.tradeContextPositionManagementMode ??
             item?.trade_context_admission_mode ??
-            resolvedPricingContext?.autoManagementAdmissionMode
+            resolvedPricingContext?.positionManagementMode
           );
-          const effectiveAutoManagementAdmissionMode = autoManagementAdmissionModeOverride ||
-            normalizedAutoManagementAdmissionMode(
-              item?.effectiveAutoManagementAdmissionMode ??
-              item?.effective_auto_management_admission_mode ??
-              tradeContextAdmissionMode
+          const effectivePositionManagementMode = positionManagementModeOverride ||
+            normalizedPositionManagementModeSetting(
+              item?.effectivePositionManagementMode ??
+              item?.effective_position_management_mode ??
+              tradeContextPositionManagementMode
             );
           const sourcePricingRuleId = item?.pricingRuleId ?? item?.pricing_rule_id;
           let pricingRuleIdValue = normalizedIntegerId(sourcePricingRuleId);
@@ -3751,9 +3738,9 @@
             pricingMode: sourcePricingMode
               ? normalizedPricingType(sourcePricingMode)
               : null,
-            autoManagementAdmissionModeOverride,
-            tradeContextAdmissionMode,
-            effectiveAutoManagementAdmissionMode,
+            positionManagementModeOverride,
+            tradeContextPositionManagementMode,
+            effectivePositionManagementMode,
             quickHedgeSettingsCount: Math.max(
               0,
               Number(item?.quickHedgeSettingsCount ?? item?.quick_hedge_settings_count) || 0
@@ -4195,23 +4182,14 @@
       ).trim();
 
       const tradeId = Number(source.tradeId ?? source.clientDealId ?? source.id);
-      const currentPositionManagementMode = normalizedPositionManagementMode(
-        source.currentPositionManagementMode
-        ?? source.current_position_management_mode
-        ?? source.positionManagementMode
-        ?? source.position_mode
-      );
-      const initialPositionManagementMode = normalizedPositionManagementMode(
-        source.initialPositionManagementMode
-        ?? source.initial_position_management_mode,
-        currentPositionManagementMode
+      const positionManagementMode = normalizedPositionManagementMode(
+        source.positionManagementMode ?? source.position_management_mode
       );
 
       return {
         tradeId,
         clientDealId: tradeId,
-        initialPositionManagementMode,
-        currentPositionManagementMode,
+        positionManagementMode,
         executionTimestamp,
         receivedTimestamp,
         counterpartyId: Number(source.counterpartyId) || null,
@@ -4948,9 +4926,9 @@
       if (currentRule) {
         return {
           marginPercent: Number(rule?.marginPercent),
-          autoManagementAdmissionModeOverride:
-            normalizedPricingRuleAutoManagementAdmissionModeOverride(
-              rule?.autoManagementAdmissionModeOverride
+          positionManagementModeOverride:
+            normalizedPricingRulePositionManagementModeSettingOverride(
+              rule?.positionManagementModeOverride
             )
         };
       }
@@ -4962,9 +4940,9 @@
         tradeContextId: normalizedPricingContextIdValue(rule?.pricingContextId),
         ccyPairCode: String(rule?.ccyPairCode || rule?.currencyPair?.replace("/", "_") || "").toUpperCase(),
         marginPercent: Number(rule?.marginPercent),
-        autoManagementAdmissionModeOverride:
-          normalizedPricingRuleAutoManagementAdmissionModeOverride(
-            rule?.autoManagementAdmissionModeOverride
+        positionManagementModeOverride:
+          normalizedPricingRulePositionManagementModeSettingOverride(
+            rule?.positionManagementModeOverride
           )
       };
     }
@@ -4973,20 +4951,20 @@
       if (!DEMO_API_ENABLED) {
         const mergedRule = currentRule ? { ...currentRule, ...rule } : { ...rule };
         const context = pricingContextById(mergedRule.pricingContextId);
-        const tradeContextAdmissionMode = normalizedAutoManagementAdmissionMode(
-          context?.autoManagementAdmissionMode
+        const tradeContextPositionManagementMode = normalizedPositionManagementModeSetting(
+          context?.positionManagementMode
         );
-        const autoManagementAdmissionModeOverride =
-          normalizedPricingRuleAutoManagementAdmissionModeOverride(
-            mergedRule.autoManagementAdmissionModeOverride
+        const positionManagementModeOverride =
+          normalizedPricingRulePositionManagementModeSettingOverride(
+            mergedRule.positionManagementModeOverride
           );
 
         return {
           ...mergedRule,
-          autoManagementAdmissionModeOverride,
-          tradeContextAdmissionMode,
-          effectiveAutoManagementAdmissionMode:
-            autoManagementAdmissionModeOverride || tradeContextAdmissionMode
+          positionManagementModeOverride,
+          tradeContextPositionManagementMode,
+          effectivePositionManagementMode:
+            positionManagementModeOverride || tradeContextPositionManagementMode
         };
       }
 
@@ -5378,43 +5356,43 @@
       }
     }
 
-    function pricingRuleRowAutoManagementAdmissionModeOverride(row) {
+    function pricingRuleRowPositionManagementModeSettingOverride(row) {
       const overrideControl = row?.querySelector(
-        "[data-pricing-rule-field='autoManagementAdmissionModeOverride']"
+        "[data-pricing-rule-field='positionManagementModeOverride']"
       );
 
-      return pricingRuleAutoManagementAdmissionModeOverrideFromControl(overrideControl);
+      return pricingRulePositionManagementModeSettingOverrideFromControl(overrideControl);
     }
 
     function syncPricingRuleRowAutoManagementAdmissionControls(row) {
       const overrideControl = row?.querySelector(
-        "[data-pricing-rule-field='autoManagementAdmissionModeOverride']"
+        "[data-pricing-rule-field='positionManagementModeOverride']"
       );
 
       if (!overrideControl) {
         return null;
       }
 
-      const override = pricingRuleRowAutoManagementAdmissionModeOverride(row);
+      const override = pricingRuleRowPositionManagementModeSettingOverride(row);
       const contextId = row.querySelector(
         "[data-pricing-rule-field='pricingContextId']"
       )?.value;
       const context = pricingContextById(contextId);
       const icon = row.querySelector(
-        "[data-pricing-rule-initial-mode-assignment-icon]"
+        "[data-pricing-rule-position-management-mode-icon]"
       );
       const tradeContextOption = overrideControl.querySelector?.('option[value=""]');
 
       if (icon) {
-        icon.textContent = initialModeAssignmentIcon(
-          override || context?.autoManagementAdmissionMode
+        icon.textContent = positionManagementModeSettingIcon(
+          override || context?.positionManagementMode
         );
       }
 
       if (tradeContextOption) {
-        tradeContextOption.textContent = pricingRuleInitialModeAssignmentLabel(
+        tradeContextOption.textContent = pricingRulePositionManagementModeSettingLabel(
           null,
-          context?.autoManagementAdmissionMode
+          context?.positionManagementMode
         );
       }
 
@@ -5459,7 +5437,7 @@
       const inn = row.querySelector("[data-pricing-rule-field='inn']")?.value.trim() || "";
       const currencyPair = normalizedPricingRuleCurrencyPair(row.querySelector("[data-pricing-rule-field='currencyPair']")?.value);
       const pricingContextIdValue = row.querySelector("[data-pricing-rule-field='pricingContextId']")?.value.trim().toUpperCase() || "";
-      const autoManagementAdmissionModeOverride = syncPricingRuleRowAutoManagementAdmissionControls(row);
+      const positionManagementModeOverride = syncPricingRuleRowAutoManagementAdmissionControls(row);
       const marginPercent = normalizeNumber(row.querySelector("[data-pricing-rule-field='marginPercent']")?.value);
       const profile = clientProfileByInn(inn);
       const contextState = pricingRuleCounterpartyTradeContextState(inn);
@@ -5470,7 +5448,7 @@
         !currencyPair ||
         contextState.status !== "loaded" ||
         !contextAttached ||
-        autoManagementAdmissionModeOverride === undefined ||
+        positionManagementModeOverride === undefined ||
         marginPercent === null ||
         !Number.isFinite(marginPercent) ||
         marginPercent < 0 ||
@@ -5487,7 +5465,7 @@
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoManagementAdmissionModeOverride,
+        positionManagementModeOverride,
         marginPercent
       };
     }
@@ -5507,8 +5485,8 @@
     function samePricingRule(left, right) {
       return Boolean(left && right) &&
         samePricingRuleIdentity(left, right) &&
-        normalizedPricingRuleAutoManagementAdmissionModeOverride(left.autoManagementAdmissionModeOverride) ===
-          normalizedPricingRuleAutoManagementAdmissionModeOverride(right.autoManagementAdmissionModeOverride) &&
+        normalizedPricingRulePositionManagementModeSettingOverride(left.positionManagementModeOverride) ===
+          normalizedPricingRulePositionManagementModeSettingOverride(right.positionManagementModeOverride) &&
         sameNumber(left.marginPercent, right.marginPercent);
     }
 
@@ -5579,7 +5557,7 @@
         currencyPair: activeCurrencyPairOrDefault(),
         ccyPairCode: activeCurrencyPairOrDefault().replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoManagementAdmissionModeOverride: null,
+        positionManagementModeOverride: null,
         marginPercent: profile?.marginPercent ?? 0
       };
     }
@@ -5588,14 +5566,14 @@
       const innSelect = row.querySelector("[data-pricing-rule-field='inn']");
       const currencyPairInput = row.querySelector("[data-pricing-rule-field='currencyPair']");
       const contextSelect = row.querySelector("[data-pricing-rule-field='pricingContextId']");
-      const autoManagementAdmissionModeOverrideSelect = row.querySelector(
-        "[data-pricing-rule-field='autoManagementAdmissionModeOverride']"
+      const positionManagementModeOverrideSelect = row.querySelector(
+        "[data-pricing-rule-field='positionManagementModeOverride']"
       );
       const marginInput = row.querySelector("[data-pricing-rule-field='marginPercent']");
       const inn = innSelect?.value.trim() || "";
       const currencyPair = parsePricingRuleCurrencyPairInput(currencyPairInput);
       const pricingContextIdValue = contextSelect?.value.trim().toUpperCase() || "";
-      const autoManagementAdmissionModeOverride = syncPricingRuleRowAutoManagementAdmissionControls(row);
+      const positionManagementModeOverride = syncPricingRuleRowAutoManagementAdmissionControls(row);
       const marginPercent = parsePercentInput(marginInput, "Margin", 100);
       const profile = clientProfileByInn(inn);
 
@@ -5622,8 +5600,8 @@
         return null;
       }
 
-      if (autoManagementAdmissionModeOverride === undefined) {
-        autoManagementAdmissionModeOverrideSelect?.reportValidity();
+      if (positionManagementModeOverride === undefined) {
+        positionManagementModeOverrideSelect?.reportValidity();
         return null;
       }
 
@@ -5640,7 +5618,7 @@
         currencyPair,
         ccyPairCode: currencyPair.replace("/", "_"),
         pricingContextId: pricingContextIdValue,
-        autoManagementAdmissionModeOverride,
+        positionManagementModeOverride,
         marginPercent
       };
       const currentIndex = pricingRuleEditStateIndex();
@@ -5753,7 +5731,7 @@
       const previousScope = pricingRulesRouteScope;
       const relatedView = routeState.mode === "related" && routeState.pairCode;
       const focusedAdmissionView = routeState.mode === "focused"
-        && routeState.focus === "auto-management-admission";
+        && routeState.focus === "position-management-mode";
       const pairChanged = previousScope?.pairCode !== routeState.pairCode;
 
       pricingRuleEditState = null;
@@ -5790,7 +5768,7 @@
           currencyPairFilter.value = pricingRulesRouteScope.currencyPair;
         }
       } else if (focusedAdmissionView) {
-        pricingRulesContextLabel.textContent = "Pricing Rules — Initial Mode Assignment";
+        pricingRulesContextLabel.textContent = "Pricing Rules — Position Management Mode";
       }
 
       setPricingRuleStatus("");
@@ -5812,10 +5790,10 @@
           ? clientNameForInn(rule.inn)
           : field === "pricingContextPath"
             ? pricingRuleTradeContextSearchText(rule)
-            : field === "autoManagementAdmissionModeOverride"
-              ? pricingRuleInitialModeAssignmentLabel(
-                  rule.autoManagementAdmissionModeOverride,
-                  effectiveAutoManagementAdmissionModeForRule(rule)
+            : field === "positionManagementModeOverride"
+              ? pricingRulePositionManagementModeSettingLabel(
+                  rule.positionManagementModeOverride,
+                  effectivePositionManagementModeForRule(rule)
                 )
             : rule[field] || "";
 
@@ -5853,9 +5831,9 @@
         : "";
       const contextHelpId = `pricing-rule-context-help-${rule.pricingRuleId || "new"}`;
       const contextHelp = pricingRuleContextHelp(contextState);
-      const autoManagementAdmissionModeOverride =
-        normalizedPricingRuleAutoManagementAdmissionModeOverride(
-          rule.autoManagementAdmissionModeOverride
+      const positionManagementModeOverride =
+        normalizedPricingRulePositionManagementModeSettingOverride(
+          rule.positionManagementModeOverride
         );
       const tradeContextHidden = pricingRulesAdvancedViewEnabled ? "" : " hidden";
 
@@ -5884,14 +5862,14 @@
           <td>
             <input class="inline-edit-control" type="text" data-pricing-rule-field="currencyPair" value="${escapeHtml(rule.currencyPair)}" maxlength="7" required>
           </td>
-          <td data-pricing-rule-column="autoManagementAdmissionModeOverride">
+          <td data-pricing-rule-column="positionManagementModeOverride">
             <span class="d-flex align-items-center gap-2">
-              <span class="button-icon" aria-hidden="true" data-pricing-rule-initial-mode-assignment-icon>${initialModeAssignmentIcon(effectiveAutoManagementAdmissionModeForRule(rule))}</span>
-              <select class="inline-edit-control flex-grow-1" data-pricing-rule-field="autoManagementAdmissionModeOverride" aria-label="Initial Mode Assignment">
+              <span class="button-icon" aria-hidden="true" data-pricing-rule-position-management-mode-icon>${positionManagementModeSettingIcon(effectivePositionManagementModeForRule(rule))}</span>
+              <select class="inline-edit-control flex-grow-1" data-pricing-rule-field="positionManagementModeOverride" aria-label="Position Management Mode">
                 ${pricingRuleAutoManagementAdmissionOptions(
-                  autoManagementAdmissionModeOverride,
-                  rule.tradeContextAdmissionMode
-                    ?? pricingContextById(rule.pricingContextId)?.autoManagementAdmissionMode
+                  positionManagementModeOverride,
+                  rule.tradeContextPositionManagementMode
+                    ?? pricingContextById(rule.pricingContextId)?.positionManagementMode
                 )}
               </select>
             </span>
@@ -5959,7 +5937,7 @@
             </span>
           </td>
           <td>${escapeHtml(rule.currencyPair)}</td>
-          <td data-pricing-rule-column="autoManagementAdmissionModeOverride">${pricingRuleAutoManagementAdmissionMarkup(rule)}</td>
+          <td data-pricing-rule-column="positionManagementModeOverride">${pricingRuleAutoManagementAdmissionMarkup(rule)}</td>
           <td class="pricing-rule-margin-column">${escapeHtml(editNumber(rule.marginPercent, 2))}%</td>
           <td class="pricing-rule-quick-hedge-column"${activePricingRulesScope === "INTERNAL" ? "" : " hidden"}>${quickHedgeMarkup}</td>
           <td class="profile-actions-cell">
@@ -5994,8 +5972,8 @@
             || sourceColumnKey;
           const columnLabel = sourceColumnKey === "status" && columnKey === "active"
             ? "Active"
-            : tableKey === "trade_contexts_grid" && columnKey === "auto_management_admission_mode"
-            ? "Initial Mode Assignment"
+            : tableKey === "trade_contexts_grid" && columnKey === "position_management_mode"
+            ? "Position Management Mode"
             : tableKey === "trade_contexts_grid" && columnKey === "counterparties_count"
             ? "Attached Counterparties"
             : String(row?.columnLabel || columnKey).trim();
@@ -6646,7 +6624,7 @@
       const layoutKey = activePricingRulesLayoutKey();
       const routeState = pricingRulesRouteStateFromLocation();
       const focusedAdmissionView = routeState.mode === "focused"
-        && routeState.focus === "auto-management-admission";
+        && routeState.focus === "position-management-mode";
 
       pricingRulesScopeButtons.forEach(button => {
         const selected = button.dataset.pricingRulesScope === activePricingRulesScope;

@@ -5,6 +5,8 @@ function quote(value) {
 }
 
 function admissionDefinition(sql) {
+  if (/\bposition_management_mode_override\b/.test(sql)
+    && !/\bauto_management_admission_mode_override\b/.test(sql)) return sql;
   const retiredField = /\b(default_position_management_mode|position_management_mode_override)\b/i;
   if (retiredField.test(sql)) {
     const start = sql.indexOf("(");

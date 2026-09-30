@@ -9,7 +9,7 @@ const {
 const commonTrade = {
   tradeId: 1,
   tradeType: "CLIENT_DEAL",
-  currentPositionManagementMode: "MANUAL",
+  positionManagementMode: "MANUAL",
   ccyPairCode: "EUR_USD",
   baseCcyCode: "EUR",
   quoteCcyCode: "USD",
@@ -108,7 +108,7 @@ test("preserves the current source Position Management Mode independently of for
     tradeExposureRepository: {
       findBatchSources: () => [{
         ...commonTrade,
-        currentPositionManagementMode: "AUTO"
+        positionManagementMode: "AUTO"
       }]
     }
   });
@@ -137,7 +137,7 @@ test("rejects source trades from different Position Management Modes", () => {
         {
           ...commonTrade,
           tradeId: 2,
-          currentPositionManagementMode: "AUTO"
+          positionManagementMode: "AUTO"
         }
       ]
     }

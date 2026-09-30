@@ -900,10 +900,6 @@
                   <span class="button-icon" aria-hidden="true">stacks</span>
                   <span>Create Batch</span>
                 </button>
-                <button type="button" class="action-button toolbar-secondary-action btn btn-sm btn-outline-secondary with-icon" id="moveToAutoManagementButton" aria-label="Move selected Trades to Auto Management" disabled>
-                  <span class="button-icon" aria-hidden="true">swap_horiz</span>
-                  <span>Move to Auto Management</span>
-                </button>
               </div>
             </div>
             <div class="batch-control batch-toolbar-settings automation-control" id="positionAutomationControls" aria-label="Automatic Batching actions and settings">
@@ -1140,22 +1136,6 @@
     </section>
   </main>
 
-  <dialog class="market-bootstrap-dialog batch-rollback-dialog" id="moveToAutoManagementDialog" aria-labelledby="moveToAutoManagementDialogTitle">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h2 class="modal-title" id="moveToAutoManagementDialogTitle">Move Trades to Auto Management</h2>
-        <button type="button" class="btn-close" id="moveToAutoManagementDialogClose" aria-label="Close"></button>
-      </header>
-      <div class="modal-body">
-        <p class="batch-rollback-summary" id="moveToAutoManagementSummary"></p>
-        <div class="alert alert-danger batch-rollback-status mt-3 mb-0" id="moveToAutoManagementStatus" role="alert" hidden></div>
-      </div>
-      <footer class="modal-footer">
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="moveToAutoManagementCancelButton">Cancel</button>
-        <button type="button" class="btn btn-sm btn-primary" id="moveToAutoManagementConfirmButton">Move to Auto Management</button>
-      </footer>
-    </div>
-  </dialog>
 
   <dialog class="market-bootstrap-dialog one-batch-tenor-dialog" id="oneBatchTenorDialog" aria-labelledby="oneBatchTenorDialogTitle">
     <div class="modal-content">
@@ -1939,7 +1919,7 @@
               <col class="pricing-context-location-col" data-ui-column-key="servicing_location">
               <col class="pricing-context-accounting-col" data-ui-column-key="accounting_system">
               <col class="pricing-context-originating-col" data-ui-column-key="originating_system">
-              <col class="pricing-context-admission-mode-col" data-ui-column-key="auto_management_admission_mode">
+              <col class="pricing-context-admission-mode-col" data-ui-column-key="position_management_mode">
               <col class="pricing-context-count-col" data-ui-column-key="counterparties_count">
               <col class="pricing-context-actions-col" data-ui-column-key="actions" data-pricing-context-actions-column>
             </colgroup>
@@ -1981,15 +1961,15 @@
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="tradeCaptureChannelId" aria-label="Filter trade contexts by originating system">
                   </div>
                 </th>
-                <th id="pricingContextAutoManagementAdmissionHeader" tabindex="-1" data-pricing-context-column="autoManagementAdmissionMode">
+                <th id="pricingContextAutoManagementAdmissionHeader" tabindex="-1" data-pricing-context-column="positionManagementMode">
                   <div class="reference-column-head">
                     <span class="reference-column-title">
-                      <span>Initial Mode Assignment</span>
+                      <span>Position Management Mode</span>
                     </span>
-                    <select class="reference-header-filter" data-pricing-context-header-filter="autoManagementAdmissionMode" aria-label="Filter trade contexts by Initial Mode Assignment">
+                    <select class="reference-header-filter" data-pricing-context-header-filter="positionManagementMode" aria-label="Filter trade contexts by Position Management Mode">
                       <option value="">All</option>
                       <option value="AUTO_IF_ELIGIBLE">Auto Mode if Eligible</option>
-                      <option value="REVIEW_REQUIRED">Manual Mode</option>
+                      <option value="MANUAL">Manual Mode</option>
                     </select>
                   </div>
                 </th>
@@ -2385,7 +2365,7 @@
               <col data-ui-column-key="trade_context_id">
               <col class="pricing-rule-context-column" data-ui-column-key="trade_context" hidden>
               <col data-ui-column-key="ccy_pair">
-              <col data-ui-column-key="auto_management_admission">
+              <col data-ui-column-key="position_management_mode">
               <col data-ui-column-key="margin">
               <col class="pricing-rule-quick-hedge-column" data-ui-column-key="quick_hedge" hidden>
               <col class="pricing-rule-actions-column" data-ui-column-key="actions" data-ui-fallback-width="80">
@@ -2434,12 +2414,12 @@
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="currencyPair" aria-label="Filter pricing rules by currency pair">
                   </div>
                 </th>
-                <th id="pricingRuleAutoManagementAdmissionHeader" tabindex="-1" data-pricing-rule-column="autoManagementAdmissionModeOverride">
+                <th id="pricingRuleAutoManagementAdmissionHeader" tabindex="-1" data-pricing-rule-column="positionManagementModeOverride">
                   <div class="reference-column-head">
                     <span class="reference-column-title">
-                      <span>Initial Mode Assignment</span>
+                      <span>Position Management Mode</span>
                     </span>
-                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="autoManagementAdmissionModeOverride" aria-label="Filter pricing rules by Initial Mode Assignment">
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-rule-header-filter="positionManagementModeOverride" aria-label="Filter pricing rules by Position Management Mode">
                   </div>
                 </th>
                 <th class="pricing-rule-margin-column">
@@ -3539,15 +3519,15 @@
             <dl class="manual-process-definition-list">
               <div class="manual-process-definition" id="process-term-position-management-mode" tabindex="-1">
                 <dt>Position Management Mode</dt>
-                <dd data-process-copy="positionManagementModeDefinition">The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.</dd>
+                <dd data-process-copy="positionManagementModeDefinition">The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It is fixed at creation and determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-auto-position-management-mode" tabindex="-1">
                 <dt>Position Management — Auto Mode</dt>
-                <dd data-process-copy="autoPositionManagementModeDefinition">A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode may be assigned at initial registration or after an operator approves a move from Manual Mode of Position Management; it does not mean that an automated action has already occurred.</dd>
+                <dd data-process-copy="autoPositionManagementModeDefinition">A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode is assigned when the Trade is created; it does not mean that an automated action has already occurred.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-manual-position-management-mode" tabindex="-1">
                 <dt>Position Management — Manual Mode</dt>
-                <dd data-process-copy="manualPositionManagementModeDefinition">A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator may manage it entirely in this mode or approve a move to Auto Mode of Position Management if the applicable eligibility requirements are met.</dd>
+                <dd data-process-copy="manualPositionManagementModeDefinition">A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator manages the Trade in its assigned mode.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-auto-hedging" tabindex="-1">
                 <dt>Auto Hedging</dt>
@@ -3555,23 +3535,23 @@
               </div>
               <div class="manual-process-definition" id="process-term-auto-management-admission" tabindex="-1">
                 <dt>Auto Management Admission</dt>
-                <dd data-process-copy="autoManagementAdmissionDefinition">The domain decision boundary that determines whether a Trade remains in Manual Management or may be released to Auto Management.</dd>
+                <dd data-process-copy="autoManagementAdmissionDefinition">The decision made when a Trade is created to assign Auto Mode if its settings and eligibility requirements allow it; otherwise Manual Mode is assigned.</dd>
               </div>
-              <div class="manual-process-definition" id="process-term-trade-context-admission-mode" tabindex="-1">
-                <dt>Trade Context Admission Mode</dt>
-                <dd data-process-copy="tradeContextAdmissionModeDefinition">A Trade Context setting used only for Initial Admission: admit an eligible new trade automatically or require operator review.</dd>
+              <div class="manual-process-definition" id="process-term-trade-context-position-management-mode" tabindex="-1">
+                <dt>Trade Context Position Management Mode</dt>
+                <dd data-process-copy="tradeContextPositionManagementModeDefinition">A Trade Context setting that assigns Manual Mode or Auto Mode if Eligible when a Trade is created. A Pricing Rule may override it only to Manual Mode. Settings changes affect new Trades only; an existing Trade retains its assigned mode.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-auto-mode-eligibility" tabindex="-1">
                 <dt>Auto Mode Eligibility</dt>
-                <dd data-process-copy="autoModeEligibilityDefinition">Requirements configured by Trade Type and Ccy Pair and checked whenever a Trade is considered for Position Management — Auto Mode. Initial Mode Assignment separately applies Trade Context and Pricing Rule settings.</dd>
+                <dd data-process-copy="autoModeEligibilityDefinition">Requirements configured by Trade Type and Ccy Pair and checked when a new Trade is considered for Position Management — Auto Mode. Position Management Mode separately applies Trade Context and Pricing Rule settings.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-eligibility-check" tabindex="-1">
                 <dt>Eligibility Check</dt>
-                <dd data-process-copy="eligibilityCheckDefinition">A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before release.</dd>
+                <dd data-process-copy="eligibilityCheckDefinition">A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before Auto Mode is assigned.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-admission-state" tabindex="-1">
                 <dt>Admission State</dt>
-                <dd data-process-copy="automationAdmissionStateDefinition">Shows whether a specific Trade is currently in Manual Management or released to Auto Management.</dd>
+                <dd data-process-copy="automationAdmissionStateDefinition">Records whether Auto Mode was admitted when the Trade was created. It does not represent a pending transfer between modes.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-ccy-pair" tabindex="-1">
                 <dt>Ccy Pair</dt>
@@ -3690,8 +3670,8 @@
             <span>Auto Mode Eligibility</span>
           </a>
 
-          <a class="position-management-settings-navigation-link" id="initialModeAssignmentNavLink" href="#position-management-settings/initial-mode-assignment" data-position-management-settings-section="initial">
-            <span>Initial Mode Assignment</span>
+          <a class="position-management-settings-navigation-link" id="positionManagementModeSettingNavLink" href="#position-management-settings/position-management-mode" data-position-management-settings-section="mode">
+            <span>Position Management Mode</span>
           </a>
         </nav>
       </aside>
@@ -3892,11 +3872,11 @@
         </form>
       </section>
 
-      <section class="position-management-settings-content-panel auto-management-entry-route-panel" id="initialModeAssignmentPanel" data-position-management-settings-section-panel="initial" aria-labelledby="initialModeAssignmentNavLink" hidden>
-        <section class="auto-management-settings-section" aria-labelledby="initialModeAssignmentTitle">
+      <section class="position-management-settings-content-panel auto-management-entry-route-panel" id="positionManagementModeSettingPanel" data-position-management-settings-section-panel="mode" aria-labelledby="positionManagementModeSettingNavLink" hidden>
+        <section class="auto-management-settings-section" aria-labelledby="positionManagementModeSettingTitle">
           <header class="auto-management-settings-section-head">
-            <h2 id="initialModeAssignmentTitle">Initial Mode Assignment</h2>
-            <p>Rules used when a Client Deal or Hedge Deal is first registered to assign Auto or Manual Mode. Auto Mode can be assigned only when the Trade meets Auto Mode Eligibility requirements.</p>
+            <h2 id="positionManagementModeSettingTitle">Position Management Mode</h2>
+            <p>Assigns Auto or Manual Mode when a Client Deal or Hedge Deal is created. Auto Mode requires Auto Mode Eligibility. Settings changes apply only to new Trades; existing Trades retain their mode.</p>
           </header>
           <div class="auto-management-admission-settings-body auto-management-admission-rule-tree">
             <section class="auto-management-admission-policy-block">
@@ -3905,7 +3885,7 @@
                 <h3>Trade Context</h3>
                 <p>Assigns Auto Mode if Eligible or Manual Mode when a Trade is registered.</p>
               </div>
-              <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#trade-context?focus=auto-management-admission&amp;return=%23position-management-settings%2Finitial-mode-assignment" aria-label="Open Trade Context settings">
+              <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#trade-context?focus=position-management-mode&amp;return=%23position-management-settings%2Fposition-management-mode" aria-label="Open Trade Context settings">
                 <span class="button-icon" aria-hidden="true">settings</span>
               </a>
             </section>
@@ -3915,14 +3895,14 @@
                 <h3>Pricing Rule</h3>
                 <p>Uses the Trade Context assignment or overrides it with Manual Mode.</p>
               </div>
-              <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#pricing-rules:external-counterparties?focus=auto-management-admission&amp;return=%23position-management-settings%2Finitial-mode-assignment" aria-label="Open Pricing Rule settings">
+              <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#pricing-rules:external-counterparties?focus=position-management-mode&amp;return=%23position-management-settings%2Fposition-management-mode" aria-label="Open Pricing Rule settings">
                 <span class="button-icon" aria-hidden="true">settings</span>
               </a>
             </section>
           </div>
           <div class="auto-management-policy-inheritance-note" role="note">
             <span class="button-icon" aria-hidden="true">info</span>
-            <p>Batch Balance Trades and Batch Position Outs inherit Position Management Mode during batch formation and do not use Initial Mode Assignment.</p>
+            <p>Batch Balance Trades and Batch Position Outs inherit Position Management Mode during batch formation rather than Trade Context or Pricing Rule settings.</p>
           </div>
         </section>
       </section>
@@ -4139,12 +4119,12 @@
               <select class="form-select form-select-sm" name="currencyPair" required></select>
             </label>
             <fieldset class="form-field client-pricing-rule-admission-field">
-              <legend>Initial Mode Assignment</legend>
+              <legend>Position Management Mode</legend>
               <div class="client-pricing-rule-mode-override-control">
-                <span class="button-icon" role="img" tabindex="0" aria-label="Initial Mode Assignment" data-tooltip="Initial Mode Assignment" data-client-pricing-rule-mode-override-icon>touch_app</span>
+                <span class="button-icon" role="img" tabindex="0" aria-label="Position Management Mode" data-tooltip="Position Management Mode" data-client-pricing-rule-mode-override-icon>touch_app</span>
                 <span class="client-pricing-rule-mode-override-value" data-client-pricing-rule-mode-override-value>Manual Mode by Trade Context</span>
-                <label class="form-check form-switch client-pricing-rule-mode-override-switch" for="clientPricingRuleAutoManagementAdmissionModeOverride">
-                  <input class="form-check-input" type="checkbox" id="clientPricingRuleAutoManagementAdmissionModeOverride" name="autoManagementAdmissionModeOverride" value="REVIEW_REQUIRED">
+                <label class="form-check form-switch client-pricing-rule-mode-override-switch" for="clientPricingRulePositionManagementModeSettingOverride">
+                  <input class="form-check-input" type="checkbox" id="clientPricingRulePositionManagementModeSettingOverride" name="positionManagementModeOverride" value="MANUAL">
                   <span class="form-check-label">Manual Mode Override</span>
                 </label>
               </div>

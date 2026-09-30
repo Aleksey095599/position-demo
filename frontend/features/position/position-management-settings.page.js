@@ -59,7 +59,7 @@
     }
 
     function setPositionManagementSettingsSection(sectionName) {
-      const normalizedSection = ["quick", "eligibility", "initial"].includes(sectionName)
+      const normalizedSection = ["quick", "eligibility", "mode"].includes(sectionName)
         ? sectionName
         : "eligibility";
 

@@ -47,7 +47,7 @@ function functionSource(source, name) {
   return source.slice(start, end).trim();
 }
 
-test("Pricing Rule UI no longer exposes the legacy Position Management Mode override", () => {
+test("Pricing Rule UI uses Position Management Mode with a Manual-only override", () => {
   const globalEditorSource = functionSource(runtimeSource, "renderPricingRuleEditRow");
   const globalViewSource = functionSource(runtimeSource, "renderPricingRuleViewRow");
   const clientInlineEditorSource = functionSource(
@@ -68,29 +68,29 @@ test("Pricing Rule UI no longer exposes the legacy Position Management Mode over
     clientPanelSource
   ].forEach(source => {
     assert.doesNotMatch(source, /Trade Context Default/);
-    assert.doesNotMatch(source, /Position Management Mode/);
+    assert.doesNotMatch(source, /Initial Mode Assignment/);
     assert.doesNotMatch(
       source,
-      /(?:data-[\w-]+|name)="positionManagementModeOverride"/
+      /(?:data-[\w-]+|name)="autoManagementAdmissionModeOverride"/
     );
   });
 
   assert.match(
     pricingRulesMarkup,
-    /data-pricing-rule-column="autoManagementAdmissionModeOverride"/
+    /data-pricing-rule-column="positionManagementModeOverride"/
   );
   assert.match(
     pricingRuleDialogMarkup,
-    /name="autoManagementAdmissionModeOverride"/
+    /name="positionManagementModeOverride"/
   );
   assert.match(
     clientInlineEditorSource,
-    /data-client-pricing-rule-inline-field="autoManagementAdmissionModeOverride"/
+    /data-client-pricing-rule-inline-field="positionManagementModeOverride"/
   );
 
-  assert.doesNotMatch(runtimeSource, /defaultPositionManagementMode|positionManagementModeOverride|effectivePositionManagementMode/);
+  assert.doesNotMatch(runtimeSource, /defaultPositionManagementMode|autoManagementAdmissionModeOverride|effectiveAutoManagementAdmissionMode/);
   const tradeContextMarkup = fs.readFileSync(path.join(ROOT, "frontend/features/pricing/trade-context.page.html"), "utf8");
   assert.doesNotMatch(tradeContextMarkup, /default_position_management_mode|Default Position Management/);
-  assert.match(tradeContextMarkup, /data-ui-column-key="auto_management_admission_mode"/);
-  assert.doesNotMatch(schemaSource, /\bdefault_position_management_mode\b|\bposition_management_mode_override\b/);
+  assert.match(tradeContextMarkup, /data-ui-column-key="position_management_mode"/);
+  assert.doesNotMatch(schemaSource, /\bdefault_position_management_mode\b|\bauto_management_admission_mode_override\b/);
 });

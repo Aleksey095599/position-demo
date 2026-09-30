@@ -97,11 +97,6 @@
     },
     {
       "kind": "dialog",
-      "id": "moveToAutoManagementDialog",
-      "file": "features/position/components/move-to-auto-management.dialog.html"
-    },
-    {
-      "kind": "dialog",
       "id": "oneBatchTenorDialog",
       "file": "features/batching/components/one-batch-tenor.dialog.html"
     },

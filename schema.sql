@@ -399,7 +399,7 @@ CREATE TABLE IF NOT EXISTS trade_contexts
     servicing_location_id            TEXT NOT NULL,
     accounting_system_id             TEXT,
     originating_system_id              TEXT NOT NULL,
-    auto_management_admission_mode       TEXT NOT NULL DEFAULT 'REVIEW_REQUIRED',
+    position_management_mode       TEXT NOT NULL DEFAULT 'MANUAL',
 
     CONSTRAINT fk_trade_contexts_servicing_location
         FOREIGN KEY (servicing_location_id)
@@ -416,17 +416,17 @@ CREATE TABLE IF NOT EXISTS trade_contexts
             REFERENCES originating_systems (originating_system_id)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,
-    CONSTRAINT chk_trade_contexts_auto_management_admission_mode
+    CONSTRAINT chk_trade_contexts_position_management_mode
         CHECK (
-            auto_management_admission_mode IN
-                ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED')
+            position_management_mode IN
+                ('AUTO_IF_ELIGIBLE', 'MANUAL')
         )
 );
 
-CREATE TRIGGER IF NOT EXISTS trg_trade_contexts_auto_management_admission_mode_insert
+CREATE TRIGGER IF NOT EXISTS trg_trade_contexts_position_management_mode_insert
 BEFORE INSERT ON trade_contexts
 FOR EACH ROW
-WHEN NEW.auto_management_admission_mode = 'AUTO_IF_ELIGIBLE'
+WHEN NEW.position_management_mode = 'AUTO_IF_ELIGIBLE'
     AND NOT EXISTS
     (
         SELECT 1
@@ -438,10 +438,10 @@ BEGIN
     SELECT RAISE(ABORT, 'AUTO_IF_ELIGIBLE_REQUIRES_AUTO_PRICED_ORIGINATING_SYSTEM');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_trade_contexts_auto_management_admission_mode_update
-BEFORE UPDATE OF originating_system_id, auto_management_admission_mode ON trade_contexts
+CREATE TRIGGER IF NOT EXISTS trg_trade_contexts_position_management_mode_update
+BEFORE UPDATE OF originating_system_id, position_management_mode ON trade_contexts
 FOR EACH ROW
-WHEN NEW.auto_management_admission_mode = 'AUTO_IF_ELIGIBLE'
+WHEN NEW.position_management_mode = 'AUTO_IF_ELIGIBLE'
     AND NOT EXISTS
     (
         SELECT 1
@@ -828,7 +828,7 @@ CREATE TABLE IF NOT EXISTS pricing_rules
     trade_context_id             INTEGER NOT NULL,
     ccy_pair_code                    TEXT    NOT NULL,
     margin_percent                   REAL    NOT NULL,
-    auto_management_admission_mode_override TEXT,
+    position_management_mode_override TEXT,
 
     CONSTRAINT fk_pricing_rules_counterparty
         FOREIGN KEY (counterparty_id)
@@ -849,10 +849,10 @@ CREATE TABLE IF NOT EXISTS pricing_rules
         UNIQUE (counterparty_id, trade_context_id, ccy_pair_code),
     CONSTRAINT chk_pricing_rules_margin
         CHECK (margin_percent >= 0 AND margin_percent < 100),
-    CONSTRAINT chk_pricing_rules_auto_management_admission_mode_override
+    CONSTRAINT chk_pricing_rules_position_management_mode_override
         CHECK (
-            auto_management_admission_mode_override IS NULL
-            OR auto_management_admission_mode_override = 'REVIEW_REQUIRED'
+            position_management_mode_override IS NULL
+            OR position_management_mode_override = 'MANUAL'
         )
 );
 
@@ -1214,82 +1214,15 @@ CREATE TABLE IF NOT EXISTS trade_exposures
 
 CREATE TABLE IF NOT EXISTS trade_position_management
 (
-    trade_id                        INTEGER NOT NULL,
-    trade_type                      TEXT    NOT NULL,
-    initial_position_management_mode TEXT    NOT NULL DEFAULT 'MANUAL',
-    current_position_management_mode TEXT    NOT NULL DEFAULT 'MANUAL',
-    created_at                      TEXT    NOT NULL
-        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-    updated_at                      TEXT    NOT NULL
-        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-
-    CONSTRAINT pk_trade_position_management
-        PRIMARY KEY (trade_id, trade_type),
-    CONSTRAINT fk_trade_position_management_trade
-        FOREIGN KEY (trade_id, trade_type)
-            REFERENCES trade_exposures (trade_id, trade_type)
-            ON UPDATE RESTRICT
-            ON DELETE CASCADE,
-    CONSTRAINT chk_trade_position_management_initial_mode
-        CHECK (initial_position_management_mode IN ('MANUAL', 'AUTO')),
-    CONSTRAINT chk_trade_position_management_current_mode
-        CHECK (current_position_management_mode IN ('MANUAL', 'AUTO')),
-    CONSTRAINT chk_trade_position_management_created_at
-        CHECK (
-            length(created_at) = 24
-            AND created_at GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
-        ),
-    CONSTRAINT chk_trade_position_management_updated_at
-        CHECK (
-            length(updated_at) = 24
-            AND updated_at GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
-            AND updated_at >= created_at
-        )
-);
-
-CREATE TABLE IF NOT EXISTS trade_position_management_transitions
-(
-    transition_id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    trade_id                     INTEGER NOT NULL,
-    trade_type                   TEXT    NOT NULL,
-    from_position_management_mode TEXT    NOT NULL,
-    to_position_management_mode   TEXT    NOT NULL,
-    reason_code                  TEXT    NOT NULL,
-    transition_source            TEXT    NOT NULL,
-    transitioned_at              TEXT    NOT NULL
-        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-
-    CONSTRAINT fk_trade_position_management_transition_trade
-        FOREIGN KEY (trade_id, trade_type)
-            REFERENCES trade_exposures (trade_id, trade_type)
-            ON UPDATE RESTRICT
-            ON DELETE CASCADE,
-    CONSTRAINT uq_trade_position_management_transition
-        UNIQUE
-        (
-            trade_id,
-            trade_type,
-            from_position_management_mode,
-            to_position_management_mode,
-            reason_code
-        ),
-    CONSTRAINT chk_trade_position_management_transition_modes
-        CHECK (
-            from_position_management_mode = 'MANUAL'
-            AND to_position_management_mode = 'AUTO'
-        ),
-    CONSTRAINT chk_trade_position_management_transition_reason
-        CHECK (reason_code = 'MANUAL_REVIEW_COMPLETED'),
-    CONSTRAINT chk_trade_position_management_transition_source
-        CHECK (transition_source = 'OPERATOR'),
-    CONSTRAINT chk_trade_position_management_transitioned_at
-        CHECK (
-            length(transitioned_at) = 24
-            AND transitioned_at GLOB '????-??-??T??:??:??.???Z'
-            AND strftime('%Y-%m-%dT%H:%M:%fZ', transitioned_at) = transitioned_at
-        )
+    trade_id INTEGER NOT NULL,
+    trade_type TEXT NOT NULL,
+    position_management_mode TEXT NOT NULL CHECK (position_management_mode IN ('MANUAL', 'AUTO')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (trade_id, trade_type),
+    FOREIGN KEY (trade_id, trade_type) REFERENCES trade_exposures (trade_id, trade_type)
+        ON UPDATE RESTRICT ON DELETE CASCADE,
+    CHECK (length(created_at) = 24 AND created_at GLOB '????-??-??T??:??:??.???Z'
+        AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at)
 );
 
 CREATE TABLE IF NOT EXISTS trade_market_snapshots
@@ -1369,7 +1302,7 @@ CREATE TABLE IF NOT EXISTS auto_management_admission_decisions
         CHECK (
             admission_mode IS NULL
             OR admission_mode IN
-                ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED', 'MANUAL_ONLY')
+                ('AUTO_IF_ELIGIBLE', 'MANUAL', 'MANUAL_ONLY')
         ),
     CONSTRAINT chk_auto_management_admission_decisions_state
         CHECK (admission_state IN ('HELD', 'RELEASED')),
@@ -1832,80 +1765,33 @@ CREATE INDEX IF NOT EXISTS idx_trade_exposures_ccy_pair
 CREATE UNIQUE INDEX IF NOT EXISTS uq_trade_exposures_identity
     ON trade_exposures (trade_id, trade_type);
 
-CREATE INDEX IF NOT EXISTS idx_trade_position_management_current_mode
-    ON trade_position_management (current_position_management_mode, trade_id);
+CREATE INDEX IF NOT EXISTS idx_trade_position_management_mode
+    ON trade_position_management (position_management_mode, trade_id);
 
-CREATE INDEX IF NOT EXISTS idx_trade_position_management_transition_trade
-    ON trade_position_management_transitions (trade_id, trade_type, transitioned_at);
-
-CREATE TRIGGER IF NOT EXISTS trg_trade_position_management_initialize
-AFTER INSERT ON trade_exposures
+CREATE TRIGGER IF NOT EXISTS trg_trade_position_management_immutable_update
+BEFORE UPDATE ON trade_position_management
 FOR EACH ROW
+WHEN NEW.trade_id <> OLD.trade_id OR NEW.trade_type <> OLD.trade_type
+    OR NEW.position_management_mode <> OLD.position_management_mode
+    OR NEW.created_at <> OLD.created_at
 BEGIN
-    INSERT INTO trade_position_management
-        (
-            trade_id,
-            trade_type,
-            initial_position_management_mode,
-            current_position_management_mode
-        )
-    VALUES
-        (NEW.trade_id, NEW.trade_type, 'MANUAL', 'MANUAL');
+    SELECT RAISE(ABORT, 'Trade Position Management Mode is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_batch_balance_trade_position_management_mode_immutable_update
-BEFORE UPDATE OF initial_position_management_mode, current_position_management_mode
-ON trade_position_management
-FOR EACH ROW
-WHEN OLD.trade_type = 'BATCH_BALANCE_TRADE'
-    AND EXISTS
-    (
-        SELECT 1
-        FROM batch_balance_trades balance_trade
-        WHERE balance_trade.trade_id = OLD.trade_id
-          AND balance_trade.trade_type = OLD.trade_type
-    )
-    AND
-    (
-        NEW.initial_position_management_mode
-            <> OLD.initial_position_management_mode
-        OR NEW.current_position_management_mode
-            <> OLD.current_position_management_mode
-    )
-BEGIN
-    SELECT RAISE(
-        ABORT,
-        'Batch Balance Trade Position Management Mode is immutable'
-    );
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_batch_balance_trade_position_management_mode_immutable_delete
+CREATE TRIGGER IF NOT EXISTS trg_trade_position_management_immutable_delete
 BEFORE DELETE ON trade_position_management
 FOR EACH ROW
-WHEN OLD.trade_type = 'BATCH_BALANCE_TRADE'
-    AND EXISTS
-    (
-        SELECT 1
-        FROM batch_balance_trades balance_trade
-        WHERE balance_trade.trade_id = OLD.trade_id
-          AND balance_trade.trade_type = OLD.trade_type
-    )
+WHEN EXISTS (SELECT 1 FROM trade_exposures WHERE trade_id = OLD.trade_id AND trade_type = OLD.trade_type)
 BEGIN
-    SELECT RAISE(
-        ABORT,
-        'Batch Balance Trade Position Management Mode is immutable'
-    );
+    SELECT RAISE(ABORT, 'Trade Position Management Mode is immutable');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_batch_balance_trade_position_management_transition_reject
-BEFORE INSERT ON trade_position_management_transitions
+CREATE TRIGGER IF NOT EXISTS trg_trade_position_management_no_replace
+BEFORE INSERT ON trade_position_management
 FOR EACH ROW
-WHEN NEW.trade_type = 'BATCH_BALANCE_TRADE'
+WHEN EXISTS (SELECT 1 FROM trade_position_management WHERE trade_id = NEW.trade_id AND trade_type = NEW.trade_type)
 BEGIN
-    SELECT RAISE(
-        ABORT,
-        'Batch Balance Trade does not support Position Management Mode transitions'
-    );
+    SELECT RAISE(ABORT, 'Trade Position Management Mode is already assigned');
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_trade_exposures_require_dealt_ccy_insert
@@ -2244,7 +2130,7 @@ BEGIN
         )
         OR
         (
-            SELECT COUNT(DISTINCT source_management.current_position_management_mode)
+            SELECT COUNT(DISTINCT source_management.position_management_mode)
             FROM batch_members source
             INNER JOIN trade_position_management source_management
                 ON source_management.trade_id = source.trade_id
@@ -2270,11 +2156,9 @@ BEGIN
               AND
               (
                   technical_management.trade_id IS NULL
-                  OR technical_management.initial_position_management_mode
-                      <> technical_management.current_position_management_mode
-                  OR technical_management.current_position_management_mode <>
+                  OR technical_management.position_management_mode <>
                       (
-                          SELECT MIN(source_management.current_position_management_mode)
+                          SELECT MIN(source_management.position_management_mode)
                           FROM batch_members source
                           INNER JOIN trade_position_management source_management
                               ON source_management.trade_id = source.trade_id

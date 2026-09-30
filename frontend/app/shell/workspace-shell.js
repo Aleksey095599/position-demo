@@ -531,23 +531,6 @@
     });
     generateClientDealButton.addEventListener("click", generateClientDeal);
     runClientDealGenerationButton.addEventListener("click", toggleClientDealGenerationProcess);
-    moveToAutoManagementButton.addEventListener("click", openMoveToAutoManagementDialog);
-    moveToAutoManagementDialogClose.addEventListener(
-      "click",
-      closeMoveToAutoManagementDialog
-    );
-    moveToAutoManagementCancelButton.addEventListener(
-      "click",
-      closeMoveToAutoManagementDialog
-    );
-    moveToAutoManagementConfirmButton.addEventListener(
-      "click",
-      confirmMoveToAutoManagement
-    );
-    moveToAutoManagementDialog.addEventListener("cancel", event => {
-      event.preventDefault();
-      closeMoveToAutoManagementDialog();
-    });
     oneBatchButton.addEventListener("click", formOneBatchFromSelection);
     oneBatchTenorDialogClose.addEventListener("click", () => closeOneBatchTenorDialog());
     oneBatchTenorCancelButton.addEventListener("click", () => closeOneBatchTenorDialog());

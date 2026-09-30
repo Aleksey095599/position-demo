@@ -79,20 +79,20 @@ function assertSuccessfulApiResponse(result, statusCode) {
 }
 
 
-test("schema exposes Admission without retired routing settings", () => {
+test("schema exposes Position Management settings without retired admission columns", () => {
   const database = freshSeededDatabase();
   try {
     assert.ok(!database.prepare("PRAGMA table_info(trade_contexts)").all().some(c => c.name === "default_position_management_mode"));
-    assert.ok(!database.prepare("PRAGMA table_info(pricing_rules)").all().some(c => c.name === "position_management_mode_override"));
-    assert.equal(database.prepare("PRAGMA table_info(trade_contexts)").all().find(c => c.name === "auto_management_admission_mode").dflt_value, "'REVIEW_REQUIRED'");
-    assert.throws(() => database.exec("UPDATE trade_contexts SET auto_management_admission_mode = 'INVALID'"), /CHECK constraint failed/);
-    assert.throws(() => database.exec("UPDATE trade_contexts SET auto_management_admission_mode = 'MANUAL_ONLY'"), /CHECK constraint failed/);
-    assert.throws(() => database.exec("UPDATE pricing_rules SET auto_management_admission_mode_override = 'AUTO_IF_ELIGIBLE'"), /CHECK constraint failed/);
-    assert.throws(() => database.exec("UPDATE pricing_rules SET auto_management_admission_mode_override = 'MANUAL_ONLY'"), /CHECK constraint failed/);
+    assert.ok(!database.prepare("PRAGMA table_info(pricing_rules)").all().some(c => c.name === "auto_management_admission_mode_override"));
+    assert.equal(database.prepare("PRAGMA table_info(trade_contexts)").all().find(c => c.name === "position_management_mode").dflt_value, "'MANUAL'");
+    assert.throws(() => database.exec("UPDATE trade_contexts SET position_management_mode = 'INVALID'"), /CHECK constraint failed/);
+    assert.throws(() => database.exec("UPDATE trade_contexts SET position_management_mode = 'MANUAL_ONLY'"), /CHECK constraint failed/);
+    assert.throws(() => database.exec("UPDATE pricing_rules SET position_management_mode_override = 'AUTO_IF_ELIGIBLE'"), /CHECK constraint failed/);
+    assert.throws(() => database.exec("UPDATE pricing_rules SET position_management_mode_override = 'MANUAL_ONLY'"), /CHECK constraint failed/);
   } finally { database.close(); }
 });
 
-test("configuration API uses initial Admission inheritance and review-required overrides", async t => {
+test("configuration API inherits Position Management Mode and accepts only a Manual override", async t => {
   const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), TEMPORARY_DIRECTORY_PREFIX));
   const previous = process.env.DEMO_DATABASE_PATH;
   process.env.DEMO_DATABASE_PATH = path.join(temporaryDirectory, "policy.sqlite");
@@ -106,28 +106,28 @@ test("configuration API uses initial Admission inheritance and review-required o
   const request = apiClient(server.handleApi);
   const terms = { servicingLocationId: "000", accountingSystemId: "AFINA", originatingSystemId: "RFQ" };
   const created = assertSuccessfulApiResponse(await request("POST", "/api/v1/trade-contexts", terms), 201);
-  assert.equal(created.autoManagementAdmissionMode, "REVIEW_REQUIRED");
+  assert.equal(created.positionManagementMode, "MANUAL");
   assert.equal(Object.hasOwn(created, "defaultPositionManagementMode"), false);
   const contextUrl = `/api/v1/trade-contexts/${created.tradeContextId}`;
-  const reviewed = assertSuccessfulApiResponse(await request("PUT", contextUrl, {...terms, autoManagementAdmissionMode: "REVIEW_REQUIRED"}), 200);
-  assert.equal(reviewed.autoManagementAdmissionMode, "REVIEW_REQUIRED");
+  const reviewed = assertSuccessfulApiResponse(await request("PUT", contextUrl, {...terms, positionManagementMode: "MANUAL"}), 200);
+  assert.equal(reviewed.positionManagementMode, "MANUAL");
   const preserved = assertSuccessfulApiResponse(await request("PUT", contextUrl, terms), 200);
-  assert.equal(preserved.autoManagementAdmissionMode, "REVIEW_REQUIRED");
+  assert.equal(preserved.positionManagementMode, "MANUAL");
   for (const admission of ["INVALID", "AUTO_IF_ELIGIBLE", "MANUAL_ONLY"]) {
-    assert.equal((await request("PUT", contextUrl, {...terms, autoManagementAdmissionMode: admission})).statusCode, 400);
+    assert.equal((await request("PUT", contextUrl, {...terms, positionManagementMode: admission})).statusCode, 400);
   }
   const rules = assertSuccessfulApiResponse(await request("GET", "/api/v1/pricing-rules"), 200);
-  const rule = rules.find(rule => rule.effectiveAutoManagementAdmissionMode === "AUTO_IF_ELIGIBLE");
+  const rule = rules.find(rule => rule.effectivePositionManagementMode === "AUTO_IF_ELIGIBLE");
   assert.ok(rule);
-  for (const field of ["positionManagementModeOverride", "effectivePositionManagementMode", "tradeContextDefaultPositionManagementMode"]) {
+  for (const field of ["autoManagementAdmissionModeOverride", "effectiveAutoManagementAdmissionMode", "tradeContextDefaultPositionManagementMode"]) {
     assert.equal(Object.hasOwn(rule, field), false);
   }
   const ruleUrl = `/api/v1/pricing-rules/${rule.pricingRuleId}`;
-  const manual = assertSuccessfulApiResponse(await request("PUT", ruleUrl, {autoManagementAdmissionModeOverride: "REVIEW_REQUIRED"}), 200);
-  assert.equal(manual.effectiveAutoManagementAdmissionMode, "REVIEW_REQUIRED");
-  const inherited = assertSuccessfulApiResponse(await request("PUT", ruleUrl, {autoManagementAdmissionModeOverride: null}), 200);
-  assert.equal(inherited.effectiveAutoManagementAdmissionMode, "AUTO_IF_ELIGIBLE");
-  for (const invalid of [null, [], {}, {autoManagementAdmissionModeOverride: "MANUAL_ONLY"}, {autoManagementAdmissionModeOverride: "AUTO_IF_ELIGIBLE"}, {positionManagementModeOverride: "AUTO"}]) {
+  const manual = assertSuccessfulApiResponse(await request("PUT", ruleUrl, {positionManagementModeOverride: "MANUAL"}), 200);
+  assert.equal(manual.effectivePositionManagementMode, "MANUAL");
+  const inherited = assertSuccessfulApiResponse(await request("PUT", ruleUrl, {positionManagementModeOverride: null}), 200);
+  assert.equal(inherited.effectivePositionManagementMode, "AUTO_IF_ELIGIBLE");
+  for (const invalid of [null, [], {}, {positionManagementModeOverride: "MANUAL_ONLY"}, {positionManagementModeOverride: "AUTO_IF_ELIGIBLE"}, {positionManagementModeOverride: "AUTO"}]) {
     assert.equal((await request("PUT", ruleUrl, invalid)).statusCode, 400);
   }
 });

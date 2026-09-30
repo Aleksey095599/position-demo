@@ -86,7 +86,7 @@ function clientDealPayload(rule, suffix) {
   };
 }
 
-test("Admission governs trade creation and release atomically", async t => {
+test("Admission governs trade creation atomically", async t => {
   const temporaryDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), TEMPORARY_DIRECTORY_PREFIX)
   );
@@ -148,7 +148,7 @@ test("Admission governs trade creation and release atomically", async t => {
   const context = contextsResponse.body.find(candidate =>
     candidate.tradeContextId === rule.tradeContextId
   );
-  assert.equal(context.autoManagementAdmissionMode, "REVIEW_REQUIRED");
+  assert.equal(context.positionManagementMode, "MANUAL");
 
   const contextUpdateResponse = await request(
     "PUT",
@@ -157,14 +157,14 @@ test("Admission governs trade creation and release atomically", async t => {
       servicingLocationId: context.servicingLocationId,
       accountingSystemId: context.accountingSystemId,
       originatingSystemId: context.originatingSystemId,
-      autoManagementAdmissionMode: "REVIEW_REQUIRED"
+      positionManagementMode: "MANUAL"
     }
   );
   assert.equal(contextUpdateResponse.statusCode, 200);
   const ruleUpdateResponse = await request(
     "PUT",
     `/api/v1/pricing-rules/${rule.pricingRuleId}`,
-    { autoManagementAdmissionModeOverride: null }
+    { positionManagementModeOverride: null }
   );
   assert.equal(ruleUpdateResponse.statusCode, 200);
 
@@ -175,8 +175,9 @@ test("Admission governs trade creation and release atomically", async t => {
   );
   assert.equal(created.handled, true);
   assert.equal(created.statusCode, 201, JSON.stringify(created.body));
-  assert.equal(created.body.initialPositionManagementMode, "MANUAL");
-  assert.equal(created.body.currentPositionManagementMode, "MANUAL");
+  assert.equal(Object.hasOwn(created.body, "initialPositionManagementMode"), false);
+  assert.equal(Object.hasOwn(created.body, "currentPositionManagementMode"), false);
+  assert.equal(created.body.positionManagementMode, "MANUAL");
 
   const audit = inspectionDatabase.prepare(`
     SELECT
@@ -194,23 +195,23 @@ test("Admission governs trade creation and release atomically", async t => {
   assert.ok(audit);
   assert.equal(audit.decisionSequence, 1);
   assert.equal(audit.decisionStage, "INITIAL");
-  assert.equal(audit.admissionMode, "REVIEW_REQUIRED");
+  assert.equal(audit.admissionMode, "MANUAL");
   assert.equal(audit.admissionState, "HELD");
   assert.equal(audit.releasable, 1);
   assert.equal(audit.isEnforced, 1);
-  assert.deepEqual(JSON.parse(audit.reasonCodesJson), ["REVIEW_REQUIRED"]);
+  assert.deepEqual(JSON.parse(audit.reasonCodesJson), ["MANUAL"]);
   const checks = JSON.parse(audit.checksJson);
   assert.deepEqual(checks, []);
 
   const admissionOverrideResponse = await request(
     "PUT",
     `/api/v1/pricing-rules/${rule.pricingRuleId}`,
-    { autoManagementAdmissionModeOverride: "REVIEW_REQUIRED" }
+    { positionManagementModeOverride: "MANUAL" }
   );
   assert.equal(admissionOverrideResponse.statusCode, 200);
   assert.equal(
-    admissionOverrideResponse.body.effectiveAutoManagementAdmissionMode,
-    "REVIEW_REQUIRED"
+    admissionOverrideResponse.body.effectivePositionManagementMode,
+    "MANUAL"
   );
   const createdWithAdmissionOverride = await request(
     "POST",
@@ -218,7 +219,7 @@ test("Admission governs trade creation and release atomically", async t => {
     clientDealPayload(rule, 2)
   );
   assert.equal(createdWithAdmissionOverride.statusCode, 201);
-  assert.equal(createdWithAdmissionOverride.body.currentPositionManagementMode, "MANUAL");
+  assert.equal(createdWithAdmissionOverride.body.positionManagementMode, "MANUAL");
   const overriddenAudit = inspectionDatabase.prepare(`
     SELECT
       admission_mode AS admissionMode,
@@ -228,13 +229,11 @@ test("Admission governs trade creation and release atomically", async t => {
     FROM auto_management_admission_decisions
     WHERE trade_id = ? AND trade_type = 'CLIENT_DEAL'
   `).get(createdWithAdmissionOverride.body.tradeId);
-  assert.equal(overriddenAudit.admissionMode, "REVIEW_REQUIRED");
+  assert.equal(overriddenAudit.admissionMode, "MANUAL");
   assert.equal(overriddenAudit.admissionState, "HELD");
   assert.equal(overriddenAudit.releasable, 1);
-  assert.deepEqual(JSON.parse(overriddenAudit.reasonCodesJson), ["REVIEW_REQUIRED"]);
+  assert.deepEqual(JSON.parse(overriddenAudit.reasonCodesJson), ["MANUAL"]);
 
-  const move = trades => request("POST", "/api/v1/positions/move-to-auto-management", { trades });
-  const identity = deal => ({ tradeId: deal.tradeId, tradeType: "CLIENT_DEAL" });
   const reasons = deal => JSON.parse(inspectionDatabase.prepare(`
     SELECT reason_codes_json AS reasons FROM auto_management_admission_decisions
     WHERE trade_id = ? ORDER BY decision_sequence DESC LIMIT 1
@@ -244,53 +243,13 @@ test("Admission governs trade creation and release atomically", async t => {
     assert.equal(response.statusCode, 201, JSON.stringify(response.body));
     return response.body;
   };
-  await t.test("release checks market data without reapplying REVIEW_REQUIRED routing", async () => {
-    const blocked = await move([identity(created.body)]);
-    assert.equal(blocked.statusCode, 409);
-    assert.match(blocked.body.message, /MARKET_PULSE_UNAVAILABLE/);
-    assert.doesNotMatch(blocked.body.message, /REVIEW_REQUIRED/);
-  });
-
   const unassigned = await expectCreated("/api/v1/client-deals", {
     ...clientDealPayload(rule, 10), pricingRuleId: null, tradeContextId: null,
     manualPricingReason: "CLIENT_ONBOARDING", transferRate: "1.1234"
   });
-  assert.equal(unassigned.currentPositionManagementMode, "MANUAL");
-  const overLimit = await expectCreated("/api/v1/client-deals", {
-    ...clientDealPayload(rule, 13), dealtCcyAmount: "100000001.00"
-  });
+  assert.equal(unassigned.positionManagementMode, "MANUAL");
   await request("POST", "/api/v1/market-pulse-simulation/start");
-  await t.test("one inadmissible trade rolls back the full release selection", async () => {
-    const rejected = await move([identity(created.body), identity(overLimit)]);
-    assert.equal(rejected.statusCode, 409);
-    assert.match(rejected.body.message, /TRADE_AMOUNT_LIMIT_EXCEEDED/);
-    assert.equal(inspectionDatabase.prepare(`SELECT current_position_management_mode AS mode
-      FROM trade_position_management WHERE trade_id = ?`).get(created.body.tradeId).mode, "MANUAL");
-    assert.equal(inspectionDatabase.prepare(`SELECT COUNT(*) AS count FROM auto_management_admission_decisions
-      WHERE trade_id = ? AND decision_stage = 'RELEASE'`).get(created.body.tradeId).count, 0);
-  });
-  await t.test("release saves enforced evidence and repeats without another decision", async () => {
-    const released = await move([identity(created.body)]);
-    assert.equal(released.statusCode, 200, JSON.stringify(released.body));
-    assert.equal(released.body.transitionedCount, 1);
-    assert.equal((await move([identity(created.body)])).body.replayed, true);
-    assert.equal(inspectionDatabase.prepare(`SELECT COUNT(*) AS count FROM auto_management_admission_decisions
-      WHERE trade_id = ? AND decision_stage = 'RELEASE' AND is_enforced = 1`).get(created.body.tradeId).count, 1);
-    assert.equal(inspectionDatabase.prepare(`SELECT admission_mode AS mode FROM auto_management_admission_decisions
-      WHERE trade_id = ? AND decision_stage = 'RELEASE'`).get(created.body.tradeId).mode, null);
-    assert.equal(inspectionDatabase.prepare(`SELECT auto_management_admission_mode_override AS mode
-      FROM pricing_rules WHERE pricing_rule_id = ?`).get(rule.pricingRuleId).mode, "REVIEW_REQUIRED");
-  });
-  await t.test("manual release does not require a trade context or pricing rule", async () => {
-    const released = await move([identity(unassigned)]);
-    assert.equal(released.statusCode, 200, JSON.stringify(released.body));
-    assert.equal(released.body.transitionedCount, 1);
-    const state = inspectionDatabase.prepare(`SELECT initial_position_management_mode AS initial,
-      current_position_management_mode AS current FROM trade_position_management
-      WHERE trade_id = ?`).get(unassigned.tradeId);
-    assert.deepEqual({ ...state }, { initial: "MANUAL", current: "AUTO" });
-  });
-  await t.test("technical batch output retains inherited Manual mode and existing direct-release restriction", async () => {
+  await t.test("technical batch output retains inherited Manual mode", async () => {
     const source = await expectCreated("/api/v1/client-deals", clientDealPayload(rule, 11));
     const batch = await expectCreated("/api/v1/batches", {
       tradeIds: [source.tradeId], idempotencyKey: "admission-technical-release"
@@ -298,10 +257,8 @@ test("Admission governs trade creation and release atomically", async t => {
     const output = inspectionDatabase.prepare(`SELECT trade_id AS tradeId, trade_type AS tradeType
       FROM batch_members WHERE batch_id = ? AND member_role = 'POSITION_OUT'`).get(batch.batchId);
     assert.ok(output);
-    assert.equal(inspectionDatabase.prepare(`SELECT current_position_management_mode AS mode
+    assert.equal(inspectionDatabase.prepare(`SELECT position_management_mode AS mode
       FROM trade_position_management WHERE trade_id = ?`).get(output.tradeId).mode, "MANUAL");
-    const released = await move([output]);
-    assert.equal(released.statusCode, 400);
   });
 
   const generate = () => expectCreated("/api/v1/client-deal-generation/one");
@@ -313,10 +270,10 @@ test("Admission governs trade creation and release atomically", async t => {
     assert.equal(result.statusCode, 200, JSON.stringify(result.body));
   };
   await t.test("eligible generated trades enter Auto and stopped Market Pulse holds new trades", async () => {
-    assert.equal((await generate()).currentPositionManagementMode, "AUTO");
+    assert.equal((await generate()).positionManagementMode, "AUTO");
     await request("POST", "/api/v1/market-pulse-simulation/stop");
     const stopped = await generate();
-    assert.equal(stopped.currentPositionManagementMode, "MANUAL");
+    assert.equal(stopped.positionManagementMode, "MANUAL");
     assert.ok(reasons(stopped).includes("MARKET_PULSE_UNAVAILABLE"));
     await request("POST", "/api/v1/market-pulse-simulation/start");
   });
@@ -324,24 +281,15 @@ test("Admission governs trade creation and release atomically", async t => {
     ["disabled pair", pair => ({...pair, enabled: false, maxBaseCcyAmount: null}), "CCY_PAIR_NOT_ENABLED"],
     ["amount limit", pair => ({...pair, maxBaseCcyAmount: pair.enabled ? "0.01" : null}), "TRADE_AMOUNT_LIMIT_EXCEEDED"]
   ]) {
-    await t.test(`${name} blocks both initial and manual admission`, async () => {
+    await t.test(`${name} blocks automatic mode assignment at creation`, async () => {
       await setPolicy(transform);
       const held = await generate();
-      assert.equal(held.currentPositionManagementMode, "MANUAL");
+      assert.equal(held.positionManagementMode, "MANUAL");
       assert.ok(reasons(held).includes(reason), JSON.stringify(reasons(held)));
-      const released = await move([identity(held)]);
-      assert.equal(released.statusCode, 409);
-      assert.ok(released.body.message.includes(reason), released.body.message);
     });
   }
   await setPolicy(pair => pair);
-  await t.test("release rejects excessive Transfer Rate deviation", async () => {
-    const held = await expectCreated("/api/v1/client-deals", {...clientDealPayload(rule, 12), tradeRate: "1.5"});
-    const denied = await move([identity(held)]);
-    assert.equal(denied.statusCode, 409);
-    assert.match(denied.body.message, /TRANSFER_RATE_DEVIATION_EXCEEDED/);
-  });
-  await t.test("hedges use their own criteria for initial admission and manual release", async () => {
+  await t.test("hedges use their own criteria and Pricing Rule override at creation", async () => {
     await setPolicy(pair => ({ ...pair, enabled: false, maxBaseCcyAmount: null }));
     const hedgeRule = (await request("GET", "/api/v1/pricing-rules")).body.find(candidate =>
       candidate.pricingMode === "AUTO_PRICED" && candidate.counterpartyRoles.includes("HEDGE_COUNTERPARTY"));
@@ -349,14 +297,11 @@ test("Admission governs trade creation and release atomically", async t => {
     const payload = { pricingRuleId: hedgeRule.pricingRuleId, ccyPairCode: hedgeRule.ccyPairCode,
       side: "BUY", dealtCcyCode: "EUR", dealtCcyAmount: "1000", tenor: "TOD" };
     const admitted = await expectCreated("/api/v1/hedge-deals/auto-priced", payload);
-    assert.equal(admitted.currentPositionManagementMode, "AUTO");
-    await request("PUT", `/api/v1/pricing-rules/${hedgeRule.pricingRuleId}`, {autoManagementAdmissionModeOverride: "REVIEW_REQUIRED"});
+    assert.equal(admitted.positionManagementMode, "AUTO");
+    await request("PUT", `/api/v1/pricing-rules/${hedgeRule.pricingRuleId}`, {positionManagementModeOverride: "MANUAL"});
     const held = await expectCreated("/api/v1/hedge-deals/auto-priced", payload);
-    assert.equal(held.currentPositionManagementMode, "MANUAL");
-    assert.deepEqual(reasons(held), ["REVIEW_REQUIRED"]);
-    const hedgeIdentity = deal => ({ tradeId: deal.tradeId, tradeType: "HEDGE_DEAL" });
-    const released = await move([hedgeIdentity(held)]);
-    assert.equal(released.statusCode, 200, JSON.stringify(released.body));
+    assert.equal(held.positionManagementMode, "MANUAL");
+    assert.deepEqual(reasons(held), ["MANUAL"]);
     const currentHedgePolicy = (await request("GET",
       "/api/v1/auto-mode-eligibility-rules?tradeType=HEDGE_DEAL")).body;
     assert.equal((await request("PUT", "/api/v1/auto-mode-eligibility-rules", {
@@ -365,15 +310,12 @@ test("Admission governs trade creation and release atomically", async t => {
         ...pair, enabled: false, maxBaseCcyAmount: null
       }))
     })).statusCode, 200);
-    await request("PUT", `/api/v1/pricing-rules/${hedgeRule.pricingRuleId}`, { autoManagementAdmissionModeOverride: null });
+    await request("PUT", `/api/v1/pricing-rules/${hedgeRule.pricingRuleId}`, { positionManagementModeOverride: null });
     const blocked = await expectCreated("/api/v1/hedge-deals/auto-priced", payload);
-    assert.equal(blocked.currentPositionManagementMode, "MANUAL");
+    assert.equal(blocked.positionManagementMode, "MANUAL");
     assert.ok(reasons(blocked).includes("CCY_PAIR_NOT_ENABLED"));
-    const denied = await move([hedgeIdentity(blocked)]);
-    assert.equal(denied.statusCode, 409);
-    assert.match(denied.body.message, /CCY_PAIR_NOT_ENABLED/);
     await setPolicy(pair => pair);
-    assert.equal((await generate()).currentPositionManagementMode, "AUTO");
+    assert.equal((await generate()).positionManagementMode, "AUTO");
   });
 
   assert.throws(() => inspectionDatabase.prepare(`
@@ -398,11 +340,5 @@ test("Admission governs trade creation and release atomically", async t => {
   const failed = await request("POST", "/api/v1/client-deals", clientDealPayload(rule, 3));
   assert.equal(failed.statusCode, 500);
   assert.equal(inspectionDatabase.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count, tradeCount);
-  const failedRelease = await move([identity(createdWithAdmissionOverride.body)]);
-  assert.equal(failedRelease.statusCode, 500);
-  assert.equal(inspectionDatabase.prepare(`SELECT current_position_management_mode AS mode
-    FROM trade_position_management WHERE trade_id = ?`).get(createdWithAdmissionOverride.body.tradeId).mode, "MANUAL");
-  assert.equal(inspectionDatabase.prepare(`SELECT COUNT(*) AS count FROM trade_position_management_transitions
-    WHERE trade_id = ?`).get(createdWithAdmissionOverride.body.tradeId).count, 0);
   inspectionDatabase.exec("DROP TRIGGER test_block_enforcement_admission_insert");
 });

@@ -412,7 +412,7 @@
       Object.freeze({ text: "Position Management — Manual Mode", key: "manual-position-management-mode" }),
       Object.freeze({ text: "Auto Mode of Position Management", key: "auto-position-management-mode" }),
       Object.freeze({ text: "Manual Mode of Position Management", key: "manual-position-management-mode" }),
-      Object.freeze({ text: "Trade Context Admission Mode", key: "trade-context-admission-mode" }),
+      Object.freeze({ text: "Trade Context Position Management Mode", key: "trade-context-position-management-mode" }),
       Object.freeze({ text: "Auto Mode Eligibility", key: "auto-mode-eligibility" }),
       Object.freeze({ text: "Auto Management Admission", key: "auto-management-admission" }),
       Object.freeze({ text: "Position Management Mode", key: "position-management-mode" }),

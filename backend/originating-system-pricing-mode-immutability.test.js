@@ -233,9 +233,9 @@ test("database locks Pricing Mode only while Trade Contexts are attached", () =>
           servicing_location_id,
           accounting_system_id,
           originating_system_id,
-          auto_management_admission_mode
+          position_management_mode
         )
-      VALUES ('000', 'AFINA', 'VERIFY_MODE_LOCK', 'REVIEW_REQUIRED')
+      VALUES ('000', 'AFINA', 'VERIFY_MODE_LOCK', 'MANUAL')
     `).run().lastInsertRowid);
 
     assert.throws(() => database.prepare(`
@@ -319,11 +319,11 @@ test("legacy Trade Context migration restores the Pricing Mode lock atomically",
     assert.ok(migratedDatabase.prepare(`
       SELECT 1
       FROM pragma_table_info('pricing_rules')
-      WHERE name = 'auto_management_admission_mode_override'
+      WHERE name = 'position_management_mode_override'
     `).get());
     assert.equal(
       migratedDatabase.prepare(`
-        SELECT auto_management_admission_mode_override AS admissionOverride
+        SELECT position_management_mode_override AS admissionOverride
         FROM pricing_rules
         WHERE pricing_rule_id = 1
       `).get().admissionOverride,
@@ -417,7 +417,7 @@ test("Originating System API rejects a Pricing Mode change only while referenced
     servicingLocationId: "000",
     accountingSystemId: "AFINA",
     originatingSystemId: "VERIFY_MODE_LOCK",
-    autoManagementAdmissionMode: "REVIEW_REQUIRED"
+    positionManagementMode: "MANUAL"
   });
   assert.equal(attachedContext.statusCode, 201);
 

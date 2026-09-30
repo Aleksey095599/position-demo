@@ -1,22 +1,22 @@
 "use strict";
 
 const {
-  normalizeAutoManagementAdmissionMode
-} = require("./auto-management-admission-mode");
+  normalizePositionManagementModeSetting
+} = require("./position-management-mode-setting");
 
-const PRICING_RULE_AUTO_MANAGEMENT_ADMISSION_MODE_OVERRIDE = Object.freeze({
-  REVIEW_REQUIRED: "REVIEW_REQUIRED"
+const PRICING_RULE_POSITION_MANAGEMENT_MODE_SETTING_OVERRIDE = Object.freeze({
+  MANUAL: "MANUAL"
 });
-const PRICING_RULE_AUTO_MANAGEMENT_ADMISSION_MODE_OVERRIDES = Object.freeze(
-  Object.values(PRICING_RULE_AUTO_MANAGEMENT_ADMISSION_MODE_OVERRIDE)
+const PRICING_RULE_POSITION_MANAGEMENT_MODE_SETTING_OVERRIDES = Object.freeze(
+  Object.values(PRICING_RULE_POSITION_MANAGEMENT_MODE_SETTING_OVERRIDE)
 );
 const pricingRuleAdmissionOverrideSet = new Set(
-  PRICING_RULE_AUTO_MANAGEMENT_ADMISSION_MODE_OVERRIDES
+  PRICING_RULE_POSITION_MANAGEMENT_MODE_SETTING_OVERRIDES
 );
 
-function normalizePricingRuleAutoManagementAdmissionModeOverride(
+function normalizePricingRulePositionManagementModeSettingOverride(
   value,
-  name = "Pricing Rule Auto Management Admission Mode Override"
+  name = "Pricing Rule Position Management Mode Override"
 ) {
   if (value === null || value === undefined) {
     return null;
@@ -24,48 +24,48 @@ function normalizePricingRuleAutoManagementAdmissionModeOverride(
 
   if (typeof value !== "string") {
     const error = new RangeError(`${name} is invalid.`);
-    error.code = "INVALID_PRICING_RULE_AUTO_MANAGEMENT_ADMISSION_MODE_OVERRIDE";
+    error.code = "INVALID_PRICING_RULE_POSITION_MANAGEMENT_MODE_SETTING_OVERRIDE";
     throw error;
   }
 
   const override = value.trim().toUpperCase();
 
   if (!pricingRuleAdmissionOverrideSet.has(override)) {
-    const error = new RangeError(`${name} must be REVIEW_REQUIRED or null to inherit.`);
-    error.code = "INVALID_PRICING_RULE_AUTO_MANAGEMENT_ADMISSION_MODE_OVERRIDE";
+    const error = new RangeError(`${name} must be MANUAL or null to inherit.`);
+    error.code = "INVALID_PRICING_RULE_POSITION_MANAGEMENT_MODE_SETTING_OVERRIDE";
     throw error;
   }
 
   return override;
 }
 
-function resolvePricingRuleAutoManagementAdmissionMode({
-  autoManagementAdmissionModeOverride,
-  tradeContextAdmissionMode
+function resolvePricingRulePositionManagementModeSetting({
+  positionManagementModeOverride,
+  tradeContextPositionManagementMode
 } = {}) {
-  const override = normalizePricingRuleAutoManagementAdmissionModeOverride(
-    autoManagementAdmissionModeOverride
+  const override = normalizePricingRulePositionManagementModeSettingOverride(
+    positionManagementModeOverride
   );
 
   if (override !== null) {
     return override;
   }
 
-  if (tradeContextAdmissionMode === null
-    || tradeContextAdmissionMode === undefined
-    || String(tradeContextAdmissionMode).trim() === "") {
+  if (tradeContextPositionManagementMode === null
+    || tradeContextPositionManagementMode === undefined
+    || String(tradeContextPositionManagementMode).trim() === "") {
     return null;
   }
 
-  return normalizeAutoManagementAdmissionMode(
-    tradeContextAdmissionMode,
-    "Trade Context Admission Mode"
+  return normalizePositionManagementModeSetting(
+    tradeContextPositionManagementMode,
+    "Trade Context Position Management Mode"
   );
 }
 
 module.exports = {
-  PRICING_RULE_AUTO_MANAGEMENT_ADMISSION_MODE_OVERRIDE,
-  PRICING_RULE_AUTO_MANAGEMENT_ADMISSION_MODE_OVERRIDES,
-  normalizePricingRuleAutoManagementAdmissionModeOverride,
-  resolvePricingRuleAutoManagementAdmissionMode
+  PRICING_RULE_POSITION_MANAGEMENT_MODE_SETTING_OVERRIDE,
+  PRICING_RULE_POSITION_MANAGEMENT_MODE_SETTING_OVERRIDES,
+  normalizePricingRulePositionManagementModeSettingOverride,
+  resolvePricingRulePositionManagementModeSetting
 };

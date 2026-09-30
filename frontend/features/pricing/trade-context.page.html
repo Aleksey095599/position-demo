@@ -30,7 +30,7 @@
               <col class="pricing-context-location-col" data-ui-column-key="servicing_location">
               <col class="pricing-context-accounting-col" data-ui-column-key="accounting_system">
               <col class="pricing-context-originating-col" data-ui-column-key="originating_system">
-              <col class="pricing-context-admission-mode-col" data-ui-column-key="auto_management_admission_mode">
+              <col class="pricing-context-admission-mode-col" data-ui-column-key="position_management_mode">
               <col class="pricing-context-count-col" data-ui-column-key="counterparties_count">
               <col class="pricing-context-actions-col" data-ui-column-key="actions" data-pricing-context-actions-column>
             </colgroup>
@@ -72,15 +72,15 @@
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="tradeCaptureChannelId" aria-label="Filter trade contexts by originating system">
                   </div>
                 </th>
-                <th id="pricingContextAutoManagementAdmissionHeader" tabindex="-1" data-pricing-context-column="autoManagementAdmissionMode">
+                <th id="pricingContextAutoManagementAdmissionHeader" tabindex="-1" data-pricing-context-column="positionManagementMode">
                   <div class="reference-column-head">
                     <span class="reference-column-title">
-                      <span>Initial Mode Assignment</span>
+                      <span>Position Management Mode</span>
                     </span>
-                    <select class="reference-header-filter" data-pricing-context-header-filter="autoManagementAdmissionMode" aria-label="Filter trade contexts by Initial Mode Assignment">
+                    <select class="reference-header-filter" data-pricing-context-header-filter="positionManagementMode" aria-label="Filter trade contexts by Position Management Mode">
                       <option value="">All</option>
                       <option value="AUTO_IF_ELIGIBLE">Auto Mode if Eligible</option>
-                      <option value="REVIEW_REQUIRED">Manual Mode</option>
+                      <option value="MANUAL">Manual Mode</option>
                     </select>
                   </div>
                 </th>

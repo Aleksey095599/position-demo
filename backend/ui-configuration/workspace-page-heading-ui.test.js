@@ -99,7 +99,7 @@ test("previous context and system bookmarks retain their filters under the new r
   const { context } = harness();
   for (const [previous, current] of [
     ["#execution-context", "#trade-context"],
-    ["#execution-context?execution-system=CLICK_TRADE_EFX&focus=auto-management-admission", "#trade-context?originating-system=CLICK_TRADE_EFX&focus=auto-management-admission"],
+    ["#execution-context?execution-system=CLICK_TRADE_EFX&focus=position-management-mode", "#trade-context?originating-system=CLICK_TRADE_EFX&focus=position-management-mode"],
     ["#reference-data:execution-systems", "#reference-data:originating-systems"],
     ["#trading-counterparties?execution-context=42", "#trading-counterparties?trade-context=42"],
     ["#pricing-rules:external-counterparties?counterparty=7&execution-context=42", "#pricing-rules:external-counterparties?counterparty=7&trade-context=42"]

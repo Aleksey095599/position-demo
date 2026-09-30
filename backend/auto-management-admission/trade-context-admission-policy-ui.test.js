@@ -50,60 +50,60 @@ function tradeContextRouteHelpers() {
   )();
 }
 
-test("Trade Context exposes Initial Mode Assignment in its grid and editor", () => {
-  assert.ok(html.includes('data-ui-column-key="auto_management_admission_mode"'));
+test("Trade Context exposes Position Management Mode in its grid and editor", () => {
+  assert.ok(html.includes('data-ui-column-key="position_management_mode"'));
   const header = html.match(/<th id="pricingContextAutoManagementAdmissionHeader"[\s\S]*?<\/th>/)?.[0] || "";
-  assert.match(header, /<span>Initial Mode Assignment<\/span>/);
+  assert.match(header, /<span>Position Management Mode<\/span>/);
   assert.doesNotMatch(header, /smart_toy/);
   assert.doesNotMatch(header, /\btitle=|data-tooltip/);
-  assert.ok(html.includes('data-pricing-context-header-filter="autoManagementAdmissionMode"'));
-  assert.ok(html.includes('data-pricing-context-field="autoManagementAdmissionMode"'));
-  assert.ok(html.includes("initialModeAssignmentMarkup(context.autoManagementAdmissionMode)"));
+  assert.ok(html.includes('data-pricing-context-header-filter="positionManagementMode"'));
+  assert.ok(html.includes('data-pricing-context-field="positionManagementMode"'));
+  assert.ok(html.includes("positionManagementModeSettingMarkup(context.positionManagementMode)"));
   assert.ok(layoutsSource.includes(
-    '["auto_management_admission_mode", "Initial Mode Assignment", 232]'
+    '["position_management_mode", "Position Management Mode", 232]'
   ));
 });
 
 test("Trade Context UI offers exactly the two initial admission modes", () => {
   const editorSelect = html.match(
-    /<select class="inline-edit-control" data-pricing-context-field="autoManagementAdmissionMode"[\s\S]*?<\/select>/
+    /<select class="inline-edit-control" data-pricing-context-field="positionManagementMode"[\s\S]*?<\/select>/
   )?.[0] || "";
   const values = [...editorSelect.matchAll(/<option value="([A-Z_]+)"/g)]
     .map(match => match[1]);
 
   assert.deepEqual(values, [
     "AUTO_IF_ELIGIBLE",
-    "REVIEW_REQUIRED"
+    "MANUAL"
   ]);
-  assert.ok(html.includes("autoManagementAdmissionMode: context.autoManagementAdmissionMode"));
+  assert.ok(html.includes("positionManagementMode: context.positionManagementMode"));
   assert.ok(html.includes('<option value="AUTO_IF_ELIGIBLE">Auto Mode if Eligible</option>'));
-  assert.ok(html.includes('<option value="REVIEW_REQUIRED">Manual Mode</option>'));
-  const label = new Function("normalizedAutoManagementAdmissionMode",
-    functionSource(html, "initialModeAssignmentLabel") + "; return initialModeAssignmentLabel;"
+  assert.ok(html.includes('<option value="MANUAL">Manual Mode</option>'));
+  const label = new Function("normalizedPositionManagementModeSetting",
+    functionSource(html, "positionManagementModeSettingLabel") + "; return positionManagementModeSettingLabel;"
   )(value => value);
   assert.equal(label("AUTO_IF_ELIGIBLE"), "Auto Mode if Eligible");
-  assert.equal(label("REVIEW_REQUIRED"), "Manual Mode");
+  assert.equal(label("MANUAL"), "Manual Mode");
 });
 
-test("Initial Mode Assignment opens the full Trade Context list with a safe return route", () => {
+test("Position Management Mode opens the full Trade Context list with a safe return route", () => {
   const helpers = tradeContextRouteHelpers();
-  const initialAdmissionHash = "#position-management-settings/initial-mode-assignment";
+  const initialAdmissionHash = "#position-management-settings/position-management-mode";
   const route = helpers.autoManagementAdmissionTradeContextRoute(initialAdmissionHash);
 
   assert.equal(
     route,
-    "#trade-context?focus=auto-management-admission&return=%23position-management-settings%2Finitial-mode-assignment"
+    "#trade-context?focus=position-management-mode&return=%23position-management-settings%2Fposition-management-mode"
   );
   assert.deepEqual(helpers.pricingRouteStateFromLocation(route), {
     matches: true,
     mode: "focused",
     scope: null,
-    focus: "auto-management-admission",
+    focus: "position-management-mode",
     returnHash: initialAdmissionHash
   });
   assert.equal(
     helpers.pricingRouteStateFromLocation(
-      "#trade-context?focus=auto-management-admission&return=%23database"
+      "#trade-context?focus=position-management-mode&return=%23database"
     ).returnHash,
     initialAdmissionHash
   );
@@ -128,7 +128,7 @@ test("filtered and focused Trade Context routes keep the standard list editable"
   assert.match(html, /id="pricingContextAutoManagementAdmissionHeader"/);
   assert.match(
     html,
-    /id="pricingContextAutoManagementAdmissionHeader"[^>]*tabindex="-1"[^>]*data-pricing-context-column="autoManagementAdmissionMode"/
+    /id="pricingContextAutoManagementAdmissionHeader"[^>]*tabindex="-1"[^>]*data-pricing-context-column="positionManagementMode"/
   );
   assert.equal(helpers.pricingRoute("servicingBranch", "002"), "#trade-context?servicing-location=002");
   assert.equal(helpers.pricingRoute("settlementSystem", "CFT"), "#trade-context?accounting-system=CFT");
@@ -147,6 +147,6 @@ test("filtered and focused Trade Context routes keep the standard list editable"
   assert.match(highlightSource, /2600/);
   assert.match(
     referenceTableStyles,
-    /#tradeContextsTable\.is-auto-management-admission-focused \[data-pricing-context-column="autoManagementAdmissionMode"\]/
+    /#tradeContextsTable\.is-auto-management-admission-focused \[data-pricing-context-column="positionManagementMode"\]/
   );
 });

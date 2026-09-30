@@ -1139,20 +1139,20 @@
       }
     }
 
-    #tradeContextsTable.is-auto-management-admission-focused [data-pricing-context-column="autoManagementAdmissionMode"] {
+    #tradeContextsTable.is-auto-management-admission-focused [data-pricing-context-column="positionManagementMode"] {
       animation: pricing-context-admission-column-focus 2.6s ease-out both;
     }
 
-    #pricingRulesTable.is-auto-management-admission-focused [data-pricing-rule-column="autoManagementAdmissionModeOverride"] {
+    #pricingRulesTable.is-auto-management-admission-focused [data-pricing-rule-column="positionManagementModeOverride"] {
       animation: pricing-context-admission-column-focus 2.6s ease-out both;
     }
 
-    #tradeContextsTable.is-auto-management-admission-focused th[data-pricing-context-column="autoManagementAdmissionMode"] {
+    #tradeContextsTable.is-auto-management-admission-focused th[data-pricing-context-column="positionManagementMode"] {
       outline: 2px solid rgba(var(--bs-primary-rgb), 0.38);
       outline-offset: -2px;
     }
 
-    #pricingRulesTable.is-auto-management-admission-focused th[data-pricing-rule-column="autoManagementAdmissionModeOverride"] {
+    #pricingRulesTable.is-auto-management-admission-focused th[data-pricing-rule-column="positionManagementModeOverride"] {
       outline: 2px solid rgba(var(--bs-primary-rgb), 0.38);
       outline-offset: -2px;
     }
@@ -1168,12 +1168,12 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      #tradeContextsTable.is-auto-management-admission-focused [data-pricing-context-column="autoManagementAdmissionMode"] {
+      #tradeContextsTable.is-auto-management-admission-focused [data-pricing-context-column="positionManagementMode"] {
         animation: none;
         box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.13);
       }
 
-      #pricingRulesTable.is-auto-management-admission-focused [data-pricing-rule-column="autoManagementAdmissionModeOverride"] {
+      #pricingRulesTable.is-auto-management-admission-focused [data-pricing-rule-column="positionManagementModeOverride"] {
         animation: none;
         box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.13);
       }

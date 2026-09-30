@@ -320,15 +320,15 @@
             <dl class="manual-process-definition-list">
               <div class="manual-process-definition" id="process-term-position-management-mode" tabindex="-1">
                 <dt>Position Management Mode</dt>
-                <dd data-process-copy="positionManagementModeDefinition">The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.</dd>
+                <dd data-process-copy="positionManagementModeDefinition">The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It is fixed at creation and determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-auto-position-management-mode" tabindex="-1">
                 <dt>Position Management — Auto Mode</dt>
-                <dd data-process-copy="autoPositionManagementModeDefinition">A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode may be assigned at initial registration or after an operator approves a move from Manual Mode of Position Management; it does not mean that an automated action has already occurred.</dd>
+                <dd data-process-copy="autoPositionManagementModeDefinition">A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode is assigned when the Trade is created; it does not mean that an automated action has already occurred.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-manual-position-management-mode" tabindex="-1">
                 <dt>Position Management — Manual Mode</dt>
-                <dd data-process-copy="manualPositionManagementModeDefinition">A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator may manage it entirely in this mode or approve a move to Auto Mode of Position Management if the applicable eligibility requirements are met.</dd>
+                <dd data-process-copy="manualPositionManagementModeDefinition">A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator manages the Trade in its assigned mode.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-auto-hedging" tabindex="-1">
                 <dt>Auto Hedging</dt>
@@ -336,23 +336,23 @@
               </div>
               <div class="manual-process-definition" id="process-term-auto-management-admission" tabindex="-1">
                 <dt>Auto Management Admission</dt>
-                <dd data-process-copy="autoManagementAdmissionDefinition">The domain decision boundary that determines whether a Trade remains in Manual Management or may be released to Auto Management.</dd>
+                <dd data-process-copy="autoManagementAdmissionDefinition">The decision made when a Trade is created to assign Auto Mode if its settings and eligibility requirements allow it; otherwise Manual Mode is assigned.</dd>
               </div>
-              <div class="manual-process-definition" id="process-term-trade-context-admission-mode" tabindex="-1">
-                <dt>Trade Context Admission Mode</dt>
-                <dd data-process-copy="tradeContextAdmissionModeDefinition">A Trade Context setting used only for Initial Admission: admit an eligible new trade automatically or require operator review.</dd>
+              <div class="manual-process-definition" id="process-term-trade-context-position-management-mode" tabindex="-1">
+                <dt>Trade Context Position Management Mode</dt>
+                <dd data-process-copy="tradeContextPositionManagementModeDefinition">A Trade Context setting that assigns Manual Mode or Auto Mode if Eligible when a Trade is created. A Pricing Rule may override it only to Manual Mode. Settings changes affect new Trades only; an existing Trade retains its assigned mode.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-auto-mode-eligibility" tabindex="-1">
                 <dt>Auto Mode Eligibility</dt>
-                <dd data-process-copy="autoModeEligibilityDefinition">Requirements configured by Trade Type and Ccy Pair and checked whenever a Trade is considered for Position Management — Auto Mode. Initial Mode Assignment separately applies Trade Context and Pricing Rule settings.</dd>
+                <dd data-process-copy="autoModeEligibilityDefinition">Requirements configured by Trade Type and Ccy Pair and checked when a new Trade is considered for Position Management — Auto Mode. Position Management Mode separately applies Trade Context and Pricing Rule settings.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-eligibility-check" tabindex="-1">
                 <dt>Eligibility Check</dt>
-                <dd data-process-copy="eligibilityCheckDefinition">A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before release.</dd>
+                <dd data-process-copy="eligibilityCheckDefinition">A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before Auto Mode is assigned.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-admission-state" tabindex="-1">
                 <dt>Admission State</dt>
-                <dd data-process-copy="automationAdmissionStateDefinition">Shows whether a specific Trade is currently in Manual Management or released to Auto Management.</dd>
+                <dd data-process-copy="automationAdmissionStateDefinition">Records whether Auto Mode was admitted when the Trade was created. It does not represent a pending transfer between modes.</dd>
               </div>
               <div class="manual-process-definition" id="process-term-ccy-pair" tabindex="-1">
                 <dt>Ccy Pair</dt>

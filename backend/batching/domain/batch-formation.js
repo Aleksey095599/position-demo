@@ -161,9 +161,9 @@ function normalizedSourceTrade(value) {
   return {
     tradeId,
     tradeType,
-    currentPositionManagementMode: normalizePositionManagementMode(
-      source.currentPositionManagementMode,
-      `Trade ${tradeId} Current Position Management Mode`
+    positionManagementMode: normalizePositionManagementMode(
+      source.positionManagementMode,
+      `Trade ${tradeId} Position Management Mode`
     ),
     side,
     ccyPairCode: requiredText(source.ccyPairCode, "Ccy Pair Code"),
@@ -219,10 +219,10 @@ function assertSingleBatchingKey(trades) {
 }
 
 function commonPositionManagementMode(trades) {
-  const positionManagementMode = trades[0].currentPositionManagementMode;
+  const positionManagementMode = trades[0].positionManagementMode;
 
   if (trades.some(trade =>
-    trade.currentPositionManagementMode !== positionManagementMode
+    trade.positionManagementMode !== positionManagementMode
   )) {
     throw batchFormationError(
       "INCOMPATIBLE_BATCH_SELECTION",

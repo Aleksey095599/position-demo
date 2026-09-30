@@ -44,7 +44,8 @@ function insertTechnicalExposure(database, {
   baseCcySide,
   baseCcyAmountMinor,
   quoteCcyAmountMinor,
-  tradeRate
+  tradeRate,
+  positionManagementMode = "MANUAL"
 }) {
   const isPositionOutput = tradeType === "BATCH_POSITION_OUT";
   database.prepare(`
@@ -81,6 +82,7 @@ function insertTechnicalExposure(database, {
     quoteCcyAmountMinor ?? (isPositionOutput ? 0 : 11200),
     tradeRate ?? (isPositionOutput ? null : 1.12)
   );
+  database.prepare("INSERT INTO trade_position_management (trade_id, trade_type, position_management_mode) VALUES (?, ?, ?)").run(tradeId, tradeType, positionManagementMode);
 }
 
 function insertSubtype(database, tradeId, tradeType) {
@@ -295,7 +297,8 @@ test("forming a Batch requires both technical Trades to inherit the source Mode"
       baseCcySide: "BUY",
       baseCcyAmountMinor: 10000,
       quoteCcyAmountMinor: 11200,
-      tradeRate: 1.12
+      tradeRate: 1.12,
+      positionManagementMode: "AUTO"
     });
     insertSubtype(database, balanceTradeId, "BATCH_BALANCE_TRADE");
     insertSubtype(database, positionOutTradeId, "BATCH_POSITION_OUT");
@@ -326,12 +329,6 @@ test("forming a Batch requires both technical Trades to inherit the source Mode"
         )
       VALUES (?, 'USD', 0, 2, '2026-08-21', '2026-08-21T10:00:00.000Z')
     `).run(batchId);
-    database.prepare(`
-      UPDATE trade_position_management
-      SET initial_position_management_mode = 'AUTO',
-          current_position_management_mode = 'AUTO'
-      WHERE trade_id = ? AND trade_type = 'BATCH_POSITION_OUT'
-    `).run(positionOutTradeId);
 
     assert.throws(
       () => database.prepare(`
@@ -342,25 +339,8 @@ test("forming a Batch requires both technical Trades to inherit the source Mode"
       /Batch technical Trades must inherit the Batch source Position Management Mode/
     );
 
-    database.prepare(`
-      UPDATE trade_position_management
-      SET initial_position_management_mode = 'MANUAL',
-          current_position_management_mode = 'MANUAL'
-      WHERE trade_id = ? AND trade_type = 'BATCH_POSITION_OUT'
-    `).run(positionOutTradeId);
-    database.prepare(`
-      UPDATE batches
-      SET batch_status = 'FORMED'
-      WHERE batch_id = ?
-    `).run(batchId);
-    assert.equal(
-      database.prepare(`
-        SELECT batch_status AS batchStatus
-        FROM batches
-        WHERE batch_id = ?
-      `).get(batchId).batchStatus,
-      "FORMED"
-    );
+    assert.throws(() => database.prepare("UPDATE trade_position_management SET position_management_mode = 'MANUAL' WHERE trade_id = ?").run(positionOutTradeId), /immutable/);
+    assert.equal(database.prepare("SELECT batch_status FROM batches WHERE batch_id = ?").get(batchId).batch_status, "BUILDING");
   } finally {
     database.close();
   }

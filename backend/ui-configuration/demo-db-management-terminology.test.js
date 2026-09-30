@@ -24,68 +24,68 @@ function loadBrowserDatabase(saved) {
 test("browser storage preserves admission choices when migrating legacy field names", () => {
   const migrated = loadBrowserDatabase({
     selectedCurrencyPair: "GBP/USD",
-    pricingContexts: [{ id: 7, defaultPositionManagementMode: "AUTO", autoHedgingAdmissionMode: "REVIEW_REQUIRED" }],
+    pricingContexts: [{ id: 7, defaultPositionManagementMode: "AUTO", autoHedgingAdmissionMode: "MANUAL" }],
     clientPricingRules: [{ pricingRuleId: 9, marginPercent: 0.12, autoHedgingAdmissionModeOverride: "MANUAL_ONLY" }]
   });
   assert.equal(migrated.selectedCurrencyPair, "GBP/USD");
   assert.deepEqual(migrated.pricingContexts, [{
-    id: 7, autoManagementAdmissionMode: "REVIEW_REQUIRED"
+    id: 7, positionManagementMode: "MANUAL"
   }]);
   assert.deepEqual(migrated.clientPricingRules, [{
     pricingRuleId: 9, marginPercent: 0.12,
-    autoManagementAdmissionModeOverride: "REVIEW_REQUIRED"
+    positionManagementModeOverride: "MANUAL"
   }]);
   assert.deepEqual(loadBrowserDatabase(migrated), migrated);
 });
 
 test("current admission fields take precedence, including an explicit null override", () => {
   const migrated = loadBrowserDatabase({
-    pricingContexts: [{ defaultPositionManagementMode: "AUTO", autoManagementAdmissionMode: "MANUAL_ONLY", autoHedgingAdmissionMode: "AUTO_IF_ELIGIBLE" }],
-    clientPricingRules: [{ autoManagementAdmissionModeOverride: null, autoHedgingAdmissionModeOverride: "MANUAL_ONLY" }]
+    pricingContexts: [{ defaultPositionManagementMode: "AUTO", positionManagementMode: "MANUAL_ONLY", autoHedgingAdmissionMode: "AUTO_IF_ELIGIBLE" }],
+    clientPricingRules: [{ positionManagementModeOverride: null, autoHedgingAdmissionModeOverride: "MANUAL_ONLY" }]
   });
-  assert.equal(migrated.pricingContexts[0].autoManagementAdmissionMode, "REVIEW_REQUIRED");
-  assert.equal(migrated.clientPricingRules[0].autoManagementAdmissionModeOverride, null);
+  assert.equal(migrated.pricingContexts[0].positionManagementMode, "MANUAL");
+  assert.equal(migrated.clientPricingRules[0].positionManagementModeOverride, null);
   assert.equal(Object.hasOwn(migrated.pricingContexts[0], "autoHedgingAdmissionMode"), false);
   assert.equal(Object.hasOwn(migrated.clientPricingRules[0], "autoHedgingAdmissionModeOverride"), false);
 });
 
-test("stored manual-only settings become initial review requirements without losing inheritance", () => {
+test("stored manual-only settings become Manual mode without losing inheritance", () => {
   const migrated = loadBrowserDatabase({
     pricingContexts: [
-      { autoManagementAdmissionMode: "MANUAL_ONLY" },
+      { positionManagementMode: "MANUAL_ONLY" },
       { autoHedgingAdmissionMode: "MANUAL_ONLY", defaultPositionManagementMode: "AUTO" },
-      { autoManagementAdmissionMode: "AUTO_IF_ELIGIBLE" }
+      { positionManagementMode: "AUTO_IF_ELIGIBLE" }
     ],
     clientPricingRules: [
-      { autoManagementAdmissionModeOverride: "MANUAL_ONLY" },
-      { autoManagementAdmissionModeOverride: "REVIEW_REQUIRED" },
-      { autoManagementAdmissionModeOverride: null }
+      { positionManagementModeOverride: "MANUAL_ONLY" },
+      { positionManagementModeOverride: "MANUAL" },
+      { positionManagementModeOverride: null }
     ]
   });
 
   assert.deepEqual(migrated.pricingContexts, [
-    { autoManagementAdmissionMode: "REVIEW_REQUIRED" },
-    { autoManagementAdmissionMode: "REVIEW_REQUIRED" },
-    { autoManagementAdmissionMode: "AUTO_IF_ELIGIBLE" }
+    { positionManagementMode: "MANUAL" },
+    { positionManagementMode: "MANUAL" },
+    { positionManagementMode: "AUTO_IF_ELIGIBLE" }
   ]);
   assert.deepEqual(migrated.clientPricingRules, [
-    { autoManagementAdmissionModeOverride: "REVIEW_REQUIRED" },
-    { autoManagementAdmissionModeOverride: "REVIEW_REQUIRED" },
-    { autoManagementAdmissionModeOverride: null }
+    { positionManagementModeOverride: "MANUAL" },
+    { positionManagementModeOverride: "MANUAL" },
+    { positionManagementModeOverride: null }
   ]);
   assert.deepEqual(loadBrowserDatabase(migrated), migrated);
 });
 
-test("retired manual routing overrides migrate to Admission and are removed from browser settings", () => {
+test("legacy admission settings migrate to Position Management Mode", () => {
   const migrated = loadBrowserDatabase({
     clientPricingRules: [
-      { positionManagementModeOverride: "MANUAL", autoManagementAdmissionModeOverride: null },
-      { positionManagementModeOverride: "AUTO", effectivePositionManagementMode: "AUTO" }
+      { autoManagementAdmissionModeOverride: "REVIEW_REQUIRED" },
+      { autoManagementAdmissionModeOverride: null, effectiveAutoManagementAdmissionMode: "AUTO_IF_ELIGIBLE" }
     ]
   });
   assert.deepEqual(migrated.clientPricingRules, [
-    { autoManagementAdmissionModeOverride: "REVIEW_REQUIRED" },
-    { autoManagementAdmissionModeOverride: null }
+    { positionManagementModeOverride: "MANUAL" },
+    { positionManagementModeOverride: null }
   ]);
   assert.deepEqual(loadBrowserDatabase(migrated), migrated);
 });

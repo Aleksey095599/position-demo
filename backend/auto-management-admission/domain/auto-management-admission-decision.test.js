@@ -6,7 +6,6 @@ const {
   AUTO_MANAGEMENT_ADMISSION_REASON,
   AUTO_MANAGEMENT_ADMISSION_STATE,
   AUTO_MANAGEMENT_ELIGIBILITY_CHECK_STATUS,
-  decideReleaseToAutoManagement,
   determineInitialAdmissionState
 } = require("./auto-management-admission-decision");
 
@@ -30,22 +29,22 @@ function eligibleSource(overrides = {}) {
   };
 }
 
-test("holds trades without a Trade Context Admission Mode", () => {
+test("holds trades without a Trade Context Position Management Mode", () => {
   const decision = determineInitialAdmissionState({ admissionMode: null });
 
   assert.equal(decision.state, AUTO_MANAGEMENT_ADMISSION_STATE.HELD);
   assert.deepEqual(decision.reasonCodes, [
-    AUTO_MANAGEMENT_ADMISSION_REASON.TRADE_CONTEXT_ADMISSION_MODE_REQUIRED
+    AUTO_MANAGEMENT_ADMISSION_REASON.TRADE_CONTEXT_POSITION_MANAGEMENT_MODE_REQUIRED
   ]);
   assert.equal(decision.releasable, true);
 });
 
-test("REVIEW_REQUIRED starts in Manual and permits later eligibility evaluation", () => {
-  const reviewRequired = determineInitialAdmissionState({ admissionMode: "REVIEW_REQUIRED" });
+test("MANUAL assigns Manual at creation", () => {
+  const reviewRequired = determineInitialAdmissionState({ admissionMode: "MANUAL" });
 
   assert.equal(reviewRequired.state, "HELD");
   assert.equal(reviewRequired.releasable, true);
-  assert.deepEqual(reviewRequired.reasonCodes, ["REVIEW_REQUIRED"]);
+  assert.deepEqual(reviewRequired.reasonCodes, ["MANUAL"]);
 });
 
 test("AUTO_IF_ELIGIBLE releases only when both configured checks pass", () => {
@@ -160,25 +159,4 @@ test("a missing per-pair deviation limit holds the trade fail-closed", () => {
     "TRANSFER_RATE_DEVIATION_LIMIT_NOT_CONFIGURED"
   ));
   assert.equal(decision.checks[1].status, "UNAVAILABLE");
-});
-
-test("release re-evaluates common criteria without initial routing", () => {
-  const reviewRelease = decideReleaseToAutoManagement(eligibleSource({
-    admissionMode: "REVIEW_REQUIRED"
-  }));
-  const blockedRelease = decideReleaseToAutoManagement(eligibleSource({
-    admissionMode: "REVIEW_REQUIRED",
-    baseCcyAmountMinor: 10_000_000_01
-  }));
-
-  assert.equal(reviewRelease.state, "RELEASED");
-  assert.equal(blockedRelease.state, "HELD");
-  assert.ok(blockedRelease.reasonCodes.includes("TRADE_AMOUNT_LIMIT_EXCEEDED"));
-  assert.equal(reviewRelease.admissionMode, null);
-  for (const admissionMode of [null, undefined, "REVIEW_REQUIRED", "AUTO_IF_ELIGIBLE", "MANUAL_ONLY"]) {
-    assert.equal(decideReleaseToAutoManagement(eligibleSource({ admissionMode })).state, "RELEASED");
-  }
-  const disabled = decideReleaseToAutoManagement(eligibleSource({ admissionMode: null, pairRule: null }));
-  assert.equal(disabled.state, "HELD");
-  assert.ok(disabled.reasonCodes.includes("CCY_PAIR_NOT_ENABLED"));
 });

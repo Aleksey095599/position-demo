@@ -8,12 +8,12 @@ const {
 
 test("selects only new incoming Trades and Carry-in Positions", () => {
   const trades = [
-    { tradeId: 10, tradeType: "CLIENT_DEAL", currentPositionManagementMode: "AUTO" },
-    { tradeId: 11, tradeType: "HEDGE_DEAL", currentPositionManagementMode: "AUTO" },
-    { tradeId: 12, tradeType: "BATCH_POSITION_OUT", currentPositionManagementMode: "AUTO" },
-    { tradeId: 13, tradeType: "BATCH_BALANCE_TRADE", currentPositionManagementMode: "AUTO" },
-    { tradeId: 14, tradeType: "CLIENT_DEAL", currentPositionManagementMode: "AUTO" },
-    { tradeId: 15, tradeType: "BATCH_POSITION_OUT", currentPositionManagementMode: "AUTO" }
+    { tradeId: 10, tradeType: "CLIENT_DEAL", positionManagementMode: "AUTO" },
+    { tradeId: 11, tradeType: "HEDGE_DEAL", positionManagementMode: "AUTO" },
+    { tradeId: 12, tradeType: "BATCH_POSITION_OUT", positionManagementMode: "AUTO" },
+    { tradeId: 13, tradeType: "BATCH_BALANCE_TRADE", positionManagementMode: "AUTO" },
+    { tradeId: 14, tradeType: "CLIENT_DEAL", positionManagementMode: "AUTO" },
+    { tradeId: 15, tradeType: "BATCH_POSITION_OUT", positionManagementMode: "AUTO" }
   ];
   const selected = selectTradesForAutoBatchingRun({
     trades,
@@ -27,9 +27,9 @@ test("selects only new incoming Trades and Carry-in Positions", () => {
 test("removes explicitly excluded incoming Trades and Carry-in Positions", () => {
   const selected = selectTradesForAutoBatchingRun({
     trades: [
-      { tradeId: 10, tradeType: "BATCH_POSITION_OUT", currentPositionManagementMode: "AUTO" },
-      { tradeId: 11, tradeType: "CLIENT_DEAL", currentPositionManagementMode: "AUTO" },
-      { tradeId: 12, tradeType: "HEDGE_DEAL", currentPositionManagementMode: "AUTO" }
+      { tradeId: 10, tradeType: "BATCH_POSITION_OUT", positionManagementMode: "AUTO" },
+      { tradeId: 11, tradeType: "CLIENT_DEAL", positionManagementMode: "AUTO" },
+      { tradeId: 12, tradeType: "HEDGE_DEAL", positionManagementMode: "AUTO" }
     ],
     afterTradeId: 10,
     excludedTradeIds: [10, 12]
@@ -41,9 +41,9 @@ test("removes explicitly excluded incoming Trades and Carry-in Positions", () =>
 test("filters new Trades by configured Auto Batching Currency Pairs", () => {
   const selected = selectTradesForAutoBatchingRun({
     trades: [
-      { tradeId: 11, tradeType: "CLIENT_DEAL", ccyPairCode: "EUR_USD", currentPositionManagementMode: "AUTO" },
-      { tradeId: 12, tradeType: "HEDGE_DEAL", ccyPairCode: "GBP_USD", currentPositionManagementMode: "AUTO" },
-      { tradeId: 13, tradeType: "BATCH_POSITION_OUT", ccyPairCode: "EUR_USD", currentPositionManagementMode: "AUTO" }
+      { tradeId: 11, tradeType: "CLIENT_DEAL", ccyPairCode: "EUR_USD", positionManagementMode: "AUTO" },
+      { tradeId: 12, tradeType: "HEDGE_DEAL", ccyPairCode: "GBP_USD", positionManagementMode: "AUTO" },
+      { tradeId: 13, tradeType: "BATCH_POSITION_OUT", ccyPairCode: "EUR_USD", positionManagementMode: "AUTO" }
     ],
     afterTradeId: 10,
     eligibleCcyPairCodes: ["EUR_USD"]
@@ -52,42 +52,15 @@ test("filters new Trades by configured Auto Batching Currency Pairs", () => {
   assert.deepEqual(selected.map(trade => trade.tradeId), [11, 13]);
 });
 
-test("uses current mode and admits reviewed Manual Trades across the run boundary", () => {
-  const selected = selectTradesForAutoBatchingRun({
-    trades: [
-      {
-        tradeId: 8,
-        tradeType: "CLIENT_DEAL",
-        initialPositionManagementMode: "MANUAL",
-        currentPositionManagementMode: "MANUAL",
-        receivedTimestamp: "2026-08-18T08:00:00.000Z"
-      },
-      {
-        tradeId: 9,
-        tradeType: "CLIENT_DEAL",
-        initialPositionManagementMode: "MANUAL",
-        currentPositionManagementMode: "AUTO",
-        receivedTimestamp: "2026-08-18T08:01:00.000Z",
-        positionManagementModeChangedAt: "2026-08-18T09:00:00.000Z"
-      },
-      {
-        tradeId: 10,
-        tradeType: "HEDGE_DEAL",
-        initialPositionManagementMode: "AUTO",
-        currentPositionManagementMode: "AUTO"
-      },
-      {
-        tradeId: 12,
-        tradeType: "HEDGE_DEAL",
-        initialPositionManagementMode: "AUTO",
-        currentPositionManagementMode: "AUTO"
-      }
-    ],
-    afterTradeId: 10
-  });
-
-  assert.deepEqual(selected.map(trade => trade.tradeId), [9, 12]);
-  assert.equal(selected[0].receivedTimestamp, "2026-08-18T09:00:00.000Z");
+test("does not admit old Auto Trades across the run boundary or rewrite receipt time", () => {
+  const trades = [
+    { tradeId: 9, tradeType: "CLIENT_DEAL", positionManagementMode: "AUTO" },
+    { tradeId: 11, tradeType: "CLIENT_DEAL", positionManagementMode: "MANUAL" },
+    { tradeId: 12, tradeType: "HEDGE_DEAL", positionManagementMode: "AUTO", receivedTimestamp: "2026-08-18T08:00:00.000Z" }
+  ];
+  const selected = selectTradesForAutoBatchingRun({ trades, afterTradeId: 10 });
+  assert.deepEqual(selected, [trades[2]]);
+  assert.equal(selected[0], trades[2]);
 });
 
 test("rejects malformed Auto Batching run boundaries", () => {

@@ -9,7 +9,7 @@ const {
 const fixedNow = () => new Date("2026-07-24T14:00:00.000Z");
 const commonTerms = {
   tradeType: "CLIENT_DEAL",
-  currentPositionManagementMode: "MANUAL",
+  positionManagementMode: "MANUAL",
   ccyPairCode: "EUR_USD",
   baseCcyCode: "EUR",
   quoteCcyCode: "USD",
@@ -367,7 +367,7 @@ test("requires every source Trade to have a valid Position Management Mode", () 
     () => formBatch({
       trades: [{
         ...commonTerms,
-        currentPositionManagementMode: undefined,
+        positionManagementMode: undefined,
         tradeId: 29,
         side: "SELL",
         baseCcyAmountMinor: 10000000n,
@@ -425,7 +425,7 @@ test("rejects source Trades from different Position Management Modes", () => {
         {
           ...commonTerms,
           tradeId: 35,
-          currentPositionManagementMode: "AUTO",
+          positionManagementMode: "AUTO",
           side: "BUY",
           baseCcyAmountMinor: 5000000n,
           quoteCcyAmountMinor: 5600000n,

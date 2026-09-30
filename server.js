@@ -1,5 +1,8 @@
 "use strict";
 
+const { migratePositionManagementSettings } = require("./backend/position-management/infrastructure/persistence/migrate-position-management-settings");
+const { migrateImmutablePositionManagement } = require("./backend/position-management/infrastructure/persistence/migrate-immutable-position-management");
+
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -136,18 +139,17 @@ const {
   normalizePositionManagementMode
 } = require("./backend/position-management/domain/position-management-policy");
 const {
-  AUTO_MANAGEMENT_ADMISSION_MODE,
-  normalizeAutoManagementAdmissionMode
-} = require("./backend/auto-management-admission/domain/auto-management-admission-mode");
+  POSITION_MANAGEMENT_MODE_SETTING,
+  normalizePositionManagementModeSetting
+} = require("./backend/auto-management-admission/domain/position-management-mode-setting");
 const {
-  normalizePricingRuleAutoManagementAdmissionModeOverride,
-  resolvePricingRuleAutoManagementAdmissionMode
+  normalizePricingRulePositionManagementModeSettingOverride,
+  resolvePricingRulePositionManagementModeSetting
 } = require(
   "./backend/auto-management-admission/domain/pricing-rule-admission-policy"
 );
 const {
-  determineInitialAdmissionState,
-  decideReleaseToAutoManagement
+  determineInitialAdmissionState
 } = require("./backend/auto-management-admission/domain/auto-management-admission-decision");
 const {
   migrateAutoManagementTerminology
@@ -161,9 +163,6 @@ const {
 const {
   normalizeAutoManagementAdmissionTradeType
 } = require("./backend/auto-management-admission/domain/auto-management-admission-trade-type");
-const {
-  MoveTradesToAutoManagementUseCase
-} = require("./backend/position-management/application/move-trades-to-auto-management-use-case");
 
 const HOST = "127.0.0.1";
 const UI_TABLE_DEFAULT_CONFIRMATION = "SAVE_AS_DEFAULT";
@@ -331,11 +330,6 @@ const hedgeDealsAlreadyInitialized = Boolean(database.prepare(`
   FROM sqlite_master
   WHERE type = 'table' AND name = 'hedge_deals'
 `).get());
-const tradePositionManagementAlreadyInitialized = Boolean(database.prepare(`
-  SELECT 1 AS present
-  FROM sqlite_master
-  WHERE type = 'table' AND name = 'trade_position_management'
-`).get());
 migrateAutoManagementTerminology(database);
 migrateTradingCounterpartyTerminology(database);
 prepareTradingCounterpartyTradeContextSchema(database);
@@ -343,11 +337,12 @@ if (sqliteTableExists(database, "batches")) {
   ensureBatchFormationTiming(database);
   ensureBatchFormationReason(database);
 }
-migrateTradePositionManagementState(database);
+migrateImmutablePositionManagement(database, fs.readFileSync(SCHEMA_PATH, "utf8"));
 // Upgrade the Trade Context columns before schema.sql creates triggers that
 // reference their current names on an already initialized SQLite database.
 ensurePositionManagementPolicyColumns(database);
 migrateAdmissionEnforcement(database);
+migratePositionManagementSettings(database);
 migrateMinuteCandleLoadResult(database);
 migrateCandleResultAttemptTimestamps(database);
 migrateAggregationTimeframes(database);
@@ -361,12 +356,6 @@ if (sqliteTableExists(database, "trading_counterparties")
   dropTradingCounterpartyProfileIntegrityTriggers(database);
 }
 migrateAutoModeEligibilityRules(database);
-if (!tradePositionManagementAlreadyInitialized) {
-  database.exec(`
-    DROP TRIGGER IF EXISTS trg_trade_position_management_initialize;
-    DROP TABLE IF EXISTS trade_position_management;
-  `);
-}
 database.exec("DROP VIEW IF EXISTS analytical_pnl_report");
 database.exec("DROP VIEW IF EXISTS v_batch_formation_audit");
 dropTradingCounterpartyTradeContextIntegrityTriggers(database);
@@ -427,7 +416,6 @@ ensureBatchFormationTiming(database);
 ensureBatchFormationReason(database);
 ensurePositionManagementPolicyColumns(database);
 ensureTradePositionManagementRows(database);
-repairLegacyBatchTechnicalTradeManagementModes(database);
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 ensureHedgeDealTriggers(database);
 
@@ -885,6 +873,7 @@ function sqliteTableExists(sqlite, tableName) {
 }
 
 function ensurePositionManagementPolicyColumns(sqlite) {
+  if (tableColumnNames(sqlite, "trade_contexts").has("position_management_mode")) return;
   if (sqliteTableExists(sqlite, "trade_contexts")) {
     const contextColumns = tableColumnNames(sqlite, "trade_contexts");
 
@@ -939,154 +928,6 @@ function ensurePositionManagementPolicyColumns(sqlite) {
   }
 }
 
-function migrateTradePositionManagementState(sqlite) {
-  if (!sqliteTableExists(sqlite, "trade_position_management")) {
-    return;
-  }
-
-  const columns = tableColumnNames(sqlite, "trade_position_management");
-  const canonicalColumns = [
-    "trade_id",
-    "trade_type",
-    "initial_position_management_mode",
-    "current_position_management_mode",
-    "created_at",
-    "updated_at"
-  ];
-
-  if (
-    columns.size === canonicalColumns.length
-    && canonicalColumns.every(column => columns.has(column))
-  ) {
-    return;
-  }
-
-  const legacyCurrentColumn = columns.has("current_position_management_mode")
-    ? "current_position_management_mode"
-    : columns.has("position_management_mode")
-      ? "position_management_mode"
-      : null;
-  const initialColumn = columns.has("initial_position_management_mode")
-    ? "initial_position_management_mode"
-    : legacyCurrentColumn;
-  const requiredColumns = ["trade_id", "trade_type", "created_at", "updated_at"];
-
-  if (
-    !legacyCurrentColumn
-    || !initialColumn
-    || requiredColumns.some(column => !columns.has(column))
-  ) {
-    throw new Error(
-      "Trade Position Management schema cannot be migrated safely."
-    );
-  }
-
-  const originalRowCount = Number(sqlite.prepare(`
-    SELECT COUNT(*) AS count
-    FROM trade_position_management
-  `).get().count);
-
-  sqlite.exec("PRAGMA foreign_keys = OFF");
-
-  try {
-    sqlite.exec("BEGIN IMMEDIATE");
-    sqlite.exec(`
-      DROP TRIGGER IF EXISTS trg_trade_position_management_initialize;
-      DROP INDEX IF EXISTS idx_trade_position_management_mode;
-      DROP INDEX IF EXISTS idx_trade_position_management_current_mode;
-
-      CREATE TABLE trade_position_management_migrated
-      (
-          trade_id                          INTEGER NOT NULL,
-          trade_type                        TEXT    NOT NULL,
-          initial_position_management_mode  TEXT    NOT NULL DEFAULT 'MANUAL',
-          current_position_management_mode  TEXT    NOT NULL DEFAULT 'MANUAL',
-          created_at                        TEXT    NOT NULL
-              DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-          updated_at                        TEXT    NOT NULL
-              DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-
-          CONSTRAINT pk_trade_position_management
-              PRIMARY KEY (trade_id, trade_type),
-          CONSTRAINT fk_trade_position_management_trade
-              FOREIGN KEY (trade_id, trade_type)
-                  REFERENCES trade_exposures (trade_id, trade_type)
-                  ON UPDATE RESTRICT
-                  ON DELETE CASCADE,
-          CONSTRAINT chk_trade_position_management_initial_mode
-              CHECK (initial_position_management_mode IN ('MANUAL', 'AUTO')),
-          CONSTRAINT chk_trade_position_management_current_mode
-              CHECK (current_position_management_mode IN ('MANUAL', 'AUTO')),
-          CONSTRAINT chk_trade_position_management_created_at
-              CHECK (
-                  length(created_at) = 24
-                  AND created_at GLOB '????-??-??T??:??:??.???Z'
-                  AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at
-              ),
-          CONSTRAINT chk_trade_position_management_updated_at
-              CHECK (
-                  length(updated_at) = 24
-                  AND updated_at GLOB '????-??-??T??:??:??.???Z'
-                  AND strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) = updated_at
-                  AND updated_at >= created_at
-              )
-      );
-
-      INSERT INTO trade_position_management_migrated
-        (
-          trade_id,
-          trade_type,
-          initial_position_management_mode,
-          current_position_management_mode,
-          created_at,
-          updated_at
-        )
-      SELECT
-        trade_id,
-        trade_type,
-        ${initialColumn},
-        ${legacyCurrentColumn},
-        created_at,
-        updated_at
-      FROM trade_position_management
-      ORDER BY trade_id, trade_type;
-
-      DROP TABLE trade_position_management;
-      ALTER TABLE trade_position_management_migrated
-        RENAME TO trade_position_management;
-    `);
-
-    const migratedRowCount = Number(sqlite.prepare(`
-      SELECT COUNT(*) AS count
-      FROM trade_position_management
-    `).get().count);
-
-    if (migratedRowCount !== originalRowCount) {
-      throw new Error(
-        "Trade Position Management migration did not preserve every row."
-      );
-    }
-
-    sqlite.exec("COMMIT");
-  } catch (error) {
-    try {
-      sqlite.exec("ROLLBACK");
-    } catch {}
-
-    throw error;
-  } finally {
-    sqlite.exec("PRAGMA foreign_keys = ON");
-  }
-
-  const foreignKeyViolations = sqlite.prepare("PRAGMA foreign_key_check").all();
-
-  if (foreignKeyViolations.length > 0) {
-    throw new Error(
-      "Trade Position Management migration produced foreign key violations."
-    );
-  }
-}
-
 function ensureTradePositionManagementRows(sqlite) {
   if (!sqliteTableExists(sqlite, "trade_position_management")) {
     return;
@@ -1097,13 +938,11 @@ function ensureTradePositionManagementRows(sqlite) {
       (
         trade_id,
         trade_type,
-        initial_position_management_mode,
-        current_position_management_mode
+        position_management_mode
       )
     SELECT
       exposure.trade_id,
       exposure.trade_type,
-      'MANUAL',
       'MANUAL'
     FROM trade_exposures exposure
     WHERE NOT EXISTS
@@ -1113,72 +952,6 @@ function ensureTradePositionManagementRows(sqlite) {
       WHERE management.trade_id = exposure.trade_id
         AND management.trade_type = exposure.trade_type
     )
-  `);
-}
-
-function repairLegacyBatchTechnicalTradeManagementModes(sqlite) {
-  const requiredTables = [
-    "batches",
-    "batch_members",
-    "trade_position_management"
-  ];
-
-  if (requiredTables.some(tableName => !sqliteTableExists(sqlite, tableName))) {
-    return;
-  }
-
-  sqlite.exec(`
-    UPDATE trade_position_management
-    SET initial_position_management_mode = 'AUTO',
-        current_position_management_mode = 'AUTO',
-        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-    WHERE trade_type IN ('BATCH_BALANCE_TRADE', 'BATCH_POSITION_OUT')
-      AND initial_position_management_mode = 'MANUAL'
-      AND current_position_management_mode = 'MANUAL'
-      AND EXISTS
-      (
-        SELECT 1
-        FROM batch_members output_member
-        INNER JOIN batches batch
-          ON batch.batch_id = output_member.batch_id
-        WHERE output_member.trade_id = trade_position_management.trade_id
-          AND output_member.trade_type = trade_position_management.trade_type
-          AND
-          (
-            (
-              trade_position_management.trade_type = 'BATCH_BALANCE_TRADE'
-              AND output_member.member_role = 'BALANCE_TRADE'
-            )
-            OR
-            (
-              trade_position_management.trade_type = 'BATCH_POSITION_OUT'
-              AND output_member.member_role = 'POSITION_OUT'
-            )
-          )
-          AND batch.batch_status = 'FORMED'
-          AND EXISTS
-          (
-            SELECT 1
-            FROM batch_members source_member
-            WHERE source_member.batch_id = output_member.batch_id
-              AND source_member.member_role = 'TRADE'
-          )
-          AND NOT EXISTS
-          (
-            SELECT 1
-            FROM batch_members source_member
-            LEFT JOIN trade_position_management source_management
-              ON source_management.trade_id = source_member.trade_id
-              AND source_management.trade_type = source_member.trade_type
-            WHERE source_member.batch_id = output_member.batch_id
-              AND source_member.member_role = 'TRADE'
-              AND
-              (
-                source_management.current_position_management_mode IS NULL
-                OR source_management.current_position_management_mode <> 'AUTO'
-              )
-          )
-      )
   `);
 }
 
@@ -6347,26 +6120,26 @@ function migrateLegacyTradeContextIds(sqlite) {
         ELSE 'MANUAL'
       END`
     : "'MANUAL'";
-  const legacyAdmissionColumn = columnByName.has("auto_management_admission_mode")
-    ? "auto_management_admission_mode"
+  const legacyAdmissionColumn = columnByName.has("position_management_mode")
+    ? "position_management_mode"
     : columnByName.has("auto_management_admission_policy")
       ? "auto_management_admission_policy"
       : null;
   const legacyAdmissionModeExpression = legacyAdmissionColumn
     ? `CASE
         WHEN ${legacyAdmissionColumn} IN
-          ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED')
+          ('AUTO_IF_ELIGIBLE', 'MANUAL')
           THEN ${legacyAdmissionColumn}
         WHEN ${legacyDefaultModeExpression} = 'AUTO' THEN 'AUTO_IF_ELIGIBLE'
-        ELSE 'REVIEW_REQUIRED'
+        ELSE 'MANUAL'
       END`
     : `CASE
         WHEN ${legacyDefaultModeExpression} = 'AUTO' THEN 'AUTO_IF_ELIGIBLE'
-        ELSE 'REVIEW_REQUIRED'
+        ELSE 'MANUAL'
       END`;
   const contextInsertColumns = `${preserveIntegerIds ? "trade_context_id, " : ""}`
     + "servicing_location_id, accounting_system_id, originating_system_id, "
-    + "auto_management_admission_mode";
+    + "position_management_mode";
   const contextSelectColumns = `${preserveIntegerIds ? "trade_context_id, " : ""}`
     + "servicing_location_id, accounting_system_id, originating_system_id, "
     + legacyAdmissionModeExpression;
@@ -6375,8 +6148,8 @@ function migrateLegacyTradeContextIds(sqlite) {
       .map(column => column.name)
   );
   const admissionModeOverrideExpression = pricingRuleColumns
-    .has("auto_management_admission_mode_override")
-    ? "rule.auto_management_admission_mode_override"
+    .has("position_management_mode_override")
+    ? "rule.position_management_mode_override"
     : "NULL";
 
   sqlite.exec("PRAGMA foreign_keys = OFF");
@@ -6393,7 +6166,7 @@ function migrateLegacyTradeContextIds(sqlite) {
           servicing_location_id TEXT NOT NULL,
           accounting_system_id  TEXT,
           originating_system_id   TEXT NOT NULL,
-          auto_management_admission_mode TEXT NOT NULL DEFAULT 'REVIEW_REQUIRED',
+          position_management_mode TEXT NOT NULL DEFAULT 'MANUAL',
 
           CONSTRAINT fk_trade_contexts_servicing_location
               FOREIGN KEY (servicing_location_id)
@@ -6410,10 +6183,10 @@ function migrateLegacyTradeContextIds(sqlite) {
                   REFERENCES originating_systems (originating_system_id)
                   ON UPDATE RESTRICT
                   ON DELETE RESTRICT,
-          CONSTRAINT chk_trade_contexts_auto_management_admission_mode
+          CONSTRAINT chk_trade_contexts_position_management_mode
               CHECK (
-                  auto_management_admission_mode IN
-                      ('AUTO_IF_ELIGIBLE', 'REVIEW_REQUIRED')
+                  position_management_mode IN
+                      ('AUTO_IF_ELIGIBLE', 'MANUAL')
               )
       );
 
@@ -6461,7 +6234,7 @@ function migrateLegacyTradeContextIds(sqlite) {
           trade_context_id INTEGER NOT NULL,
           ccy_pair_code        TEXT    NOT NULL,
           margin_percent       REAL    NOT NULL,
-          auto_management_admission_mode_override TEXT,
+          position_management_mode_override TEXT,
 
           CONSTRAINT fk_pricing_rules_counterparty
               FOREIGN KEY (counterparty_id)
@@ -6482,10 +6255,10 @@ function migrateLegacyTradeContextIds(sqlite) {
               UNIQUE (counterparty_id, trade_context_id, ccy_pair_code),
           CONSTRAINT chk_pricing_rules_margin
               CHECK (margin_percent >= 0 AND margin_percent < 100),
-          CONSTRAINT chk_pricing_rules_auto_management_admission_mode_override
+          CONSTRAINT chk_pricing_rules_position_management_mode_override
               CHECK (
-                  auto_management_admission_mode_override IS NULL
-                  OR auto_management_admission_mode_override = 'REVIEW_REQUIRED'
+                  position_management_mode_override IS NULL
+                  OR position_management_mode_override = 'MANUAL'
               )
       );
 
@@ -6496,7 +6269,7 @@ function migrateLegacyTradeContextIds(sqlite) {
           trade_context_id,
           ccy_pair_code,
           margin_percent,
-          auto_management_admission_mode_override
+          position_management_mode_override
         )
       SELECT
         rule.pricing_rule_id,
@@ -7526,13 +7299,13 @@ function seedInitialTradeContexts(sqlite) {
         servicing_location_id,
         accounting_system_id,
         originating_system_id,
-        auto_management_admission_mode
+        position_management_mode
       )
     VALUES
       ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE'),
-      ('002', 'AFINA', 'RFQ', 'REVIEW_REQUIRED'),
-      ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'REVIEW_REQUIRED'),
-      ('1234', 'AFINA', 'RFQ', 'REVIEW_REQUIRED'),
+      ('002', 'AFINA', 'RFQ', 'MANUAL'),
+      ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL'),
+      ('1234', 'AFINA', 'RFQ', 'MANUAL'),
       ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE');
   `);
 }
@@ -7787,6 +7560,7 @@ function seedInitialClientDeals(sqlite) {
         )
     `).run();
     const tradeId = Number(exposureResult.lastInsertRowid);
+    materializeTradePositionModeState(sqlite, { tradeId, tradeType: "CLIENT_DEAL", positionManagementMode: "MANUAL" });
     const clientResult = sqlite.prepare(`
       INSERT INTO client_deals
         (
@@ -7897,7 +7671,7 @@ function ccyPairOption(pairCode) {
   `).get(pairCode) || null;
 }
 
-function tradeContextAdmissionMode(tradeContextId) {
+function tradeContextPositionManagementMode(tradeContextId) {
   const normalizedId = normalizedTradeContextId(tradeContextId);
 
   if (normalizedId === null) {
@@ -7905,10 +7679,10 @@ function tradeContextAdmissionMode(tradeContextId) {
   }
 
   return database.prepare(`
-    SELECT auto_management_admission_mode AS autoManagementAdmissionMode
+    SELECT position_management_mode AS positionManagementMode
     FROM trade_contexts
     WHERE trade_context_id = ?
-  `).get(normalizedId)?.autoManagementAdmissionMode ?? null;
+  `).get(normalizedId)?.positionManagementMode ?? null;
 }
 
 function pricingRuleAutoManagementAdmissionPolicy(
@@ -7918,15 +7692,15 @@ function pricingRuleAutoManagementAdmissionPolicy(
   const normalizedContextId = normalizedTradeContextId(tradeContextId);
 
   if (pricingRuleId === null || pricingRuleId === undefined) {
-    const tradeContextMode = tradeContextAdmissionMode(normalizedContextId);
+    const tradeContextMode = tradeContextPositionManagementMode(normalizedContextId);
 
     return {
-      autoManagementAdmissionModeOverride: null,
-      tradeContextAdmissionMode: tradeContextMode,
-      effectiveAutoManagementAdmissionMode:
-        resolvePricingRuleAutoManagementAdmissionMode({
-          autoManagementAdmissionModeOverride: null,
-          tradeContextAdmissionMode: tradeContextMode
+      positionManagementModeOverride: null,
+      tradeContextPositionManagementMode: tradeContextMode,
+      effectivePositionManagementMode:
+        resolvePricingRulePositionManagementModeSetting({
+          positionManagementModeOverride: null,
+          tradeContextPositionManagementMode: tradeContextMode
         })
     };
   }
@@ -7940,9 +7714,9 @@ function pricingRuleAutoManagementAdmissionPolicy(
     ? null
     : database.prepare(`
         SELECT
-          rule.auto_management_admission_mode_override
-            AS autoManagementAdmissionModeOverride,
-          context.auto_management_admission_mode AS tradeContextAdmissionMode
+          rule.position_management_mode_override
+            AS positionManagementModeOverride,
+          context.position_management_mode AS tradeContextPositionManagementMode
         FROM pricing_rules rule
         INNER JOIN trade_contexts context
           ON context.trade_context_id = rule.trade_context_id
@@ -7952,14 +7726,14 @@ function pricingRuleAutoManagementAdmissionPolicy(
 
   if (!policy) {
     throw new Error(
-      `Initial Mode Assignment was not found for Pricing Rule ${pricingRuleId} and Trade Context ${tradeContextId}.`
+      `Position Management Mode was not found for Pricing Rule ${pricingRuleId} and Trade Context ${tradeContextId}.`
     );
   }
 
   return {
     ...policy,
-    effectiveAutoManagementAdmissionMode:
-      resolvePricingRuleAutoManagementAdmissionMode(policy)
+    effectivePositionManagementMode:
+      resolvePricingRulePositionManagementModeSetting(policy)
   };
 }
 
@@ -8246,15 +8020,12 @@ function autoModeEligibilityRule(ccyPairCode, tradeType) {
   };
 }
 
-function evaluateTradeAdmission(tradeType, payload, exposureAmounts, stage = "INITIAL") {
+function evaluateTradeAdmission(tradeType, payload, exposureAmounts) {
   const eligibilityRule = autoModeEligibilityRule(payload.ccyPairCode, tradeType);
-  const admissionMode = stage === "INITIAL"
-    ? pricingRuleAutoManagementAdmissionPolicy(
-        payload.pricingRuleId, payload.tradeContextId
-      ).effectiveAutoManagementAdmissionMode
-    : null;
-  const evaluate = stage === "RELEASE" ? decideReleaseToAutoManagement : determineInitialAdmissionState;
-  return evaluate({
+  const admissionMode = pricingRuleAutoManagementAdmissionPolicy(
+    payload.pricingRuleId, payload.tradeContextId
+  ).effectivePositionManagementMode;
+  return determineInitialAdmissionState({
       admissionMode,
       ccyPairCode: payload.ccyPairCode,
       baseCcyAmountMinor: exposureAmounts.baseCcyAmountMinor,
@@ -8288,24 +8059,6 @@ function materializeTradeAdmission(identity, payload, exposureAmounts) {
     positionManagementMode: decision.state === "RELEASED" ? "AUTO" : "MANUAL"
   });
   recordTradeAdmissionDecision(identity, decision, "INITIAL");
-}
-
-function evaluateTradeRelease(identity) {
-  const trade = database.prepare(`
-    SELECT exposure.ccy_pair_code AS ccyPairCode, exposure.base_ccy_side AS side,
-      exposure.base_ccy_amount_minor AS baseCcyAmountMinor,
-      COALESCE(client.transfer_rate, hedge.transfer_rate) AS transferRate
-    FROM trade_exposures exposure
-    LEFT JOIN client_deals client USING (trade_id, trade_type)
-    LEFT JOIN hedge_deals hedge USING (trade_id, trade_type)
-    WHERE exposure.trade_id = ? AND exposure.trade_type = ?
-  `).get(identity.tradeId, identity.tradeType);
-  const market = marketPulseSimulator.snapshot();
-  const quote = market.quotes.find(item => item.pairCode === trade.ccyPairCode);
-  return evaluateTradeAdmission(identity.tradeType, {
-    ...trade, marketPulseStreamStatus: market.status,
-    marketPulseBid: quote?.bid, marketPulseOffer: quote?.offer
-  }, trade, "RELEASE");
 }
 
 function tradeExposureAmounts(payload, generatedAmounts = null) {
@@ -8580,7 +8333,7 @@ function tradeContexts() {
       context.servicing_location_id AS servicingLocationId,
       COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
       context.originating_system_id AS originatingSystemId,
-      context.auto_management_admission_mode AS autoManagementAdmissionMode,
+      context.position_management_mode AS positionManagementMode,
       (
         SELECT COUNT(*)
         FROM trading_counterparty_trade_contexts assignment
@@ -8658,7 +8411,7 @@ function tradingCounterpartyTradeContexts(counterpartyId) {
       context.servicing_location_id AS servicingLocationId,
       COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
       context.originating_system_id AS originatingSystemId,
-      context.auto_management_admission_mode AS autoManagementAdmissionMode,
+      context.position_management_mode AS positionManagementMode,
       (
         SELECT COUNT(*)
         FROM trading_counterparty_trade_contexts context_assignment
@@ -8726,8 +8479,8 @@ function pricingRules(pricingMode = null) {
       c.base_ccy_code || '/' || c.quote_ccy_code AS currencyPair,
       r.margin_percent AS marginPercent,
       e.pricing_mode AS pricingMode,
-      r.auto_management_admission_mode_override AS autoManagementAdmissionModeOverride,
-      x.auto_management_admission_mode AS tradeContextAdmissionMode,
+      r.position_management_mode_override AS positionManagementModeOverride,
+      x.position_management_mode AS tradeContextPositionManagementMode,
       (
         SELECT COUNT(*)
         FROM hedge_quick_mode_settings settings
@@ -8745,8 +8498,8 @@ function pricingRules(pricingMode = null) {
 
     return {
       ...rule,
-      effectiveAutoManagementAdmissionMode:
-        resolvePricingRuleAutoManagementAdmissionMode(rule),
+      effectivePositionManagementMode:
+        resolvePricingRulePositionManagementModeSetting(rule),
       counterpartyType: counterparty?.counterpartyType || "",
       counterpartyRoles: counterparty?.counterpartyRoles || [],
       counterpartyScope: counterparty?.counterpartyScope || "",
@@ -9277,14 +9030,9 @@ function clientDeals() {
       e.trade_id AS tradeId,
       e.trade_id AS clientDealId,
       COALESCE(
-        management.initial_position_management_mode,
-        management.current_position_management_mode,
+        management.position_management_mode,
         'MANUAL'
-      ) AS initialPositionManagementMode,
-      COALESCE(
-        management.current_position_management_mode,
-        'MANUAL'
-      ) AS currentPositionManagementMode,
+      ) AS positionManagementMode,
       e.execution_timestamp AS executionTimestamp,
       e.received_timestamp AS receivedTimestamp,
       d.counterparty_id AS counterpartyId,
@@ -9342,14 +9090,9 @@ function hedgeDeals() {
       e.trade_id AS tradeId,
       e.trade_id AS hedgeDealId,
       COALESCE(
-        management.initial_position_management_mode,
-        management.current_position_management_mode,
+        management.position_management_mode,
         'MANUAL'
-      ) AS initialPositionManagementMode,
-      COALESCE(
-        management.current_position_management_mode,
-        'MANUAL'
-      ) AS currentPositionManagementMode,
+      ) AS positionManagementMode,
       e.execution_timestamp AS executionTimestamp,
       e.received_timestamp AS receivedTimestamp,
       d.request_timestamp AS requestTimestamp,
@@ -9491,19 +9234,9 @@ function positions() {
       e.trade_id AS tradeId,
       e.trade_type AS tradeType,
       COALESCE(
-        management.initial_position_management_mode,
-        management.current_position_management_mode,
-        'MANUAL'
-      ) AS initialPositionManagementMode,
-      COALESCE(
-        management.current_position_management_mode,
-        'MANUAL'
-      ) AS currentPositionManagementMode,
-      COALESCE(
-        management.current_position_management_mode,
+        management.position_management_mode,
         'MANUAL'
       ) AS positionManagementMode,
-      management.updated_at AS positionManagementModeChangedAt,
       e.execution_timestamp AS executionTimestamp,
       e.received_timestamp AS receivedTimestamp,
       e.trade_date AS tradeDate,
@@ -10087,7 +9820,7 @@ function batchSourceTrades(tradeIds) {
       e.base_ccy_value_date AS baseCcyValueDate,
       e.quote_ccy_value_date AS quoteCcyValueDate,
       pair.default_quote_decimals AS rateFractionDigits,
-      management.current_position_management_mode AS currentPositionManagementMode
+      management.position_management_mode AS positionManagementMode
     FROM trade_exposures e
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = e.ccy_pair_code
     INNER JOIN trade_position_management management
@@ -10561,130 +10294,15 @@ function materializeTradePositionModeState(sqlite, {
 }) {
   const normalizedMode = normalizePositionManagementMode(
     positionManagementMode,
-    "Initial Position Management Mode"
+    "Position Management Mode"
   );
-  const result = sqlite.prepare(`
-    UPDATE trade_position_management
-    SET initial_position_management_mode = ?,
-        current_position_management_mode = ?,
-        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-    WHERE trade_id = ? AND trade_type = ?
-  `).run(normalizedMode, normalizedMode, tradeId, tradeType);
-
-  if (result.changes !== 1) {
-    throw new Error(
-      `Position Management Mode state was not initialized for ${tradeType} ${tradeId}.`
-    );
-  }
+  sqlite.prepare(`
+    INSERT INTO trade_position_management (trade_id, trade_type, position_management_mode)
+    VALUES (?, ?, ?)
+  `).run(tradeId, tradeType, normalizedMode);
 
   return normalizedMode;
 }
-
-function tradePositionManagementStates(identities) {
-  const findState = database.prepare(`
-    SELECT
-      management.trade_id AS tradeId,
-      management.trade_type AS tradeType,
-      management.initial_position_management_mode AS initialPositionManagementMode,
-      management.current_position_management_mode AS currentPositionManagementMode,
-      EXISTS
-      (
-        SELECT 1
-        FROM batch_members member
-        INNER JOIN batches batch ON batch.batch_id = member.batch_id
-        WHERE member.trade_id = management.trade_id
-          AND member.trade_type = management.trade_type
-          AND member.member_role IN ('TRADE', 'BALANCE_TRADE')
-          AND batch.batch_status IN
-            (${BATCH_MEMBERSHIP_BLOCKING_STATUS_PLACEHOLDERS})
-      ) AS batchBlocked,
-      transition.transitioned_at AS transitionedAt
-    FROM trade_position_management management
-    LEFT JOIN trade_position_management_transitions transition
-      ON transition.trade_id = management.trade_id
-      AND transition.trade_type = management.trade_type
-      AND transition.reason_code = 'MANUAL_REVIEW_COMPLETED'
-    WHERE management.trade_id = ?
-      AND management.trade_type = ?
-  `);
-
-  return identities.map(identity => findState.get(
-    ...BATCH_MEMBERSHIP_BLOCKING_STATUSES,
-    identity.tradeId,
-    identity.tradeType
-  )).filter(Boolean);
-}
-
-function saveTradePositionManagementTransition({
-  identity,
-  initialPositionManagementMode,
-  previousPositionManagementMode,
-  currentPositionManagementMode,
-  transitionReason,
-  transitionedAt
-}) {
-  const update = database.prepare(`
-    UPDATE trade_position_management
-    SET current_position_management_mode = ?,
-        updated_at = ?
-    WHERE trade_id = ?
-      AND trade_type = ?
-      AND initial_position_management_mode = ?
-      AND current_position_management_mode = ?
-  `).run(
-    currentPositionManagementMode,
-    transitionedAt,
-    identity.tradeId,
-    identity.tradeType,
-    initialPositionManagementMode,
-    previousPositionManagementMode
-  );
-
-  if (update.changes !== 1) {
-    const error = new Error(
-      `Trade ${identity.tradeId} (${identity.tradeType}) changed during the Position Management Mode transition.`
-    );
-    error.code = "POSITION_MODE_TRANSITION_CONFLICT";
-    throw error;
-  }
-
-  database.prepare(`
-    INSERT INTO trade_position_management_transitions
-      (
-        trade_id,
-        trade_type,
-        from_position_management_mode,
-        to_position_management_mode,
-        reason_code,
-        transition_source,
-        transitioned_at
-      )
-    VALUES (?, ?, ?, ?, ?, 'OPERATOR', ?)
-  `).run(
-    identity.tradeId,
-    identity.tradeType,
-    previousPositionManagementMode,
-    currentPositionManagementMode,
-    transitionReason,
-    transitionedAt
-  );
-}
-
-const moveTradesToAutoManagementUseCase =
-  new MoveTradesToAutoManagementUseCase({
-    clock: () => database.prepare("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now') AS timestamp").get().timestamp,
-    transactionRunner: {
-      run: operation => runInImmediateTransaction(database, operation)
-    },
-    admissionPolicy: {
-      evaluateRelease: evaluateTradeRelease,
-      recordRelease: (identity, decision) => recordTradeAdmissionDecision(identity, decision, "RELEASE")
-    },
-    tradePositionManagementRepository: {
-      findByIdentities: tradePositionManagementStates,
-      saveTransition: saveTradePositionManagementTransition
-    }
-  });
 
 function nextAutoBatchPlan({
   afterTradeId = 0,
@@ -11190,12 +10808,6 @@ function demoTradeTableCounts() {
     positionManagementStates: Number(
       database.prepare("SELECT COUNT(*) AS count FROM trade_position_management").get().count
     ),
-    positionManagementTransitions: Number(
-      database.prepare(`
-        SELECT COUNT(*) AS count
-        FROM trade_position_management_transitions
-      `).get().count
-    ),
     batches: Number(database.prepare("SELECT COUNT(*) AS count FROM batches").get().count),
     batchMembers: Number(database.prepare("SELECT COUNT(*) AS count FROM batch_members").get().count),
     batchBalanceTrades: Number(
@@ -11253,8 +10865,7 @@ function resetDemoTrades() {
       DELETE FROM sqlite_sequence
       WHERE name IN
         (
-          'batches',
-          'trade_position_management_transitions'
+          'batches'
         );
     `);
 
@@ -11622,13 +11233,13 @@ function validatedPositionManagementMode(value, label, { nullable = false } = {}
   }
 }
 
-function validatedAutoManagementAdmissionMode(value) {
+function validatedPositionManagementModeSetting(value) {
   try {
-    return { value: normalizeAutoManagementAdmissionMode(value) };
+    return { value: normalizePositionManagementModeSetting(value) };
   } catch (error) {
-    if (error?.code === "INVALID_AUTO_MANAGEMENT_ADMISSION_MODE") {
+    if (error?.code === "INVALID_POSITION_MANAGEMENT_MODE_SETTING") {
       return {
-        error: "Initial Mode Assignment must be AUTO_IF_ELIGIBLE or REVIEW_REQUIRED."
+        error: "Position Management Mode must be AUTO_IF_ELIGIBLE or MANUAL."
       };
     }
 
@@ -11636,16 +11247,16 @@ function validatedAutoManagementAdmissionMode(value) {
   }
 }
 
-function validatedPricingRuleAutoManagementAdmissionModeOverride(value) {
+function validatedPricingRulePositionManagementModeSettingOverride(value) {
   try {
     return {
-      value: normalizePricingRuleAutoManagementAdmissionModeOverride(value)
+      value: normalizePricingRulePositionManagementModeSettingOverride(value)
     };
   } catch (error) {
     if (error?.code ===
-      "INVALID_PRICING_RULE_AUTO_MANAGEMENT_ADMISSION_MODE_OVERRIDE") {
+      "INVALID_PRICING_RULE_POSITION_MANAGEMENT_MODE_SETTING_OVERRIDE") {
       return {
-        error: "Pricing Rule Initial Mode Assignment override must be REVIEW_REQUIRED, or null to use the Trade Context value."
+        error: "Pricing Rule Position Management Mode override must be MANUAL, or null to use the Trade Context value."
       };
     }
 
@@ -11661,15 +11272,15 @@ function validateTradeContextPayload(body, current = null) {
   const servicingLocationId = normalizedServicingLocationId(body.servicingLocationId);
   const accountingSystemId = normalizedAccountingSystemId(body.accountingSystemId);
   const originatingSystemId = normalizedOriginatingSystemId(body.originatingSystemId);
-  const requestedAutoManagementAdmissionMode = Object.prototype.hasOwnProperty.call(
+  const requestedPositionManagementModeSetting = Object.prototype.hasOwnProperty.call(
     body,
-    "autoManagementAdmissionMode"
+    "positionManagementMode"
   )
-    ? body.autoManagementAdmissionMode
-    : current?.autoManagementAdmissionMode
-      ?? AUTO_MANAGEMENT_ADMISSION_MODE.REVIEW_REQUIRED;
-  const autoManagementAdmissionMode = validatedAutoManagementAdmissionMode(
-    requestedAutoManagementAdmissionMode
+    ? body.positionManagementMode
+    : current?.positionManagementMode
+      ?? POSITION_MANAGEMENT_MODE_SETTING.MANUAL;
+  const positionManagementMode = validatedPositionManagementModeSetting(
+    requestedPositionManagementModeSetting
   );
 
   if (!isValidServicingLocationId(servicingLocationId)) {
@@ -11684,13 +11295,13 @@ function validateTradeContextPayload(body, current = null) {
     return { error: "Originating System ID is invalid." };
   }
 
-  if (autoManagementAdmissionMode.error) {
-    return autoManagementAdmissionMode;
+  if (positionManagementMode.error) {
+    return positionManagementMode;
   }
 
   const referencedOriginatingSystem = originatingSystem(originatingSystemId);
 
-  if (autoManagementAdmissionMode.value === AUTO_MANAGEMENT_ADMISSION_MODE.AUTO_IF_ELIGIBLE
+  if (positionManagementMode.value === POSITION_MANAGEMENT_MODE_SETTING.AUTO_IF_ELIGIBLE
     && referencedOriginatingSystem
     && referencedOriginatingSystem.pricingMode !== "AUTO_PRICED") {
     return {
@@ -11705,7 +11316,7 @@ function validateTradeContextPayload(body, current = null) {
       ? null
       : accountingSystemId,
     originatingSystemId,
-    autoManagementAdmissionMode: autoManagementAdmissionMode.value
+    positionManagementMode: positionManagementMode.value
   };
 }
 
@@ -11940,13 +11551,13 @@ function validatePricingRulePayload(body) {
   const tradeContextId = normalizedTradeContextId(body.tradeContextId);
   const ccyPairCode = normalizedText(body.ccyPairCode).toUpperCase();
   const marginPercent = Number(body.marginPercent);
-  const autoManagementAdmissionModeOverride =
-    validatedPricingRuleAutoManagementAdmissionModeOverride(
+  const positionManagementModeOverride =
+    validatedPricingRulePositionManagementModeSettingOverride(
       Object.prototype.hasOwnProperty.call(
         body,
-        "autoManagementAdmissionModeOverride"
+        "positionManagementModeOverride"
       )
-        ? body.autoManagementAdmissionModeOverride
+        ? body.positionManagementModeOverride
         : null
     );
 
@@ -11966,8 +11577,8 @@ function validatePricingRulePayload(body) {
     return { error: "Margin Percent must be a number from 0 up to, but not including, 100." };
   }
 
-  if (autoManagementAdmissionModeOverride.error) {
-    return autoManagementAdmissionModeOverride;
+  if (positionManagementModeOverride.error) {
+    return positionManagementModeOverride;
   }
 
   return {
@@ -11975,7 +11586,7 @@ function validatePricingRulePayload(body) {
     tradeContextId,
     ccyPairCode,
     marginPercent,
-    autoManagementAdmissionModeOverride: autoManagementAdmissionModeOverride.value
+    positionManagementModeOverride: positionManagementModeOverride.value
   };
 }
 
@@ -11985,16 +11596,16 @@ function validatePricingRuleUpdatePayload(body, current) {
   }
 
   const hasMarginPercent = Object.prototype.hasOwnProperty.call(body, "marginPercent");
-  const hasAutoManagementAdmissionModeOverride =
+  const hasPositionManagementModeSettingOverride =
     Object.prototype.hasOwnProperty.call(
       body,
-      "autoManagementAdmissionModeOverride"
+      "positionManagementModeOverride"
     );
 
   if (!hasMarginPercent
-    && !hasAutoManagementAdmissionModeOverride) {
+    && !hasPositionManagementModeSettingOverride) {
     return {
-      error: "Pricing Rule update must include Margin Percent or Initial Mode Assignment override."
+      error: "Pricing Rule update must include Margin Percent or Position Management Mode override."
     };
   }
 
@@ -12011,20 +11622,20 @@ function validatePricingRuleUpdatePayload(body, current) {
     return { error: "Margin Percent must be a number from 0 up to, but not including, 100." };
   }
 
-  const autoManagementAdmissionModeOverride =
-    validatedPricingRuleAutoManagementAdmissionModeOverride(
-      hasAutoManagementAdmissionModeOverride
-        ? body.autoManagementAdmissionModeOverride
-        : current.autoManagementAdmissionModeOverride
+  const positionManagementModeOverride =
+    validatedPricingRulePositionManagementModeSettingOverride(
+      hasPositionManagementModeSettingOverride
+        ? body.positionManagementModeOverride
+        : current.positionManagementModeOverride
     );
 
-  if (autoManagementAdmissionModeOverride.error) {
-    return autoManagementAdmissionModeOverride;
+  if (positionManagementModeOverride.error) {
+    return positionManagementModeOverride;
   }
 
   return {
     marginPercent,
-    autoManagementAdmissionModeOverride: autoManagementAdmissionModeOverride.value
+    positionManagementModeOverride: positionManagementModeOverride.value
   };
 }
 
@@ -13357,43 +12968,6 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (
-    pathname === "/api/v1/positions/move-to-auto-management"
-    && method === "POST"
-  ) {
-    const body = await readJsonBody(request);
-
-    try {
-      const result = moveTradesToAutoManagementUseCase.execute(body);
-
-      if (result.transitionedCount > 0) {
-        autoBatchingProcess.requestEvaluation();
-      }
-
-      sendJson(response, 200, result);
-    } catch (error) {
-      if (
-        error?.code === "INVALID_POSITION_MODE_TRANSITION_COMMAND"
-        || error?.code === "INVALID_TRADE_IDENTITY"
-      ) {
-        apiError(response, 400, error.code, error.message);
-      } else if (error?.code === "POSITION_TRADE_NOT_FOUND") {
-        apiError(response, 404, error.code, error.message);
-      } else if (
-        error?.code === "AUTO_MANAGEMENT_ADMISSION_REJECTED"
-        || error?.code === "POSITION_MODE_TRANSITION_REJECTED"
-        || error?.code === "POSITION_MODE_TRANSITION_BLOCKED"
-        || error?.code === "POSITION_MODE_TRANSITION_CONFLICT"
-      ) {
-        apiError(response, 409, error.code, error.message);
-      } else {
-        handleDatabaseError(response, error);
-      }
-    }
-
-    return true;
-  }
-
   if (pathname === "/api/v1/batching-settings" && method === "GET") {
     sendJson(response, 200, batchingSettings());
     return true;
@@ -13990,7 +13564,7 @@ async function handleApi(request, response, url) {
               trade_context_id,
               ccy_pair_code,
               margin_percent,
-              auto_management_admission_mode_override
+              position_management_mode_override
             )
           VALUES (?, ?, ?, ?, ?)
         `).run(
@@ -13998,7 +13572,7 @@ async function handleApi(request, response, url) {
           payload.tradeContextId,
           payload.ccyPairCode,
           payload.marginPercent,
-          payload.autoManagementAdmissionModeOverride
+          payload.positionManagementModeOverride
         );
         const createdPricingRuleId = Number(result.lastInsertRowid);
         ensureClientDealGenerationSettingsForPricingRule(createdPricingRuleId);
@@ -14030,7 +13604,7 @@ async function handleApi(request, response, url) {
         response,
         409,
         "PRICING_RULE_TERMS_IMMUTABLE",
-        "Counterparty, Ccy Pair and Trade Context cannot be changed. Create a new Pricing Rule for different terms; only Margin Percent and Initial Mode Assignment override can be edited."
+        "Counterparty, Ccy Pair and Trade Context cannot be changed. Create a new Pricing Rule for different terms; only Margin Percent and Position Management Mode override can be edited."
       );
       return true;
     }
@@ -14046,11 +13620,11 @@ async function handleApi(request, response, url) {
       database.prepare(`
         UPDATE pricing_rules
         SET margin_percent = ?,
-            auto_management_admission_mode_override = ?
+            position_management_mode_override = ?
         WHERE pricing_rule_id = ?
       `).run(
         payload.marginPercent,
-        payload.autoManagementAdmissionModeOverride,
+        payload.positionManagementModeOverride,
         pricingRuleId
       );
       sendJson(response, 200, pricingRule(pricingRuleId));
@@ -14928,14 +14502,14 @@ async function handleApi(request, response, url) {
             servicing_location_id,
             accounting_system_id,
             originating_system_id,
-            auto_management_admission_mode
+            position_management_mode
           )
         VALUES (?, ?, ?, ?)
       `).run(
         payload.servicingLocationId,
         payload.accountingSystemDatabaseId,
         payload.originatingSystemId,
-        payload.autoManagementAdmissionMode
+        payload.positionManagementMode
       );
       sendJson(response, 201, tradeContext(Number(result.lastInsertRowid)));
     } catch (error) {
@@ -14992,13 +14566,13 @@ async function handleApi(request, response, url) {
           SET servicing_location_id = ?,
               accounting_system_id = ?,
               originating_system_id = ?,
-              auto_management_admission_mode = ?
+              position_management_mode = ?
           WHERE trade_context_id = ?
         `).run(
           payload.servicingLocationId,
           payload.accountingSystemDatabaseId,
           payload.originatingSystemId,
-          payload.autoManagementAdmissionMode,
+          payload.positionManagementMode,
           currentTradeContextId
         );
         synchronizeClientDealGenerationSettings(database);
@@ -15482,7 +15056,7 @@ if (require.main === module) {
 module.exports = {
   handleApi,
   autoModeEligibilityRules,
-  tradeContextAdmissionMode,
+  tradeContextPositionManagementMode,
   closeDatabase: () => {
     clientDealGenerationProcess.dispose();
     autoBatchingProcess.dispose();

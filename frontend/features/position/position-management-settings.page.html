@@ -19,8 +19,8 @@
             <span>Auto Mode Eligibility</span>
           </a>
 
-          <a class="position-management-settings-navigation-link" id="initialModeAssignmentNavLink" href="#position-management-settings/initial-mode-assignment" data-position-management-settings-section="initial">
-            <span>Initial Mode Assignment</span>
+          <a class="position-management-settings-navigation-link" id="positionManagementModeSettingNavLink" href="#position-management-settings/position-management-mode" data-position-management-settings-section="mode">
+            <span>Position Management Mode</span>
           </a>
         </nav>
       </aside>
@@ -221,11 +221,11 @@
         </form>
       </section>
 
-      <section class="position-management-settings-content-panel auto-management-entry-route-panel" id="initialModeAssignmentPanel" data-position-management-settings-section-panel="initial" aria-labelledby="initialModeAssignmentNavLink" hidden>
-        <section class="auto-management-settings-section" aria-labelledby="initialModeAssignmentTitle">
+      <section class="position-management-settings-content-panel auto-management-entry-route-panel" id="positionManagementModeSettingPanel" data-position-management-settings-section-panel="mode" aria-labelledby="positionManagementModeSettingNavLink" hidden>
+        <section class="auto-management-settings-section" aria-labelledby="positionManagementModeSettingTitle">
           <header class="auto-management-settings-section-head">
-            <h2 id="initialModeAssignmentTitle">Initial Mode Assignment</h2>
-            <p>Rules used when a Client Deal or Hedge Deal is first registered to assign Auto or Manual Mode. Auto Mode can be assigned only when the Trade meets Auto Mode Eligibility requirements.</p>
+            <h2 id="positionManagementModeSettingTitle">Position Management Mode</h2>
+            <p>Assigns Auto or Manual Mode when a Client Deal or Hedge Deal is created. Auto Mode requires Auto Mode Eligibility. Settings changes apply only to new Trades; existing Trades retain their mode.</p>
           </header>
           <div class="auto-management-admission-settings-body auto-management-admission-rule-tree">
             <section class="auto-management-admission-policy-block">
@@ -234,7 +234,7 @@
                 <h3>Trade Context</h3>
                 <p>Assigns Auto Mode if Eligible or Manual Mode when a Trade is registered.</p>
               </div>
-              <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#trade-context?focus=auto-management-admission&amp;return=%23position-management-settings%2Finitial-mode-assignment" aria-label="Open Trade Context settings">
+              <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#trade-context?focus=position-management-mode&amp;return=%23position-management-settings%2Fposition-management-mode" aria-label="Open Trade Context settings">
                 <span class="button-icon" aria-hidden="true">settings</span>
               </a>
             </section>
@@ -244,14 +244,14 @@
                 <h3>Pricing Rule</h3>
                 <p>Uses the Trade Context assignment or overrides it with Manual Mode.</p>
               </div>
-              <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#pricing-rules:external-counterparties?focus=auto-management-admission&amp;return=%23position-management-settings%2Finitial-mode-assignment" aria-label="Open Pricing Rule settings">
+              <a class="btn btn-sm btn-outline-secondary reference-grid-action" href="#pricing-rules:external-counterparties?focus=position-management-mode&amp;return=%23position-management-settings%2Fposition-management-mode" aria-label="Open Pricing Rule settings">
                 <span class="button-icon" aria-hidden="true">settings</span>
               </a>
             </section>
           </div>
           <div class="auto-management-policy-inheritance-note" role="note">
             <span class="button-icon" aria-hidden="true">info</span>
-            <p>Batch Balance Trades and Batch Position Outs inherit Position Management Mode during batch formation and do not use Initial Mode Assignment.</p>
+            <p>Batch Balance Trades and Batch Position Outs inherit Position Management Mode during batch formation rather than Trade Context or Pricing Rule settings.</p>
           </div>
         </section>
       </section>

@@ -826,8 +826,8 @@
     function applyDealsViewMode(scope) {
       const table = scope === "hedge" ? hedgeDealsGrid : clientDealsGrid;
       const auditFields = scope === "hedge"
-        ? ["requestTimestamp", "executionTimestamp", "initialPositionManagementMode", "currentPositionManagementMode"]
-        : ["executionTimestamp", "initialPositionManagementMode", "currentPositionManagementMode"];
+        ? ["requestTimestamp", "executionTimestamp", "positionManagementMode"]
+        : ["executionTimestamp", "positionManagementMode"];
       const showAuditFields = dealsViewMode(scope) === DEALS_VIEW_MODE_AUDIT;
 
       auditFields.forEach(field => {
@@ -928,8 +928,7 @@
           title: "Position Processing",
           cssClass: "client-deals-group-position-processing",
           columns: [
-            clientDealsFilterableColumn("shortText", { title: "Initial Position Management Mode", field: "initialPositionManagementMode", visible: clientDealsViewMode === DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
-            clientDealsFilterableColumn("shortText", { title: "Current Position Management Mode", field: "currentPositionManagementMode", visible: clientDealsViewMode === DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientDealsFilterableColumn("shortText", { title: "Position Management Mode", field: "positionManagementMode", visible: clientDealsViewMode === DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
             clientDealsValueColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
             clientDealsValueColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
           ]
@@ -1138,8 +1137,7 @@
           title: "Position Processing",
           cssClass: "client-deals-group-position-processing",
           columns: [
-            clientDealsFilterableColumn("shortText", { title: "Initial Position Management Mode", field: "initialPositionManagementMode", visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
-            clientDealsFilterableColumn("shortText", { title: "Current Position Management Mode", field: "currentPositionManagementMode", visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
+            clientDealsFilterableColumn("shortText", { title: "Position Management Mode", field: "positionManagementMode", visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT, headerSort: false, formatter: clientDealsPositionManagementModeFormatter, cssClass: "client-deals-col-position-processing" }),
             clientDealsValueColumn("transferRate", { title: "Transfer Rate", field: "transferRate", sorter: "number", formatter: clientDealsRateFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" }),
             clientDealsValueColumn("positionAmount", { title: "Analytical PnL", field: "analyticalPnl", sorter: "number", formatter: clientDealsAnalyticalPnlFormatter, hozAlign: "right", headerHozAlign: "right", cssClass: "client-deals-col-position-processing client-deals-number" })
           ]

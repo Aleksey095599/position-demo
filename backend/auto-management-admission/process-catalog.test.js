@@ -86,7 +86,7 @@ test("Domain Glossary retains shared Auto Hedging vocabulary independently", () 
   const terms = [
     "auto-hedging",
     "auto-management-admission",
-    "trade-context-admission-mode",
+    "trade-context-position-management-mode",
     "auto-mode-eligibility",
     "eligibility-check",
     "admission-state",
@@ -109,7 +109,7 @@ test("Domain Glossary keeps shared Auto Hedging definitions bilingual", () => {
   const sharedKeys = [
     "autoHedgingDefinition",
     "autoManagementAdmissionDefinition",
-    "tradeContextAdmissionModeDefinition",
+    "tradeContextPositionManagementModeDefinition",
     "autoModeEligibilityDefinition",
     "eligibilityCheckDefinition",
     "ccyPairDefinition",

@@ -19,8 +19,8 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   ccy_options_grid: 6,
   ccy_pair_options_grid: 6,
   position_grid: 13,
-  client_deals_grid: 21,
-  hedge_deals_grid: 22,
+  client_deals_grid: 20,
+  hedge_deals_grid: 21,
   analytical_pnl_report_grid: 12,
   analytical_pnl_summary_grid: 3,
   batching_history_grid: 11,
@@ -70,7 +70,7 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 207);
+  assert.equal(fullyQualifiedColumnKeys.size, 205);
 });
 
 test("defines the Ccy Pair Admission Criteria table layout", () => {
@@ -156,22 +156,21 @@ test("keeps Pricing Mode inside Trade Context for pricing rule layouts", () => {
   });
 });
 
-test("keeps Initial and Current Position Management Mode together in deal layouts", () => {
+test("keeps a single Position Management Mode in deal layouts", () => {
   ["client_deals_grid", "hedge_deals_grid"].forEach(tableKey => {
     const columns = UI_TABLE_LAYOUTS[tableKey].columns;
     const modeColumns = columns.filter(column =>
-      ["initial_position_management_mode", "current_position_management_mode"].includes(column.columnKey)
+      ["position_management_mode"].includes(column.columnKey)
     );
 
     assert.deepEqual(
       modeColumns.map(column => [column.columnKey, column.columnLabel]),
       [
-        ["initial_position_management_mode", "Initial Position Management Mode"],
-        ["current_position_management_mode", "Current Position Management Mode"]
+        ["position_management_mode", "Position Management Mode"]
       ]
     );
     assert.equal(
-      columns.findIndex(column => column.columnKey === "current_position_management_mode") + 1,
+      columns.findIndex(column => column.columnKey === "position_management_mode") + 1,
       columns.findIndex(column => column.columnKey === "transfer_rate")
     );
   });

@@ -44,19 +44,19 @@ test("Position Management Settings exposes three peer sections without trade tab
   [
     ["quick-hedge", "quick", "Quick Hedge"],
     ["auto-mode-eligibility", "eligibility", "Auto Mode Eligibility"],
-    ["initial-mode-assignment", "initial", "Initial Mode Assignment"]
+    ["position-management-mode", "mode", "Position Management Mode"]
   ].forEach(([route, section, label]) => {
     assert.ok(sidebar.includes('href="#position-management-settings/' + route + '"'));
     assert.ok(sidebar.includes('data-position-management-settings-section="' + section + '"'));
     assert.ok(sidebar.includes('>' + label + '</span>'));
   });
   assert.doesNotMatch(hedgingPageMarkup, /id="autoManagementSettingsTradeTabs"|role="tablist"/);
-  assert.doesNotMatch(sidebar, /Position Management Mode|Client Deals|Hedge Deals|Technical Trades/);
+  assert.doesNotMatch(sidebar, /Client Deals|Hedge Deals|Technical Trades/);
 });
 
-test("Auto Mode Eligibility and Initial Mode Assignment own separate right-hand panels", () => {
+test("Auto Mode Eligibility and Position Management Mode own separate right-hand panels", () => {
   assert.match(hedgingPageMarkup, /id="autoManagementAdmissionCriteriaPage"[^>]*data-position-management-settings-section-panel="eligibility"/);
-  assert.match(hedgingPageMarkup, /id="initialModeAssignmentPanel"[^>]*data-position-management-settings-section-panel="initial"[^>]*hidden/);
+  assert.match(hedgingPageMarkup, /id="positionManagementModeSettingPanel"[^>]*data-position-management-settings-section-panel="mode"[^>]*hidden/);
   assert.equal((hedgingPageMarkup.match(/id="autoManagementAdmissionCriteriaTable"/g) || []).length, 1);
   assert.doesNotMatch(hedgingPageMarkup, /<h5>Ccy Pair<\/h5>|<h5>Amount Limits<\/h5>|<h5>Transfer Rate Deviation<\/h5>/);
   assert.doesNotMatch(hedgingPageMarkup, /Open Auto Mode Eligibility settings|clientAutoModeEligibilitySettingsButton|hedgeAutoModeEligibilitySettingsButton/);
@@ -65,7 +65,7 @@ test("Auto Mode Eligibility and Initial Mode Assignment own separate right-hand 
 
 test("URL-backed switching controls active navigation and panel visibility", () => {
   assert.match(appScript, /function setPositionManagementSettingsSection\(sectionName\)/);
-  assert.match(appScript, /\["quick", "eligibility", "initial"\]\.includes\(sectionName\)/);
+  assert.match(appScript, /\["quick", "eligibility", "mode"\]\.includes\(sectionName\)/);
   assert.match(appScript, /link\.setAttribute\("aria-current", "page"\)/);
   assert.match(appScript, /link\.removeAttribute\("aria-current"\)/);
   assert.match(appScript, /panel\.hidden = panel\.dataset\.positionManagementSettingsSectionPanel !== normalizedSection/);

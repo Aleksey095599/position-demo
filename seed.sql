@@ -65,13 +65,13 @@ INSERT INTO trade_contexts
         accounting_system_id,
         originating_system_id,
 
-        auto_management_admission_mode
+        position_management_mode
     )
 VALUES
     ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE'),
-    ('002', 'AFINA', 'RFQ', 'REVIEW_REQUIRED'),
-    ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'REVIEW_REQUIRED'),
-    ('1234', 'AFINA', 'RFQ', 'REVIEW_REQUIRED'),
+    ('002', 'AFINA', 'RFQ', 'MANUAL'),
+    ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL'),
+    ('1234', 'AFINA', 'RFQ', 'MANUAL'),
     ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE');
 
 INSERT INTO auto_mode_eligibility_rules
@@ -237,7 +237,7 @@ VALUES
     ('pricing_rules_grid', 'trade_context_id', 'Trade Context ID', 3, 130, 130),
     ('pricing_rules_grid', 'trade_context', 'Trade Context', 4, 596, 596),
     ('pricing_rules_grid', 'ccy_pair', 'Ccy Pair', 5, 88, 88),
-    ('pricing_rules_grid', 'auto_management_admission', 'Initial Mode Assignment', 6, 232, 232),
+    ('pricing_rules_grid', 'position_management_mode', 'Position Management Mode', 6, 232, 232),
     ('pricing_rules_grid', 'margin', 'Margin', 7, 82, 82),
     ('pricing_rules_grid', 'actions', 'Actions', 8, 80, 80),
     ('internal_pricing_rules_grid', 'id', 'ID', 0, 64, 64),
@@ -246,7 +246,7 @@ VALUES
     ('internal_pricing_rules_grid', 'trade_context_id', 'Trade Context ID', 3, 130, 130),
     ('internal_pricing_rules_grid', 'trade_context', 'Trade Context', 4, 596, 596),
     ('internal_pricing_rules_grid', 'ccy_pair', 'Ccy Pair', 5, 88, 88),
-    ('internal_pricing_rules_grid', 'auto_management_admission', 'Initial Mode Assignment', 6, 232, 232),
+    ('internal_pricing_rules_grid', 'position_management_mode', 'Position Management Mode', 6, 232, 232),
     ('internal_pricing_rules_grid', 'margin', 'Margin', 7, 82, 82),
     ('internal_pricing_rules_grid', 'quick_hedge', 'Quick Hedge', 8, 112, 112),
     ('internal_pricing_rules_grid', 'actions', 'Actions', 9, 80, 80),
@@ -296,10 +296,9 @@ VALUES
     ('client_deals_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 14, 168, 168),
     ('client_deals_grid', 'trade_context_label', 'Trade Context', 15, 435, 435),
     ('client_deals_grid', 'pricing_rule_margin', 'Margin', 16, 102, 102),
-    ('client_deals_grid', 'initial_position_management_mode', 'Initial Position Management Mode', 17, 232, 232),
-    ('client_deals_grid', 'current_position_management_mode', 'Current Position Management Mode', 18, 232, 232),
-    ('client_deals_grid', 'transfer_rate', 'Transfer Rate', 19, 122, 122),
-    ('client_deals_grid', 'analytical_pnl', 'Analytical PnL', 20, 126, 126),
+    ('client_deals_grid', 'position_management_mode', 'Position Management Mode', 17, 232, 232),
+    ('client_deals_grid', 'transfer_rate', 'Transfer Rate', 18, 122, 122),
+    ('client_deals_grid', 'analytical_pnl', 'Analytical PnL', 19, 126, 126),
     ('hedge_deals_grid', 'trade_id', 'Trade ID', 0, 96, 96),
     ('hedge_deals_grid', 'request_timestamp', 'Request Timestamp', 1, 170, 170),
     ('hedge_deals_grid', 'execution_timestamp', 'Execution Timestamp', 2, 170, 170),
@@ -318,10 +317,9 @@ VALUES
     ('hedge_deals_grid', 'quote_ccy_value_date', 'Quote Ccy Value Date', 15, 168, 168),
     ('hedge_deals_grid', 'trade_context_label', 'Trade Context', 16, 435, 435),
     ('hedge_deals_grid', 'pricing_rule_margin', 'Margin', 17, 102, 102),
-    ('hedge_deals_grid', 'initial_position_management_mode', 'Initial Position Management Mode', 18, 232, 232),
-    ('hedge_deals_grid', 'current_position_management_mode', 'Current Position Management Mode', 19, 232, 232),
-    ('hedge_deals_grid', 'transfer_rate', 'Transfer Rate', 20, 122, 122),
-    ('hedge_deals_grid', 'analytical_pnl', 'Analytical PnL', 21, 126, 126),
+    ('hedge_deals_grid', 'position_management_mode', 'Position Management Mode', 18, 232, 232),
+    ('hedge_deals_grid', 'transfer_rate', 'Transfer Rate', 19, 122, 122),
+    ('hedge_deals_grid', 'analytical_pnl', 'Analytical PnL', 20, 126, 126),
     ('analytical_pnl_report_grid', 'trade_id', 'Trade ID', 0, 96, 96),
     ('analytical_pnl_report_grid', 'trade_type', 'Trade Type', 1, 122, 122),
     ('analytical_pnl_report_grid', 'trade_date', 'Trade Date', 2, 109, 109),
@@ -388,7 +386,7 @@ VALUES
     ('trade_contexts_grid', 'servicing_location', 'Servicing Location', 1, 250, 250),
     ('trade_contexts_grid', 'accounting_system', 'Accounting System', 2, 300, 300),
     ('trade_contexts_grid', 'originating_system', 'Originating System', 3, 250, 250),
-    ('trade_contexts_grid', 'auto_management_admission_mode', 'Initial Mode Assignment', 4, 232, 232),
+    ('trade_contexts_grid', 'position_management_mode', 'Position Management Mode', 4, 232, 232),
     ('trade_contexts_grid', 'counterparties_count', 'Attached Counterparties', 5, 64, 64),
     ('trade_contexts_grid', 'actions', 'Actions', 6, 80, 80),
     ('servicing_locations_grid', 'id', 'ID', 0, 64, 64),
@@ -476,7 +474,7 @@ WITH pricing_rule_seed
         originating_system_id,
         ccy_pair_code,
         margin_percent,
-        auto_management_admission_mode_override
+        position_management_mode_override
     )
 AS
 (
@@ -495,14 +493,14 @@ INSERT INTO pricing_rules
         trade_context_id,
         ccy_pair_code,
         margin_percent,
-        auto_management_admission_mode_override
+        position_management_mode_override
     )
 SELECT
     p.counterparty_id,
     e.trade_context_id,
     seed.ccy_pair_code,
     seed.margin_percent,
-    seed.auto_management_admission_mode_override
+    seed.position_management_mode_override
 FROM pricing_rule_seed seed
 INNER JOIN external_counterparties external
     ON external.counterparty_code_type = 'INN'
@@ -838,3 +836,6 @@ FROM hedge_deals d
 WHERE d.trade_id = last_insert_rowid();
 
 COMMIT;
+
+INSERT INTO trade_position_management (trade_id, trade_type, position_management_mode)
+SELECT trade_id, trade_type, 'MANUAL' FROM trade_exposures;

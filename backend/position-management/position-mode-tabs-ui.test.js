@@ -102,21 +102,10 @@ test("Manual Management and Auto Management routes control one shared Position g
   );
 });
 
-test("Manual Management exposes an explicit confirmation before moving Trades to Auto Management", () => {
-  const buttonMarkup = elementMarkup("moveToAutoManagementButton", "button");
-  const dialogMarkup = elementMarkup("moveToAutoManagementDialog", "dialog");
-
-  assert.match(buttonMarkup, /class="[^"]*\bbtn-outline-secondary\b[^"]*"/);
-  assert.match(buttonMarkup, /disabled/);
-  assert.match(buttonMarkup, /aria-label="Move selected Trades to Auto Management"/);
-  assert.match(buttonMarkup, />Move to Auto Management</);
-  assert.match(dialogMarkup, /id="moveToAutoManagementDialogTitle"/);
-  assert.match(dialogMarkup, />Move Trades to Auto Management<\/h2>/);
-  assert.doesNotMatch(dialogMarkup, /Initial Position Management Mode|Current Position Management Mode/);
-  assert.match(
-    dialogMarkup,
-    /id="moveToAutoManagementConfirmButton"[^>]*>Move to Auto Management<\/button>/
-  );
+test("Position has no action or dialog for changing an existing Trade management mode", () => {
+  assert.equal(elementMarkup("moveToAutoManagementButton", "button"), "");
+  assert.equal(elementMarkup("moveToAutoManagementDialog", "dialog"), "");
+  assert.doesNotMatch(inlineScript, /moveToAutoManagement|pendingSendToAutoTrades/);
 });
 
 test("demo-only Position actions are isolated in the Demo Toolbar", () => {
@@ -153,7 +142,6 @@ test("Position toolbars separate Quick Hedge, Trade, selection, and Automation a
     "createDealButton",
     "addHedgeDealButton",
     "oneBatchButton",
-    "moveToAutoManagementButton",
     "autoBatchButton",
     "autoBatchingSettingsButton"
   ];
@@ -176,7 +164,6 @@ test("Position toolbars separate Quick Hedge, Trade, selection, and Automation a
   assert.match(selectedTradesToolbarMarkup, />checklist<\/span>/);
   assert.match(selectedTradeActionsMarkup, /id="selectedTradesCount"/);
   assert.match(selectedTradeActionsMarkup, /id="oneBatchButton"/);
-  assert.match(selectedTradeActionsMarkup, /id="moveToAutoManagementButton"/);
   assert.doesNotMatch(selectedTradeActionsMarkup, /id="autoBatchButton"/);
   assert.match(automationControlsMarkup, />Automation<\/span>/);
   assert.match(automationControlsMarkup, /id="autoBatchButton"/);
@@ -224,7 +211,7 @@ test("route helpers preserve the legacy Manual default and explicit mode state",
   );
 });
 
-test("persisted currentPositionManagementMode drives rows and selected-Ccy-Pair tab counts", () => {
+test("persisted positionManagementMode drives rows and selected-Ccy-Pair tab counts", () => {
   const rowsFunctionSource = topLevelFunctionSource("positionRowsForMode");
   const countsFunctionSource = topLevelFunctionSource("positionModeCounts");
   const pairTradeCountFunctionSource = topLevelFunctionSource("positionTradeCountForPair");
@@ -249,29 +236,25 @@ test("persisted currentPositionManagementMode drives rows and selected-Ccy-Pair 
   const records = [
     {
       id: "manual-1",
-      initialPositionManagementMode: "MANUAL",
-      currentPositionManagementMode: "MANUAL",
+      positionManagementMode: "MANUAL",
       currencyPair: "EUR/USD"
     },
     {
       id: "auto-1",
-      initialPositionManagementMode: "AUTO",
-      currentPositionManagementMode: "AUTO",
+      positionManagementMode: "AUTO",
       currencyPair: "EUR/USD"
     },
     {
-      id: "promoted-to-auto",
-      initialPositionManagementMode: "MANUAL",
-      currentPositionManagementMode: "AUTO",
+      id: "auto-2",
+      positionManagementMode: "AUTO",
       currencyPair: "EUR/USD"
     },
     {
-      id: "current-mode-wins",
-      currentPositionManagementMode: "AUTO",
-      positionManagementMode: "MANUAL",
+      id: "auto-gbp",
+      positionManagementMode: "AUTO",
       currencyPair: "GBP/USD"
     },
-    { id: "legacy-auto", positionManagementMode: "AUTO", currencyPair: "GBP/USD" },
+    { id: "auto-gbp-2", positionManagementMode: "AUTO", currencyPair: "GBP/USD" },
     { id: "missing-mode", pricingMode: "AUTO_PRICED", currencyPair: "GBP/USD" }
   ];
 
@@ -281,12 +264,12 @@ test("persisted currentPositionManagementMode drives rows and selected-Ccy-Pair 
   );
   assert.deepEqual(
     positionRowsForMode(records, "AUTO").map(record => record.id),
-    ["auto-1", "promoted-to-auto", "current-mode-wins", "legacy-auto"]
+    ["auto-1", "auto-2", "auto-gbp", "auto-gbp-2"]
   );
   assert.deepEqual(positionModeCounts(records), { MANUAL: 1, AUTO: 2 });
   assert.equal(positionTradeCountForPair(records, "GBP/USD"), 3);
 
-  assert.match(rowsFunctionSource, /deal\?\.currentPositionManagementMode \?\? deal\?\.positionManagementMode/);
+  assert.match(rowsFunctionSource, /deal\?\.positionManagementMode/);
   assert.match(countsFunctionSource, /const pairRows = activeCurrencyPairRows\(source\)/);
   assert.match(
     pairTradeCountFunctionSource,
@@ -348,11 +331,9 @@ test("switching mode removes selections hidden by the new route", () => {
   assert.deepEqual([...selectedTradeIds], ["manual-visible"]);
 
   let clearCalls = 0;
-  let closeSendToAutoCalls = 0;
   const modeHarness = new Function(
     "normalizedPositionManagementMode",
     "closeOneBatchTenorDialog",
-    "closeMoveToAutoManagementDialog",
     "clearHiddenPositionSelection",
     "setBatchStatus",
     `let activePositionMode = "MANUAL";
@@ -364,7 +345,6 @@ test("switching mode removes selections hidden by the new route", () => {
   )(
     normalizedMode,
     () => {},
-    () => { closeSendToAutoCalls += 1; },
     () => { clearCalls += 1; },
     () => {}
   );
@@ -372,110 +352,8 @@ test("switching mode removes selections hidden by the new route", () => {
   assert.equal(modeHarness.setActivePositionMode("AUTO"), true);
   assert.equal(modeHarness.activeMode(), "AUTO");
   assert.equal(clearCalls, 1);
-  assert.equal(closeSendToAutoCalls, 1);
   assert.equal(modeHarness.setActivePositionMode("AUTO"), false);
   assert.equal(clearCalls, 1);
-  assert.equal(closeSendToAutoCalls, 1);
-});
-
-test("Move to Auto Management accepts only a fully eligible Manual Client/Hedge selection", () => {
-  const eligibilitySource = topLevelFunctionSource("isTradeEligibleForAutoManagement");
-  const selectionSource = topLevelFunctionSource("selectedTradesForAutoManagement");
-  const eligibility = new Function(
-    "normalizedPositionManagementMode",
-    "positionType",
-    "isBatchablePositionTrade",
-    `${eligibilitySource}; return isTradeEligibleForAutoManagement;`
-  )(
-    normalizedMode,
-    deal => deal.tradeType,
-    deal => deal.batchable === true
-  );
-
-  assert.equal(eligibility({
-    tradeType: "CLIENT_DEAL",
-    initialPositionManagementMode: "MANUAL",
-    currentPositionManagementMode: "MANUAL",
-    batchable: true
-  }), true);
-  assert.equal(eligibility({
-    tradeType: "HEDGE_DEAL",
-    initialPositionManagementMode: "MANUAL",
-    currentPositionManagementMode: "MANUAL",
-    batchable: true
-  }), true);
-  assert.equal(eligibility({
-    tradeType: "CLIENT_DEAL",
-    initialPositionManagementMode: "AUTO",
-    currentPositionManagementMode: "MANUAL",
-    batchable: true
-  }), false);
-  assert.equal(eligibility({
-    tradeType: "CLIENT_DEAL",
-    initialPositionManagementMode: "MANUAL",
-    currentPositionManagementMode: "AUTO",
-    batchable: true
-  }), false);
-  assert.equal(eligibility({
-    tradeType: "BATCH_POSITION_OUT",
-    initialPositionManagementMode: "MANUAL",
-    currentPositionManagementMode: "MANUAL",
-    batchable: true
-  }), false);
-  assert.equal(eligibility({
-    tradeType: "HEDGE_DEAL",
-    initialPositionManagementMode: "MANUAL",
-    currentPositionManagementMode: "MANUAL",
-    batchable: false
-  }), false);
-
-  assert.match(selectionSource, /activePositionMode !== "MANUAL"/);
-  assert.match(selectionSource, /selectedRows\.length > 0/);
-  assert.match(selectionSource, /selectedRows\.every\(isTradeEligibleForAutoManagement\)/);
-
-  const updateButtonsSource = topLevelFunctionSource("updateActionButtons");
-  assert.match(
-    updateButtonsSource,
-    /moveToAutoManagementButton\.hidden = activePositionMode !== "MANUAL"/
-  );
-  assert.match(updateButtonsSource, /selectedTradesForAutoManagement\(\)/);
-  assert.match(updateButtonsSource, /moveToAutoManagementInFlight/);
-});
-
-test("Move to Auto Management posts composite identities and protects success/error/in-flight state", () => {
-  const openSource = topLevelFunctionSource("openMoveToAutoManagementDialog");
-  const closeSource = topLevelFunctionSource("closeMoveToAutoManagementDialog");
-  const confirmSource = topLevelFunctionSource("confirmMoveToAutoManagement");
-
-  assert.match(openSource, /tradeId: Number\(positionTradeId\(deal\)\)/);
-  assert.match(openSource, /tradeType: positionType\(deal\)/);
-  assert.match(openSource, /to Auto Management\?`/);
-  assert.doesNotMatch(openSource, /from Manual Management/);
-  assert.match(closeSource, /if \(moveToAutoManagementInFlight\)/);
-  assert.match(confirmSource, /moveToAutoManagementInFlight = true/);
-  assert.match(confirmSource, /moveToAutoManagementDialogClose\.disabled = true/);
-  assert.match(confirmSource, /moveToAutoManagementCancelButton\.disabled = true/);
-  assert.match(confirmSource, /moveToAutoManagementConfirmButton\.disabled = true/);
-  assert.match(confirmSource, /"\/api\/v1\/positions\/move-to-auto-management"/);
-  assert.match(confirmSource, /method: "POST"/);
-  assert.match(confirmSource, /body: JSON\.stringify\(\{ trades: submittedTrades \}\)/);
-  assert.match(confirmSource, /selectedTradeIds\.delete\(String\(trade\.tradeId\)\)/);
-  assert.match(confirmSource, /await Promise\.all\(\[/);
-  assert.match(confirmSource, /reloadClientDealsFromApi\(\)/);
-  assert.match(confirmSource, /reloadHedgeDealsFromApi\(\)/);
-  assert.match(confirmSource, /reloadPositionsFromApi\(\)/);
-  assert.match(confirmSource, /renderClientDeals\(clientDeals\)/);
-  assert.match(confirmSource, /renderHedgeDeals\(hedgeDeals\)/);
-  assert.match(confirmSource, /render\(positions\)/);
-  assert.match(confirmSource, /closeMoveToAutoManagementDialog\(\)/);
-  assert.match(confirmSource, /catch \(error\)/);
-  assert.match(confirmSource, /moveToAutoManagementStatus\.textContent = message/);
-  assert.match(confirmSource, /setBatchStatus\(message, "error"\)/);
-  assert.match(confirmSource, /finally \{/);
-  assert.match(confirmSource, /moveToAutoManagementInFlight = false/);
-  assert.match(confirmSource, /moveToAutoManagementDialogClose\.disabled = false/);
-  assert.match(confirmSource, /moveToAutoManagementCancelButton\.disabled = false/);
-  assert.match(confirmSource, /moveToAutoManagementConfirmButton\.disabled = false/);
 });
 
 test("Hedge Deals inherit the Position Management Mode of the initiating tab", () => {
@@ -522,7 +400,7 @@ test("Hedge Deals inherit the Position Management Mode of the initiating tab", (
   );
 });
 
-test("Client and Hedge deal grids show Initial and Current Position Management modes only in Audit view", () => {
+test("Client and Hedge deal grids show a single Position Management Mode in Audit view", () => {
   ["clientDealColumnDefinitions", "hedgeDealColumnDefinitions"].forEach(name => {
     const source = topLevelFunctionSource(name);
     const viewMode = name === "clientDealColumnDefinitions"
@@ -533,20 +411,14 @@ test("Client and Hedge deal grids show Initial and Current Position Management m
     assert.match(
       source,
       new RegExp(
-        `title: "Initial Position Management Mode", field: "initialPositionManagementMode", visible: ${viewMode} === DEALS_VIEW_MODE_AUDIT`
-      )
-    );
-    assert.match(
-      source,
-      new RegExp(
-        `title: "Current Position Management Mode", field: "currentPositionManagementMode", visible: ${viewMode} === DEALS_VIEW_MODE_AUDIT`
+        `title: "Position Management Mode", field: "positionManagementMode", visible: ${viewMode} === DEALS_VIEW_MODE_AUDIT`
       )
     );
     assert.match(source, /formatter: clientDealsPositionManagementModeFormatter/);
   });
 
   const viewModeSource = topLevelFunctionSource("applyDealsViewMode");
-  assert.match(viewModeSource, /"initialPositionManagementMode", "currentPositionManagementMode"/);
+  assert.match(viewModeSource, /"positionManagementMode"/);
 });
 
 test("the UI split leaves batching and the Position backend selector mode-agnostic", () => {

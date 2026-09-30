@@ -13,26 +13,6 @@ function normalizedText(value) {
   return String(value || "").trim().toUpperCase();
 }
 
-function currentPositionManagementMode(trade) {
-  return normalizedText(
-    trade?.currentPositionManagementMode
-    ?? trade?.positionManagementMode
-  );
-}
-
-function initialPositionManagementMode(trade) {
-  return normalizedText(
-    trade?.initialPositionManagementMode
-    ?? trade?.currentPositionManagementMode
-    ?? trade?.positionManagementMode
-  );
-}
-
-function wasMovedToAutoManagement(trade) {
-  return initialPositionManagementMode(trade) === "MANUAL"
-    && currentPositionManagementMode(trade) === "AUTO";
-}
-
 function nonNegativeTradeId(value, name) {
   const tradeId = Number(value);
 
@@ -95,24 +75,15 @@ function selectTradesForAutoBatchingRun({
     const tradeId = Number(trade?.tradeId);
     const tradeType = normalizedText(trade?.tradeType);
     const ccyPairCode = normalizedText(trade?.ccyPairCode);
-    const movedToAutoManagement = wasMovedToAutoManagement(trade);
 
     return !excluded.has(tradeId)
-      && currentPositionManagementMode(trade) === "AUTO"
-      && (tradeId > startBoundaryTradeId || movedToAutoManagement)
+      && normalizedText(trade?.positionManagementMode) === "AUTO"
+      && tradeId > startBoundaryTradeId
       && (
         AUTO_BATCHING_INCOMING_TRADE_TYPES.has(tradeType)
         || isCarryInPosition(trade)
       )
       && (eligiblePairs === null || eligiblePairs.has(ccyPairCode));
-  }).map(trade => {
-    const releasedAt = String(
-      trade?.positionManagementModeChangedAt || ""
-    ).trim();
-
-    return wasMovedToAutoManagement(trade) && releasedAt
-      ? { ...trade, receivedTimestamp: releasedAt }
-      : trade;
   });
 
   return Object.freeze(selected);
@@ -120,7 +91,5 @@ function selectTradesForAutoBatchingRun({
 
 module.exports = {
   AUTO_BATCHING_INCOMING_TRADE_TYPES,
-  currentPositionManagementMode,
-  initialPositionManagementMode,
   selectTradesForAutoBatchingRun
 };

@@ -166,7 +166,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "CLICK_TRADE_EFX",
 
-      "autoManagementAdmissionMode": "AUTO_IF_ELIGIBLE"
+      "positionManagementMode": "AUTO_IF_ELIGIBLE"
     },
     {
       "pricingContextId": 2,
@@ -174,7 +174,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "RFQ",
 
-      "autoManagementAdmissionMode": "REVIEW_REQUIRED"
+      "positionManagementMode": "MANUAL"
     },
     {
       "pricingContextId": 3,
@@ -182,7 +182,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "CTF3",
       "tradeCaptureChannelId": "MANUAL_CLIENT_DEAL_ENTRY",
 
-      "autoManagementAdmissionMode": "REVIEW_REQUIRED"
+      "positionManagementMode": "MANUAL"
     },
     {
       "pricingContextId": 4,
@@ -190,7 +190,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "RFQ",
 
-      "autoManagementAdmissionMode": "REVIEW_REQUIRED"
+      "positionManagementMode": "MANUAL"
     },
     {
       "pricingContextId": 5,
@@ -198,7 +198,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "CTF3",
       "tradeCaptureChannelId": "CLICK_TRADE_EFX",
 
-      "autoManagementAdmissionMode": "AUTO_IF_ELIGIBLE"
+      "positionManagementMode": "AUTO_IF_ELIGIBLE"
     }
   ],
   "clientPricingRules": [
@@ -209,7 +209,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "pricingContextId": 1,
       "marginPercent": 0.1,
 
-      "autoManagementAdmissionModeOverride": null
+      "positionManagementModeOverride": null
     },
     {
       "pricingRuleId": 2,
@@ -218,7 +218,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "pricingContextId": 2,
       "marginPercent": 0.12,
 
-      "autoManagementAdmissionModeOverride": null
+      "positionManagementModeOverride": null
     },
     {
       "pricingRuleId": 3,
@@ -227,7 +227,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "pricingContextId": 3,
       "marginPercent": 0.08,
 
-      "autoManagementAdmissionModeOverride": null
+      "positionManagementModeOverride": null
     },
     {
       "pricingRuleId": 4,
@@ -236,7 +236,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "pricingContextId": 4,
       "marginPercent": 0.05,
 
-      "autoManagementAdmissionModeOverride": null
+      "positionManagementModeOverride": null
     },
     {
       "pricingRuleId": 5,
@@ -245,7 +245,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "pricingContextId": 5,
       "marginPercent": 0.2,
 
-      "autoManagementAdmissionModeOverride": null
+      "positionManagementModeOverride": null
     }
   ]
 };
@@ -330,18 +330,18 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       { tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", tradeCaptureChannelName: "Manual Client Deal Entry", pricingType: "DEALER_PRICED", isActive: true }
     ],
     pricingContexts: [
-      { pricingContextId: 1, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "CLICK_TRADE_EFX", autoManagementAdmissionMode: "AUTO_IF_ELIGIBLE" },
-      { pricingContextId: 2, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", autoManagementAdmissionMode: "REVIEW_REQUIRED" },
-      { pricingContextId: 3, servicingBranchCode: "002", settlementSystemId: "CTF3", tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", autoManagementAdmissionMode: "REVIEW_REQUIRED" },
-      { pricingContextId: 4, servicingBranchCode: "1234", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", autoManagementAdmissionMode: "REVIEW_REQUIRED" },
-      { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX", autoManagementAdmissionMode: "AUTO_IF_ELIGIBLE" }
+      { pricingContextId: 1, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "CLICK_TRADE_EFX", positionManagementMode: "AUTO_IF_ELIGIBLE" },
+      { pricingContextId: 2, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", positionManagementMode: "MANUAL" },
+      { pricingContextId: 3, servicingBranchCode: "002", settlementSystemId: "CTF3", tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", positionManagementMode: "MANUAL" },
+      { pricingContextId: 4, servicingBranchCode: "1234", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", positionManagementMode: "MANUAL" },
+      { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX", positionManagementMode: "AUTO_IF_ELIGIBLE" }
     ],
     clientPricingRules: [
-      { pricingRuleId: 1, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 1, marginPercent: 0.10, autoManagementAdmissionModeOverride: null },
-      { pricingRuleId: 2, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 2, marginPercent: 0.12, autoManagementAdmissionModeOverride: null },
-      { pricingRuleId: 3, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 3, marginPercent: 0.08, autoManagementAdmissionModeOverride: null },
-      { pricingRuleId: 4, inn: "7812345678", currencyPair: "EUR/USD", pricingContextId: 4, marginPercent: 0.05, autoManagementAdmissionModeOverride: null },
-      { pricingRuleId: 5, inn: "5409876543", currencyPair: "EUR/USD", pricingContextId: 5, marginPercent: 0.20, autoManagementAdmissionModeOverride: null }
+      { pricingRuleId: 1, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 1, marginPercent: 0.10, positionManagementModeOverride: null },
+      { pricingRuleId: 2, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 2, marginPercent: 0.12, positionManagementModeOverride: null },
+      { pricingRuleId: 3, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 3, marginPercent: 0.08, positionManagementModeOverride: null },
+      { pricingRuleId: 4, inn: "7812345678", currencyPair: "EUR/USD", pricingContextId: 4, marginPercent: 0.05, positionManagementModeOverride: null },
+      { pricingRuleId: 5, inn: "5409876543", currencyPair: "EUR/USD", pricingContextId: 5, marginPercent: 0.20, positionManagementModeOverride: null }
     ]
   };
 
@@ -390,25 +390,25 @@ window.__DEMO_DB_STARTUP_DATA__ = {
     return mode === "AUTO" || mode === "MANUAL" ? mode : "MANUAL";
   }
 
-  function normalizedAutoManagementAdmissionMode(value, legacyDefaultMode = "MANUAL") {
+  function normalizedPositionManagementModeSetting(value, legacyDefaultMode = "MANUAL") {
     const mode = String(value || "").trim().toUpperCase();
 
-    if (["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED"].includes(mode)) {
+    if (["AUTO_IF_ELIGIBLE", "MANUAL"].includes(mode)) {
       return mode;
     }
 
-    if (mode === "MANUAL_ONLY") {
-      return "REVIEW_REQUIRED";
+    if (["MANUAL_ONLY", "REVIEW_REQUIRED"].includes(mode)) {
+      return "MANUAL";
     }
 
     return normalizedPositionManagementMode(legacyDefaultMode) === "AUTO"
       ? "AUTO_IF_ELIGIBLE"
-      : "REVIEW_REQUIRED";
+      : "MANUAL";
   }
 
-  function normalizedAutoManagementAdmissionModeOverride(value) {
-    return ["REVIEW_REQUIRED", "MANUAL_ONLY"].includes(String(value || "").trim().toUpperCase())
-      ? "REVIEW_REQUIRED"
+  function normalizedPositionManagementModeSettingOverride(value) {
+    return ["MANUAL", "REVIEW_REQUIRED", "MANUAL_ONLY"].includes(String(value || "").trim().toUpperCase())
+      ? "MANUAL"
       : null;
   }
 
@@ -466,13 +466,13 @@ window.__DEMO_DB_STARTUP_DATA__ = {
 
     if (Array.isArray(normalized.pricingContexts)) {
       normalized.pricingContexts = normalized.pricingContexts.map(context => {
-        const { autoHedgingAdmissionMode: legacyMode, defaultPositionManagementMode: legacyDefault, ...current } = clone(context);
+        const { autoHedgingAdmissionMode: legacyMode, autoManagementAdmissionMode: previousMode, defaultPositionManagementMode: legacyDefault, ...current } = clone(context);
         return {
           ...current,
-          autoManagementAdmissionMode: normalizedAutoManagementAdmissionMode(
-            Object.prototype.hasOwnProperty.call(current, "autoManagementAdmissionMode")
-              ? current.autoManagementAdmissionMode
-              : legacyMode,
+          positionManagementMode: normalizedPositionManagementModeSetting(
+            Object.prototype.hasOwnProperty.call(current, "positionManagementMode")
+              ? current.positionManagementMode
+              : previousMode ?? legacyMode,
             legacyDefault
           )
         };
@@ -481,14 +481,14 @@ window.__DEMO_DB_STARTUP_DATA__ = {
 
     if (Array.isArray(normalized.clientPricingRules)) {
       normalized.clientPricingRules = normalized.clientPricingRules.map(rule => {
-        const { autoHedgingAdmissionModeOverride: legacyOverride, positionManagementModeOverride: legacyPositionOverride, effectivePositionManagementMode, tradeContextDefaultPositionManagementMode, ...current } = clone(rule);
+        const { autoHedgingAdmissionModeOverride: legacyOverride, autoManagementAdmissionModeOverride: previousOverride, effectiveAutoManagementAdmissionMode, tradeContextDefaultPositionManagementMode, ...current } = clone(rule);
         return {
           ...current,
-          autoManagementAdmissionModeOverride: normalizedAutoManagementAdmissionModeOverride(
-            Object.prototype.hasOwnProperty.call(current, "autoManagementAdmissionModeOverride")
-              ? current.autoManagementAdmissionModeOverride
-              : legacyOverride
-          ) || (legacyPositionOverride === "MANUAL" ? "REVIEW_REQUIRED" : null)
+          positionManagementModeOverride: normalizedPositionManagementModeSettingOverride(
+            Object.prototype.hasOwnProperty.call(current, "positionManagementModeOverride")
+              ? current.positionManagementModeOverride
+              : previousOverride !== undefined ? previousOverride : legacyOverride
+          )
         };
       });
     }

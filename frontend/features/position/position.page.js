@@ -15,7 +15,7 @@
       sections: Object.freeze({
         quick: Object.freeze({ label: "Quick Hedge", segment: "quick-hedge" }),
         eligibility: Object.freeze({ label: "Auto Mode Eligibility", segment: "auto-mode-eligibility" }),
-        initial: Object.freeze({ label: "Initial Mode Assignment", segment: "initial-mode-assignment" })
+        mode: Object.freeze({ label: "Position Management Mode", segment: "position-management-mode" })
       })
     });
 
@@ -42,12 +42,13 @@
       ) {
         return "eligibility";
       }
+      if (normalizedHash === "#position-management-settings/initial-mode-assignment") return "mode";
       const legacySections = {
         "client-deal": "eligibility",
         "hedge-deal": "eligibility",
         "technical-trades": "eligibility",
-        "initial-admission": "initial",
-        "manual-release": "initial",
+        "initial-admission": "mode",
+        "manual-release": "mode",
         "quick-hedge": "quick"
       };
       const legacy = /^#position-management-settings:([^:]+)$/.exec(normalizedHash);
@@ -93,17 +94,17 @@
 
     function normalizedAutoManagementAdmissionReturnRoute(value) {
       if (!isPositionManagementSettingsRoute(String(value || "").trim())) {
-        return positionManagementSettingsRoute("initial");
+        return positionManagementSettingsRoute("mode");
       }
       const section = positionManagementSettingsSectionFromLocation(value);
       return positionManagementSettingsRoute(
-        ["quick", "eligibility", "initial"].includes(section) ? section : "initial"
+        ["quick", "eligibility", "mode"].includes(section) ? section : "mode"
       );
     }
 
-    function autoManagementAdmissionTradeContextRoute(returnHash = positionManagementSettingsRoute("initial")) {
+    function autoManagementAdmissionTradeContextRoute(returnHash = positionManagementSettingsRoute("mode")) {
       const parameters = new URLSearchParams();
-      parameters.set("focus", "auto-management-admission");
+      parameters.set("focus", "position-management-mode");
       parameters.set("return", normalizedAutoManagementAdmissionReturnRoute(returnHash));
       return `#trade-context?${parameters.toString()}`;
     }
@@ -137,8 +138,8 @@
           value: String(parameters.get(filter.parameter) || "").trim()
         }))
         .find(entry => entry.value);
-      const focus = parameters.get("focus") === "auto-management-admission"
-        ? "auto-management-admission"
+      const focus = parameters.get("focus") === "position-management-mode"
+        ? "position-management-mode"
         : "";
 
       return {
@@ -205,11 +206,11 @@
     }
 
     function autoManagementAdmissionPricingRulesRoute(
-      returnHash = positionManagementSettingsRoute("initial"),
+      returnHash = positionManagementSettingsRoute("mode"),
       scope = "EXTERNAL"
     ) {
       const parameters = new URLSearchParams();
-      parameters.set("focus", "auto-management-admission");
+      parameters.set("focus", "position-management-mode");
       parameters.set("return", normalizedAutoManagementAdmissionReturnRoute(returnHash));
       return `${pricingRulesRoute(scope)}?${parameters.toString()}`;
     }
@@ -267,8 +268,8 @@
       const scope = match[1] === "internal-units" ? "INTERNAL" : "EXTERNAL";
       const parameters = new URLSearchParams(match[2] || "");
       const pairCode = normalizedCcyPairRouteCode(parameters.get("ccy-pair"));
-      const focus = !pairCode && parameters.get("focus") === "auto-management-admission"
-        ? "auto-management-admission"
+      const focus = !pairCode && parameters.get("focus") === "position-management-mode"
+        ? "position-management-mode"
         : "";
 
       if (focus) {
@@ -361,7 +362,7 @@
     }
 
     function isPositionManagementSettingsRoute(hash = location.hash) {
-      return /^#position-management-settings(?:\/(?:quick-hedge|auto-mode-eligibility|initial-mode-assignment))?(?:\?[^#]*)?$/.test(hash)
+      return /^#position-management-settings(?:\/(?:quick-hedge|auto-mode-eligibility|position-management-mode|initial-mode-assignment))?(?:\?[^#]*)?$/.test(hash)
         || /^#position-management-settings\/position-management-mode(?:\/(?:client-deals|hedge-deals|technical-trades)(?:\/eligibility-settings)?)?(?:\?[^#]*)?$/.test(hash)
         || /^#position-management-settings:(?:quick-hedge|client-deal|hedge-deal|technical-trades|initial-admission|manual-release)$/.test(hash)
         || /^#auto-management-admission-criteria(?:\?[^#]*)?$/.test(hash);
@@ -709,27 +710,11 @@
               );
             }
 
-            const currentPositionManagementMode = normalizedPositionManagementMode(
-              record?.currentPositionManagementMode
-              ?? record?.current_position_management_mode
-              ?? record?.positionManagementMode
-              ?? record?.position_mode
-            );
-
             return {
               ...position,
-              initialPositionManagementMode: normalizedPositionManagementMode(
-                record?.initialPositionManagementMode
-                ?? record?.initial_position_management_mode,
-                currentPositionManagementMode
-              ),
-              currentPositionManagementMode,
-              positionManagementMode: currentPositionManagementMode,
-              positionManagementModeChangedAt: String(
-                record?.positionManagementModeChangedAt
-                ?? record?.position_management_mode_changed_at
-                ?? ""
-              ).trim()
+              positionManagementMode: normalizedPositionManagementMode(
+                record?.positionManagementMode ?? record?.position_management_mode
+              )
             };
           })
         : [];
@@ -1190,7 +1175,7 @@
     function positionRowsForMode(source, mode = activePositionMode) {
       const normalizedMode = normalizedPositionManagementMode(mode);
       return source.filter(deal => normalizedPositionManagementMode(
-        deal?.currentPositionManagementMode ?? deal?.positionManagementMode
+        deal?.positionManagementMode
       ) === normalizedMode);
     }
 
@@ -1288,7 +1273,6 @@
       }
 
       activePositionMode = nextMode;
-      closeMoveToAutoManagementDialog();
       closeOneBatchTenorDialog({ restoreFocus: false });
       clearHiddenPositionSelection();
       setBatchStatus("");
@@ -1353,153 +1337,6 @@
       return currentDisplayRows().filter(deal =>
         selectedTradeIds.has(deal.id) && isBatchablePositionTrade(deal)
       );
-    }
-
-    function isTradeEligibleForAutoManagement(deal) {
-      const tradeType = positionType(deal);
-      const initialMode = normalizedPositionManagementMode(
-        deal?.initialPositionManagementMode,
-        deal?.currentPositionManagementMode ?? deal?.positionManagementMode
-      );
-      const currentMode = normalizedPositionManagementMode(
-        deal?.currentPositionManagementMode ?? deal?.positionManagementMode
-      );
-
-      return initialMode === "MANUAL"
-        && currentMode === "MANUAL"
-        && ["CLIENT_DEAL", "HEDGE_DEAL"].includes(tradeType)
-        && isBatchablePositionTrade(deal);
-    }
-
-    function selectedTradesForAutoManagement() {
-      if (activePositionMode !== "MANUAL") {
-        return [];
-      }
-
-      const selectedRows = currentDisplayRows().filter(deal =>
-        selectedTradeIds.has(deal.id)
-      );
-
-      return selectedRows.length > 0
-        && selectedRows.every(isTradeEligibleForAutoManagement)
-        ? selectedRows
-        : [];
-    }
-
-    function closeMoveToAutoManagementDialog() {
-      if (moveToAutoManagementInFlight) {
-        return;
-      }
-
-      pendingSendToAutoTrades = [];
-      moveToAutoManagementStatus.textContent = "";
-      moveToAutoManagementStatus.hidden = true;
-      moveToAutoManagementDialogClose.disabled = false;
-      moveToAutoManagementCancelButton.disabled = false;
-      moveToAutoManagementConfirmButton.disabled = false;
-
-      if (typeof moveToAutoManagementDialog.close === "function") {
-        moveToAutoManagementDialog.close();
-      } else {
-        moveToAutoManagementDialog.removeAttribute("open");
-      }
-    }
-
-    function openMoveToAutoManagementDialog() {
-      if (!DEMO_API_ENABLED || moveToAutoManagementInFlight) {
-        return;
-      }
-
-      const selectedTrades = selectedTradesForAutoManagement();
-
-      if (selectedTrades.length === 0) {
-        setBatchStatus(
-          "Select one or more eligible Manual Management Client or Hedge Deals.",
-          "warning"
-        );
-        return;
-      }
-
-      pendingSendToAutoTrades = selectedTrades.map(deal => Object.freeze({
-        tradeId: Number(positionTradeId(deal)),
-        tradeType: positionType(deal)
-      }));
-      const count = pendingSendToAutoTrades.length;
-      moveToAutoManagementSummary.textContent =
-        `Move ${count} selected Trade${count === 1 ? "" : "s"} to Auto Management?`;
-      moveToAutoManagementStatus.textContent = "";
-      moveToAutoManagementStatus.hidden = true;
-
-      openDialogWithoutFieldFocus(moveToAutoManagementDialog);
-    }
-
-    async function confirmMoveToAutoManagement() {
-      if (
-        moveToAutoManagementInFlight
-        || pendingSendToAutoTrades.length === 0
-      ) {
-        return;
-      }
-
-      const submittedTrades = [...pendingSendToAutoTrades];
-      const count = submittedTrades.length;
-      moveToAutoManagementInFlight = true;
-      moveToAutoManagementDialogClose.disabled = true;
-      moveToAutoManagementCancelButton.disabled = true;
-      moveToAutoManagementConfirmButton.disabled = true;
-      moveToAutoManagementStatus.textContent =
-        `Moving ${count} Trade${count === 1 ? "" : "s"} to Auto Management...`;
-      moveToAutoManagementStatus.className =
-        "alert alert-secondary batch-rollback-status mt-3 mb-0";
-      moveToAutoManagementStatus.hidden = false;
-      updateActionButtons();
-
-      try {
-        const result = await demoApiRequest(
-          "/api/v1/positions/move-to-auto-management",
-          {
-            method: "POST",
-            body: JSON.stringify({ trades: submittedTrades })
-          }
-        );
-
-        submittedTrades.forEach(trade => {
-          selectedTradeIds.delete(String(trade.tradeId));
-        });
-        await Promise.all([
-          reloadClientDealsFromApi(),
-          reloadHedgeDealsFromApi(),
-          reloadPositionsFromApi()
-        ]);
-        renderClientDeals(clientDeals);
-        renderHedgeDeals(hedgeDeals);
-        render(positions);
-        moveToAutoManagementInFlight = false;
-        closeMoveToAutoManagementDialog();
-
-        const replayedCount = Number(result?.replayedCount || 0);
-        setBatchStatus(
-          `${count} Trade${count === 1 ? " is" : "s are"} now in Auto Management.`
-          + (replayedCount > 0
-            ? ` ${replayedCount} already had the requested Current Mode.`
-            : ""),
-          "success"
-        );
-      } catch (error) {
-        const message = error.message
-          || "Unable to move selected Trades to Auto Management.";
-        moveToAutoManagementStatus.textContent = message;
-        moveToAutoManagementStatus.className =
-          "alert alert-danger batch-rollback-status mt-3 mb-0";
-        moveToAutoManagementStatus.hidden = false;
-        setBatchStatus(message, "error");
-      } finally {
-        moveToAutoManagementInFlight = false;
-        moveToAutoManagementDialogClose.disabled = false;
-        moveToAutoManagementCancelButton.disabled = false;
-        moveToAutoManagementConfirmButton.disabled = false;
-        updateActionButtons();
-      }
     }
 
     function oneBatchCompatibilityKey(deal) {
@@ -2106,13 +1943,6 @@
         selectedTradeIds.has(deal.id)
       ).length;
       selectedTradesCount.textContent = `${selectedVisibleTradeCount} selected`;
-
-      const tradesForAutoManagement = selectedTradesForAutoManagement();
-      moveToAutoManagementButton.hidden = activePositionMode !== "MANUAL";
-      moveToAutoManagementButton.disabled =
-        !DEMO_API_ENABLED
-        || moveToAutoManagementInFlight
-        || tradesForAutoManagement.length === 0;
 
       oneBatchButton.disabled =
         !DEMO_API_ENABLED

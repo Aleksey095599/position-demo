@@ -12,13 +12,13 @@ const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
   Object.freeze({ tableKey: "users_grid", legacyColumnKey: "status", columnKey: "active" }),
   Object.freeze({
     tableKey: "pricing_rules_grid",
-    legacyColumnKey: "position_management_mode",
-    columnKey: "auto_management_admission"
+    legacyColumnKey: "auto_management_admission",
+    columnKey: "position_management_mode"
   }),
   Object.freeze({
     tableKey: "internal_pricing_rules_grid",
-    legacyColumnKey: "position_management_mode",
-    columnKey: "auto_management_admission"
+    legacyColumnKey: "auto_management_admission",
+    columnKey: "position_management_mode"
   }),
   Object.freeze({
     tableKey: "client_deals_grid",
@@ -45,10 +45,11 @@ const UI_TABLE_COLUMN_KEY_ALIASES = Object.freeze([
     legacyColumnKey: "pricing_rules_count",
     columnKey: "counterparties_count"
   }),
+  Object.freeze({ tableKey: "trade_contexts_grid", legacyColumnKey: "auto_management_admission_mode", columnKey: "position_management_mode" }),
   Object.freeze({
     tableKey: "trade_contexts_grid",
     legacyColumnKey: "auto_management_admission_policy",
-    columnKey: "auto_management_admission_mode"
+    columnKey: "position_management_mode"
   })
 ]);
 
@@ -69,7 +70,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["trade_context_id", "Trade Context ID", 130],
     ["trade_context", "Trade Context", 596],
     ["ccy_pair", "Ccy Pair", 88],
-    ["auto_management_admission", "Initial Mode Assignment", 232],
+    ["position_management_mode", "Position Management Mode", 232],
     ["margin", "Margin", 82],
     ["actions", "Actions", 80]
   ]),
@@ -80,7 +81,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["trade_context_id", "Trade Context ID", 130],
     ["trade_context", "Trade Context", 596],
     ["ccy_pair", "Ccy Pair", 88],
-    ["auto_management_admission", "Initial Mode Assignment", 232],
+    ["position_management_mode", "Position Management Mode", 232],
     ["margin", "Margin", 82],
     ["quick_hedge", "Quick Hedge", 112],
     ["actions", "Actions", 80]
@@ -140,8 +141,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["quote_ccy_value_date", "Quote Ccy Value Date", 168],
     ["trade_context_label", "Trade Context", 435],
     ["pricing_rule_margin", "Margin", 102],
-    ["initial_position_management_mode", "Initial Position Management Mode", 232],
-    ["current_position_management_mode", "Current Position Management Mode", 232],
+    ["position_management_mode", "Position Management Mode", 232],
     ["transfer_rate", "Transfer Rate", 122],
     ["analytical_pnl", "Analytical PnL", 126]
   ]),
@@ -164,8 +164,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["quote_ccy_value_date", "Quote Ccy Value Date", 168],
     ["trade_context_label", "Trade Context", 435],
     ["pricing_rule_margin", "Margin", 102],
-    ["initial_position_management_mode", "Initial Position Management Mode", 232],
-    ["current_position_management_mode", "Current Position Management Mode", 232],
+    ["position_management_mode", "Position Management Mode", 232],
     ["transfer_rate", "Transfer Rate", 122],
     ["analytical_pnl", "Analytical PnL", 126]
   ]),
@@ -252,7 +251,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["servicing_location", "Servicing Location", 250],
     ["accounting_system", "Accounting System", 300],
     ["originating_system", "Originating System", 250],
-    ["auto_management_admission_mode", "Initial Mode Assignment", 232],
+    ["position_management_mode", "Position Management Mode", 232],
     ["counterparties_count", "Attached Counterparties", 64],
     ["actions", "Actions", 80]
   ]),

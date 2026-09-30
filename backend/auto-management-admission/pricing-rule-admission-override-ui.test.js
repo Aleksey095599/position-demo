@@ -57,7 +57,7 @@ function normalizedReferenceCode(value) {
 }
 
 function normalizedAdmissionOverride(value) {
-  return normalizedReferenceCode(value) === "REVIEW_REQUIRED" ? "REVIEW_REQUIRED" : null;
+  return normalizedReferenceCode(value) === "MANUAL" ? "MANUAL" : null;
 }
 
 function queryRow(controls) {
@@ -71,20 +71,20 @@ function queryRow(controls) {
 test("normalizes and validates the nullable Pricing Rule admission override", () => {
   const normalizeOverride = compileFunction(
     runtimeSource,
-    "normalizedPricingRuleAutoManagementAdmissionModeOverride",
+    "normalizedPricingRulePositionManagementModeSettingOverride",
     { normalizedReferenceCode }
   );
   const overrideFromControl = compileFunction(
     runtimeSource,
-    "pricingRuleAutoManagementAdmissionModeOverrideFromControl",
+    "pricingRulePositionManagementModeSettingOverrideFromControl",
     { normalizedReferenceCode }
   );
 
   assert.equal(normalizeOverride(null), null);
   assert.equal(normalizeOverride(""), null);
-  assert.equal(normalizeOverride(" review_required "), "REVIEW_REQUIRED");
-  assert.equal(normalizeOverride("MANUAL_ONLY"), "REVIEW_REQUIRED");
-  assert.equal(normalizeOverride("MANUAL"), null);
+  assert.equal(normalizeOverride(" manual "), "MANUAL");
+  assert.equal(normalizeOverride("MANUAL_ONLY"), "MANUAL");
+  assert.equal(normalizeOverride("REVIEW_REQUIRED"), null);
   assert.equal(normalizeOverride("AUTO_IF_ELIGIBLE"), null);
 
   const control = {
@@ -98,8 +98,8 @@ test("normalizes and validates the nullable Pricing Rule admission override", ()
   assert.equal(overrideFromControl(control), null);
   assert.equal(control.validationMessage, "");
 
-  control.value = "review_required";
-  assert.equal(overrideFromControl(control), "REVIEW_REQUIRED");
+  control.value = "manual";
+  assert.equal(overrideFromControl(control), "MANUAL");
   assert.equal(control.validationMessage, "");
 
   control.value = "MANUAL_ONLY";
@@ -109,13 +109,13 @@ test("normalizes and validates the nullable Pricing Rule admission override", ()
   assert.equal(overrideFromControl(control), undefined);
   assert.equal(
     control.validationMessage,
-    "Select an Initial Mode Assignment value."
+    "Select a Position Management Mode value."
   );
 
   const manualOverride = {
     type: "checkbox",
     checked: false,
-    value: "REVIEW_REQUIRED",
+    value: "MANUAL",
     validationMessage: "",
     setCustomValidity(message) {
       this.validationMessage = message;
@@ -123,7 +123,7 @@ test("normalizes and validates the nullable Pricing Rule admission override", ()
   };
   assert.equal(overrideFromControl(manualOverride), null);
   manualOverride.checked = true;
-  assert.equal(overrideFromControl(manualOverride), "REVIEW_REQUIRED");
+  assert.equal(overrideFromControl(manualOverride), "MANUAL");
   assert.equal(overrideFromControl(null), undefined);
 });
 
@@ -131,61 +131,61 @@ test("normalizes the complete Pricing Rule admission read contract", () => {
   const normalizerSource = functionSource(runtimeSource, "normalizedClientPricingRules");
   const effectiveMode = compileFunction(
     runtimeSource,
-    "effectiveAutoManagementAdmissionModeForRule",
+    "effectivePositionManagementModeForRule",
     {
-      normalizedPricingRuleAutoManagementAdmissionModeOverride: normalizedAdmissionOverride,
+      normalizedPricingRulePositionManagementModeSettingOverride: normalizedAdmissionOverride,
       normalizedReferenceCode,
-      AUTO_MANAGEMENT_ADMISSION_MODES: [
+      POSITION_MANAGEMENT_MODE_SETTINGS: [
         "AUTO_IF_ELIGIBLE",
-        "REVIEW_REQUIRED"
+        "MANUAL"
       ],
       pricingContextById: () => null,
-      normalizedAutoManagementAdmissionMode: value => {
+      normalizedPositionManagementModeSetting: value => {
         const mode = normalizedReferenceCode(value);
-        return ["AUTO_IF_ELIGIBLE", "REVIEW_REQUIRED"].includes(mode)
+        return ["AUTO_IF_ELIGIBLE", "MANUAL"].includes(mode)
           ? mode
-          : "REVIEW_REQUIRED";
+          : "MANUAL";
       }
     }
   );
 
   assert.match(
     normalizerSource,
-    /item\?\.autoManagementAdmissionModeOverride\s*\?\?\s*item\?\.auto_management_admission_mode_override/
+    /item\?\.positionManagementModeOverride\s*\?\?\s*item\?\.position_management_mode_override/
   );
   assert.match(
     normalizerSource,
-    /item\?\.tradeContextAdmissionMode\s*\?\?\s*item\?\.trade_context_admission_mode/
+    /item\?\.tradeContextPositionManagementMode\s*\?\?\s*item\?\.trade_context_admission_mode/
   );
   assert.match(
     normalizerSource,
-    /item\?\.effectiveAutoManagementAdmissionMode\s*\?\?\s*item\?\.effective_auto_management_admission_mode/
+    /item\?\.effectivePositionManagementMode\s*\?\?\s*item\?\.effective_position_management_mode/
   );
   assert.match(
     normalizerSource,
-    /autoManagementAdmissionModeOverride,\s*tradeContextAdmissionMode,\s*effectiveAutoManagementAdmissionMode,/
+    /positionManagementModeOverride,\s*tradeContextPositionManagementMode,\s*effectivePositionManagementMode,/
   );
 
   assert.equal(
     effectiveMode({
-      autoManagementAdmissionModeOverride: "REVIEW_REQUIRED",
-      effectiveAutoManagementAdmissionMode: "AUTO_IF_ELIGIBLE",
-      tradeContextAdmissionMode: "AUTO_IF_ELIGIBLE"
+      positionManagementModeOverride: "MANUAL",
+      effectivePositionManagementMode: "AUTO_IF_ELIGIBLE",
+      tradeContextPositionManagementMode: "AUTO_IF_ELIGIBLE"
     }),
-    "REVIEW_REQUIRED"
+    "MANUAL"
   );
   assert.equal(
     effectiveMode({
-      autoManagementAdmissionModeOverride: null,
-      effectiveAutoManagementAdmissionMode: "REVIEW_REQUIRED",
-      tradeContextAdmissionMode: "AUTO_IF_ELIGIBLE"
+      positionManagementModeOverride: null,
+      effectivePositionManagementMode: "MANUAL",
+      tradeContextPositionManagementMode: "AUTO_IF_ELIGIBLE"
     }),
-    "REVIEW_REQUIRED"
+    "MANUAL"
   );
   assert.equal(
     effectiveMode({
-      autoManagementAdmissionModeOverride: null,
-      tradeContextAdmissionMode: "AUTO_IF_ELIGIBLE"
+      positionManagementModeOverride: null,
+      tradeContextPositionManagementMode: "AUTO_IF_ELIGIBLE"
     }),
     "AUTO_IF_ELIGIBLE"
   );
@@ -197,21 +197,21 @@ test("Pricing Rule writes use the admission override without mutating legacy pos
     clientProfiles: [profile],
     clientProfileByInn: inn => inn === profile.inn ? profile : null,
     normalizedPricingContextIdValue: value => String(value ?? "").trim(),
-    normalizedPricingRuleAutoManagementAdmissionModeOverride: normalizedAdmissionOverride
+    normalizedPricingRulePositionManagementModeSettingOverride: normalizedAdmissionOverride
   });
 
   assert.deepEqual(
     payload(
       {
         marginPercent: "1.25",
-        autoManagementAdmissionModeOverride: "REVIEW_REQUIRED",
-        positionManagementModeOverride: "AUTO"
+        positionManagementModeOverride: "MANUAL",
+        autoManagementAdmissionModeOverride: "AUTO"
       },
       { pricingRuleId: 12 }
     ),
     {
       marginPercent: 1.25,
-      autoManagementAdmissionModeOverride: "REVIEW_REQUIRED"
+      positionManagementModeOverride: "MANUAL"
     }
   );
 
@@ -222,21 +222,21 @@ test("Pricing Rule writes use the admission override without mutating legacy pos
       pricingContextId: 42,
       currencyPair: "eur/usd",
       marginPercent: "0.15",
-      autoManagementAdmissionModeOverride: null,
-      positionManagementModeOverride: "MANUAL"
+      positionManagementModeOverride: null,
+      autoManagementAdmissionModeOverride: "MANUAL"
     }),
     {
       counterpartyId: 7,
       tradeContextId: "42",
       ccyPairCode: "EUR_USD",
       marginPercent: 0.15,
-      autoManagementAdmissionModeOverride: null
+      positionManagementModeOverride: null
     }
   );
 
   assert.doesNotMatch(
     functionSource(runtimeSource, "pricingRuleApiPayload"),
-    /positionManagementModeOverride/
+    /autoManagementAdmissionModeOverride/
   );
   assert.match(
     functionSource(runtimeSource, "persistPricingRuleRecord"),
@@ -257,9 +257,9 @@ test("Pricing Rule screens expose exactly the two admission sources", () => {
   );
   const assignmentLabel = compileFunction(
     runtimeSource,
-    "pricingRuleInitialModeAssignmentLabel",
+    "pricingRulePositionManagementModeSettingLabel",
     {
-      normalizedPricingRuleAutoManagementAdmissionModeOverride: normalizedAdmissionOverride,
+      normalizedPricingRulePositionManagementModeSettingOverride: normalizedAdmissionOverride,
       normalizedReferenceCode
     }
   );
@@ -267,59 +267,59 @@ test("Pricing Rule screens expose exactly the two admission sources", () => {
     runtimeSource,
     "pricingRuleAutoManagementAdmissionOptions",
     {
-      normalizedPricingRuleAutoManagementAdmissionModeOverride: normalizedAdmissionOverride,
-      pricingRuleInitialModeAssignmentLabel: assignmentLabel
+      normalizedPricingRulePositionManagementModeSettingOverride: normalizedAdmissionOverride,
+      pricingRulePositionManagementModeSettingLabel: assignmentLabel
     }
   );
   const assignmentMarkup = compileFunction(
     runtimeSource,
     "pricingRuleAutoManagementAdmissionMarkup",
     {
-      pricingRuleInitialModeAssignmentLabel: assignmentLabel,
-      effectiveAutoManagementAdmissionModeForRule: rule => rule.effectiveMode,
-      initialModeAssignmentIcon: mode => mode === "AUTO_IF_ELIGIBLE" ? "smart_toy" : "touch_app",
+      pricingRulePositionManagementModeSettingLabel: assignmentLabel,
+      effectivePositionManagementModeForRule: rule => rule.effectiveMode,
+      positionManagementModeSettingIcon: mode => mode === "AUTO_IF_ELIGIBLE" ? "smart_toy" : "touch_app",
       escapeHtml: value => String(value)
     }
   );
 
   assert.match(
     pricingRulesMarkup,
-    /data-ui-column-key="auto_management_admission"/
+    /data-ui-column-key="position_management_mode"/
   );
   const assignmentHeader = pricingRulesMarkup.match(
     /<th id="pricingRuleAutoManagementAdmissionHeader"[\s\S]*?<\/th>/
   )?.[0] || "";
-  assert.match(assignmentHeader, /<span>Initial Mode Assignment<\/span>/);
+  assert.match(assignmentHeader, /<span>Position Management Mode<\/span>/);
   assert.doesNotMatch(assignmentHeader, /smart_toy|touch_app/);
-  assert.doesNotMatch(pricingRulesMarkup, /Position Management Mode|positionManagementModeOverride/);
+  assert.doesNotMatch(pricingRulesMarkup, /Initial Mode Assignment|autoManagementAdmissionModeOverride/);
 
   const dialogControl = pricingRuleDialogMarkup.match(
-    /<input\b[^>]*type="checkbox"[^>]*name="autoManagementAdmissionModeOverride"[^>]*>/
+    /<input\b[^>]*type="checkbox"[^>]*name="positionManagementModeOverride"[^>]*>/
   )?.[0] || "";
   assert.ok(dialogControl);
-  assert.match(dialogControl, /value="REVIEW_REQUIRED"/);
+  assert.match(dialogControl, /value="MANUAL"/);
   assert.match(pricingRuleDialogMarkup, /data-client-pricing-rule-mode-override-value>Manual Mode by Trade Context<\/span>/);
   assert.match(pricingRuleDialogMarkup, /<span class="form-check-label">Manual Mode Override<\/span>/);
-  assert.doesNotMatch(pricingRuleDialogMarkup, /<select\b[^>]*name="autoManagementAdmissionModeOverride"/);
+  assert.doesNotMatch(pricingRuleDialogMarkup, /<select\b[^>]*name="positionManagementModeOverride"/);
   assert.doesNotMatch(
     pricingRuleDialogMarkup,
-    /Trade Context Default|Position Management Mode|positionManagementModeOverride/
+    /Trade Context Default|Initial Mode Assignment|autoManagementAdmissionModeOverride/
   );
 
-  assert.match(globalEditSource, /data-pricing-rule-field="autoManagementAdmissionModeOverride"/);
-  assert.match(globalEditSource, /data-pricing-rule-initial-mode-assignment-icon/);
+  assert.match(globalEditSource, /data-pricing-rule-field="positionManagementModeOverride"/);
+  assert.match(globalEditSource, /data-pricing-rule-position-management-mode-icon/);
   assert.match(globalViewSource, /pricingRuleAutoManagementAdmissionMarkup\(rule\)/);
   assert.match(
     inlineEditorSource,
-    /data-client-pricing-rule-inline-field="autoManagementAdmissionModeOverride"/
+    /data-client-pricing-rule-inline-field="positionManagementModeOverride"/
   );
-  assert.match(inlineEditorSource, /type="checkbox"[\s\S]*?value="REVIEW_REQUIRED"[\s\S]*?Manual Mode Override/);
+  assert.match(inlineEditorSource, /type="checkbox"[\s\S]*?value="MANUAL"[\s\S]*?Manual Mode Override/);
   assert.match(clientPanelSource, /clientPricingRuleAutoManagementAdmissionMarkup\(rule\)/);
-  assert.match(clientPanelSource, /pricingRuleInitialModeAssignmentIcon\(rule\.autoManagementAdmissionModeOverride, context\.autoManagementAdmissionMode\)/);
+  assert.match(clientPanelSource, /pricingRulePositionManagementModeSettingIcon\(rule\.positionManagementModeOverride, context\.positionManagementMode\)/);
   [globalEditSource, inlineEditorSource, clientPanelSource].forEach(source => {
     assert.doesNotMatch(
       source,
-      /Trade Context Default|Position Management Mode|positionManagementModeOverride/
+      /Trade Context Default|Initial Mode Assignment|autoManagementAdmissionModeOverride/
     );
   });
 
@@ -328,30 +328,30 @@ test("Pricing Rule screens expose exactly the two admission sources", () => {
     "Auto Mode by Trade Context"
   );
   assert.equal(
-    assignmentLabel(null, "REVIEW_REQUIRED"),
+    assignmentLabel(null, "MANUAL"),
     "Manual Mode by Trade Context"
   );
   assert.equal(
-    assignmentLabel("REVIEW_REQUIRED", "REVIEW_REQUIRED"),
+    assignmentLabel("MANUAL", "MANUAL"),
     "Manual Mode by Pricing Rule Override"
   );
   assert.match(
-    assignmentMarkup({ autoManagementAdmissionModeOverride: null, effectiveMode: "AUTO_IF_ELIGIBLE" }),
+    assignmentMarkup({ positionManagementModeOverride: null, effectiveMode: "AUTO_IF_ELIGIBLE" }),
     />smart_toy<\/span>[\s\S]*?<span>Auto Mode by Trade Context<\/span>/
   );
   assert.match(
-    assignmentMarkup({ autoManagementAdmissionModeOverride: null, effectiveMode: "REVIEW_REQUIRED" }),
+    assignmentMarkup({ positionManagementModeOverride: null, effectiveMode: "MANUAL" }),
     />touch_app<\/span>[\s\S]*?<span>Manual Mode by Trade Context<\/span>/
   );
   assert.match(
-    assignmentMarkup({ autoManagementAdmissionModeOverride: "REVIEW_REQUIRED", effectiveMode: "REVIEW_REQUIRED" }),
+    assignmentMarkup({ positionManagementModeOverride: "MANUAL", effectiveMode: "MANUAL" }),
     />touch_app<\/span>[\s\S]*?<span>Manual Mode by Pricing Rule Override<\/span>/
   );
   assert.equal((options(null, "AUTO_IF_ELIGIBLE").match(/<option\b/g) || []).length, 2);
   assert.match(options(null, "AUTO_IF_ELIGIBLE"), /<option value="" selected>Auto Mode by Trade Context<\/option>/);
-  assert.match(options(null, "REVIEW_REQUIRED"), /<option value="" selected>Manual Mode by Trade Context<\/option>/);
-  assert.match(options("REVIEW_REQUIRED", "AUTO_IF_ELIGIBLE"), /<option value="REVIEW_REQUIRED" selected>Manual Mode by Pricing Rule Override<\/option>/);
-  assert.doesNotMatch(options("REVIEW_REQUIRED", "AUTO_IF_ELIGIBLE"), /AUTO_IF_ELIGIBLE|MANUAL_ONLY/);
+  assert.match(options(null, "MANUAL"), /<option value="" selected>Manual Mode by Trade Context<\/option>/);
+  assert.match(options("MANUAL", "AUTO_IF_ELIGIBLE"), /<option value="MANUAL" selected>Manual Mode by Pricing Rule Override<\/option>/);
+  assert.doesNotMatch(options("MANUAL", "AUTO_IF_ELIGIBLE"), /AUTO_IF_ELIGIBLE|MANUAL_ONLY/);
 });
 
 test("client inline editor persists admission-only changes", () => {
@@ -359,17 +359,17 @@ test("client inline editor persists admission-only changes", () => {
     counterpartiesSource,
     "clientPricingRuleInlineEditorMarkup",
     {
-      normalizedPricingRuleAutoManagementAdmissionModeOverride: normalizedAdmissionOverride,
+      normalizedPricingRulePositionManagementModeSettingOverride: normalizedAdmissionOverride,
       normalizedReferenceCode,
       escapeHtml: value => String(value),
-      pricingRuleInitialModeAssignmentLabel: (selected, tradeContextMode) =>
-        normalizedAdmissionOverride(selected) === "REVIEW_REQUIRED"
+      pricingRulePositionManagementModeSettingLabel: (selected, tradeContextMode) =>
+        normalizedAdmissionOverride(selected) === "MANUAL"
           ? "Manual Mode by Pricing Rule Override"
           : normalizedReferenceCode(tradeContextMode) === "AUTO_IF_ELIGIBLE"
             ? "Auto Mode by Trade Context"
             : "Manual Mode by Trade Context",
-      pricingRuleInitialModeAssignmentIcon: (selected, tradeContextMode) =>
-        normalizedAdmissionOverride(selected) === "REVIEW_REQUIRED"
+      pricingRulePositionManagementModeSettingIcon: (selected, tradeContextMode) =>
+        normalizedAdmissionOverride(selected) === "MANUAL"
           || normalizedReferenceCode(tradeContextMode) !== "AUTO_IF_ELIGIBLE"
           ? "touch_app"
           : "smart_toy"
@@ -379,8 +379,8 @@ test("client inline editor persists admission-only changes", () => {
     contextId: 42,
     currencyPairs: ["EUR/USD"],
     selectedCurrencyPair: "EUR/USD",
-    tradeContextAdmissionMode: "AUTO_IF_ELIGIBLE",
-    autoManagementAdmissionModeOverride: "REVIEW_REQUIRED",
+    tradeContextPositionManagementMode: "AUTO_IF_ELIGIBLE",
+    positionManagementModeOverride: "MANUAL",
     marginValue: "1.2500",
     editing: true,
     index: 0,
@@ -390,25 +390,25 @@ test("client inline editor persists admission-only changes", () => {
 
   assert.match(
     editMarkup,
-    /data-client-pricing-rule-inline-field="autoManagementAdmissionModeOverride"/
+    /data-client-pricing-rule-inline-field="positionManagementModeOverride"/
   );
-  assert.match(editMarkup, /type="checkbox"[^>]*value="REVIEW_REQUIRED"[^>]*checked/);
+  assert.match(editMarkup, /type="checkbox"[^>]*value="MANUAL"[^>]*checked/);
   assert.match(editMarkup, /data-client-pricing-rule-inline-mode-override-value>Manual Mode by Pricing Rule Override<\/span>/);
   assert.match(editMarkup, /data-client-pricing-rule-inline-mode-override-icon>touch_app<\/span>/);
-  assert.match(editMarkup, /aria-label="Initial Mode Assignment" data-tooltip="Initial Mode Assignment"/);
+  assert.match(editMarkup, /aria-label="Position Management Mode" data-tooltip="Position Management Mode"/);
   assert.match(editMarkup, /<span class="form-check-label">Manual Mode Override<\/span>/);
-  assert.doesNotMatch(editMarkup, /<select\b[^>]*data-client-pricing-rule-inline-field="autoManagementAdmissionModeOverride"/);
-  assert.doesNotMatch(editMarkup, /Trade Context Default|positionManagementModeOverride/);
+  assert.doesNotMatch(editMarkup, /<select\b[^>]*data-client-pricing-rule-inline-field="positionManagementModeOverride"/);
+  assert.doesNotMatch(editMarkup, /Trade Context Default|autoManagementAdmissionModeOverride/);
 
   const state = {
     mode: "edit",
     index: 0,
     saving: false,
-    autoManagementAdmissionModeOverride: null
+    positionManagementModeOverride: null
   };
   const admissionControl = {
     type: "checkbox",
-    value: "REVIEW_REQUIRED",
+    value: "MANUAL",
     checked: false,
     disabled: false,
     validationMessage: "",
@@ -420,7 +420,7 @@ test("client inline editor persists admission-only changes", () => {
   const controls = {
     '[data-client-pricing-rule-inline-action="save"]': saveButton,
     '[data-client-pricing-rule-inline-field="currencyPair"]': { value: "EUR/USD" },
-    '[data-client-pricing-rule-inline-field="autoManagementAdmissionModeOverride"]': admissionControl,
+    '[data-client-pricing-rule-inline-field="positionManagementModeOverride"]': admissionControl,
     '[data-client-pricing-rule-inline-mode-override-value]': { textContent: "" },
     '[data-client-pricing-rule-inline-mode-override-icon]': { textContent: "" },
     '[data-client-pricing-rule-inline-field="marginPercent"]': { value: "1.25" }
@@ -431,17 +431,17 @@ test("client inline editor persists admission-only changes", () => {
     "clientPricingRuleInlineEditorState",
     "clientPricingRules",
     "normalizedReferenceCode",
-    "normalizedPricingRuleAutoManagementAdmissionModeOverride",
+    "normalizedPricingRulePositionManagementModeSettingOverride",
     "normalizeNumber",
-    functionSource(runtimeSource, "pricingRuleAutoManagementAdmissionModeOverrideFromControl")
-      + functionSource(runtimeSource, "pricingRuleInitialModeAssignmentLabel")
+    functionSource(runtimeSource, "pricingRulePositionManagementModeSettingOverrideFromControl")
+      + functionSource(runtimeSource, "pricingRulePositionManagementModeSettingLabel")
       + functionSource(
         counterpartiesSource,
-        "clientPricingRuleInlineAutoManagementAdmissionModeOverride"
+        "clientPricingRuleInlinePositionManagementModeSettingOverride"
       )
       + functionSource(
         counterpartiesSource,
-        "pricingRuleInitialModeAssignmentIcon"
+        "pricingRulePositionManagementModeSettingIcon"
       )
       + functionSource(
         counterpartiesSource,
@@ -453,7 +453,7 @@ test("client inline editor persists admission-only changes", () => {
     [{
       currencyPair: "EUR/USD",
       marginPercent: 1.25,
-      autoManagementAdmissionModeOverride: null
+      positionManagementModeOverride: null
     }],
     normalizedReferenceCode,
     normalizedAdmissionOverride,
@@ -461,7 +461,7 @@ test("client inline editor persists admission-only changes", () => {
   );
 
   updateAvailability(row);
-  assert.equal(state.autoManagementAdmissionModeOverride, null);
+  assert.equal(state.positionManagementModeOverride, null);
   assert.equal(controls['[data-client-pricing-rule-inline-mode-override-icon]'].textContent, "smart_toy");
   assert.equal(
     controls['[data-client-pricing-rule-inline-mode-override-value]'].textContent,
@@ -472,7 +472,7 @@ test("client inline editor persists admission-only changes", () => {
 
   admissionControl.checked = true;
   updateAvailability(row);
-  assert.equal(state.autoManagementAdmissionModeOverride, "REVIEW_REQUIRED");
+  assert.equal(state.positionManagementModeOverride, "MANUAL");
   assert.equal(controls['[data-client-pricing-rule-inline-mode-override-icon]'].textContent, "touch_app");
   assert.equal(
     controls['[data-client-pricing-rule-inline-mode-override-value]'].textContent,
@@ -483,7 +483,7 @@ test("client inline editor persists admission-only changes", () => {
 
   admissionControl.checked = false;
   updateAvailability(row);
-  assert.equal(state.autoManagementAdmissionModeOverride, null);
+  assert.equal(state.positionManagementModeOverride, null);
   assert.equal(saveButton.disabled, true);
   assert.equal(admissionControl.validationMessage, "");
 });
