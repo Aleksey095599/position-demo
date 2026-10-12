@@ -171,7 +171,7 @@
         inputName: "contextOriginatingSystem",
         menuId: "clientPricingOriginatingMenu",
         label: "Originating System",
-        icon: "web_asset"
+        icon: "devices"
       }
     ];
     let ccyOptions = loadCcyOptions();
@@ -988,7 +988,6 @@
       document.querySelectorAll("[data-process-catalog-view]")
     );
     const manualBatchFormationProcessView = document.getElementById("manualBatchFormationProcessView");
-    const domainGlossaryProcessView = document.getElementById("domainGlossaryProcessView");
     const processCatalogLanguageButtons = Array.from(
       document.querySelectorAll("[data-process-language]")
     );
@@ -1413,11 +1412,12 @@
     const databaseDataHeadEl = document.getElementById("databaseDataHead");
     const databaseDataRowsEl = document.getElementById("databaseDataRows");
     const databaseCreateSqlEl = document.getElementById("databaseCreateSql");
+    const TRADE_ICON_CONTENT = '<span class="currency-pair-icon trade-icon__pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.2v3.6L14 4ZM14 18.2v3.6L10 20Z"/></svg>';
     const DATABASE_TABLE_SECTIONS = Object.freeze([
       {
         id: "trading",
         label: "Trades",
-        icon: "currency_exchange",
+        icon: "trade",
         tables: [
           "client_deals",
           "hedge_deals",
@@ -1524,7 +1524,7 @@
         icon: "policy",
         tables: [
           "trade_market_snapshots",
-          "auto_management_admission_decisions",
+          "position_management_mode_decisions",
           "v_batch_formation_audit"
         ]
       },
@@ -3185,7 +3185,7 @@ function positionManagementModeSettingLabel(value) {
           aria-label="Originating System ${escapeHtml(displayName)}; Pricing Mode ${escapeHtml(presentation.label)}"
         >
           <span class="originating-system-label__system" aria-hidden="true">
-            <span class="button-icon">web_asset</span>
+            <span class="button-icon">devices</span>
           </span>
           <span class="originating-system-label__name${nameClass}">${escapeHtml(displayName)}</span>
           <span class="originating-system-label__pricing" aria-hidden="true">
@@ -3493,23 +3493,15 @@ function positionManagementModeSettingLabel(value) {
       }
     }
 
-    function pricingContextNaturalKey(servicingBranchCode, settlementSystemId, tradeCaptureChannelId) {
-      return `${servicingBranchCode}:${settlementSystemId}:${tradeCaptureChannelId}`;
+    function pricingContextNaturalKey(servicingBranchCode, settlementSystemId, tradeCaptureChannelId, tradePurposeId) {
+      return `${servicingBranchCode}:${settlementSystemId}:${tradeCaptureChannelId}:${tradePurposeId || ""}`;
     }
 
-    function pricingContextIdForComponents(servicingBranchCode, settlementSystemId, tradeCaptureChannelId) {
-      const naturalKey = pricingContextNaturalKey(
-        servicingBranchCode,
-        settlementSystemId,
-        tradeCaptureChannelId
-      );
-      const context = pricingContexts.find(item => pricingContextNaturalKey(
-        item.servicingBranchCode,
-        item.settlementSystemId,
-        item.tradeCaptureChannelId
-      ) === naturalKey);
-
-      return context?.pricingContextId || "";
+    function pricingContextIdForComponents(servicingBranchCode, settlementSystemId, tradeCaptureChannelId, tradePurposeId = "") {
+      const matches = pricingContexts.filter(item => item.servicingBranchCode === servicingBranchCode &&
+        item.settlementSystemId === settlementSystemId && item.tradeCaptureChannelId === tradeCaptureChannelId &&
+        (!tradePurposeId || item.tradePurposeId === tradePurposeId));
+      return matches.length === 1 ? matches[0].pricingContextId : "";
     }
 
     function normalizedPricingContexts(value, fallback = DEFAULT_PRICING_CONTEXTS) {
@@ -3588,6 +3580,7 @@ function positionManagementModeSettingLabel(value) {
             servicingBranchCode,
             settlementSystemId,
             tradeCaptureChannelId,
+            tradePurposeId: normalizedContextCode(item?.tradePurposeId ?? item?.trade_purpose_id),
             positionManagementMode,
             assignedCounterpartyCount,
             pricingRulesCount
@@ -3597,7 +3590,8 @@ function positionManagementModeSettingLabel(value) {
           const naturalKey = pricingContextNaturalKey(
             item.servicingBranchCode,
             item.settlementSystemId,
-            item.tradeCaptureChannelId
+            item.tradeCaptureChannelId,
+            item.tradePurposeId
           );
           const valid =
             Boolean(item.pricingContextId) &&

@@ -87,6 +87,19 @@ Decisions and Trade mode are saved atomically. Hedges explicitly created within 
 management mode and batch technical Trades retain their existing mode inheritance.
 Assigning Auto Mode does not start Auto Batching or Auto Hedging.
 
+The domain decision returns the assigned `positionManagementMode` (`MANUAL` or
+`AUTO`), the applied `modeSetting`, reasons and eligibility checks. It has no
+held/released state or release capability. `position_management_mode_decisions`
+stores one immutable decision per Trade, with the applied setting, assigned mode,
+reason codes, checks and decision time. Database constraints prevent a second
+decision, replacement, or a mode that differs from the Trade.
+
+Startup migrates unambiguous enforced creation decisions from the old admission
+table, preserving identity, settings, evidence and timestamps without reassignment.
+Repeated decisions, shadow evaluations, historical transfers or mode mismatches
+require review; migration stops without discarding them. Trades without a recorded
+decision retain their mode; no explanation is invented for them.
+
 Startup migrates old admission setting columns and REVIEW_REQUIRED values to the
 current names and MANUAL value, preserving configuration, Trade modes, decision
 evidence and table-column widths. Browser settings migrate the same legacy fields.
@@ -102,9 +115,12 @@ historical admission decisions. Existing Trades are never reassigned.
 
 The data is stored in `data/demo.sqlite`. Closing and reopening the browser does not reset the currency, pair, simulation, Trading Counterparty, User, Reference Data or Trade Context settings.
 
-Trade Context uses three coordinates: Servicing Location, Accounting System
-(when applicable), and Originating System. Originating System identifies the
+Trade Context is unique by four components: Servicing Location, Accounting System
+(when applicable), Originating System, and Trade Purpose. Trade Purpose is required
+and references `trade_purposes`; referenced purpose IDs cannot be renamed or deleted. Originating System identifies the
 business system in which a Trade is first registered as a business fact.
+The Trade Purpose migration uses explicitly approved demo-context assignments and
+stops if an old context has no approved mapping. It never infers a purpose from an ID alone.
 Existing databases are upgraded at server startup, preserving reference IDs,
 context IDs, trade relationships and saved table widths. Previous context and
 system bookmarks continue to open the corresponding current pages.

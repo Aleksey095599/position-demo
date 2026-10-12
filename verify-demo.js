@@ -3359,7 +3359,7 @@ function verifyFrontendStructure() {
     usesTabbedTradesWorkspace: html.includes('id="workspaceTradesLink"')
       && html.includes('href="#client-deals"')
       && html.includes('data-workspace-routes="client-deals hedge-deals"')
-      && html.includes('>currency_exchange</span>')
+      && html.includes('class="button-icon workspace-nav-icon trade-icon"')
       && !html.includes('id="workspaceTradesMenu"')
       && html.includes('id="dealsPage"')
       && html.includes('<h1 class="page-title">Trades</h1>')

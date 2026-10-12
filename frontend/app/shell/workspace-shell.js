@@ -112,7 +112,7 @@
         pricingRulesPage.hidden = true;
         tradeContractPage.hidden = showMessages;
         tradeIntakeMessagesPage.hidden = !showMessages;
-        document.title = showMessages ? "Trade Intake Messages" : "Trade Contract | Trade Intake";
+        document.title = showMessages ? "Trade Notification Registry | Trade Intake" : "Trade Notification Contract | Trade Intake";
         return;
       }
 

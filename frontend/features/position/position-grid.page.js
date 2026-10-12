@@ -862,27 +862,33 @@
     function clientDealColumnDefinitions() {
       return [
         {
-          title: "Trade Details",
+          title: "Trade Identity",
           cssClass: "client-deals-group-identity",
           columns: [
             clientDealsFilterableColumn("referenceId", {
               title: "Trade ID",
               field: "tradeId",
               sorter: "number",
-              cssClass: "client-deals-col-identity"
-            }),
+              cssClass: "client-deals-col-identity client-deals-group-end"
+            })
+          ]
+        },
+        {
+          title: "Trade Timing",
+          cssClass: "client-deals-group-timing",
+          columns: [
             clientDealsFilterableColumn("timestamp", {
               title: "Execution Timestamp",
               field: "executionTimestamp",
               visible: clientDealsViewMode === DEALS_VIEW_MODE_AUDIT,
               formatter: clientDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity"
+              cssClass: "client-deals-col-timing"
             }),
             clientDealsFilterableColumn("timestamp", {
               title: "Received Timestamp",
               field: "receivedTimestamp",
               formatter: clientDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity client-deals-group-end"
+              cssClass: "client-deals-col-timing client-deals-group-end"
             })
           ]
         },
@@ -1064,34 +1070,40 @@
     function hedgeDealColumnDefinitions() {
       return [
         {
-          title: "Trade Details",
+          title: "Trade Identity",
           cssClass: "client-deals-group-identity",
           columns: [
             clientDealsFilterableColumn("referenceId", {
               title: "Trade ID",
               field: "tradeId",
               sorter: "number",
-              cssClass: "client-deals-col-identity"
-            }),
+              cssClass: "client-deals-col-identity client-deals-group-end"
+            })
+          ]
+        },
+        {
+          title: "Trade Timing",
+          cssClass: "client-deals-group-timing",
+          columns: [
             clientDealsFilterableColumn("timestamp", {
               title: "Request Timestamp",
               field: "requestTimestamp",
               visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT,
               formatter: clientDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity"
+              cssClass: "client-deals-col-timing"
             }),
             clientDealsFilterableColumn("timestamp", {
               title: "Execution Timestamp",
               field: "executionTimestamp",
               visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT,
               formatter: clientDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity"
+              cssClass: "client-deals-col-timing"
             }),
             clientDealsFilterableColumn("timestamp", {
               title: "Received Timestamp",
               field: "receivedTimestamp",
               formatter: clientDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity client-deals-group-end"
+              cssClass: "client-deals-col-timing client-deals-group-end"
             })
           ]
         },

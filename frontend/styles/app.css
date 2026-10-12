@@ -6,7 +6,16 @@
       src: url("../../vendor/material-symbols/material-symbols-outlined.woff2") format("woff2");
     }
 
+    @font-face {
+      font-family: "Material Symbols Outlined Light";
+      font-style: normal;
+      font-weight: 300;
+      font-display: block;
+      src: url("../../vendor/material-symbols/material-symbols-outlined-light.woff2") format("woff2");
+    }
+
     :root {
+      --app-semantic-icon-font: "Material Symbols Outlined Light";
       /* Canonical Bootstrap 5 palette; values mirror ui_color_tokens. */
       --palette-blue-100: #CFE2FF;
       --palette-blue-200: #9EC5FE;
@@ -283,6 +292,7 @@
       --app-icon-size-sm: 16px;
       --app-icon-size-md: 18px;
       --app-icon-size-lg: 20px;
+      --app-icon-size-semantic: 23px;
       --workbench-title-size: var(--app-font-size-page-title);
       --workbench-title-weight: var(--app-font-weight-medium);
       --workbench-body-size: var(--app-font-size-body);
@@ -374,7 +384,9 @@
     }
 
     .workspace-nav-icon {
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .sr-only {
@@ -570,6 +582,204 @@
       font-feature-settings: "liga";
       -webkit-font-feature-settings: "liga";
       -webkit-font-smoothing: antialiased;
+    }
+
+    .currency-pair-icon,
+    .currency-amount-icon {
+      --currency-pair-divider-angle: 25deg;
+      position: relative;
+      width: 1em;
+      height: 1em;
+      flex-shrink: 0;
+    }
+
+    .currency-pair-icon__notes {
+      position: absolute;
+      inset: 0;
+    }
+
+    .currency-pair-icon {
+      --currency-pair-divider-angle: 26.565deg;
+    }
+
+    .currency-pair-icon:not(.currency-pair-icon--rate) > span {
+      position: absolute;
+      inset: 0;
+      font-size: inherit;
+      line-height: 1;
+    }
+
+    .currency-pair-icon:not(.currency-pair-icon--rate) > span:first-child {
+      clip-path: polygon(0 0, 75% 0, 25% 100%, 0 100%);
+      transform: translate(-0.041667em, -0.083333em);
+    }
+
+    .currency-pair-icon:not(.currency-pair-icon--rate) > span:last-child {
+      clip-path: polygon(75% 0, 100% 0, 100% 100%, 25% 100%);
+      transform: translate(0.041667em, 0.083333em);
+    }
+
+    .currency-pair-icon--rate {
+      --currency-pair-divider-angle: 25deg;
+    }
+
+    .currency-pair-icon:not(.currency-pair-icon--rate)::after {
+      width: 0.04em;
+      left: calc(50% - 0.02em);
+    }
+
+    .currency-note--base,
+    .currency-note--quote {
+      position: relative;
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      font-style: normal;
+    }
+
+    .currency-note--base {
+      --currency-note-number: "1";
+    }
+
+    .currency-note--quote {
+      --currency-note-number: "2";
+    }
+
+    .currency-note--base > span,
+    .currency-note--quote > span {
+      display: block;
+      mask-image: radial-gradient(circle at 25% 37.5%, transparent 0.11em, #000 0.115em),
+        radial-gradient(circle at 75% 62.5%, transparent 0.11em, #000 0.115em);
+      mask-composite: intersect;
+    }
+
+    .currency-note--base::before,
+    .currency-note--base::after,
+    .currency-note--quote::before,
+    .currency-note--quote::after {
+      content: var(--currency-note-number);
+      position: absolute;
+      font-family: Arial, sans-serif;
+      font-size: 0.28em;
+      font-weight: 600;
+      line-height: 1;
+      transform: translate(-50%, -50%);
+    }
+
+    .currency-note--base::before,
+    .currency-note--quote::before {
+      top: 37.5%;
+      left: 25%;
+    }
+
+    .currency-note--base::after,
+    .currency-note--quote::after {
+      top: 62.5%;
+      left: 75%;
+    }
+
+    .currency-pair-icon__notes > span {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      font-size: 0.75em;
+      line-height: 1;
+    }
+
+    .currency-pair-icon__notes > span:first-child {
+      align-items: flex-start;
+      justify-content: flex-start;
+      mask-image: linear-gradient(calc(90deg + var(--currency-pair-divider-angle)), #000 43%, transparent 43%);
+    }
+
+    .currency-pair-icon__notes > span:last-child {
+      align-items: flex-end;
+      justify-content: flex-end;
+      mask-image: linear-gradient(calc(90deg + var(--currency-pair-divider-angle)), transparent 57%, #000 57%);
+    }
+
+    .currency-pair-icon::after,
+    .currency-amount-icon__art::after {
+      content: "";
+      position: absolute;
+      top: 0.04em;
+      left: calc(50% - 0.025em);
+      width: 0.05em;
+      height: 0.92em;
+      border-radius: 1em;
+      background: currentColor;
+      transform: rotate(var(--currency-pair-divider-angle));
+    }
+
+    .currency-amount-icon__art,
+    .currency-amount-icon__stack {
+      position: absolute;
+      inset: 0;
+    }
+
+    .currency-amount-icon__stack {
+      display: flex;
+    }
+
+    .currency-amount-icon--base .currency-amount-icon__art {
+      transform: translateX(0.12em);
+    }
+
+    .currency-amount-icon--quote .currency-amount-icon__art {
+      transform: translateX(-0.12em);
+    }
+
+    .currency-amount-icon--base .currency-amount-icon__stack {
+      align-items: flex-start;
+      justify-content: flex-start;
+      mask-image: linear-gradient(calc(90deg + var(--currency-pair-divider-angle)), #000 43%, transparent 43%);
+    }
+
+    .currency-amount-icon--quote .currency-amount-icon__stack {
+      align-items: flex-end;
+      justify-content: flex-end;
+      mask-image: linear-gradient(calc(90deg + var(--currency-pair-divider-angle)), transparent 57%, #000 57%);
+    }
+
+    .currency-note-stack {
+      position: relative;
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      font-size: 0.75em;
+      font-style: normal;
+    }
+
+    .currency-note-stack > span {
+      position: absolute;
+      top: -0.066667em;
+      left: 0.066667em;
+      line-height: 1;
+    }
+
+    .currency-pair-icon__notes > span > .currency-note-stack {
+      font-size: inherit;
+    }
+
+    .currency-note-stack::before,
+    .currency-note-stack::after {
+      content: "";
+      position: absolute;
+      box-sizing: border-box;
+      width: 0.8em;
+      height: 0.466667em;
+      border-left: 0.066667em solid currentColor;
+      border-bottom: 0.066667em solid currentColor;
+    }
+
+    .currency-note-stack::before {
+      left: 0.066667em;
+      bottom: 0.2em;
+    }
+
+    .currency-note-stack::after {
+      left: 0;
+      bottom: 0.066667em;
     }
 
     .button-icon,
@@ -3142,7 +3352,9 @@
 
     .market-reference-brand .market-reference-icon {
       color: var(--bs-primary);
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
       line-height: 1;
     }
 
@@ -3201,6 +3413,43 @@
     }
 
     .app-tooltip.is-click-help { pointer-events: auto; white-space: pre-line; }
+
+    .trade-icon {
+      position: relative;
+      width: 1em;
+      height: 1em;
+      flex-shrink: 0;
+    }
+
+    .trade-icon > svg {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .trade-icon > .trade-icon__pair {
+      position: absolute;
+      inset: 0;
+      font-family: inherit;
+      font-size: inherit;
+      font-weight: normal;
+      line-height: 1;
+    }
+
+    /* Убираем продолжение рамки за наконечником, сохраняя исходную геометрию купюр. */
+    .trade-icon__pair > span:first-child {
+      mask-image: linear-gradient(to right, #000 50%, transparent 50%),
+        linear-gradient(to bottom, transparent 29.1667%, #000 29.1667%);
+      mask-composite: add;
+    }
+
+    .trade-icon__pair > span:last-child {
+      mask-image: linear-gradient(to right, transparent 50%, #000 50%),
+        linear-gradient(to bottom, #000 70.8333%, transparent 70.8333%);
+      mask-composite: add;
+    }
     /* Tabulator owns tooltip positioning; the application owns its visual palette. */
     .tabulator-tooltip {
       z-index: 10000;
@@ -3431,7 +3680,9 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .position-trade-type-chip:focus-visible {
@@ -4189,7 +4440,9 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .client-pricing-context-candidate-viewport {
@@ -4275,7 +4528,9 @@
       height: 26px;
       border-right: 1px solid currentColor;
       background: rgba(var(--bs-white-rgb), 0.52);
-      font-size: 15px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .client-pricing-context-candidate-facet[data-pricing-context-candidate-facet="servicingBranchCode"] .client-pricing-context-candidate-facet-icon {
@@ -4528,7 +4783,9 @@
       border-right: 1px solid var(--large-table-line);
       background: var(--large-table-filter-bg);
       color: var(--page-title-text);
-      font-size: 16px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .client-pricing-rule-dialog .client-pricing-context-facet-control input {
@@ -5869,7 +6126,9 @@
     .processes-list-link > .button-icon {
       flex: 0 0 auto;
       color: var(--bs-secondary-color);
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .processes-list-link-copy {
@@ -5929,8 +6188,7 @@
 
     #processesPage .processes-detail-body > :is(
       .manual-process-map,
-      .manual-process-inspector,
-      .domain-glossary-definitions
+      .manual-process-inspector
     ) {
       box-shadow: var(--bs-box-shadow-sm);
     }
@@ -5978,98 +6236,6 @@
 
     .manual-process-summary-result > .button-icon {
       color: var(--palette-green-700);
-    }
-
-    .manual-process-definitions {
-      margin: 0 0 14px;
-      overflow: hidden;
-      border: 1px solid var(--surface-border);
-      border-radius: var(--workbench-radius);
-      background: var(--surface-card);
-    }
-
-    .domain-glossary-definitions {
-      margin: 0;
-    }
-
-    .manual-process-definitions-title {
-      margin: 0;
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--surface-border);
-      background: var(--palette-gray-100);
-      color: var(--text-strong);
-      font-size: var(--app-font-size-caption);
-      font-weight: var(--app-font-weight-semibold);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    .manual-process-definition-list {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      margin: 0;
-    }
-
-    .manual-process-definition {
-      display: grid;
-      grid-template-columns: minmax(210px, 0.24fr) minmax(0, 1fr);
-      gap: 18px;
-      align-items: baseline;
-      padding: 12px 14px;
-      border-top: 1px solid var(--surface-border);
-      scroll-margin-top: 16px;
-      transition: background-color 160ms ease, box-shadow 160ms ease;
-    }
-
-    .manual-process-definition:first-child {
-      border-top: 0;
-    }
-
-    .manual-process-definition dt,
-    .manual-process-definition dd {
-      margin: 0;
-    }
-
-    .manual-process-definition dt {
-      color: var(--text-strong);
-      font-weight: var(--app-font-weight-semibold);
-    }
-
-    .manual-process-definition dd {
-      color: var(--text-muted);
-      line-height: 1.45;
-    }
-
-    .manual-process-definition.is-referenced {
-      background: var(--palette-blue-100);
-      box-shadow: inset 3px 0 0 var(--palette-blue-600);
-    }
-
-    .manual-process-term-link {
-      color: var(--bs-link-color);
-      font-weight: var(--app-font-weight-semibold);
-      text-decoration: none;
-      text-underline-offset: 2px;
-    }
-
-    .manual-process-term-link:hover,
-    .manual-process-term-link:focus-visible {
-      color: var(--bs-link-hover-color);
-      text-decoration: underline;
-    }
-
-    .domain-glossary-definitions .manual-process-term-link {
-      text-decoration-line: underline;
-      text-decoration-style: dotted;
-      text-decoration-color: color-mix(in srgb, currentColor 58%, transparent);
-      text-decoration-thickness: 1px;
-      text-underline-offset: 3px;
-    }
-
-    .domain-glossary-definitions .manual-process-term-link:hover,
-    .domain-glossary-definitions .manual-process-term-link:focus-visible {
-      text-decoration-style: solid;
-      text-decoration-color: currentColor;
     }
 
     .manual-process-map {
@@ -6768,19 +6934,8 @@
         flex-wrap: wrap;
       }
 
-      .manual-process-definition-list {
-        grid-template-columns: 1fr;
-      }
 
-      .manual-process-definition {
-        grid-template-columns: 1fr;
-        gap: 4px;
-        border-top: 1px solid var(--surface-border);
-      }
 
-      .manual-process-definition:first-child {
-        border-top: 0;
-      }
 
       .manual-process-canvas {
         display: flex;
@@ -7395,7 +7550,9 @@
       border-right: 1px solid var(--bs-border-color);
       background: var(--bs-tertiary-bg);
       color: var(--bs-secondary-color);
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .pricing-rule-bootstrap-dialog .client-pricing-context-facet-control .form-control {
@@ -8531,7 +8688,9 @@
     }
 
     .client-deal-pricing-rule-margin-icon .button-icon {
-      font-size: 16px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .client-pricing-rules-margin .client-deal-pricing-rule-margin-icon {
@@ -8602,7 +8761,9 @@
     }
 
     .originating-system-label .button-icon {
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .pricing-mode-indicator {
@@ -8619,7 +8780,9 @@
     }
 
     .pricing-mode-indicator .button-icon {
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .pricing-mode-indicator.is-auto-priced {
@@ -8804,7 +8967,9 @@
     }
 
     .client-deal-market-pulse-card.is-compact .client-deal-market-pulse-brand .button-icon {
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .client-deal-market-pulse-quote {
@@ -9769,7 +9934,9 @@
     #batchDetailsPage .batch-neutrality-node-heading .button-icon {
       flex: 0 0 auto;
       color: var(--bs-secondary-color);
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #batchDetailsPage .batch-neutrality-metrics {
@@ -10868,7 +11035,9 @@
     }
 
     .workspace-nav-icon {
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .workspace-nav-group-toggle {
@@ -11176,18 +11345,86 @@
     }
 
     #tradeContractPage .trade-contract-table :is(th, td):first-child {
-      width: 25%;
+      width: 50%;
       border-left: 0;
     }
 
     #tradeContractPage .trade-contract-table :is(th, td):last-child {
-      width: 25%;
+      width: 50%;
       border-right: 0;
     }
 
     #tradeContractPage .trade-contract-table tbody tr:last-child td {
       border-bottom: 0;
     }
+
+    #tradeContractPage .trade-contract-field-label {
+      --trade-contract-field-icon-size: var(--app-icon-size-semantic);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #tradeContractPage .trade-contract-field-label > .button-icon {
+      flex: 0 0 var(--trade-contract-field-icon-size);
+      width: var(--trade-contract-field-icon-size);
+      height: var(--trade-contract-field-icon-size);
+      font-size: var(--trade-contract-field-icon-size);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
+      color: var(--bs-secondary-color);
+    }
+
+    #tradeContractPage .trade-contract-composite-icon {
+      --badge-size: 12px;
+      --badge-offset-x: 2px;
+      --badge-offset-y: 2px;
+      --badge-center: calc(var(--trade-contract-field-icon-size) - var(--badge-size) / 2);
+      position: relative;
+      display: inline-block;
+      flex: 0 0 var(--trade-contract-field-icon-size);
+      width: var(--trade-contract-field-icon-size);
+      height: var(--trade-contract-field-icon-size);
+      color: var(--bs-secondary-color);
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__base {
+      position: absolute;
+      inset: 0;
+      font-size: var(--trade-contract-field-icon-size);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
+      mask-image: radial-gradient(circle at calc(var(--badge-center) + var(--badge-offset-x)) calc(var(--badge-center) + var(--badge-offset-y)),
+        transparent calc(var(--badge-size) / 2), #000 calc(var(--badge-size) / 2 + 0.5px));
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__badge {
+      position: absolute;
+      right: calc(0px - var(--badge-offset-x));
+      bottom: calc(0px - var(--badge-offset-y));
+      display: grid;
+      place-items: center;
+      width: var(--badge-size);
+      height: var(--badge-size);
+      font-size: 12px;
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__letter {
+      display: grid;
+      place-items: center;
+      font-family: Arial, sans-serif;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__glyph--base {
+      transform: translate(-0.17px, 0.5px);
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__glyph--quote {
+      transform: translateX(-0.33px);
+    }
+
     #tradeContractPage .workbench-page-header {
       justify-content: flex-start;
       border-bottom: 0;
@@ -11196,17 +11433,19 @@
     .trade-message-contract-icon {
       position: relative;
       display: inline-block;
-      flex: 0 0 20px;
-      width: 20px;
-      height: 20px;
+      flex: 0 0 var(--app-icon-size-semantic);
+      width: var(--app-icon-size-semantic);
+      height: var(--app-icon-size-semantic);
     }
 
     .trade-message-contract-icon .trade-message-contract-icon__mail {
       position: absolute;
       inset: 0;
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
       /* Leave a clear gap around the gear on every menu background. */
-      mask-image: radial-gradient(circle at 15px 15px, transparent 7px, #000 7.5px);
+      mask-image: radial-gradient(circle at calc(var(--app-icon-size-semantic) - 5px) calc(var(--app-icon-size-semantic) - 5px), transparent 7px, #000 7.5px);
     }
 
     .trade-message-contract-icon .trade-message-contract-icon__gear {
@@ -11300,9 +11539,9 @@
       transform: rotate(90deg);
     }
 
-    #tradeContractPage .trade-contract-table td.trade-contract-empty {
-      width: auto;
-      padding: 18px 10px;
+    #tradeContractPage .trade-contract-note {
+      margin: 0;
+      padding: 12px;
       color: var(--bs-secondary-color);
     }
 
@@ -11310,6 +11549,23 @@
     #tradeContractPage .trade-contract-table > thead,
     #tradeContractPage .trade-contract-table > thead > tr {
       border-top: 0;
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__base > svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .trade-contract-term > .button-icon {
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
+    }
+
+    #tradeContractPage .originating-system-icon > svg {
+      display: block;
+      width: 1em;
+      height: 1em;
     }
     #marketPage.market-bootstrap.workbench-page .market-source-data {
       width: min(1390px, calc(100vw - var(--workbench-page-inline-total)));
@@ -11411,7 +11667,9 @@
     #marketPage .market-history-sync-header-icon {
       flex-shrink: 0;
       color: currentColor;
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #marketPage .market-history-section-title {
@@ -12182,7 +12440,9 @@
       font-weight: var(--app-font-weight-semibold);
     }
 
-    #marketPulseSettingsPage .market-pulse-settings-card-header .button-icon { font-size: 20px; }
+    #marketPulseSettingsPage .market-pulse-settings-card-header .button-icon { font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300; }
     #marketPulseSettingsPage .market-pulse-settings-fields { min-width: 0; margin: 0; padding: 0 20px; border: 0; }
     #marketPulseSettingsPage .market-pulse-settings-field { padding: 20px 0; }
     #marketPulseSettingsPage .market-pulse-settings-field + .market-pulse-settings-field { border-top: 1px solid var(--bs-border-color); }
@@ -13655,7 +13915,9 @@
     #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-icon {
       grid-row: 1 / 3;
       color: var(--bs-secondary-color);
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-name {
@@ -14399,7 +14661,9 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
     .trading-counterparty-filter-toolbar-title .button-icon {
       color: var(--app-primary-text);
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
@@ -15137,7 +15401,9 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-title > .button-icon,
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-relation > .button-icon {
       color: currentColor;
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-actions {
@@ -15217,7 +15483,9 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node-icon {
       flex: 0 0 auto;
       color: var(--bs-secondary-color);
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node-copy {
@@ -15887,7 +16155,9 @@
     }
 
     .workbench-page .workbench-section-tabs .button-icon {
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
     #positionManagementSettingsPage .auto-management-settings-section {
       overflow: hidden;
@@ -15941,22 +16211,6 @@
       color: var(--bs-secondary-color);
       font-size: var(--app-font-size-caption);
       line-height: 1.5;
-    }
-
-    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link {
-      color: inherit;
-      text-decoration-line: underline;
-      text-decoration-style: dotted;
-      text-decoration-color: color-mix(in srgb, currentColor 58%, transparent);
-      text-decoration-thickness: 1px;
-      text-underline-offset: 3px;
-    }
-
-    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link:hover,
-    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link:focus-visible {
-      color: var(--bs-body-color);
-      text-decoration-style: solid;
-      text-decoration-color: currentColor;
     }
 
     #positionManagementSettingsPage .auto-management-policy-guidance {
@@ -16053,7 +16307,9 @@
     #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .position-management-settings-navigation-link > .button-icon {
       color: var(--palette-blue-600);
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #positionManagementSettingsPage .position-management-settings-navigation-link > span:only-child {
@@ -16184,7 +16440,9 @@
     .auto-management-admission-policy-block-icon {
       flex: 0 0 auto;
       color: var(--palette-blue-600);
-      font-size: 22px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -16682,7 +16940,9 @@
     #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-management-technical-trade-types > div > .button-icon {
       color: var(--palette-blue-600);
-      font-size: 21px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -17091,7 +17351,9 @@
     }
 
     #mainPage.position-bootstrap.workbench-page .position-mode-tabs .position-mode-icon {
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
       flex: 0 0 auto;
     }
 
@@ -17262,7 +17524,9 @@
 
     #mainPage.position-bootstrap.workbench-page .position-grid .market-reference-icon {
       color: var(--bs-secondary-color);
-      font-size: 19px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #mainPage.position-bootstrap.workbench-page .position-grid .client {
@@ -17959,7 +18223,9 @@
       .batch-toolbar-icon-title,
       .demo-toolbar-title
     ) .button-icon {
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #mainPage.position-bootstrap.workbench-page .batch-control {
@@ -18449,7 +18715,7 @@
       font-size: var(--app-icon-size-sm);
     }
 
-    :is(.workspace-nav-icon, .ui-table-layout-button .button-icon) {
+    .ui-table-layout-button .button-icon {
       font-size: var(--app-icon-size-md);
     }
 
@@ -18458,7 +18724,9 @@
       .client-deal-toolbar-title,
       .batch-toolbar-icon-title
     ) .button-icon {
-      font-size: var(--app-icon-size-lg);
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     @media (max-width: 1040px) {
@@ -18479,6 +18747,12 @@
       #clientProfilePage.unified-bootstrap-workspace.workbench-page .trading-counterparty-role-field {
         grid-column: 1;
       }
+    }
+
+    .workspace-nav-icon {
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
     .workspace-nav-subgroup-toggle {
       width: 100%;

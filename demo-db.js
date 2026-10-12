@@ -166,6 +166,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "CLICK_TRADE_EFX",
 
+      "tradePurposeId": "CLIENT_CONVERSION",
       "positionManagementMode": "AUTO_IF_ELIGIBLE"
     },
     {
@@ -174,6 +175,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "RFQ",
 
+      "tradePurposeId": "CLIENT_CONVERSION",
       "positionManagementMode": "MANUAL"
     },
     {
@@ -182,6 +184,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "CTF3",
       "tradeCaptureChannelId": "MANUAL_CLIENT_DEAL_ENTRY",
 
+      "tradePurposeId": "CLIENT_CONVERSION",
       "positionManagementMode": "MANUAL"
     },
     {
@@ -190,6 +193,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "AFINA",
       "tradeCaptureChannelId": "RFQ",
 
+      "tradePurposeId": "CLIENT_CONVERSION",
       "positionManagementMode": "MANUAL"
     },
     {
@@ -198,6 +202,7 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       "settlementSystemId": "CTF3",
       "tradeCaptureChannelId": "CLICK_TRADE_EFX",
 
+      "tradePurposeId": "CLIENT_CONVERSION",
       "positionManagementMode": "AUTO_IF_ELIGIBLE"
     }
   ],
@@ -330,11 +335,11 @@ window.__DEMO_DB_STARTUP_DATA__ = {
       { tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", tradeCaptureChannelName: "Manual Client Deal Entry", pricingType: "DEALER_PRICED", isActive: true }
     ],
     pricingContexts: [
-      { pricingContextId: 1, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "CLICK_TRADE_EFX", positionManagementMode: "AUTO_IF_ELIGIBLE" },
-      { pricingContextId: 2, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", positionManagementMode: "MANUAL" },
-      { pricingContextId: 3, servicingBranchCode: "002", settlementSystemId: "CTF3", tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", positionManagementMode: "MANUAL" },
-      { pricingContextId: 4, servicingBranchCode: "1234", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", positionManagementMode: "MANUAL" },
-      { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX", positionManagementMode: "AUTO_IF_ELIGIBLE" }
+      { pricingContextId: 1, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "CLICK_TRADE_EFX", tradePurposeId: "CLIENT_CONVERSION", positionManagementMode: "AUTO_IF_ELIGIBLE" },
+      { pricingContextId: 2, servicingBranchCode: "002", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", tradePurposeId: "CLIENT_CONVERSION", positionManagementMode: "MANUAL" },
+      { pricingContextId: 3, servicingBranchCode: "002", settlementSystemId: "CTF3", tradeCaptureChannelId: "MANUAL_CLIENT_DEAL_ENTRY", tradePurposeId: "CLIENT_CONVERSION", positionManagementMode: "MANUAL" },
+      { pricingContextId: 4, servicingBranchCode: "1234", settlementSystemId: "AFINA", tradeCaptureChannelId: "RFQ", tradePurposeId: "CLIENT_CONVERSION", positionManagementMode: "MANUAL" },
+      { pricingContextId: 5, servicingBranchCode: "001", settlementSystemId: "CTF3", tradeCaptureChannelId: "CLICK_TRADE_EFX", tradePurposeId: "CLIENT_CONVERSION", positionManagementMode: "AUTO_IF_ELIGIBLE" }
     ],
     clientPricingRules: [
       { pricingRuleId: 1, inn: "7701234567", currencyPair: "EUR/USD", pricingContextId: 1, marginPercent: 0.10, positionManagementModeOverride: null },

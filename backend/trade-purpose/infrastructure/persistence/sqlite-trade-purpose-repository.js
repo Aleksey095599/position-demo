@@ -1,6 +1,6 @@
 "use strict";
 
-const { DuplicateTradePurposeError } = require("../../application/trade-purpose-service");
+const { DuplicateTradePurposeError, TradePurposeInUseError } = require("../../application/trade-purpose-service");
 
 class SqliteTradePurposeRepository {
   constructor(database) {
@@ -9,7 +9,8 @@ class SqliteTradePurposeRepository {
 
   list() {
     return this.database.prepare(`
-      SELECT trade_purpose_id AS tradePurposeId, name
+      SELECT trade_purpose_id AS tradePurposeId, name,
+        (SELECT count(*) FROM trade_contexts c WHERE c.trade_purpose_id = trade_purposes.trade_purpose_id) AS tradeContextCount
       FROM trade_purposes
       ORDER BY trade_purpose_id
     `).all().map(row => ({ ...row }));
@@ -17,7 +18,8 @@ class SqliteTradePurposeRepository {
 
   find(id) {
     const row = this.database.prepare(`
-      SELECT trade_purpose_id AS tradePurposeId, name
+      SELECT trade_purpose_id AS tradePurposeId, name,
+        (SELECT count(*) FROM trade_contexts c WHERE c.trade_purpose_id = trade_purposes.trade_purpose_id) AS tradeContextCount
       FROM trade_purposes
       WHERE trade_purpose_id = ?
     `).get(id);
@@ -39,13 +41,16 @@ class SqliteTradePurposeRepository {
   }
 
   delete(id) {
-    this.database.prepare("DELETE FROM trade_purposes WHERE trade_purpose_id = ?").run(id);
+    this.write(id, () => this.database.prepare("DELETE FROM trade_purposes WHERE trade_purpose_id = ?").run(id));
   }
 
   write(id, operation) {
     try {
       operation();
     } catch (error) {
+      if (error.errcode === 787 || error.errcode === 1811) {
+        throw new TradePurposeInUseError(`Trade Purpose ${id} is used by Trade Contexts.`);
+      }
       if (error.errcode === 1555 || error.errcode === 2067) {
         throw new DuplicateTradePurposeError(`Trade Purpose ${id} already exists.`);
       }

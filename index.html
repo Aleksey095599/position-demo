@@ -26,7 +26,7 @@
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
       <a class="workspace-nav-link" id="workspaceTradesLink" href="#client-deals" data-workspace-route="client-deals" data-workspace-routes="client-deals hedge-deals">
-        <span class="button-icon workspace-nav-icon" aria-hidden="true">currency_exchange</span>
+        <span class="button-icon workspace-nav-icon trade-icon" aria-hidden="true"><span class="currency-pair-icon trade-icon__pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.2v3.6L14 4ZM14 18.2v3.6L10 20Z"/></svg></span>
         <span>Trades</span>
       </a>
       <button type="button" class="workspace-nav-link workspace-nav-group-toggle" id="workspaceTradeIntakeToggle" aria-haspopup="menu" aria-controls="workspaceTradeIntakeMenu" aria-expanded="false" data-workspace-nav-menu-toggle="workspaceTradeIntakeMenu" data-workspace-routes="trade-contract trade-intake-messages">
@@ -35,7 +35,7 @@
         <span class="button-icon workspace-nav-menu-chevron" aria-hidden="true">arrow_drop_down</span>
       </button>
       <a class="workspace-nav-link" href="#trading-counterparties" data-workspace-route="profile">
-        <span class="button-icon workspace-nav-icon" aria-hidden="true">badge</span>
+        <span class="button-icon workspace-nav-icon" aria-hidden="true">account_box</span>
         <span>Trading Counterparties</span>
       </a>
       <a class="workspace-nav-link" href="#users" data-workspace-route="users">
@@ -131,11 +131,11 @@
   </div>
   <div class="workspace-nav-menu" id="workspaceSettingsMenu" role="menu" aria-label="Settings" data-workspace-nav-menu hidden>
     <a class="workspace-nav-menu-link" href="#settings:currencies" data-workspace-route="settings-currencies" role="menuitem">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">payments</span>
+      <span class="button-icon workspace-nav-icon" aria-hidden="true">universal_currency_alt</span>
       <span>Currency</span>
     </a>
     <a class="workspace-nav-menu-link" href="#settings:currency-pairs" data-workspace-route="settings-currency-pairs" role="menuitem">
-      <span class="button-icon workspace-nav-icon" aria-hidden="true">swap_horiz</span>
+      <span class="button-icon workspace-nav-icon currency-pair-icon" aria-hidden="true"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
       <span>Currency Pair</span>
     </a>
     <a class="workspace-nav-menu-link" href="#batching-settings" data-workspace-route="batching-settings" role="menuitem">
@@ -874,7 +874,7 @@
 
         <section class="deal-toolbar trade-actions-toolbar btn-toolbar" id="positionTradeActionsToolbar" aria-label="Trade Actions Toolbar">
           <span class="deal-toolbar-title client-deal-toolbar-title trade-actions-toolbar-title" role="img" aria-label="Trade Actions Toolbar" tabindex="0" data-tooltip="Trade Actions Toolbar">
-            <span class="button-icon" aria-hidden="true">currency_exchange</span>
+            <span class="button-icon trade-icon" aria-hidden="true"><span class="currency-pair-icon trade-icon__pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.2v3.6L14 4ZM14 18.2v3.6L10 20Z"/></svg></span>
           </span>
           <div class="batch-control trade-actions-control" aria-label="Trade creation actions">
             <button type="button" class="action-button primary btn btn-sm btn-primary with-icon" id="createDealButton">
@@ -1040,7 +1040,7 @@
           <div class="batch-neutrality-equation">
             <article class="batch-neutrality-node">
               <div class="batch-neutrality-node-heading">
-                <span class="button-icon" aria-hidden="true">swap_horiz</span>
+                <span class="button-icon trade-icon" aria-hidden="true"><span class="currency-pair-icon trade-icon__pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.2v3.6L14 4ZM14 18.2v3.6L10 20Z"/></svg></span>
                 <span>Batch Members</span>
               </div>
               <dl class="batch-neutrality-metrics">
@@ -1251,11 +1251,10 @@
   <main class="settings-shell profile-shell unified-bootstrap-workspace workbench-page" id="tradeContractPage" hidden>
     <section class="settings-topbar workbench-page-header" aria-label="Trade Notification Contract header">
       <h1 class="settings-title">Trade Notification Contract</h1>
-      <span class="badge text-bg-light border">Draft</span>
     </section>
 
     <div class="trade-contract-content">
-      <p class="trade-contract-intro">Defines the required fields supplied by the <a class="trade-contract-term" href="#reference-data:originating-systems"><span class="button-icon" aria-hidden="true">web_asset</span><span class="trade-contract-term__label">Originating System</span></a> where the trade was initially recorded.</p>
+      <p class="trade-contract-intro">Defines the fields <a class="trade-contract-term" href="#reference-data:originating-systems"><span class="button-icon originating-system-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m12 6.5 1.65 3.34 3.69.54-2.67 2.6.63 3.68L12 14.92l-3.3 1.74.63-3.68-2.67-2.6 3.69-.54Z"/></svg></span><span class="trade-contract-term__label">Originating Systems</span></a> must provide for a trade to be accepted for accounting by this application.</p>
 
       <section aria-labelledby="tradeContractFieldsTitle">
         <h2 class="table-panel__title trade-contract-fields-title" id="tradeContractFieldsTitle">Trade Notification Contract Fields</h2>
@@ -1263,22 +1262,54 @@
           <details class="trade-contract-group">
             <summary class="trade-contract-group__heading">
               <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
-              <h3 id="tradeContractDetailsTitle">Trade Details</h3>
+              <h3 id="tradeContractIdentityTitle">Notification Identity</h3>
             </summary>
             <div class="table-panel__viewport">
-              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractDetailsTitle">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractIdentityTitle">
+                <thead>
+                  <tr>
+                    <th scope="col">Field</th>
+                    <th scope="col">Example</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">mail</span><span class="button-icon trade-contract-composite-icon__badge">fingerprint</span></span><span>Notification ID</span></span></td>
+                    <td>7b0ff925-65d4-4ed1-9e08-ff2e9dd00b1a</td>
+                  </tr>
+                  <tr>
+                    <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="trade-contract-composite-icon__base trade-icon"><span class="currency-pair-icon trade-icon__pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.2v3.6L14 4ZM14 18.2v3.6L10 20Z"/></svg></span><span class="button-icon trade-contract-composite-icon__badge">fingerprint</span></span><span>Origin Trade ID</span></span></td>
+                    <td>CT-20261005-001</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+          <details class="trade-contract-group">
+            <summary class="trade-contract-group__heading">
+              <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
+              <h3 id="tradeContractTimelineTitle">Trade Timeline</h3>
+            </summary>
+            <div class="table-panel__viewport">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractTimelineTitle">
               <thead>
                 <tr>
                   <th scope="col">Field</th>
-                  <th scope="col">Description</th>
                   <th scope="col">Example</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Execution Timestamp</td>
-                  <td>Date and time when the trade was executed.</td>
-                  <td>2026-09-20T10:15:30.000Z</td>
+                  <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">timer</span><span class="button-icon trade-contract-composite-icon__badge">handshake</span></span><span>Execution Timestamp</span></span></td>
+                  <td>2026-10-05T10:15:30.000Z</td>
+                </tr>
+                <tr>
+                  <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">timer</span><span class="button-icon trade-contract-composite-icon__badge">database</span></span><span>Recorded Timestamp</span></span></td>
+                  <td>2026-10-05T10:15:31.000Z</td>
+                </tr>
+                <tr>
+                  <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">timer</span><span class="button-icon trade-contract-composite-icon__badge">send</span></span><span>Sent Timestamp</span></span></td>
+                  <td>2026-10-05T10:15:32.000Z</td>
                 </tr>
               </tbody>
             </table>
@@ -1287,32 +1318,28 @@
           <details class="trade-contract-group">
             <summary class="trade-contract-group__heading">
               <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
-              <h3 id="tradeContractClientTitle">Client Details</h3>
+              <h3 id="tradeContractCounterpartyTitle">Counterparty Details</h3>
             </summary>
             <div class="table-panel__viewport">
-              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractClientTitle">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractCounterpartyTitle">
               <thead>
                 <tr>
                   <th scope="col">Field</th>
-                  <th scope="col">Description</th>
                   <th scope="col">Example</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Business ID Type</td>
-                  <td>Type of business identifier used to identify the client.</td>
-                  <td>INN</td>
+                  <td><span class="trade-contract-field-label"><span class="button-icon" aria-hidden="true">account_box</span><span>Counterparty Name (optional)</span></span></td>
+                  <td>Romashka Company</td>
                 </tr>
                 <tr>
-                  <td>Business ID</td>
-                  <td>Client identifier of the specified Business ID Type.</td>
+                  <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">account_box</span><span class="button-icon trade-contract-composite-icon__badge">fingerprint</span></span><span>Business ID</span></span></td>
                   <td>7701234567</td>
                 </tr>
                 <tr>
-                  <td>Client Name</td>
-                  <td>Name of the client.</td>
-                  <td>Romashka Company</td>
+                  <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">fingerprint</span><span class="button-icon trade-contract-composite-icon__badge">format_list_bulleted</span></span><span>Business ID Type</span></span></td>
+                  <td>INN</td>
                 </tr>
               </tbody>
             </table>
@@ -1321,36 +1348,31 @@
           <details class="trade-contract-group">
             <summary class="trade-contract-group__heading">
               <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
-              <h3 id="tradeContractContextTitle">Trade Context</h3>
+              <h3 id="tradeContractContextTitle">Trade Context Identity</h3>
             </summary>
             <div class="table-panel__viewport">
               <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractContextTitle">
             <thead>
               <tr>
                 <th scope="col">Field</th>
-                <th scope="col">Description</th>
                 <th scope="col">Example</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Originating System ID</td>
-                <td>Identifies the system in which the trade was concluded.</td>
+                <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base originating-system-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m12 6.5 1.65 3.34 3.69.54-2.67 2.6.63 3.68L12 14.92l-3.3 1.74.63-3.68-2.67-2.6 3.69-.54Z"/></svg></span><span class="button-icon trade-contract-composite-icon__badge">fingerprint</span></span><span>Originating System ID</span></span></td>
                 <td>CLICK_TRADE_EFX</td>
               </tr>
               <tr>
-                <td>Accounting System ID</td>
-                <td>Identifies the accounting system where the trade is booked.</td>
+                <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">account_balance</span><span class="button-icon trade-contract-composite-icon__badge">fingerprint</span></span><span>Accounting System ID</span></span></td>
                 <td>AFINA</td>
               </tr>
               <tr>
-                <td>Servicing Location ID</td>
-                <td>Identifies the location responsible for servicing the trade.</td>
+                <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">location_on</span><span class="button-icon trade-contract-composite-icon__badge">fingerprint</span></span><span>Servicing Location ID</span></span></td>
                 <td>002</td>
               </tr>
               <tr>
-                <td>Trade Purpose ID</td>
-                <td>Identifies the business purpose of the trade.</td>
+                <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base"><svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q58 0 111.5 15.5T691-820l-59 58q-34-18-72-28t-80-10q-134 0-227 93t-93 227q0 134 93 227t227 93q134 0 227-93t93-227q0-25-4-49t-11-47l63-62q16 37 24 76.5t8 81.5q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-160q-100 0-170-70t-70-170q0-100 70-170t170-70q25 0 48 4.5t44 13.5l-64 64q-7-2-13.5-2H480q-66 0-113 47t-47 113q0 66 47 113t113 47q32 0 61.5-12.5T594-368q11-11 19.5-23.5T628-418l90-91q7 55-11 107.5T650-310q-32 32-76 51t-94 19Zm0-144L360-504l56-56 64 64 344-344 56 56-400 400Z"/></svg></span><span class="button-icon trade-contract-composite-icon__badge">fingerprint</span></span><span>Trade Purpose ID</span></span></td>
                 <td>CLIENT_CONVERSION</td>
               </tr>
             </tbody>
@@ -1367,12 +1389,34 @@
               <thead>
                 <tr>
                   <th scope="col">Field</th>
-                  <th scope="col">Description</th>
                   <th scope="col">Example</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="3" class="trade-contract-empty">Fields to be defined.</td></tr>
+                <tr>
+                  <td><span class="trade-contract-field-label"><span class="button-icon currency-pair-icon" aria-hidden="true"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span><span>Currency Pair</span></span></td>
+                  <td>EUR/USD</td>
+                </tr>
+                <tr>
+                  <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">universal_currency_alt</span><span class="button-icon trade-contract-composite-icon__badge">handshake</span></span><span>Dealt Currency</span></span></td>
+                  <td>USD</td>
+                </tr>
+                <tr>
+                  <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">swap_horiz</span><span class="trade-contract-composite-icon__badge trade-contract-composite-icon__letter"><span class="trade-contract-composite-icon__glyph--base">B</span></span></span><span>Side</span></span></td>
+                  <td>BUY</td>
+                </tr>
+                <tr>
+                  <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">payments</span><span class="trade-contract-composite-icon__badge trade-contract-composite-icon__letter"><span class="trade-contract-composite-icon__glyph--base">B</span></span></span><span>Base Currency Amount</span></span></td>
+                  <td>100000.00 EUR</td>
+                </tr>
+                <tr>
+                  <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="button-icon trade-contract-composite-icon__base">payments</span><span class="trade-contract-composite-icon__badge trade-contract-composite-icon__letter"><span class="trade-contract-composite-icon__glyph--quote">Q</span></span></span><span>Quote Currency Amount</span></span></td>
+                  <td>110000.00 USD</td>
+                </tr>
+                <tr>
+                  <td><span class="trade-contract-field-label"><span class="trade-contract-composite-icon" aria-hidden="true"><span class="trade-contract-composite-icon__base trade-contract-composite-icon__letter">R</span><span class="button-icon trade-contract-composite-icon__badge">handshake</span></span><span>Trade Rate</span></span></td>
+                  <td>1.1000 USD per EUR</td>
+                </tr>
               </tbody>
             </table>
             </div>
@@ -1380,19 +1424,29 @@
           <details class="trade-contract-group">
             <summary class="trade-contract-group__heading">
               <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
-              <h3 id="tradeContractValueDatesTitle">Value Date Details</h3>
+              <h3 id="tradeContractDatesTitle">Trade Dates</h3>
             </summary>
             <div class="table-panel__viewport">
-              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractValueDatesTitle">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractDatesTitle">
               <thead>
                 <tr>
                   <th scope="col">Field</th>
-                  <th scope="col">Description</th>
                   <th scope="col">Example</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="3" class="trade-contract-empty">Fields to be defined.</td></tr>
+                <tr>
+                  <td>Trade Date</td>
+                  <td>2026-10-05</td>
+                </tr>
+                <tr>
+                  <td>Base Currency Value Date</td>
+                  <td>2026-10-07</td>
+                </tr>
+                <tr>
+                  <td>Quote Currency Value Date</td>
+                  <td>2026-10-07</td>
+                </tr>
               </tbody>
             </table>
             </div>
@@ -1400,24 +1454,27 @@
           <details class="trade-contract-group">
             <summary class="trade-contract-group__heading">
               <span class="button-icon trade-contract-group__chevron" aria-hidden="true">chevron_right</span>
-              <h3 id="tradeContractPricingTitle">Pricing Details</h3>
+              <h3 id="tradeContractPositionCostTitle">Position Cost Inputs</h3>
             </summary>
             <div class="table-panel__viewport">
-              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractPricingTitle">
+              <table class="table table-sm table-bordered table-striped trade-contract-table" aria-labelledby="tradeContractPositionCostTitle">
               <thead>
                 <tr>
                   <th scope="col">Field</th>
-                  <th scope="col">Description</th>
                   <th scope="col">Example</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="3" class="trade-contract-empty">Fields to be defined.</td></tr>
+                <tr>
+                  <td>Planned Margin Percent</td>
+                  <td>0.2000%</td>
+                </tr>
               </tbody>
             </table>
             </div>
           </details>
         </div>
+        <p class="trade-contract-note">The application resolves the counterparty and Trade Context, assigns Position Management Mode and calculates Transfer Rate and analytical income. These are processing results, not fields supplied by the notification.</p>
       </section>
     </div>
   </main>
@@ -1651,7 +1708,7 @@
       <section class="profile-panel profile-detail-panel" id="clientProfileDetailView" aria-label="Trading counterparty card" hidden>
         <div class="profile-detail-hint" id="clientProfileDetailHint" hidden>
           <div>
-            <span class="button-icon" aria-hidden="true">badge</span>
+            <span class="button-icon" aria-hidden="true">account_box</span>
             Select a trading counterparty from the list or create a new one.
           </div>
         </div>
@@ -1919,6 +1976,7 @@
               <col class="pricing-context-location-col" data-ui-column-key="servicing_location">
               <col class="pricing-context-accounting-col" data-ui-column-key="accounting_system">
               <col class="pricing-context-originating-col" data-ui-column-key="originating_system">
+              <col data-ui-column-key="trade_purpose">
               <col class="pricing-context-admission-mode-col" data-ui-column-key="position_management_mode">
               <col class="pricing-context-count-col" data-ui-column-key="counterparties_count">
               <col class="pricing-context-actions-col" data-ui-column-key="actions" data-pricing-context-actions-column>
@@ -1955,10 +2013,16 @@
                 <th>
                   <div class="reference-column-head">
                     <span class="reference-column-title">
-                      <span class="button-icon" aria-hidden="true">web_asset</span>
+                      <span class="button-icon" aria-hidden="true">devices</span>
                       <span>Originating System</span>
                     </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="tradeCaptureChannelId" aria-label="Filter trade contexts by originating system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Trade Purpose</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="tradePurposeId" aria-label="Filter trade contexts by Trade Purpose">
                   </div>
                 </th>
                 <th id="pricingContextAutoManagementAdmissionHeader" tabindex="-1" data-pricing-context-column="positionManagementMode">
@@ -1982,7 +2046,7 @@
                       aria-label="Attached Counterparties"
                       data-tooltip="Attached Counterparties"
                     >
-                      badge
+                      account_box
                     </span>
                   </div>
                 </th>
@@ -2014,11 +2078,11 @@
         <span>Accounting Systems</span>
       </a>
       <a class="nav-link reference-switcher-link" href="#reference-data:originating-systems" data-reference-route="tradeCaptureChannel">
-        <span class="button-icon" aria-hidden="true">web_asset</span>
+        <span class="button-icon" aria-hidden="true">devices</span>
         <span>Originating Systems</span>
       </a>
       <a class="nav-link reference-switcher-link" href="#reference-data:trade-purposes" data-reference-route="tradePurpose">
-        <span class="button-icon" aria-hidden="true">flag</span>
+        <span class="button-icon" aria-hidden="true">track_changes</span>
         <span>Trade Purpose</span>
       </a>
     </nav>
@@ -3217,12 +3281,6 @@
               <strong data-process-copy="manualBatching">Manual Batching</strong>
             </span>
           </a>
-          <a class="processes-list-link" href="#processes:domain-glossary" data-process-catalog-view="glossary">
-            <span class="button-icon" aria-hidden="true">menu_book</span>
-            <span class="processes-list-link-copy">
-              <strong data-process-copy="domainGlossary">Domain Glossary</strong>
-            </span>
-          </a>
         </nav>
       </aside>
 
@@ -3237,11 +3295,11 @@
           <div class="manual-process-summary-flow">
             <span class="manual-process-summary-label" data-process-copy="goal">Process goal:</span>
             <span class="button-icon" aria-hidden="true">checklist</span>
-            <span data-process-copy="selectedTrades" data-process-linked-copy>Selected Trades</span>
+            <span data-process-copy="selectedTrades">Selected Trades</span>
             <span class="button-icon" aria-hidden="true">arrow_forward</span>
             <span class="manual-process-summary-result">
               <span class="button-icon" aria-hidden="true">stacks</span>
-              <span data-process-copy="formedBatch" data-process-linked-copy>Formed Batch</span>
+              <span data-process-copy="formedBatch">Formed Batch</span>
             </span>
           </div>
         </div>
@@ -3304,7 +3362,7 @@
               <span class="manual-process-rollback-arrow button-icon" aria-hidden="true">arrow_forward</span>
               <span data-process-copy="fullRollback">Full rollback</span>
               <span class="manual-process-rollback-arrow button-icon" aria-hidden="true">arrow_forward</span>
-              <span data-process-copy="positionUnchanged" data-process-linked-copy>Position unchanged</span>
+              <span data-process-copy="positionUnchanged">Position unchanged</span>
             </div>
           </div>
         </section>
@@ -3507,145 +3565,7 @@
         </div>
       </article>
 
-      <article class="profile-panel processes-details" id="domainGlossaryProcessView" aria-labelledby="domainGlossaryTitle" hidden>
-        <header class="profile-panel-head processes-detail-head">
-          <div class="processes-detail-heading">
-            <h2 class="processes-section-title" id="domainGlossaryTitle" data-process-copy="domainGlossary">Domain Glossary</h2>
-            <p class="processes-detail-subtitle" data-process-copy="domainGlossarySubtitle">Core terms used across documented processes</p>
-          </div>
-        </header>
-        <div class="processes-detail-body">
-          <section class="manual-process-definitions domain-glossary-definitions" aria-labelledby="domainGlossaryTitle">
-            <dl class="manual-process-definition-list">
-              <div class="manual-process-definition" id="process-term-position-management-mode" tabindex="-1">
-                <dt>Position Management Mode</dt>
-                <dd data-process-copy="positionManagementModeDefinition">The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It is fixed at creation and determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-auto-position-management-mode" tabindex="-1">
-                <dt>Position Management — Auto Mode</dt>
-                <dd data-process-copy="autoPositionManagementModeDefinition">A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode is assigned when the Trade is created; it does not mean that an automated action has already occurred.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-manual-position-management-mode" tabindex="-1">
-                <dt>Position Management — Manual Mode</dt>
-                <dd data-process-copy="manualPositionManagementModeDefinition">A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator manages the Trade in its assigned mode.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-auto-hedging" tabindex="-1">
-                <dt>Auto Hedging</dt>
-                <dd data-process-copy="autoHedgingDefinition">An automated risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-auto-management-admission" tabindex="-1">
-                <dt>Auto Management Admission</dt>
-                <dd data-process-copy="autoManagementAdmissionDefinition">The decision made when a Trade is created to assign Auto Mode if its settings and eligibility requirements allow it; otherwise Manual Mode is assigned.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-trade-context-position-management-mode" tabindex="-1">
-                <dt>Trade Context Position Management Mode</dt>
-                <dd data-process-copy="tradeContextPositionManagementModeDefinition">A Trade Context setting that assigns Manual Mode or Auto Mode if Eligible when a Trade is created. A Pricing Rule may override it only to Manual Mode. Settings changes affect new Trades only; an existing Trade retains its assigned mode.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-auto-mode-eligibility" tabindex="-1">
-                <dt>Auto Mode Eligibility</dt>
-                <dd data-process-copy="autoModeEligibilityDefinition">Requirements configured by Trade Type and Ccy Pair and checked when a new Trade is considered for Position Management — Auto Mode. Position Management Mode separately applies Trade Context and Pricing Rule settings.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-eligibility-check" tabindex="-1">
-                <dt>Eligibility Check</dt>
-                <dd data-process-copy="eligibilityCheckDefinition">A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before Auto Mode is assigned.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-admission-state" tabindex="-1">
-                <dt>Admission State</dt>
-                <dd data-process-copy="automationAdmissionStateDefinition">Records whether Auto Mode was admitted when the Trade was created. It does not represent a pending transfer between modes.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-ccy-pair" tabindex="-1">
-                <dt>Ccy Pair</dt>
-                <dd data-process-copy="ccyPairDefinition">An ordered pair of currencies defining the Base Currency and Quote Currency used to express a Trade amount and exchange rate.</dd>
-              </div>
 
-              <div class="manual-process-definition" id="process-term-batch" tabindex="-1">
-                <dt>Batch</dt>
-                <dd data-process-copy="batchDefinition">A fixed package of Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active Position view, which organizes trades and simplifies control of the current currency position.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-batching" tabindex="-1">
-                <dt data-process-copy="batchingTerm">Batching</dt>
-                <dd data-process-copy="batchingDefinition">A manual or automatic process that selects, validates, groups and neutralizes Trades compatible by Batching Key to form one or more Batches. A user selects Trades for Manual Batching; configured rules select them for Automatic Batching.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-trade" tabindex="-1">
-                <dt>Trade</dt>
-                <dd data-process-copy="tradeDefinition">A Client Deal, Hedge Deal, or technical transaction included in currency-position calculations and displayed in Position.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-client-deal" tabindex="-1">
-                <dt>Client Deal</dt>
-                <dd data-process-copy="clientDealDefinition">A Trade executed with a client and forming the client component of the currency position.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-hedge-deal" tabindex="-1">
-                <dt>Hedge Deal</dt>
-                <dd data-process-copy="hedgeDealDefinition">A Trade executed with a hedge counterparty to manage or neutralize the currency position.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-position" tabindex="-1">
-                <dt>Position</dt>
-                <dd data-process-copy="positionDefinition">Application interface for monitoring the currency position and performing operations with Trades, including Batching.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-trade-context" tabindex="-1">
-                <dt>Trade Context</dt>
-                <dd data-process-copy="tradeContextDefinition">Trade Context describes the business environment in which a Trade originates, is serviced, and is reflected in accounting. It provides common coordinates against which rules for different processes apply. These coordinates are Servicing Location, Accounting System (when applicable), and Originating System.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-servicing-location" tabindex="-1">
-                <dt>Servicing Location</dt>
-                <dd data-process-copy="servicingLocationDefinition">The organizational and geographic point at which a Trade is serviced, such as a branch or head office in a particular region.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-accounting-system" tabindex="-1">
-                <dt>Accounting System</dt>
-                <dd data-process-copy="accountingSystemDefinition">An internal system of record of a bank or financial institution in which a Trade and its related accounting entries are registered.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-originating-system" tabindex="-1">
-                <dt>Originating System</dt>
-                <dd data-process-copy="originatingSystemDefinition">The business system in which a Trade is first registered as a business fact.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-pricing-mode" tabindex="-1">
-                <dt>Pricing Mode</dt>
-                <dd data-process-copy="pricingModeDefinition">An Originating System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-market-pulse" tabindex="-1">
-                <dt>Market Pulse</dt>
-                <dd data-process-copy="marketPulseDefinition">An application module that provides current normalized market quotes (Bid and Offer) for currency pairs to pricing, validation, and risk-management processes. In the current demo, quotes are generated by a simulator; the domain concept is independent of the data source and may later use real market-data feeds.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-transfer-rate" tabindex="-1">
-                <dt>Transfer Rate</dt>
-                <dd data-process-copy="transferRateDefinition">An internal accounting rate of a Trade used to calculate its currency position and allocate analytical P&amp;L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-base-currency" tabindex="-1">
-                <dt>Base Currency</dt>
-                <dd data-process-copy="baseCurrencyDefinition">The first currency in a currency pair; its amount forms the base currency leg of a Trade.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-quote-currency" tabindex="-1">
-                <dt>Quote Currency</dt>
-                <dd data-process-copy="quoteCurrencyDefinition">The second currency in a currency pair, in which the value of the Base Currency is expressed.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-trade-date" tabindex="-1">
-                <dt>Trade Date</dt>
-                <dd data-process-copy="tradeDateDefinition">The date on which a Trade is executed; Tenor and Value Dates are determined relative to it.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-tenor" tabindex="-1">
-                <dt>Tenor</dt>
-                <dd data-process-copy="tenorDefinition">The settlement term of a Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-value-date" tabindex="-1">
-                <dt>Value Date</dt>
-                <dd data-process-copy="valueDateDefinition">The settlement date for one currency leg of a Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-batching-key" tabindex="-1">
-                <dt>Batching Key</dt>
-                <dd data-process-copy="batchingKeyDefinition">A composite compatibility key that determines whether Trades may be included in one Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-cross-tenor-batching" tabindex="-1">
-                <dt>Cross-Tenor Batching</dt>
-                <dd data-process-copy="crossTenorBatchingDefinition">A Batching mode that allows compatible Trades with different Tenors and Value Dates to be included in one Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-batch-internal-swap" tabindex="-1">
-                <dt>Batch Internal Swap</dt>
-                <dd data-process-copy="batchInternalSwapDefinition">An internal technical entity of a Batch that aligns Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across Batches and offset by a single net swap at the end of the accounting day.</dd>
-              </div>
-            </dl>
-          </section>
-        </div>
-      </article>
     </section>
   </main>
 
@@ -3948,6 +3868,7 @@
               <col class="client-context-attach-location-col" data-client-context-attach-layout-column="servicing_location">
               <col class="client-context-attach-accounting-col" data-client-context-attach-layout-column="accounting_system">
               <col class="client-context-attach-originating-col" data-client-context-attach-layout-column="originating_system">
+              <col data-client-context-attach-layout-column="trade_purpose">
               <col class="client-context-attach-mode-col" data-client-context-attach-fixed-width="184">
             </colgroup>
             <thead>
@@ -3987,10 +3908,16 @@
                 <th>
                   <div class="reference-column-head">
                     <span class="reference-column-title">
-                      <span class="button-icon" aria-hidden="true">web_asset</span>
+                      <span class="button-icon" aria-hidden="true">devices</span>
                       <span>Originating System</span>
                     </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="tradeCaptureChannelId" aria-label="Filter available trade contexts by originating system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Trade Purpose</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="tradePurposeId" aria-label="Filter available trade contexts by Trade Purpose">
                   </div>
                 </th>
                 <th>
@@ -4083,7 +4010,7 @@
                 <span class="client-pricing-context-facet-count" data-pricing-context-count="tradeCaptureChannelId"></span>
               </label>
               <span class="client-pricing-context-facet-control">
-                <span class="button-icon client-pricing-context-facet-icon" aria-hidden="true">web_asset</span>
+                <span class="button-icon client-pricing-context-facet-icon" aria-hidden="true">devices</span>
                 <input class="form-control form-control-sm" type="search" id="clientPricingOriginatingSearch" name="contextOriginatingSystem" data-pricing-context-facet="tradeCaptureChannelId" placeholder="Filter by code or name" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="clientPricingOriginatingMenu">
                 <button type="button" class="client-pricing-context-facet-clear" data-pricing-context-clear="tradeCaptureChannelId" aria-label="Clear Originating System" hidden>
                   <span class="button-icon" aria-hidden="true">close</span>

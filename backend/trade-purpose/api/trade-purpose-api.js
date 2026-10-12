@@ -2,12 +2,13 @@
 
 const { InvalidTradePurposeError } = require("../domain/trade-purpose");
 const {
+  TradePurposeInUseError,
   DuplicateTradePurposeError,
   TradePurposeNotFoundError
 } = require("../application/trade-purpose-service");
 
 function tradePurposeResponse(purpose) {
-  return { ...purpose, tradeContextCount: 0 };
+  return { ...purpose };
 }
 
 function tradePurposeFields(body) {
@@ -27,6 +28,9 @@ function execute(statusCode, operation) {
     }
     if (error instanceof TradePurposeNotFoundError) {
       return { statusCode: 404, body: { code: "TRADE_PURPOSE_NOT_FOUND", message: error.message } };
+    }
+    if (error instanceof TradePurposeInUseError) {
+      return { statusCode: 409, body: { code: "TRADE_PURPOSE_IN_USE", message: error.message } };
     }
     if (error instanceof DuplicateTradePurposeError) {
       return { statusCode: 409, body: { code: "TRADE_PURPOSE_ALREADY_EXISTS", message: error.message } };

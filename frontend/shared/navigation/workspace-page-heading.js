@@ -57,18 +57,6 @@
       if (/^#position(?::(?:manual|auto))?$/.test(currentHash)) return heading("#mainPage h1", "Position");
       if (currentHash === clientDealsRoute()) return heading("#dealsPage h1", "Client Deals");
       if (currentHash === hedgeDealsRoute()) return heading("#dealsPage h1", "Hedge Deals");
-      if (currentHash.startsWith(domainGlossaryRoute())) {
-        let title = "Domain Glossary";
-        const encodedKey = currentHash.slice(domainGlossaryRoute().length + 1);
-        if (encodedKey) {
-          let key;
-          try { key = decodeURIComponent(encodedKey); } catch (_error) { return heading("#processesPage h1", title); }
-          const canonicalKey = PROCESS_CATALOG_GLOSSARY_TERM_ALIASES.get(key) || key;
-          const label = document.getElementById(`process-term-${canonicalKey}`)?.querySelector("dt")?.textContent;
-          if (label) title = label.trim();
-        }
-        return heading("#processesPage h1", title);
-      }
       if (currentHash === manualBatchFormationProcessRoute()) return heading("#processesPage h1", "Manual Batching");
       if (currentHash === batchingSettingsRoute()) return heading("#batchingSettingsPage h1", "Batching Settings");
       if (currentHash === databaseRoute()) return heading("#databasePage h1", "Database");

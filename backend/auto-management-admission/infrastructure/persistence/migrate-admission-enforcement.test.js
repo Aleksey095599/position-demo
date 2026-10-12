@@ -6,6 +6,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { DatabaseSync } = require("node:sqlite");
 const { migrateAdmissionEnforcement } = require("./migrate-admission-enforcement");
+const { withLegacyAdmissionDecisions } = require("../../../test-support/legacy-admission-decision-schema");
 const root = path.resolve(__dirname, "../../../..");
 
 function legacySettings(sql) {
@@ -20,7 +21,7 @@ function legacySettings(sql) {
 function legacyDatabase() {
   const database = new DatabaseSync(":memory:");
   database.exec("PRAGMA foreign_keys = ON");
-  database.exec(legacySettings(fs.readFileSync(path.join(root, "schema.sql"), "utf8"))
+  database.exec(legacySettings(withLegacyAdmissionDecisions(fs.readFileSync(path.join(root, "schema.sql"), "utf8")))
     .replace(/(auto_management_admission_mode\s+TEXT)/, "default_position_management_mode TEXT NOT NULL DEFAULT 'MANUAL' CHECK(default_position_management_mode IN ('MANUAL', 'AUTO')),\n    $1")
     .replace(/(auto_management_admission_mode_override\s+TEXT)/, "position_management_mode_override TEXT CHECK(position_management_mode_override IN ('MANUAL', 'AUTO')),\n    $1")
     .replace("chk_auto_management_admission_decisions_enforcement", "chk_auto_management_admission_decisions_shadow_only")

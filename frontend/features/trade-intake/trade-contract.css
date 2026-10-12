@@ -38,18 +38,86 @@
     }
 
     #tradeContractPage .trade-contract-table :is(th, td):first-child {
-      width: 25%;
+      width: 50%;
       border-left: 0;
     }
 
     #tradeContractPage .trade-contract-table :is(th, td):last-child {
-      width: 25%;
+      width: 50%;
       border-right: 0;
     }
 
     #tradeContractPage .trade-contract-table tbody tr:last-child td {
       border-bottom: 0;
     }
+
+    #tradeContractPage .trade-contract-field-label {
+      --trade-contract-field-icon-size: var(--app-icon-size-semantic);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #tradeContractPage .trade-contract-field-label > .button-icon {
+      flex: 0 0 var(--trade-contract-field-icon-size);
+      width: var(--trade-contract-field-icon-size);
+      height: var(--trade-contract-field-icon-size);
+      font-size: var(--trade-contract-field-icon-size);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
+      color: var(--bs-secondary-color);
+    }
+
+    #tradeContractPage .trade-contract-composite-icon {
+      --badge-size: 12px;
+      --badge-offset-x: 2px;
+      --badge-offset-y: 2px;
+      --badge-center: calc(var(--trade-contract-field-icon-size) - var(--badge-size) / 2);
+      position: relative;
+      display: inline-block;
+      flex: 0 0 var(--trade-contract-field-icon-size);
+      width: var(--trade-contract-field-icon-size);
+      height: var(--trade-contract-field-icon-size);
+      color: var(--bs-secondary-color);
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__base {
+      position: absolute;
+      inset: 0;
+      font-size: var(--trade-contract-field-icon-size);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
+      mask-image: radial-gradient(circle at calc(var(--badge-center) + var(--badge-offset-x)) calc(var(--badge-center) + var(--badge-offset-y)),
+        transparent calc(var(--badge-size) / 2), #000 calc(var(--badge-size) / 2 + 0.5px));
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__badge {
+      position: absolute;
+      right: calc(0px - var(--badge-offset-x));
+      bottom: calc(0px - var(--badge-offset-y));
+      display: grid;
+      place-items: center;
+      width: var(--badge-size);
+      height: var(--badge-size);
+      font-size: 12px;
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__letter {
+      display: grid;
+      place-items: center;
+      font-family: Arial, sans-serif;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__glyph--base {
+      transform: translate(-0.17px, 0.5px);
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__glyph--quote {
+      transform: translateX(-0.33px);
+    }
+
     #tradeContractPage .workbench-page-header {
       justify-content: flex-start;
       border-bottom: 0;
@@ -58,17 +126,19 @@
     .trade-message-contract-icon {
       position: relative;
       display: inline-block;
-      flex: 0 0 20px;
-      width: 20px;
-      height: 20px;
+      flex: 0 0 var(--app-icon-size-semantic);
+      width: var(--app-icon-size-semantic);
+      height: var(--app-icon-size-semantic);
     }
 
     .trade-message-contract-icon .trade-message-contract-icon__mail {
       position: absolute;
       inset: 0;
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
       /* Leave a clear gap around the gear on every menu background. */
-      mask-image: radial-gradient(circle at 15px 15px, transparent 7px, #000 7.5px);
+      mask-image: radial-gradient(circle at calc(var(--app-icon-size-semantic) - 5px) calc(var(--app-icon-size-semantic) - 5px), transparent 7px, #000 7.5px);
     }
 
     .trade-message-contract-icon .trade-message-contract-icon__gear {
@@ -162,9 +232,9 @@
       transform: rotate(90deg);
     }
 
-    #tradeContractPage .trade-contract-table td.trade-contract-empty {
-      width: auto;
-      padding: 18px 10px;
+    #tradeContractPage .trade-contract-note {
+      margin: 0;
+      padding: 12px;
       color: var(--bs-secondary-color);
     }
 
@@ -172,4 +242,21 @@
     #tradeContractPage .trade-contract-table > thead,
     #tradeContractPage .trade-contract-table > thead > tr {
       border-top: 0;
+    }
+
+    #tradeContractPage .trade-contract-composite-icon__base > svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .trade-contract-term > .button-icon {
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
+    }
+
+    #tradeContractPage .originating-system-icon > svg {
+      display: block;
+      width: 1em;
+      height: 1em;
     }

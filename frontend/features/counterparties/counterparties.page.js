@@ -59,6 +59,10 @@
       return tradeCaptureChannelById(id)?.tradeCaptureChannelName || String(id || "");
     }
 
+    function tradePurposeDisplayName(id) {
+      return tradePurposes.find(item => item.tradePurposeId === id)?.name || id || "";
+    }
+
     function pricingContextDisplayPath(contextOrId) {
       const context = typeof contextOrId === "object" && contextOrId
         ? contextOrId
@@ -73,7 +77,8 @@
         context.settlementSystemId === NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID
           ? "Not applicable"
           : settlementSystemDisplayName(context.settlementSystemId),
-        tradeCaptureChannelDisplayName(context.tradeCaptureChannelId)
+        tradeCaptureChannelDisplayName(context.tradeCaptureChannelId),
+        tradePurposeDisplayName(context.tradePurposeId)
       ].join(" | ");
     }
 
@@ -243,7 +248,7 @@
 
           return pricingContextFacetMarkup(context, field);
         })
-        .join("");
+        .join("") + `<span class="client-pricing-context-candidate-facet">${escapeHtml(tradePurposeDisplayName(context.tradePurposeId))}</span>`;
     }
 
     function pricingContextCandidateMarkup(context) {
@@ -1402,14 +1407,14 @@
       const currencyPairMarkup = editing
         ? `
           <span class="client-pricing-configuration-inline-field is-pair">
-            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
+            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
             <input type="hidden" value="${escapeHtml(selectedCurrencyPair)}" data-client-pricing-rule-inline-field="currencyPair">
             <span class="client-pricing-configuration-node-value client-pricing-configuration-rule-pair">${escapeHtml(selectedCurrencyPair)}</span>
           </span>
         `
         : `
           <label class="client-pricing-configuration-inline-field is-pair">
-            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
+            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
             <select class="form-select form-select-sm" data-client-pricing-rule-inline-field="currencyPair" aria-label="Ccy Pair"${saving ? " disabled" : ""}>
               ${currencyPairs.map(currencyPair => `
                 <option value="${escapeHtml(currencyPair)}"${currencyPair === selectedCurrencyPair ? " selected" : ""}>${escapeHtml(currencyPair)}</option>
@@ -1603,7 +1608,7 @@
                 return `
                   <div class="client-pricing-configuration-node client-pricing-configuration-rule" data-client-pricing-rule-index="${index}" role="listitem">
                     <span class="client-pricing-configuration-node-field client-pricing-configuration-rule-piece is-pair">
-                      <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
+                      <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
                       <span class="client-pricing-configuration-node-value client-pricing-configuration-rule-pair">${escapeHtml(rule.currencyPair)}</span>
                     </span>
                     <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
@@ -1792,7 +1797,7 @@
         const hasAvailableContexts = availableTradeContextsForProfile(selectedClientProfile()).length > 0;
         clientTradeContextAttachRows.innerHTML = `
           <tr>
-            <td class="profile-empty" colspan="6">${hasAvailableContexts
+            <td class="profile-empty" colspan="7">${hasAvailableContexts
               ? "No available Trade Contexts match the current filters."
               : "All available Trade Contexts are already attached."}</td>
           </tr>
@@ -1813,6 +1818,7 @@
                 ? "Not Applicable"
                 : settlementSystemDisplayName(context.settlementSystemId))}</td>
               <td>${escapeHtml(tradeCaptureChannelDisplayName(context.tradeCaptureChannelId))}</td>
+              <td>${escapeHtml(tradePurposeDisplayName(context.tradePurposeId))}</td>
               <td>${pricingModeIndicatorMarkup(
                 pricingMode,
                 escapeHtml(pricingTypePresentation(pricingMode).label)
@@ -2790,7 +2796,7 @@
           <td class="profile-actions-cell" data-client-profile-actions-column>
             <span class="profile-row-actions">
               <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-profile-action="edit" data-profile-index="${index}" aria-label="Edit ${escapeHtml(profile.counterpartyId ?? profile.inn)}">
-                <span class="button-icon" aria-hidden="true">edit</span>
+                <span class="button-icon" aria-hidden="true">settings_account_box</span>
               </button>
             </span>
           </td>
@@ -4064,6 +4070,7 @@
         servicingBranchCode: "",
         settlementSystemId: "",
         tradeCaptureChannelId: "",
+        tradePurposeId: "",
         positionManagementMode: "MANUAL"
       };
     }
@@ -4072,7 +4079,8 @@
       return Boolean(left && right) &&
         left.servicingBranchCode === right.servicingBranchCode &&
         left.settlementSystemId === right.settlementSystemId &&
-        left.tradeCaptureChannelId === right.tradeCaptureChannelId;
+        left.tradeCaptureChannelId === right.tradeCaptureChannelId &&
+        left.tradePurposeId === right.tradePurposeId;
     }
 
     function samePricingContext(left, right) {
@@ -4089,11 +4097,12 @@
       const servicingBranchCode = pricingContextRowControl(row, "servicingBranchCode")?.value.trim() || "";
       const settlementSystemId = normalizedContextCode(pricingContextRowControl(row, "settlementSystemId")?.value);
       const tradeCaptureChannelId = normalizedContextCode(pricingContextRowControl(row, "tradeCaptureChannelId")?.value);
+      const tradePurposeId = pricingContextRowControl(row, "tradePurposeId")?.value || "";
       const positionManagementMode = normalizedPositionManagementModeSetting(
         pricingContextRowControl(row, "positionManagementMode")?.value
       );
 
-      if (!servicingBranchCode || !settlementSystemId || !tradeCaptureChannelId) {
+      if (!servicingBranchCode || !settlementSystemId || !tradeCaptureChannelId || !tradePurposes.some(item => item.tradePurposeId === tradePurposeId)) {
         return null;
       }
 
@@ -4111,6 +4120,7 @@
         servicingBranchCode,
         settlementSystemId,
         tradeCaptureChannelId,
+        tradePurposeId,
         positionManagementMode
       };
     }
@@ -4140,6 +4150,12 @@
     }
 
     function pricingContextFromRow(row) {
+      const tradePurposeSelect = pricingContextRowControl(row, "tradePurposeId");
+      const tradePurposeId = tradePurposeSelect.value;
+      if (!tradePurposes.some(item => item.tradePurposeId === tradePurposeId)) {
+        tradePurposeSelect.reportValidity();
+        return null;
+      }
       const servicingLocationSelect = pricingContextRowControl(row, "servicingBranchCode");
       const accountingSystemSelect = pricingContextRowControl(row, "settlementSystemId");
       const originatingSystemSelect = pricingContextRowControl(row, "tradeCaptureChannelId");
@@ -4186,6 +4202,7 @@
         servicingBranchCode,
         settlementSystemId,
         tradeCaptureChannelId,
+        tradePurposeId,
         positionManagementMode
       };
       const currentIndex = pricingContextEditStateIndex();
@@ -4475,6 +4492,7 @@
     }
 
     function pricingContextSearchValues(context, field) {
+      if (field === "tradePurposeId") return [context.tradePurposeId, tradePurposeDisplayName(context.tradePurposeId)];
       if (field === "pricingContextId") {
         return [context.pricingContextId];
       }
@@ -4597,6 +4615,7 @@
           <td>${pricingContextFacetMarkup(context, "servicingBranchCode")}</td>
           <td>${pricingContextFacetMarkup(context, "settlementSystemId")}</td>
           <td>${originatingSystemLabelMarkup(originatingSystemName, originatingSystem?.pricingType)}</td>
+          <td>${escapeHtml(tradePurposeDisplayName(context.tradePurposeId))}</td>
           <td data-pricing-context-column="positionManagementMode">${positionManagementModeSettingMarkup(context.positionManagementMode)}</td>
           <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index)}</td>
           <td class="profile-actions-cell" data-pricing-context-actions-column>
@@ -4633,6 +4652,11 @@
           <td>
             <select class="inline-edit-control" data-pricing-context-field="tradeCaptureChannelId" aria-label="Originating System" required>
               ${referenceSelectOptions(tradeCaptureChannels, context.tradeCaptureChannelId, "tradeCaptureChannelId", item => item.tradeCaptureChannelName)}
+            </select>
+          </td>
+          <td>
+            <select class="inline-edit-control" data-pricing-context-field="tradePurposeId" aria-label="Trade Purpose" required>
+              ${referenceSelectOptions(tradePurposes, context.tradePurposeId, "tradePurposeId", item => item.name)}
             </select>
           </td>
           <td data-pricing-context-column="positionManagementMode">
@@ -4672,7 +4696,7 @@
       if (rows.length === 0 && !createRow) {
         pricingContextRowsEl.innerHTML = `
           <tr>
-            <td class="profile-empty" colspan="7">No trade contexts match the filters.</td>
+            <td class="profile-empty" colspan="8">No trade contexts match the filters.</td>
           </tr>
         `;
         scheduleSmartColumnSizing();
@@ -4814,6 +4838,7 @@
                 servicingLocationId: context.servicingBranchCode,
                 accountingSystemId: context.settlementSystemId,
                 originatingSystemId: context.tradeCaptureChannelId,
+                tradePurposeId: context.tradePurposeId,
                 positionManagementMode: context.positionManagementMode
               })
             }
@@ -5046,7 +5071,7 @@
 
     function referenceDataUsageCount(kind, item) {
       if (kind === "tradePurpose") {
-        return 0;
+        return pricingContexts.filter(context => context.tradePurposeId === item.tradePurposeId).length;
       }
 
       if (kind === "servicingBranch") {
@@ -5061,10 +5086,6 @@
     }
 
     function attachedTradeContextsButtonMarkup(kind, item, index, editing = false) {
-      if (kind === "tradePurpose") {
-        return '<span aria-label="No attached Trade Contexts">—</span>';
-      }
-
       const count = referenceDataUsageCount(kind, item);
       const hasAttachedContexts = count > 0;
       const contextLabel = count === 1 ? "Trade Context" : "Trade Contexts";
@@ -5140,7 +5161,7 @@
 
       if (kind === "tradePurpose") {
         cells = `
-          <td><input class="inline-edit-control" type="text" data-reference-field="tradePurposeId" aria-label="Trade Purpose ID" value="${escapeHtml(item.tradePurposeId)}" maxlength="30" pattern="[A-Za-z0-9_-]{2,30}" required></td>
+          <td><input class="inline-edit-control" type="text" data-reference-field="tradePurposeId" aria-label="Trade Purpose ID" value="${escapeHtml(item.tradePurposeId)}" maxlength="30" pattern="[A-Za-z0-9_-]{2,30}" required${keyReadonly}></td>
           <td><input class="inline-edit-control" type="text" data-reference-field="name" aria-label="Trade Purpose Name" value="${escapeHtml(item.name)}" maxlength="100" required></td>
         `;
       } else if (kind === "servicingBranch") {

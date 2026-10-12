@@ -171,7 +171,7 @@
         inputName: "contextOriginatingSystem",
         menuId: "clientPricingOriginatingMenu",
         label: "Originating System",
-        icon: "web_asset"
+        icon: "devices"
       }
     ];
     let ccyOptions = loadCcyOptions();
@@ -988,7 +988,6 @@
       document.querySelectorAll("[data-process-catalog-view]")
     );
     const manualBatchFormationProcessView = document.getElementById("manualBatchFormationProcessView");
-    const domainGlossaryProcessView = document.getElementById("domainGlossaryProcessView");
     const processCatalogLanguageButtons = Array.from(
       document.querySelectorAll("[data-process-language]")
     );
@@ -1413,11 +1412,12 @@
     const databaseDataHeadEl = document.getElementById("databaseDataHead");
     const databaseDataRowsEl = document.getElementById("databaseDataRows");
     const databaseCreateSqlEl = document.getElementById("databaseCreateSql");
+    const TRADE_ICON_CONTENT = '<span class="currency-pair-icon trade-icon__pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.2v3.6L14 4ZM14 18.2v3.6L10 20Z"/></svg>';
     const DATABASE_TABLE_SECTIONS = Object.freeze([
       {
         id: "trading",
         label: "Trades",
-        icon: "currency_exchange",
+        icon: "trade",
         tables: [
           "client_deals",
           "hedge_deals",
@@ -1524,7 +1524,7 @@
         icon: "policy",
         tables: [
           "trade_market_snapshots",
-          "auto_management_admission_decisions",
+          "position_management_mode_decisions",
           "v_batch_formation_audit"
         ]
       },
@@ -3185,7 +3185,7 @@ function positionManagementModeSettingLabel(value) {
           aria-label="Originating System ${escapeHtml(displayName)}; Pricing Mode ${escapeHtml(presentation.label)}"
         >
           <span class="originating-system-label__system" aria-hidden="true">
-            <span class="button-icon">web_asset</span>
+            <span class="button-icon">devices</span>
           </span>
           <span class="originating-system-label__name${nameClass}">${escapeHtml(displayName)}</span>
           <span class="originating-system-label__pricing" aria-hidden="true">
@@ -3493,23 +3493,15 @@ function positionManagementModeSettingLabel(value) {
       }
     }
 
-    function pricingContextNaturalKey(servicingBranchCode, settlementSystemId, tradeCaptureChannelId) {
-      return `${servicingBranchCode}:${settlementSystemId}:${tradeCaptureChannelId}`;
+    function pricingContextNaturalKey(servicingBranchCode, settlementSystemId, tradeCaptureChannelId, tradePurposeId) {
+      return `${servicingBranchCode}:${settlementSystemId}:${tradeCaptureChannelId}:${tradePurposeId || ""}`;
     }
 
-    function pricingContextIdForComponents(servicingBranchCode, settlementSystemId, tradeCaptureChannelId) {
-      const naturalKey = pricingContextNaturalKey(
-        servicingBranchCode,
-        settlementSystemId,
-        tradeCaptureChannelId
-      );
-      const context = pricingContexts.find(item => pricingContextNaturalKey(
-        item.servicingBranchCode,
-        item.settlementSystemId,
-        item.tradeCaptureChannelId
-      ) === naturalKey);
-
-      return context?.pricingContextId || "";
+    function pricingContextIdForComponents(servicingBranchCode, settlementSystemId, tradeCaptureChannelId, tradePurposeId = "") {
+      const matches = pricingContexts.filter(item => item.servicingBranchCode === servicingBranchCode &&
+        item.settlementSystemId === settlementSystemId && item.tradeCaptureChannelId === tradeCaptureChannelId &&
+        (!tradePurposeId || item.tradePurposeId === tradePurposeId));
+      return matches.length === 1 ? matches[0].pricingContextId : "";
     }
 
     function normalizedPricingContexts(value, fallback = DEFAULT_PRICING_CONTEXTS) {
@@ -3588,6 +3580,7 @@ function positionManagementModeSettingLabel(value) {
             servicingBranchCode,
             settlementSystemId,
             tradeCaptureChannelId,
+            tradePurposeId: normalizedContextCode(item?.tradePurposeId ?? item?.trade_purpose_id),
             positionManagementMode,
             assignedCounterpartyCount,
             pricingRulesCount
@@ -3597,7 +3590,8 @@ function positionManagementModeSettingLabel(value) {
           const naturalKey = pricingContextNaturalKey(
             item.servicingBranchCode,
             item.settlementSystemId,
-            item.tradeCaptureChannelId
+            item.tradeCaptureChannelId,
+            item.tradePurposeId
           );
           const valid =
             Boolean(item.pricingContextId) &&
@@ -7476,6 +7470,10 @@ function positionManagementModeSettingLabel(value) {
       return tradeCaptureChannelById(id)?.tradeCaptureChannelName || String(id || "");
     }
 
+    function tradePurposeDisplayName(id) {
+      return tradePurposes.find(item => item.tradePurposeId === id)?.name || id || "";
+    }
+
     function pricingContextDisplayPath(contextOrId) {
       const context = typeof contextOrId === "object" && contextOrId
         ? contextOrId
@@ -7490,7 +7488,8 @@ function positionManagementModeSettingLabel(value) {
         context.settlementSystemId === NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID
           ? "Not applicable"
           : settlementSystemDisplayName(context.settlementSystemId),
-        tradeCaptureChannelDisplayName(context.tradeCaptureChannelId)
+        tradeCaptureChannelDisplayName(context.tradeCaptureChannelId),
+        tradePurposeDisplayName(context.tradePurposeId)
       ].join(" | ");
     }
 
@@ -7660,7 +7659,7 @@ function positionManagementModeSettingLabel(value) {
 
           return pricingContextFacetMarkup(context, field);
         })
-        .join("");
+        .join("") + `<span class="client-pricing-context-candidate-facet">${escapeHtml(tradePurposeDisplayName(context.tradePurposeId))}</span>`;
     }
 
     function pricingContextCandidateMarkup(context) {
@@ -8819,14 +8818,14 @@ function positionManagementModeSettingLabel(value) {
       const currencyPairMarkup = editing
         ? `
           <span class="client-pricing-configuration-inline-field is-pair">
-            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
+            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
             <input type="hidden" value="${escapeHtml(selectedCurrencyPair)}" data-client-pricing-rule-inline-field="currencyPair">
             <span class="client-pricing-configuration-node-value client-pricing-configuration-rule-pair">${escapeHtml(selectedCurrencyPair)}</span>
           </span>
         `
         : `
           <label class="client-pricing-configuration-inline-field is-pair">
-            <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
+            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
             <select class="form-select form-select-sm" data-client-pricing-rule-inline-field="currencyPair" aria-label="Ccy Pair"${saving ? " disabled" : ""}>
               ${currencyPairs.map(currencyPair => `
                 <option value="${escapeHtml(currencyPair)}"${currencyPair === selectedCurrencyPair ? " selected" : ""}>${escapeHtml(currencyPair)}</option>
@@ -9020,7 +9019,7 @@ function positionManagementModeSettingLabel(value) {
                 return `
                   <div class="client-pricing-configuration-node client-pricing-configuration-rule" data-client-pricing-rule-index="${index}" role="listitem">
                     <span class="client-pricing-configuration-node-field client-pricing-configuration-rule-piece is-pair">
-                      <span class="button-icon client-pricing-configuration-node-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair">swap_horiz</span>
+                      <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
                       <span class="client-pricing-configuration-node-value client-pricing-configuration-rule-pair">${escapeHtml(rule.currencyPair)}</span>
                     </span>
                     <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
@@ -9209,7 +9208,7 @@ function positionManagementModeSettingLabel(value) {
         const hasAvailableContexts = availableTradeContextsForProfile(selectedClientProfile()).length > 0;
         clientTradeContextAttachRows.innerHTML = `
           <tr>
-            <td class="profile-empty" colspan="6">${hasAvailableContexts
+            <td class="profile-empty" colspan="7">${hasAvailableContexts
               ? "No available Trade Contexts match the current filters."
               : "All available Trade Contexts are already attached."}</td>
           </tr>
@@ -9230,6 +9229,7 @@ function positionManagementModeSettingLabel(value) {
                 ? "Not Applicable"
                 : settlementSystemDisplayName(context.settlementSystemId))}</td>
               <td>${escapeHtml(tradeCaptureChannelDisplayName(context.tradeCaptureChannelId))}</td>
+              <td>${escapeHtml(tradePurposeDisplayName(context.tradePurposeId))}</td>
               <td>${pricingModeIndicatorMarkup(
                 pricingMode,
                 escapeHtml(pricingTypePresentation(pricingMode).label)
@@ -10207,7 +10207,7 @@ function positionManagementModeSettingLabel(value) {
           <td class="profile-actions-cell" data-client-profile-actions-column>
             <span class="profile-row-actions">
               <button type="button" class="btn btn-sm btn-outline-secondary reference-grid-action" data-profile-action="edit" data-profile-index="${index}" aria-label="Edit ${escapeHtml(profile.counterpartyId ?? profile.inn)}">
-                <span class="button-icon" aria-hidden="true">edit</span>
+                <span class="button-icon" aria-hidden="true">settings_account_box</span>
               </button>
             </span>
           </td>
@@ -11481,6 +11481,7 @@ function positionManagementModeSettingLabel(value) {
         servicingBranchCode: "",
         settlementSystemId: "",
         tradeCaptureChannelId: "",
+        tradePurposeId: "",
         positionManagementMode: "MANUAL"
       };
     }
@@ -11489,7 +11490,8 @@ function positionManagementModeSettingLabel(value) {
       return Boolean(left && right) &&
         left.servicingBranchCode === right.servicingBranchCode &&
         left.settlementSystemId === right.settlementSystemId &&
-        left.tradeCaptureChannelId === right.tradeCaptureChannelId;
+        left.tradeCaptureChannelId === right.tradeCaptureChannelId &&
+        left.tradePurposeId === right.tradePurposeId;
     }
 
     function samePricingContext(left, right) {
@@ -11506,11 +11508,12 @@ function positionManagementModeSettingLabel(value) {
       const servicingBranchCode = pricingContextRowControl(row, "servicingBranchCode")?.value.trim() || "";
       const settlementSystemId = normalizedContextCode(pricingContextRowControl(row, "settlementSystemId")?.value);
       const tradeCaptureChannelId = normalizedContextCode(pricingContextRowControl(row, "tradeCaptureChannelId")?.value);
+      const tradePurposeId = pricingContextRowControl(row, "tradePurposeId")?.value || "";
       const positionManagementMode = normalizedPositionManagementModeSetting(
         pricingContextRowControl(row, "positionManagementMode")?.value
       );
 
-      if (!servicingBranchCode || !settlementSystemId || !tradeCaptureChannelId) {
+      if (!servicingBranchCode || !settlementSystemId || !tradeCaptureChannelId || !tradePurposes.some(item => item.tradePurposeId === tradePurposeId)) {
         return null;
       }
 
@@ -11528,6 +11531,7 @@ function positionManagementModeSettingLabel(value) {
         servicingBranchCode,
         settlementSystemId,
         tradeCaptureChannelId,
+        tradePurposeId,
         positionManagementMode
       };
     }
@@ -11557,6 +11561,12 @@ function positionManagementModeSettingLabel(value) {
     }
 
     function pricingContextFromRow(row) {
+      const tradePurposeSelect = pricingContextRowControl(row, "tradePurposeId");
+      const tradePurposeId = tradePurposeSelect.value;
+      if (!tradePurposes.some(item => item.tradePurposeId === tradePurposeId)) {
+        tradePurposeSelect.reportValidity();
+        return null;
+      }
       const servicingLocationSelect = pricingContextRowControl(row, "servicingBranchCode");
       const accountingSystemSelect = pricingContextRowControl(row, "settlementSystemId");
       const originatingSystemSelect = pricingContextRowControl(row, "tradeCaptureChannelId");
@@ -11603,6 +11613,7 @@ function positionManagementModeSettingLabel(value) {
         servicingBranchCode,
         settlementSystemId,
         tradeCaptureChannelId,
+        tradePurposeId,
         positionManagementMode
       };
       const currentIndex = pricingContextEditStateIndex();
@@ -11892,6 +11903,7 @@ function positionManagementModeSettingLabel(value) {
     }
 
     function pricingContextSearchValues(context, field) {
+      if (field === "tradePurposeId") return [context.tradePurposeId, tradePurposeDisplayName(context.tradePurposeId)];
       if (field === "pricingContextId") {
         return [context.pricingContextId];
       }
@@ -12014,6 +12026,7 @@ function positionManagementModeSettingLabel(value) {
           <td>${pricingContextFacetMarkup(context, "servicingBranchCode")}</td>
           <td>${pricingContextFacetMarkup(context, "settlementSystemId")}</td>
           <td>${originatingSystemLabelMarkup(originatingSystemName, originatingSystem?.pricingType)}</td>
+          <td>${escapeHtml(tradePurposeDisplayName(context.tradePurposeId))}</td>
           <td data-pricing-context-column="positionManagementMode">${positionManagementModeSettingMarkup(context.positionManagementMode)}</td>
           <td class="reference-related-view-cell">${attachedTradingCounterpartiesButtonMarkup(context, index)}</td>
           <td class="profile-actions-cell" data-pricing-context-actions-column>
@@ -12050,6 +12063,11 @@ function positionManagementModeSettingLabel(value) {
           <td>
             <select class="inline-edit-control" data-pricing-context-field="tradeCaptureChannelId" aria-label="Originating System" required>
               ${referenceSelectOptions(tradeCaptureChannels, context.tradeCaptureChannelId, "tradeCaptureChannelId", item => item.tradeCaptureChannelName)}
+            </select>
+          </td>
+          <td>
+            <select class="inline-edit-control" data-pricing-context-field="tradePurposeId" aria-label="Trade Purpose" required>
+              ${referenceSelectOptions(tradePurposes, context.tradePurposeId, "tradePurposeId", item => item.name)}
             </select>
           </td>
           <td data-pricing-context-column="positionManagementMode">
@@ -12089,7 +12107,7 @@ function positionManagementModeSettingLabel(value) {
       if (rows.length === 0 && !createRow) {
         pricingContextRowsEl.innerHTML = `
           <tr>
-            <td class="profile-empty" colspan="7">No trade contexts match the filters.</td>
+            <td class="profile-empty" colspan="8">No trade contexts match the filters.</td>
           </tr>
         `;
         scheduleSmartColumnSizing();
@@ -12231,6 +12249,7 @@ function positionManagementModeSettingLabel(value) {
                 servicingLocationId: context.servicingBranchCode,
                 accountingSystemId: context.settlementSystemId,
                 originatingSystemId: context.tradeCaptureChannelId,
+                tradePurposeId: context.tradePurposeId,
                 positionManagementMode: context.positionManagementMode
               })
             }
@@ -12463,7 +12482,7 @@ function positionManagementModeSettingLabel(value) {
 
     function referenceDataUsageCount(kind, item) {
       if (kind === "tradePurpose") {
-        return 0;
+        return pricingContexts.filter(context => context.tradePurposeId === item.tradePurposeId).length;
       }
 
       if (kind === "servicingBranch") {
@@ -12478,10 +12497,6 @@ function positionManagementModeSettingLabel(value) {
     }
 
     function attachedTradeContextsButtonMarkup(kind, item, index, editing = false) {
-      if (kind === "tradePurpose") {
-        return '<span aria-label="No attached Trade Contexts">—</span>';
-      }
-
       const count = referenceDataUsageCount(kind, item);
       const hasAttachedContexts = count > 0;
       const contextLabel = count === 1 ? "Trade Context" : "Trade Contexts";
@@ -12557,7 +12572,7 @@ function positionManagementModeSettingLabel(value) {
 
       if (kind === "tradePurpose") {
         cells = `
-          <td><input class="inline-edit-control" type="text" data-reference-field="tradePurposeId" aria-label="Trade Purpose ID" value="${escapeHtml(item.tradePurposeId)}" maxlength="30" pattern="[A-Za-z0-9_-]{2,30}" required></td>
+          <td><input class="inline-edit-control" type="text" data-reference-field="tradePurposeId" aria-label="Trade Purpose ID" value="${escapeHtml(item.tradePurposeId)}" maxlength="30" pattern="[A-Za-z0-9_-]{2,30}" required${keyReadonly}></td>
           <td><input class="inline-edit-control" type="text" data-reference-field="name" aria-label="Trade Purpose Name" value="${escapeHtml(item.name)}" maxlength="100" required></td>
         `;
       } else if (kind === "servicingBranch") {
@@ -17913,7 +17928,7 @@ function positionManagementModeSettingLabel(value) {
             ${isOpen ? "open" : ""}
           >
             <summary class="database-table-section-summary">
-              <span class="button-icon database-table-section-icon" aria-hidden="true">${escapeHtml(section.icon)}</span>
+              <span class="button-icon database-table-section-icon${section.icon === "trade" ? " trade-icon" : ""}" aria-hidden="true">${section.icon === "trade" ? TRADE_ICON_CONTENT : escapeHtml(section.icon)}</span>
               <span class="database-table-section-name">${escapeHtml(section.label)}</span>
               <span class="database-table-section-meta">
                 ${escapeHtml(databaseObjectCountLabel(tables.length))} · ${escapeHtml(databaseRowCountLabel(rowCount))}
@@ -18494,110 +18509,12 @@ function positionManagementModeSettingLabel(value) {
       return "#processes:manual-batch-formation";
     }
 
-    function domainGlossaryRoute(termKey = "") {
-      return termKey
-        ? `#processes:domain-glossary/${encodeURIComponent(termKey)}`
-        : "#processes:domain-glossary";
-    }
-
-    const PROCESS_CATALOG_GLOSSARY_TERM_KEYS = new Set([
-      "position-management-mode",
-      "auto-position-management-mode",
-      "manual-position-management-mode",
-      "auto-hedging",
-      "auto-management-admission",
-      "trade-context-position-management-mode",
-      "auto-mode-eligibility",
-      "eligibility-check",
-      "admission-state",
-      "ccy-pair",
-      "batch",
-      "batching",
-      "market-pulse",
-      "trade",
-      "client-deal",
-      "hedge-deal",
-      "position",
-      "trade-context",
-      "servicing-location",
-      "accounting-system",
-      "originating-system",
-      "pricing-mode",
-      "transfer-rate",
-      "base-currency",
-      "quote-currency",
-      "trade-date",
-      "tenor",
-      "value-date",
-      "batching-key",
-      "cross-tenor-batching",
-      "batch-internal-swap"
-    ]);
-
-    const PROCESS_CATALOG_GLOSSARY_TERM_ALIASES = new Map([
-      ["manual-management", "manual-position-management-mode"],
-      ["auto-management", "auto-position-management-mode"],
-      ["execution-context", "trade-context"],
-      ["execution-system", "originating-system"],
-      ["execution-context-admission-mode", "trade-context-position-management-mode"],
-      ["trade-context-admission-mode", "trade-context-position-management-mode"]
-    ]);
-
-    function domainGlossaryTermFromRoute() {
-      const routePrefix = `${domainGlossaryRoute()}/`;
-      if (!location.hash.startsWith(routePrefix)) {
-        return null;
-      }
-      try {
-        const termKey = decodeURIComponent(location.hash.slice(routePrefix.length));
-        const canonicalTermKey = PROCESS_CATALOG_GLOSSARY_TERM_ALIASES.get(termKey) || termKey;
-        return PROCESS_CATALOG_GLOSSARY_TERM_KEYS.has(canonicalTermKey) ? canonicalTermKey : null;
-      } catch (_error) {
-        return null;
-      }
-    }
-
     const PROCESS_CATALOG_LANGUAGE_STORAGE_KEY = "position.processCatalogLanguage";
     const PROCESS_CATALOG_COPY = Object.freeze({
       en: Object.freeze({
         pageTitle: "Process Catalog",
         manualBatching: "Manual Batching",
-        autoPositionManagementModeDefinition: "A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode is assigned when the Trade is created; it does not mean that an automated action has already occurred.",
-        manualPositionManagementModeDefinition: "A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator manages the Trade in its assigned mode.",
-        positionManagementModeDefinition: "The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It is fixed at creation and determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.",
-        autoHedgingDefinition: "An automated risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.",
-        autoManagementAdmissionDefinition: "The decision made when a Trade is created to assign Auto Mode if its settings and eligibility requirements allow it; otherwise Manual Mode is assigned.",
-        tradeContextPositionManagementModeDefinition: "A Trade Context setting that assigns Manual Mode or Auto Mode if Eligible when a Trade is created. A Pricing Rule may override it only to Manual Mode. Settings changes affect new Trades only; an existing Trade retains its assigned mode.",
-        autoModeEligibilityDefinition: "Requirements configured by Trade Type and Ccy Pair and checked when a new Trade is considered for Position Management — Auto Mode. Position Management Mode separately applies Trade Context and Pricing Rule settings.",
-        eligibilityCheckDefinition: "A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before Auto Mode is assigned.",
-        ccyPairDefinition: "An ordered pair of currencies defining the Base Currency and Quote Currency used to express a Trade amount and exchange rate.",
-        automationAdmissionStateDefinition: "Records whether Auto Mode was admitted when the Trade was created. It does not represent a pending transfer between modes.",
-        domainGlossary: "Domain Glossary",
-        domainGlossarySubtitle: "Core terms used across documented processes",
         goal: "Process goal:",
-        definitions: "Core definitions",
-        batchDefinition: "A fixed package of Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active Position view, which organizes trades and simplifies control of the current currency position.",
-        batchingTerm: "Batching",
-        marketPulseDefinition: "An application module that provides current normalized market quotes (Bid and Offer) for currency pairs to pricing, validation, and risk-management processes. In the current demo, quotes are generated by a simulator; the domain concept is independent of the data source and may later use real market-data feeds.",
-        batchingDefinition: "A manual or automatic process that selects, validates, groups and neutralizes Trades compatible by Batching Key to form one or more Batches. A user selects Trades for Manual Batching; configured rules select them for Automatic Batching.",
-        tradeDefinition: "A Client Deal, Hedge Deal, or technical transaction included in currency-position calculations and displayed in Position.",
-        clientDealDefinition: "A Trade executed with a client and forming the client component of the currency position.",
-        hedgeDealDefinition: "A Trade executed with a hedge counterparty to manage or neutralize the currency position.",
-        positionDefinition: "Application interface for monitoring the currency position and performing operations with Trades, including Batching.",
-        tradeContextDefinition: "Trade Context describes the business environment in which a Trade originates, is serviced, and is reflected in accounting. It provides common coordinates against which rules for different processes apply. These coordinates are Servicing Location, Accounting System (when applicable), and Originating System.",
-        servicingLocationDefinition: "The organizational and geographic point at which a Trade is serviced, such as a branch or head office in a particular region.",
-        accountingSystemDefinition: "An internal system of record of a bank or financial institution in which a Trade and its related accounting entries are registered.",
-        originatingSystemDefinition: "The business system in which a Trade is first registered as a business fact.",
-        pricingModeDefinition: "An Originating System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.",
-        transferRateDefinition: "An internal accounting rate of a Trade used to calculate its currency position and allocate analytical P&L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.",
-        baseCurrencyDefinition: "The first currency in a currency pair; its amount forms the base currency leg of a Trade.",
-        quoteCurrencyDefinition: "The second currency in a currency pair, in which the value of the Base Currency is expressed.",
-        tradeDateDefinition: "The date on which a Trade is executed; Tenor and Value Dates are determined relative to it.",
-        tenorDefinition: "The standard settlement term of a Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.",
-        valueDateDefinition: "The settlement date for one currency leg of a Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.",
-        batchingKeyDefinition: "A composite compatibility key that determines whether Trades may be included in one Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.",
-        crossTenorBatchingDefinition: "A Batching mode that allows compatible Trades with different Tenors and Value Dates to be included in one Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.",
-        batchInternalSwapDefinition: "An internal technical entity of a Batch that aligns Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across Batches and offset by a single net swap at the end of the accounting day.",
         selectedTrades: "Selected Trades",
         formedBatch: "Formed Batch",
         stageInput: "INPUT",
@@ -18634,44 +18551,9 @@ function positionManagementModeSettingLabel(value) {
         stageResult: "Stage result"
       }),
       ru: Object.freeze({
-        transferRateDefinition: "\u0412\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u0443\u0447\u0451\u0442\u043d\u044b\u0439 \u043a\u0443\u0440\u0441 Trade, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u044b\u0439 \u0434\u043b\u044f \u0440\u0430\u0441\u0447\u0451\u0442\u0430 \u0432\u0430\u043b\u044e\u0442\u043d\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0434\u043e\u0445\u043e\u0434\u0430. \u0418\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u044d\u0442\u043e\u043c\u0443 \u043a\u0443\u0440\u0441\u0443 \u043a\u043b\u0438\u0435\u043d\u0442\u0441\u043a\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043b\u0430\u0441\u044c \u0438\u0437 \u043a\u043d\u0438\u0433\u0438 Sales \u0432 \u043a\u043d\u0438\u0433\u0443 \u043f\u043e\u0434\u0440\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u044f, \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0438 \u043f\u0435\u0440\u0435\u043a\u0440\u044b\u0432\u0430\u044e\u0449\u0435\u0433\u043e \u043f\u043e\u0437\u0438\u0446\u0438\u044e. \u0412 \u0442\u0435\u043a\u0443\u0449\u0435\u043c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438 \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0438 \u043c\u0435\u0436\u0434\u0443 \u043a\u043d\u0438\u0433\u0430\u043c\u0438 \u0438\u043b\u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0430\u043c\u0438 \u043d\u0435\u0442; \u043e\u0442\u0440\u0430\u0441\u043b\u0435\u0432\u043e\u0439 \u0442\u0435\u0440\u043c\u0438\u043d \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u043b\u044f \u043e\u0431\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f \u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0433\u043e \u0440\u0430\u0441\u0447\u0451\u0442\u043d\u043e\u0433\u043e \u043a\u0443\u0440\u0441\u0430.",
         pageTitle: "Каталог процессов",
         manualBatching: "Ручной Batching",
-        autoPositionManagementModeDefinition: "Режим управления позицией, в котором трейд доступен автоматическим процессам, включая хеджирование и формирование batch, с учётом правил каждого процесса. Трейд должен соответствовать применимым требованиям допуска. Режим назначается при создании трейда; сам по себе он не означает, что автоматическое действие уже выполнено.",
-        manualPositionManagementModeDefinition: "Режим управления позицией, в котором управление трейдом контролирует оператор, включая проверку, ручное хеджирование и формирование batch. Трейд не участвует в автоматических процессах управления позицией. Оператор управляет трейдом в назначенном ему режиме.",
-        positionManagementModeDefinition: "Назначенный трейду режим: Auto Mode of Position Management или Manual Mode of Position Management. Фиксируется при создании Trade, определяет способ управления позицией трейда и не является его экономической экспозицией или состоянием отдельного процесса управления.",
-        autoHedgingDefinition: "Автоматизированный процесс управления валютным риском, который контролирует открытую валютную позицию и применяет настроенные алгоритмы и ограничения для удержания валютного риска в утверждённых пределах.",
-        autoManagementAdmissionDefinition: "Решение при создании Trade: назначить Auto Mode, если настройки и требования Eligibility это допускают; иначе назначить Manual Mode.",
-        tradeContextPositionManagementModeDefinition: "Настройка Trade Context, назначающая Manual Mode либо Auto Mode при выполнении Eligibility в момент создания Trade. Pricing Rule может переопределить её только на Manual Mode. Изменения настроек действуют только для новых Trades; режим существующего Trade не меняется.",
-        autoModeEligibilityDefinition: "Требования, настроенные по Trade Type и Ccy Pair и проверяемые при назначении новому Trade режима Position Management — Auto Mode. Position Management Mode отдельно учитывает настройки Trade Context и Pricing Rule.",
-        eligibilityCheckDefinition: "Условие безопасности, проверяемое по данным Trade, справочным или рыночным данным для определения возможности участия в Auto Management. Перед допуском должны быть пройдены все применимые проверки.",
-        ccyPairDefinition: "Упорядоченная пара валют, определяющая Base Currency и Quote Currency, в которых выражаются сумма и обменный курс Trade.",
-        automationAdmissionStateDefinition: "Фиксирует результат допуска в Auto Mode при создании Trade. Не означает ожидание перевода между режимами.",
-        domainGlossary: "Domain Glossary",
-        domainGlossarySubtitle: "Основные термины, используемые в описаниях процессов",
         goal: "Цель процесса:",
-        definitions: "Основные определения",
-        batchDefinition: "Зафиксированный пакет совместимых по Batching Key Trades — Client Deals, Hedge Deals и технических Trades, — совокупная ОВП которых равна нулю. После формирования участники пакета исключаются из активного представления Position, что систематизирует сделки и упрощает контроль текущей валютной позиции.",
-        marketPulseDefinition: "Модуль приложения, предоставляющий текущие нормализованные рыночные котировки (Bid и Offer) по валютным парам для ценообразования, проверок и процессов управления риском. В текущей демонстрационной реализации котировки формируются симулятором; доменное понятие не зависит от источника данных и в дальнейшем может использовать реальные потоки рыночных данных.",
-        batchingTerm: "Batching",
-        batchingDefinition: "Ручной или автоматический процесс выбора, проверки, группировки и нейтрализации совместимых по Batching Key Trades, результатом которого становится один или несколько Batches. При ручном Batching Trades выбирает пользователь, при автоматическом — система по настроенным правилам.",
-        tradeDefinition: "Client Deal, Hedge Deal или техническая Trade, учитываемая при расчёте валютной позиции и отображаемая в Position.",
-        clientDealDefinition: "Trade, заключённый с клиентом и формирующий клиентскую часть валютной позиции.",
-        hedgeDealDefinition: "Trade, заключённый с хеджирующим контрагентом для управления или нейтрализации валютной позиции.",
-        positionDefinition: "Интерфейс приложения для контроля валютной позиции и выполнения операций с Trades, в том числе для выполнения Batching.",
-        tradeContextDefinition: "Trade Context описывает бизнес-среду возникновения, обслуживания и учётного отражения сделки. Он задаёт общие координаты, относительно которых применяются правила разных процессов. Эти координаты — Servicing Location, Accounting System (когда применимо) и Originating System.",
-        servicingLocationDefinition: "Организационная и географическая точка обслуживания Trade, например филиал или головной офис в определённом регионе.",
-        accountingSystemDefinition: "Внутренняя учётная система банка или финансовой организации, в которой регистрируются Trade и связанные с ней бухгалтерские проводки.",
-        originatingSystemDefinition: "Бизнес-система, в которой сделка впервые зарегистрирована как бизнес-факт.",
-        pricingModeDefinition: "Атрибут Originating System, определяющий способ формирования или подтверждения цены исполнения: AUTO_PRICED — автоматическое ценообразование, DEALER_PRICED — цену устанавливает дилер, DEALER_APPROVED — предложенная системой цена требует подтверждения дилером.",
-        baseCurrencyDefinition: "Первая валюта в валютной паре; её сумма образует базовую валютную часть Trade.",
-        quoteCurrencyDefinition: "Вторая валюта в валютной паре; в ней выражается стоимость Base Currency.",
-        tradeDateDefinition: "Дата заключения Trade, относительно которой определяется Tenor и рассчитываются Value Dates.",
-        tenorDefinition: "Стандартное обозначение срока расчётов по Trade относительно Trade Date. В текущей модели используются TOD, TOM и SPOT.",
-        valueDateDefinition: "Дата расчётов по одной из валют Trade. Для каждого Trade отдельно определяются Base Currency Value Date и Quote Currency Value Date.",
-        batchingKeyDefinition: "Составной ключ совместимости Trades, определяющий возможность их включения в один Batch. Он всегда включает валютную пару, Trade Date и точность обеих валют. При отключённом Cross-Tenor Batching ключ также включает Tenor и обе Value Dates. При включённом Cross-Tenor Batching эти параметры могут различаться, поскольку сделки приводятся к общему Tenor с помощью Batch Internal Swap.",
-        crossTenorBatchingDefinition: "Режим Batching, позволяющий включать в один Batch совместимые Trades с различающимися Tenor и Value Dates. Перед формированием Batch их расчётные сроки приводятся к общему Tenor с помощью Batch Internal Swap.",
-        batchInternalSwapDefinition: "Внутренняя техническая сущность Batch, приводящая Trades с разными расчётными сроками к общему Tenor. Она не является отдельной рыночной сделкой; позиции по всем таким сущностям агрегируются и перекрываются одним нетто-свопом в конце учётного дня.",
         selectedTrades: "Выбранные Trades",
         formedBatch: "Сформированный Batch",
         stageInput: "ВХОД",
@@ -19056,44 +18938,21 @@ function positionManagementModeSettingLabel(value) {
 
     function updateProcessCatalogDocumentTitle() {
       if (processesPage && !processesPage.hidden) {
-        if (isDomainGlossaryRoute()) {
-          document.title = processCatalogLanguage === "ru"
-            ? "Domain Glossary — Каталог процессов"
-            : "Domain Glossary - Process Catalog";
-        } else {
-          document.title = processCatalogLanguage === "ru"
-            ? "Ручной Batching — Каталог процессов"
-            : "Manual Batching - Process Catalog";
-        }
+        document.title = processCatalogLanguage === "ru"
+          ? "Ручной Batching — Каталог процессов"
+          : "Manual Batching - Process Catalog";
       }
     }
 
     function renderProcessCatalogRoute() {
-      const isGlossary = isDomainGlossaryRoute();
-      const activeView = isGlossary ? "glossary" : "manual";
-
-      if (manualBatchFormationProcessView) {
-        manualBatchFormationProcessView.hidden = isGlossary;
-      }
-      if (domainGlossaryProcessView) {
-        domainGlossaryProcessView.hidden = !isGlossary;
-      }
+      if (manualBatchFormationProcessView) manualBatchFormationProcessView.hidden = false;
       processCatalogViewLinks.forEach(link => {
-        const view = link.dataset.processCatalogView;
-        const isActive = view === activeView;
+        const isActive = link.dataset.processCatalogView === "manual";
         link.classList.toggle("is-active", isActive);
-        if (isActive) {
-          link.setAttribute("aria-current", "page");
-        } else {
-          link.removeAttribute("aria-current");
-        }
+        if (isActive) link.setAttribute("aria-current", "page");
+        else link.removeAttribute("aria-current");
       });
       updateProcessCatalogDocumentTitle();
-
-      const termKey = domainGlossaryTermFromRoute();
-      if (isGlossary && termKey) {
-        window.requestAnimationFrame(() => showManualProcessDefinition(termKey));
-      }
     }
 
     function setProcessCatalogLanguage(language, { persist = true } = {}) {
@@ -19104,14 +18963,9 @@ function positionManagementModeSettingLabel(value) {
       processCatalogCopyElements.forEach(element => {
         const key = element.dataset.processCopy;
         if (Object.prototype.hasOwnProperty.call(copy, key)) {
-          if (element.hasAttribute("data-process-linked-copy")) {
-            setManualProcessLinkedText(element, copy[key]);
-          } else {
-            element.textContent = copy[key];
-          }
+          element.textContent = copy[key];
         }
       });
-      linkDomainGlossaryDefinitions();
       processCatalogAriaElements.forEach(element => {
         const key = element.dataset.processAriaLabel;
         if (Object.prototype.hasOwnProperty.call(ariaCopy, key)) {
@@ -19139,101 +18993,13 @@ function positionManagementModeSettingLabel(value) {
       container.replaceChildren(...rows.map(createRow));
     }
 
-    const MANUAL_PROCESS_TERM_REFERENCES = Object.freeze([
-      Object.freeze({ text: "Position Management — Auto Mode", key: "auto-position-management-mode" }),
-      Object.freeze({ text: "Position Management — Manual Mode", key: "manual-position-management-mode" }),
-      Object.freeze({ text: "Auto Mode of Position Management", key: "auto-position-management-mode" }),
-      Object.freeze({ text: "Manual Mode of Position Management", key: "manual-position-management-mode" }),
-      Object.freeze({ text: "Trade Context Position Management Mode", key: "trade-context-position-management-mode" }),
-      Object.freeze({ text: "Auto Mode Eligibility", key: "auto-mode-eligibility" }),
-      Object.freeze({ text: "Auto Management Admission", key: "auto-management-admission" }),
-      Object.freeze({ text: "Position Management Mode", key: "position-management-mode" }),
-      Object.freeze({ text: "Manual Management", key: "manual-position-management-mode" }),
-      Object.freeze({ text: "Auto Management", key: "auto-position-management-mode" }),
-      Object.freeze({ text: "Eligibility Checks", key: "eligibility-check" }),
-      Object.freeze({ text: "Eligibility Check", key: "eligibility-check" }),
-      Object.freeze({ text: "Admission State", key: "admission-state" }),
-      Object.freeze({ text: "Ccy Pair", key: "ccy-pair" }),
-      Object.freeze({ text: "Auto Hedging", key: "auto-hedging" }),
-      Object.freeze({ text: "Servicing Location", key: "servicing-location" }),
-      Object.freeze({ text: "Accounting System", key: "accounting-system" }),
-      Object.freeze({ text: "Trade Context", key: "trade-context" }),
-      Object.freeze({ text: "Originating System", key: "originating-system" }),
-      Object.freeze({ text: "Pricing Mode", key: "pricing-mode" }),
-      Object.freeze({ text: "Market Pulse", key: "market-pulse" }),
-      Object.freeze({ text: "Cross-Tenor Batching", key: "cross-tenor-batching" }),
-      Object.freeze({ text: "Batch Internal Swaps", key: "batch-internal-swap" }),
-      Object.freeze({ text: "Batch Internal Swap", key: "batch-internal-swap" }),
-      Object.freeze({ text: "Batches", key: "batch" }),
-      Object.freeze({ text: "Client Deals", key: "client-deal" }),
-      Object.freeze({ text: "Hedge Deals", key: "hedge-deal" }),
-      Object.freeze({ text: "Position", key: "position" }),
-      Object.freeze({ text: "Transfer Rate", key: "transfer-rate" }),
-      Object.freeze({ text: "Batching Key", key: "batching-key" }),
-      Object.freeze({ text: "Base Currency", key: "base-currency" }),
-      Object.freeze({ text: "Quote Currency", key: "quote-currency" }),
-      Object.freeze({ text: "Trade Date", key: "trade-date" }),
-      Object.freeze({ text: "Value Dates", key: "value-date" }),
-      Object.freeze({ text: "Trades", key: "trade" }),
-      Object.freeze({ text: "Trade", key: "trade" }),
-      Object.freeze({ text: "Client Deal", key: "client-deal" }),
-      Object.freeze({ text: "Hedge Deal", key: "hedge-deal" }),
-      Object.freeze({ text: "Value Date", key: "value-date" }),
-      Object.freeze({ text: "Batch", key: "batch" }),
-      Object.freeze({ text: "Batching", key: "batching" }),
-      Object.freeze({ text: "Tenors", key: "tenor" }),
-      Object.freeze({ text: "Tenor", key: "tenor" })
-    ]);
-
-    function isManualProcessTermWordCharacter(value) {
+    function isManualProcessReferenceWordCharacter(value) {
       return Boolean(value) && /[0-9A-Za-zА-Яа-яЁё_]/.test(value);
     }
 
-    function isManualProcessTermBoundary(value, index, length) {
-      return !isManualProcessTermWordCharacter(value[index - 1])
-        && !isManualProcessTermWordCharacter(value[index + length]);
-    }
-
-    function isManualProcessQuotedLabel(value, index, length) {
-      const openingQuote = value[index - 1];
-      const closingQuote = value[index + length];
-      return (openingQuote === "“" && closingQuote === "”")
-        || (openingQuote === "«" && closingQuote === "»")
-        || (openingQuote === '"' && closingQuote === '"');
-    }
-
-    function nextManualProcessTermReference(value, fromIndex, excludeTermKey = "") {
-      let nextReference = null;
-      const normalizedValue = value.toLocaleLowerCase();
-
-      MANUAL_PROCESS_TERM_REFERENCES.forEach(term => {
-        if (term.key === excludeTermKey) {
-          return;
-        }
-        const normalizedTerm = term.text.toLocaleLowerCase();
-        let index = normalizedValue.indexOf(normalizedTerm, fromIndex);
-        while (
-          index >= 0
-          && (
-            !isManualProcessTermBoundary(value, index, term.text.length)
-            || isManualProcessQuotedLabel(value, index, term.text.length)
-          )
-        ) {
-          index = normalizedValue.indexOf(normalizedTerm, index + 1);
-        }
-        if (index < 0) {
-          return;
-        }
-        if (
-          !nextReference
-          || index < nextReference.index
-          || (index === nextReference.index && term.text.length > nextReference.term.text.length)
-        ) {
-          nextReference = { index, term };
-        }
-      });
-
-      return nextReference;
+    function isManualProcessReferenceBoundary(value, index, length) {
+      return !isManualProcessReferenceWordCharacter(value[index - 1])
+        && !isManualProcessReferenceWordCharacter(value[index + length]);
     }
 
     function manualProcessArtifactTargetId(stageKey, artifactIndex) {
@@ -19278,7 +19044,7 @@ function positionManagementModeSettingLabel(value) {
         let index = normalizedValue.indexOf(normalizedArtifact, fromIndex);
         while (
           index >= 0
-          && !isManualProcessTermBoundary(value, index, artifact.text.length)
+          && !isManualProcessReferenceBoundary(value, index, artifact.text.length)
         ) {
           index = normalizedValue.indexOf(normalizedArtifact, index + 1);
         }
@@ -19297,104 +19063,33 @@ function positionManagementModeSettingLabel(value) {
       return nextReference;
     }
 
-    function setManualProcessLinkedText(
-      element,
-      value,
-      { excludeTermKey = "", artifactReferences = [] } = {}
-    ) {
+    function setManualProcessArtifactText(element, value, { artifactReferences = [] } = {}) {
       const text = String(value ?? "");
       const content = [];
       let cursor = 0;
-
       while (cursor < text.length) {
-        const termReference = nextManualProcessTermReference(text, cursor, excludeTermKey);
-        const artifactReference = nextManualProcessArtifactReference(
-          text,
-          cursor,
-          artifactReferences
-        );
-        const reference = artifactReference && (
-          !termReference
-          || artifactReference.index < termReference.index
-          || (
-            artifactReference.index === termReference.index
-            && artifactReference.artifact.text.length > termReference.term.text.length
-          )
-        )
-          ? { index: artifactReference.index, kind: "artifact", value: artifactReference.artifact }
-          : termReference
-            ? { index: termReference.index, kind: "term", value: termReference.term }
-            : null;
+        const reference = nextManualProcessArtifactReference(text, cursor, artifactReferences);
         if (!reference) {
           content.push(document.createTextNode(text.slice(cursor)));
           break;
         }
-
-        if (reference.index > cursor) {
-          content.push(document.createTextNode(text.slice(cursor, reference.index)));
-        }
-
+        if (reference.index > cursor) content.push(document.createTextNode(text.slice(cursor, reference.index)));
         const link = document.createElement("a");
-        const referenceLength = reference.value.text.length;
-        if (reference.kind === "artifact") {
-          link.className = "manual-process-artifact-link";
-          link.href = manualBatchFormationProcessRoute();
-          link.dataset.processArtifactReference = reference.value.key;
-          link.addEventListener("click", event => {
-            event.preventDefault();
-            showManualProcessArtifact(reference.value.targetId);
-          });
-        } else {
-          link.className = "manual-process-term-link";
-          link.href = domainGlossaryRoute(reference.value.key);
-          link.dataset.processTermReference = reference.value.key;
-        }
-        link.textContent = text.slice(reference.index, reference.index + referenceLength);
+        link.className = "manual-process-artifact-link";
+        link.href = manualBatchFormationProcessRoute();
+        link.dataset.processArtifactReference = reference.artifact.key;
+        link.addEventListener("click", event => {
+          event.preventDefault();
+          showManualProcessArtifact(reference.artifact.targetId);
+        });
+        link.textContent = text.slice(reference.index, reference.index + reference.artifact.text.length);
         content.push(link);
-        cursor = reference.index + referenceLength;
+        cursor = reference.index + reference.artifact.text.length;
       }
-
       element.replaceChildren(...content);
     }
 
-    function linkDomainGlossaryDefinitions() {
-      document.querySelectorAll(".manual-process-definition[id^='process-term-']")
-        .forEach(definition => {
-          const description = definition.querySelector("dd[data-process-copy]");
-          if (!description) {
-            return;
-          }
-          const termKey = definition.id.slice("process-term-".length);
-          const allowSelfReference = termKey === "batching" || termKey === "value-date";
-          const excludeTermKey = allowSelfReference ? "" : termKey;
-          setManualProcessLinkedText(
-            description,
-            description.textContent,
-            { excludeTermKey }
-          );
-        });
-    }
-
-    let manualProcessDefinitionHighlightTimeoutId = null;
     let manualProcessArtifactHighlightTimeoutId = null;
-
-    function showManualProcessDefinition(termKey) {
-      const definition = document.getElementById(`process-term-${termKey}`);
-      if (!definition) {
-        return;
-      }
-
-      document.querySelectorAll(".manual-process-definition.is-referenced")
-        .forEach(item => item.classList.remove("is-referenced"));
-      definition.classList.add("is-referenced");
-      definition.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      definition.focus({ preventScroll: true });
-
-      window.clearTimeout(manualProcessDefinitionHighlightTimeoutId);
-      manualProcessDefinitionHighlightTimeoutId = window.setTimeout(() => {
-        definition.classList.remove("is-referenced");
-      }, 1800);
-    }
 
     function showManualProcessArtifact(targetId) {
       const row = document.getElementById(targetId);
@@ -19428,8 +19123,8 @@ function positionManagementModeSettingLabel(value) {
       manualProcessInspectorKicker.textContent = stage.kicker;
       const artifactReferences = manualProcessArtifactReferences(stageKey, stage.artifacts);
       const linkedTextOptions = { artifactReferences };
-      setManualProcessLinkedText(manualProcessInspectorTitle, stage.title, linkedTextOptions);
-      setManualProcessLinkedText(manualProcessInspectorObjective, stage.objective, linkedTextOptions);
+      setManualProcessArtifactText(manualProcessInspectorTitle, stage.title, linkedTextOptions);
+      setManualProcessArtifactText(manualProcessInspectorObjective, stage.objective, linkedTextOptions);
       replaceManualProcessDetailRows(
         manualProcessInspectorSteps,
         stage.steps,
@@ -19445,9 +19140,9 @@ function positionManagementModeSettingLabel(value) {
           const copy = document.createElement("span");
           copy.className = "manual-process-step-copy";
           const title = document.createElement("strong");
-          setManualProcessLinkedText(title, step.title, linkedTextOptions);
+          setManualProcessArtifactText(title, step.title, linkedTextOptions);
           const detail = document.createElement("span");
-          setManualProcessLinkedText(detail, step.detail, linkedTextOptions);
+          setManualProcessArtifactText(detail, step.detail, linkedTextOptions);
           copy.append(title, detail);
           item.append(number, boundary, copy);
           return item;
@@ -19460,7 +19155,7 @@ function positionManagementModeSettingLabel(value) {
           const item = document.createElement("li");
           item.className = "manual-process-control";
           const check = document.createElement("strong");
-          setManualProcessLinkedText(check, control.check, linkedTextOptions);
+          setManualProcessArtifactText(check, control.check, linkedTextOptions);
           const outcome = document.createElement("span");
           outcome.className = "manual-process-control-outcome";
           const icon = document.createElement("span");
@@ -19468,7 +19163,7 @@ function positionManagementModeSettingLabel(value) {
           icon.setAttribute("aria-hidden", "true");
           icon.textContent = "error";
           const failure = document.createElement("span");
-          setManualProcessLinkedText(failure, control.failure, linkedTextOptions);
+          setManualProcessArtifactText(failure, control.failure, linkedTextOptions);
           outcome.append(icon, failure);
           item.append(check, outcome);
           return item;
@@ -19492,7 +19187,7 @@ function positionManagementModeSettingLabel(value) {
           const scope = document.createElement("td");
           scope.textContent = artifact.scope;
           const purpose = document.createElement("td");
-          setManualProcessLinkedText(purpose, artifact.purpose);
+          setManualProcessArtifactText(purpose, artifact.purpose);
           row.append(kind, name, scope, purpose);
           return row;
         }
@@ -19506,12 +19201,12 @@ function positionManagementModeSettingLabel(value) {
           const label = document.createElement("dt");
           label.textContent = trace.label;
           const value = document.createElement("dd");
-          setManualProcessLinkedText(value, trace.value, linkedTextOptions);
+          setManualProcessArtifactText(value, trace.value, linkedTextOptions);
           row.append(label, value);
           return row;
         }
       );
-      setManualProcessLinkedText(manualProcessInspectorResult, stage.result, linkedTextOptions);
+      setManualProcessArtifactText(manualProcessInspectorResult, stage.result, linkedTextOptions);
 
       manualProcessNodes.forEach(node => {
         const isCurrent = node.dataset.manualProcessStage === stageKey;
@@ -19618,6 +19313,7 @@ function positionManagementModeSettingLabel(value) {
     }
 
     const PRICING_CONTEXT_REFERENCE_FILTERS = Object.freeze({
+      tradePurpose: Object.freeze({ parameter: "trade-purpose", field: "tradePurposeId" }),
       servicingBranch: Object.freeze({
         parameter: "servicing-location",
         field: "servicingBranchCode"
@@ -19888,14 +19584,8 @@ function positionManagementModeSettingLabel(value) {
       return location.hash === manualBatchFormationProcessRoute();
     }
 
-    function isDomainGlossaryRoute() {
-      return location.hash === domainGlossaryRoute()
-        || location.hash.startsWith(`${domainGlossaryRoute()}/`);
-    }
-
     function isProcessCatalogRoute() {
-      return isManualBatchFormationProcessRoute()
-        || isDomainGlossaryRoute();
+      return isManualBatchFormationProcessRoute();
     }
 
     function isClientDealsRoute() {
@@ -22381,18 +22071,6 @@ function positionManagementModeSettingLabel(value) {
       if (/^#position(?::(?:manual|auto))?$/.test(currentHash)) return heading("#mainPage h1", "Position");
       if (currentHash === clientDealsRoute()) return heading("#dealsPage h1", "Client Deals");
       if (currentHash === hedgeDealsRoute()) return heading("#dealsPage h1", "Hedge Deals");
-      if (currentHash.startsWith(domainGlossaryRoute())) {
-        let title = "Domain Glossary";
-        const encodedKey = currentHash.slice(domainGlossaryRoute().length + 1);
-        if (encodedKey) {
-          let key;
-          try { key = decodeURIComponent(encodedKey); } catch (_error) { return heading("#processesPage h1", title); }
-          const canonicalKey = PROCESS_CATALOG_GLOSSARY_TERM_ALIASES.get(key) || key;
-          const label = document.getElementById(`process-term-${canonicalKey}`)?.querySelector("dt")?.textContent;
-          if (label) title = label.trim();
-        }
-        return heading("#processesPage h1", title);
-      }
       if (currentHash === manualBatchFormationProcessRoute()) return heading("#processesPage h1", "Manual Batching");
       if (currentHash === batchingSettingsRoute()) return heading("#batchingSettingsPage h1", "Batching Settings");
       if (currentHash === databaseRoute()) return heading("#databasePage h1", "Database");
@@ -26626,27 +26304,33 @@ function positionManagementModeSettingLabel(value) {
     function clientDealColumnDefinitions() {
       return [
         {
-          title: "Trade Details",
+          title: "Trade Identity",
           cssClass: "client-deals-group-identity",
           columns: [
             clientDealsFilterableColumn("referenceId", {
               title: "Trade ID",
               field: "tradeId",
               sorter: "number",
-              cssClass: "client-deals-col-identity"
-            }),
+              cssClass: "client-deals-col-identity client-deals-group-end"
+            })
+          ]
+        },
+        {
+          title: "Trade Timing",
+          cssClass: "client-deals-group-timing",
+          columns: [
             clientDealsFilterableColumn("timestamp", {
               title: "Execution Timestamp",
               field: "executionTimestamp",
               visible: clientDealsViewMode === DEALS_VIEW_MODE_AUDIT,
               formatter: clientDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity"
+              cssClass: "client-deals-col-timing"
             }),
             clientDealsFilterableColumn("timestamp", {
               title: "Received Timestamp",
               field: "receivedTimestamp",
               formatter: clientDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity client-deals-group-end"
+              cssClass: "client-deals-col-timing client-deals-group-end"
             })
           ]
         },
@@ -26828,34 +26512,40 @@ function positionManagementModeSettingLabel(value) {
     function hedgeDealColumnDefinitions() {
       return [
         {
-          title: "Trade Details",
+          title: "Trade Identity",
           cssClass: "client-deals-group-identity",
           columns: [
             clientDealsFilterableColumn("referenceId", {
               title: "Trade ID",
               field: "tradeId",
               sorter: "number",
-              cssClass: "client-deals-col-identity"
-            }),
+              cssClass: "client-deals-col-identity client-deals-group-end"
+            })
+          ]
+        },
+        {
+          title: "Trade Timing",
+          cssClass: "client-deals-group-timing",
+          columns: [
             clientDealsFilterableColumn("timestamp", {
               title: "Request Timestamp",
               field: "requestTimestamp",
               visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT,
               formatter: clientDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity"
+              cssClass: "client-deals-col-timing"
             }),
             clientDealsFilterableColumn("timestamp", {
               title: "Execution Timestamp",
               field: "executionTimestamp",
               visible: hedgeDealsViewMode === DEALS_VIEW_MODE_AUDIT,
               formatter: clientDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity"
+              cssClass: "client-deals-col-timing"
             }),
             clientDealsFilterableColumn("timestamp", {
               title: "Received Timestamp",
               field: "receivedTimestamp",
               formatter: clientDealsTimestampFormatter,
-              cssClass: "client-deals-col-identity client-deals-group-end"
+              cssClass: "client-deals-col-timing client-deals-group-end"
             })
           ]
         },
@@ -27332,7 +27022,7 @@ function positionManagementModeSettingLabel(value) {
         pricingRulesPage.hidden = true;
         tradeContractPage.hidden = showMessages;
         tradeIntakeMessagesPage.hidden = !showMessages;
-        document.title = showMessages ? "Trade Intake Messages" : "Trade Contract | Trade Intake";
+        document.title = showMessages ? "Trade Notification Registry | Trade Intake" : "Trade Notification Contract | Trade Intake";
         return;
       }
 

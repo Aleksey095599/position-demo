@@ -69,6 +69,7 @@
     }
 
     const PRICING_CONTEXT_REFERENCE_FILTERS = Object.freeze({
+      tradePurpose: Object.freeze({ parameter: "trade-purpose", field: "tradePurposeId" }),
       servicingBranch: Object.freeze({
         parameter: "servicing-location",
         field: "servicingBranchCode"
@@ -339,14 +340,8 @@
       return location.hash === manualBatchFormationProcessRoute();
     }
 
-    function isDomainGlossaryRoute() {
-      return location.hash === domainGlossaryRoute()
-        || location.hash.startsWith(`${domainGlossaryRoute()}/`);
-    }
-
     function isProcessCatalogRoute() {
-      return isManualBatchFormationProcessRoute()
-        || isDomainGlossaryRoute();
+      return isManualBatchFormationProcessRoute();
     }
 
     function isClientDealsRoute() {

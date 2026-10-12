@@ -251,6 +251,7 @@ const UI_TABLE_LAYOUTS = Object.freeze({
     ["servicing_location", "Servicing Location", 250],
     ["accounting_system", "Accounting System", 300],
     ["originating_system", "Originating System", 250],
+    ["trade_purpose", "Trade Purpose", 220],
     ["position_management_mode", "Position Management Mode", 232],
     ["counterparties_count", "Attached Counterparties", 64],
     ["actions", "Actions", 80]

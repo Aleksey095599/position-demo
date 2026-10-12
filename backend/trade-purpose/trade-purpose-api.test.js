@@ -11,10 +11,10 @@ const ROOT = path.resolve(__dirname, "..", "..");
 const SERVER_PATH = path.join(ROOT, "server.js");
 const TEMP_PREFIX = "position-trade-purpose-";
 const EXAMPLES = [
-  { tradePurposeId: "CLIENT_CONVERSION", name: "Client Account Conversion", tradeContextCount: 0 },
+  { tradePurposeId: "CLIENT_CONVERSION", name: "Client Account Conversion", tradeContextCount: 5 },
   { tradePurposeId: "FEE_COLLECTION", name: "Fee Collection", tradeContextCount: 0 },
   { tradePurposeId: "LOAN_REPAYMENT", name: "Loan Repayment", tradeContextCount: 0 },
-  { tradePurposeId: "POSITION_HEDGING", name: "Position Hedging", tradeContextCount: 0 }
+  { tradePurposeId: "POSITION_HEDGING", name: "Position Hedging", tradeContextCount: 2 }
 ];
 
 function apiClient(server) {
@@ -39,7 +39,7 @@ function apiClient(server) {
   };
 }
 
-test("Trade Purpose CRUD, bootstrap, constraints, and first-introduction seeds", async t => {
+test("Trade Purpose CRUD, bootstrap, usage protection, and restart", async t => {
   const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), TEMP_PREFIX));
   const databasePath = path.join(temporaryDirectory, "trade-purpose.sqlite");
   const previousDatabasePath = process.env.DEMO_DATABASE_PATH;
@@ -120,18 +120,13 @@ test("Trade Purpose CRUD, bootstrap, constraints, and first-introduction seeds",
   }
 
   for (const purpose of EXAMPLES) {
-    assert.equal((await request("DELETE", `/api/v1/trade-purposes/${purpose.tradePurposeId}`)).statusCode, 204);
+    const result = await request("DELETE", `/api/v1/trade-purposes/${purpose.tradePurposeId}`);
+    assert.equal(result.statusCode, purpose.tradeContextCount ? 409 : 204);
   }
+  assert.equal((await request("PUT", "/api/v1/trade-purposes/CLIENT_CONVERSION", {
+    tradePurposeId: "RENAMED", name: "Renamed"
+  })).statusCode, 409);
   request = reloadServer();
-  assert.deepEqual((await request("GET", "/api/v1/trade-purposes")).body, [],
-    "Restart must preserve intentional deletion, even when the dictionary is empty.");
-
-  server.closeDatabase();
-  server = null;
-  const legacy = new DatabaseSync(databasePath);
-  legacy.exec("DROP TABLE trade_purposes");
-  legacy.close();
-  request = reloadServer();
-  assert.deepEqual((await request("GET", "/api/v1/trade-purposes")).body, EXAMPLES,
-    "An existing database receives examples only when the new dictionary is first introduced.");
+  assert.deepEqual((await request("GET", "/api/v1/trade-purposes")).body,
+    EXAMPLES.filter(purpose => purpose.tradeContextCount > 0), "Restart preserves dictionary changes.");
 });

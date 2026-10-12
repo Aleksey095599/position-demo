@@ -64,15 +64,18 @@ INSERT INTO trade_contexts
         servicing_location_id,
         accounting_system_id,
         originating_system_id,
+        trade_purpose_id,
 
         position_management_mode
     )
 VALUES
-    ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE'),
-    ('002', 'AFINA', 'RFQ', 'MANUAL'),
-    ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL'),
-    ('1234', 'AFINA', 'RFQ', 'MANUAL'),
-    ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE');
+    ('002', 'AFINA', 'CLICK_TRADE_EFX', 'CLIENT_CONVERSION', 'AUTO_IF_ELIGIBLE'),
+    ('002', 'AFINA', 'RFQ', 'CLIENT_CONVERSION', 'MANUAL'),
+    ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'CLIENT_CONVERSION', 'MANUAL'),
+    ('1234', 'AFINA', 'RFQ', 'CLIENT_CONVERSION', 'MANUAL'),
+    ('001', 'CTF3', 'CLICK_TRADE_EFX', 'CLIENT_CONVERSION', 'AUTO_IF_ELIGIBLE'),
+      ('002', 'AFINA', 'CLICK_TRADE_EFX', 'POSITION_HEDGING', 'AUTO_IF_ELIGIBLE'),
+      ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'POSITION_HEDGING', 'MANUAL');
 
 INSERT INTO auto_mode_eligibility_rules
     (
@@ -386,9 +389,10 @@ VALUES
     ('trade_contexts_grid', 'servicing_location', 'Servicing Location', 1, 250, 250),
     ('trade_contexts_grid', 'accounting_system', 'Accounting System', 2, 300, 300),
     ('trade_contexts_grid', 'originating_system', 'Originating System', 3, 250, 250),
-    ('trade_contexts_grid', 'position_management_mode', 'Position Management Mode', 4, 232, 232),
-    ('trade_contexts_grid', 'counterparties_count', 'Attached Counterparties', 5, 64, 64),
-    ('trade_contexts_grid', 'actions', 'Actions', 6, 80, 80),
+    ('trade_contexts_grid', 'trade_purpose', 'Trade Purpose', 4, 220, 220),
+    ('trade_contexts_grid', 'position_management_mode', 'Position Management Mode', 5, 232, 232),
+    ('trade_contexts_grid', 'counterparties_count', 'Attached Counterparties', 6, 64, 64),
+    ('trade_contexts_grid', 'actions', 'Actions', 7, 80, 80),
     ('servicing_locations_grid', 'id', 'ID', 0, 64, 64),
     ('servicing_locations_grid', 'name', 'Name', 1, 153, 153),
     ('servicing_locations_grid', 'region', 'Region', 2, 134, 134),
@@ -464,7 +468,8 @@ INNER JOIN trading_counterparties counterparty
 INNER JOIN trade_contexts context
     ON context.servicing_location_id = seed.servicing_location_id
     AND context.accounting_system_id = seed.accounting_system_id
-    AND context.originating_system_id = seed.originating_system_id;
+    AND context.originating_system_id = seed.originating_system_id
+    AND context.trade_purpose_id = CASE WHEN seed.counterparty_code = '7707000001' THEN 'POSITION_HEDGING' ELSE 'CLIENT_CONVERSION' END;
 
 WITH pricing_rule_seed
     (
@@ -509,7 +514,8 @@ INNER JOIN trading_counterparties p ON p.counterparty_id = external.counterparty
 INNER JOIN trade_contexts e
     ON e.servicing_location_id = seed.servicing_location_id
     AND e.accounting_system_id = seed.accounting_system_id
-    AND e.originating_system_id = seed.originating_system_id;
+    AND e.originating_system_id = seed.originating_system_id
+    AND e.trade_purpose_id = CASE WHEN seed.counterparty_code = '7707000001' THEN 'POSITION_HEDGING' ELSE 'CLIENT_CONVERSION' END;
 
 WITH eligible_rule AS
 (

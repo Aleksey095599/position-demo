@@ -35,6 +35,7 @@
               <col class="client-context-attach-location-col" data-client-context-attach-layout-column="servicing_location">
               <col class="client-context-attach-accounting-col" data-client-context-attach-layout-column="accounting_system">
               <col class="client-context-attach-originating-col" data-client-context-attach-layout-column="originating_system">
+              <col data-client-context-attach-layout-column="trade_purpose">
               <col class="client-context-attach-mode-col" data-client-context-attach-fixed-width="184">
             </colgroup>
             <thead>
@@ -74,10 +75,16 @@
                 <th>
                   <div class="reference-column-head">
                     <span class="reference-column-title">
-                      <span class="button-icon" aria-hidden="true">web_asset</span>
+                      <span class="button-icon" aria-hidden="true">devices</span>
                       <span>Originating System</span>
                     </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="tradeCaptureChannelId" aria-label="Filter available trade contexts by originating system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Trade Purpose</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-client-context-attach-filter="tradePurposeId" aria-label="Filter available trade contexts by Trade Purpose">
                   </div>
                 </th>
                 <th>

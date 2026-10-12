@@ -115,9 +115,9 @@ test("Admission governs trade creation atomically", async t => {
   legacyDatabase.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
   legacyDatabase.exec(fs.readFileSync(SEED_PATH, "utf8"));
   legacyDatabase.exec(`
-    DROP TRIGGER trg_auto_management_admission_decisions_immutable_update;
-    DROP TRIGGER trg_auto_management_admission_decisions_immutable_delete;
-    DROP TABLE auto_management_admission_decisions;
+    DROP TRIGGER trg_position_management_mode_decisions_immutable_update;
+    DROP TRIGGER trg_position_management_mode_decisions_immutable_delete;
+    DROP TABLE position_management_mode_decisions;
   `);
   legacyDatabase.close();
 
@@ -132,7 +132,7 @@ test("Admission governs trade creation atomically", async t => {
     SELECT 1
     FROM sqlite_master
     WHERE type = 'table'
-      AND name = 'auto_management_admission_decisions'
+      AND name = 'position_management_mode_decisions'
   `).get());
 
   const pricingRulesResponse = await request("GET", "/api/v1/pricing-rules");
@@ -157,6 +157,7 @@ test("Admission governs trade creation atomically", async t => {
       servicingLocationId: context.servicingLocationId,
       accountingSystemId: context.accountingSystemId,
       originatingSystemId: context.originatingSystemId,
+      tradePurposeId: context.tradePurposeId,
       positionManagementMode: "MANUAL"
     }
   );
@@ -181,24 +182,16 @@ test("Admission governs trade creation atomically", async t => {
 
   const audit = inspectionDatabase.prepare(`
     SELECT
-      decision_sequence AS decisionSequence,
-      decision_stage AS decisionStage,
-      admission_mode AS admissionMode,
-      admission_state AS admissionState,
-      releasable,
+      mode_setting AS modeSetting,
+      position_management_mode AS positionManagementMode,
       reason_codes_json AS reasonCodesJson,
-      checks_json AS checksJson,
-      is_enforced AS isEnforced
-    FROM auto_management_admission_decisions
+      checks_json AS checksJson
+    FROM position_management_mode_decisions
     WHERE trade_id = ? AND trade_type = 'CLIENT_DEAL'
   `).get(created.body.tradeId);
   assert.ok(audit);
-  assert.equal(audit.decisionSequence, 1);
-  assert.equal(audit.decisionStage, "INITIAL");
-  assert.equal(audit.admissionMode, "MANUAL");
-  assert.equal(audit.admissionState, "HELD");
-  assert.equal(audit.releasable, 1);
-  assert.equal(audit.isEnforced, 1);
+  assert.equal(audit.modeSetting, "MANUAL");
+  assert.equal(audit.positionManagementMode, "MANUAL");
   assert.deepEqual(JSON.parse(audit.reasonCodesJson), ["MANUAL"]);
   const checks = JSON.parse(audit.checksJson);
   assert.deepEqual(checks, []);
@@ -222,21 +215,19 @@ test("Admission governs trade creation atomically", async t => {
   assert.equal(createdWithAdmissionOverride.body.positionManagementMode, "MANUAL");
   const overriddenAudit = inspectionDatabase.prepare(`
     SELECT
-      admission_mode AS admissionMode,
-      admission_state AS admissionState,
-      releasable,
+      mode_setting AS modeSetting,
+      position_management_mode AS positionManagementMode,
       reason_codes_json AS reasonCodesJson
-    FROM auto_management_admission_decisions
+    FROM position_management_mode_decisions
     WHERE trade_id = ? AND trade_type = 'CLIENT_DEAL'
   `).get(createdWithAdmissionOverride.body.tradeId);
-  assert.equal(overriddenAudit.admissionMode, "MANUAL");
-  assert.equal(overriddenAudit.admissionState, "HELD");
-  assert.equal(overriddenAudit.releasable, 1);
+  assert.equal(overriddenAudit.modeSetting, "MANUAL");
+  assert.equal(overriddenAudit.positionManagementMode, "MANUAL");
   assert.deepEqual(JSON.parse(overriddenAudit.reasonCodesJson), ["MANUAL"]);
 
   const reasons = deal => JSON.parse(inspectionDatabase.prepare(`
-    SELECT reason_codes_json AS reasons FROM auto_management_admission_decisions
-    WHERE trade_id = ? ORDER BY decision_sequence DESC LIMIT 1
+    SELECT reason_codes_json AS reasons FROM position_management_mode_decisions
+    WHERE trade_id = ?
   `).get(deal.tradeId).reasons);
   const expectCreated = async (endpoint, payload) => {
     const response = await request("POST", endpoint, payload);
@@ -319,18 +310,18 @@ test("Admission governs trade creation atomically", async t => {
   });
 
   assert.throws(() => inspectionDatabase.prepare(`
-    UPDATE auto_management_admission_decisions
-    SET is_enforced = 0
+    UPDATE position_management_mode_decisions
+    SET position_management_mode = 'AUTO'
     WHERE trade_id = ?
-  `).run(created.body.tradeId), /AUTO_MANAGEMENT_ADMISSION_DECISION_IMMUTABLE/);
+  `).run(created.body.tradeId), /POSITION_MANAGEMENT_MODE_DECISION_IMMUTABLE/);
   assert.throws(() => inspectionDatabase.prepare(`
-    DELETE FROM auto_management_admission_decisions
+    DELETE FROM position_management_mode_decisions
     WHERE trade_id = ?
-  `).run(created.body.tradeId), /AUTO_MANAGEMENT_ADMISSION_DECISION_IMMUTABLE/);
+  `).run(created.body.tradeId), /POSITION_MANAGEMENT_MODE_DECISION_IMMUTABLE/);
 
   inspectionDatabase.exec(`
     CREATE TRIGGER test_block_enforcement_admission_insert
-    BEFORE INSERT ON auto_management_admission_decisions
+    BEFORE INSERT ON position_management_mode_decisions
     FOR EACH ROW
     BEGIN
       SELECT RAISE(ABORT, 'TEST_ADMISSION_AUDIT_WRITE_FAILED');
@@ -341,4 +332,22 @@ test("Admission governs trade creation atomically", async t => {
   assert.equal(failed.statusCode, 500);
   assert.equal(inspectionDatabase.prepare("SELECT COUNT(*) AS count FROM trade_exposures").get().count, tradeCount);
   inspectionDatabase.exec("DROP TRIGGER test_block_enforcement_admission_insert");
+
+  assert.equal(inspectionDatabase.prepare(`SELECT COUNT(*) AS count
+    FROM position_management_mode_decisions decision
+    JOIN trade_position_management management USING (trade_id, trade_type)
+    WHERE decision.position_management_mode <> management.position_management_mode`).get().count, 0);
+  assert.deepEqual(inspectionDatabase.prepare("PRAGMA table_info(position_management_mode_decisions)").all().map(column => column.name), [
+    "decision_id", "trade_id", "trade_type", "mode_setting", "position_management_mode",
+    "reason_codes_json", "checks_json", "decided_at"
+  ]);
+
+  const decisionCount = inspectionDatabase.prepare("SELECT COUNT(*) AS count FROM position_management_mode_decisions").get().count;
+  const reset = await request("POST", "/api/v1/demo/trades/reset", { confirmation: "RESET_ALL_TRADES" });
+  assert.equal(reset.statusCode, 200, JSON.stringify(reset.body));
+  assert.equal(reset.body.removed.positionManagementModeDecisions, decisionCount);
+  assert.equal(inspectionDatabase.prepare("SELECT COUNT(*) AS count FROM position_management_mode_decisions").get().count, 0);
+  const afterReset = await request("POST", "/api/v1/client-deals", clientDealPayload(rule, 4));
+  assert.equal(afterReset.statusCode, 201, JSON.stringify(afterReset.body));
+  assert.throws(() => inspectionDatabase.exec("DELETE FROM position_management_mode_decisions"), /IMMUTABLE/);
 });

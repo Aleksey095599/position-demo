@@ -912,7 +912,9 @@
     .processes-list-link > .button-icon {
       flex: 0 0 auto;
       color: var(--bs-secondary-color);
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .processes-list-link-copy {
@@ -972,8 +974,7 @@
 
     #processesPage .processes-detail-body > :is(
       .manual-process-map,
-      .manual-process-inspector,
-      .domain-glossary-definitions
+      .manual-process-inspector
     ) {
       box-shadow: var(--bs-box-shadow-sm);
     }
@@ -1021,98 +1022,6 @@
 
     .manual-process-summary-result > .button-icon {
       color: var(--palette-green-700);
-    }
-
-    .manual-process-definitions {
-      margin: 0 0 14px;
-      overflow: hidden;
-      border: 1px solid var(--surface-border);
-      border-radius: var(--workbench-radius);
-      background: var(--surface-card);
-    }
-
-    .domain-glossary-definitions {
-      margin: 0;
-    }
-
-    .manual-process-definitions-title {
-      margin: 0;
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--surface-border);
-      background: var(--palette-gray-100);
-      color: var(--text-strong);
-      font-size: var(--app-font-size-caption);
-      font-weight: var(--app-font-weight-semibold);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    .manual-process-definition-list {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      margin: 0;
-    }
-
-    .manual-process-definition {
-      display: grid;
-      grid-template-columns: minmax(210px, 0.24fr) minmax(0, 1fr);
-      gap: 18px;
-      align-items: baseline;
-      padding: 12px 14px;
-      border-top: 1px solid var(--surface-border);
-      scroll-margin-top: 16px;
-      transition: background-color 160ms ease, box-shadow 160ms ease;
-    }
-
-    .manual-process-definition:first-child {
-      border-top: 0;
-    }
-
-    .manual-process-definition dt,
-    .manual-process-definition dd {
-      margin: 0;
-    }
-
-    .manual-process-definition dt {
-      color: var(--text-strong);
-      font-weight: var(--app-font-weight-semibold);
-    }
-
-    .manual-process-definition dd {
-      color: var(--text-muted);
-      line-height: 1.45;
-    }
-
-    .manual-process-definition.is-referenced {
-      background: var(--palette-blue-100);
-      box-shadow: inset 3px 0 0 var(--palette-blue-600);
-    }
-
-    .manual-process-term-link {
-      color: var(--bs-link-color);
-      font-weight: var(--app-font-weight-semibold);
-      text-decoration: none;
-      text-underline-offset: 2px;
-    }
-
-    .manual-process-term-link:hover,
-    .manual-process-term-link:focus-visible {
-      color: var(--bs-link-hover-color);
-      text-decoration: underline;
-    }
-
-    .domain-glossary-definitions .manual-process-term-link {
-      text-decoration-line: underline;
-      text-decoration-style: dotted;
-      text-decoration-color: color-mix(in srgb, currentColor 58%, transparent);
-      text-decoration-thickness: 1px;
-      text-underline-offset: 3px;
-    }
-
-    .domain-glossary-definitions .manual-process-term-link:hover,
-    .domain-glossary-definitions .manual-process-term-link:focus-visible {
-      text-decoration-style: solid;
-      text-decoration-color: currentColor;
     }
 
     .manual-process-map {
@@ -1811,19 +1720,8 @@
         flex-wrap: wrap;
       }
 
-      .manual-process-definition-list {
-        grid-template-columns: 1fr;
-      }
 
-      .manual-process-definition {
-        grid-template-columns: 1fr;
-        gap: 4px;
-        border-top: 1px solid var(--surface-border);
-      }
 
-      .manual-process-definition:first-child {
-        border-top: 0;
-      }
 
       .manual-process-canvas {
         display: flex;
@@ -2438,7 +2336,9 @@
       border-right: 1px solid var(--bs-border-color);
       background: var(--bs-tertiary-bg);
       color: var(--bs-secondary-color);
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .pricing-rule-bootstrap-dialog .client-pricing-context-facet-control .form-control {
@@ -3574,7 +3474,9 @@
     }
 
     .client-deal-pricing-rule-margin-icon .button-icon {
-      font-size: 16px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .client-pricing-rules-margin .client-deal-pricing-rule-margin-icon {
@@ -3645,7 +3547,9 @@
     }
 
     .originating-system-label .button-icon {
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .pricing-mode-indicator {
@@ -3662,7 +3566,9 @@
     }
 
     .pricing-mode-indicator .button-icon {
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .pricing-mode-indicator.is-auto-priced {
@@ -3847,7 +3753,9 @@
     }
 
     .client-deal-market-pulse-card.is-compact .client-deal-market-pulse-brand .button-icon {
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .client-deal-market-pulse-quote {
@@ -4812,7 +4720,9 @@
     #batchDetailsPage .batch-neutrality-node-heading .button-icon {
       flex: 0 0 auto;
       color: var(--bs-secondary-color);
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #batchDetailsPage .batch-neutrality-metrics {
@@ -5911,7 +5821,9 @@
     }
 
     .workspace-nav-icon {
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     .workspace-nav-group-toggle {

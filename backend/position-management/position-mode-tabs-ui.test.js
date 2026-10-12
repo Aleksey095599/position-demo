@@ -153,7 +153,7 @@ test("Position toolbars separate Quick Hedge, Trade, selection, and Automation a
   assert.doesNotMatch(quickHedgeToolbarMarkup, /id="addHedgeDealButton"/);
 
   assert.match(tradeActionsToolbarMarkup, /aria-label="Trade Actions Toolbar"/);
-  assert.match(tradeActionsToolbarMarkup, />currency_exchange<\/span>/);
+  assert.match(tradeActionsToolbarMarkup, /class="button-icon trade-icon"/);
   assert.match(tradeActionsToolbarMarkup, /id="createDealButton"/);
   assert.match(tradeActionsToolbarMarkup, /id="addHedgeDealButton"/);
   assert.doesNotMatch(html, /id="editDealDialog"/);

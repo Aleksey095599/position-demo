@@ -11,11 +11,6 @@ Decimal.strict = true;
 Decimal.DP = 40;
 Decimal.RM = Decimal.roundHalfUp;
 
-const AUTO_MANAGEMENT_ADMISSION_STATE = Object.freeze({
-  HELD: "HELD",
-  RELEASED: "RELEASED"
-});
-
 const AUTO_MANAGEMENT_ELIGIBILITY_CHECK = Object.freeze({
   CCY_PAIR_ELIGIBILITY: "CCY_PAIR_ELIGIBILITY",
   TRANSFER_RATE_DEVIATION: "TRANSFER_RATE_DEVIATION"
@@ -229,17 +224,16 @@ function transferRateDeviationCheck({
   });
 }
 
-function heldDecision(mode, reasonCode, releasable) {
+function manualModeDecision(modeSetting, reasonCode) {
   return Object.freeze({
-    state: AUTO_MANAGEMENT_ADMISSION_STATE.HELD,
-    admissionMode: mode,
-    releasable,
+    positionManagementMode: "MANUAL",
+    modeSetting,
     reasonCodes: Object.freeze([reasonCode]),
     checks: Object.freeze([])
   });
 }
 
-function eligibilityDecision(source, admissionMode) {
+function eligibilityDecision(source, modeSetting) {
   const checks = Object.freeze([
     ccyPairEligibilityCheck(source),
     transferRateDeviationCheck(source)
@@ -250,11 +244,8 @@ function eligibilityDecision(source, admissionMode) {
   const eligible = failedReasonCodes.length === 0;
 
   return Object.freeze({
-    state: eligible
-      ? AUTO_MANAGEMENT_ADMISSION_STATE.RELEASED
-      : AUTO_MANAGEMENT_ADMISSION_STATE.HELD,
-    admissionMode,
-    releasable: !eligible,
+    positionManagementMode: eligible ? "AUTO" : "MANUAL",
+    modeSetting,
     reasonCodes: Object.freeze(
       eligible ? [AUTO_MANAGEMENT_ADMISSION_REASON.ELIGIBLE] : failedReasonCodes
     ),
@@ -262,33 +253,30 @@ function eligibilityDecision(source, admissionMode) {
   });
 }
 
-function determineInitialAdmissionState(source = {}) {
-  if (source.admissionMode === null || source.admissionMode === undefined
-    || String(source.admissionMode).trim() === "") {
-    return heldDecision(
+function determinePositionManagementMode(source = {}) {
+  if (source.modeSetting === null || source.modeSetting === undefined
+    || String(source.modeSetting).trim() === "") {
+    return manualModeDecision(
       null,
-      AUTO_MANAGEMENT_ADMISSION_REASON.TRADE_CONTEXT_POSITION_MANAGEMENT_MODE_REQUIRED,
-      true
+      AUTO_MANAGEMENT_ADMISSION_REASON.TRADE_CONTEXT_POSITION_MANAGEMENT_MODE_REQUIRED
     );
   }
 
-  const admissionMode = normalizePositionManagementModeSetting(source.admissionMode);
+  const modeSetting = normalizePositionManagementModeSetting(source.modeSetting);
 
-  if (admissionMode === POSITION_MANAGEMENT_MODE_SETTING.MANUAL) {
-    return heldDecision(
-      admissionMode,
-      AUTO_MANAGEMENT_ADMISSION_REASON.MANUAL,
-      true
+  if (modeSetting === POSITION_MANAGEMENT_MODE_SETTING.MANUAL) {
+    return manualModeDecision(
+      modeSetting,
+      AUTO_MANAGEMENT_ADMISSION_REASON.MANUAL
     );
   }
 
-  return eligibilityDecision(source, admissionMode);
+  return eligibilityDecision(source, modeSetting);
 }
 
 module.exports = {
   AUTO_MANAGEMENT_ADMISSION_REASON,
-  AUTO_MANAGEMENT_ADMISSION_STATE,
   AUTO_MANAGEMENT_ELIGIBILITY_CHECK,
   AUTO_MANAGEMENT_ELIGIBILITY_CHECK_STATUS,
-  determineInitialAdmissionState
+  determinePositionManagementMode
 };

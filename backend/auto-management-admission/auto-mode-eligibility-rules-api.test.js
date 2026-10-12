@@ -101,7 +101,7 @@ test("fresh schema stores one current Auto Mode Eligibility matrix", () => {
       ]
     );
     assert.equal(
-      database.prepare("PRAGMA table_info(auto_management_admission_decisions)").all()
+      database.prepare("PRAGMA table_info(position_management_mode_decisions)").all()
         .some(column => column.name === "policy_revision"),
       false
     );

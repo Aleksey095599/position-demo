@@ -52,22 +52,6 @@
       line-height: 1.5;
     }
 
-    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link {
-      color: inherit;
-      text-decoration-line: underline;
-      text-decoration-style: dotted;
-      text-decoration-color: color-mix(in srgb, currentColor 58%, transparent);
-      text-decoration-thickness: 1px;
-      text-underline-offset: 3px;
-    }
-
-    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link:hover,
-    #positionManagementSettingsPage .auto-mode-eligibility-note .manual-process-term-link:focus-visible {
-      color: var(--bs-body-color);
-      text-decoration-style: solid;
-      text-decoration-color: currentColor;
-    }
-
     #positionManagementSettingsPage .auto-management-policy-guidance {
       padding: 12px 20px;
       border-top: 1px solid var(--bs-border-color);
@@ -162,7 +146,9 @@
     #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .position-management-settings-navigation-link > .button-icon {
       color: var(--palette-blue-600);
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #positionManagementSettingsPage .position-management-settings-navigation-link > span:only-child {
@@ -293,7 +279,9 @@
     .auto-management-admission-policy-block-icon {
       flex: 0 0 auto;
       color: var(--palette-blue-600);
-      font-size: 22px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
@@ -791,7 +779,9 @@
     #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page
     .auto-management-technical-trade-types > div > .button-icon {
       color: var(--palette-blue-600);
-      font-size: 21px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #positionManagementSettingsPage.unified-bootstrap-workspace.workbench-page

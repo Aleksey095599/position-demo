@@ -287,7 +287,9 @@
     }
 
     #mainPage.position-bootstrap.workbench-page .position-mode-tabs .position-mode-icon {
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
       flex: 0 0 auto;
     }
 
@@ -458,7 +460,9 @@
 
     #mainPage.position-bootstrap.workbench-page .position-grid .market-reference-icon {
       color: var(--bs-secondary-color);
-      font-size: 19px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #mainPage.position-bootstrap.workbench-page .position-grid .client {
@@ -1155,7 +1159,9 @@
       .batch-toolbar-icon-title,
       .demo-toolbar-title
     ) .button-icon {
-      font-size: 20px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #mainPage.position-bootstrap.workbench-page .batch-control {

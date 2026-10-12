@@ -18,12 +18,6 @@
               <strong data-process-copy="manualBatching">Manual Batching</strong>
             </span>
           </a>
-          <a class="processes-list-link" href="#processes:domain-glossary" data-process-catalog-view="glossary">
-            <span class="button-icon" aria-hidden="true">menu_book</span>
-            <span class="processes-list-link-copy">
-              <strong data-process-copy="domainGlossary">Domain Glossary</strong>
-            </span>
-          </a>
         </nav>
       </aside>
 
@@ -38,11 +32,11 @@
           <div class="manual-process-summary-flow">
             <span class="manual-process-summary-label" data-process-copy="goal">Process goal:</span>
             <span class="button-icon" aria-hidden="true">checklist</span>
-            <span data-process-copy="selectedTrades" data-process-linked-copy>Selected Trades</span>
+            <span data-process-copy="selectedTrades">Selected Trades</span>
             <span class="button-icon" aria-hidden="true">arrow_forward</span>
             <span class="manual-process-summary-result">
               <span class="button-icon" aria-hidden="true">stacks</span>
-              <span data-process-copy="formedBatch" data-process-linked-copy>Formed Batch</span>
+              <span data-process-copy="formedBatch">Formed Batch</span>
             </span>
           </div>
         </div>
@@ -105,7 +99,7 @@
               <span class="manual-process-rollback-arrow button-icon" aria-hidden="true">arrow_forward</span>
               <span data-process-copy="fullRollback">Full rollback</span>
               <span class="manual-process-rollback-arrow button-icon" aria-hidden="true">arrow_forward</span>
-              <span data-process-copy="positionUnchanged" data-process-linked-copy>Position unchanged</span>
+              <span data-process-copy="positionUnchanged">Position unchanged</span>
             </div>
           </div>
         </section>
@@ -308,144 +302,6 @@
         </div>
       </article>
 
-      <article class="profile-panel processes-details" id="domainGlossaryProcessView" aria-labelledby="domainGlossaryTitle" hidden>
-        <header class="profile-panel-head processes-detail-head">
-          <div class="processes-detail-heading">
-            <h2 class="processes-section-title" id="domainGlossaryTitle" data-process-copy="domainGlossary">Domain Glossary</h2>
-            <p class="processes-detail-subtitle" data-process-copy="domainGlossarySubtitle">Core terms used across documented processes</p>
-          </div>
-        </header>
-        <div class="processes-detail-body">
-          <section class="manual-process-definitions domain-glossary-definitions" aria-labelledby="domainGlossaryTitle">
-            <dl class="manual-process-definition-list">
-              <div class="manual-process-definition" id="process-term-position-management-mode" tabindex="-1">
-                <dt>Position Management Mode</dt>
-                <dd data-process-copy="positionManagementModeDefinition">The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It is fixed at creation and determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-auto-position-management-mode" tabindex="-1">
-                <dt>Position Management — Auto Mode</dt>
-                <dd data-process-copy="autoPositionManagementModeDefinition">A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode is assigned when the Trade is created; it does not mean that an automated action has already occurred.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-manual-position-management-mode" tabindex="-1">
-                <dt>Position Management — Manual Mode</dt>
-                <dd data-process-copy="manualPositionManagementModeDefinition">A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator manages the Trade in its assigned mode.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-auto-hedging" tabindex="-1">
-                <dt>Auto Hedging</dt>
-                <dd data-process-copy="autoHedgingDefinition">An automated risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-auto-management-admission" tabindex="-1">
-                <dt>Auto Management Admission</dt>
-                <dd data-process-copy="autoManagementAdmissionDefinition">The decision made when a Trade is created to assign Auto Mode if its settings and eligibility requirements allow it; otherwise Manual Mode is assigned.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-trade-context-position-management-mode" tabindex="-1">
-                <dt>Trade Context Position Management Mode</dt>
-                <dd data-process-copy="tradeContextPositionManagementModeDefinition">A Trade Context setting that assigns Manual Mode or Auto Mode if Eligible when a Trade is created. A Pricing Rule may override it only to Manual Mode. Settings changes affect new Trades only; an existing Trade retains its assigned mode.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-auto-mode-eligibility" tabindex="-1">
-                <dt>Auto Mode Eligibility</dt>
-                <dd data-process-copy="autoModeEligibilityDefinition">Requirements configured by Trade Type and Ccy Pair and checked when a new Trade is considered for Position Management — Auto Mode. Position Management Mode separately applies Trade Context and Pricing Rule settings.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-eligibility-check" tabindex="-1">
-                <dt>Eligibility Check</dt>
-                <dd data-process-copy="eligibilityCheckDefinition">A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before Auto Mode is assigned.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-admission-state" tabindex="-1">
-                <dt>Admission State</dt>
-                <dd data-process-copy="automationAdmissionStateDefinition">Records whether Auto Mode was admitted when the Trade was created. It does not represent a pending transfer between modes.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-ccy-pair" tabindex="-1">
-                <dt>Ccy Pair</dt>
-                <dd data-process-copy="ccyPairDefinition">An ordered pair of currencies defining the Base Currency and Quote Currency used to express a Trade amount and exchange rate.</dd>
-              </div>
 
-              <div class="manual-process-definition" id="process-term-batch" tabindex="-1">
-                <dt>Batch</dt>
-                <dd data-process-copy="batchDefinition">A fixed package of Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active Position view, which organizes trades and simplifies control of the current currency position.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-batching" tabindex="-1">
-                <dt data-process-copy="batchingTerm">Batching</dt>
-                <dd data-process-copy="batchingDefinition">A manual or automatic process that selects, validates, groups and neutralizes Trades compatible by Batching Key to form one or more Batches. A user selects Trades for Manual Batching; configured rules select them for Automatic Batching.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-trade" tabindex="-1">
-                <dt>Trade</dt>
-                <dd data-process-copy="tradeDefinition">A Client Deal, Hedge Deal, or technical transaction included in currency-position calculations and displayed in Position.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-client-deal" tabindex="-1">
-                <dt>Client Deal</dt>
-                <dd data-process-copy="clientDealDefinition">A Trade executed with a client and forming the client component of the currency position.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-hedge-deal" tabindex="-1">
-                <dt>Hedge Deal</dt>
-                <dd data-process-copy="hedgeDealDefinition">A Trade executed with a hedge counterparty to manage or neutralize the currency position.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-position" tabindex="-1">
-                <dt>Position</dt>
-                <dd data-process-copy="positionDefinition">Application interface for monitoring the currency position and performing operations with Trades, including Batching.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-trade-context" tabindex="-1">
-                <dt>Trade Context</dt>
-                <dd data-process-copy="tradeContextDefinition">Trade Context describes the business environment in which a Trade originates, is serviced, and is reflected in accounting. It provides common coordinates against which rules for different processes apply. These coordinates are Servicing Location, Accounting System (when applicable), and Originating System.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-servicing-location" tabindex="-1">
-                <dt>Servicing Location</dt>
-                <dd data-process-copy="servicingLocationDefinition">The organizational and geographic point at which a Trade is serviced, such as a branch or head office in a particular region.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-accounting-system" tabindex="-1">
-                <dt>Accounting System</dt>
-                <dd data-process-copy="accountingSystemDefinition">An internal system of record of a bank or financial institution in which a Trade and its related accounting entries are registered.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-originating-system" tabindex="-1">
-                <dt>Originating System</dt>
-                <dd data-process-copy="originatingSystemDefinition">The business system in which a Trade is first registered as a business fact.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-pricing-mode" tabindex="-1">
-                <dt>Pricing Mode</dt>
-                <dd data-process-copy="pricingModeDefinition">An Originating System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-market-pulse" tabindex="-1">
-                <dt>Market Pulse</dt>
-                <dd data-process-copy="marketPulseDefinition">An application module that provides current normalized market quotes (Bid and Offer) for currency pairs to pricing, validation, and risk-management processes. In the current demo, quotes are generated by a simulator; the domain concept is independent of the data source and may later use real market-data feeds.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-transfer-rate" tabindex="-1">
-                <dt>Transfer Rate</dt>
-                <dd data-process-copy="transferRateDefinition">An internal accounting rate of a Trade used to calculate its currency position and allocate analytical P&amp;L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-base-currency" tabindex="-1">
-                <dt>Base Currency</dt>
-                <dd data-process-copy="baseCurrencyDefinition">The first currency in a currency pair; its amount forms the base currency leg of a Trade.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-quote-currency" tabindex="-1">
-                <dt>Quote Currency</dt>
-                <dd data-process-copy="quoteCurrencyDefinition">The second currency in a currency pair, in which the value of the Base Currency is expressed.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-trade-date" tabindex="-1">
-                <dt>Trade Date</dt>
-                <dd data-process-copy="tradeDateDefinition">The date on which a Trade is executed; Tenor and Value Dates are determined relative to it.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-tenor" tabindex="-1">
-                <dt>Tenor</dt>
-                <dd data-process-copy="tenorDefinition">The settlement term of a Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-value-date" tabindex="-1">
-                <dt>Value Date</dt>
-                <dd data-process-copy="valueDateDefinition">The settlement date for one currency leg of a Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-batching-key" tabindex="-1">
-                <dt>Batching Key</dt>
-                <dd data-process-copy="batchingKeyDefinition">A composite compatibility key that determines whether Trades may be included in one Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-cross-tenor-batching" tabindex="-1">
-                <dt>Cross-Tenor Batching</dt>
-                <dd data-process-copy="crossTenorBatchingDefinition">A Batching mode that allows compatible Trades with different Tenors and Value Dates to be included in one Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.</dd>
-              </div>
-              <div class="manual-process-definition" id="process-term-batch-internal-swap" tabindex="-1">
-                <dt>Batch Internal Swap</dt>
-                <dd data-process-copy="batchInternalSwapDefinition">An internal technical entity of a Batch that aligns Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across Batches and offset by a single net swap at the end of the accounting day.</dd>
-              </div>
-            </dl>
-          </section>
-        </div>
-      </article>
     </section>
   </main>

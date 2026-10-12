@@ -52,5 +52,7 @@
     }
 
     .workbench-page .workbench-section-tabs .button-icon {
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }

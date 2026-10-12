@@ -324,44 +324,21 @@
 
     function updateProcessCatalogDocumentTitle() {
       if (processesPage && !processesPage.hidden) {
-        if (isDomainGlossaryRoute()) {
-          document.title = processCatalogLanguage === "ru"
-            ? "Domain Glossary — Каталог процессов"
-            : "Domain Glossary - Process Catalog";
-        } else {
-          document.title = processCatalogLanguage === "ru"
-            ? "Ручной Batching — Каталог процессов"
-            : "Manual Batching - Process Catalog";
-        }
+        document.title = processCatalogLanguage === "ru"
+          ? "Ручной Batching — Каталог процессов"
+          : "Manual Batching - Process Catalog";
       }
     }
 
     function renderProcessCatalogRoute() {
-      const isGlossary = isDomainGlossaryRoute();
-      const activeView = isGlossary ? "glossary" : "manual";
-
-      if (manualBatchFormationProcessView) {
-        manualBatchFormationProcessView.hidden = isGlossary;
-      }
-      if (domainGlossaryProcessView) {
-        domainGlossaryProcessView.hidden = !isGlossary;
-      }
+      if (manualBatchFormationProcessView) manualBatchFormationProcessView.hidden = false;
       processCatalogViewLinks.forEach(link => {
-        const view = link.dataset.processCatalogView;
-        const isActive = view === activeView;
+        const isActive = link.dataset.processCatalogView === "manual";
         link.classList.toggle("is-active", isActive);
-        if (isActive) {
-          link.setAttribute("aria-current", "page");
-        } else {
-          link.removeAttribute("aria-current");
-        }
+        if (isActive) link.setAttribute("aria-current", "page");
+        else link.removeAttribute("aria-current");
       });
       updateProcessCatalogDocumentTitle();
-
-      const termKey = domainGlossaryTermFromRoute();
-      if (isGlossary && termKey) {
-        window.requestAnimationFrame(() => showManualProcessDefinition(termKey));
-      }
     }
 
     function setProcessCatalogLanguage(language, { persist = true } = {}) {
@@ -372,14 +349,9 @@
       processCatalogCopyElements.forEach(element => {
         const key = element.dataset.processCopy;
         if (Object.prototype.hasOwnProperty.call(copy, key)) {
-          if (element.hasAttribute("data-process-linked-copy")) {
-            setManualProcessLinkedText(element, copy[key]);
-          } else {
-            element.textContent = copy[key];
-          }
+          element.textContent = copy[key];
         }
       });
-      linkDomainGlossaryDefinitions();
       processCatalogAriaElements.forEach(element => {
         const key = element.dataset.processAriaLabel;
         if (Object.prototype.hasOwnProperty.call(ariaCopy, key)) {
@@ -407,101 +379,13 @@
       container.replaceChildren(...rows.map(createRow));
     }
 
-    const MANUAL_PROCESS_TERM_REFERENCES = Object.freeze([
-      Object.freeze({ text: "Position Management — Auto Mode", key: "auto-position-management-mode" }),
-      Object.freeze({ text: "Position Management — Manual Mode", key: "manual-position-management-mode" }),
-      Object.freeze({ text: "Auto Mode of Position Management", key: "auto-position-management-mode" }),
-      Object.freeze({ text: "Manual Mode of Position Management", key: "manual-position-management-mode" }),
-      Object.freeze({ text: "Trade Context Position Management Mode", key: "trade-context-position-management-mode" }),
-      Object.freeze({ text: "Auto Mode Eligibility", key: "auto-mode-eligibility" }),
-      Object.freeze({ text: "Auto Management Admission", key: "auto-management-admission" }),
-      Object.freeze({ text: "Position Management Mode", key: "position-management-mode" }),
-      Object.freeze({ text: "Manual Management", key: "manual-position-management-mode" }),
-      Object.freeze({ text: "Auto Management", key: "auto-position-management-mode" }),
-      Object.freeze({ text: "Eligibility Checks", key: "eligibility-check" }),
-      Object.freeze({ text: "Eligibility Check", key: "eligibility-check" }),
-      Object.freeze({ text: "Admission State", key: "admission-state" }),
-      Object.freeze({ text: "Ccy Pair", key: "ccy-pair" }),
-      Object.freeze({ text: "Auto Hedging", key: "auto-hedging" }),
-      Object.freeze({ text: "Servicing Location", key: "servicing-location" }),
-      Object.freeze({ text: "Accounting System", key: "accounting-system" }),
-      Object.freeze({ text: "Trade Context", key: "trade-context" }),
-      Object.freeze({ text: "Originating System", key: "originating-system" }),
-      Object.freeze({ text: "Pricing Mode", key: "pricing-mode" }),
-      Object.freeze({ text: "Market Pulse", key: "market-pulse" }),
-      Object.freeze({ text: "Cross-Tenor Batching", key: "cross-tenor-batching" }),
-      Object.freeze({ text: "Batch Internal Swaps", key: "batch-internal-swap" }),
-      Object.freeze({ text: "Batch Internal Swap", key: "batch-internal-swap" }),
-      Object.freeze({ text: "Batches", key: "batch" }),
-      Object.freeze({ text: "Client Deals", key: "client-deal" }),
-      Object.freeze({ text: "Hedge Deals", key: "hedge-deal" }),
-      Object.freeze({ text: "Position", key: "position" }),
-      Object.freeze({ text: "Transfer Rate", key: "transfer-rate" }),
-      Object.freeze({ text: "Batching Key", key: "batching-key" }),
-      Object.freeze({ text: "Base Currency", key: "base-currency" }),
-      Object.freeze({ text: "Quote Currency", key: "quote-currency" }),
-      Object.freeze({ text: "Trade Date", key: "trade-date" }),
-      Object.freeze({ text: "Value Dates", key: "value-date" }),
-      Object.freeze({ text: "Trades", key: "trade" }),
-      Object.freeze({ text: "Trade", key: "trade" }),
-      Object.freeze({ text: "Client Deal", key: "client-deal" }),
-      Object.freeze({ text: "Hedge Deal", key: "hedge-deal" }),
-      Object.freeze({ text: "Value Date", key: "value-date" }),
-      Object.freeze({ text: "Batch", key: "batch" }),
-      Object.freeze({ text: "Batching", key: "batching" }),
-      Object.freeze({ text: "Tenors", key: "tenor" }),
-      Object.freeze({ text: "Tenor", key: "tenor" })
-    ]);
-
-    function isManualProcessTermWordCharacter(value) {
+    function isManualProcessReferenceWordCharacter(value) {
       return Boolean(value) && /[0-9A-Za-zА-Яа-яЁё_]/.test(value);
     }
 
-    function isManualProcessTermBoundary(value, index, length) {
-      return !isManualProcessTermWordCharacter(value[index - 1])
-        && !isManualProcessTermWordCharacter(value[index + length]);
-    }
-
-    function isManualProcessQuotedLabel(value, index, length) {
-      const openingQuote = value[index - 1];
-      const closingQuote = value[index + length];
-      return (openingQuote === "“" && closingQuote === "”")
-        || (openingQuote === "«" && closingQuote === "»")
-        || (openingQuote === '"' && closingQuote === '"');
-    }
-
-    function nextManualProcessTermReference(value, fromIndex, excludeTermKey = "") {
-      let nextReference = null;
-      const normalizedValue = value.toLocaleLowerCase();
-
-      MANUAL_PROCESS_TERM_REFERENCES.forEach(term => {
-        if (term.key === excludeTermKey) {
-          return;
-        }
-        const normalizedTerm = term.text.toLocaleLowerCase();
-        let index = normalizedValue.indexOf(normalizedTerm, fromIndex);
-        while (
-          index >= 0
-          && (
-            !isManualProcessTermBoundary(value, index, term.text.length)
-            || isManualProcessQuotedLabel(value, index, term.text.length)
-          )
-        ) {
-          index = normalizedValue.indexOf(normalizedTerm, index + 1);
-        }
-        if (index < 0) {
-          return;
-        }
-        if (
-          !nextReference
-          || index < nextReference.index
-          || (index === nextReference.index && term.text.length > nextReference.term.text.length)
-        ) {
-          nextReference = { index, term };
-        }
-      });
-
-      return nextReference;
+    function isManualProcessReferenceBoundary(value, index, length) {
+      return !isManualProcessReferenceWordCharacter(value[index - 1])
+        && !isManualProcessReferenceWordCharacter(value[index + length]);
     }
 
     function manualProcessArtifactTargetId(stageKey, artifactIndex) {
@@ -546,7 +430,7 @@
         let index = normalizedValue.indexOf(normalizedArtifact, fromIndex);
         while (
           index >= 0
-          && !isManualProcessTermBoundary(value, index, artifact.text.length)
+          && !isManualProcessReferenceBoundary(value, index, artifact.text.length)
         ) {
           index = normalizedValue.indexOf(normalizedArtifact, index + 1);
         }
@@ -565,104 +449,33 @@
       return nextReference;
     }
 
-    function setManualProcessLinkedText(
-      element,
-      value,
-      { excludeTermKey = "", artifactReferences = [] } = {}
-    ) {
+    function setManualProcessArtifactText(element, value, { artifactReferences = [] } = {}) {
       const text = String(value ?? "");
       const content = [];
       let cursor = 0;
-
       while (cursor < text.length) {
-        const termReference = nextManualProcessTermReference(text, cursor, excludeTermKey);
-        const artifactReference = nextManualProcessArtifactReference(
-          text,
-          cursor,
-          artifactReferences
-        );
-        const reference = artifactReference && (
-          !termReference
-          || artifactReference.index < termReference.index
-          || (
-            artifactReference.index === termReference.index
-            && artifactReference.artifact.text.length > termReference.term.text.length
-          )
-        )
-          ? { index: artifactReference.index, kind: "artifact", value: artifactReference.artifact }
-          : termReference
-            ? { index: termReference.index, kind: "term", value: termReference.term }
-            : null;
+        const reference = nextManualProcessArtifactReference(text, cursor, artifactReferences);
         if (!reference) {
           content.push(document.createTextNode(text.slice(cursor)));
           break;
         }
-
-        if (reference.index > cursor) {
-          content.push(document.createTextNode(text.slice(cursor, reference.index)));
-        }
-
+        if (reference.index > cursor) content.push(document.createTextNode(text.slice(cursor, reference.index)));
         const link = document.createElement("a");
-        const referenceLength = reference.value.text.length;
-        if (reference.kind === "artifact") {
-          link.className = "manual-process-artifact-link";
-          link.href = manualBatchFormationProcessRoute();
-          link.dataset.processArtifactReference = reference.value.key;
-          link.addEventListener("click", event => {
-            event.preventDefault();
-            showManualProcessArtifact(reference.value.targetId);
-          });
-        } else {
-          link.className = "manual-process-term-link";
-          link.href = domainGlossaryRoute(reference.value.key);
-          link.dataset.processTermReference = reference.value.key;
-        }
-        link.textContent = text.slice(reference.index, reference.index + referenceLength);
+        link.className = "manual-process-artifact-link";
+        link.href = manualBatchFormationProcessRoute();
+        link.dataset.processArtifactReference = reference.artifact.key;
+        link.addEventListener("click", event => {
+          event.preventDefault();
+          showManualProcessArtifact(reference.artifact.targetId);
+        });
+        link.textContent = text.slice(reference.index, reference.index + reference.artifact.text.length);
         content.push(link);
-        cursor = reference.index + referenceLength;
+        cursor = reference.index + reference.artifact.text.length;
       }
-
       element.replaceChildren(...content);
     }
 
-    function linkDomainGlossaryDefinitions() {
-      document.querySelectorAll(".manual-process-definition[id^='process-term-']")
-        .forEach(definition => {
-          const description = definition.querySelector("dd[data-process-copy]");
-          if (!description) {
-            return;
-          }
-          const termKey = definition.id.slice("process-term-".length);
-          const allowSelfReference = termKey === "batching" || termKey === "value-date";
-          const excludeTermKey = allowSelfReference ? "" : termKey;
-          setManualProcessLinkedText(
-            description,
-            description.textContent,
-            { excludeTermKey }
-          );
-        });
-    }
-
-    let manualProcessDefinitionHighlightTimeoutId = null;
     let manualProcessArtifactHighlightTimeoutId = null;
-
-    function showManualProcessDefinition(termKey) {
-      const definition = document.getElementById(`process-term-${termKey}`);
-      if (!definition) {
-        return;
-      }
-
-      document.querySelectorAll(".manual-process-definition.is-referenced")
-        .forEach(item => item.classList.remove("is-referenced"));
-      definition.classList.add("is-referenced");
-      definition.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      definition.focus({ preventScroll: true });
-
-      window.clearTimeout(manualProcessDefinitionHighlightTimeoutId);
-      manualProcessDefinitionHighlightTimeoutId = window.setTimeout(() => {
-        definition.classList.remove("is-referenced");
-      }, 1800);
-    }
 
     function showManualProcessArtifact(targetId) {
       const row = document.getElementById(targetId);
@@ -696,8 +509,8 @@
       manualProcessInspectorKicker.textContent = stage.kicker;
       const artifactReferences = manualProcessArtifactReferences(stageKey, stage.artifacts);
       const linkedTextOptions = { artifactReferences };
-      setManualProcessLinkedText(manualProcessInspectorTitle, stage.title, linkedTextOptions);
-      setManualProcessLinkedText(manualProcessInspectorObjective, stage.objective, linkedTextOptions);
+      setManualProcessArtifactText(manualProcessInspectorTitle, stage.title, linkedTextOptions);
+      setManualProcessArtifactText(manualProcessInspectorObjective, stage.objective, linkedTextOptions);
       replaceManualProcessDetailRows(
         manualProcessInspectorSteps,
         stage.steps,
@@ -713,9 +526,9 @@
           const copy = document.createElement("span");
           copy.className = "manual-process-step-copy";
           const title = document.createElement("strong");
-          setManualProcessLinkedText(title, step.title, linkedTextOptions);
+          setManualProcessArtifactText(title, step.title, linkedTextOptions);
           const detail = document.createElement("span");
-          setManualProcessLinkedText(detail, step.detail, linkedTextOptions);
+          setManualProcessArtifactText(detail, step.detail, linkedTextOptions);
           copy.append(title, detail);
           item.append(number, boundary, copy);
           return item;
@@ -728,7 +541,7 @@
           const item = document.createElement("li");
           item.className = "manual-process-control";
           const check = document.createElement("strong");
-          setManualProcessLinkedText(check, control.check, linkedTextOptions);
+          setManualProcessArtifactText(check, control.check, linkedTextOptions);
           const outcome = document.createElement("span");
           outcome.className = "manual-process-control-outcome";
           const icon = document.createElement("span");
@@ -736,7 +549,7 @@
           icon.setAttribute("aria-hidden", "true");
           icon.textContent = "error";
           const failure = document.createElement("span");
-          setManualProcessLinkedText(failure, control.failure, linkedTextOptions);
+          setManualProcessArtifactText(failure, control.failure, linkedTextOptions);
           outcome.append(icon, failure);
           item.append(check, outcome);
           return item;
@@ -760,7 +573,7 @@
           const scope = document.createElement("td");
           scope.textContent = artifact.scope;
           const purpose = document.createElement("td");
-          setManualProcessLinkedText(purpose, artifact.purpose);
+          setManualProcessArtifactText(purpose, artifact.purpose);
           row.append(kind, name, scope, purpose);
           return row;
         }
@@ -774,12 +587,12 @@
           const label = document.createElement("dt");
           label.textContent = trace.label;
           const value = document.createElement("dd");
-          setManualProcessLinkedText(value, trace.value, linkedTextOptions);
+          setManualProcessArtifactText(value, trace.value, linkedTextOptions);
           row.append(label, value);
           return row;
         }
       );
-      setManualProcessLinkedText(manualProcessInspectorResult, stage.result, linkedTextOptions);
+      setManualProcessArtifactText(manualProcessInspectorResult, stage.result, linkedTextOptions);
 
       manualProcessNodes.forEach(node => {
         const isCurrent = node.dataset.manualProcessStage === stageKey;

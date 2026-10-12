@@ -54,7 +54,7 @@ function migrateImmutablePositionManagement(sqlite, schema) {
   const restored = [];
   for (const object of objects) {
     if (RETIRED_TRIGGERS.has(object.name)) continue;
-    if (object.type === "trigger" && (object.name === "trg_batches_form" || object.name.startsWith("trg_trade_position_management_"))) {
+    if (object.type === "trigger" && (object.name === "trg_batches_form" || object.name === "trg_position_management_mode_decisions_match_trade" || object.name.startsWith("trg_trade_position_management_"))) {
       restored.push(definition(schema, "TRIGGER", object.name));
     } else {
       throw new Error(`Position Management migration requires reviewing ${object.type} ${object.name}.`);

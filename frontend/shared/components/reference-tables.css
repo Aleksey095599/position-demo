@@ -1429,7 +1429,9 @@
     #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-icon {
       grid-row: 1 / 3;
       color: var(--bs-secondary-color);
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #databasePage.unified-bootstrap-workspace.workbench-page .database-table-section-name {
@@ -2173,7 +2175,9 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
     .trading-counterparty-filter-toolbar-title .button-icon {
       color: var(--app-primary-text);
-      font-size: 17px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page
@@ -2911,7 +2915,9 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-title > .button-icon,
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-relation > .button-icon {
       color: currentColor;
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-context-actions {
@@ -2991,7 +2997,9 @@
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node-icon {
       flex: 0 0 auto;
       color: var(--bs-secondary-color);
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #clientProfilePage.unified-bootstrap-workspace.workbench-page .client-pricing-configuration-node-copy {

@@ -1,5 +1,9 @@
 "use strict";
 
+const { migrateTradeContextPurpose } = require("./backend/trade-purpose/infrastructure/persistence/migrate-trade-context-purpose");
+
+const { migratePositionManagementModeDecisions } = require("./backend/position-management/infrastructure/persistence/migrate-position-management-mode-decisions");
+
 const { migratePositionManagementSettings } = require("./backend/position-management/infrastructure/persistence/migrate-position-management-settings");
 const { migrateImmutablePositionManagement } = require("./backend/position-management/infrastructure/persistence/migrate-immutable-position-management");
 
@@ -149,8 +153,8 @@ const {
   "./backend/auto-management-admission/domain/pricing-rule-admission-policy"
 );
 const {
-  determineInitialAdmissionState
-} = require("./backend/auto-management-admission/domain/auto-management-admission-decision");
+  determinePositionManagementMode
+} = require("./backend/auto-management-admission/domain/position-management-mode-decision");
 const {
   migrateAutoManagementTerminology
 } = require("./backend/auto-management-admission/infrastructure/persistence/migrate-auto-management-terminology");
@@ -343,6 +347,7 @@ migrateImmutablePositionManagement(database, fs.readFileSync(SCHEMA_PATH, "utf8"
 ensurePositionManagementPolicyColumns(database);
 migrateAdmissionEnforcement(database);
 migratePositionManagementSettings(database);
+migrateTradeContextPurpose(database);
 migrateMinuteCandleLoadResult(database);
 migrateCandleResultAttemptTimestamps(database);
 migrateAggregationTimeframes(database);
@@ -416,6 +421,7 @@ ensureBatchFormationTiming(database);
 ensureBatchFormationReason(database);
 ensurePositionManagementPolicyColumns(database);
 ensureTradePositionManagementRows(database);
+migratePositionManagementModeDecisions(database, fs.readFileSync(SCHEMA_PATH, "utf8"));
 database.exec(fs.readFileSync(SCHEMA_PATH, "utf8"));
 ensureHedgeDealTriggers(database);
 
@@ -434,12 +440,12 @@ if (!databaseAlreadyInitialized) {
     seedInitialOriginatingSystems(database);
   }
 
-  if (!tradeContextsAlreadyInitialized) {
-    seedInitialTradeContexts(database);
-  }
-
   if (!tradePurposesAlreadyInitialized) {
     seedInitialTradePurposes(database);
+  }
+
+  if (!tradeContextsAlreadyInitialized) {
+    seedInitialTradeContexts(database);
   }
 
   if (!tradingCounterpartiesAlreadyInitialized) {
@@ -7299,14 +7305,17 @@ function seedInitialTradeContexts(sqlite) {
         servicing_location_id,
         accounting_system_id,
         originating_system_id,
+        trade_purpose_id,
         position_management_mode
       )
     VALUES
-      ('002', 'AFINA', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE'),
-      ('002', 'AFINA', 'RFQ', 'MANUAL'),
-      ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'MANUAL'),
-      ('1234', 'AFINA', 'RFQ', 'MANUAL'),
-      ('001', 'CTF3', 'CLICK_TRADE_EFX', 'AUTO_IF_ELIGIBLE');
+      ('002', 'AFINA', 'CLICK_TRADE_EFX', 'CLIENT_CONVERSION', 'AUTO_IF_ELIGIBLE'),
+      ('002', 'AFINA', 'RFQ', 'CLIENT_CONVERSION', 'MANUAL'),
+      ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'CLIENT_CONVERSION', 'MANUAL'),
+      ('1234', 'AFINA', 'RFQ', 'CLIENT_CONVERSION', 'MANUAL'),
+      ('001', 'CTF3', 'CLICK_TRADE_EFX', 'CLIENT_CONVERSION', 'AUTO_IF_ELIGIBLE'),
+      ('002', 'AFINA', 'CLICK_TRADE_EFX', 'POSITION_HEDGING', 'AUTO_IF_ELIGIBLE'),
+      ('002', 'CTF3', 'MANUAL_CLIENT_DEAL_ENTRY', 'POSITION_HEDGING', 'MANUAL');
   `);
 }
 
@@ -7389,6 +7398,7 @@ function seedInitialPricingRules(sqlite) {
       AND e.originating_system_id = ?
     INNER JOIN ccy_pair_options pair ON pair.ccy_pair_code = ?
     WHERE external.counterparty_code_type = 'INN' AND external.counterparty_code = ?
+      AND e.trade_purpose_id = CASE WHEN external.counterparty_code = '7707000001' THEN 'POSITION_HEDGING' ELSE 'CLIENT_CONVERSION' END
   `);
   const attachContext = sqlite.prepare(`
     INSERT OR IGNORE INTO trading_counterparty_trade_contexts
@@ -8025,8 +8035,8 @@ function evaluateTradeAdmission(tradeType, payload, exposureAmounts) {
   const admissionMode = pricingRuleAutoManagementAdmissionPolicy(
     payload.pricingRuleId, payload.tradeContextId
   ).effectivePositionManagementMode;
-  return determineInitialAdmissionState({
-      admissionMode,
+  return determinePositionManagementMode({
+      modeSetting: admissionMode,
       ccyPairCode: payload.ccyPairCode,
       baseCcyAmountMinor: exposureAmounts.baseCcyAmountMinor,
       pairRule: eligibilityRule.pairRule,
@@ -8039,26 +8049,22 @@ function evaluateTradeAdmission(tradeType, payload, exposureAmounts) {
     });
 }
 
-function recordTradeAdmissionDecision(identity, decision, stage) {
+function recordPositionManagementModeDecision(identity, decision) {
   database.prepare(`
-    INSERT INTO auto_management_admission_decisions
-      (trade_id, trade_type, decision_sequence, decision_stage, admission_mode,
-       admission_state, releasable, reason_codes_json, checks_json, is_enforced)
-    VALUES (?, ?, (SELECT COALESCE(MAX(decision_sequence), 0) + 1
-      FROM auto_management_admission_decisions WHERE trade_id = ? AND trade_type = ?),
-      ?, ?, ?, ?, ?, ?, 1)
-  `).run(identity.tradeId, identity.tradeType, identity.tradeId, identity.tradeType,
-    stage, decision.admissionMode, decision.state,
-    decision.releasable ? 1 : 0, JSON.stringify(decision.reasonCodes), JSON.stringify(decision.checks));
+    INSERT INTO position_management_mode_decisions
+      (trade_id, trade_type, mode_setting, position_management_mode, reason_codes_json, checks_json)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(identity.tradeId, identity.tradeType, decision.modeSetting,
+    decision.positionManagementMode, JSON.stringify(decision.reasonCodes), JSON.stringify(decision.checks));
 }
 
 function materializeTradeAdmission(identity, payload, exposureAmounts) {
   const decision = evaluateTradeAdmission(identity.tradeType, payload, exposureAmounts);
   materializeTradePositionModeState(database, {
     ...identity,
-    positionManagementMode: decision.state === "RELEASED" ? "AUTO" : "MANUAL"
+    positionManagementMode: decision.positionManagementMode
   });
-  recordTradeAdmissionDecision(identity, decision, "INITIAL");
+  recordPositionManagementModeDecision(identity, decision);
 }
 
 function tradeExposureAmounts(payload, generatedAmounts = null) {
@@ -8333,6 +8339,7 @@ function tradeContexts() {
       context.servicing_location_id AS servicingLocationId,
       COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
       context.originating_system_id AS originatingSystemId,
+      context.trade_purpose_id AS tradePurposeId,
       context.position_management_mode AS positionManagementMode,
       (
         SELECT COUNT(*)
@@ -8411,6 +8418,7 @@ function tradingCounterpartyTradeContexts(counterpartyId) {
       context.servicing_location_id AS servicingLocationId,
       COALESCE(context.accounting_system_id, 'NOT_APPLICABLE') AS accountingSystemId,
       context.originating_system_id AS originatingSystemId,
+      context.trade_purpose_id AS tradePurposeId,
       context.position_management_mode AS positionManagementMode,
       (
         SELECT COUNT(*)
@@ -10783,7 +10791,7 @@ const clientDealGenerationProcess = new ClientDealGenerationProcess({
 
 const DEMO_TRADE_RESET_CONFIRMATION = "RESET_ALL_TRADES";
 const DEMO_TRADE_RESET_DELETE_TRIGGERS = Object.freeze([
-  "trg_auto_management_admission_decisions_immutable_delete",
+  "trg_position_management_mode_decisions_immutable_delete",
   "trg_batch_members_immutable_delete",
   "trg_batch_balance_trades_immutable_delete",
   "trg_batch_position_outputs_immutable_delete",
@@ -10799,10 +10807,10 @@ function demoTradeTableCounts() {
     marketSnapshots: Number(
       database.prepare("SELECT COUNT(*) AS count FROM trade_market_snapshots").get().count
     ),
-    autoManagementAdmissionDecisions: Number(
+    positionManagementModeDecisions: Number(
       database.prepare(`
         SELECT COUNT(*) AS count
-        FROM auto_management_admission_decisions
+        FROM position_management_mode_decisions
       `).get().count
     ),
     positionManagementStates: Number(
@@ -10857,7 +10865,7 @@ function resetDemoTrades() {
       DELETE FROM batch_position_outputs;
       DELETE FROM batch_balance_trades;
       DELETE FROM batches;
-      DELETE FROM auto_management_admission_decisions;
+      DELETE FROM position_management_mode_decisions;
       DELETE FROM trade_market_snapshots;
       DELETE FROM client_deals;
       DELETE FROM hedge_deals;
@@ -11269,6 +11277,11 @@ function validateTradeContextPayload(body, current = null) {
     return { error: "Trade Context payload must be a JSON object." };
   }
 
+  const tradePurposeId = String(body.tradePurposeId ?? "").trim().toUpperCase();
+  if (!/^[A-Z0-9_-]{2,30}$/.test(tradePurposeId)) {
+    return { error: "A valid Trade Purpose ID is required." };
+  }
+
   const servicingLocationId = normalizedServicingLocationId(body.servicingLocationId);
   const accountingSystemId = normalizedAccountingSystemId(body.accountingSystemId);
   const originatingSystemId = normalizedOriginatingSystemId(body.originatingSystemId);
@@ -11310,6 +11323,7 @@ function validateTradeContextPayload(body, current = null) {
   }
 
   return {
+    tradePurposeId,
     servicingLocationId,
     accountingSystemId,
     accountingSystemDatabaseId: accountingSystemId === NOT_APPLICABLE_ACCOUNTING_SYSTEM_ID
@@ -12183,6 +12197,10 @@ function validateHedgeQuickModeSettingsPayload(body, ccyPairCode, baseCcyFractio
 }
 
 function tradeContextReferenceError(payload) {
+  if (!database.prepare("SELECT 1 FROM trade_purposes WHERE trade_purpose_id = ?").get(payload.tradePurposeId)) {
+    return `Trade Purpose ${payload.tradePurposeId} was not found.`;
+  }
+
   if (!servicingLocation(payload.servicingLocationId)) {
     return `Servicing Location ${payload.servicingLocationId} was not found.`;
   }
@@ -14502,13 +14520,15 @@ async function handleApi(request, response, url) {
             servicing_location_id,
             accounting_system_id,
             originating_system_id,
+            trade_purpose_id,
             position_management_mode
           )
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
       `).run(
         payload.servicingLocationId,
         payload.accountingSystemDatabaseId,
         payload.originatingSystemId,
+        payload.tradePurposeId,
         payload.positionManagementMode
       );
       sendJson(response, 201, tradeContext(Number(result.lastInsertRowid)));
@@ -14566,12 +14586,14 @@ async function handleApi(request, response, url) {
           SET servicing_location_id = ?,
               accounting_system_id = ?,
               originating_system_id = ?,
+              trade_purpose_id = ?,
               position_management_mode = ?
           WHERE trade_context_id = ?
         `).run(
           payload.servicingLocationId,
           payload.accountingSystemDatabaseId,
           payload.originatingSystemId,
+          payload.tradePurposeId,
           payload.positionManagementMode,
           currentTradeContextId
         );

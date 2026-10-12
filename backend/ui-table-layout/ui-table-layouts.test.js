@@ -29,7 +29,7 @@ const EXPECTED_COLUMN_COUNTS = Object.freeze({
   external_counterparties_grid: 8,
   internal_units_grid: 8,
   users_grid: 7,
-  trade_contexts_grid: 7,
+  trade_contexts_grid: 8,
   servicing_locations_grid: 7,
   accounting_systems_grid: 5,
   originating_systems_grid: 7,
@@ -70,7 +70,7 @@ test("defines a valid default width for every managed UI table column", () => {
     });
   });
 
-  assert.equal(fullyQualifiedColumnKeys.size, 205);
+  assert.equal(fullyQualifiedColumnKeys.size, 206);
 });
 
 test("defines the Ccy Pair Admission Criteria table layout", () => {

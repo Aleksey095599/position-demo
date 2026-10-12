@@ -98,7 +98,9 @@
     #marketPage .market-history-sync-header-icon {
       flex-shrink: 0;
       color: currentColor;
-      font-size: 18px;
+      font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300;
     }
 
     #marketPage .market-history-section-title {

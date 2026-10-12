@@ -86,7 +86,7 @@
             ${isOpen ? "open" : ""}
           >
             <summary class="database-table-section-summary">
-              <span class="button-icon database-table-section-icon" aria-hidden="true">${escapeHtml(section.icon)}</span>
+              <span class="button-icon database-table-section-icon${section.icon === "trade" ? " trade-icon" : ""}" aria-hidden="true">${section.icon === "trade" ? TRADE_ICON_CONTENT : escapeHtml(section.icon)}</span>
               <span class="database-table-section-name">${escapeHtml(section.label)}</span>
               <span class="database-table-section-meta">
                 ${escapeHtml(databaseObjectCountLabel(tables.length))} · ${escapeHtml(databaseRowCountLabel(rowCount))}
@@ -667,110 +667,12 @@
       return "#processes:manual-batch-formation";
     }
 
-    function domainGlossaryRoute(termKey = "") {
-      return termKey
-        ? `#processes:domain-glossary/${encodeURIComponent(termKey)}`
-        : "#processes:domain-glossary";
-    }
-
-    const PROCESS_CATALOG_GLOSSARY_TERM_KEYS = new Set([
-      "position-management-mode",
-      "auto-position-management-mode",
-      "manual-position-management-mode",
-      "auto-hedging",
-      "auto-management-admission",
-      "trade-context-position-management-mode",
-      "auto-mode-eligibility",
-      "eligibility-check",
-      "admission-state",
-      "ccy-pair",
-      "batch",
-      "batching",
-      "market-pulse",
-      "trade",
-      "client-deal",
-      "hedge-deal",
-      "position",
-      "trade-context",
-      "servicing-location",
-      "accounting-system",
-      "originating-system",
-      "pricing-mode",
-      "transfer-rate",
-      "base-currency",
-      "quote-currency",
-      "trade-date",
-      "tenor",
-      "value-date",
-      "batching-key",
-      "cross-tenor-batching",
-      "batch-internal-swap"
-    ]);
-
-    const PROCESS_CATALOG_GLOSSARY_TERM_ALIASES = new Map([
-      ["manual-management", "manual-position-management-mode"],
-      ["auto-management", "auto-position-management-mode"],
-      ["execution-context", "trade-context"],
-      ["execution-system", "originating-system"],
-      ["execution-context-admission-mode", "trade-context-position-management-mode"],
-      ["trade-context-admission-mode", "trade-context-position-management-mode"]
-    ]);
-
-    function domainGlossaryTermFromRoute() {
-      const routePrefix = `${domainGlossaryRoute()}/`;
-      if (!location.hash.startsWith(routePrefix)) {
-        return null;
-      }
-      try {
-        const termKey = decodeURIComponent(location.hash.slice(routePrefix.length));
-        const canonicalTermKey = PROCESS_CATALOG_GLOSSARY_TERM_ALIASES.get(termKey) || termKey;
-        return PROCESS_CATALOG_GLOSSARY_TERM_KEYS.has(canonicalTermKey) ? canonicalTermKey : null;
-      } catch (_error) {
-        return null;
-      }
-    }
-
     const PROCESS_CATALOG_LANGUAGE_STORAGE_KEY = "position.processCatalogLanguage";
     const PROCESS_CATALOG_COPY = Object.freeze({
       en: Object.freeze({
         pageTitle: "Process Catalog",
         manualBatching: "Manual Batching",
-        autoPositionManagementModeDefinition: "A Position Management Mode in which a Trade is available to automated position-management processes, including hedging and batching, subject to each process's rules. The Trade must meet the applicable eligibility requirements. This mode is assigned when the Trade is created; it does not mean that an automated action has already occurred.",
-        manualPositionManagementModeDefinition: "A Position Management Mode in which an operator controls the management of a Trade, including review, manual hedging and batch formation. The Trade does not participate in automated position-management processes. The operator manages the Trade in its assigned mode.",
-        positionManagementModeDefinition: "The mode assigned to a Trade: Auto Mode of Position Management or Manual Mode of Position Management. It is fixed at creation and determines how the Trade's position is managed and is separate from its economic exposure and the states of individual management processes.",
-        autoHedgingDefinition: "An automated risk-management process that monitors open currency exposure and applies configured algorithms and controls to keep currency risk within approved limits.",
-        autoManagementAdmissionDefinition: "The decision made when a Trade is created to assign Auto Mode if its settings and eligibility requirements allow it; otherwise Manual Mode is assigned.",
-        tradeContextPositionManagementModeDefinition: "A Trade Context setting that assigns Manual Mode or Auto Mode if Eligible when a Trade is created. A Pricing Rule may override it only to Manual Mode. Settings changes affect new Trades only; an existing Trade retains its assigned mode.",
-        autoModeEligibilityDefinition: "Requirements configured by Trade Type and Ccy Pair and checked when a new Trade is considered for Position Management — Auto Mode. Position Management Mode separately applies Trade Context and Pricing Rule settings.",
-        eligibilityCheckDefinition: "A safety condition evaluated from Trade, reference, or market data to determine eligibility for Auto Management. Every applicable check must pass before Auto Mode is assigned.",
-        ccyPairDefinition: "An ordered pair of currencies defining the Base Currency and Quote Currency used to express a Trade amount and exchange rate.",
-        automationAdmissionStateDefinition: "Records whether Auto Mode was admitted when the Trade was created. It does not represent a pending transfer between modes.",
-        domainGlossary: "Domain Glossary",
-        domainGlossarySubtitle: "Core terms used across documented processes",
         goal: "Process goal:",
-        definitions: "Core definitions",
-        batchDefinition: "A fixed package of Trades compatible by Batching Key—Client Deals, Hedge Deals, and technical Trades—whose aggregate open currency position is zero. After formation, its members are excluded from the active Position view, which organizes trades and simplifies control of the current currency position.",
-        batchingTerm: "Batching",
-        marketPulseDefinition: "An application module that provides current normalized market quotes (Bid and Offer) for currency pairs to pricing, validation, and risk-management processes. In the current demo, quotes are generated by a simulator; the domain concept is independent of the data source and may later use real market-data feeds.",
-        batchingDefinition: "A manual or automatic process that selects, validates, groups and neutralizes Trades compatible by Batching Key to form one or more Batches. A user selects Trades for Manual Batching; configured rules select them for Automatic Batching.",
-        tradeDefinition: "A Client Deal, Hedge Deal, or technical transaction included in currency-position calculations and displayed in Position.",
-        clientDealDefinition: "A Trade executed with a client and forming the client component of the currency position.",
-        hedgeDealDefinition: "A Trade executed with a hedge counterparty to manage or neutralize the currency position.",
-        positionDefinition: "Application interface for monitoring the currency position and performing operations with Trades, including Batching.",
-        tradeContextDefinition: "Trade Context describes the business environment in which a Trade originates, is serviced, and is reflected in accounting. It provides common coordinates against which rules for different processes apply. These coordinates are Servicing Location, Accounting System (when applicable), and Originating System.",
-        servicingLocationDefinition: "The organizational and geographic point at which a Trade is serviced, such as a branch or head office in a particular region.",
-        accountingSystemDefinition: "An internal system of record of a bank or financial institution in which a Trade and its related accounting entries are registered.",
-        originatingSystemDefinition: "The business system in which a Trade is first registered as a business fact.",
-        pricingModeDefinition: "An Originating System attribute describing how the execution price is produced or approved: AUTO_PRICED means automatic pricing, DEALER_PRICED means the dealer sets the price, and DEALER_APPROVED means a system-proposed price requires dealer approval.",
-        transferRateDefinition: "An internal accounting rate of a Trade used to calculate its currency position and allocate analytical P&L. Historically, it was the rate at which a Client Deal was transferred from the Sales book to the book of the desk managing and hedging the position. In the current application no trade is actually transferred between books or systems; the industry term is retained for the internal calculation rate.",
-        baseCurrencyDefinition: "The first currency in a currency pair; its amount forms the base currency leg of a Trade.",
-        quoteCurrencyDefinition: "The second currency in a currency pair, in which the value of the Base Currency is expressed.",
-        tradeDateDefinition: "The date on which a Trade is executed; Tenor and Value Dates are determined relative to it.",
-        tenorDefinition: "The standard settlement term of a Trade relative to Trade Date. The current model uses TOD, TOM and SPOT.",
-        valueDateDefinition: "The settlement date for one currency leg of a Trade. Base Currency Value Date and Quote Currency Value Date are determined separately.",
-        batchingKeyDefinition: "A composite compatibility key that determines whether Trades may be included in one Batch. It always includes the currency pair, Trade Date, and both currency precisions. When Cross-Tenor Batching is disabled, it also includes Tenor and both Value Dates. When Cross-Tenor Batching is enabled, these parameters may differ because the trades are aligned to a common Tenor using a Batch Internal Swap.",
-        crossTenorBatchingDefinition: "A Batching mode that allows compatible Trades with different Tenors and Value Dates to be included in one Batch. Before formation, their settlement terms are aligned to a common Tenor using a Batch Internal Swap.",
-        batchInternalSwapDefinition: "An internal technical entity of a Batch that aligns Trades with different settlement profiles to a common Tenor. It is not a standalone market trade; resulting positions are aggregated across Batches and offset by a single net swap at the end of the accounting day.",
         selectedTrades: "Selected Trades",
         formedBatch: "Formed Batch",
         stageInput: "INPUT",
@@ -807,44 +709,9 @@
         stageResult: "Stage result"
       }),
       ru: Object.freeze({
-        transferRateDefinition: "\u0412\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u0443\u0447\u0451\u0442\u043d\u044b\u0439 \u043a\u0443\u0440\u0441 Trade, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u043c\u044b\u0439 \u0434\u043b\u044f \u0440\u0430\u0441\u0447\u0451\u0442\u0430 \u0432\u0430\u043b\u044e\u0442\u043d\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0438 \u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u044f \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0434\u043e\u0445\u043e\u0434\u0430. \u0418\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u0438 \u043f\u043e \u044d\u0442\u043e\u043c\u0443 \u043a\u0443\u0440\u0441\u0443 \u043a\u043b\u0438\u0435\u043d\u0442\u0441\u043a\u0430\u044f \u0441\u0434\u0435\u043b\u043a\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0432\u0430\u043b\u0430\u0441\u044c \u0438\u0437 \u043a\u043d\u0438\u0433\u0438 Sales \u0432 \u043a\u043d\u0438\u0433\u0443 \u043f\u043e\u0434\u0440\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u044f, \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0438 \u043f\u0435\u0440\u0435\u043a\u0440\u044b\u0432\u0430\u044e\u0449\u0435\u0433\u043e \u043f\u043e\u0437\u0438\u0446\u0438\u044e. \u0412 \u0442\u0435\u043a\u0443\u0449\u0435\u043c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438 \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0438 \u043c\u0435\u0436\u0434\u0443 \u043a\u043d\u0438\u0433\u0430\u043c\u0438 \u0438\u043b\u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0430\u043c\u0438 \u043d\u0435\u0442; \u043e\u0442\u0440\u0430\u0441\u043b\u0435\u0432\u043e\u0439 \u0442\u0435\u0440\u043c\u0438\u043d \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u043b\u044f \u043e\u0431\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f \u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0433\u043e \u0440\u0430\u0441\u0447\u0451\u0442\u043d\u043e\u0433\u043e \u043a\u0443\u0440\u0441\u0430.",
         pageTitle: "Каталог процессов",
         manualBatching: "Ручной Batching",
-        autoPositionManagementModeDefinition: "Режим управления позицией, в котором трейд доступен автоматическим процессам, включая хеджирование и формирование batch, с учётом правил каждого процесса. Трейд должен соответствовать применимым требованиям допуска. Режим назначается при создании трейда; сам по себе он не означает, что автоматическое действие уже выполнено.",
-        manualPositionManagementModeDefinition: "Режим управления позицией, в котором управление трейдом контролирует оператор, включая проверку, ручное хеджирование и формирование batch. Трейд не участвует в автоматических процессах управления позицией. Оператор управляет трейдом в назначенном ему режиме.",
-        positionManagementModeDefinition: "Назначенный трейду режим: Auto Mode of Position Management или Manual Mode of Position Management. Фиксируется при создании Trade, определяет способ управления позицией трейда и не является его экономической экспозицией или состоянием отдельного процесса управления.",
-        autoHedgingDefinition: "Автоматизированный процесс управления валютным риском, который контролирует открытую валютную позицию и применяет настроенные алгоритмы и ограничения для удержания валютного риска в утверждённых пределах.",
-        autoManagementAdmissionDefinition: "Решение при создании Trade: назначить Auto Mode, если настройки и требования Eligibility это допускают; иначе назначить Manual Mode.",
-        tradeContextPositionManagementModeDefinition: "Настройка Trade Context, назначающая Manual Mode либо Auto Mode при выполнении Eligibility в момент создания Trade. Pricing Rule может переопределить её только на Manual Mode. Изменения настроек действуют только для новых Trades; режим существующего Trade не меняется.",
-        autoModeEligibilityDefinition: "Требования, настроенные по Trade Type и Ccy Pair и проверяемые при назначении новому Trade режима Position Management — Auto Mode. Position Management Mode отдельно учитывает настройки Trade Context и Pricing Rule.",
-        eligibilityCheckDefinition: "Условие безопасности, проверяемое по данным Trade, справочным или рыночным данным для определения возможности участия в Auto Management. Перед допуском должны быть пройдены все применимые проверки.",
-        ccyPairDefinition: "Упорядоченная пара валют, определяющая Base Currency и Quote Currency, в которых выражаются сумма и обменный курс Trade.",
-        automationAdmissionStateDefinition: "Фиксирует результат допуска в Auto Mode при создании Trade. Не означает ожидание перевода между режимами.",
-        domainGlossary: "Domain Glossary",
-        domainGlossarySubtitle: "Основные термины, используемые в описаниях процессов",
         goal: "Цель процесса:",
-        definitions: "Основные определения",
-        batchDefinition: "Зафиксированный пакет совместимых по Batching Key Trades — Client Deals, Hedge Deals и технических Trades, — совокупная ОВП которых равна нулю. После формирования участники пакета исключаются из активного представления Position, что систематизирует сделки и упрощает контроль текущей валютной позиции.",
-        marketPulseDefinition: "Модуль приложения, предоставляющий текущие нормализованные рыночные котировки (Bid и Offer) по валютным парам для ценообразования, проверок и процессов управления риском. В текущей демонстрационной реализации котировки формируются симулятором; доменное понятие не зависит от источника данных и в дальнейшем может использовать реальные потоки рыночных данных.",
-        batchingTerm: "Batching",
-        batchingDefinition: "Ручной или автоматический процесс выбора, проверки, группировки и нейтрализации совместимых по Batching Key Trades, результатом которого становится один или несколько Batches. При ручном Batching Trades выбирает пользователь, при автоматическом — система по настроенным правилам.",
-        tradeDefinition: "Client Deal, Hedge Deal или техническая Trade, учитываемая при расчёте валютной позиции и отображаемая в Position.",
-        clientDealDefinition: "Trade, заключённый с клиентом и формирующий клиентскую часть валютной позиции.",
-        hedgeDealDefinition: "Trade, заключённый с хеджирующим контрагентом для управления или нейтрализации валютной позиции.",
-        positionDefinition: "Интерфейс приложения для контроля валютной позиции и выполнения операций с Trades, в том числе для выполнения Batching.",
-        tradeContextDefinition: "Trade Context описывает бизнес-среду возникновения, обслуживания и учётного отражения сделки. Он задаёт общие координаты, относительно которых применяются правила разных процессов. Эти координаты — Servicing Location, Accounting System (когда применимо) и Originating System.",
-        servicingLocationDefinition: "Организационная и географическая точка обслуживания Trade, например филиал или головной офис в определённом регионе.",
-        accountingSystemDefinition: "Внутренняя учётная система банка или финансовой организации, в которой регистрируются Trade и связанные с ней бухгалтерские проводки.",
-        originatingSystemDefinition: "Бизнес-система, в которой сделка впервые зарегистрирована как бизнес-факт.",
-        pricingModeDefinition: "Атрибут Originating System, определяющий способ формирования или подтверждения цены исполнения: AUTO_PRICED — автоматическое ценообразование, DEALER_PRICED — цену устанавливает дилер, DEALER_APPROVED — предложенная системой цена требует подтверждения дилером.",
-        baseCurrencyDefinition: "Первая валюта в валютной паре; её сумма образует базовую валютную часть Trade.",
-        quoteCurrencyDefinition: "Вторая валюта в валютной паре; в ней выражается стоимость Base Currency.",
-        tradeDateDefinition: "Дата заключения Trade, относительно которой определяется Tenor и рассчитываются Value Dates.",
-        tenorDefinition: "Стандартное обозначение срока расчётов по Trade относительно Trade Date. В текущей модели используются TOD, TOM и SPOT.",
-        valueDateDefinition: "Дата расчётов по одной из валют Trade. Для каждого Trade отдельно определяются Base Currency Value Date и Quote Currency Value Date.",
-        batchingKeyDefinition: "Составной ключ совместимости Trades, определяющий возможность их включения в один Batch. Он всегда включает валютную пару, Trade Date и точность обеих валют. При отключённом Cross-Tenor Batching ключ также включает Tenor и обе Value Dates. При включённом Cross-Tenor Batching эти параметры могут различаться, поскольку сделки приводятся к общему Tenor с помощью Batch Internal Swap.",
-        crossTenorBatchingDefinition: "Режим Batching, позволяющий включать в один Batch совместимые Trades с различающимися Tenor и Value Dates. Перед формированием Batch их расчётные сроки приводятся к общему Tenor с помощью Batch Internal Swap.",
-        batchInternalSwapDefinition: "Внутренняя техническая сущность Batch, приводящая Trades с разными расчётными сроками к общему Tenor. Она не является отдельной рыночной сделкой; позиции по всем таким сущностям агрегируются и перекрываются одним нетто-свопом в конце учётного дня.",
         selectedTrades: "Выбранные Trades",
         formedBatch: "Сформированный Batch",
         stageInput: "ВХОД",

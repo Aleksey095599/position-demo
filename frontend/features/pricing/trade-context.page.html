@@ -30,6 +30,7 @@
               <col class="pricing-context-location-col" data-ui-column-key="servicing_location">
               <col class="pricing-context-accounting-col" data-ui-column-key="accounting_system">
               <col class="pricing-context-originating-col" data-ui-column-key="originating_system">
+              <col data-ui-column-key="trade_purpose">
               <col class="pricing-context-admission-mode-col" data-ui-column-key="position_management_mode">
               <col class="pricing-context-count-col" data-ui-column-key="counterparties_count">
               <col class="pricing-context-actions-col" data-ui-column-key="actions" data-pricing-context-actions-column>
@@ -66,10 +67,16 @@
                 <th>
                   <div class="reference-column-head">
                     <span class="reference-column-title">
-                      <span class="button-icon" aria-hidden="true">web_asset</span>
+                      <span class="button-icon" aria-hidden="true">devices</span>
                       <span>Originating System</span>
                     </span>
                     <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="tradeCaptureChannelId" aria-label="Filter trade contexts by originating system">
+                  </div>
+                </th>
+                <th>
+                  <div class="reference-column-head">
+                    <span class="reference-column-title">Trade Purpose</span>
+                    <input class="reference-header-filter" type="text" autocomplete="off" data-pricing-context-header-filter="tradePurposeId" aria-label="Filter trade contexts by Trade Purpose">
                   </div>
                 </th>
                 <th id="pricingContextAutoManagementAdmissionHeader" tabindex="-1" data-pricing-context-column="positionManagementMode">
@@ -93,7 +100,7 @@
                       aria-label="Attached Counterparties"
                       data-tooltip="Attached Counterparties"
                     >
-                      badge
+                      account_box
                     </span>
                   </div>
                 </th>

@@ -88,7 +88,9 @@
       font-weight: var(--app-font-weight-semibold);
     }
 
-    #marketPulseSettingsPage .market-pulse-settings-card-header .button-icon { font-size: 20px; }
+    #marketPulseSettingsPage .market-pulse-settings-card-header .button-icon { font-size: var(--app-icon-size-semantic);
+      font-family: var(--app-semantic-icon-font);
+      font-weight: 300; }
     #marketPulseSettingsPage .market-pulse-settings-fields { min-width: 0; margin: 0; padding: 0 20px; border: 0; }
     #marketPulseSettingsPage .market-pulse-settings-field { padding: 20px 0; }
     #marketPulseSettingsPage .market-pulse-settings-field + .market-pulse-settings-field { border-top: 1px solid var(--bs-border-color); }

@@ -7,6 +7,7 @@ const test = require("node:test");
 const { DatabaseSync } = require("node:sqlite");
 const { migratePositionManagementSettings } = require("./migrate-position-management-settings");
 const { migrateAdmissionEnforcement } = require("../../../auto-management-admission/infrastructure/persistence/migrate-admission-enforcement");
+const { withLegacyAdmissionDecisions } = require("../../../test-support/legacy-admission-decision-schema");
 const root = path.resolve(__dirname, "../../../..");
 
 function previousSettings(sql) {
@@ -26,7 +27,7 @@ function previousSettings(sql) {
 function fixture() {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys = ON");
-  db.exec(previousSettings(fs.readFileSync(path.join(root, "schema.sql"), "utf8")));
+  db.exec(previousSettings(withLegacyAdmissionDecisions(fs.readFileSync(path.join(root, "schema.sql"), "utf8"))));
   db.exec(previousSettings(fs.readFileSync(path.join(root, "seed.sql"), "utf8")));
   db.exec(`UPDATE pricing_rules SET auto_management_admission_mode_override = 'REVIEW_REQUIRED' WHERE pricing_rule_id = 1;
     UPDATE ui_table_column_settings SET width_px = 345
