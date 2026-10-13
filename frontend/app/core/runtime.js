@@ -171,7 +171,7 @@
         inputName: "contextOriginatingSystem",
         menuId: "clientPricingOriginatingMenu",
         label: "Originating System",
-        icon: "devices"
+        icon: "originating-system"
       }
     ];
     let ccyOptions = loadCcyOptions();
@@ -1412,7 +1412,8 @@
     const databaseDataHeadEl = document.getElementById("databaseDataHead");
     const databaseDataRowsEl = document.getElementById("databaseDataRows");
     const databaseCreateSqlEl = document.getElementById("databaseCreateSql");
-    const TRADE_ICON_CONTENT = '<span class="currency-pair-icon trade-icon__pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.2v3.6L14 4ZM14 18.2v3.6L10 20Z"/></svg>';
+    const ORIGINATING_SYSTEM_ICON_CONTENT = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="3"/></svg>';
+    const TRADE_ICON_CONTENT = '<span class="currency-pair-icon trade-icon__pair"><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><g transform="rotate(26.5650511771 12 12)"><path d="M10.37 8.8a3.2 3.2 0 0 0 0 6.4ZM13.63 15.2a3.2 3.2 0 0 0 0-6.4Z"/><path d="M12 1.44V22.56" fill="none" stroke="currentColor" stroke-width="0.96" stroke-linecap="round"/></g><path d="M10.75 1 14 4.25 10.75 7.5 9.69 6.44 11.13 5H9V3.5h2.13L9.69 2.06ZM13.25 23 10 19.75 13.25 16.5 14.31 17.56 12.87 19H15v1.5h-2.13l1.44 1.44Z"/></svg>';
     const DATABASE_TABLE_SECTIONS = Object.freeze([
       {
         id: "trading",
@@ -3185,7 +3186,7 @@ function positionManagementModeSettingLabel(value) {
           aria-label="Originating System ${escapeHtml(displayName)}; Pricing Mode ${escapeHtml(presentation.label)}"
         >
           <span class="originating-system-label__system" aria-hidden="true">
-            <span class="button-icon">devices</span>
+            <span class="button-icon originating-system-icon">${ORIGINATING_SYSTEM_ICON_CONTENT}</span>
           </span>
           <span class="originating-system-label__name${nameClass}">${escapeHtml(displayName)}</span>
           <span class="originating-system-label__pricing" aria-hidden="true">

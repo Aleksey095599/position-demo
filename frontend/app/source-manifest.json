@@ -24,6 +24,7 @@
     "features/hedging/hedging.page.js",
     "features/trades/trades.page.js",
     "features/trade-intake/trade-intake.routes.js",
+    "features/trade-intake/trade-contract.page.js",
     "features/position/position-grid.page.js",
     "app/shell/workspace-shell.js"
   ]

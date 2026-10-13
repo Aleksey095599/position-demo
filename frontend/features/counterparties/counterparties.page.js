@@ -220,7 +220,7 @@
 
       return `
         <span class="client-pricing-context-candidate-facet" data-pricing-context-candidate-facet="${escapeHtml(field)}">
-          <span class="button-icon client-pricing-context-candidate-facet-icon" aria-hidden="true">${escapeHtml(definition.icon)}</span>
+          <span class="button-icon client-pricing-context-candidate-facet-icon${definition.icon === "originating-system" ? " originating-system-icon" : ""}" aria-hidden="true">${definition.icon === "originating-system" ? ORIGINATING_SYSTEM_ICON_CONTENT : escapeHtml(definition.icon)}</span>
           <span class="client-pricing-context-candidate-name">${escapeHtml(pricingContextFacetDisplayName(field, context[field]))}</span>
         </span>
       `;
@@ -1407,14 +1407,14 @@
       const currencyPairMarkup = editing
         ? `
           <span class="client-pricing-configuration-inline-field is-pair">
-            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
+            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="rotate(26.5650511771 12 12)"><path d="M10.37 8.8a3.2 3.2 0 0 0 0 6.4ZM13.63 15.2a3.2 3.2 0 0 0 0-6.4Z"/><path d="M12 1.44V22.56" fill="none" stroke="currentColor" stroke-width="0.96" stroke-linecap="round"/></g></svg></span>
             <input type="hidden" value="${escapeHtml(selectedCurrencyPair)}" data-client-pricing-rule-inline-field="currencyPair">
             <span class="client-pricing-configuration-node-value client-pricing-configuration-rule-pair">${escapeHtml(selectedCurrencyPair)}</span>
           </span>
         `
         : `
           <label class="client-pricing-configuration-inline-field is-pair">
-            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
+            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="rotate(26.5650511771 12 12)"><path d="M10.37 8.8a3.2 3.2 0 0 0 0 6.4ZM13.63 15.2a3.2 3.2 0 0 0 0-6.4Z"/><path d="M12 1.44V22.56" fill="none" stroke="currentColor" stroke-width="0.96" stroke-linecap="round"/></g></svg></span>
             <select class="form-select form-select-sm" data-client-pricing-rule-inline-field="currencyPair" aria-label="Ccy Pair"${saving ? " disabled" : ""}>
               ${currencyPairs.map(currencyPair => `
                 <option value="${escapeHtml(currencyPair)}"${currencyPair === selectedCurrencyPair ? " selected" : ""}>${escapeHtml(currencyPair)}</option>
@@ -1608,7 +1608,7 @@
                 return `
                   <div class="client-pricing-configuration-node client-pricing-configuration-rule" data-client-pricing-rule-index="${index}" role="listitem">
                     <span class="client-pricing-configuration-node-field client-pricing-configuration-rule-piece is-pair">
-                      <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
+                      <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="rotate(26.5650511771 12 12)"><path d="M10.37 8.8a3.2 3.2 0 0 0 0 6.4ZM13.63 15.2a3.2 3.2 0 0 0 0-6.4Z"/><path d="M12 1.44V22.56" fill="none" stroke="currentColor" stroke-width="0.96" stroke-linecap="round"/></g></svg></span>
                       <span class="client-pricing-configuration-node-value client-pricing-configuration-rule-pair">${escapeHtml(rule.currencyPair)}</span>
                     </span>
                     <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>

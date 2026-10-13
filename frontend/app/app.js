@@ -171,7 +171,7 @@
         inputName: "contextOriginatingSystem",
         menuId: "clientPricingOriginatingMenu",
         label: "Originating System",
-        icon: "devices"
+        icon: "originating-system"
       }
     ];
     let ccyOptions = loadCcyOptions();
@@ -1412,7 +1412,8 @@
     const databaseDataHeadEl = document.getElementById("databaseDataHead");
     const databaseDataRowsEl = document.getElementById("databaseDataRows");
     const databaseCreateSqlEl = document.getElementById("databaseCreateSql");
-    const TRADE_ICON_CONTENT = '<span class="currency-pair-icon trade-icon__pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.2v3.6L14 4ZM14 18.2v3.6L10 20Z"/></svg>';
+    const ORIGINATING_SYSTEM_ICON_CONTENT = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="3"/></svg>';
+    const TRADE_ICON_CONTENT = '<span class="currency-pair-icon trade-icon__pair"><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><g transform="rotate(26.5650511771 12 12)"><path d="M10.37 8.8a3.2 3.2 0 0 0 0 6.4ZM13.63 15.2a3.2 3.2 0 0 0 0-6.4Z"/><path d="M12 1.44V22.56" fill="none" stroke="currentColor" stroke-width="0.96" stroke-linecap="round"/></g><path d="M10.75 1 14 4.25 10.75 7.5 9.69 6.44 11.13 5H9V3.5h2.13L9.69 2.06ZM13.25 23 10 19.75 13.25 16.5 14.31 17.56 12.87 19H15v1.5h-2.13l1.44 1.44Z"/></svg>';
     const DATABASE_TABLE_SECTIONS = Object.freeze([
       {
         id: "trading",
@@ -3185,7 +3186,7 @@ function positionManagementModeSettingLabel(value) {
           aria-label="Originating System ${escapeHtml(displayName)}; Pricing Mode ${escapeHtml(presentation.label)}"
         >
           <span class="originating-system-label__system" aria-hidden="true">
-            <span class="button-icon">devices</span>
+            <span class="button-icon originating-system-icon">${ORIGINATING_SYSTEM_ICON_CONTENT}</span>
           </span>
           <span class="originating-system-label__name${nameClass}">${escapeHtml(displayName)}</span>
           <span class="originating-system-label__pricing" aria-hidden="true">
@@ -7631,7 +7632,7 @@ function positionManagementModeSettingLabel(value) {
 
       return `
         <span class="client-pricing-context-candidate-facet" data-pricing-context-candidate-facet="${escapeHtml(field)}">
-          <span class="button-icon client-pricing-context-candidate-facet-icon" aria-hidden="true">${escapeHtml(definition.icon)}</span>
+          <span class="button-icon client-pricing-context-candidate-facet-icon${definition.icon === "originating-system" ? " originating-system-icon" : ""}" aria-hidden="true">${definition.icon === "originating-system" ? ORIGINATING_SYSTEM_ICON_CONTENT : escapeHtml(definition.icon)}</span>
           <span class="client-pricing-context-candidate-name">${escapeHtml(pricingContextFacetDisplayName(field, context[field]))}</span>
         </span>
       `;
@@ -8818,14 +8819,14 @@ function positionManagementModeSettingLabel(value) {
       const currencyPairMarkup = editing
         ? `
           <span class="client-pricing-configuration-inline-field is-pair">
-            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
+            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="rotate(26.5650511771 12 12)"><path d="M10.37 8.8a3.2 3.2 0 0 0 0 6.4ZM13.63 15.2a3.2 3.2 0 0 0 0-6.4Z"/><path d="M12 1.44V22.56" fill="none" stroke="currentColor" stroke-width="0.96" stroke-linecap="round"/></g></svg></span>
             <input type="hidden" value="${escapeHtml(selectedCurrencyPair)}" data-client-pricing-rule-inline-field="currencyPair">
             <span class="client-pricing-configuration-node-value client-pricing-configuration-rule-pair">${escapeHtml(selectedCurrencyPair)}</span>
           </span>
         `
         : `
           <label class="client-pricing-configuration-inline-field is-pair">
-            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
+            <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="rotate(26.5650511771 12 12)"><path d="M10.37 8.8a3.2 3.2 0 0 0 0 6.4ZM13.63 15.2a3.2 3.2 0 0 0 0-6.4Z"/><path d="M12 1.44V22.56" fill="none" stroke="currentColor" stroke-width="0.96" stroke-linecap="round"/></g></svg></span>
             <select class="form-select form-select-sm" data-client-pricing-rule-inline-field="currencyPair" aria-label="Ccy Pair"${saving ? " disabled" : ""}>
               ${currencyPairs.map(currencyPair => `
                 <option value="${escapeHtml(currencyPair)}"${currencyPair === selectedCurrencyPair ? " selected" : ""}>${escapeHtml(currencyPair)}</option>
@@ -9019,7 +9020,7 @@ function positionManagementModeSettingLabel(value) {
                 return `
                   <div class="client-pricing-configuration-node client-pricing-configuration-rule" data-client-pricing-rule-index="${index}" role="listitem">
                     <span class="client-pricing-configuration-node-field client-pricing-configuration-rule-piece is-pair">
-                      <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true">universal_currency_alt</span><span aria-hidden="true">universal_currency_alt</span></span>
+                      <span class="button-icon client-pricing-configuration-node-icon currency-pair-icon" role="img" tabindex="0" aria-label="Ccy Pair" data-tooltip="Ccy Pair"><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><span aria-hidden="true"><span class="currency-pair-icon__banknote">universal_currency_alt</span></span><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="rotate(26.5650511771 12 12)"><path d="M10.37 8.8a3.2 3.2 0 0 0 0 6.4ZM13.63 15.2a3.2 3.2 0 0 0 0-6.4Z"/><path d="M12 1.44V22.56" fill="none" stroke="currentColor" stroke-width="0.96" stroke-linecap="round"/></g></svg></span>
                       <span class="client-pricing-configuration-node-value client-pricing-configuration-rule-pair">${escapeHtml(rule.currencyPair)}</span>
                     </span>
                     <span class="client-pricing-configuration-rule-separator" aria-hidden="true">&bull;</span>
@@ -25440,6 +25441,19 @@ function positionManagementModeSettingLabel(value) {
       }
       return route;
     }
+    const tradeContractCopyJsonButton = document.getElementById("tradeContractCopyJsonButton");
+    tradeContractCopyJsonButton?.addEventListener("click", async () => {
+      const example = document.getElementById("tradeContractJsonExample");
+      const status = document.getElementById("tradeContractCopyJsonStatus");
+      if (!example || !status) return;
+
+      try {
+        await navigator.clipboard.writeText(example.textContent);
+        status.textContent = "JSON copied.";
+      } catch {
+        status.textContent = "Unable to copy. Select the JSON and copy it manually.";
+      }
+    });
     function batchingSummaryFractionDigits(source) {
       return source.reduce((maximum, deal) => {
         const fractionDigits = positionBaseCcyFractionDigits(deal);
